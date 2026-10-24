@@ -1,0 +1,76 @@
+# The matching build's per-library compile flags (read by tools/cc.sh and tools/libflags.py).
+#
+# One row: <game> TAB <path prefix> TAB <flags>. game is `*` (both), `k1` or `k2`. A TU takes the
+# row with the LONGEST prefix of its src/ path; at equal length a k1/k2 row beats a `*` row. The
+# flags are appended to cc.sh's FLAGS (which carry -fno-builtin), before EXTRA_CFLAGS.
+#
+# One flag set per library is the rule. A row naming a single .cpp is an exception: each one below
+# says what was measured, and that no source spelling was found under its library's flags.
+# Measurements are `progress.py` (K2) and `k1match.py --all --build` (K1); replacing the 230 per-file
+# `cflags/` files with this table moved them 11,831 -> 11,833 and 11,332 -> 11,344.
+
+# --- The engine (BioWare's libraries): builtins on, strlen opaque. -------------------------------
+# strlen is opaque in every engine library of both games: CExoString(const char*) @0x79f2ec calls
+# it twice back to back with nothing in between (no CSE) and tests the call's result instead of the
+# first byte. With strlen a builtin both calls fold; no declaration or call spelling keeps a call
+# named strlen opaque to LLVM's library-call analysis, so this is a flag fact. Everything else
+# (memset/memcpy formation, allocator recognition, store widening) needs the builtins: blanket
+# -fno-builtin loses ~1,550 rows in each game, the per-name -fno-builtin-mem* sets 200-230.
+*	src	-fbuiltin -fno-builtin-strlen
+
+# --- Aspyr's port code: plain builtins. ------------------------------------------------------------
+# AspyrCloud, AndroidJNI, GraphicsSettings (swmain) and K1's std::string paths fold strlen of a
+# literal (`std::string + "/"` appends with a constant length).
+*	src/port	-fbuiltin
+*	src/game/swmain	-fbuiltin
+*	src/libsource/exoinput	-fbuiltin
+*	src/libsource/exosound	-fbuiltin
+*	src/libsource/exomovieplayer	-fbuiltin
+# K1's exoresman (CExoResMan::RemoveFile builds its path with std::string).
+k1	src/libsource/exoresman	-fbuiltin
+
+# --- Single-TU libraries. --------------------------------------------------------------------------
+# pathfindinfo: FindPath_Left/Right @0x7fc0a8/@0x7fc288 zero `new Vector[n]` with a real memset
+# call, and FindPath @0x7fc018 keeps its two callees out of line, which a builtin memcpy undoes.
+*	src/libsource/pathfindinfo	-fbuiltin -fno-builtin-memcpy
+
+# --- Exceptions: the store-merging (MemCpyOpt) pass did not run. ----------------------------------
+# LLVM's MemCpyOpt runs only when memset AND memcpy are both available. These TUs' originals keep
+# runs of adjacent zero stores that the pass merges into one memset: CSWCAnimBase() @0x35f548
+# (+0x18..+0x2d), CSWCAnimBaseHead(), CSWCPlaceable, CRIMRes() @0x7cadb8 (+0x14..+0x28),
+# CObjectLookupTable::GetUpdate, CSWGuiTutorial(), AddPowerSet; K1's CSWGlobalVariableTable
+# ClearValues/ClearIdentifiers. Reordering the stores reorders the expanded memset instead
+# (CRIMRes: six orders tried, every one DIFF). Other TUs of the same libraries need the pass.
+*	src/game/clientcore/ObjectLookupTable_ring.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
+*	src/game/clientcore/nwcanimbase.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
+*	src/game/clientcore/nwcanimbasehead.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
+*	src/game/clientcore/nwcplaceable.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
+*	src/game/clientcore/swguipazaak.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
+*	src/game/clientcore/swguiskillflowchart.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
+*	src/libsource/exoresman/rimfile.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
+k1	src/game/servercore/globalvartables.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
+# CGameEffect::CopyEffect @0x5ac684: the inlined SetNumIntegers' memset is a call that may write
+# anything, so the copy loop re-reads m_pIntegers and m_numIntegers; a builtin memset lets both forward.
+*	src/game/servercore/nwseffect.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memset
+
+# --- Exceptions: inlining and tail-merge tuning. ---------------------------------------------------
+# CExoRandInternal: the ctor inlines GenSeed's seed collection while GenSeed refuses Add (cost 165),
+# and GenSeed copies an uninitialised 128-byte buffer that MemCpyOpt deletes. A noinline Add was
+# tried: the ctor and Rand match, GenSeed loses its copy (172 -> 120 B). Window [161,165].
+*	src/libsource/exobase/exorandinternal.cpp	-mllvm -inline-threshold=165
+# CExoEncrypt::EncryptString @0x79d7c0 inlines MD5Init, refuses MD5Final and keeps the 16-call hex
+# loop rolled; MD5Init @0x79d8dc keeps its two memsets apart. Tried: noinline MD5Final plus
+# `#pragma nounroll`, and all 24 statement orders of MD5Init (best DIFF(8): the expanded memset's
+# stores come out in the reverse order).
+*	src/libsource/exobase/exoencrypt.cpp	-mllvm -inline-threshold=119
+# CERFFile: AddResource @0x7b858c's 16-byte name copy is one vector move (builtin memcpy); two rows
+# need the 160 threshold's inlining decisions.
+*	src/libsource/exoresman/nwerffile.cpp	-fbuiltin -mllvm -inline-threshold=160
+# FModAudioSystem::InitChannels @0x345728: the inlined libc++ tree walk's exit block is
+# tail-merged one way at the default and the original's way at 2 (436 B against 440 without it).
+*	src/port/fmod/FModAudioSystem.cpp	-fbuiltin -mllvm -tail-merge-size=2
+
+# --- K1-only exception. ----------------------------------------------------------------------------
+# StringGob::InsertTextAtCaret / DeleteTextAtCaret (K1's own text editing) keep m_caret.nLine live
+# across strlen; aurgui and aurmaterial in the same library need strlen opaque.
+k1	src/libsource/AURORA/aurstring.cpp	-fbuiltin

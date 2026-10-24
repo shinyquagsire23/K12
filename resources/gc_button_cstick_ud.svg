@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+<!-- GameCube prompt art (indigo controller): the C-stick, pushed up / down -->
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b51a2"/><stop offset="1" stop-color="#272d6e"/></linearGradient>
+<radialGradient id="face" cx="0.38" cy="0.3" r="0.75"><stop offset="0" stop-color="#fbee70"/><stop offset="1" stop-color="#f2c51c"/></radialGradient>
+</defs>
+<path d="M32 2L54 24H42V32H22V24H10ZM32 126L54 104H42V96H22V104H10Z" fill="#f2c51c" stroke="#272d6e" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="32.00" cy="64.00" r="31.00" fill="url(#shell)"/>
+<path d="M55.10 73.57L41.57 87.10L22.43 87.10L8.90 73.57L8.90 54.43L22.43 40.90L41.57 40.90L55.10 54.43Z" fill="#f0a51a"/>
+<circle cx="32.00" cy="66.00" r="19.00" fill="#000" fill-opacity="0.4"/>
+<circle cx="32.00" cy="64.00" r="19.00" fill="url(#face)"/>
+<path d="M0.74 0.2C0.6 -0.06 0.02 -0.06 0.02 0.5C0.02 1.06 0.6 1.06 0.74 0.8" transform="translate(24.40 54.00) scale(20.00)" fill="none" stroke="#b06a00" stroke-width="0.175" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

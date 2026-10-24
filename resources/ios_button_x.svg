@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- vector recreation of the K1 iOS/Android patch OBB override/ios_button_x.tga (94x94, disc centre 47,43 r40) -->
+<defs>
+<radialGradient id="shadow" gradientUnits="userSpaceOnUse" cx="47" cy="47.8" r="43.51"><stop offset="0.76" stop-color="#000" stop-opacity="0.72"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+<linearGradient id="disc" gradientUnits="userSpaceOnUse" x1="0" y1="3" x2="0" y2="83"><stop offset="0" stop-color="#636363"/><stop offset="0.59" stop-color="#5a5a5a"/><stop offset="1" stop-color="#2b2b2b"/></linearGradient>
+<radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="47" cy="16.75" r="40.23"><stop offset="0" stop-color="#fff" stop-opacity="0.25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="0" y1="3" x2="0" y2="83"><stop offset="0" stop-color="#fff" stop-opacity="0.44"/><stop offset="0.35" stop-color="#fff" stop-opacity="0"/><stop offset="0.35" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.68"/></linearGradient>
+<linearGradient id="face" gradientUnits="userSpaceOnUse" x1="0" y1="22" x2="0" y2="63"><stop offset="0" stop-color="#b4b4b4"/><stop offset="1" stop-color="#ebebeb"/></linearGradient>
+</defs>
+<circle cx="47" cy="47.8" r="43.51" fill="url(#shadow)"/>
+<circle cx="47" cy="43" r="40" fill="url(#disc)"/>
+<circle cx="47" cy="43" r="40" fill="url(#glow)"/>
+<circle cx="47" cy="43" r="39.19" fill="none" stroke="url(#rim)" stroke-width="1.62"/>
+<g fill="none" stroke="#777777" stroke-opacity="0.98" stroke-width="2.47" stroke-linejoin="round">
+<path d="M26.53 22.36L39.63 22.36L48 33.41L56.38 22.36L69.47 22.36L54.76 42.32L70.36 62.89L56.41 62.89L48 51.48L39.59 62.89L25.64 62.89L41.24 42.32Z" transform="translate(0 -2.33)"/>
+<path d="M26.53 22.36L39.63 22.36L48 33.41L56.38 22.36L69.47 22.36L54.76 42.32L70.36 62.89L56.41 62.89L48 51.48L39.59 62.89L25.64 62.89L41.24 42.32Z"/>
+</g>
+<path d="M26.53 22.36L39.63 22.36L48 33.41L56.38 22.36L69.47 22.36L54.76 42.32L70.36 62.89L56.41 62.89L48 51.48L39.59 62.89L25.64 62.89L41.24 42.32Z" transform="translate(0 -2.33)" fill="#6b6b6b" fill-rule="evenodd"/>
+<path d="M26.53 22.36L39.63 22.36L48 33.41L56.38 22.36L69.47 22.36L54.76 42.32L70.36 62.89L56.41 62.89L48 51.48L39.59 62.89L25.64 62.89L41.24 42.32Z" fill="url(#face)" fill-rule="evenodd"/>
+</svg>

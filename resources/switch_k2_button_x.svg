@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- vector recreation of the K2 Switch romfs override/textures/uibut_X.tpc (128x128) -->
+<circle cx="64.11" cy="64.11" r="63.09" fill="#31c7a5"/>
+<circle cx="64.11" cy="64.11" r="52.56" fill="#082418"/>
+<path d="M37.23 31.17L46.54 31.17L63.87 55.65L81.21 31.17L90.52 31.17L68.5 62.19L90.33 93.02L81.12 93.02L63.87 68.71L46.62 93.02L37.42 93.02L59.24 62.19Z" fill="#fff" fill-rule="evenodd"/>
+</svg>

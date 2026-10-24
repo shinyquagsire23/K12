@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 128 64">
+<!-- vector recreation of the K2 Switch romfs override/textures/uibut_R_PortSel.tpc (128x64) -->
+<path d="M50.99 24.81L59.94 24.81L59.94 18.95L73.01 31.78L59.94 44.61L59.94 38.75L50.99 38.75L50.99 47.69L56.86 47.69L44.03 60.77L31.19 47.69L37.06 47.69L37.06 38.75L28.11 38.75L28.11 44.61L15.04 31.78L28.11 18.95L28.11 24.81L37.06 24.81L37.06 15.86L31.19 15.86L44.03 2.79L56.86 15.86L50.99 15.86Z" fill="none" stroke="#c7c7c7" stroke-opacity="0.7" stroke-width="5.01" stroke-linejoin="round"/>
+<path d="M50.99 24.81L59.94 24.81L59.94 18.95L73.01 31.78L59.94 44.61L59.94 38.75L50.99 38.75L50.99 47.69L56.86 47.69L44.03 60.77L31.19 47.69L37.06 47.69L37.06 38.75L28.11 38.75L28.11 44.61L15.04 31.78L28.11 18.95L28.11 24.81L37.06 24.81L37.06 15.86L31.19 15.86L44.03 2.79L56.86 15.86L50.99 15.86Z" fill="#000" stroke="#fff" stroke-width="0.98" stroke-linejoin="miter"/>
+<path d="M75.42 7.94L121.98 32.04L75.42 55.99L84.17 32.04Z" fill="#000" stroke="#000" stroke-width="6.15" stroke-linejoin="round"/>
+<path d="M75.42 7.94L121.98 32.04L75.42 55.99L84.17 32.04Z" fill="#1cbb96" stroke="#00ffeb" stroke-width="0.41" stroke-linejoin="round"/>
+</svg>

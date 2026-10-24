@@ -1,0 +1,289 @@
+# KOTOR II achievement names: platforms/tools/achievement_names.py, from Steam's
+# stats schema for app 208580. Read by shim/shim_achievements.cpp.
+# version 10
+# tag	language	name	description
+achievement_0	english	Training Wheels	Complete the Prologue
+achievement_0	german	Starthilfe	Beende den Prolog.
+achievement_0	french	Petites roues	Terminez le prologue
+achievement_0	italian	Addestramento	Finisci il prologo
+achievement_0	spanish	Ruedas de entrenamiento	Completa el prólogo.
+achievement_1	english	It Was Like That When I Got Here!	Destroy Peragus Astroids
+achievement_1	german	Das war schon so, als ich eintraf!	Zerstöre Peragus-Asteroiden.
+achievement_1	french	C'était comme ça quand je suis arrivé !	Détruire les astéroïdes de Péragus
+achievement_1	italian	Era già così quando sono arrivato!	Distruggi gli asteroidi Peragus
+achievement_1	spanish	¡Ya estaba así cuando llegué!	Destruye los asteroides de Peragus.
+achievement_2	english	I Didn't Do It!	Let the Sith destroy the Peragus Asteroids
+achievement_2	german	Ich war's nicht!	Lass die Sith die Peragus-Asteroiden zerstören.
+achievement_2	french	C'est pas moi, j'ai rien fait !	Laisser les Siths détruire les astéroïdes de Péragus
+achievement_2	italian	Non sono stato io!	Lascia che i Sith distruggano gli asteroidi Peragus
+achievement_2	spanish	¡Yo no he sido!	Deja que los Sith destruyan los asteroides de Peragus.
+achievement_3	english	Larger World	Get your first Light Side points
+achievement_3	german	Große Welt	Erhalte deine ersten Helle-Seite-Punkte.
+achievement_3	french	Un monde plus grand	Obtenir vos premiers points de côté lumineux
+achievement_3	italian	Un mondo più grande	Ottieni i tuoi primi punti Lato Chiaro
+achievement_3	spanish	Un mundo más extenso	Consigue tus primeros puntos del lado luminoso.
+achievement_4	english	Starting Down the Dark Path	Get your first Dark Side points
+achievement_4	german	Der Beginn des dunklen Pfads	Erhalte deine ersten Dunkle-Seite-Punkte.
+achievement_4	french	La voie du côté obscur	Obtenir vos premiers points de côté obscur
+achievement_4	italian	Intraprendere il cammino oscuro	Ottieni i tuoi primi punti Lato Oscuro
+achievement_4	spanish	Primeros pasos en la senda oscura	Consigue tus primeros puntos del lado oscuro.
+achievement_5	english	An Elegant Weapon	Contruct your first Lightsaber
+achievement_5	german	Eine elegante Waffe	Baue dein erstes Lichtschwert.
+achievement_5	french	Une arme élégante	Fabriquer votre premier sabre laser
+achievement_5	italian	Un'arma elegante	Costruisci la tua prima spada laser
+achievement_5	spanish	Un arma elegante	Construye tu primer sable láser.
+achievement_6	english	Hunger Strike	Defeat Nihilus
+achievement_6	german	Hungerstreik	Besiege Nihilus.
+achievement_6	french	Grève de la faim	Vaincre Nihilus
+achievement_6	italian	Sciopero della fame	Sconfiggi Nihilus
+achievement_6	spanish	Huelga de hambre	Derrota a Nihilus.
+achievement_7	english	Pain Relief	Defeat Sion
+achievement_7	german	Schmerzlinderung	Besiege Sion.
+achievement_7	french	Anti-douleur	Vaincre Sion
+achievement_7	italian	Analgesico	Sconfiggi Sion
+achievement_7	spanish	Alivio del dolor	Derrota a Sion.
+achievement_8	english	Seeker	Complete the game on the Light Side
+achievement_8	german	Sucher	Schließe das Spiel auf der hellen Seite ab.
+achievement_8	french	Chercheur	Terminer le jeu du coté lumineux
+achievement_8	italian	Cercatore	Completa il gioco con il Lato Chiaro
+achievement_8	spanish	Buscador	Completa el juego con el lado luminoso.
+achievement_9	english	Destiny, Dominated	Complete the game on the Dark Side
+achievement_9	german	Deine Bestimmung	Schließe das Spiel auf der dunklen Seite ab.
+achievement_9	french	Destinée, dominée	Terminer le jeu du coté obscur
+achievement_9	italian	Destino, dominato	Completa il gioco con il Lato Oscuro
+achievement_9	spanish	Destino dominado	Completa el juego con el lado oscuro.
+achievement_10	english	Short Circuit	Install HK-47's unique module
+achievement_10	german	Kurzschluss	Installiere HK-47s Spezialmodul.
+achievement_10	french	Court-circuit	Installer le module unique de HK-47
+achievement_10	italian	Corto circuito	Installa il modulo unico di HK-47
+achievement_10	spanish	Cortocircuito	Instala el módulo único de HK-47.
+achievement_11	english	Royal Protocol	Side with the Queen on Onderon
+achievement_11	german	Königliches Protokoll	Unterstütze die Königin auf Onderon.
+achievement_11	french	Protocole royal	Soutenir la reine sur Oderon
+achievement_11	italian	Protocollo reale	Sostieni la Regina su Onderon
+achievement_11	spanish	Protocolo real	Apoya a la reina en Onderon.
+achievement_12	english	Martial Law	Side with Vaklu on Onderon
+achievement_12	german	Kriegsrecht	Unterstütze Vaklu auf Onderon.
+achievement_12	french	Loi martiale	Soutenir Vaklu sur Onderon
+achievement_12	italian	Legge marziale	Sostieni Vaklu su Onderon
+achievement_12	spanish	Ley marcial	Apoya a Vaklu en Onderon.
+achievement_13	english	The First Rule...	Complete the Handmaiden Battle Circle
+achievement_13	german	Die erste Regel ...	Bestehe den Kampfzirkel der Dienerinnen.
+achievement_13	french	La première règle...	Terminer le cercle de combat des servantes
+achievement_13	italian	La prima regola...	Completa il Ciclo di battaglia dell'Ancella
+achievement_13	spanish	Regla número uno	Completa el círculo de batalla de la doncella.
+achievement_14	english	The Second Rule...	Complete the Mandalorian Battle Circle
+achievement_14	german	Die zweite Regel ...	Bestehe den mandalorianischen Kampfzirkel.
+achievement_14	french	La seconde règle...	Terminer le cercle de combat mandalorien
+achievement_14	italian	La seconda regola...	Completa il Ciclo di battaglia Mandaloriano
+achievement_14	spanish	Regla número dos	Completa el círculo de batalla mandaloriano.
+achievement_15	english	Unadulterated Violence	Repair the damaged droid on the Ebon Hawk
+achievement_15	german	Rohe Gewalt	Repariere den beschädigten Droiden auf der Ebon Hawk.
+achievement_15	french	Violence parfaite	Réparer le droïde endommagé au Faucon d'ébène
+achievement_15	italian	Violenza assoluta	Ripara il droide danneggiato sull'Ebon Hawk
+achievement_15	spanish	Pura violencia	Repara al droide dañado en el Halcón de Ébano.
+achievement_16	english	Lost in Your Work	Learn Moving Meditation
+achievement_16	german	Verloren in der Arbeit	Lerne Bewegungsmeditation.
+achievement_16	french	Perdu dans votre travail	Apprendre Méditation apaisante
+achievement_16	italian	Perso nella tua opera	Impara la Meditazione mobile
+achievement_16	spanish	Concentración total	Aprende meditación de movimiento.
+achievement_17	english	Your Eyes Can Deceive You	Learn Force Sight
+achievement_17	german	Deine Augen können dich täuschen	Lerne Machtsicht.
+achievement_17	french	Vos yeux peuvent vous tromper	Apprendre Vision de Force
+achievement_17	italian	Gli occhi a volte ingannano	Impara lo Sguardo della Forza
+achievement_17	spanish	Las apariencias engañan	Aprende visión de fuerza.
+achievement_18	english	The Walking Carpet	Recruit Hanharr
+achievement_18	german	Der wandelnde Teppich	Rekrutiere Hanharr.
+achievement_18	french	Le tapis marchant	Recruter Hanharr
+achievement_18	italian	Tappetino ambulante	Arruola Hanharr
+achievement_18	spanish	La alfombra de pelo andante	Recluta a Hanharr.
+achievement_19	english	Lost Girl	Recruit Mira
+achievement_19	german	Das verschollene Mädchen	Rekrutiere Mira.
+achievement_19	french	Fille perdue	Recruter Mira
+achievement_19	italian	Ragazza perduta	Arruola Mira
+achievement_19	spanish	Chica perdida	Recluta a Mira.
+achievement_20	english	Grave Robber	Loot a body on Korriban
+achievement_20	german	Grabräuber	Untersuche eine Leiche auf Korriban.
+achievement_20	french	Pilleur de tombe	Détrousser un cadavre sur Korriban
+achievement_20	italian	Tombarolo	Razzia un corpo su Korriban
+achievement_20	spanish	Saqueador de tumbas	Saquea un cadáver en Korriban.
+achievement_21	english	Fight Another Day	Flee Korriban after fighting Sion
+achievement_21	german	Der Kampf kann warten	Flüchte nach dem Kampf mit Sion von Korriban.
+achievement_21	french	Combattre un jour de plus	Fuir Korriban après avoir combattu Sion
+achievement_21	italian	Lotta un altro giorno	Fuggi da Korriban dopo aver lottato contro Sion
+achievement_21	spanish	Lucha otro día	Huye de Korriban tras enfrentarte a Sion.
+achievement_22	english	Laugh It Up, Fuzzball	Break Hanharr's spirit
+achievement_22	german	Lach nur, du Pelzvieh	Brich Hanharrs Willen.
+achievement_22	french	Ça rigole !	Briser la volonté de Hanharr
+achievement_22	italian	Ridici su, palla di pelo	Sfianca la volontà di Hanharr
+achievement_22	spanish	Sonríe, bola de pelo	Doblega a Hanharr.
+achievement_23	english	Pure Pazaak	Beat the champ on Nar Shadaa
+achievement_23	german	Pazaak-Champion	Schlage den Champion auf Nar Shadaa.
+achievement_23	french	Pazaak pur	Vaincre le champion sur Nar Shadaa
+achievement_23	italian	Puro Pazaak	Batti il campione su Nar Shadaa
+achievement_23	spanish	Pasión por el Pazaak	Vence al campeón de Nar Shadaa.
+achievement_24	english	Pet Rock	Get the named Lightsaber crystal
+achievement_24	german	Der Kristall	Finde den nach dir benannten Lichtschwertkristall.
+achievement_24	french	Caillou familier	Obtenir le cristal de sabre laser nommé
+achievement_24	italian	Roccia domestica	Ottieni la spada laser di cristallo nominale
+achievement_24	spanish	Roca de coleccionista	Consigue el cristal de sable láser nombrado.
+achievement_25	english	Last Stand	Side with the Settlers at Khoonda
+achievement_25	german	Das letzte Gefecht	Unterstütze die Siedler bei Khoonda.
+achievement_25	french	Dernier rempart	Soutenir les colons de Khoonda
+achievement_25	italian	Ultimo baluardo	Sostieni i coloni a Khoonda
+achievement_25	spanish	Último bastión	Apoya a los colonos de Khoonda.
+achievement_26	english	Nothing Personal	Change your mind about siding with the Settlers at Khoonda
+achievement_26	german	Nimm's nicht persönlich	Ändere deine Meinung und schließe dich nicht den Siedlern von Khoonda an.
+achievement_26	french	Rien de personnel	Changez d'avis concernant votre soutien aux colons de Khoonda.
+achievement_26	italian	Niente di personale	Cambia idea e non metterti dalla parte dei coloni di Khoonda.
+achievement_26	spanish	No es nada personal	Cambia de opinión sobre aliarte con los colonos Settlers de Khoonda.
+achievement_27	english	Orphan White	Recruit the Handmaiden
+achievement_27	german	Die weiße Dienerin	Rekrutiere die Dienerin.
+achievement_27	french	Orpheline blanche	Recruter la servante
+achievement_27	italian	Orfana bianca	Arruola l'ancella
+achievement_27	spanish	La huérfana	Recluta a la doncella.
+achievement_28	english	Ancient History	Recruit the Disciple
+achievement_28	german	Es ist lange her	Rekrutiere den Jünger.
+achievement_28	french	Ancienne histoire	Recruter le disciple
+achievement_28	italian	Storia antica	Arruola il discepolo
+achievement_28	spanish	Agua pasada	Recluta al discípulo.
+achievement_29	english	A Certain Set of Skills	Gain a Prestige class
+achievement_29	german	Gewisse Talente	Erhalte eine Prestige-Klasse.
+achievement_29	french	Un certain champ de compétences	Obtenir une classe prestige
+achievement_29	italian	Certe competenze	Ottieni una classe di prestigio
+achievement_29	spanish	Las habilidades necesarias	Consigue la clase Prestigio.
+achievement_30	english	Luminous Beings	Reach maximum Light Side points
+achievement_30	german	Wesen des Lichts	Erhalte alle Helle-Seite-Punkte.
+achievement_30	french	Êtres lumineux	Atteindre le maximum de points de coté lumineux
+achievement_30	italian	Esseri luminosi	Raggiungi il massimo dei punti del Lato Chiaro
+achievement_30	spanish	Seres de luz	Consigue la cantidad máxima de puntos del lado luminoso.
+achievement_31	english	If You Only Knew...	Reach maximum Dark Side points
+achievement_31	german	Wenn du nur wüsstest ...	Erhalte alle Dunkle-Seite-Punkte.
+achievement_31	french	Si seulement vous saviez...	Atteindre le maximum de points de coté obscur
+achievement_31	italian	Se tu sapessi...	Raggiungi il massimo dei punti del Lato Oscuro
+achievement_31	spanish	Si yo te contara...	Consigue la cantidad máxima de puntos del lado oscuro.
+achievement_32	english	Never Tell Me the Odds	Win a Pazaak game with a full board
+achievement_32	german	Erzähl mir nie, wie meine Chancen stehen	Gewinne ein Pazaak-Spiel mit einem vollen Brett.
+achievement_32	french	Ne me parlez jamais de chance	Remporter une partie de Pazaak avec un tapis rempli
+achievement_32	italian	Mai dirmi le probabilità!	Vinci una partita a Pazaak con il tabellone pieno
+achievement_32	spanish	No me digas como van las apuestas	Gana una partida de Pazaak con el tablero lleno.
+achievement_33	english	In It For the Money	Collect 10,000 credits
+achievement_33	german	Es geht ums Geld	Sammle 10.000 Credits.
+achievement_33	french	C'est l'argent qui m'intéresse	Collecter 10 000 crédits
+achievement_33	italian	Lo faccio solo per i soldi	Raccogli 10.000 crediti
+achievement_33	spanish	Con ánimo de lucro	Recauda 10 000 créditos.
+achievement_34	english	Talk Them to Death	Have Persuasion over 30
+achievement_34	german	Laber sie zu Tode	Verbessere Überreden auf über 30.
+achievement_34	french	Tuer avec des paroles	Avoir une persuasion supérieure à 30
+achievement_34	italian	Affabulatore	Accumula Persuasione oltre 30
+achievement_34	spanish	Persuasión letal	Consigue más de 30 puntos de persuasión.
+achievement_35	english	Don't Get Cocky	Kill all Sith troopers before they can board the Ebon Hawk
+achievement_35	german	Nicht übermütig werden	Töte alle Sith-Soldaten, bevor sie auf die Ebon Hawk gelangen.
+achievement_35	french	N’attrape pas la grosse tête	Tuer tous les soldats Sith avant qu'ils n'embarquent dans le Faucon d'ébène
+achievement_35	italian	Ora non ti vantare	Uccidi tutti i Sith trooper prima che riescano ad imbarcarsi sull'Ebon Hawk
+achievement_35	spanish	Bájales los humos	Acaba con todos los soldados Sith antes de que suban a bordo del Halcón de Ébano.
+achievement_36	english	The Gang's All Here	Fill the Party Selection screen
+achievement_36	german	Volles Haus	Vervollständige das Gruppenauswahlmenü.
+achievement_36	french	Toute la troupe est réunie	Remplir l'écran de sélection de groupe
+achievement_36	italian	La banda è riunita	Riempi la schermata di selezione gruppo
+achievement_36	spanish	La familia al completo	Llena la pantalla de Selección de equipo.
+achievement_37	english	I hate everything about you	Reduce a companion's Influence to zero.
+achievement_37	german	Ich hasse alles an dir	Reduziere den Einfluss eines Begleiters auf null.
+achievement_37	french	Aucun atome crochu	Réduisez à zéro l'influence d'un compagnon.
+achievement_37	italian	Odio tutto di te	Riduci a zero l'influenza di un compagno.
+achievement_37	spanish	Lo odio todo sobre ti	reduce a cero la influencia de un compañero.
+achievement_38	english	Unlimited Power	Acquire all Dark Side Powers.
+achievement_38	german	Grenzenlose Macht	Erlange jegliche Mächte der dunklen Seite.
+achievement_38	french	Pouvoir illimité	Obtenez toutes les puissances du côté obscur.
+achievement_38	italian	Potere senza limiti	Acquisisci tutti i poteri del Lato Oscuro.
+achievement_38	spanish	Poder ilimitado	Consigue todos los poderes del lado oscuro.
+achievement_39	english	I Am A Jedi	Acquire all Light Side Powers
+achievement_39	german	Ich bin ein Jedi	Erlange jegliche Mächte der hellen Seite.
+achievement_39	french	Je suis un Jedi	Obtenez toutes les puissances du côté lumineux.
+achievement_39	italian	Sono un Jedi	Acquisisci tutti i poteri del Lato Chiaro
+achievement_39	spanish	Soy un jedi	Consigue todos los poderes del lado luminoso.
+achievement_40	english	Dancing Queen	Dance for Vogga
+achievement_40	german	Dancing Queen	Tanze für Vogga.
+achievement_40	french	Dancing Queen	Dansez pour Vogga.
+achievement_40	italian	Dancing Queen	Balla per Vogga.
+achievement_40	spanish	Dancing Queen	Baila para Vogga.
+achievement_41	english	No Jedi can stop us	Kill all the Jedi masters
+achievement_41	german	Kein Jedi kann uns aufhalten	Töte alle Jedi-Meister.
+achievement_41	french	Aucun Jedi ne peut nous arrêter	Tuez tous les maîtres Jedi.
+achievement_41	italian	Nessun Jedi può fermarci	Uccidi tutti i maestri Jedi.
+achievement_41	spanish	Ningún jedi podrá detenernos	Mata a todos los maestros jedi.
+achievement_42	english	Over Achiever	Reach Player Level 30
+achievement_42	german	Streber	Erreiche Spielerlevel 30.
+achievement_42	french	Ultra performant	Atteignez le niveau joueur 30.
+achievement_42	italian	Vincente	Raggiungi il livello giocatore 30.
+achievement_42	spanish	Triunfador	Alcanza el nivel de jugador 30.
+achievement_43	english	Silent, But Deadly	Have 30 points in Stealth
+achievement_43	german	Leise und tödlich	Erhalte 30 Punkte für Stealth
+achievement_43	french	Silencieux mais impitoyable	Obtenez 30 points dans Discrétion.
+achievement_43	italian	Silenzioso e letale	Totalizza 30 punti in furtività.
+achievement_43	spanish	Silencioso pero mortal	Consigue 30 puntos en sigilo.
+achievement_44	english	Let's Blow This Place!	Have 30 points in Demolitions.
+achievement_44	german	Jagen wir diesen Ort in die Luft!	Erhalte 30 Punkte für Zerstörungen.
+achievement_44	french	Et que ça saute !	Obtenez 30 points dans Démolitions.
+achievement_44	italian	Facciamo saltare in aria questo posto	Totalizza 30 punti in demolizioni.
+achievement_44	spanish	¡Vamos a volar esto!	Consigue 30 puntos en derribos.
+achievement_45	english	I've Seen How You Use a Hydrospanner	Have 30 points in Repair.
+achievement_45	german	Ich habe gesehen, wie du einen Hydrospanner nutzt	Erhalte 30 Punkte für Reparaturen.
+achievement_45	french	Je vous ai vu utiliser une clé hydraulique	Obtenez 30 points dans Réparation.
+achievement_45	italian	Ho visto come usi la chiave idraulica	Totalizza 30 punti in riparazione.
+achievement_45	spanish	He visto cómo usas la llave hidráulica	Consigue 30 puntos en reparación.
+achievement_46	english	We Have to Hack Into the Mainframe!	Have 30 points in Computer Use.
+achievement_46	german	Wir müssen uns in den Hauptrechner hacken!	Erhalte 30 Punkte für Computernutzung.
+achievement_46	french	Il faut pirater l'ordinateur central !	Obtenez 30 points dans Utiliser l'ordinateur.
+achievement_46	italian	Dobbiamo entrare nel mainframe	Totalizza 30 punti in utilizzo del computer.
+achievement_46	spanish	¡Tenemos que infiltrarnos en el ordenador principal!	Consigue 30 puntos en uso informático.
+achievement_47	english	Trust Me, I'm a Doctor	Have 30 points in Treat Injury.
+achievement_47	german	Vertrau mir, ich bin Arzt	Erhalte 30 Punkte für die Behandlung von Verletzungen.
+achievement_47	french	Faites-moi confiance, je suis médecin	Obtenez 30 points Soigner une blessure.
+achievement_47	italian	Fidati di me, sono un dottore	Totalizza 30 punti nella cura delle ferite.
+achievement_47	spanish	Tranquilo, soy médico	Consigue 30 puntos en tratar lesiones.
+achievement_48	english	It's a trap!	Get this by starting the "Trapped" Quest on Korriban.
+achievement_48	german	Es ist eine Falle!	Erziele diesen Erfolg, indem du die "Fallen"-Mission auf Korriban beginnst.
+achievement_48	french	C'est un piège !	Obtenez ceci en commençant la quête "Piège" dans Korriban.
+achievement_48	italian	È una trappola	Sbloccalo iniziando la missione Intrappolato su Korriban.
+achievement_48	spanish	¡Es una trampa!	Consíguelo iniciando la misión Atrapado en Korriban.
+achievement_49	english	Hutt Oil	Convince Vogga the Hutt to sell fuel to Telos.
+achievement_49	german	Voggas Öl	Überzeuge Vogga davon, Benzin an Telos zu verkaufen.
+achievement_49	french	Pétrole de Hutt	Convainquez Vogga le Hutt de vendre du carburant à Telos.
+achievement_49	italian	Olio di Hutt	Convinci Vogga the Hutt a vendere carburante a Telos.
+achievement_49	spanish	Combustible de Hutt	Convence a Vogga el Hutt de que venda combustible a Telos.
+achievement_50	english	Cheater	Convince the "champ" to lose the game without playing.
+achievement_50	german	Betrüger	Überzeuge den "Champion" davon, das Spiel ohne Teilnahme zu verlieren.
+achievement_50	french	Tricheur	Convainquez le champion de perdre sans jouer.
+achievement_50	italian	Baro	Convinci il campione a perdere la partita senza giocare.
+achievement_50	spanish	Tramposo	Convence al "campeón" de que pierda la partida sin jugar.
+achievement_51	english	Finders Keepers	Claim Darth Nihilus' mask.
+achievement_51	german	Des einen Freud	Beanspruche Darth Nihilus' Maske.
+achievement_51	french	Trouver, c'est garder	Récupérez le masque de Dark Nihilus.
+achievement_51	italian	Chi lo trova se lo prende	Rivendica la proprietà della maschera di Darth Nihilus.
+achievement_51	spanish	Me lo quedo	Quédate con la máscara de Darth Nihilus.
+achievement_52	english	The Sith Lord	Have your character replace any of the Sith Lords on the main menu screen.
+achievement_52	german	Der Sith-Lord	Sorge dafür, dass dein Charakter einen beliebigen Sith-Lord auf dem Bildschirm des Hauptmenüs ersetzt.
+achievement_52	french	Le seigneur Sith	Faites remplacer n'importe quel seigneur Sith par votre personnage à l'écran du menu principal.
+achievement_52	italian	Il Signore dei Sith	Fai in modo che il tuo personaggio sostituisca uno dei Signori dei Sith nella schermata del menu principale.
+achievement_52	spanish	Señor de los sith	Haz que tu personaje sustituya a cualquiera de los señores sith en la pantalla del menú principal.
+achievement_53	english	Breaking the Oath	Teach the Handmaiden the ways of the Force.
+achievement_53	german	Gebrochener Eid	Lehre die Dienerin die Gepflogenheiten der Macht.
+achievement_53	french	Serment rompu	Faites découvrir à la servante le pouvoir de la Force.
+achievement_53	italian	Rompere il giuramento	Insegna all'ancella le vie della Forza.
+achievement_53	spanish	Romper el juramento	Enséñale a la doncella cómo funciona la Fuerza.
+achievement_54	english	You ARE the droid I'm looking for	Deduce G0-T0's identity
+achievement_54	german	Du BIST der Droide, den ich suche	Leite die Identität von G0-T0 her.
+achievement_54	french	Vous ÊTES le droïde que je recherche	Déduisez l'identité de G0-T0.
+achievement_54	italian	Tu SEI il droide che sto cercando	Deduci l'identità di G0-T0.
+achievement_54	spanish	ERES el droide que estoy buscando	Deduce la identidad de G0-T0
+achievement_55	english	Assassination Protocol: Active	Learn how to kill Jedi from HK-47
+achievement_55	german	Mordprotokoll: Aktiv	Lerne von HK-47, wie man Jedi tötet.
+achievement_55	french	Protocole d'assassinat : activé	Apprenez à tuer un Jedi avec HK-47.
+achievement_55	italian	Protocollo Assassinio: attivo	Impara come uccidere un Jedi da HK-47.
+achievement_55	spanish	Protocolo de asesinato activo	Aprende a matar a los jedi desde HK-47.
+achievement_56	english	Cupid's Rifle	Listen to HK-47's definition of love.
+achievement_56	german	Amors Waffe	Hör dir die Liebesdefinition von HK-47 an.
+achievement_56	french	Fusil de l'amour	Écoutez la définition de l'amour selon HK-47.
+achievement_56	italian	Fucile di Cupido	Ascolta la definizione di "amore" di HK-47.
+achievement_56	spanish	Fusil de cupido	Escucha la definición de amor de HK-47.

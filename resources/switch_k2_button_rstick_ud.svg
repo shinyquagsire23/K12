@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+<!-- vector recreation of the K2 Switch romfs override/textures/uibut_RStick_UD.tpc (64x128) -->
+<path d="M32 1.06L52.01 21.03L41.01 21.03L41.01 28.96L23 28.96L23 21.03L11.99 21.03ZM32 127.01L52.01 107.04L41.01 107.04L41.01 99.1L23 99.1L23 107.04L11.99 107.04Z" fill="none" stroke="#dadada" stroke-opacity="0.84" stroke-width="2.91" stroke-linejoin="miter"/>
+<circle cx="31.99" cy="63.98" r="30.64" fill="none" stroke="#fff" stroke-opacity="0.39" stroke-width="4.89"/>
+<circle cx="31.99" cy="63.98" r="30.64" fill="#000" stroke="#e3e3e3" stroke-width="2.02"/>
+<g fill="#ffffff"><circle cx="32.25" cy="39.14" r="2.98"/><circle cx="55.92" cy="64" r="2.98"/><circle cx="32.21" cy="88.94" r="2.98"/><circle cx="8.27" cy="64.04" r="2.98"/></g>
+<path d="M21.36 51.1L35.75 51.1C39.61 51.1 42.29 54.26 42.29 58.8C42.29 63.35 41.76 66.51 41 66.51L42.82 77.88L36.76 77.88L35.28 66.51L26.52 66.51L26.52 77.88L21.36 77.88ZM26.52 55.9L33.82 55.9C35.54 55.9 37.07 57.46 37.07 59.2C37.07 60.94 35.1 62.5 32.9 62.5L26.52 62.5Z" fill="#d8d8d8" fill-rule="evenodd"/>
+</svg>

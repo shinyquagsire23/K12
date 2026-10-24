@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- vector recreation of the Switch romfs override/cus_button_a.tga (94x94, disc centre 47,43 r40) -->
+<defs>
+<radialGradient id="base" gradientUnits="userSpaceOnUse" cx="47" cy="58.26" r="52.14"><stop offset="0" stop-color="#feff04"/><stop offset="0.42" stop-color="#84dd01"/><stop offset="0.71" stop-color="#22a701"/><stop offset="1" stop-color="#238836"/></radialGradient>
+<radialGradient id="rim" gradientUnits="userSpaceOnUse" cx="47" cy="43" r="40"><stop offset="0.75" stop-color="#020201" stop-opacity="0"/><stop offset="1" stop-color="#020201" stop-opacity="0.76"/></radialGradient>
+<radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="47" cy="68.52" r="15.84"><stop offset="0" stop-color="#fefdf5" stop-opacity="0.86"/><stop offset="1" stop-color="#fefdf5" stop-opacity="0"/></radialGradient>
+<linearGradient id="gloss" gradientUnits="userSpaceOnUse" x1="0" y1="4.06" x2="0" y2="43.3"><stop offset="0" stop-color="#fff" stop-opacity="0.99"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="0" y1="15" x2="0" y2="68"><stop offset="0" stop-color="#27381c"/><stop offset="1" stop-color="#131a01"/></linearGradient>
+</defs>
+<circle cx="47" cy="43" r="40" fill="url(#base)"/>
+<circle cx="47" cy="43" r="40" fill="url(#glow)"/>
+<circle cx="47" cy="43" r="40" fill="url(#rim)"/>
+<ellipse cx="47" cy="40.86" rx="37.42" ry="36.81" fill="url(#gloss)"/>
+<circle cx="47" cy="43" r="39.5" fill="none" stroke="#020201" stroke-opacity="0.06"/>
+<path d="M40.8 15.54L53.33 15.54L69.88 63.61L60.37 63.61L56.61 52.66L37.52 52.66L33.76 63.61L24.26 63.61ZM47.07 24.94L54.05 45.24L40.08 45.24Z" fill="none" stroke="#fff" stroke-opacity="0.12" stroke-width="2.62" stroke-linejoin="round"/>
+<path d="M40.8 15.54L53.33 15.54L69.88 63.61L60.37 63.61L56.61 52.66L37.52 52.66L33.76 63.61L24.26 63.61ZM47.07 24.94L54.05 45.24L40.08 45.24Z" fill="url(#ink)" fill-rule="evenodd"/>
+</svg>

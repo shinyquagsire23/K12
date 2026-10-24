@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- shoulder button R1 in the style of ps_button_a..y (the Switch romfs cus_button_?ps): bezel, dark face, a stroked label -->
+<defs>
+<linearGradient id="face" gradientUnits="userSpaceOnUse" x1="29.56" y1="15" x2="64.44" y2="71"><stop offset="0" stop-color="#0c0c0c"/><stop offset="0.51" stop-color="#1c1c1c"/><stop offset="1" stop-color="#2d2d2d"/></linearGradient>
+<linearGradient id="bezel" gradientUnits="userSpaceOnUse" x1="0" y1="15" x2="0" y2="71"><stop offset="0" stop-color="#242424"/><stop offset="1" stop-color="#3e3e3e"/></linearGradient>
+<radialGradient id="hl1" gradientUnits="userSpaceOnUse" cx="77.03" cy="25.3" r="23.12"><stop offset="0" stop-color="#fff" stop-opacity="0.31"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="hl2" gradientUnits="userSpaceOnUse" cx="13.99" cy="31.78" r="31.32"><stop offset="0" stop-color="#fff" stop-opacity="0.32"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+</defs>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12Z" fill="url(#bezel)"/>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12ZM13.6 16.2H59.8A26 26 0 0 1 85.8 42.2V64.4A5.4 5.4 0 0 1 80.4 69.8H13.6A5.4 5.4 0 0 1 8.2 64.4V21.6A5.4 5.4 0 0 1 13.6 16.2Z" fill="url(#hl1)" fill-rule="evenodd"/>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12ZM13.6 16.2H59.8A26 26 0 0 1 85.8 42.2V64.4A5.4 5.4 0 0 1 80.4 69.8H13.6A5.4 5.4 0 0 1 8.2 64.4V21.6A5.4 5.4 0 0 1 13.6 16.2Z" fill="url(#hl2)" fill-rule="evenodd"/>
+<path d="M13.6 15.2H59.8A27 27 0 0 1 86.8 42.2V64.4A6.4 6.4 0 0 1 80.4 70.8H13.6A6.4 6.4 0 0 1 7.2 64.4V21.6A6.4 6.4 0 0 1 13.6 15.2Z" fill="none" stroke="#000" stroke-opacity="0.54" stroke-width="2"/>
+<path d="M13.6 16.2H59.8A26 26 0 0 1 85.8 42.2V64.4A5.4 5.4 0 0 1 80.4 69.8H13.6A5.4 5.4 0 0 1 8.2 64.4V21.6A5.4 5.4 0 0 1 13.6 16.2Z" fill="url(#face)"/>
+<path d="M0 48V0H17C25.5 0 30.5 5.5 30.5 12.7C30.5 20 25.5 25.4 17 25.4H0M15.5 25.4L31.5 48" transform="translate(26.94 25.00) scale(0.7500)" fill="none" stroke="#c9cdd2" stroke-width="5.35" stroke-linejoin="miter" stroke-linecap="butt"/>
+<path d="M3 9.5L14 2V48" transform="translate(56.56 25.00) scale(0.7500)" fill="none" stroke="#c9cdd2" stroke-width="5.35" stroke-linejoin="miter" stroke-linecap="butt"/>
+</svg>

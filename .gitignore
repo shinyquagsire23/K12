@@ -1,0 +1,16 @@
+# Original game binaries and toolchains
+/decomp_bins
+/toolchain
+
+# Build outputs (Visual Studio's Open Folder state is .vs/)
+/build/
+platforms/out/
+/.vs/
+__pycache__/
+*.pyc
+
+# Android tombstones pulled off a device
+platforms/tombstones/
+
+.DS_Store
+/.k12-staged

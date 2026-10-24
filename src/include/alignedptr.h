@@ -1,0 +1,77 @@
+#pragma once
+#include "k2stdint.h"
+
+#if KOTOR1
+// K1 only: a pointer into a possibly unaligned buffer, carried with an alignment flag so elements
+// can be read and written through memcpy when the pointer is misaligned.
+template <class T>
+struct CAlignedPtr {
+    T*   m_p;
+    bool m_bAligned;
+
+    CAlignedPtr() : m_p(0), m_bAligned(true) {}
+    CAlignedPtr(T* p) : m_p(p), m_bAligned((reinterpret_cast<uint64_t>(p) & 3) == 0) {}
+    CAlignedPtr(const CAlignedPtr& o) : m_p(o.m_p), m_bAligned(o.m_bAligned) {}
+    CAlignedPtr& operator=(T* p)
+    {
+        m_p = p;
+        m_bAligned = (reinterpret_cast<uint64_t>(p) & 3) == 0;
+        return *this;
+    }
+    operator T*() const { return m_p; }
+    CAlignedPtr operator+(unsigned int n) const { return CAlignedPtr(m_p + n); }
+
+    T Get() const
+    {
+        T t;
+        if (m_bAligned) {
+            t = *m_p;
+        } else {
+            __builtin_memcpy(&t, reinterpret_cast<const char*>(m_p), sizeof(T));
+        }
+        return t;
+    }
+    T Get(int n) const
+    {
+        T t;
+        if (m_bAligned) {
+            t = m_p[n];
+        } else {
+            __builtin_memcpy(&t, reinterpret_cast<const char*>(m_p + n), sizeof(T));
+        }
+        return t;
+    }
+    void Set(const T& t)
+    {
+        if (m_bAligned) {
+            *m_p = t;
+        } else {
+            __builtin_memcpy(reinterpret_cast<char*>(m_p), &t, sizeof(T));
+        }
+    }
+    void Set(int n, const T& t)
+    {
+        if (m_bAligned) {
+            m_p[n] = t;
+        } else {
+            __builtin_memcpy(reinterpret_cast<char*>(m_p + n), &t, sizeof(T));
+        }
+    }
+    void SetAt(unsigned int n, const T& t)
+    {
+        if (m_bAligned) {
+            m_p[n] = t;
+        } else {
+            __builtin_memcpy(reinterpret_cast<char*>(m_p) + n * sizeof(T), &t, sizeof(T));  // raw-offset: the aligned-pointer helper steps by sizeof(T)
+        }
+    }
+    // Frees the buffer and nulls the pointer; the alignment flag is left alone.
+    void Delete()
+    {
+        if (m_p != 0) {
+            delete m_p;
+            m_p = 0;
+        }
+    }
+};
+#endif

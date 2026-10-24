@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- GameCube prompt art (indigo controller): the grey L trigger -->
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b51a2"/><stop offset="1" stop-color="#272d6e"/></linearGradient>
+<radialGradient id="face" cx="0.35" cy="0.2" r="0.75"><stop offset="0" stop-color="#f4f3f8"/><stop offset="1" stop-color="#c8c6d4"/></radialGradient>
+</defs>
+<g>
+<path d="M44 14H112A12 12 0 0 1 124 26V102A12 12 0 0 1 112 114H16A12 12 0 0 1 4 102V54A40 40 0 0 1 44 14Z" fill="url(#shell)"/>
+<path d="M45 26H104A8 8 0 0 1 112 34V94A8 8 0 0 1 104 102H24A8 8 0 0 1 16 94V55A29 29 0 0 1 45 26Z" transform="translate(0 3)" fill="#000" fill-opacity="0.35"/>
+<path d="M45 26H104A8 8 0 0 1 112 34V94A8 8 0 0 1 104 102H24A8 8 0 0 1 16 94V55A29 29 0 0 1 45 26Z" fill="url(#face)"/>
+</g>
+<path d="M0 0V1H0.62" transform="translate(49.74 43.00) scale(46.00)" fill="none" stroke="#5d5b86" stroke-width="0.196" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,3 @@
+// Declares the executable's icon (windows/CMakeLists.txt configures this file), the first
+// RT_GROUP_ICON, which Explorer shows and SDL2 registers its window class with.
+1 ICON "@K2P_ICON@"

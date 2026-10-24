@@ -1,0 +1,60 @@
+#pragma once
+
+class CExoString {
+public:
+    char*        m_sString;
+    unsigned int m_nBufferLength;
+
+    CExoString();
+    CExoString(const char* str);
+    CExoString(const CExoString& other);
+    CExoString(const char* str, int length);
+    CExoString(int value);
+    ~CExoString();
+
+    CExoString& operator=(const CExoString& other);
+    CExoString& operator=(const char* str);
+
+    int operator==(const CExoString& other) const;
+    int operator!=(const CExoString& other) const;
+    int operator<(const CExoString& other) const;
+    int operator>(const CExoString& other) const;
+    int operator<=(const CExoString& other) const;
+    int operator>=(const CExoString& other) const;
+
+    int operator==(const char* str) const;
+    int operator!=(const char* str) const;
+    int operator<(const char* str) const;
+    int operator>(const char* str) const;
+    int operator<=(const char* str) const;
+    int operator>=(const char* str) const;
+
+    char operator[](int nPos) const;
+
+    CExoString operator+(const CExoString& other) const;
+    void Insert(const CExoString& other, int nPos);
+
+    int  CompareNoCase(const CExoString& other) const;
+    int  CompareNoCase(const char* str) const;
+    int  ComparePrefixNoCase(const CExoString& other, int nCount) const;
+
+    char* CStr() const;
+#if KOTOR1
+    // K1 only; K2 open-codes these.
+    int   AsINT() const;
+    float AsFLOAT() const;
+    int   GetLength() const;
+    int   IsEmpty() const;
+#endif
+    int  Find(const CExoString& other, int nStart) const;
+    int  Find(char ch, int nStart) const;
+    int  FindNot(char ch, int nStart) const;
+    CExoString Left(int nCount) const;
+    CExoString Right(int nCount) const;
+    CExoString SubString(int nStart, int nCount) const;
+    CExoString LowerCase() const;
+    CExoString UpperCase() const;
+    int  StripNonAlphaNumeric(int bLower, int bAllowAt, int bAllowPunct);
+
+    void Format(char* fmt, ...);
+};

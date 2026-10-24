@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<!-- GameCube prompt art (indigo controller): the grey + Control Pad -->
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b51a2"/><stop offset="1" stop-color="#272d6e"/></linearGradient>
+<radialGradient id="face" cx="0.38" cy="0.3" r="0.75"><stop offset="0" stop-color="#f4f3f8"/><stop offset="1" stop-color="#c8c6d4"/></radialGradient>
+</defs>
+<circle cx="32.00" cy="32.00" r="31.00" fill="url(#shell)"/>
+<path d="M23 5H41V23H59V41H41V59H23V41H5V23H23Z" transform="translate(0 2.00)" fill="#000" fill-opacity="0.4"/>
+<path d="M23 5H41V23H59V41H41V59H23V41H5V23H23Z" fill="url(#face)" stroke="#000" stroke-opacity="0.25" stroke-width="1.00" stroke-linejoin="round"/>
+<path d="M32.00 9.50L36.50 18.50L27.50 18.50ZM54.50 32.00L45.50 36.50L45.50 27.50ZM32.00 54.50L27.50 45.50L36.50 45.50ZM9.50 32.00L18.50 27.50L18.50 36.50Z" fill="#5d5b86" fill-opacity="0.55"/>
+<circle cx="32.00" cy="32.00" r="3.50" fill="#000" fill-opacity="0.12"/>
+</svg>

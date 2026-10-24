@@ -1,0 +1,787 @@
+#pragma once
+
+#include "swgui.h"
+
+#include "exostring.h"
+#include "resgff.h"
+
+class CSWGuiControl;
+class CSWGuiPanel;
+
+class CResGFF;
+struct CResStruct;
+struct CSWGuiExtent;
+
+extern CSWGuiManager* g_pGuiMan;
+
+// The character codes an edit box's HandleKeyPress receives: control characters for the editing
+// keys, the arrow keys as 0x1c-0x1f, and printable text from the space up. The arrow codes are the
+// engine's own: HandleWMKeyDownMessage turns VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN into 0x1c-0x1f in
+// that order.
+enum {
+    EDITKEY_BACKSPACE = 8,
+    EDITKEY_LINEFEED = 10,
+    EDITKEY_RETURN = 13,
+    EDITKEY_ESCAPE = 27,
+    EDITKEY_LEFT = 0x1c,
+    EDITKEY_UP = 0x1d,
+    EDITKEY_RIGHT = 0x1e,
+    EDITKEY_DOWN = 0x1f,
+    EDITKEY_FIRST_PRINTABLE = 0x20,
+    EDITKEY_DELETE = 0x7f,
+};
+
+// The GUI's own event ids. A control's HandleInputEvent and the handlers bound with AddEvent see
+// these alongside the input event ids (exoinput.h's INPUTEVENT_*), which stay below them.
+enum SWGuiEventId {
+    SWGUIEVENT_FOCUS = 0,                 // the control took the highlight
+    SWGUIEVENT_UNFOCUS = 1,               // the control lost the highlight
+    SWGUIEVENT_WHEEL_UP = 500,            // a mouse wheel notch, or a click on a slider's trough
+    SWGUIEVENT_WHEEL_DOWN = 501,
+    SWGUIEVENT_MSGBOX_OK = 502,           // a message box's OK and Cancel buttons
+    SWGUIEVENT_MSGBOX_CANCEL = 503,
+    SWGUIEVENT_SELECTION_CHANGED = 504,   // a list box row was picked
+    SWGUIEVENT_DOUBLE_CLICK = 505,
+    SWGUIEVENT_SCROLL_LINE_UP = 507,      // the pc scroll bar's arrows and the trough beside its thumb
+    SWGUIEVENT_SCROLL_LINE_DOWN = 508,
+    SWGUIEVENT_SCROLL_PAGE_UP = 509,
+    SWGUIEVENT_SCROLL_PAGE_DOWN = 510,
+    SWGUIEVENT_SPEED_BUTTON_LEFT = 90710,  // a CSWGuiSpeedButton press and its repeats, by mouse button
+    SWGUIEVENT_SPEED_BUTTON_RIGHT = 90711,
+    SWGUIEVENT_CARD_DROPPED = 98283,       // a CSWGuiPazaakCard was dropped on the control
+};
+
+// A .gui control's CONTROLTYPE field: the class CSWGuiDynamic and a list box's PROTOITEM build for it.
+enum SWGuiControlType {
+    SWGUICONTROL_LABEL = 4,               // CSWGuiLabel
+    SWGUICONTROL_LABEL_HILIGHT = 5,       // CSWGuiLabelHilight
+    SWGUICONTROL_BUTTON = 6,              // CSWGuiButton
+    SWGUICONTROL_BUTTON_TOGGLE = 7,       // CSWGuiButtonToggle
+    SWGUICONTROL_SLIDER = 8,              // CSWGuiSlider
+    SWGUICONTROL_SCROLLBAR = 9,           // CSWGuiScrollBar
+    SWGUICONTROL_PROGRESSBAR = 10,        // CSWGuiProgressBar
+    SWGUICONTROL_LISTBOX = 11,            // CSWGuiListBox
+};
+
+// A text or image alignment (CSWGuiTextParams::m_nAlignment, the .gui ALIGNMENT field): one
+// horizontal bit or'd with one vertical bit.
+enum SWGuiAlignment {
+    SWGUIALIGN_LEFT = 0x01,
+    SWGUIALIGN_CENTER = 0x02,
+    SWGUIALIGN_RIGHT = 0x04,
+    SWGUIALIGN_HORIZONTAL_MASK = 0x07,
+    SWGUIALIGN_TOP = 0x08,
+    SWGUIALIGN_MIDDLE = 0x10,
+    SWGUIALIGN_BOTTOM = 0x20,
+    SWGUIALIGN_VERTICAL_MASK = 0x38,
+};
+
+// One bound input-event slot, holding the receiving object, the handler and the event type.
+struct CSWGuiControlEvent {
+    CSWGuiObject* pObj;
+    void (CSWGuiObject::*pFn)(CSWGuiControl*);
+    int nEventType;
+};
+
+// An owning grow-on-demand array; CSWGuiControl holds its child-control and bound-event lists as
+// members of this type.
+template <class T>
+struct CSWGuiControlList {
+    ~CSWGuiControlList()
+    {
+        if (pa)
+            operator delete[](pa);
+        pa = 0;
+    }
+#if KOTOR1  // K1 copies both lists through the array's own operator=
+    CSWGuiControlList& operator=(const CSWGuiControlList& other)
+    {
+        // raw-offset: the control list is an array list's layout without the base; copied as one
+        *reinterpret_cast<CExoArrayList<T>*>(this) = *reinterpret_cast<const CExoArrayList<T>*>(&other);
+        return *this;
+    }
+#endif
+    T*  pa;
+    int nCount;
+    int nCapacity;
+};
+
+// The trailing flags byte, current event, control id, activate sound and user data.
+struct CSWGuiControlTail {
+    unsigned char bActive       : 1;
+    unsigned char bVisible      : 1;
+    unsigned char bFocusOnHover    : 1;
+    unsigned char bEnabled      : 1;
+    unsigned char bReserved1    : 1;
+    unsigned char bIgnoreMouse    : 1;
+    unsigned char bToolTipShown : 1;
+    unsigned char bReserved2    : 1;
+    unsigned char  _pad81[3];
+    int            nCurrentEventType;
+    int            nCurrentEventArg;
+    int            nControlId;
+    char           m_nClickSound;
+    char           m_nActivateSound;
+    char           _pad92[6];
+    unsigned long long m_nUserData;
+};
+
+// The base widget class of the CSWGui* subsystem, with screen extent, parent, child controls, tool
+// tip and the virtual interface it shares with CSWGuiObject.
+class CSWGuiControl : public CSWGuiObject {
+public:
+    CSWGuiControl();
+    // <VTABLE-GEN: binary ground truth (_ZTV) — regenerated by tools/hoist_headers.py; do not edit inside markers */
+    virtual ~CSWGuiControl();
+    virtual void HandleMouseOver(int bMouseIsOver);
+    virtual void HandleLoseMouseFocus();
+    virtual void HandleLMouseDown();
+    virtual void HandleLMouseUp();
+    virtual void HandleRMouseUp();
+    virtual CSWGuiControl* AsSWGuiControl();
+    virtual int GetIdealHeight();
+    virtual void Draw(float f);
+    virtual void HandleInputEvent(int type, int val);
+    virtual void SetActive(int flag);
+    virtual CSWGuiControl* HitCheckMouse(int x, int y);
+    virtual CSWGuiControl* AsNavigable();
+    virtual CSWGuiControl* AsLabel();
+    virtual CSWGuiControl* AsLabelHilight();
+    virtual CSWGuiControl* AsButton();
+    virtual CSWGuiControl* AsButtonToggle();
+    virtual CSWGuiControl* AsRadioButton();
+    virtual CSWGuiControl* AsSlider();
+    virtual CSWGuiControl* AsProgressBar();
+    virtual CSWGuiControl* AsScrollBar();
+    virtual CSWGuiControl* AsListBox();
+    virtual CSWGuiControl* AsSkillFlow();
+    virtual CSWGuiControl* AsEditBox();
+    virtual void HandleFocusChange(int bGaining);
+    virtual int GetIsSelectable();
+    virtual void HandleRMouseDown();
+    virtual void SetEnabled(int flag);
+    virtual void ReSetFont();
+    // Returns whether a tool tip was shown; both callers test the result.
+    virtual int DisplayToolTip();
+    virtual void DrawDragDrop(int a, int b);
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    // </VTABLE-GEN>
+
+#if !KOTOR1
+    CSWGuiControl& operator=(const CSWGuiControl& other);
+#endif
+    int  GetIsChild(CSWGuiControl* pControl);
+    CSWGuiControl* GetSelectableParent();
+    void AddChildControl(CSWGuiControl* pChild);
+    void HideToolTip();
+    int  GetEvent(int nEventType, CSWGuiObject** ppObj, void (CSWGuiObject::**ppFn)(CSWGuiControl*));
+    void AddEvent(int nEventType, CSWGuiObject* pObj, void (CSWGuiObject::*pFn)(CSWGuiControl*));
+    void Load(CSWGuiObject* pContainer, CResGFF* pGFF, CResStruct& resStruct, const CExoString& name);
+    void Load(CSWGuiObject* pContainer, CResGFF* pGFF, CResList& resList, const CExoString& name);
+
+#if !KOTOR1
+    int                m_bCenterOnNativeRect;
+    int                m_nReserved2;
+#endif
+    CSWGuiControl* m_pParent;
+    CSWGuiControlList<CSWGuiControl*> m_childControls;
+    unsigned long long m_nToolTipStrRef;
+    CExoString     m_sToolTipText;
+    int            m_nBoundInputEventId;
+    int            m_nReserved3;
+    CSWGuiObject*  m_pContainer;
+    CSWGuiControlList<CSWGuiControlEvent> m_events;
+    CSWGuiControlTail m_tail;
+};
+
+// Defined here so every TU that instantiates a label sees the destructor's body; the vtable still
+// needs its own definition of it.
+inline CSWGuiControl::~CSWGuiControl()
+{
+}
+
+#include "swguidrawable.h"
+
+class CResGFF;
+struct CResStruct;
+class CSWGuiControl;
+struct CSWGuiExtent;
+class CSWGuiPanel;
+
+// A control that renders a live 3D scene (the character-model preview); it derives from
+// CSWGuiControl and owns a CSWGuiScene by value.
+class CSWGui3DSceneView : public CSWGuiControl {
+public:
+    CSWGui3DSceneView() : CSWGuiControl() {}
+    // <VTABLE-GEN: binary ground truth (_ZTV) — regenerated by tools/hoist_headers.py; do not edit inside markers */
+    virtual void SetExtent(const CSWGuiExtent& extent);
+    virtual void Draw(float f);
+    // </VTABLE-GEN>
+// Declared always_inline so the units that destroy these widgets define the body. Declared after
+// SetExtent, which stays the key function: the vtable is emitted once, in swguicontrol.cpp.
+#ifdef CSWGUI_FORCE_WIDGET_INLINE
+    __attribute__((always_inline)) virtual ~CSWGui3DSceneView();
+#endif
+    CSWGuiScene  m_scene;
+};
+
+#ifdef CSWGUI_FORCE_WIDGET_INLINE
+inline __attribute__((always_inline)) CSWGui3DSceneView::~CSWGui3DSceneView() {}
+#endif
+
+K2_LAYOUT_ASSERT(sizeof(CSWGuiScene) == 0x48, "CSWGuiScene size drift");
+#if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGui3DSceneView) == 0xe8, "CSWGui3DSceneView size drift");
+#endif
+
+class CResGFF;
+struct CResStruct;
+struct CSWGuiExtent;
+class CSWGuiPanel;
+
+// A CSWGuiControl with D-pad and stick navigation. m_moveToControls holds the four neighbour
+// controls, indexed up, left, down and right.
+class CSWGuiNavigable : public CSWGuiControl {
+public:
+    // <VTABLE-GEN> block it used to own. The tool emitted all 40 slots as own declarations;
+    CSWGuiNavigable();
+    virtual void HandleMouseOver(int bMouseIsOver);
+    virtual void HandleInputEvent(int type, int val);
+    virtual CSWGuiControl* AsNavigable() { return this; }
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    void           SetMoveToControl(int nDir, CSWGuiControl* pControl);
+    CSWGuiControl* GetMoveToControl(int nDir);
+    CSWGuiControl* m_moveToControls[4];
+};
+
+#ifndef CSWGUIBUTTON_H
+#define CSWGUIBUTTON_H
+
+#include "swguidrawable.h"
+
+class CResGFF;
+struct CResStruct;
+class CSWGuiBorderParams;
+class CSWGuiControl;
+struct CSWGuiExtent;
+
+#if KOTOR1  // K1 names the button-glyph helper IosAddButtonIcon
+#define AspyrAddButtonIcon IosAddButtonIcon
+#endif
+
+// The standard clickable widget, with two borders, the inactive and active chrome, and a centred
+// text.
+class CSWGuiButton : public CSWGuiNavigable {
+public:
+    __attribute__((noinline)) CSWGuiButton() = default;
+    virtual void SetExtent(const CSWGuiExtent& extent);
+
+#if KOTOR1  // K1 inlines this teardown into its owners
+    virtual ~CSWGuiButton();
+#else
+    virtual ~CSWGuiButton() __attribute__((noinline));
+#endif
+    virtual void Draw(float f);
+    virtual void HandleInputEvent(int type, int val);
+    virtual void SetActive(int flag);
+    virtual CSWGuiControl* AsButton() { return this; }
+    virtual void SetEnabled(int flag);
+    virtual void ReSetFont();
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    virtual void Initialize(CSWGuiExtent const&, CSWGuiTextParams const&, CSWGuiBorderParams const&, CSWGuiBorderParams const&);
+    virtual void Initialize(CSWGuiExtent const&, CSWGuiButton*);
+    CSWGuiBorder     m_border;
+    CSWGuiBorder     m_borderHilight;
+    CSWGuiText       m_text;
+};
+
+inline CSWGuiButton::~CSWGuiButton()
+{
+}
+
+#endif // CSWGUIBUTTON_H
+
+#ifndef CSWGUIBUTTONTOGGLE_H
+#define CSWGUIBUTTONTOGGLE_H
+
+class CResGFF;
+struct CResStruct;
+class CSWGuiBorderParams;
+class CSWGuiControl;
+struct CSWGuiExtent;
+class CSWGuiTextParams;
+
+// A CSWGuiButton that latches, with a second pair of borders for the "on" state.
+class CSWGuiButtonToggle : public CSWGuiButton {
+public:
+    CSWGuiButtonToggle();
+    virtual void SetExtent(const CSWGuiExtent& extent);
+    virtual void Draw(float f);
+    virtual void HandleInputEvent(int type, int val);
+
+#if KOTOR1  // K1 has an out-of-line weak destructor, called from its owners
+    virtual ~CSWGuiButtonToggle() __attribute__((noinline));
+#endif
+    virtual CSWGuiControl* AsButtonToggle() { return this; }
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    virtual void Initialize(CSWGuiExtent const&, CSWGuiTextParams const&, CSWGuiBorderParams const&, CSWGuiBorderParams const&, CSWGuiBorderParams const&, CSWGuiBorderParams const&);
+    virtual void Initialize(CSWGuiExtent const&, CSWGuiButtonToggle*);
+    using CSWGuiButton::Initialize;   // the button's two overloads stay callable beside these
+    int m_nToggleInputEvent;
+    unsigned char bToggledOn : 1;
+    CSWGuiBorder m_borderToggled;
+    CSWGuiBorder m_borderToggledHilight;
+};
+#if KOTOR1
+inline CSWGuiButtonToggle::~CSWGuiButtonToggle() {}
+#endif
+
+#if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiButtonToggle) == 0x390, "CSWGuiButtonToggle size drift");
+#endif
+
+#endif // CSWGUIBUTTONTOGGLE_H
+
+#include "swguidrawable.h"
+
+class CResGFF;
+struct CResStruct;
+class CSWGuiBorderParams;
+class CSWGuiTextParams;
+
+// An editable-text control, a border plus the CSWGuiEditText it draws.
+class CSWGuiEditbox : public CSWGuiNavigable {
+public:
+    virtual ~CSWGuiEditbox();
+    CSWGuiEditbox();
+    virtual void SetExtent(const CSWGuiExtent& extent);
+    virtual void HandleLMouseDown();
+    virtual void HandleLMouseUp();
+    virtual void Draw(float f);
+    virtual CSWGuiControl* AsEditBox();
+    virtual void HandleFocusChange(int bGaining);
+    virtual int GetIsSelectable();
+    virtual void SetEnabled(int flag);
+    virtual void ReSetFont();
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    virtual void Initialize(CSWGuiExtent const&, CSWGuiTextParams const&, CSWGuiBorderParams const&);
+    virtual void HandleKeyPress(int);
+    void SetFocus();
+    CSWGuiBorder  m_border;
+    CSWGuiEditText m_editText;
+};
+#if KOTOR1  // K1 inlines this teardown into its owners
+inline CSWGuiEditbox::~CSWGuiEditbox()
+{
+}
+#endif
+
+#if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiEditbox) == 0x1e8, "CSWGuiSaveNamePanel's m_editBox member start");
+#endif
+
+#ifndef CSWGUILABEL_H
+#define CSWGUILABEL_H
+
+#include "swguidrawable.h"
+
+class CResGFF;
+struct CResStruct;
+class CSWGuiBorderParams;
+struct CSWGuiExtent;
+class CSWGuiTextParams;
+
+// A label, a border and the text it draws.
+class CSWGuiLabel : public CSWGuiControl {
+public:
+    CSWGuiLabel();
+    virtual void SetExtent(const CSWGuiExtent& extent);
+// Declared always_inline so the units that destroy these widgets define the body. Declared after
+// SetExtent, which stays the key function: the vtable is emitted once, in swguicontrol.cpp.
+#ifdef CSWGUI_FORCE_WIDGET_INLINE
+    __attribute__((always_inline)) virtual ~CSWGuiLabel();
+#endif
+    virtual void Draw(float f);
+    virtual CSWGuiControl* AsLabel() { return this; }
+    virtual void SetEnabled(int flag);
+    virtual void ReSetFont();
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    virtual void Initialize(CSWGuiExtent const&, CSWGuiTextParams const&, CSWGuiBorderParams const&, float);
+    virtual void Initialize(CSWGuiExtent const&, CSWGuiLabel*, float);
+    CSWGuiBorder m_border;
+    CSWGuiText   m_text;
+};
+
+#ifdef CSWGUI_FORCE_WIDGET_INLINE
+inline __attribute__((always_inline)) CSWGuiLabel::~CSWGuiLabel() {}
+#endif
+
+#if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiLabel) == 0x1b8, "CSWGuiLabel size drift");
+#endif
+#endif // CSWGUILABEL_H
+
+#ifndef CSWGUILABELHILIGHT_H
+#define CSWGUILABELHILIGHT_H
+
+class CResGFF;
+struct CResStruct;
+class CSWGuiBorderParams;
+class CSWGuiControl;
+struct CSWGuiExtent;
+class CSWGuiTextParams;
+
+// A CSWGuiLabel whose border and text colour swap while the control is active.
+class CSWGuiLabelHilight : public CSWGuiLabel {
+public:
+    virtual void SetExtent(const CSWGuiExtent& extent);
+
+#if KOTOR1  // K1 inlines this teardown into its owners
+    virtual ~CSWGuiLabelHilight();
+#else
+    virtual ~CSWGuiLabelHilight() __attribute__((noinline));
+#endif
+    virtual void Draw(float f);
+#if !KOTOR1  // K1 does not override SetActive
+    virtual void SetActive(int flag);
+#endif
+    virtual CSWGuiControl* AsLabelHilight() { return this; }
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiTextParams& textParams,
+                            const CSWGuiBorderParams& borderParams,
+                            const CSWGuiBorderParams& borderParamsHilight);
+    virtual void Initialize(const CSWGuiExtent& extent, CSWGuiLabelHilight* pTemplate);
+    using CSWGuiLabel::Initialize;   // the label's two overloads stay callable beside these
+    CSWGuiBorder m_hilightBorder;
+};
+
+#if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiLabelHilight) == 0x248, "CSWGuiLabelHilight size drift");
+#endif
+
+inline CSWGuiLabelHilight::~CSWGuiLabelHilight()
+{
+}
+#endif // CSWGUILABELHILIGHT_H
+
+#include "swguidrawable.h"
+
+class CResGFF;
+class CResRef;
+struct CResStruct;
+class CSWGuiBorderParams;
+struct CSWGuiExtent;
+
+void AurMakeCurrent();
+
+// A scroll bar that works on both axes off its own extent, with a trough border, a draggable thumb
+// image and an end-arrow image.
+class CSWGuiScrollBar : public CSWGuiControl {
+public:
+    CSWGuiScrollBar();
+    // <VTABLE-GEN: binary ground truth (_ZTV) — regenerated by tools/hoist_headers.py; do not edit inside markers */
+    virtual void SetExtent(const CSWGuiExtent& extent);
+
+#if KOTOR1  // K1 inlines this teardown into its owners
+    virtual ~CSWGuiScrollBar();
+#else
+    virtual ~CSWGuiScrollBar() __attribute__((noinline));
+#endif
+    virtual void Draw(float fAlpha);
+    virtual CSWGuiControl* AsScrollBar() { return this; }
+    virtual void Load(CResGFF* pGFF, CResStruct& rStruct);
+    virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiBorderParams& borderParams,
+                            const CResRef& resRefDir, const CResRef& resRefThumb);
+    virtual void Initialize(const CSWGuiExtent& extent, CSWGuiScrollBar* pOther);
+    // </VTABLE-GEN>
+    int GetTopArrowOn();
+    int GetBottomArrowOn();
+    void SetMaxValue(int nMaxValue, unsigned char bDisableSelection);
+    void SetCurValue(int nCurValue);
+    void SetVisibleValue(int nVisibleValue);
+    int HitCheckScrollbar(int x, int y);
+    int m_nMaxValue;
+    int m_nCurValue;
+    int m_nVisibleValue;
+    unsigned char bDrawMode : 1;
+    unsigned char bNoSelection : 1;
+#ifndef K2_UI_TOUCH
+    // pc / xbox: the phone's bar (trough and half-transparent thumb, no arrows, layout width) in
+    // place of the PC's (arrows at both ends, scaled with the screen). The xbox conversation's.
+    unsigned char bSlimBar : 1;
+    unsigned char nReservedBits : 5;
+#else
+    unsigned char nReservedBits : 6;
+#endif
+    unsigned char _padad[0xb0 - 0xad];
+    CSWGuiBorder m_border;
+    CSWGuiImage  m_imageThumb;
+    CSWGuiImage  m_imageDir;
+};
+
+inline CSWGuiScrollBar::~CSWGuiScrollBar()
+{
+}
+
+#include "swguidrawable.h"
+#include "CExoArrayListDtors.h"
+#include "Vector.h"
+
+class CResGFF;
+class CResRef;
+struct CResStruct;
+class CSWGuiBorderParams;
+class CSWGuiControl;
+struct CSWGuiExtent;
+
+// The scrolling list box, with a border, a scroll bar, the row widgets it lays out and the
+// prototype row they are cloned from.
+//
+// The flag run at 0x3b0 is 17 bits whose last field straddles bytes 1-2, and m_nPadding is byte 3:
+// the Itanium bitfield layout. MS layout gives the run a 4-byte unit of its own and moves every
+// member after it, so the class asks for the Itanium rules wherever they are not the target's. The
+// MSVC ABI has no such request and keeps MS bitfields.
+#if !defined(_MSC_VER) && defined(__has_attribute)
+#if __has_attribute(gcc_struct)
+#define K2_LISTBOX_GCC_STRUCT 1
+#endif
+#endif
+#ifdef K2_LISTBOX_GCC_STRUCT
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wincompatible-ms-struct"
+class __attribute__((gcc_struct)) CSWGuiListBox : public CSWGuiNavigable {
+#else
+class CSWGuiListBox : public CSWGuiNavigable {
+#endif
+public:
+    CSWGuiListBox();
+    // <VTABLE-GEN: binary ground truth (_ZTV) — regenerated by tools/hoist_headers.py; do not edit inside markers */
+    virtual ~CSWGuiListBox();
+    virtual void SetExtent(const CSWGuiExtent& extent);
+    virtual void SetActiveControl(CSWGuiControl* pControl, int flag);
+    virtual int HandleMouseCapturedMovement(int a, int b);
+    virtual void HandleLMouseDown();
+    virtual void HandleLMouseUp();
+    virtual CSWGuiControl* AsSWGuiListBox() { return this; }
+    virtual void Draw(float f);
+    virtual void HandleInputEvent(int type, int val);
+    virtual void SetActive(int flag);
+    virtual CSWGuiControl* AsListBox() { return this; }
+    virtual int GetIsSelectable();
+    virtual void ReSetFont();
+    virtual int DisplayToolTip();
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiBorderParams& borderParams,
+                            int flag);
+    virtual void Initialize(const CSWGuiExtent& extent, CSWGuiListBox* pOther);
+    virtual void InitializeScrollBar(CSWGuiExtent& extent, const CSWGuiBorderParams& borderParams,
+                                     const CResRef& resRefDir, const CResRef& resRefThumb,
+                                     int flag);
+    virtual void SetSelectOnLeftClick(int flag) { bSelectOnLeftClick = flag; }
+    // </VTABLE-GEN>
+    void ClearItems();
+    void SetPadding(int nPadding);
+    void SetScrollBarExtent(int a, int b);
+    void SetScrollBarOnLeft(int bOnLeft);
+    void OrganizeControls();
+    void OrganizeOversized();
+    void OrganizeUnequal();
+    void AddControls(CExoArrayList<CSWGuiControl*>& aControls, int a, int b, int c);
+    void AddControls(CSWGuiControl** ppControls, int a, int b, int c, int d);
+    void SetSelectedControl(CSWGuiControl* pControl, int flag);
+    void SetSelectedControl(int a, int b);
+    CSWGuiControl* GetSelectedControl();
+    void LoadProtoItem(CResGFF* pGFF, CResStruct& resStruct);
+    static void UpdateArrowPulsing(float fTime);
+    void HandleMouseMove();
+    // How many whole-box scroll steps an oversized row needs.
+    int GetOversizedStepCount()
+    {
+        if (m_innerExtent.h == 0)
+            return 1;
+        return static_cast<int>(m_fVisibleLines * m_nRowHeight / m_innerExtent.h + 0.9999f)
+             - static_cast<int>(m_fVisibleLines) + 1;
+    }
+    CSWGuiControl* HitCheckMouseLocal(int* pnIndex);
+    CSWGuiControl* GetControl(int nIndex);
+    static float m_fArrowAlpha;
+    static float m_fArrowAlphaPulseTime;
+    static unsigned char m_bArrowAlphaPulseUp;
+    int m_nPressedIndex;
+    int m_nCapturedScrollZone;
+    int m_nDragStartX;
+    int m_nDragStartY;
+    int m_nDragStartScroll;
+    int m_nHitLocalX;
+    int m_nHitLocalY;
+    int   m_nRepeatEvent;
+    float m_fRepeatTimer;
+    int m_nReserved6;
+    CSWGuiBorder    m_border;
+    CSWGuiScrollBar m_scrollBar;
+    CSWGuiExtent m_innerExtent;
+    CExoArrayList<CSWGuiControl*> m_aControls;
+    CExoArrayList<CSWGuiExtent>   m_aExtents;
+    int   m_nRowHeight;
+    float m_fVisibleLines;
+    unsigned int bSelectOnLeftClick : 1;
+    unsigned int bOwnsItems         : 1;
+    unsigned int bRestoreItemExtent : 1;
+    unsigned int bLayoutDirty       : 1;
+    unsigned int bScrollBarOnLeft              : 1;
+    unsigned int bShowScrollBar              : 1;
+    unsigned int bLooping           : 1;
+    unsigned int bAnchorTop         : 1;
+    unsigned int bUnequalRows       : 1;
+    unsigned int bNoSelection       : 1;
+    unsigned int bClipPartialRows   : 1;
+    unsigned int bPulseArrows             : 1;
+    unsigned int bScrollToSelection : 1;
+    unsigned int m_nProtoItemType   : 4;
+    unsigned char m_nPadding;
+    signed char   m_nScrollSound;
+    unsigned char m_nReserved4;
+    short m_nOversizedStep;
+    short m_nVisibleRows;
+    short m_nSelectedIndex;
+    short m_nTopRow;
+    short m_nBottomRow;
+    CSWGuiControl* m_pProtoItem;
+    Vector m_vColor;
+    int   m_nReserved5;
+    CSWGuiControl* m_pMouseOverControl;
+    CSWGuiImage m_imageArrow;
+    float m_fScrollHintTime;
+};
+#ifdef K2_LISTBOX_GCC_STRUCT
+#pragma clang diagnostic pop
+#endif
+#if KOTOR1
+K2_LAYOUT_ASSERT(__builtin_offsetof(CSWGuiListBox, m_nPadding) == 0x383, "Itanium bitfield layout");
+#else
+K2_LAYOUT_ASSERT(__builtin_offsetof(CSWGuiListBox, m_nPadding) == 0x3b3, "Itanium bitfield layout");
+#endif
+
+#ifndef CSWGUIPROGRESSBAR_H
+#define CSWGUIPROGRESSBAR_H
+
+#include "swguidrawable.h"
+
+class CResGFF;
+struct CResStruct;
+class CSWGuiBorderParams;
+struct CSWGuiExtent;
+
+// A two-border bar, a static frame plus a progress border sized from m_nCurValue /
+// m_nMaxValue.
+class CSWGuiProgressBar : public CSWGuiControl {
+public:
+    CSWGuiProgressBar();
+    virtual void SetExtent(const CSWGuiExtent& extent);
+    virtual void Draw(float fDelta);
+    virtual CSWGuiControl* AsProgressBar() { return this; }
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiBorderParams& borderParams,
+                            const CSWGuiBorderParams& borderParamsProgress);
+    virtual void Initialize(const CSWGuiExtent& extent, CSWGuiProgressBar* pTemplate);
+    void SetMaxValue(int nValue);
+    void SetCurValue(int nValue);
+    void SetStartFromLeft(int bStart);
+    int m_nMaxValue;
+    int m_nCurValue;
+    unsigned char m_bStartFromLeft : 1;
+    CSWGuiBorder m_border;
+    CSWGuiBorder m_borderProgress;
+};
+
+#if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiProgressBar) == 0x1d0, "CSWGuiProgressBar size drift");
+#endif
+
+#endif // CSWGUIPROGRESSBAR_H
+
+#ifndef CSWGUIPROGRESSBARREVEAL_H
+#define CSWGUIPROGRESSBARREVEAL_H
+
+struct CSWGuiExtent;
+
+// A progress bar that reveals its fill through a growing viewport instead of resizing the
+// border.
+class CSWGuiProgressBarReveal : public CSWGuiProgressBar {
+public:
+    virtual void SetExtent(const CSWGuiExtent& extent);
+    virtual void Draw(float fDelta);
+    CSWGuiExtent m_extentReveal;
+};
+
+#if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiProgressBarReveal) == 0x1e0, "CSWGuiProgressBarReveal size drift");
+#endif
+#endif // CSWGUIPROGRESSBARREVEAL_H
+
+#ifndef CSWGUIRADIOBUTTON_H
+#define CSWGUIRADIOBUTTON_H
+
+class CSWGuiControl;
+
+// A button with radio behaviour. It claims focus on mouse-down and never shows a tool tip.
+class CSWGuiRadioButton : public CSWGuiButton {
+public:
+    virtual void HandleMouseOver(int bMouseIsOver);
+    virtual void HandleLMouseDown();
+    virtual void HandleLMouseUp();
+    virtual CSWGuiControl* AsRadioButton() { return this; }
+};
+
+K2_LAYOUT_ASSERT(sizeof(CSWGuiRadioButton) == sizeof(CSWGuiButton), "CSWGuiRadioButton adds no data");
+#endif // CSWGUIRADIOBUTTON_H
+
+#ifndef CSWGUISLIDER_H
+#define CSWGUISLIDER_H
+
+#include "swguidrawable.h"
+
+class CResGFF;
+class CResRef;
+struct CResStruct;
+class CSWGuiBorderParams;
+class CSWGuiControl;
+struct CSWGuiExtent;
+
+// A draggable value slider, with a trough border, a highlight border and a thumb image.
+class CSWGuiSlider : public CSWGuiNavigable {
+public:
+    CSWGuiSlider();
+    virtual ~CSWGuiSlider();
+    virtual void SetExtent(const CSWGuiExtent& extent);
+    virtual int HandleMouseCapturedMovement(int a, int b);
+    virtual void HandleLMouseDown();
+    virtual void Draw(float f);
+    virtual void HandleInputEvent(int type, int val);
+    virtual CSWGuiControl* AsSlider() { return this; }
+    virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
+    virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiBorderParams& borderParams,
+                            const CSWGuiBorderParams& borderParamsHilight,
+                            const CResRef& resRefThumb);
+    virtual void Initialize(const CSWGuiExtent& extent, CSWGuiSlider* pTemplate);
+    void SetMaxValue(int nValue);
+    void SetCurValue(int nValue);
+    int  HitCheckSlider(int x, int y);
+    int  m_nHitPart;
+    int  m_nMaxValue;
+    int  m_nCurValue;
+    char m_nMoveSound;
+    CSWGuiBorder m_border;
+    CSWGuiBorder m_borderHilight;
+    CSWGuiImage  m_imageThumb;
+};
+#if KOTOR1  // K1 inlines this teardown into its owners
+inline CSWGuiSlider::~CSWGuiSlider()
+{
+}
+#endif
+
+#if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiSlider) == 0x250, "CSWGuiSlider size drift");
+#endif
+#endif // CSWGUISLIDER_H

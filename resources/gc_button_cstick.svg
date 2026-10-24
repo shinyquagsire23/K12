@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- GameCube prompt art (indigo controller): the yellow C-stick in its octagonal gate -->
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b51a2"/><stop offset="1" stop-color="#272d6e"/></linearGradient>
+<radialGradient id="face" cx="0.38" cy="0.3" r="0.75"><stop offset="0" stop-color="#fbee70"/><stop offset="1" stop-color="#f2c51c"/></radialGradient>
+</defs>
+<circle cx="64.00" cy="64.00" r="62.00" fill="url(#shell)"/>
+<path d="M110.19 83.13L83.13 110.19L44.87 110.19L17.81 83.13L17.81 44.87L44.87 17.81L83.13 17.81L110.19 44.87Z" fill="#f0a51a"/>
+<circle cx="64.00" cy="68.00" r="38.00" fill="#000" fill-opacity="0.4"/>
+<circle cx="64.00" cy="64.00" r="38.00" fill="url(#face)"/>
+<path d="M0.74 0.2C0.6 -0.06 0.02 -0.06 0.02 0.5C0.02 1.06 0.6 1.06 0.74 0.8" transform="translate(48.80 44.00) scale(40.00)" fill="none" stroke="#b06a00" stroke-width="0.175" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

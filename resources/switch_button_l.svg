@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- vector recreation of the K1 Switch romfs override/Textures/whitebutton.tga (128x128) -->
+<path d="M44.55 23.22H110.75V104.64H17.33V50.43A27.22 27.22 0 0 1 44.55 23.22Z" fill="#0f9af7"/>
+<path d="M44.86 30.6H103.23V97.26H24.76V50.69A20.09 20.09 0 0 1 44.86 30.6Z" fill="#002a4d"/>
+<path d="M51.44 41.5L58.14 41.5L58.14 81.23L78.3 81.23L78.3 87.19L51.44 87.19Z" fill="#fff" fill-rule="evenodd"/>
+</svg>

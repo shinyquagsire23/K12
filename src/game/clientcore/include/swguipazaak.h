@@ -1,0 +1,482 @@
+// The Pazaak GUI controls, which are the activated button, the card, the tutorial bubble, the table
+// panel, the deck-builder screen and the wager popup.
+#pragma once
+#include "k2stdint.h"
+
+// A CSWGuiButton that tints itself and counts down an "activation" timer, as used for the Pazaak
+// hand and sidedeck slot buttons.
+#include "swguicontrol.h"
+#include "guiingame.h"
+#include "Vector.h"
+
+class CResGFF;
+struct CResStruct;
+
+class CSWGuiActivatedButton : public CSWGuiButton {
+public:
+    // Defined here so both construction sites see the body.
+    __attribute__((used)) CSWGuiActivatedButton() {
+        m_fFlashTimer = -1.0f;
+        m_labelPos = {0.0f, 0.0f, 0.0f};
+        m_tail.bEnabled  = 1;
+    }
+
+    // Kicks the floating "+N" label: timer to 0.8 and the world-space anchor stored.
+    void ActivateLabel(const Vector& pos);
+
+    __attribute__((always_inline)) void SetEnabled(int bEnabled) override {
+        CSWGuiButton::SetEnabled(bEnabled);
+        if (m_fFlashTimer < 0.0f) {
+#if KOTOR1  // K1 uses blue text and leaves the border colour alone
+            m_text.m_params.SetColor(m_tail.bEnabled ? CGuiInGame::COLOR_BLUE
+                                                     : CGuiInGame::DISABLED_TEXT);
+#else
+            m_text.m_params.SetColor(m_tail.bEnabled ? CGuiInGame::COLOR_PAZAAK_GOLD
+                                                     : CGuiInGame::DISABLED_TEXT);
+            m_border.m_params.m_color =
+                *reinterpret_cast<const CSWGuiColor*>(&(m_tail.bEnabled ? CGuiInGame::COLOR_PAZAAK_GOLD
+                                                       : CGuiInGame::DISABLED_TEXT));
+#endif
+            SetActive(m_tail.bEnabled && this == g_pGuiMan->m_pMouseOverControl);
+        }
+    }
+
+    void Draw(float f) override;
+
+    float  m_fFlashTimer;   // the activation countdown; negative renders the gold enabled look
+    Vector m_labelPos;   // world anchor captured on activate
+};
+
+#if !KOTOR1  // K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiActivatedButton) == 0x278, "CSWGuiActivatedButton size drift");
+#else
+K2_LAYOUT_ASSERT(sizeof(CSWGuiActivatedButton) == 0x258, "K1 CSWGuiActivatedButton size");
+#endif
+
+// ==== CSWGuiPazaakCard ====
+#ifndef CSWGUIPAZAAKCARD_H
+#define CSWGUIPAZAAKCARD_H
+
+// One Pazaak card control. The card is a CSWGuiButton that additionally owns the label showing the
+// caption, the CPazaakCard payload it renders, and the drag-to-play bookkeeping.
+#include "swgui.h"
+#include "swpazaak.h"
+
+class CResGFF;
+struct CResStruct;
+
+class CSWGuiPazaakCard : public CSWGuiButton {
+public:
+    // Both by-value construction sites build the card in place, so the body is here;
+    // CSWGUIPAZAAKCARD_CTOR_DECLARED_ONLY selects the declared-only form the K1 panel constructors
+    // need.
+#ifdef CSWGUIPAZAAKCARD_CTOR_DECLARED_ONLY
+#if KOTOR1  // K1 panel ctors call it
+    __attribute__((noinline)) CSWGuiPazaakCard();
+#else
+    CSWGuiPazaakCard();
+#endif
+#else
+    CSWGuiPazaakCard() {
+        m_bDragLatch = 1;
+        m_bEnabled   = 1;
+        m_label.m_tail.bIgnoreMouse = 1;
+        m_card.m_nCardType    = -1;
+        m_card.m_bIsNegative  = 0;
+#if !KOTOR1
+        m_card.m_nValue       = 0;
+#endif
+    }
+#endif
+
+    virtual ~CSWGuiPazaakCard();
+
+    int  HandleMouseCapturedMovement(int a, int b) override;
+    void HandleLMouseDown() override;
+    void HandleLMouseUp() override;
+    void Draw(float f) override;
+    void HandleInputEvent(int type, int val) override;
+    int  GetIsSelectable() override;
+    void DrawDragDrop(int a, int b) override;
+    void Load(CResGFF* pGFF, CResStruct& resStruct) override;
+
+    // Sets the card to display `card` and repaints the caption and border key from the engine's
+    // static label/image tables.
+    void SetCard(CPazaakCard card);
+
+public:
+    CSWGuiLabel    m_label;
+    CPazaakCard    m_card;
+    CSWGuiMousePos m_dragStartPos;  // mouse position recorded at LMouseDown
+    int            m_bDragLatch;    // gate for HandleMouseCapturedMovement
+    int            m_bEnabled;      // the card's own selectable flag
+};
+
+#if !KOTOR1  // K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiPazaakCard) == 0x440, "CSWGuiPazaakCard size drift");
+#else
+K2_LAYOUT_ASSERT(sizeof(CSWGuiPazaakCard) == 0x400, "K1 CSWGuiPazaakCard size");
+#endif
+#endif // CSWGUIPAZAAKCARD_H
+
+// ==== CSWGuiTutorial ====
+#ifndef CSWGUITUTORIAL_H
+#define CSWGUITUTORIAL_H
+
+// The small paging help bubble the UI parks next to a control, as opposed to CSWGuiTutorialBox, the
+// modal tutorial pop-up. A CSWGuiMessageBox subclass holding a list of strrefs, walked
+// forwards/backwards with the A/B buttons, re-anchoring itself above the control it was attached to
+// after every page turn.
+#include "swguiingame.h"
+#include "List.h"
+
+class CSWGuiManager;
+class CSWGuiPazaakGame;
+
+class CSWGuiTutorial : public CSWGuiMessageBox {
+public:
+    // <VTABLE-GEN: binary ground truth (_ZTV) — regenerated by tools/hoist_headers.py; do not edit inside markers */
+    //   primary vtable, 36 slots
+    virtual void HandleInputEvent(int nType, int nValue);
+    // </VTABLE-GEN>
+
+    // Nothing calls this constructor, but it must still be defined, so CSWGuiTutorial.cpp sets
+    // CSWGUITUTORIAL_CTOR_DECLARED_ONLY and defines it there.
+#ifdef CSWGUITUTORIAL_CTOR_DECLARED_ONLY
+    CSWGuiTutorial(CSWGuiManager* pGuiManager);
+#else
+    CSWGuiTutorial(CSWGuiManager* pGuiManager) : CSWGuiMessageBox(pGuiManager) {}
+#endif
+
+    // Resets the page list to one entry and pushes the panel. nOkStrRef == -1 together with
+    // nCancelStrRef == 38626 ("Cancel") is the single-page, no-cancel spelling.
+    void ShowHelp(uint64_t nHelpStrRef, uint64_t nOkStrRef,
+                  uint64_t nCancelStrRef);
+    // Forwards to the base's SetAllowCancel; the B button is the cancel.
+    void SetBButtonEnabled(int bEnabled);
+    void ShowMultipleHelp(const uint64_t* panStrRefs, int nCount);
+    // Parks the bubble in the control's own panel coordinates. PlaceAbove also remembers the
+    // control, so every later page turn re-anchors to it.
+    void PlaceRightOf(CSWGuiControl* pControl);
+    void PlaceAbove(CSWGuiControl* pControl);
+    // The strref of the page currently displayed, 0 once the cursor has walked off the end.
+    uint64_t GetHelpText();
+    // Defined in CSWGuiPazaakGame.cpp alongside the table panel's methods.
+#if !KOTOR1  // K2-only: K1's pazaak tutorial is not interactive
+    void HandlePazaakTutorialDismissButton();
+#endif
+
+    List<uint64_t> m_helpText;
+    int m_nCurrentHelp = 0;                // page cursor into m_helpText
+    int m_bEnabled = 1;                    // master "tutorials are on" gate
+    CSWGuiControl* m_pAnchorControl = 0;   // the control PlaceAbove was last given
+    // The pazaak table this bubble is tutoring, if any.
+#if !KOTOR1
+    CSWGuiPazaakGame* m_pPazaakGame = 0;
+#endif
+};
+#if KOTOR1
+K2_LAYOUT_ASSERT(sizeof(CSWGuiTutorial) == 0xcd0 + K1_XBOX_MSGBOX_EXTRA, "K1 CSWGuiTutorial size");
+#endif
+
+#endif // CSWGUITUTORIAL_H
+
+// ==== CSWGuiPazaakGame ====
+#ifndef CSWGUIPAZAAKGAME_H
+#define CSWGUIPAZAAKGAME_H
+
+// The in-game Pazaak table panel, created by CSWGuiPazaakStart::HandleStartDialog once the wager
+// dialog closes. Owns the rules object it is handed and the tutorial bubble it drives.
+#include "swpazaak.h"
+
+class CSWGuiControl;
+
+class CSWGuiPazaakGame : public CSWGuiPanel {
+public:
+    // m_nGameState: the step DoGameSequence runs next.
+    enum GameState {
+        GAME_STATE_START_SET = 0,           // pick who opens
+        GAME_STATE_PLAYER_TURN,
+        GAME_STATE_PLAYER_DRAW,
+        GAME_STATE_PLAYER_PLAY,             // the player may play a side card, end the turn or stand
+        GAME_STATE_PLAYER_PLAYED_CARD,      // a side card is down: end the turn or stand
+        GAME_STATE_PLAYER_TURN_OVER,
+        GAME_STATE_OPPONENT_TURN,
+        GAME_STATE_OPPONENT_PLAY,           // CSWPazaak::PlayAITurn's steps
+        GAME_STATE_SET_OVER,                // score the set
+        GAME_STATE_SHOW_RESULT,
+        GAME_STATE_RESULT_SHOWN,            // waiting on the result dialog
+        GAME_STATE_NEXT_SET,
+        GAME_STATE_END_MATCH,
+    };
+
+    CSWGuiPazaakGame(CSWGuiManager* pManager, CSWPazaak* pPazaak, int bTutorialsEnabled,
+                     unsigned long long oidOpponent);
+    virtual ~CSWGuiPazaakGame();
+    virtual void Draw(float f);
+    virtual void HandleInputEvent(int nType, int nValue);
+    virtual void OnPanelAdded();
+
+    // CSWGuiObject callbacks, wired by the constructor through AddEvent / MessageBox::SetCallback.
+    void HandleHandcardAction(CSWGuiControl* pControl);
+    void HandleHandCardDrop(CSWGuiControl* pControl);
+    void HandleHandCardDoubleClick(CSWGuiControl* pControl);
+    void HandleHandCardRightClick(CSWGuiControl* pControl);
+    void HandleFlipButtons(CSWGuiControl* pControl);
+#if !KOTOR1
+    void HandleChangeButtons(CSWGuiControl* pControl);
+#endif
+    void HandleContinue(CSWGuiControl* pControl);
+    void HandleStand(CSWGuiControl* pControl);
+    void HandleXButton(CSWGuiControl* pControl);
+    void HandleBlackButton(CSWGuiControl* pControl);
+#if !KOTOR1
+    void HandleForfeitButton(CSWGuiControl* pControl);
+#endif
+    void HandleTutorialClose(CSWGuiControl* pControl);
+    void HandlePlayHandCard(int nSlot);
+    __attribute__((noinline)) void SetHandEnabled(int nHand);
+    void HandleFlipHandCard();
+#if !KOTOR1  // K2-only: no change cards, interactive tutorial or forfeit in K1
+    void HandleChangeHandCard();
+    void HandleTutorialContinue();
+    void HandleTutorialStand();
+    void HandleTutorialPlayHandCard();
+#endif
+    void StartNewGame();
+    void ReconnectSidedeckButtons();
+    void RefreshDisplay();
+    void HandleQuitDialog(CSWGuiControl* pControl);
+    int  DoGameSequence();
+    void HandleEndDialog(CSWGuiControl* pControl);
+
+private:
+    CSWGuiLabel          m_lbl0;
+    CSWGuiLabel          m_lbl1;
+    CSWGuiLabel          m_lbl2;
+    CSWGuiLabel          m_lbl3;
+    CSWGuiLabel          m_lbl4;
+    CSWGuiLabel          m_lbl5;
+    CSWGuiLabel          m_lbl6;
+    CSWGuiLabel          m_lbl7;
+    CSWGuiLabel          m_aPlrScore[3];
+    CSWGuiLabel          m_aNpcScore[3];
+    CSWGuiPazaakCard     m_aPlrBoard[9];
+    CSWGuiPazaakCard     m_aPlrHand[4];
+    CSWGuiPazaakCard     m_aNpcBoard[9];
+    CSWGuiPazaakCard     m_aNpcHand[4];
+    CSWGuiButton         m_aCardButtonsA[4];
+#if !KOTOR1  // K1 has no change buttons, change legend or forfeit button
+    CSWGuiButton         m_aCardButtonsB[4];
+    CSWGuiButton         m_btnForfeitGame;
+#endif
+    CSWGuiLabel          m_blbl0;
+    CSWGuiLabel          m_blbl1;
+#if !KOTOR1
+    CSWGuiLabel          m_blbl2;
+    CSWGuiLabel          m_blbl3;
+#endif
+    CSWGuiActivatedButton m_actbtn0;
+    CSWGuiActivatedButton m_actbtn1;
+    CSWGuiActivatedButton m_actbtn2;
+    CSWGuiActivatedButton m_actbtn3;
+    CSWGuiMessageBox     m_dialog;    // the quit/forfeit dialog
+    CSWGuiTutorial       m_tutorial;  // the how-to-play bubble
+    // The tail below is seeded by the constructor right after m_tutorial is built.
+#if KOTOR1  // K1 seeds the whole tail in the constructor body, after the side-panel images
+    char*                m_apszCueSounds[4];
+    unsigned long long   m_pszPendingSound;
+    CSWPazaak*           m_pPazaak;
+    int                  m_nGameState;
+    float                m_fSequenceDelay;
+    int                  m_anTutorialState[2];
+    int                  m_nHandPickMode;   // then 4 bytes of alignment padding: K1 has no first-turn toggle
+#else
+    char*                m_apszCueSounds[4] = {const_cast<char*>("mgs_startturn"), const_cast<char*>("mgs_drawmain"),
+                                             const_cast<char*>("mgs_playside"), const_cast<char*>("mgs_warnbust")};
+    unsigned long long   m_pszPendingSound;          // a pending sound resref DoGameSequence plays
+    CSWPazaak*           m_pPazaak;
+    int                  m_nGameState = GAME_STATE_START_SET;
+    float                m_fSequenceDelay = -1.0f;   // Draw's seconds countdown, negative when idle
+    int                  m_anTutorialState[2] = {0, -1};  // flags word, tutorial's pending hand-card slot
+    int                  m_nHandPickMode = 0;
+    int                  m_bPlayerStarts;           // seeded 1 by the constructor body
+#endif
+#if KOTOR1  // K1: the and_paz_left / and_paz_right side panels
+    CSWGuiImage          m_imgSideLeft;
+    CSWGuiImage          m_imgSideRight;
+#endif
+};
+
+#if !KOTOR1  // K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiPazaakGame) == 0xc920, "CSWGuiPazaakGame size drift");
+#else
+K2_LAYOUT_ASSERT(sizeof(CSWGuiPazaakGame) == 0xaf88 + 2 * K1_XBOX_MSGBOX_EXTRA, "K1 CSWGuiPazaakGame size");
+#endif
+#endif // CSWGUIPAZAAKGAME_H
+
+// The pazaak deck-builder and wager screen, reached from the table panel's "build deck" entry. It
+// derives from CSWGuiPanel alone; the navigable and list-box calls in its constructor bodies come
+// from its CSWGuiButton and CSWGuiMessageBox members, not from bases of this class.
+#ifndef CSWGUIPAZAAKSTART_H
+#define CSWGUIPAZAAKSTART_H
+
+#include "swpazaak.h"
+
+class CSWGuiWagerPopup;
+
+class CSWGuiPazaakStart : public CSWGuiPanel {
+public:
+
+    CSWGuiPazaakStart(CSWGuiManager* pManager, int nWager, int nOpponentDeck,
+                      int  bTutorialsEnabled, unsigned long long oidPCCreature);
+    virtual ~CSWGuiPazaakStart();
+    virtual void HandleInputEvent(int nType, int nVal);
+    virtual void OnPanelAdded();
+#if KOTOR1
+    virtual void Draw(float f);  // K1: the side panels
+#endif
+
+    void HandleWagerExit(int nWager);
+    void OnChosenCardEntered(CSWGuiControl* pControl);
+    void OnAvailCardEntered(CSWGuiControl* pControl);
+    void HandleQuitDialog(CSWGuiControl* pControl);
+    void HandleAvailCardDrop(CSWGuiControl* pControl);
+#if !KOTOR1
+    void ClearSideDeck(CSWGuiControl* pControl);
+#endif
+    int  AddChosenCard(int nCard, int nSlotPref);
+    int  RemoveChosenCard(int nSlot);
+    void HandleStartDialog(CSWGuiControl* pControl);
+    void HandleAcceptButton(CSWGuiControl* pControl);
+    void HandleChosenCardDrop(CSWGuiControl* pControl);
+    void HandleMoveCard(CSWGuiControl* pControl);
+#if !KOTOR1
+    void UpdateHelpText(int nControlId);
+#endif
+    void ShowDisabledButtons();
+
+    bool IsRightSideActive();
+    bool IsLeftSideActive();
+
+    friend class CSWGuiWagerPopup;  // commits through m_pPazaak / resets via m_aAvail
+
+private:
+    CSWGuiLabel         m_lblTitle;
+#if KOTOR1  // K1 uses 18 card kinds in a 6x3 grid
+    CSWGuiPazaakCard    m_aAvail[18];
+    CSWGuiLabel         m_aLabels[18];
+#else
+    CSWGuiPazaakCard    m_aAvail[24];      // 6x4 grid, Avail* event set
+    CSWGuiLabel         m_aLabels[24];     // one label per Avail card
+#endif
+    CSWGuiPazaakCard    m_aChosen[10];     // Chosen* event set
+#if KOTOR1  // K1: a second gold button, bound to HandleMoveCard and never laid out
+    CSWGuiActivatedButton m_btnMoveCard;
+#endif
+    CSWGuiActivatedButton m_btnAccept;     // the HandleAcceptButton anchor
+#if KOTOR1  // K1: LBL_LTEXT only (no LBL_HELP, no BTN_CLEARCARDS)
+    CSWGuiLabel         m_bLabels[1];
+#else
+    CSWGuiLabel         m_bLabels[2];
+    CSWGuiButton        m_btnClearCards;      // the button of the plain button/label pair below
+#endif
+    CSWGuiLabel         m_lblRText;
+    // Indexed by avail-card id: the unplaced-copies bookkeeping AddChosenCard gates on (>= 1) and
+    // decrements, RemoveChosenCard increments, and the avail tile's number label displays through
+    // CExoString(int).
+#if KOTOR1
+    int                 m_anCopies[18];
+#else
+    int                 m_anCopies[24];
+#endif
+    // The side deck being assembled. Row k holds the card currently placed in chosen slot k, as a
+    // plain CPazaakCard (m_nCardType == -1 means empty). HandleStartDialog hands the array to
+    // m_pPazaak->m_players[0].ChooseSidedeck.
+    CPazaakCard         m_aSidedeck[10];
+    CSWGuiWagerPopup*   m_pWagerPopup;
+    CSWGuiPazaakCard*   m_pDragChosen;     // the m_aChosen base
+    CSWGuiPazaakCard*   m_pDragAvail;      // the m_aAvail base
+    int                 m_nSideDeckComplete;   // 1 once all ten sidedeck slots hold a card; gates
+                                           //   the accept button's enabled state
+    CSWPazaak*          m_pPazaak;
+    CSWGuiMessageBox    m_dialog;
+    CSWGuiTutorial      m_tutorial;
+#if KOTOR1  // K1: the and_paz01_left / and_paz01_right side panels
+    CSWGuiImage         m_imgSideLeft;
+    CSWGuiImage         m_imgSideRight;
+#endif
+};
+
+#if !KOTOR1  // K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiPazaakStart) == 0xe260, "CSWGuiPazaakStart size drift");
+#else
+K2_LAYOUT_ASSERT(sizeof(CSWGuiPazaakStart) == 0xb250 + 2 * K1_XBOX_MSGBOX_EXTRA, "K1 CSWGuiPazaakStart size");
+#endif
+
+#endif // CSWGUIPAZAAKSTART_H
+
+// The "place your side-deck wager" modal the pazaak table pops from CSWGuiPazaakStart. Nine loaded
+// controls (three labels, four buttons, two labels) named by the constructor's InitControl calls;
+// the layout resource is "pazaakwager_p".
+#ifndef CSWGUIWAGERPOPUP_H
+#define CSWGUIWAGERPOPUP_H
+
+#include "CExoArrayListDtors.h"
+#include "swguispeedbutton.h"
+#include "exoinput.h"
+
+class CSWGuiPazaakStart;
+
+class CSWGuiWagerPopup : public CSWGuiPanel {
+public:
+
+    CSWGuiWagerPopup(CSWGuiManager* pManager, CSWGuiPazaakStart* pOwner, int nWager);
+
+    virtual void Draw(float f);
+    virtual void HandleInputEvent(int nEvent, int nParam);
+
+    void UpdateWagerText();
+#if KOTOR1
+    void FlashArrow(CSWGuiButton& button);  // K1
+#endif
+
+    // Each forwards the button's key code (less, more, wager-commit, quit-ask) to the virtual
+    // HandleInputEvent, with second argument 1.
+    void HandleButtonLess(CSWGuiControl* pControl)  { K2_UNUSED(pControl); HandleInputEvent(INPUTEVENT_GUI_DPAD_LEFT, 1); }
+    void HandleButtonMore(CSWGuiControl* pControl)  { K2_UNUSED(pControl); HandleInputEvent(INPUTEVENT_GUI_DPAD_RIGHT, 1); }
+    void HandleButtonWager(CSWGuiControl* pControl) { K2_UNUSED(pControl); HandleInputEvent(INPUTEVENT_GUI_START, 1); }
+    void HandleButtonQuit(CSWGuiControl* pControl)  { K2_UNUSED(pControl); HandleInputEvent(INPUTEVENT_GUI_B, 1); }
+
+    CSWGuiLabel        m_lblTitle;
+    CSWGuiLabel        m_lblMaximum;
+    CSWGuiLabel        m_lblWagerVal;
+    CSWGuiSpeedButton  m_btnLess;
+    CSWGuiSpeedButton  m_btnMore;
+    CSWGuiButton       m_btnWager;
+    CSWGuiButton       m_btnQuit;
+#if !KOTOR1  // K1 has no LBL_BAR1
+    CSWGuiLabel        m_lblBar1;
+#endif
+    CSWGuiLabel        m_lblBg;
+    int                m_nWager;       // the live value, shown by UpdateWagerText
+    int                m_nWagerMax;    // the increment guard's bound
+#if KOTOR1  // K1: the arrow-flash list FlashArrow fills
+    struct ArrowFlash {
+        CSWGuiButton* m_pButton;
+        float         m_fTimer;
+    };
+    CExoArrayList<ArrowFlash> m_aArrowFlashes;
+#else
+    CExoArrayList<int> m_aArrowFlashes;  // never filled
+#endif
+    CSWGuiPazaakStart* m_pOwner;       // used by HandleInputEvent's two paths
+};
+
+// Sized by CSWGuiPazaakStart's allocation.
+#if !KOTOR1  // K1's GUI base classes are smaller
+K2_LAYOUT_ASSERT(sizeof(CSWGuiWagerPopup) == 0x1320, "CSWGuiWagerPopup size drift");
+#else
+K2_LAYOUT_ASSERT(sizeof(CSWGuiWagerPopup) == 0x1060, "K1 CSWGuiWagerPopup size");
+#endif
+#endif // CSWGUIWAGERPOPUP_H

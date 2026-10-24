@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- vector recreation of the K1 Switch romfs override/Textures/xbutton.tga (128x128) -->
+<circle cx="65.06" cy="64.63" r="36.31" fill="#0f9af7"/>
+<circle cx="65.06" cy="64.63" r="30.35" fill="#002a4d"/>
+<path d="M50.62 46.58L56.63 46.58L65 58.71L73.38 46.58L79.39 46.58L68.04 63.1L80.76 81.53L74.62 81.53L65 67.52L55.38 81.53L49.24 81.53L61.97 63.1Z" fill="#fff" fill-rule="evenodd"/>
+</svg>

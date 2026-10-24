@@ -1,0 +1,72 @@
+#ifndef SDLCONST_H
+#define SDLCONST_H
+
+// The SDL2 constants the port layer passes to and gets back from SDL, as SDL2's own headers name
+// them (port/sdlapi.h declares the functions and records; the engine never includes SDL's headers).
+
+// SDL_Event::type.
+enum {
+    SDL_QUIT = 0x100,
+    SDL_APP_TERMINATING = 0x101,
+    SDL_APP_LOWMEMORY = 0x102,
+    SDL_APP_WILLENTERBACKGROUND = 0x103,
+    SDL_APP_DIDENTERBACKGROUND = 0x104,
+    SDL_APP_WILLENTERFOREGROUND = 0x105,
+    SDL_APP_DIDENTERFOREGROUND = 0x106,
+    SDL_WINDOWEVENT = 0x200,
+    SDL_KEYDOWN = 0x300,
+    SDL_KEYUP = 0x301,
+    SDL_TEXTEDITING = 0x302,
+    SDL_TEXTINPUT = 0x303,
+    SDL_MOUSEMOTION = 0x400,
+    SDL_MOUSEBUTTONDOWN = 0x401,
+    SDL_MOUSEBUTTONUP = 0x402,
+    SDL_MOUSEWHEEL = 0x403,
+    SDL_JOYAXISMOTION = 0x600,
+    SDL_JOYBALLMOTION = 0x601,
+    SDL_JOYHATMOTION = 0x602,
+    SDL_JOYBUTTONDOWN = 0x603,
+    SDL_JOYBUTTONUP = 0x604,
+    SDL_JOYDEVICEADDED = 0x605,
+    SDL_JOYDEVICEREMOVED = 0x606,
+    SDL_CONTROLLERDEVICEADDED = 0x653,
+    SDL_CONTROLLERDEVICEREMOVED = 0x654,
+    SDL_FINGERDOWN = 0x700,
+    SDL_FINGERUP = 0x701,
+    SDL_FINGERMOTION = 0x702,
+    SDL_USEREVENT = 0x8000,
+};
+
+// SDL_WindowEvent::event.
+enum {
+    SDL_WINDOWEVENT_ENTER = 10,
+    SDL_WINDOWEVENT_FOCUS_GAINED = 12,
+    SDL_WINDOWEVENT_FOCUS_LOST = 13,
+};
+
+// SDL_PeepEvents's action.
+enum { SDL_ADDEVENT = 0, SDL_PEEKEVENT = 1, SDL_GETEVENT = 2 };
+
+// SDL_Scancode.
+enum {
+    SDL_SCANCODE_RETURN = 40,
+    SDL_SCANCODE_BACKSPACE = 42,
+    SDL_SCANCODE_RIGHT = 79,
+    SDL_SCANCODE_LEFT = 80,
+    SDL_SCANCODE_DOWN = 81,
+    SDL_SCANCODE_UP = 82,
+    SDL_SCANCODE_RETURN2 = 158,
+    SDL_SCANCODE_KP_BACKSPACE = 187,
+    SDL_SCANCODE_AUDIOSTOP = 260,
+    SDL_SCANCODE_AUDIOPLAY = 261,
+    SDL_SCANCODE_AC_BACK = 270,
+};
+
+// SDL_Keycode: a key with no character is its scancode with this bit set.
+enum { SDLK_SCANCODE_MASK = 1 << 30 };
+enum { SDLK_AC_BACK = SDL_SCANCODE_AC_BACK | SDLK_SCANCODE_MASK };
+
+// SDL_MouseButtonEvent::button.
+enum { SDL_BUTTON_LEFT = 1, SDL_BUTTON_RIGHT = 3 };
+
+#endif

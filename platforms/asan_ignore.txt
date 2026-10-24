@@ -1,0 +1,34 @@
+# AddressSanitizer ignorelist for the macOS host build (cmake -DCMAKE_{C,CXX}_FLAGS=
+# "-fsanitize=address -fsanitize-ignorelist=<this file>"). Only FAITHFUL out-of-bounds accesses
+# the original binary makes too, each with the original instruction that proves it.
+
+# 0x7f5db8: `str wzr,[sp,#8]` then `ldr x8,[sp,#8]` - an 8-byte read of a 4-byte float local
+# (the float push's value cell; the upper half is never read back).
+fun:_ZN20CVirtualMachineStack15AddToTopOfStackEi
+
+# 0x72fdf8: `ldrsh` cm_nCurrentViewport then an unguarded cm_nViewportStack[n] read - the orig
+# indexes the stack the same way when a control draws while no GUI layer is open (n == -1).
+fun:_ZN20CAurGUIImageInternal12DrawBufferedEiiiihfRK6Vectorf
+
+# 0x6242d0: CSWSCreature::AddAttackActions spills its `unsigned short` 2nd argument with
+# `sturh w2,[x29,#-0x6c]` and hands that slot to AddAction/AddActionToFront as an INT (tag 1)
+# parameter, so this generic reader loads 4 bytes from a 2-byte slot (the upper half is stack
+# junk in the orig too). The read size is the caller's tag, so the read site is the only place
+# the ignorelist can name.
+fun:_ZN10CSWSObject22AddActionNodeParameterEP20CSWSObjectActionNodejjPv
+
+# 0x791d48: `ldr w8,[x19,#0x34]` in UpdateScenesAttach. The callback is registered with the
+# WILDCARD name `"*"` (aurbehavior.cpp:703), so Gob::DoEvent delivers EVERY event to it - and
+# NewController::ReportKey raises "ReportKey" with a 32-byte NewControllerKeyReport* payload
+# (`6c953c: add x2,sp,#0x28` hands &report over). The callback's m_nDieWithoutParent test reads
+# report+0x34 BEFORE its own event test, which in the orig's 0xa0-byte ReportKey frame lands on
+# the saved x25 slot at sp+0x5c - in-bounds stack, so the orig cannot report it either; only the
+# ASan -O0 frame layout makes the same offset a redzone (measured v2212 on 371nar turn 1).
+fun:_Z18UpdateScenesAttachP10CAurObjectPcPv
+
+# 0x72d6bc: `cmp w8,#45` / `b.ne` / `ldurb w0,[x25,#-2]` in the word wrap's hyphen test. x25 is
+# pszScan == pszCur+1, so a line whose FIRST character is '-' reads m_pText[-1] - one byte before
+# the string's own allocation (measured v2202: a 3-byte "-N\0" label in the Pazaak setup layout,
+# read at 0x60200060fd8f). The orig makes the identical read; the byte only feeds isalpha's break
+# decision. Scan the parallel instruction stream at 0x72d2ac+0x410 to re-prove it after any edit.
+fun:_ZN21CAurGUIStringInternal11WrapStringsEi

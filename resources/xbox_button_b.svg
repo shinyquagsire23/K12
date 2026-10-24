@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- vector recreation of the Switch romfs override/cus_button_b.tga (94x94, disc centre 47,43 r40) -->
+<defs>
+<radialGradient id="base" gradientUnits="userSpaceOnUse" cx="47" cy="59.77" r="54.49"><stop offset="0" stop-color="#fc6b6b"/><stop offset="0.38" stop-color="#f84747"/><stop offset="0.76" stop-color="#f50c0d"/><stop offset="1" stop-color="#c34240"/></radialGradient>
+<radialGradient id="rim" gradientUnits="userSpaceOnUse" cx="47" cy="43" r="40"><stop offset="0.72" stop-color="#020202" stop-opacity="0"/><stop offset="1" stop-color="#020202" stop-opacity="0.75"/></radialGradient>
+<radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="47" cy="62.89" r="24.15"><stop offset="0" stop-color="#fca9a9" stop-opacity="0.62"/><stop offset="1" stop-color="#fca9a9" stop-opacity="0"/></radialGradient>
+<linearGradient id="gloss" gradientUnits="userSpaceOnUse" x1="0" y1="4.1" x2="0" y2="43.58"><stop offset="0" stop-color="#fff" stop-opacity="0.98"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="0" y1="15" x2="0" y2="68"><stop offset="0" stop-color="#3e1e1f"/><stop offset="1" stop-color="#210e0c"/></linearGradient>
+</defs>
+<circle cx="47" cy="43" r="40" fill="url(#base)"/>
+<circle cx="47" cy="43" r="40" fill="url(#glow)"/>
+<circle cx="47" cy="43" r="40" fill="url(#rim)"/>
+<ellipse cx="47" cy="40.79" rx="37.45" ry="36.7" fill="url(#gloss)"/>
+<circle cx="47" cy="43" r="39.5" fill="none" stroke="#020202" stroke-opacity="0.03"/>
+<path d="M31.63 19.32L49.79 19.32C57.48 19.32 63.74 24.23 63.74 30.25C63.74 36.28 60.37 41.18 56.23 41.18C62 41.18 66.7 47.06 66.7 54.28C66.7 61.5 59.13 67.38 49.83 67.38L31.63 67.38ZM41.26 26.64L47.96 26.64C51.34 26.64 54.06 29.42 54.06 32.89C54.06 36.35 51.16 39.13 47.56 39.13L41.26 39.13ZM41.26 45.94L48.62 45.94C53 45.94 56.52 49.02 56.52 52.85C56.52 56.69 53.83 59.76 50.47 59.76L41.26 59.76Z" fill="none" stroke="#fff" stroke-opacity="0.18" stroke-width="2.52" stroke-linejoin="round"/>
+<path d="M31.63 19.32L49.79 19.32C57.48 19.32 63.74 24.23 63.74 30.25C63.74 36.28 60.37 41.18 56.23 41.18C62 41.18 66.7 47.06 66.7 54.28C66.7 61.5 59.13 67.38 49.83 67.38L31.63 67.38ZM41.26 26.64L47.96 26.64C51.34 26.64 54.06 29.42 54.06 32.89C54.06 36.35 51.16 39.13 47.56 39.13L41.26 39.13ZM41.26 45.94L48.62 45.94C53 45.94 56.52 49.02 56.52 52.85C56.52 56.69 53.83 59.76 50.47 59.76L41.26 59.76Z" fill="url(#ink)" fill-rule="evenodd"/>
+</svg>

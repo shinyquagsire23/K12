@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 128 64">
+<!-- GameCube prompt art (indigo controller): the Control Pad, and an arrow onward (party select) -->
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b51a2"/><stop offset="1" stop-color="#272d6e"/></linearGradient>
+<radialGradient id="face" cx="0.38" cy="0.3" r="0.75"><stop offset="0" stop-color="#f4f3f8"/><stop offset="1" stop-color="#c8c6d4"/></radialGradient>
+</defs>
+<circle cx="44.00" cy="32.00" r="31.00" fill="url(#shell)"/>
+<path d="M35 5H53V23H71V41H53V59H35V41H17V23H35Z" transform="translate(0 2.00)" fill="#000" fill-opacity="0.4"/>
+<path d="M35 5H53V23H71V41H53V59H35V41H17V23H35Z" fill="url(#face)" stroke="#000" stroke-opacity="0.25" stroke-width="1.00" stroke-linejoin="round"/>
+<path d="M44.00 9.50L48.50 18.50L39.50 18.50ZM66.50 32.00L57.50 36.50L57.50 27.50ZM44.00 54.50L39.50 45.50L48.50 45.50ZM21.50 32.00L30.50 27.50L30.50 36.50Z" fill="#5d5b86" fill-opacity="0.55"/>
+<circle cx="44.00" cy="32.00" r="3.50" fill="#000" fill-opacity="0.12"/>
+<path d="M76 8L122 32L76 56L85 32Z" fill="#5fc9bb" stroke="#272d6e" stroke-width="4" stroke-linejoin="round"/>
+</svg>

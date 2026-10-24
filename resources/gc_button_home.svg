@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- GameCube prompt art (indigo controller): Home (Switch 2 GameCube controller), shown for Back -->
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b51a2"/><stop offset="1" stop-color="#272d6e"/></linearGradient>
+<radialGradient id="face" cx="0.38" cy="0.3" r="0.75"><stop offset="0" stop-color="#f4f3f8"/><stop offset="1" stop-color="#c8c6d4"/></radialGradient>
+</defs>
+<circle cx="64" cy="64" r="62" fill="url(#shell)"/>
+<circle cx="64" cy="66" r="48" fill="#000" fill-opacity="0.35"/>
+<circle cx="64" cy="63" r="48" fill="url(#face)"/>
+<path d="M64 33L94 59H86V90H72V71H56V90H42V59H34Z" fill="#5d5b86" stroke="#5d5b86" stroke-width="2" stroke-linejoin="round"/>
+</svg>

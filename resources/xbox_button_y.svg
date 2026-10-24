@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- vector recreation of the Switch romfs override/cus_button_y.tga (94x94, disc centre 47,43 r40) -->
+<defs>
+<radialGradient id="base" gradientUnits="userSpaceOnUse" cx="47" cy="57.45" r="52.57"><stop offset="0" stop-color="#fefe01"/><stop offset="0.32" stop-color="#f3d103"/><stop offset="0.76" stop-color="#9e4202"/><stop offset="1" stop-color="#ae7d6f"/></radialGradient>
+<radialGradient id="rim" gradientUnits="userSpaceOnUse" cx="47" cy="43" r="40"><stop offset="0.75" stop-color="#020201" stop-opacity="0"/><stop offset="1" stop-color="#020201" stop-opacity="0.75"/></radialGradient>
+<radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="47" cy="68.43" r="16.46"><stop offset="0" stop-color="#eef3fe" stop-opacity="0.94"/><stop offset="1" stop-color="#eef3fe" stop-opacity="0"/></radialGradient>
+<linearGradient id="gloss" gradientUnits="userSpaceOnUse" x1="0" y1="4.14" x2="0" y2="43.41"><stop offset="0" stop-color="#fff" stop-opacity="0.99"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="0" y1="15" x2="0" y2="68"><stop offset="0" stop-color="#352617"/><stop offset="1" stop-color="#242707"/></linearGradient>
+</defs>
+<circle cx="47" cy="43" r="40" fill="url(#base)"/>
+<circle cx="47" cy="43" r="40" fill="url(#glow)"/>
+<circle cx="47" cy="43" r="40" fill="url(#rim)"/>
+<ellipse cx="47" cy="40.73" rx="37.55" ry="36.6" fill="url(#gloss)"/>
+<circle cx="47" cy="43" r="39.5" fill="none" stroke="#020201" stroke-opacity="0.03"/>
+<path d="M27.48 20.23L37.41 20.23L47.01 39.9L56.62 20.23L66.54 20.23L51.71 50.6L51.71 68.13L42.32 68.13L42.32 50.6Z" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="3.49" stroke-linejoin="round"/>
+<path d="M27.48 20.23L37.41 20.23L47.01 39.9L56.62 20.23L66.54 20.23L51.71 50.6L51.71 68.13L42.32 68.13L42.32 50.6Z" fill="url(#ink)" fill-rule="evenodd"/>
+</svg>

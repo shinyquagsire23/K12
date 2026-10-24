@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- vector recreation of the K2 Switch romfs override/textures/uibut_RStick.tpc (128x128) -->
+<circle cx="64.58" cy="63.5" r="62.16" fill="#31c7a5"/>
+<ellipse cx="64.58" cy="58.51" rx="55.05" ry="50.56" fill="#082418"/>
+<ellipse cx="64.58" cy="55" rx="41" ry="37.5" fill="none" stroke="#31c7a5" stroke-width="6.9"/>
+<path d="M50.92 31.51L67.45 31.51C71.43 31.51 76.18 38.34 76.18 44.07C76.18 49.8 72.35 56.63 69.14 56.63L82.89 73.97L75.92 73.97L62.55 56.63L56.03 56.63L56.03 73.97L50.92 73.97ZM56.03 37.21L65.94 37.21C68.5 37.21 70.63 40.62 70.63 44.73C70.63 48.84 67.5 52.26 63.74 52.26L56.03 52.26Z" fill="#fff" fill-rule="evenodd"/>
+</svg>

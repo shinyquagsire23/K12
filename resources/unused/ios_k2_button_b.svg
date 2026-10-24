@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<!-- vector recreation of the K2 iOS/Android d3xfont16x16b.tga cell 0x11 (64x64) -->
+<defs>
+<radialGradient id="shadow"><stop offset="0.85" stop-color="#000" stop-opacity="0.85"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+<radialGradient id="rim"><stop offset="0.95" stop-color="#8a0105"/><stop offset="1" stop-color="#53202d"/></radialGradient>
+<linearGradient id="face" gradientUnits="userSpaceOnUse" x1="0" y1="4.05" x2="0" y2="56.18"><stop offset="0" stop-color="#fefefe"/><stop offset="0.21" stop-color="#f4dada"/><stop offset="0.4" stop-color="#9b0a0a"/><stop offset="0.63" stop-color="#f24041"/><stop offset="1" stop-color="#fef2f0"/></linearGradient>
+<radialGradient id="vignette"><stop offset="0.91" stop-color="#fe0202" stop-opacity="0"/><stop offset="1" stop-color="#fe0202" stop-opacity="0.67"/></radialGradient>
+<linearGradient id="crescent" gradientUnits="userSpaceOnUse" x1="0" y1="4.05" x2="0" y2="56.18"><stop offset="0.08" stop-color="#7c0101" stop-opacity="0"/><stop offset="1" stop-color="#7c0101" stop-opacity="0.98"/></linearGradient>
+<linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="0" y1="16" x2="0" y2="41"><stop offset="0" stop-color="#590404"/><stop offset="1" stop-color="#af0000"/></linearGradient>
+</defs>
+<ellipse cx="32.55" cy="32.02" rx="31.27" ry="30.13" fill="url(#shadow)"/>
+<ellipse cx="32.55" cy="30.12" rx="28.31" ry="27.16" fill="url(#rim)"/>
+<ellipse cx="32.55" cy="30.12" rx="27.2" ry="26.06" fill="url(#face)"/>
+<ellipse cx="32.55" cy="30.12" rx="27.2" ry="26.06" fill="url(#vignette)"/>
+<ellipse cx="32.55" cy="30.12" rx="26.08" ry="24.94" fill="none" stroke="url(#crescent)" stroke-width="2.26"/>
+<ellipse cx="32.55" cy="30.12" rx="27.13" ry="25.99" fill="none" stroke="#5f0101" stroke-opacity="0.42" stroke-width="0.94"/>
+<path d="M25.3 16.79L34 16.79C37.6 16.79 40.93 19.33 40.93 22.07C40.93 24.81 38.69 27.35 36.27 27.35C39.28 27.35 42.08 30.38 42.08 33.64C42.08 36.91 38 39.94 33.59 39.94L25.3 39.94ZM29.83 20.02L33.95 20.02C34.69 20.02 35.97 22.06 35.97 23.23C35.97 24.4 35.11 26.44 34.62 26.44L29.83 26.44ZM29.83 29.83L35.4 29.83C36.33 29.83 37.96 32.01 37.96 33.26C37.96 34.5 35.62 36.68 34.28 36.68L29.83 36.68Z" fill="none" stroke="#3cfaed" stroke-width="0.06" stroke-linejoin="round"/>
+<path d="M25.3 16.79L34 16.79C37.6 16.79 40.93 19.33 40.93 22.07C40.93 24.81 38.69 27.35 36.27 27.35C39.28 27.35 42.08 30.38 42.08 33.64C42.08 36.91 38 39.94 33.59 39.94L25.3 39.94ZM29.83 20.02L33.95 20.02C34.69 20.02 35.97 22.06 35.97 23.23C35.97 24.4 35.11 26.44 34.62 26.44L29.83 26.44ZM29.83 29.83L35.4 29.83C36.33 29.83 37.96 32.01 37.96 33.26C37.96 34.5 35.62 36.68 34.28 36.68L29.83 36.68Z" fill="url(#ink)" fill-rule="evenodd"/>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- vector recreation of the Switch romfs override/cus_button_xps.tga (94x94, disc centre 47,43 r40) -->
+<defs>
+<linearGradient id="face" gradientUnits="userSpaceOnUse" x1="29.56" y1="7" x2="64.44" y2="79"><stop offset="0" stop-color="#0c0c0c"/><stop offset="0.51" stop-color="#1c1c1c"/><stop offset="1" stop-color="#2d2d2d"/></linearGradient>
+<linearGradient id="bezel" gradientUnits="userSpaceOnUse" x1="0" y1="3" x2="0" y2="83"><stop offset="0" stop-color="#242424"/><stop offset="1" stop-color="#3e3e3e"/></linearGradient>
+<radialGradient id="lip" gradientUnits="userSpaceOnUse" cx="47" cy="43" r="40"><stop offset="0.88" stop-color="#000" stop-opacity="0.54"/><stop offset="0.93" stop-color="#000" stop-opacity="0"/></radialGradient>
+<radialGradient id="hl1" gradientUnits="userSpaceOnUse" cx="77.03" cy="25.3" r="23.12"><stop offset="0" stop-color="#fff" stop-opacity="0.31"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="hl2" gradientUnits="userSpaceOnUse" cx="13.99" cy="31.78" r="31.32"><stop offset="0" stop-color="#fff" stop-opacity="0.32"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+</defs>
+<circle cx="47" cy="43" r="40" fill="url(#bezel)"/>
+<path d="M7 43a40 40 0 1 0 80 0a40 40 0 1 0-80 0ZM11.69 43a35.31 35.31 0 1 1 70.61 0a35.31 35.31 0 1 1 -70.61 0Z" fill="url(#hl1)" fill-rule="evenodd"/>
+<path d="M7 43a40 40 0 1 0 80 0a40 40 0 1 0-80 0ZM11.69 43a35.31 35.31 0 1 1 70.61 0a35.31 35.31 0 1 1 -70.61 0Z" fill="url(#hl2)" fill-rule="evenodd"/>
+<circle cx="47" cy="43" r="40" fill="url(#lip)"/>
+<circle cx="47" cy="43" r="35.31" fill="url(#face)"/>
+<circle cx="47" cy="43" r="39.5" fill="none" stroke="#1f1f1f" stroke-opacity="0"/>
+<rect x="25.9" y="21.93" width="41.29" height="41.29" fill="none" stroke="#ce91bf" stroke-width="3.82"/>
+</svg>

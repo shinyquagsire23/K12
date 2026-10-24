@@ -1,0 +1,316 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/platforms/out/${presetName}",
+      "cacheVariables": {"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"}
+    },
+    {
+      "name": "host-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {"type": "inList", "string": "${hostSystemName}", "list": ["Darwin", "Linux", "Windows"]},
+      "toolchainFile": "${sourceDir}/platforms/cmake/host-${hostSystemName}.cmake",
+      "architecture": {"value": "x64", "strategy": "external"}
+    },
+    {
+      "name": "cross-windows-base",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/platforms/windows/mingw.toolchain.cmake",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo"}
+    },
+    {
+      "name": "cross-windows-msvc-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "toolchainFile": "${sourceDir}/platforms/windows/msvc.toolchain.cmake",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo", "K2P_LINKREPORT": "OFF"}
+    },
+    {
+      "name": "cross-windows-cl-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "toolchainFile": "${sourceDir}/platforms/windows/msvc-wine.toolchain.cmake",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo", "K2P_LINKREPORT": "OFF"}
+    },
+    {
+      "name": "cross-ios-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "cacheVariables": {"CMAKE_SYSTEM_NAME": "iOS", "CMAKE_OSX_SYSROOT": "iphoneos", "CMAKE_OSX_ARCHITECTURES": "arm64", "CMAKE_OSX_DEPLOYMENT_TARGET": "15.0", "CMAKE_BUILD_TYPE": "RelWithDebInfo"}
+    },
+    {
+      "name": "cross-ios-sim-base",
+      "hidden": true,
+      "inherits": "cross-ios-base",
+      "cacheVariables": {"CMAKE_OSX_SYSROOT": "iphonesimulator"}
+    },
+    {
+      "name": "cross-android-base",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/platforms/android/ndk.toolchain.cmake",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo"}
+    },
+    {
+      "name": "k2-host-pc",
+      "inherits": "host-base",
+      "displayName": "KOTOR II: this computer, PC UI",
+      "cacheVariables": {"K2P_UI": "pc"},
+      "description": "Native build: macOS Apple clang (Debug), Linux clang + libc++ + lld (Debug), Windows Visual Studio cl.exe (RelWithDebInfo, from an x64 developer environment); platforms/cmake/host-<OS>.cmake"
+    },
+    {
+      "name": "k2-host-touch",
+      "inherits": "host-base",
+      "displayName": "KOTOR II: this computer, touch UI (as on Android)",
+      "cacheVariables": {"K2P_UI": "touch"},
+      "description": "Native build: macOS Apple clang (Debug), Linux clang + libc++ + lld (Debug), Windows Visual Studio cl.exe (RelWithDebInfo, from an x64 developer environment); platforms/cmake/host-<OS>.cmake"
+    },
+    {
+      "name": "k2-host-xbox",
+      "inherits": "host-base",
+      "displayName": "KOTOR II: this computer, console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox"},
+      "description": "Native build: macOS Apple clang (Debug), Linux clang + libc++ + lld (Debug), Windows Visual Studio cl.exe (RelWithDebInfo, from an x64 developer environment); platforms/cmake/host-<OS>.cmake"
+    },
+    {
+      "name": "k2-host-pc-asan",
+      "inherits": "host-base",
+      "displayName": "KOTOR II: this computer with AddressSanitizer, PC UI",
+      "cacheVariables": {"K2P_UI": "pc", "K2P_ASAN": "ON"},
+      "description": "Native build: macOS Apple clang (Debug), Linux clang + libc++ + lld (Debug), Windows Visual Studio cl.exe (RelWithDebInfo, from an x64 developer environment); platforms/cmake/host-<OS>.cmake"
+    },
+    {
+      "name": "k1-host-pc",
+      "inherits": "host-base",
+      "displayName": "KOTOR 1: this computer, PC UI",
+      "cacheVariables": {"K2P_UI": "pc", "K2P_GAME": "k1"},
+      "description": "Native build: macOS Apple clang (Debug), Linux clang + libc++ + lld (Debug), Windows Visual Studio cl.exe (RelWithDebInfo, from an x64 developer environment); platforms/cmake/host-<OS>.cmake"
+    },
+    {
+      "name": "k1-host-touch",
+      "inherits": "host-base",
+      "displayName": "KOTOR 1: this computer, touch UI (as on Android)",
+      "cacheVariables": {"K2P_UI": "touch", "K2P_GAME": "k1"},
+      "description": "Native build: macOS Apple clang (Debug), Linux clang + libc++ + lld (Debug), Windows Visual Studio cl.exe (RelWithDebInfo, from an x64 developer environment); platforms/cmake/host-<OS>.cmake"
+    },
+    {
+      "name": "k1-host-xbox",
+      "inherits": "host-base",
+      "displayName": "KOTOR 1: this computer, console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox", "K2P_GAME": "k1"},
+      "description": "Native build: macOS Apple clang (Debug), Linux clang + libc++ + lld (Debug), Windows Visual Studio cl.exe (RelWithDebInfo, from an x64 developer environment); platforms/cmake/host-<OS>.cmake"
+    },
+    {
+      "name": "k1-host-pc-asan",
+      "inherits": "host-base",
+      "displayName": "KOTOR 1: this computer with AddressSanitizer, PC UI",
+      "cacheVariables": {"K2P_UI": "pc", "K2P_GAME": "k1", "K2P_ASAN": "ON"},
+      "description": "Native build: macOS Apple clang (Debug), Linux clang + libc++ + lld (Debug), Windows Visual Studio cl.exe (RelWithDebInfo, from an x64 developer environment); platforms/cmake/host-<OS>.cmake"
+    },
+    {
+      "name": "k2-cross-windows-pc",
+      "inherits": "cross-windows-base",
+      "displayName": "KOTOR II: Windows x64 (llvm-mingw), PC UI",
+      "cacheVariables": {"K2P_UI": "pc"}
+    },
+    {
+      "name": "k2-cross-windows-touch",
+      "inherits": "cross-windows-base",
+      "displayName": "KOTOR II: Windows x64 (llvm-mingw), touch UI (as on Android)",
+      "cacheVariables": {"K2P_UI": "touch"}
+    },
+    {
+      "name": "k2-cross-windows-xbox",
+      "inherits": "cross-windows-base",
+      "displayName": "KOTOR II: Windows x64 (llvm-mingw), console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox"}
+    },
+    {
+      "name": "k2-cross-windows-msvc-pc",
+      "inherits": "cross-windows-msvc-base",
+      "displayName": "KOTOR II: Windows x64 (clang-cl, MSVC ABI; docs/MSVC_PORT.md), PC UI",
+      "cacheVariables": {"K2P_UI": "pc"}
+    },
+    {
+      "name": "k2-cross-windows-cl-pc",
+      "inherits": "cross-windows-cl-base",
+      "displayName": "KOTOR II: Windows x64 (Visual Studio's cl.exe under Wine; docs/MSVC_PORT.md), PC UI",
+      "cacheVariables": {"K2P_UI": "pc"}
+    },
+    {
+      "name": "k1-cross-windows-pc",
+      "inherits": "cross-windows-base",
+      "displayName": "KOTOR 1: Windows x64 (llvm-mingw), PC UI",
+      "cacheVariables": {"K2P_UI": "pc", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-windows-touch",
+      "inherits": "cross-windows-base",
+      "displayName": "KOTOR 1: Windows x64 (llvm-mingw), touch UI (as on Android)",
+      "cacheVariables": {"K2P_UI": "touch", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-windows-xbox",
+      "inherits": "cross-windows-base",
+      "displayName": "KOTOR 1: Windows x64 (llvm-mingw), console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-windows-msvc-pc",
+      "inherits": "cross-windows-msvc-base",
+      "displayName": "KOTOR 1: Windows x64 (clang-cl, MSVC ABI; docs/MSVC_PORT.md), PC UI",
+      "cacheVariables": {"K2P_UI": "pc", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-windows-cl-pc",
+      "inherits": "cross-windows-cl-base",
+      "displayName": "KOTOR 1: Windows x64 (Visual Studio's cl.exe under Wine; docs/MSVC_PORT.md), PC UI",
+      "cacheVariables": {"K2P_UI": "pc", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k2-cross-ios-pc",
+      "inherits": "cross-ios-base",
+      "displayName": "KOTOR II: iOS app (arm64 device), PC UI",
+      "cacheVariables": {"K2P_UI": "pc"}
+    },
+    {
+      "name": "k2-cross-ios-touch",
+      "inherits": "cross-ios-base",
+      "displayName": "KOTOR II: iOS app (arm64 device), touch UI (as on Android)",
+      "cacheVariables": {"K2P_UI": "touch"}
+    },
+    {
+      "name": "k2-cross-ios-xbox",
+      "inherits": "cross-ios-base",
+      "displayName": "KOTOR II: iOS app (arm64 device), console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox"}
+    },
+    {
+      "name": "k2-cross-ios-sim-pc",
+      "inherits": "cross-ios-sim-base",
+      "displayName": "KOTOR II: iOS app (arm64 Simulator), PC UI",
+      "cacheVariables": {"K2P_UI": "pc"}
+    },
+    {
+      "name": "k2-cross-ios-sim-touch",
+      "inherits": "cross-ios-sim-base",
+      "displayName": "KOTOR II: iOS app (arm64 Simulator), touch UI (as on Android)",
+      "cacheVariables": {"K2P_UI": "touch"}
+    },
+    {
+      "name": "k2-cross-ios-sim-xbox",
+      "inherits": "cross-ios-sim-base",
+      "displayName": "KOTOR II: iOS app (arm64 Simulator), console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox"}
+    },
+    {
+      "name": "k1-cross-ios-pc",
+      "inherits": "cross-ios-base",
+      "displayName": "KOTOR 1: iOS app (arm64 device), PC UI",
+      "cacheVariables": {"K2P_UI": "pc", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-ios-touch",
+      "inherits": "cross-ios-base",
+      "displayName": "KOTOR 1: iOS app (arm64 device), touch UI (as on Android)",
+      "cacheVariables": {"K2P_UI": "touch", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-ios-xbox",
+      "inherits": "cross-ios-base",
+      "displayName": "KOTOR 1: iOS app (arm64 device), console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-ios-sim-pc",
+      "inherits": "cross-ios-sim-base",
+      "displayName": "KOTOR 1: iOS app (arm64 Simulator), PC UI",
+      "cacheVariables": {"K2P_UI": "pc", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-ios-sim-touch",
+      "inherits": "cross-ios-sim-base",
+      "displayName": "KOTOR 1: iOS app (arm64 Simulator), touch UI (as on Android)",
+      "cacheVariables": {"K2P_UI": "touch", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k1-cross-ios-sim-xbox",
+      "inherits": "cross-ios-sim-base",
+      "displayName": "KOTOR 1: iOS app (arm64 Simulator), console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox", "K2P_GAME": "k1"}
+    },
+    {
+      "name": "k2-cross-android-touch",
+      "inherits": "cross-android-base",
+      "displayName": "KOTOR II: Android APK (arm64), touch UI (the shipped APK's)",
+      "cacheVariables": {"K2P_UI": "touch"}
+    },
+    {
+      "name": "k2-cross-android-xbox",
+      "inherits": "cross-android-base",
+      "displayName": "KOTOR II: Android APK (arm64), console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox"}
+    },
+    {
+      "name": "k1-cross-android-touch",
+      "inherits": "cross-android-base",
+      "displayName": "KOTOR 1: Android APK (arm64), touch UI (the shipped APK's)",
+      "cacheVariables": {"K2P_UI": "touch", "K2P_GAME": "k1", "K2A_PACKAGE": "com.aspyr.swkotor.hybrid"}
+    },
+    {
+      "name": "k1-cross-android-xbox",
+      "inherits": "cross-android-base",
+      "displayName": "KOTOR 1: Android APK (arm64), console UI for a game controller",
+      "cacheVariables": {"K2P_UI": "xbox", "K2P_GAME": "k1", "K2A_PACKAGE": "com.aspyr.swkotor.hybrid"}
+    }
+  ],
+  "buildPresets": [
+    {"name": "b-host-base", "hidden": true, "condition": {"type": "inList", "string": "${hostSystemName}", "list": ["Darwin", "Linux", "Windows"]}},
+    {"name": "b-cross-windows-msvc-base", "hidden": true, "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"}},
+    {"name": "b-cross-windows-cl-base", "hidden": true, "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"}},
+    {"name": "b-cross-ios-base", "hidden": true, "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"}},
+    {"name": "b-cross-ios-sim-base", "hidden": true, "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"}},
+    {"name": "k2-host-pc", "configurePreset": "k2-host-pc", "inherits": "b-host-base"},
+    {"name": "k2-host-touch", "configurePreset": "k2-host-touch", "inherits": "b-host-base"},
+    {"name": "k2-host-xbox", "configurePreset": "k2-host-xbox", "inherits": "b-host-base"},
+    {"name": "k2-host-pc-asan", "configurePreset": "k2-host-pc-asan", "inherits": "b-host-base"},
+    {"name": "k1-host-pc", "configurePreset": "k1-host-pc", "inherits": "b-host-base"},
+    {"name": "k1-host-touch", "configurePreset": "k1-host-touch", "inherits": "b-host-base"},
+    {"name": "k1-host-xbox", "configurePreset": "k1-host-xbox", "inherits": "b-host-base"},
+    {"name": "k1-host-pc-asan", "configurePreset": "k1-host-pc-asan", "inherits": "b-host-base"},
+    {"name": "k2-cross-windows-pc", "configurePreset": "k2-cross-windows-pc"},
+    {"name": "k2-cross-windows-touch", "configurePreset": "k2-cross-windows-touch"},
+    {"name": "k2-cross-windows-xbox", "configurePreset": "k2-cross-windows-xbox"},
+    {"name": "k2-cross-windows-msvc-pc", "configurePreset": "k2-cross-windows-msvc-pc", "inherits": "b-cross-windows-msvc-base"},
+    {"name": "k2-cross-windows-cl-pc", "configurePreset": "k2-cross-windows-cl-pc", "inherits": "b-cross-windows-cl-base"},
+    {"name": "k1-cross-windows-pc", "configurePreset": "k1-cross-windows-pc"},
+    {"name": "k1-cross-windows-touch", "configurePreset": "k1-cross-windows-touch"},
+    {"name": "k1-cross-windows-xbox", "configurePreset": "k1-cross-windows-xbox"},
+    {"name": "k1-cross-windows-msvc-pc", "configurePreset": "k1-cross-windows-msvc-pc", "inherits": "b-cross-windows-msvc-base"},
+    {"name": "k1-cross-windows-cl-pc", "configurePreset": "k1-cross-windows-cl-pc", "inherits": "b-cross-windows-cl-base"},
+    {"name": "k2-cross-ios-pc", "configurePreset": "k2-cross-ios-pc", "inherits": "b-cross-ios-base"},
+    {"name": "k2-cross-ios-touch", "configurePreset": "k2-cross-ios-touch", "inherits": "b-cross-ios-base"},
+    {"name": "k2-cross-ios-xbox", "configurePreset": "k2-cross-ios-xbox", "inherits": "b-cross-ios-base"},
+    {"name": "k2-cross-ios-sim-pc", "configurePreset": "k2-cross-ios-sim-pc", "inherits": "b-cross-ios-sim-base"},
+    {"name": "k2-cross-ios-sim-touch", "configurePreset": "k2-cross-ios-sim-touch", "inherits": "b-cross-ios-sim-base"},
+    {"name": "k2-cross-ios-sim-xbox", "configurePreset": "k2-cross-ios-sim-xbox", "inherits": "b-cross-ios-sim-base"},
+    {"name": "k1-cross-ios-pc", "configurePreset": "k1-cross-ios-pc", "inherits": "b-cross-ios-base"},
+    {"name": "k1-cross-ios-touch", "configurePreset": "k1-cross-ios-touch", "inherits": "b-cross-ios-base"},
+    {"name": "k1-cross-ios-xbox", "configurePreset": "k1-cross-ios-xbox", "inherits": "b-cross-ios-base"},
+    {"name": "k1-cross-ios-sim-pc", "configurePreset": "k1-cross-ios-sim-pc", "inherits": "b-cross-ios-sim-base"},
+    {"name": "k1-cross-ios-sim-touch", "configurePreset": "k1-cross-ios-sim-touch", "inherits": "b-cross-ios-sim-base"},
+    {"name": "k1-cross-ios-sim-xbox", "configurePreset": "k1-cross-ios-sim-xbox", "inherits": "b-cross-ios-sim-base"},
+    {"name": "k2-cross-android-touch", "configurePreset": "k2-cross-android-touch"},
+    {"name": "k2-cross-android-xbox", "configurePreset": "k2-cross-android-xbox"},
+    {"name": "k1-cross-android-touch", "configurePreset": "k1-cross-android-touch"},
+    {"name": "k1-cross-android-xbox", "configurePreset": "k1-cross-android-xbox"}
+  ]
+}

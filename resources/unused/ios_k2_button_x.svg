@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<!-- vector recreation of the K2 iOS/Android d3xfont16x16b.tga cell 0x12 (64x64) -->
+<defs>
+<radialGradient id="shadow"><stop offset="0.85" stop-color="#000" stop-opacity="0.86"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+<radialGradient id="rim"><stop offset="0.87" stop-color="#015dbb"/><stop offset="1" stop-color="#12376b"/></radialGradient>
+<linearGradient id="face" gradientUnits="userSpaceOnUse" x1="0" y1="4.93" x2="0" y2="56.08"><stop offset="0" stop-color="#fefefc"/><stop offset="0.21" stop-color="#d3e0f1"/><stop offset="0.41" stop-color="#06449b"/><stop offset="0.62" stop-color="#3a84ee"/><stop offset="1" stop-color="#e5f7fe"/></linearGradient>
+<radialGradient id="vignette"><stop offset="0.94" stop-color="#0131df" stop-opacity="0"/><stop offset="1" stop-color="#0131df" stop-opacity="0.57"/></radialGradient>
+<linearGradient id="crescent" gradientUnits="userSpaceOnUse" x1="0" y1="4.93" x2="0" y2="56.08"><stop offset="0.09" stop-color="#010559" stop-opacity="0"/><stop offset="1" stop-color="#010559" stop-opacity="0.99"/></linearGradient>
+<linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="0" y1="16" x2="0" y2="41"><stop offset="0" stop-color="#020f53"/><stop offset="1" stop-color="#0329b8"/></linearGradient>
+</defs>
+<ellipse cx="32.45" cy="32.72" rx="31.21" ry="29.96" fill="url(#shadow)"/>
+<ellipse cx="32.45" cy="30.51" rx="28.34" ry="27.09" fill="url(#rim)"/>
+<ellipse cx="32.45" cy="30.51" rx="26.82" ry="25.58" fill="url(#face)"/>
+<ellipse cx="32.45" cy="30.51" rx="26.82" ry="25.58" fill="url(#vignette)"/>
+<ellipse cx="32.45" cy="30.51" rx="26.03" ry="24.78" fill="none" stroke="url(#crescent)" stroke-width="1.59"/>
+<ellipse cx="32.45" cy="30.51" rx="25.79" ry="24.54" fill="none" stroke="#05fcfc" stroke-opacity="0.44" stroke-width="0.36"/>
+<path d="M23.13 17.4L28.17 17.4L32.75 24.52L37.34 17.4L42.38 17.4L35.22 28.33L43.02 40.44L38.22 40.44L32.75 32.09L27.29 40.44L22.49 40.44L30.29 28.33Z" fill="none" stroke="#ce5e37" stroke-width="0.06" stroke-linejoin="round"/>
+<path d="M23.13 17.4L28.17 17.4L32.75 24.52L37.34 17.4L42.38 17.4L35.22 28.33L43.02 40.44L38.22 40.44L32.75 32.09L27.29 40.44L22.49 40.44L30.29 28.33Z" fill="url(#ink)" fill-rule="evenodd"/>
+</svg>

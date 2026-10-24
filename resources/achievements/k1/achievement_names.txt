@@ -1,0 +1,37 @@
+# KOTOR achievement names: platforms/tools/achievement_names.py, the Android port's
+# Google Play names and descriptions. Read by shim/shim_achievements.cpp.
+# version 0
+# tag	language	name	description
+a_bigger_gun	english	A Bigger Gun	Recruit Canderous
+a_mandalorian_affair	english	A Mandalorian Affair	Duel with Jagi on Tatooine
+allies_of_convenience	english	Allies of Convenience	Recruit Carth
+an_extra_bond	english	An Extra Bond	Kiss Bastila
+back_on_the_wagon	english	Back on the Wagon	Recruit Jolee
+beneath_the_sand	english	Beneath the Sand	Find the Star Map in the krayt dragon's cave
+betrayed_by_anger	english	Betrayed by Anger	Recruit Juhani
+cant_wait	english	Can't Wait	Get a declaration of love from Carth
+captured	english	Captured	Escape the Leviathan
+crash_landing	english	Crash Landing	Reach the Unknown World
+end_of_a_slaver	english	End of a Slaver	Defeat Xor, the Cathar slaver
+in_wolfs_clothing	english	In Wolf's Clothing	Find the Star Map in the tomb of Naga Sadow
+jedi_knight	english	Jedi Knight	Finish the game on the Light Side
+lets_find_some_meatbags	english	Let's Find Some Meatbags	Recruit HK-47
+lost_to_the_jungle	english	Lost to the Jungle	Find the Star Map in the Shadowlands
+memory_backup_completed	english	Memory Backup Completed	Unlock all of HK-47's memories
+objection_your_honor	english	Objection, Your Honor!	Save Sunry from execution
+revealing_the_obvious	english	Revealing the Obvious	Prove to Dustil that the Sith are evil
+roooarrgh_ur_roo_	english	Roooarrgh ur roo.	Side with Zaalbar's brother or father
+rude_awakening	english	Rude Awakening	Escape the Endar Spire
+sea_of_intrigue	english	Sea of Intrigue	Find the Star Map and leave the underwater facility
+sith_lord	english	Sith Lord	Finish the game on the Dark Side
+skeleton_key	english	Skeleton Key	Recruit T3-M4
+still_in_trouble	english	Still in Trouble	Bring a tach gland to Griff Vao
+student_of_the_force	english	Student of the Force	Find the Star Map in the ancient ruins
+thats_no_moon	english	That's No Moon	Infiltrate the Star Forge
+thats_not_true_thats_impossible	english	That's Not True! That's Impossible!	Learn your true identity
+the_chosen_one	english	The Chosen One	Defeat Darth Malak
+the_wookies_with_me	english	The Wookie's with Me	Recruit Zaalbar
+treasure_hunters_legacy	english	Treasure Hunter's Legacy	Find Bastila's father's holocron
+why_dont_you_put_her_in_charge	english	Why Don't You Put Her in Charge?	Recruit Mission
+wrath_of_the_sith	english	Wrath of the Sith	Steal the Ebon Hawk and flee Taris
+your_training_continues	english	Your Training Continues	Recruit Bastila

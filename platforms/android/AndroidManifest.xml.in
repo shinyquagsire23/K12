@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from platforms/android/AndroidManifest.xml.in by CMake.
+     The package is the hybrid APK's (K2A_PACKAGE, default com.aspyr.swkotorii.hybrid; KOTOR 1:
+     com.aspyr.swkotor.hybrid, beside the original com.aspyr.swkotor): installing one over the other
+     keeps the app data (saves/, swkotor2.ini) and the OBBs. Same debug signing key, the original's
+     versionCode (K2A_VERSION_CODE: 229, KOTOR 1 93); adb install with -r -d. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="@K2A_PACKAGE@"
+    android:versionCode="@K2A_VERSION_CODE@"
+    android:versionName="@K2A_VERSION_NAME@"
+    android:installLocation="auto">
+
+    <uses-feature android:glEsVersion="0x00020000" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application android:label="@K2A_LABEL@"
+        android:icon="@mipmap/ic_launcher"
+        android:debuggable="true"
+        android:extractNativeLibs="true"
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+
+        <activity android:name="@K2A_ACTIVITY@"
+            android:exported="true"
+            android:alwaysRetainTaskState="true"
+            android:launchMode="singleInstance"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="layoutDirection|locale|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
+            android:preferMinimalPostProcessing="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

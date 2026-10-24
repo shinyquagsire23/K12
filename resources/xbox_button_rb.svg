@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- shoulder button RB in the style of xbox_button_a..y (the Switch romfs cus_button_*): a neutral bumper, the discs' layered shading -->
+<defs>
+<radialGradient id="base" gradientUnits="userSpaceOnUse" cx="47" cy="66" r="60"><stop offset="0" stop-color="#ffffff"/><stop offset="0.42" stop-color="#d6d9dc"/><stop offset="0.71" stop-color="#8f9499"/><stop offset="1" stop-color="#5a5f64"/></radialGradient>
+<radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="47" cy="68.52" r="15.84"><stop offset="0" stop-color="#fefdf5" stop-opacity="0.86"/><stop offset="1" stop-color="#fefdf5" stop-opacity="0"/></radialGradient>
+<linearGradient id="gloss" gradientUnits="userSpaceOnUse" x1="0" y1="16" x2="0" y2="44"><stop offset="0" stop-color="#fff" stop-opacity="0.99"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="0" y1="27" x2="0" y2="60"><stop offset="0" stop-color="#2c2f33"/><stop offset="1" stop-color="#0b0c0e"/></linearGradient>
+<clipPath id="body"><path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12Z"/></clipPath>
+<filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2.6"/></filter>
+</defs>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12Z" fill="url(#base)"/>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12Z" fill="url(#glow)"/>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12Z" fill="none" stroke="#020201" stroke-opacity="0.76" stroke-width="9" clip-path="url(#body)" filter="url(#soft)"/>
+<path d="M14 14.5H60A27 27 0 0 1 87 41.5V37A7 7 0 0 1 80 44H14A7 7 0 0 1 7 37V21.5A7 7 0 0 1 14 14.5Z" fill="url(#gloss)" fill-opacity="0.9"/>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12Z" fill="none" stroke="#020201" stroke-opacity="0.35" stroke-width="1"/>
+<path d="M0 0H18.4C26.9 0 33.2 5.6 33.2 13.4C33.2 19.6 29.4 24.3 23.8 25.8L35.2 48H24.4L14 27H9.63V48H0ZM9.63 7.6H17.2C21.1 7.6 23.6 10.1 23.6 13.5C23.6 17 21.1 19.5 17.2 19.5H9.63Z" transform="translate(18.95 25.50) scale(0.7500)" fill="none" stroke="#fff" stroke-opacity="0.12" stroke-width="3.49" stroke-linejoin="round"/>
+<path d="M0 0L18.16 0C25.85 0 32.11 4.91 32.11 10.93C32.11 16.96 28.74 21.86 24.6 21.86C30.37 21.86 35.07 27.74 35.07 34.96C35.07 42.18 27.5 48.06 18.2 48.06L0 48.06ZM9.63 7.32L16.33 7.32C19.71 7.32 22.43 10.1 22.43 13.57C22.43 17.03 19.53 19.81 15.93 19.81L9.63 19.81ZM9.63 26.62L16.99 26.62C21.37 26.62 24.89 29.7 24.89 33.53C24.89 37.37 22.2 40.44 18.84 40.44L9.63 40.44Z" transform="translate(48.75 25.50) scale(0.7500)" fill="none" stroke="#fff" stroke-opacity="0.12" stroke-width="3.49" stroke-linejoin="round"/>
+<path d="M0 0H18.4C26.9 0 33.2 5.6 33.2 13.4C33.2 19.6 29.4 24.3 23.8 25.8L35.2 48H24.4L14 27H9.63V48H0ZM9.63 7.6H17.2C21.1 7.6 23.6 10.1 23.6 13.5C23.6 17 21.1 19.5 17.2 19.5H9.63Z" transform="translate(18.95 25.50) scale(0.7500)" fill="url(#ink)" fill-rule="evenodd"/>
+<path d="M0 0L18.16 0C25.85 0 32.11 4.91 32.11 10.93C32.11 16.96 28.74 21.86 24.6 21.86C30.37 21.86 35.07 27.74 35.07 34.96C35.07 42.18 27.5 48.06 18.2 48.06L0 48.06ZM9.63 7.32L16.33 7.32C19.71 7.32 22.43 10.1 22.43 13.57C22.43 17.03 19.53 19.81 15.93 19.81L9.63 19.81ZM9.63 26.62L16.99 26.62C21.37 26.62 24.89 29.7 24.89 33.53C24.89 37.37 22.2 40.44 18.84 40.44L9.63 40.44Z" transform="translate(48.75 25.50) scale(0.7500)" fill="url(#ink)" fill-rule="evenodd"/>
+</svg>

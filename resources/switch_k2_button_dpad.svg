@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<!-- vector recreation of the K2 Switch romfs override/textures/uibut_4Way.tpc (64x64) -->
+<path d="M38.99 24.81L47.94 24.81L47.94 18.95L61.01 31.78L47.94 44.61L47.94 38.75L38.99 38.75L38.99 47.69L44.86 47.69L32.03 60.77L19.19 47.69L25.06 47.69L25.06 38.75L16.11 38.75L16.11 44.61L3.04 31.78L16.11 18.95L16.11 24.81L25.06 24.81L25.06 15.86L19.19 15.86L32.03 2.79L44.86 15.86L38.99 15.86Z" fill="none" stroke="#c7c7c7" stroke-opacity="0.7" stroke-width="5.01" stroke-linejoin="round"/>
+<path d="M38.99 24.81L47.94 24.81L47.94 18.95L61.01 31.78L47.94 44.61L47.94 38.75L38.99 38.75L38.99 47.69L44.86 47.69L32.03 60.77L19.19 47.69L25.06 47.69L25.06 38.75L16.11 38.75L16.11 44.61L3.04 31.78L16.11 18.95L16.11 24.81L25.06 24.81L25.06 15.86L19.19 15.86L32.03 2.79L44.86 15.86L38.99 15.86Z" fill="#000" stroke="#fff" stroke-width="0.98" stroke-linejoin="miter"/>
+</svg>

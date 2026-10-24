@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- GameCube prompt art (indigo controller): the grey control stick in its octagonal gate -->
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b51a2"/><stop offset="1" stop-color="#272d6e"/></linearGradient>
+<radialGradient id="face" cx="0.38" cy="0.3" r="0.75"><stop offset="0" stop-color="#f4f3f8"/><stop offset="1" stop-color="#c8c6d4"/></radialGradient>
+</defs>
+<circle cx="64.00" cy="64.00" r="62.00" fill="url(#shell)"/>
+<path d="M110.19 83.13L83.13 110.19L44.87 110.19L17.81 83.13L17.81 44.87L44.87 17.81L83.13 17.81L110.19 44.87Z" fill="#272d6e"/>
+<circle cx="64.00" cy="68.00" r="38.00" fill="#000" fill-opacity="0.4"/>
+<circle cx="64.00" cy="64.00" r="38.00" fill="url(#face)"/>
+<circle cx="64.00" cy="64.00" r="8.00" fill="none" stroke="#000" stroke-opacity="0.16" stroke-width="2.20"/>
+<circle cx="64.00" cy="64.00" r="18.00" fill="none" stroke="#000" stroke-opacity="0.16" stroke-width="2.20"/>
+<circle cx="64.00" cy="64.00" r="28.00" fill="none" stroke="#000" stroke-opacity="0.16" stroke-width="2.20"/>
+</svg>

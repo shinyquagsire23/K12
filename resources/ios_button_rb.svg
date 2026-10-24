@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- shoulder button RB in the style of ios_button_a..y (the K1 iOS/Android patch OBB ios_button_*) -->
+<defs>
+<filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.6"/></filter>
+<linearGradient id="disc" gradientUnits="userSpaceOnUse" x1="0" y1="15" x2="0" y2="71"><stop offset="0" stop-color="#636363"/><stop offset="0.59" stop-color="#5a5a5a"/><stop offset="1" stop-color="#2b2b2b"/></linearGradient>
+<radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="47" cy="22" r="40.23"><stop offset="0" stop-color="#fff" stop-opacity="0.25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="0" y1="15" x2="0" y2="71"><stop offset="0" stop-color="#fff" stop-opacity="0.44"/><stop offset="0.35" stop-color="#fff" stop-opacity="0"/><stop offset="0.35" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.68"/></linearGradient>
+<linearGradient id="face" gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="60"><stop offset="0" stop-color="#b4b4b4"/><stop offset="1" stop-color="#ebebeb"/></linearGradient>
+</defs>
+<path d="M12.5 13H60.5A32 32 0 0 1 92.5 45V69A11 11 0 0 1 81.5 80H12.5A11 11 0 0 1 1.5 69V24A11 11 0 0 1 12.5 13Z" fill="#000" fill-opacity="0.6" filter="url(#soft)"/>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12Z" fill="url(#disc)"/>
+<path d="M13 12H60A30 30 0 0 1 90 42V65A9 9 0 0 1 81 74H13A9 9 0 0 1 4 65V21A9 9 0 0 1 13 12Z" fill="url(#glow)"/>
+<path d="M13 12.81H60A29.19 29.19 0 0 1 89.19 42V65A8.19 8.19 0 0 1 81 73.19H13A8.19 8.19 0 0 1 4.81 65V21A8.19 8.19 0 0 1 13 12.81Z" fill="none" stroke="url(#rim)" stroke-width="1.62"/>
+<g fill="none" stroke="#777777" stroke-opacity="0.98" stroke-linejoin="round">
+<path d="M0 0H18.4C26.9 0 33.2 5.6 33.2 13.4C33.2 19.6 29.4 24.3 23.8 25.8L35.2 48H24.4L14 27H9.63V48H0ZM9.63 7.6H17.2C21.1 7.6 23.6 10.1 23.6 13.5C23.6 17 21.1 19.5 17.2 19.5H9.63Z" transform="translate(0 -2.33) translate(20.51 28.30) scale(0.7083)" stroke-width="3.49"/>
+<path d="M0 0H18.4C26.9 0 33.2 5.6 33.2 13.4C33.2 19.6 29.4 24.3 23.8 25.8L35.2 48H24.4L14 27H9.63V48H0ZM9.63 7.6H17.2C21.1 7.6 23.6 10.1 23.6 13.5C23.6 17 21.1 19.5 17.2 19.5H9.63Z" transform="translate(20.51 28.30) scale(0.7083)" stroke-width="3.49"/>
+<path d="M0 0L18.16 0C25.85 0 32.11 4.91 32.11 10.93C32.11 16.96 28.74 21.86 24.6 21.86C30.37 21.86 35.07 27.74 35.07 34.96C35.07 42.18 27.5 48.06 18.2 48.06L0 48.06ZM9.63 7.32L16.33 7.32C19.71 7.32 22.43 10.1 22.43 13.57C22.43 17.03 19.53 19.81 15.93 19.81L9.63 19.81ZM9.63 26.62L16.99 26.62C21.37 26.62 24.89 29.7 24.89 33.53C24.89 37.37 22.2 40.44 18.84 40.44L9.63 40.44Z" transform="translate(0 -2.33) translate(48.65 28.30) scale(0.7083)" stroke-width="3.49"/>
+<path d="M0 0L18.16 0C25.85 0 32.11 4.91 32.11 10.93C32.11 16.96 28.74 21.86 24.6 21.86C30.37 21.86 35.07 27.74 35.07 34.96C35.07 42.18 27.5 48.06 18.2 48.06L0 48.06ZM9.63 7.32L16.33 7.32C19.71 7.32 22.43 10.1 22.43 13.57C22.43 17.03 19.53 19.81 15.93 19.81L9.63 19.81ZM9.63 26.62L16.99 26.62C21.37 26.62 24.89 29.7 24.89 33.53C24.89 37.37 22.2 40.44 18.84 40.44L9.63 40.44Z" transform="translate(48.65 28.30) scale(0.7083)" stroke-width="3.49"/>
+</g>
+<path d="M0 0H18.4C26.9 0 33.2 5.6 33.2 13.4C33.2 19.6 29.4 24.3 23.8 25.8L35.2 48H24.4L14 27H9.63V48H0ZM9.63 7.6H17.2C21.1 7.6 23.6 10.1 23.6 13.5C23.6 17 21.1 19.5 17.2 19.5H9.63Z" transform="translate(0 -2.33) translate(20.51 28.30) scale(0.7083)" fill="#6b6b6b" fill-rule="evenodd"/>
+<path d="M0 0L18.16 0C25.85 0 32.11 4.91 32.11 10.93C32.11 16.96 28.74 21.86 24.6 21.86C30.37 21.86 35.07 27.74 35.07 34.96C35.07 42.18 27.5 48.06 18.2 48.06L0 48.06ZM9.63 7.32L16.33 7.32C19.71 7.32 22.43 10.1 22.43 13.57C22.43 17.03 19.53 19.81 15.93 19.81L9.63 19.81ZM9.63 26.62L16.99 26.62C21.37 26.62 24.89 29.7 24.89 33.53C24.89 37.37 22.2 40.44 18.84 40.44L9.63 40.44Z" transform="translate(0 -2.33) translate(48.65 28.30) scale(0.7083)" fill="#6b6b6b" fill-rule="evenodd"/>
+<path d="M0 0H18.4C26.9 0 33.2 5.6 33.2 13.4C33.2 19.6 29.4 24.3 23.8 25.8L35.2 48H24.4L14 27H9.63V48H0ZM9.63 7.6H17.2C21.1 7.6 23.6 10.1 23.6 13.5C23.6 17 21.1 19.5 17.2 19.5H9.63Z" transform="translate(20.51 28.30) scale(0.7083)" fill="url(#face)" fill-rule="evenodd"/>
+<path d="M0 0L18.16 0C25.85 0 32.11 4.91 32.11 10.93C32.11 16.96 28.74 21.86 24.6 21.86C30.37 21.86 35.07 27.74 35.07 34.96C35.07 42.18 27.5 48.06 18.2 48.06L0 48.06ZM9.63 7.32L16.33 7.32C19.71 7.32 22.43 10.1 22.43 13.57C22.43 17.03 19.53 19.81 15.93 19.81L9.63 19.81ZM9.63 26.62L16.99 26.62C21.37 26.62 24.89 29.7 24.89 33.53C24.89 37.37 22.2 40.44 18.84 40.44L9.63 40.44Z" transform="translate(48.65 28.30) scale(0.7083)" fill="url(#face)" fill-rule="evenodd"/>
+</svg>

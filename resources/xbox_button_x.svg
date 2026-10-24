@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="94" height="94" viewBox="0 0 94 94">
+<!-- vector recreation of the Switch romfs override/cus_button_x.tga (94x94, disc centre 47,43 r40) -->
+<defs>
+<radialGradient id="base" gradientUnits="userSpaceOnUse" cx="47" cy="55.87" r="54.83"><stop offset="0" stop-color="#1457bc"/><stop offset="0.39" stop-color="#3a8af6"/><stop offset="0.7" stop-color="#1355f3"/><stop offset="1" stop-color="#5c72d9"/></radialGradient>
+<radialGradient id="rim" gradientUnits="userSpaceOnUse" cx="47" cy="43" r="40"><stop offset="0.73" stop-color="#020202" stop-opacity="0"/><stop offset="1" stop-color="#020202" stop-opacity="0.76"/></radialGradient>
+<radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="47" cy="61.99" r="25.65"><stop offset="0" stop-color="#b6f2fd" stop-opacity="0.79"/><stop offset="1" stop-color="#b6f2fd" stop-opacity="0"/></radialGradient>
+<linearGradient id="gloss" gradientUnits="userSpaceOnUse" x1="0" y1="4.09" x2="0" y2="42.6"><stop offset="0" stop-color="#fff" stop-opacity="0.99"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="0" y1="15" x2="0" y2="68"><stop offset="0" stop-color="#202b43"/><stop offset="1" stop-color="#111c26"/></linearGradient>
+</defs>
+<circle cx="47" cy="43" r="40" fill="url(#base)"/>
+<circle cx="47" cy="43" r="40" fill="url(#glow)"/>
+<circle cx="47" cy="43" r="40" fill="url(#rim)"/>
+<ellipse cx="47" cy="40.56" rx="37.39" ry="36.47" fill="url(#gloss)"/>
+<circle cx="47" cy="43" r="39.5" fill="none" stroke="#020202" stroke-opacity="0.22"/>
+<path d="M26.97 19.38L37.59 19.38L47.43 34.44L57.27 19.38L67.89 19.38L52.78 42.62L68.9 67.28L58.12 67.28L47.43 50.84L36.74 67.28L25.97 67.28L42.09 42.62Z" fill="none" stroke="#fff" stroke-opacity="0.02" stroke-width="3.96" stroke-linejoin="round"/>
+<path d="M26.97 19.38L37.59 19.38L47.43 34.44L57.27 19.38L67.89 19.38L52.78 42.62L68.9 67.28L58.12 67.28L47.43 50.84L36.74 67.28L25.97 67.28L42.09 42.62Z" fill="url(#ink)" fill-rule="evenodd"/>
+</svg>

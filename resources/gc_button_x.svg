@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<!-- GameCube prompt art (indigo controller): the grey X kidney, hollow side towards A, turned 30 degrees anticlockwise -->
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b51a2"/><stop offset="1" stop-color="#272d6e"/></linearGradient>
+<linearGradient id="face" gradientUnits="userSpaceOnUse" x1="30" y1="30" x2="98" y2="98"><stop offset="0" stop-color="#f4f3f8"/><stop offset="1" stop-color="#c8c6d4"/></linearGradient>
+</defs>
+<g transform="translate(8.64 -5.00) rotate(-30 64 64)">
+<path d="M54 32Q74 64 54 96" fill="none" stroke="url(#shell)" stroke-width="58" stroke-linecap="round"/>
+<path d="M54 32Q74 64 54 96" transform="translate(0 3)" fill="none" stroke="#000" stroke-opacity="0.35" stroke-width="40" stroke-linecap="round"/>
+<path d="M54 32Q74 64 54 96" fill="none" stroke="url(#face)" stroke-width="40" stroke-linecap="round"/>
+</g>
+<path d="M0 0L0.8 1M0.8 0L0 1" transform="translate(62.64 46.50) scale(25.00)" fill="none" stroke="#5d5b86" stroke-width="0.240" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>
