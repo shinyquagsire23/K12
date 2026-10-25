@@ -123,6 +123,8 @@ public:
     void  SetClipDist(float fNear, float fFar);
     void  SetViewAngle(float fAngle);
     SWMGTrackInfo* GetProtoTrack(int index);
+    // The "Music" field lands in m_resForfeitSound.
+    void SetMusic(const CResRef& resMusic) { m_resForfeitSound = resMusic; }
     SWMGTrackInfo* GetProtoTrack(const CResRef& resTrack);
     SWMGTrackInfo* AddTrack(const CResRef& resTrack, const Vector& vPosition);
     Vector BumpPlane(const Quaternion& qRot);

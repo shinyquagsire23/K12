@@ -318,11 +318,6 @@ bool AurNV1xLevelShadersAvailable();
 int  AurMultiTextureAvailable();
 bool AurNonRadeon8500Validate();
 
-extern unsigned int clientStateTranslationTable[];
-extern const int facingTranslationTable[];
-extern const unsigned int materialTranslationTable[];
-extern unsigned int enableTranslationTable[];
-enum { kCapTexture2D = 4, kCapLighting = 5, kCapVertexProgram = 9 };
 
 int maxgrass;
 int newgrass = 1;
@@ -395,9 +390,9 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
     if (rendertexturedgrass != 0)
         m_pTexture.m_pObject->Bind();
 
-    ASLgl::glEnableClientState(clientStateTranslationTable[3]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[1]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[0]);
+    GLRender::EnableClientState(Aurora::kClientStateVertex);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
 
     // The normal array starts one Vector into each vertex record.
     int nNormalStride = m_nVertexStride - 12;
@@ -405,36 +400,26 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
     if ((m_nFlags & kGrassLightmapped) != 0 && rendertexturedgrass != 0)
     {
         if (!AurNonRadeon8500Validate()) {
-            ASLgl::glEnable(enableTranslationTable[kCapVertexProgram]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
 
             static VertexProgram* pLightmappedVP =
                 new VertexProgram(usearbvertexprograms != 0 ? szStandardVPARB : cStandardVP,
                                   cStandardVPDeclaration);
             pLightmappedVP->Enable(0, true);
 
-            if (usearbvertexprograms != 0) {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 94,
-                    g_GrassInfo.m_pData[nMaterial].m_vDiffuse.x,
-                    g_GrassInfo.m_pData[nMaterial].m_vDiffuse.y,
-                    g_GrassInfo.m_pData[nMaterial].m_vDiffuse.z, fAlpha);
-                if (usearbvertexprograms != 0) {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 95,
-                        g_GrassInfo.m_pData[nMaterial].m_vAmbient.x,
-                        g_GrassInfo.m_pData[nMaterial].m_vAmbient.y,
-                        g_GrassInfo.m_pData[nMaterial].m_vAmbient.z, 1.0f);
-                }
-            }
+            GLRender::SetVertexShaderConstant(94, g_GrassInfo.m_pData[nMaterial].m_vDiffuse.x,
+                                              g_GrassInfo.m_pData[nMaterial].m_vDiffuse.y,
+                                              g_GrassInfo.m_pData[nMaterial].m_vDiffuse.z, fAlpha);
+            GLRender::SetVertexShaderConstant(95, g_GrassInfo.m_pData[nMaterial].m_vAmbient.x,
+                                              g_GrassInfo.m_pData[nMaterial].m_vAmbient.y,
+                                              g_GrassInfo.m_pData[nMaterial].m_vAmbient.z, 1.0f);
         }
 
         if (AurNV1xLevelShadersAvailable())
         {
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glEnableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::ActivateTextureStage(1);
+            GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
 
             s_useAlphaTestShader = true;
             int nStart = 0;
@@ -448,30 +433,19 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
             s_useAlphaTestShader = false;
             GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
 
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glDisableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::ActivateTextureStage(1);
+            GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
         }
         else if (AurMultiTextureAvailable())
         {
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glEnableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-
-            GLRender::cm_uiCurrentStage = 0;
-            ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+            GLRender::ActivateTextureStage(1);
+            GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
+            GLRender::Disable(Aurora::kCapLighting);
             ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            GLRender::cm_uiCurrentStage = 0;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-            ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+            GLRender::SetActiveTexture(0);
+            GLRender::Enable(Aurora::kCapTexture2D);
             m_pTexture.m_pObject->Bind();
             ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
@@ -479,45 +453,31 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
             int nStart = 0;
             while (i < m_texCounts.m_count)
             {
-                GLRender::cm_uiCurrentStage = 1;
-                if (AurMultiTextureAvailable())
-                    ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-                ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+                GLRender::SetActiveTexture(1);
+                GLRender::Enable(Aurora::kCapTexture2D);
                 m_textureRefs.m_pData[i].m_pObject->Bind();
                 ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-                GLRender::cm_uiCurrentStage = 0;
-                if (AurMultiTextureAvailable())
-                    ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+                GLRender::SetActiveTexture(0);
                 GLRender::DrawLightmappedGrass(&m_nX48, 12, &m_nVertexBytes, nNormalStride,
                                                nStart, m_texCounts.m_pData[i]);
                 nStart += m_texCounts.m_pData[i] * 4;
                 i++;
             }
 
-            GLRender::cm_uiCurrentStage = 0;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+            GLRender::SetActiveTexture(0);
             ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-            GLRender::cm_uiCurrentStage = 1;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-            ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-            GLRender::cm_uiCurrentStage = 0;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+            GLRender::SetActiveTexture(1);
+            GLRender::Disable(Aurora::kCapTexture2D);
+            GLRender::SetActiveTexture(0);
             ASLgl::glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
-            ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glDisableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::Enable(Aurora::kCapLighting);
+            GLRender::ActivateTextureStage(1);
+            GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
         }
 
         if (!AurNonRadeon8500Validate())
-            ASLgl::glDisable(enableTranslationTable[kCapVertexProgram]);
+            GLRender::Disable(Aurora::kCapVertexProgram);
     }
     else
     {
@@ -555,13 +515,13 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
     float afAmbient[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     float afDiffuse[4] = { 0.0f, 0.0f, 0.0f, fAlpha };
 
-    ASLgl::glMaterialfv(facingTranslationTable[0], materialTranslationTable[1], afAmbient);
-    ASLgl::glMaterialfv(facingTranslationTable[0], materialTranslationTable[2], afDiffuse);
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialAmbient, afAmbient);
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialDiffuse, afDiffuse);
 
     float afEmission[4] = { g_GrassInfo.m_pData[nMaterial].m_vEmissive.x,
                             g_GrassInfo.m_pData[nMaterial].m_vEmissive.y,
                             g_GrassInfo.m_pData[nMaterial].m_vEmissive.z, fAlpha };
-    ASLgl::glMaterialfv(facingTranslationTable[0], materialTranslationTable[3], afEmission);
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialEmission, afEmission);
 
     if (newgrass != 0 && m_minDistanceSquared < m_fNearRadiusSquared) {
         m_pGrassCursor = m_pGrassVerts;
@@ -572,45 +532,34 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
     if (rendertexturedgrass != 0)
         m_pTexture.m_pObject->Bind();
 
-    ASLgl::glEnableClientState(clientStateTranslationTable[3]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[1]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[0]);
+    GLRender::EnableClientState(Aurora::kClientStateVertex);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
 
     // The normal array starts one Vector into each vertex record.
     int nNormalStride = m_nVertexStride - 12;
 
     if ((m_nFlags & kGrassLightmapped) != 0 && rendertexturedgrass != 0)
     {
-        ASLgl::glEnable(enableTranslationTable[kCapVertexProgram]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
 
         static VertexProgram* pLightmappedVP =
             new VertexProgram(usearbvertexprograms != 0 ? szStandardVPARB : cStandardVP,
                               cStandardVPDeclaration);
         pLightmappedVP->Enable(0, true);
 
-        if (usearbvertexprograms != 0) {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 94,
-                g_GrassInfo.m_pData[nMaterial].m_vDiffuse.x,
-                g_GrassInfo.m_pData[nMaterial].m_vDiffuse.y,
-                g_GrassInfo.m_pData[nMaterial].m_vDiffuse.z, fAlpha);
-            if (usearbvertexprograms != 0) {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 95,
-                    g_GrassInfo.m_pData[nMaterial].m_vAmbient.x,
-                    g_GrassInfo.m_pData[nMaterial].m_vAmbient.y,
-                    g_GrassInfo.m_pData[nMaterial].m_vAmbient.z, 1.0f);
-            }
-        }
+        GLRender::SetVertexShaderConstant(94, g_GrassInfo.m_pData[nMaterial].m_vDiffuse.x,
+                                          g_GrassInfo.m_pData[nMaterial].m_vDiffuse.y,
+                                          g_GrassInfo.m_pData[nMaterial].m_vDiffuse.z, fAlpha);
+        GLRender::SetVertexShaderConstant(95, g_GrassInfo.m_pData[nMaterial].m_vAmbient.x,
+                                          g_GrassInfo.m_pData[nMaterial].m_vAmbient.y,
+                                          g_GrassInfo.m_pData[nMaterial].m_vAmbient.z, 1.0f);
 
         if (AurNV1xLevelShadersAvailable())
         {
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glEnableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::ActivateTextureStage(1);
+            GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
 
             bool bNoForceSight = (g_ForceSight == 0);
             int64_t i = 0;
@@ -634,30 +583,19 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
 
             GLRender::pfuncEnablePixelShaders(bNoForceSight ? GLRender::kPSNone : GLRender::kPSDesatOff, 0, 0, 0, 0);
 
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glDisableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::ActivateTextureStage(1);
+            GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
         }
         else if (AurMultiTextureAvailable())
         {
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glEnableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-
-            GLRender::cm_uiCurrentStage = 0;
-            ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+            GLRender::ActivateTextureStage(1);
+            GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
+            GLRender::Disable(Aurora::kCapLighting);
             ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            GLRender::cm_uiCurrentStage = 0;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-            ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+            GLRender::SetActiveTexture(0);
+            GLRender::Enable(Aurora::kCapTexture2D);
             m_pTexture.m_pObject->Bind();
             ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
@@ -665,74 +603,51 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
             int nStart = 0;
             while (i < m_texCounts.m_count)
             {
-                GLRender::cm_uiCurrentStage = 1;
-                if (AurMultiTextureAvailable())
-                    ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-                ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+                GLRender::SetActiveTexture(1);
+                GLRender::Enable(Aurora::kCapTexture2D);
                 m_textureRefs.m_pData[i].m_pObject->Bind();
                 ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-                GLRender::cm_uiCurrentStage = 0;
-                if (AurMultiTextureAvailable())
-                    ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+                GLRender::SetActiveTexture(0);
                 GLRender::DrawLightmappedGrass(&m_nX48, 12, &m_nVertexBytes, nNormalStride,
                                                nStart, m_texCounts.m_pData[i]);
                 nStart += m_texCounts.m_pData[i] * 4;
                 i++;
             }
 
-            GLRender::cm_uiCurrentStage = 0;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+            GLRender::SetActiveTexture(0);
             ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-            GLRender::cm_uiCurrentStage = 1;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-            ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-            GLRender::cm_uiCurrentStage = 0;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+            GLRender::SetActiveTexture(1);
+            GLRender::Disable(Aurora::kCapTexture2D);
+            GLRender::SetActiveTexture(0);
             ASLgl::glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
-            ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glDisableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::Enable(Aurora::kCapLighting);
+            GLRender::ActivateTextureStage(1);
+            GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
         }
 
         if (!AurNonRadeon8500Validate())
-            ASLgl::glDisable(enableTranslationTable[kCapVertexProgram]);
+            GLRender::Disable(Aurora::kCapVertexProgram);
     }
     else
     {
         GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, m_pTexture.m_pObject, 0, 0, 0);
-        ASLgl::glEnable(enableTranslationTable[kCapVertexProgram]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
 
         static VertexProgram* pGrassVP =
             new VertexProgram(usearbvertexprograms != 0 ? szStandardVPARB : cStandardVP,
                               cStandardVPDeclaration);
         pGrassVP->Enable(0, true);
 
-        if (usearbvertexprograms != 0) {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 94,
-                g_GrassInfo.m_pData[nMaterial].m_vDiffuse.x,
-                g_GrassInfo.m_pData[nMaterial].m_vDiffuse.y,
-                g_GrassInfo.m_pData[nMaterial].m_vDiffuse.z, fAlpha);
-            if (usearbvertexprograms != 0) {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 95,
-                    g_GrassInfo.m_pData[nMaterial].m_vAmbient.x,
-                    g_GrassInfo.m_pData[nMaterial].m_vAmbient.y,
-                    g_GrassInfo.m_pData[nMaterial].m_vAmbient.z, 1.0f);
-                if (usearbvertexprograms != 0) {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 93,
-                        g_GrassInfo.m_pData[nMaterial].m_vEmissive.x,
-                        g_GrassInfo.m_pData[nMaterial].m_vEmissive.y,
-                        g_GrassInfo.m_pData[nMaterial].m_vEmissive.z, 1.0f);
-                }
-            }
-        }
+        GLRender::SetVertexShaderConstant(94, g_GrassInfo.m_pData[nMaterial].m_vDiffuse.x,
+                                          g_GrassInfo.m_pData[nMaterial].m_vDiffuse.y,
+                                          g_GrassInfo.m_pData[nMaterial].m_vDiffuse.z, fAlpha);
+        GLRender::SetVertexShaderConstant(95, g_GrassInfo.m_pData[nMaterial].m_vAmbient.x,
+                                          g_GrassInfo.m_pData[nMaterial].m_vAmbient.y,
+                                          g_GrassInfo.m_pData[nMaterial].m_vAmbient.z, 1.0f);
+        GLRender::SetVertexShaderConstant(93, g_GrassInfo.m_pData[nMaterial].m_vEmissive.x,
+                                          g_GrassInfo.m_pData[nMaterial].m_vEmissive.y,
+                                          g_GrassInfo.m_pData[nMaterial].m_vEmissive.z, 1.0f);
 
         if (g_ForceSight) {
             GLRender::pfuncEnablePixelShaders(GLRender::kPSDesat, m_pTexture.m_pObject, 0, 0, 0);
@@ -803,6 +718,7 @@ void CAurTriangleBin::UpdateGrassForWind(WindManager* pWind)
             vForceDirection.y = vWind.y + vSpringDist.y + vPoint.y;
             vForceDirection.z = vWind.z + vSpringDist.z + vPoint.z;
 
+            // inlined Vector::IsZero()
             if (vForceDirection.x != 0.0f || vForceDirection.y != 0.0f ||
                 vForceDirection.z != 0.0f)
             {

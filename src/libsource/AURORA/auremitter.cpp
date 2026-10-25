@@ -8,8 +8,10 @@
 #include "AURORA/aurmodel.h"
 #include "aurcamera.h"
 #include "aurscene.h"
+#include "aurglcore.h"
 #include "Matrix.h"
 #include "Vector.h"
+#include "math3d.h"
 
 float emitterfadeheight = 5.0f;
 int EmitterBounceType = 1;
@@ -147,10 +149,9 @@ void PartEmitter::Initialize()
     m_qPrevWorldOrientation = m_qWorldOrientation;
 
     // The emitter's orientation basis, the three axes new particles are spread along.
-    Matrix mat = m_qWorldOrientation.getmatrix();
-    m_avVectors[1] = Vector(mat.m_f[0], mat.m_f[1], mat.m_f[2]);
-    m_avVectors[2] = Vector(mat.m_f[3], mat.m_f[4], mat.m_f[5]);
-    m_avVectors[3] = Vector(mat.m_f[6], mat.m_f[7], mat.m_f[8]);
+    m_avVectors[1] = m_qWorldOrientation.xdir();
+    m_avVectors[2] = m_qWorldOrientation.ydir();
+    m_avVectors[3] = m_qWorldOrientation.zdir();
 }
 
 void PartEmitter::AnimateParticles(float fDeltaT)
@@ -199,6 +200,7 @@ void PartEmitter::AnimateParticles(float fDeltaT)
                 m_fBirthRate = m_fRadius * m_fLightningSubDiv + 2.0f;
 
                 // The bolt's control-point offsets run along the emitter's own local Z axis.
+                // inlined Quaternion::zdir()
                 Matrix matLocal = m_qLocalOrientation.getmatrix();
                 Vector vZ = Vector(matLocal.m_f[6], matLocal.m_f[7], matLocal.m_f[8]);
 
@@ -232,8 +234,7 @@ void PartEmitter::AnimateParticles(float fDeltaT)
 
                     Vector vP1 = vHere + vZ * m_fTangentLength;
 
-                    Matrix matP2 = m_spTarget.m_pObject->GetOrientation().getmatrix();
-                    Vector vZP2 = Vector(matP2.m_f[6], matP2.m_f[7], matP2.m_f[8]);
+                    Vector vZP2 = m_spTarget.m_pObject->GetOrientation().zdir();
                     Vector vP2 = vTarget + vZP2 * m_fTangentLength;
 
                     Vector vPos = vHere * (u * u * u)
@@ -243,8 +244,7 @@ void PartEmitter::AnimateParticles(float fDeltaT)
                     pBolt->m_lNextPoints.m_pData[i] = vPos;
                     pBolt->m_lControlPoints.m_pData[i] = pBolt->m_lNextPoints.m_pData[i];
 
-                    Matrix matDir = m_spTarget.m_pObject->GetOrientation().getmatrix();
-                    Vector vZDir = Vector(matDir.m_f[6], matDir.m_f[7], matDir.m_f[8]);
+                    Vector vZDir = m_spTarget.m_pObject->GetOrientation().zdir();
                     Vector vDiv = vTarget + vZDir * m_fTangentLength;
 
                     vDirection = vHere * (-3.0f * u * u)
@@ -284,10 +284,9 @@ void PartEmitter::AnimateParticles(float fDeltaT)
 
     GetWorld(m_avVectors[6], m_qWorldOrientation);
 
-    Matrix matWorld = m_qWorldOrientation.getmatrix();
-    m_avVectors[1] = Vector(matWorld.m_f[0], matWorld.m_f[1], matWorld.m_f[2]);
-    m_avVectors[2] = Vector(matWorld.m_f[3], matWorld.m_f[4], matWorld.m_f[5]);
-    m_avVectors[3] = Vector(matWorld.m_f[6], matWorld.m_f[7], matWorld.m_f[8]);
+    m_avVectors[1] = m_qWorldOrientation.xdir();
+    m_avVectors[2] = m_qWorldOrientation.ydir();
+    m_avVectors[3] = m_qWorldOrientation.zdir();
 
     Update(fDeltaT);
 }
@@ -372,13 +371,9 @@ void PartEmitter::moveParticle(Particle* pParticle, float fDeltaT, int nFlag)
     {
         const Vector& vNormal = m_pHitInfo->m_vHitNormal;
 #if KOTOR1
-        float fDot = vNormal.x * pParticle->m_vSpreadVelocity.x
-                   + vNormal.y * pParticle->m_vSpreadVelocity.y
-                   + vNormal.z * pParticle->m_vSpreadVelocity.z;
+        float fDot = dot(vNormal, pParticle->m_vSpreadVelocity);
 #else
-        float fDot = pParticle->m_vSpreadVelocity.x * vNormal.x
-                   + pParticle->m_vSpreadVelocity.y * vNormal.y
-                   + pParticle->m_vSpreadVelocity.z * vNormal.z;
+        float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
 #endif
 #if KOTOR1
         pParticle->m_vSpreadVelocity = (pParticle->m_vSpreadVelocity + vNormal * -2.0f * fDot) * m_fBounceCoeff;
@@ -514,9 +509,7 @@ void PartEmitter::moveParticleStandard(float fDeltaT)
                     // the result; mode 1 below also scales the velocity down.
                     if (EmitterBounceType == 2)
                     {
-                        float fDot = pParticle->m_vSpreadVelocity.x * vNormal.x
-                                   + pParticle->m_vSpreadVelocity.y * vNormal.y
-                                   + pParticle->m_vSpreadVelocity.z * vNormal.z;
+                        float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
                         pParticle->m_vSpreadVelocity =
                             (pParticle->m_vSpreadVelocity + vNormal * -2.0f * fDot) * m_fBounceCoeff;
                         fMagnitude = magnitude(pParticle->m_vSpreadVelocity);
@@ -533,9 +526,7 @@ void PartEmitter::moveParticleStandard(float fDeltaT)
                         }
                         else
                         {
-                            float fDot = pParticle->m_vSpreadVelocity.x * vNormal.x
-                                       + pParticle->m_vSpreadVelocity.y * vNormal.y
-                                       + pParticle->m_vSpreadVelocity.z * vNormal.z;
+                            float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
                             pParticle->m_vSpreadVelocity =
                                 (pParticle->m_vSpreadVelocity + vNormal * -2.0f * fDot) * 0.75f;
                             pParticle->m_vSpreadVelocity.z = pParticle->m_vSpreadVelocity.z * m_fBounceCoeff * fAlphaMax;
@@ -683,9 +674,8 @@ void PartEmitter::moveParticleP2PBezier(float fDeltaT)
 
             // The two inner control points ride the watched object's forward axis and the
             // emitter's own third axis, each scaled by a handle length.
-            Matrix mat = m_spTarget.m_pObject->GetOrientation().getmatrix();
             Vector vCtrl1 = m_avVectors[6] + m_avVectors[3] * m_fP2PBezier2;
-            Vector vCtrl2 = vTarget + Vector(mat.m_f[6], mat.m_f[7], mat.m_f[8]) * m_fP2PBezier3;
+            Vector vCtrl2 = vTarget + m_spTarget.m_pObject->GetOrientation().zdir() * m_fP2PBezier3;
             Vector vBez = m_avVectors[6] * fA + vCtrl1 * fB + vCtrl2 * fC + vTarget * fD;
 
             // The curve is only one term of the blend. It is damped against the particle's own
@@ -720,9 +710,7 @@ void PartEmitter::moveParticleP2PBezier(float fDeltaT)
                                            m_pHitInfo) != 0)
                 {
                     const Vector& vNormal = m_pHitInfo->m_vHitNormal;
-                    float fDot = pParticle->m_vSpreadVelocity.x * vNormal.x
-                               + pParticle->m_vSpreadVelocity.y * vNormal.y
-                               + pParticle->m_vSpreadVelocity.z * vNormal.z;
+                    float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
                     pParticle->m_vSpreadVelocity =
                         (pParticle->m_vSpreadVelocity + vNormal * (-2.0f * fDot)) * m_fBounceCoeff;
 
@@ -928,9 +916,7 @@ void PartEmitter::moveParticleP2PGrav(float fDeltaT)
                                            m_pHitInfo) != 0)
                 {
                     const Vector& vNormal = m_pHitInfo->m_vHitNormal;
-                    float fDot = pParticle->m_vSpreadVelocity.x * vNormal.x
-                               + pParticle->m_vSpreadVelocity.y * vNormal.y
-                               + pParticle->m_vSpreadVelocity.z * vNormal.z;
+                    float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
                     pParticle->m_vSpreadVelocity =
                         (pParticle->m_vSpreadVelocity + vNormal * (-2.0f * fDot)) * m_fBounceCoeff;
                     pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.005f;
@@ -1262,8 +1248,7 @@ void LightningEmitter::UpdateControlPoints()
 
         // The two end directions are the emitter's world up-axis at the head and the direction to
         // the target at the tail. Both are scaled by the emitter's bolt radius.
-        Matrix matLocal = m_qLocalOrientation.getmatrix();
-        Vector vUp(matLocal.m_f[6], matLocal.m_f[7], matLocal.m_f[8]);
+        Vector vUp = m_qLocalOrientation.zdir();
 
         m_lControlTangents.m_pData[0] = vUp * m_fTangentLength;
         m_lControlTangents.m_pData[nSeg + 1] = normalize(vTarget - m_avVectors[6]) * m_fTangentLength;
@@ -1282,8 +1267,7 @@ void LightningEmitter::UpdateControlPoints()
 
                 Vector vHead = m_lControlPoints.m_pData[0];
 
-                Matrix matHead = m_spTarget.m_pObject->GetOrientation().getmatrix();
-                Vector vUpHead(matHead.m_f[6], matHead.m_f[7], matHead.m_f[8]);
+                Vector vUpHead = m_spTarget.m_pObject->GetOrientation().zdir();
 
                 m_lControlPoints.m_pData[i] =
                     vHead * (fU * fU * fU)
@@ -1293,8 +1277,7 @@ void LightningEmitter::UpdateControlPoints()
                   + m_lControlPoints.m_pData[m_lControlPoints.m_count - 1] * (fT * fT * fT);
 
                 // The tangent is the curve's own derivative.
-                Matrix matHead2 = m_spTarget.m_pObject->GetOrientation().getmatrix();
-                Vector vUpHead2(matHead2.m_f[6], matHead2.m_f[7], matHead2.m_f[8]);
+                Vector vUpHead2 = m_spTarget.m_pObject->GetOrientation().zdir();
 
                 vDir =
                     vHead * (-3.0f * fU * fU)
@@ -1323,6 +1306,7 @@ void LightningEmitter::UpdateControlPoints()
             if (i == 0)
             {
                 m_lNextPoints.m_pData[0] = m_lControlPoints.m_pData[0];
+                // inlined Quaternion::zdir()
                 Matrix matStart = m_qWorldOrientation.getmatrix();
                 m_lNextTangents.m_pData[0] = Vector(matStart.m_f[6], matStart.m_f[7], matStart.m_f[8])
                                        * m_fTangentLength;
@@ -1999,58 +1983,24 @@ int auremitterrenderlightning = 1;
 
 extern unsigned char g_ForceSight;
 
-extern unsigned int enableTranslationTable[];
-extern unsigned int clientStateTranslationTable[];
-extern unsigned int blendTranslationTable[];
-#if KOTOR1
-extern unsigned int stencilOpTranslationTable[];
-extern const unsigned int cmpTranslationTable[];
-#endif
-extern const int facingTranslationTable[];
-extern const int fillTranslationTable[];
-enum {
-    kCapBlend     = 0,    // GL_BLEND
-    kCapAlphaTest = 1,    // GL_ALPHA_TEST
-    kCapFog       = 2,    // GL_FOG
-    kCapCullFace  = 3,    // GL_CULL_FACE
-    kCapDepthTest = 5,    // GL_DEPTH_TEST
-    kCapMultisample = 19, // GL_MULTISAMPLE
-};
-enum {
-    kClientStateTexCoord = 0,  // GL_TEXTURE_COORD_ARRAY
-    kClientStateNormal   = 1,  // GL_NORMAL_ARRAY
-    kClientStateColor    = 2,  // GL_COLOR_ARRAY
-    kClientStateVertex   = 3,  // GL_VERTEX_ARRAY
-};
-
-// While distortion output is on the GL backend owns the depth mask and the emitter layer must
-// leave it alone.
-#if KOTOR1  // K1 has no distortion output
-static const bool g_useDistortionOutput = false;
-#else
-extern unsigned char g_useDistortionOutput;
-#endif
-
 void PartEmitter::StartEmitterLayer()
 {
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[kClientStateVertex]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[kClientStateColor]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[kClientStateTexCoord]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[kClientStateNormal]);
+    RenderInterface::SetDepthMask(0);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::EnableClientState(Aurora::kClientStateVertex);
+    GLRender::EnableClientState(Aurora::kClientStateColor);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::DisableClientState(Aurora::kClientStateNormal);
 }
 
 void PartEmitter::StopEmitterLayer()
 {
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[kClientStateNormal]);
+    RenderInterface::SetDepthMask(1);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
 }
 
 void PartEmitter::Animate(float fDeltaT) { Part::Animate(fDeltaT); }
@@ -2155,6 +2105,7 @@ void ConstrainBirthrateFountain(PartEmitter* pEmitter)
 #else
     float fLimit = pEmitter->m_fLifeExp >= 3.0f ? s_fFountainPacked : s_fFountainDefault;
 
+    // inlined ConstrainValue(float&, float&)
     if (pEmitter->m_fBirthRate > fLimit)
     {
         fHalf = pEmitter->m_fBirthRate * 0.5f;
@@ -2187,6 +2138,7 @@ void ConstrainBirthrateExplosion(PartEmitter* pEmitter)
     float& fLimitRef = !(s_fExplosionThreshold <= fMax) ? s_fExplosionHigh : s_fExplosionLow;
     float fHalf;
     float fLimit = fLimitRef;
+    // inlined ConstrainValue(float&, float&)
     if (pEmitter->m_fBirthRate > fLimit)
     {
         fHalf = pEmitter->m_fBirthRate * 0.5f;
@@ -2360,11 +2312,10 @@ void FountainEmitter::Update(float fDeltaT)
         for (int i = 0; i < nCount; i++)
         {
             Particle* pParticle;
-            int nFree = m_lFreeParticles.m_count - 1;
-            if (nFree >= 0)
+            if (m_lFreeParticles.m_count > 0)
             {
-                pParticle = m_lFreeParticles.m_pData[nFree];
-                m_lFreeParticles.m_count = nFree;
+                pParticle = m_lFreeParticles.m_pData[m_lFreeParticles.m_count - 1];
+                m_lFreeParticles.DelIndex(m_lFreeParticles.m_count - 1);
             }
             else if (pNode->m_szChunkName[0] != 0)
             {
@@ -2427,11 +2378,10 @@ void FountainEmitter::Update(float fDeltaT)
     for (int i = 0; i < static_cast<int>(fBirthrate * m_fBirthTimer) % nMax; i++)
     {
         Particle* pParticle;
-        int nFree = m_lFreeParticles.m_count - 1;
-        if (nFree >= 0)
+        if (m_lFreeParticles.m_count > 0)
         {
-            pParticle = m_lFreeParticles.m_pData[nFree];
-            m_lFreeParticles.m_count = nFree;
+            pParticle = m_lFreeParticles.m_pData[m_lFreeParticles.m_count - 1];
+            m_lFreeParticles.DelIndex(m_lFreeParticles.m_count - 1);
         }
         else if (pNode->m_szChunkName[0] != 0)
         {
@@ -2533,11 +2483,10 @@ void ExplosionEmitter::Update(float fDeltaT)
         {
             // The free list is used as a stack, its count the top index.
             Particle* pParticle;
-            int nFree = m_lFreeParticles.m_count - 1;
-            if (nFree >= 0)
+            if (m_lFreeParticles.m_count > 0)
             {
-                pParticle = m_lFreeParticles.m_pData[nFree];
-                m_lFreeParticles.m_count = nFree;
+                pParticle = m_lFreeParticles.m_pData[m_lFreeParticles.m_count - 1];
+                m_lFreeParticles.DelIndex(m_lFreeParticles.m_count - 1);
                 pParticle->initialize(fDeltaT, 1.0f);
             }
             else
@@ -2565,24 +2514,19 @@ extern int g_nAliasingMode;
 
 extern unsigned char g_adjustWake;
 
-#include "aurglcore.h"
-
 void PartEmitter::RenderFunc()
 {
-    if (m_pGob != 0 && m_pGob->m_pModel != 0 &&
-        (m_pGob->m_bDistortion || (m_pGob->m_pModel->m_nFlags & 2) != 0))
+    if (m_pGob != 0 && m_pGob->IsForcePushDistortion())
     {
 #if KOTOR1  // K1 only stamps stencil bit 1 (no distortion buffer)
-        ASLgl::glEnable(enableTranslationTable[10]);
+        GLRender::Enable(Aurora::kCapStencilTest);
         ASLgl::glColorMask(0, 0, 0, 0);
-        ASLgl::glStencilOp(stencilOpTranslationTable[0], stencilOpTranslationTable[0],
-                           stencilOpTranslationTable[2]);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilReplace);
         ASLgl::glStencilMask(1);
-        ASLgl::glStencilFunc(cmpTranslationTable[7], 1, 0xff);
+        GLRender::SetStencilFunc(Aurora::kCmpAlways, 1, 0xff);
 #else
         SetDistortBuffer(true);
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(0);
+        RenderInterface::SetDepthMask(0);
         g_useDistortionOutput = true;
         GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, m_pParticleMaterial->Textures(0).m_pObject, 0, 0, 0);
 #endif
@@ -2591,7 +2535,7 @@ void PartEmitter::RenderFunc()
     {
         ASLgl::glColorMask(1, 1, 1, 1);
         ASLgl::glStencilMask(0);
-        ASLgl::glDisable(enableTranslationTable[10]);
+        GLRender::Disable(Aurora::kCapStencilTest);
     }
 
     MdlNodeEmitter* pNode = static_cast<MdlNodeEmitter*>(m_pNode->AsMdlNodeEmitter());
@@ -2599,17 +2543,15 @@ void PartEmitter::RenderFunc()
     // A point-to-point emitter with no live watched target has nothing to draw at all.
     if (pNode->m_flags.m_bPointToPoint && m_spTarget.m_pObject == 0)
     {
-        if (m_pGob != 0 && m_pGob->m_pModel != 0 &&
-            (m_pGob->m_bDistortion || (m_pGob->m_pModel->m_nFlags & 2) != 0))
+        if (m_pGob != 0 && m_pGob->IsForcePushDistortion())
         {
 #if KOTOR1  // K1: the early-outs restore the stencil state like the normal exit
             ASLgl::glColorMask(1, 1, 1, 1);
             ASLgl::glStencilMask(0);
-            ASLgl::glDisable(enableTranslationTable[10]);
+            GLRender::Disable(Aurora::kCapStencilTest);
 #else
             SetDistortBuffer(true);
-            if (!g_useDistortionOutput)
-                ASLgl::glDepthMask(0);
+            RenderInterface::SetDepthMask(0);
             g_useDistortionOutput = true;
             GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, m_pParticleMaterial->Textures(0).m_pObject, 0, 0, 0);
 #endif
@@ -2621,17 +2563,15 @@ void PartEmitter::RenderFunc()
     if (pNode->m_szChunkName[0] != 0)
     {
         RenderNothing();
-        if (m_pGob != 0 && m_pGob->m_pModel != 0 &&
-            (m_pGob->m_bDistortion || (m_pGob->m_pModel->m_nFlags & 2) != 0))
+        if (m_pGob != 0 && m_pGob->IsForcePushDistortion())
         {
 #if KOTOR1  // K1: the early-outs restore the stencil state like the normal exit
             ASLgl::glColorMask(1, 1, 1, 1);
             ASLgl::glStencilMask(0);
-            ASLgl::glDisable(enableTranslationTable[10]);
+            GLRender::Disable(Aurora::kCapStencilTest);
 #else
             SetDistortBuffer(true);
-            if (!g_useDistortionOutput)
-                ASLgl::glDepthMask(0);
+            RenderInterface::SetDepthMask(0);
             g_useDistortionOutput = true;
             GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, m_pParticleMaterial->Textures(0).m_pObject, 0, 0, 0);
 #endif
@@ -2960,19 +2900,17 @@ void PartEmitter::RenderFunc()
         GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
 #endif
 
-    if (m_pGob != 0 && m_pGob->m_pModel != 0 &&
-        (m_pGob->m_bDistortion || (m_pGob->m_pModel->m_nFlags & 2) != 0))
+    if (m_pGob != 0 && m_pGob->IsForcePushDistortion())
     {
 #if KOTOR1
         ASLgl::glColorMask(1, 1, 1, 1);
         ASLgl::glStencilMask(0);
-        ASLgl::glDisable(enableTranslationTable[10]);
+        GLRender::Disable(Aurora::kCapStencilTest);
 #else
         SetDistortBuffer(false);
         g_useDistortionOutput = false;
         GLRender::pfuncEnablePixelShaders(GLRender::kPSFixedFunction, 0, 0, 0, 0);
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(1);
+        RenderInterface::SetDepthMask(1);
 #endif
     }
 }
@@ -3069,11 +3007,10 @@ void PartEmitter::RenderLinked()
     float fInvXGrid = 1.0f / static_cast<float>(nXGrid);
     float fInvYGrid = 1.0f / static_cast<float>(nYGrid);
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
+    RenderInterface::SetDepthMask(0);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     // The emitter's own texture-blend mode, picked by Initialize from the node's blend name. The
     // additive arm saves and restores the fog state, not the blend cap the first two arms touch:
@@ -3081,18 +3018,18 @@ void PartEmitter::RenderLinked()
     unsigned char bBlendWasEnabled = 0;
     if (m_nBlendMode == 1)
     {
-        ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-        ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
+        GLRender::Disable(Aurora::kCapBlend);
+        GLRender::Enable(Aurora::kCapAlphaTest);
     }
     else if (m_nBlendMode == 0)
     {
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     }
     else
     {
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[2]);
-        bBlendWasEnabled = ASLgl::glIsEnabled(enableTranslationTable[kCapFog]);
-        ASLgl::glDisable(enableTranslationTable[kCapFog]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
+        bBlendWasEnabled = GLRender::IsEnabled(Aurora::kCapFog);
+        GLRender::Disable(Aurora::kCapFog);
     }
 
     updateParticleFrame(fFade);
@@ -3102,10 +3039,9 @@ void PartEmitter::RenderLinked()
     float fGobAlpha = GetGobAlpha();
 
     // The camera orientation's three rows as world-space axes; row 2 is the ribbon's frame axis.
-    Matrix matCamera = qCam.getmatrix();
-    Vector vAxisX(matCamera.m_f[0], matCamera.m_f[1], matCamera.m_f[2]);
-    Vector vAxisY(matCamera.m_f[3], matCamera.m_f[4], matCamera.m_f[5]);
-    Vector vAxisZ(matCamera.m_f[6], matCamera.m_f[7], matCamera.m_f[8]);
+    Vector vAxisX = qCam.xdir();
+    Vector vAxisY = qCam.ydir();
+    Vector vAxisZ = qCam.zdir();
 
     int nVert = 0;
     for (int i = 0; i < m_lParticles.m_count; i++)
@@ -3132,7 +3068,7 @@ void PartEmitter::RenderLinked()
                                           : pParticle->m_fAge * fFrameStep;
             if (m_fPercentStart == 255.0f)
             {
-                vColor = m_avVectors[9] * (1.0f - fT) + m_avVectors[8] * fT;
+                vColor = Interpolate(m_avVectors[9], m_avVectors[8], fT);
                 fAlpha = m_fAlphaStart * (1.0f - fT) + m_fAlphaEnd * fT;
                 fWidthU = (m_fSizeStart * (1.0f - fT) + m_fSizeEnd * fT) * 0.5f;
                 fWidthV = (m_fSizeStartY != 0.0f || m_fSizeEndY != 0.0f)
@@ -3148,7 +3084,7 @@ void PartEmitter::RenderLinked()
             else if (fT >= m_fPercentMid)
             {
                 float fF = (fT - m_fPercentMid) / (m_fPercentEnd - m_fPercentMid);
-                vColor = m_avVectors[0] * (1.0f - fF) + m_avVectors[8] * fF;
+                vColor = Interpolate(m_avVectors[0], m_avVectors[8], fF);
                 fAlpha = m_fAlphaMid * (1.0f - fF) + m_fAlphaEnd * fF;
                 fWidthU = (m_fSizeMid * (1.0f - fF) + m_fSizeEnd * fF) * 0.5f;
                 fWidthV = (m_fSizeMidY != 0.0f || m_fSizeEndY != 0.0f)
@@ -3157,7 +3093,7 @@ void PartEmitter::RenderLinked()
             else if (fT >= m_fPercentStart)
             {
                 float fF = (fT - m_fPercentStart) / (m_fPercentMid - m_fPercentStart);
-                vColor = m_avVectors[9] * (1.0f - fF) + m_avVectors[0] * fF;
+                vColor = Interpolate(m_avVectors[9], m_avVectors[0], fF);
                 fAlpha = m_fAlphaStart * (1.0f - fF) + m_fAlphaMid * fF;
                 fWidthU = (m_fSizeStart * (1.0f - fF) + m_fSizeMid * fF) * 0.5f;
                 fWidthV = (m_fSizeStartY != 0.0f || m_fSizeMidY != 0.0f)
@@ -3288,12 +3224,11 @@ void PartEmitter::RenderLinked()
 #endif
     GLRender::RenderObjectsVTCQuadUP(particlePool, m_lParticles.m_count * 4 - 4);
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    RenderInterface::SetDepthMask(1);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     if (bBlendWasEnabled != 0)
-        ASLgl::glEnable(enableTranslationTable[kCapFog]);
+        GLRender::Enable(Aurora::kCapFog);
 }
 
 // The sprite-frame spin's two trig lookups.
@@ -3320,9 +3255,8 @@ void PartEmitter::RenderMotionBlurred()
         return;
 
     MdlNodeEmitter* pNode = static_cast<MdlNodeEmitter*>(m_pNode);
-    Matrix matCamera = CurrentCamera->m_qOrientation.getmatrix();
-    Vector vAxisX(matCamera.m_f[0], matCamera.m_f[1], matCamera.m_f[2]);
-    Vector vAxisY(matCamera.m_f[3], matCamera.m_f[4], matCamera.m_f[5]);
+    Vector vAxisX = CurrentCamera->m_qOrientation.xdir();
+    Vector vAxisY = CurrentCamera->m_qOrientation.ydir();
 
     if (renderemitterspheres)
         RenderBoundingSphere();
@@ -3347,8 +3281,7 @@ void PartEmitter::RenderMotionBlurred()
     m_pParticleMaterial->BindTexture0();
     m_pParticleMaterial->SetBlendingMode(0);
 
-    Matrix matAxisZ = CurrentCamera->m_qOrientation.getmatrix();
-    vAxisZ = Vector(matAxisZ.m_f[6], matAxisZ.m_f[7], matAxisZ.m_f[8]);
+    vAxisZ = CurrentCamera->m_qOrientation.zdir();
 #if KOTOR1
     qCamera = CurrentCamera->m_qOrientation;
 #endif
@@ -3368,30 +3301,29 @@ void PartEmitter::RenderMotionBlurred()
     float fYGrid = static_cast<float>(nYGrid);
     float fInvXGrid = 1.0f / static_cast<float>(nXGrid);
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
+    RenderInterface::SetDepthMask(0);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapCullFace);
 
     unsigned char bBlendWasEnabled;
     if (m_nBlendMode == 0)
     {
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         bBlendWasEnabled = 0;
     }
     else if (m_nBlendMode == 1)
     {
-        ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-        ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
+        GLRender::Disable(Aurora::kCapBlend);
+        GLRender::Enable(Aurora::kCapAlphaTest);
         bBlendWasEnabled = 0;
     }
     else
     {
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[2]);
-        bBlendWasEnabled = ASLgl::glIsEnabled(enableTranslationTable[kCapFog]);
-        ASLgl::glDisable(enableTranslationTable[kCapFog]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
+        bBlendWasEnabled = GLRender::IsEnabled(Aurora::kCapFog);
+        GLRender::Disable(Aurora::kCapFog);
     }
 
     updateParticleFrame(fFade);
@@ -3423,7 +3355,7 @@ void PartEmitter::RenderMotionBlurred()
                                           : pParticle->m_fAge * fFrameStep;
             if (m_fPercentStart == 255.0f)
             {
-                vColor = m_avVectors[9] * (1.0f - fT) + m_avVectors[8] * fT;
+                vColor = Interpolate(m_avVectors[9], m_avVectors[8], fT);
                 fAlpha = m_fAlphaStart * (1.0f - fT) + m_fAlphaEnd * fT;
                 fWidthU = (m_fSizeStart * (1.0f - fT) + m_fSizeEnd * fT) * 0.5f;
                 fWidthV = (m_fSizeStartY != 0.0f || m_fSizeEndY != 0.0f)
@@ -3439,7 +3371,7 @@ void PartEmitter::RenderMotionBlurred()
             else if (fT >= m_fPercentMid)
             {
                 float fF = (fT - m_fPercentMid) / (m_fPercentEnd - m_fPercentMid);
-                vColor = m_avVectors[0] * (1.0f - fF) + m_avVectors[8] * fF;
+                vColor = Interpolate(m_avVectors[0], m_avVectors[8], fF);
                 fAlpha = m_fAlphaMid * (1.0f - fF) + m_fAlphaEnd * fF;
                 fWidthU = (m_fSizeMid * (1.0f - fF) + m_fSizeEnd * fF) * 0.5f;
                 fWidthV = (m_fSizeMidY != 0.0f || m_fSizeEndY != 0.0f)
@@ -3448,7 +3380,7 @@ void PartEmitter::RenderMotionBlurred()
             else if (fT >= m_fPercentStart)
             {
                 float fF = (fT - m_fPercentStart) / (m_fPercentMid - m_fPercentStart);
-                vColor = m_avVectors[9] * (1.0f - fF) + m_avVectors[0] * fF;
+                vColor = Interpolate(m_avVectors[9], m_avVectors[0], fF);
                 fAlpha = m_fAlphaStart * (1.0f - fF) + m_fAlphaMid * fF;
                 fWidthU = (m_fSizeStart * (1.0f - fF) + m_fSizeMid * fF) * 0.5f;
                 fWidthV = (m_fSizeStartY != 0.0f || m_fSizeMidY != 0.0f)
@@ -3575,13 +3507,12 @@ void PartEmitter::RenderMotionBlurred()
 #endif
     GLRender::RenderObjectsVTCQuadUP(particlePool, nCount * 4);
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-    ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
+    RenderInterface::SetDepthMask(1);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+    GLRender::Enable(Aurora::kCapCullFace);
     if (bBlendWasEnabled != 0)
-        ASLgl::glEnable(enableTranslationTable[kCapFog]);
+        GLRender::Enable(Aurora::kCapFog);
 }
 
 void PartEmitter::RenderStandard()
@@ -3627,20 +3558,20 @@ void PartEmitter::RenderStandard()
     m_pParticleMaterial->BindTexture0();
     m_pParticleMaterial->SetBlendingMode(0);
 
-    // The emitter's orientation for this draw mode; only its Z axis is read.
-    Matrix matOrient;
+    // The emitter's orientation for this draw mode and its Z axis; the world-aligned mode keeps +Z.
+    Vector vAxisZ(0.0f, 0.0f, 1.0f);
     Quaternion qOrient;
     float fSign = 1.0f;
     int nMode = m_nRenderMode;
     if (nMode == 1)
     {
         qOrient = CurrentCamera->m_qOrientation;
-        matOrient = qOrient.getmatrix();
+        vAxisZ = qOrient.zdir();
     }
     else if (nMode == 2)
     {
         qOrient = m_qWorldOrientation;
-        matOrient = qOrient.getmatrix();
+        vAxisZ = qOrient.zdir();
     }
     else if (nMode == 3)
     {
@@ -3649,54 +3580,50 @@ void PartEmitter::RenderStandard()
     else
     {
         qOrient = CurrentCamera->m_qOrientation;
-        matOrient = qOrient.getmatrix();
-        // The world-forward dot of the matrix's Y row; a negative result flips the flat-billboard
-        // arm's up axis.
+        vAxisZ = qOrient.zdir();
+        // The world-forward dot of the Y axis; a negative result flips the flat-billboard arm's
+        // up axis.
         Vector vForward = { 0.0f, 0.0f, 1.0f };
-        float fForwardY = matOrient.m_f[3] * vForward.x + matOrient.m_f[4] * vForward.y
-                        + matOrient.m_f[5] * vForward.z;
-        if (fForwardY < 0.0f)
+        if (dot(qOrient.ydir(), vForward) < 0.0f)
             fSign = -1.0f;
     }
-    Vector vAxisZ(matOrient.m_f[6], matOrient.m_f[7], matOrient.m_f[8]);
 
     // The sprite-sheet grid and the per-particle frame step.
     int nXGrid = pNode->m_nXGrid != 0 ? pNode->m_nXGrid : 1;
     int nYGrid = pNode->m_nYGrid;
     float fFrameStep = m_fLifeExp > 0.0f ? 1.0f / m_fLifeExp : 0.01f;
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
+    RenderInterface::SetDepthMask(0);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 #if !KOTOR1  // K1 leaves the multisample cap alone
     if (g_nAliasingMode > 0)
-        ASLgl::glDisable(enableTranslationTable[kCapMultisample]);
+        GLRender::Disable(Aurora::kCapMultisample);
 #endif
 
     // A two-sided-textured node is drawn with both facings filled in, and cull face off.
     if (pNode->m_nTwoSidedTex != 0)
     {
-        ASLgl::glPolygonMode(facingTranslationTable[2], fillTranslationTable[2]);
-        ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
+        GLRender::SetPolygonRenderMode(Aurora::kFacingFrontAndBack, Aurora::kFillSolid);
+        GLRender::Disable(Aurora::kCapCullFace);
     }
 
     unsigned char bBlendWasEnabled = 0;
     if (m_nBlendMode == 1)
     {
-        ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-        ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
+        GLRender::Disable(Aurora::kCapBlend);
+        GLRender::Enable(Aurora::kCapAlphaTest);
     }
     else if (m_nBlendMode == 0)
     {
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     }
     else
     {
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[2]);
-        bBlendWasEnabled = ASLgl::glIsEnabled(enableTranslationTable[kCapFog]);
-        ASLgl::glDisable(enableTranslationTable[kCapFog]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
+        bBlendWasEnabled = GLRender::IsEnabled(Aurora::kCapFog);
+        GLRender::Disable(Aurora::kCapFog);
     }
 
 #if !KOTOR1  // K1 has no MG_Distort wake special case
@@ -3758,7 +3685,7 @@ void PartEmitter::RenderStandard()
                 float fT = fFrameStep * pParticle->m_fAge;
                 if (m_fPercentStart == 255.0f)
                 {
-                    vColor = m_avVectors[9] * (1.0f - fT) + m_avVectors[8] * fT;
+                    vColor = Interpolate(m_avVectors[9], m_avVectors[8], fT);
                     fAlpha = m_fAlphaStart * (1.0f - fT) + m_fAlphaEnd * fT;
                     fWidthU = (m_fSizeStart * (1.0f - fT) + m_fSizeEnd * fT) * 0.5f;
                     fWidthV = (m_fSizeStartY != 0.0f || m_fSizeEndY != 0.0f)
@@ -3774,7 +3701,7 @@ void PartEmitter::RenderStandard()
                 else if (fT >= m_fPercentMid)
                 {
                     float fF = (fT - m_fPercentMid) / (m_fPercentEnd - m_fPercentMid);
-                    vColor = m_avVectors[0] * (1.0f - fF) + m_avVectors[8] * fF;
+                    vColor = Interpolate(m_avVectors[0], m_avVectors[8], fF);
                     fAlpha = m_fAlphaMid * (1.0f - fF) + m_fAlphaEnd * fF;
                     fWidthU = (m_fSizeMid * (1.0f - fF) + m_fSizeEnd * fF) * 0.5f;
                     fWidthV = (m_fSizeMidY != 0.0f || m_fSizeEndY != 0.0f)
@@ -3783,7 +3710,7 @@ void PartEmitter::RenderStandard()
                 else if (fT >= m_fPercentStart)
                 {
                     float fF = (fT - m_fPercentStart) / (m_fPercentMid - m_fPercentStart);
-                    vColor = m_avVectors[9] * (1.0f - fF) + m_avVectors[0] * fF;
+                    vColor = Interpolate(m_avVectors[9], m_avVectors[0], fF);
                     fAlpha = m_fAlphaStart * (1.0f - fF) + m_fAlphaMid * fF;
                     fWidthU = (m_fSizeStart * (1.0f - fF) + m_fSizeMid * fF) * 0.5f;
                     fWidthV = (m_fSizeStartY != 0.0f || m_fSizeMidY != 0.0f)
@@ -3965,21 +3892,18 @@ void PartEmitter::RenderStandard()
             }
 
             // The quad's two half-axes.
-            Matrix matBasis;
             Vector vRight;
             Vector vUp;
             if (m_nRenderMode == 8)
             {
                 // For a self-orienting emitter, both axes come straight off the particle's own
                 // quaternion and the spin product above is unused.
-                matBasis = pParticle->m_qOrientation.getmatrix();
-                vRight = Vector(matBasis.m_f[0], matBasis.m_f[1], matBasis.m_f[2]);
-                vUp = Vector(matBasis.m_f[6], matBasis.m_f[7], matBasis.m_f[8]);
+                vRight = pParticle->m_qOrientation.xdir();
+                vUp = pParticle->m_qOrientation.zdir();
             }
             else
             {
-                matBasis = qFrame.getmatrix();
-                vRight = Vector(matBasis.m_f[0], matBasis.m_f[1], matBasis.m_f[2]);
+                vRight = qFrame.xdir();
                 if (m_nRenderMode == 5)
                     vUp = Vector(0.0f, 0.0f, fSign);
                 else if ((nNodeFlags & MdlNodeEmitter::kEmitterSplat) != 0)
@@ -4042,9 +3966,9 @@ void PartEmitter::RenderStandard()
         // Every pass after the first draws additively over the previous frame's sprite.
         if (nPass != 0)
         {
-            ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[2]);
-            bBlendWasEnabled = ASLgl::glIsEnabled(enableTranslationTable[kCapFog]);
-            ASLgl::glDisable(enableTranslationTable[kCapFog]);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
+            bBlendWasEnabled = GLRender::IsEnabled(Aurora::kCapFog);
+            GLRender::Disable(Aurora::kCapFog);
         }
 
 #if !KOTOR1  // K1 keeps no draw counters
@@ -4054,21 +3978,20 @@ void PartEmitter::RenderStandard()
     }
 
     ASLgl::glPopMatrix();
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    RenderInterface::SetDepthMask(1);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 #if !KOTOR1
     if (g_nAliasingMode > 0)
-        ASLgl::glEnable(enableTranslationTable[kCapMultisample]);
+        GLRender::Enable(Aurora::kCapMultisample);
 #endif
     if (pNode->m_nTwoSidedTex != 0)
     {
-        ASLgl::glPolygonMode(facingTranslationTable[0], fillTranslationTable[2]);
-        ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
+        GLRender::SetPolygonRenderMode(Aurora::kFacingFront, Aurora::kFillSolid);
+        GLRender::Enable(Aurora::kCapCullFace);
     }
     if (bBlendWasEnabled != 0)
-        ASLgl::glEnable(enableTranslationTable[kCapFog]);
+        GLRender::Enable(Aurora::kCapFog);
 }
 
 void PartEmitter::RenderNothing()
@@ -4530,8 +4453,7 @@ void Particle::initialize(float fDeltaT, float fScale)
         randomDirection(nX, nZ);
 
     // The particle starts out facing along the emitter's Z axis.
-    Matrix mat = m_qOrientation.getmatrix();
-    m_vDirection = Vector(mat.m_f[6], mat.m_f[7], mat.m_f[8]);
+    m_vDirection = m_qOrientation.zdir();
     m_vSpreadVelocity = m_vDirection * (fSpread + m_pEmitter->m_fVelocity);
 }
 
@@ -4570,8 +4492,7 @@ void Particle::inheritVelocity(float fDeltaT)
 
     // The emitter's drift is its axis-relative offset over the travel distance, plus its own frame
     // displacement, both per second.
-    Matrix mat = pE->m_qPrevWorldOrientation.getmatrix();
-    Vector vAxis(mat.m_f[6], mat.m_f[7], mat.m_f[8]);
+    Vector vAxis = pE->m_qPrevWorldOrientation.zdir();
     Vector v = (vD - vAxis) * fDist * fScale + (vB - vA) * fScale;
 
     m_vVelocity = v;
@@ -4611,24 +4532,21 @@ void Particle::randomDirection(int nA, int nB)
 
     // The orientation's row 1 (the up axis) is the aim target. The loop spins the particle about
     // cross(vDir, up) by the angle still missing from the cone.
-    Matrix mat = m_qOrientation.getmatrix();
-    Vector vUp(mat.m_f[3], mat.m_f[4], mat.m_f[5]);
-    float fDot = vDir.x * vUp.x + vDir.y * vUp.y + vDir.z * vUp.z;
+    Vector vUp = m_qOrientation.ydir();
+    float fDot = dot(vDir, vUp);
 
     // The cosine here is evaluated in double precision; the angle arms below use float.
     Quaternion qResult = m_qOrientation;
     while ((fDot < 0.0f ? -fDot : fDot)
                < cos(1.57079632 - static_cast<MdlNodeEmitter*>(m_pEmitter->m_pNode)->m_fDeadSpace))
     {
-        Matrix matUp = m_qOrientation.getmatrix();
-        Vector vTurnUp(matUp.m_f[3], matUp.m_f[4], matUp.m_f[5]);
+        Vector vTurnUp = m_qOrientation.ydir();
         float fAngle = fDot < 0.0f ? fNode + 1.5707964f - fDot
                                    : fDot - 1.5707964f + fNode;
         Quaternion qTurn(cross(vDir, vTurnUp), fAngle);
         qResult = qTurn * m_qOrientation;
 
-        Matrix matNew = qResult.getmatrix();
-        float fNewDot = vDir.x * matNew.m_f[3] + vDir.y * matNew.m_f[4] + vDir.z * matNew.m_f[5];
+        float fNewDot = dot(vDir, qResult.ydir());
         fDot = fNewDot < 0.0f ? -fNewDot : fNewDot;
     }
     m_qOrientation = qResult;

@@ -189,7 +189,7 @@ int CSWSStore::LoadFromTemplate(const CResRef& resRef, int flag) {
 // the last element of the GFF list was staged, not the current one.
 int CSWSStore::LoadStore(CResGFF* pGFF, CResStruct* pStruct, int flag) {
     int valid;
-    m_sTag = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), valid, CExoString("")).LowerCase();
+    SetTag(pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), valid, CExoString("")));
     m_locName = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("LocName"), valid, CExoLocString());
     m_nMarkDown = pGFF->ReadFieldINT(pStruct, const_cast<char*>("MarkDown"), valid, 0);
     m_nMarkUp = pGFF->ReadFieldINT(pStruct, const_cast<char*>("MarkUp"), valid, 0);

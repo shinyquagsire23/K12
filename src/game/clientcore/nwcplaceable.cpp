@@ -221,7 +221,6 @@ void CSWCPlaceable::GetTargetActions(CSWCCreature* pCreature, int nType,
                 CSWCCreature* pPlayerCreature;
 #if !KOTOR1
                 CSWSCreature* pServerCreature;
-                short nPlayerHp;
 #endif
                 if (pObject != 0 && pObject->AsSWCCreature() != 0 &&
                     (pPlayerCreature = static_cast<CSWCCreature*>(pObject->AsSWCCreature()),
@@ -232,8 +231,7 @@ void CSWCPlaceable::GetTargetActions(CSWCCreature* pCreature, int nType,
                     (pPlayerCreature->GetServerCreature()->GetDeadTemp() != 0 &&
 #else
                     (pServerCreature = pPlayerCreature->GetServerCreature(),
-                     pServerCreature->m_bInParty != 0 &&
-                         0 >= (nPlayerHp = pServerCreature->GetCurrentHitPoints(0)) &&
+                     pServerCreature->GetDeadTemp() != 0 &&
 #endif
                          GetServerObject() != 0 &&
                          GetServerObject()->AsSWSPlaceable() != 0 &&
@@ -368,7 +366,7 @@ void CSWCPlaceable::GetUseItems(CSWCCreature* pCreature,
         if (pItem != 0 && pItem->m_bPlot != 0) {
             CSWItemProperty* pProperty;
             if (pItem->GetPropertyByType(&pProperty, ITEM_PROPERTY_ACTIVATE_ITEM, 0) != 0) {
-                CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pProperty->m_subType);
+                CSWSpell* pSpell = g_pRules->GetSpell(pProperty->m_subType);
                 if (pSpell != 0 && pSpell->m_nItemTargeting == 2) {
                     list.SetSize(nOldCount + 1);
                     pItem->m_localizedName.GetString(nLanguage, &sName, 0);
@@ -770,15 +768,11 @@ char CSWCPlaceable::GetReticlePoint(Vector& v)
     Quaternion qPart;
     pPart->GetWorld(v, qPart);
     CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
-    Quaternion q = pCamera->GetOrientation();
-    // The camera's view axis, with the z term left un-negated because the dots below subtract it.
-    float fAxisX = (q.x * q.z + q.w * q.y) * -2.0f;
-    float fAxisY = (q.z * q.y - q.x * q.w) * -2.0f;
-    float fXXYY = q.x * q.x + q.y * q.y;
-    float fAxisZ = 1.0f - (fXXYY + fXXYY);
-    float fPointSide = v.x * fAxisX + v.y * fAxisY - v.z * fAxisZ;
+    // The camera's view axis.
+    Vector vDir = -pCamera->GetOrientation().zdir();
+    float fPointSide = dot(v, vDir);
     Vector vCamera = pCamera->GetPosition();
-    float fCameraSide = fAxisX * vCamera.x + fAxisY * vCamera.y - fAxisZ * vCamera.z;
+    float fCameraSide = dot(vDir, vCamera);
     char nSide = (fPointSide > fCameraSide) ? 1 : 2;
     v = pCamera->MapToScreen(v, true);
     v.x *= static_cast<float>(g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth);

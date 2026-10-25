@@ -27,6 +27,7 @@ public:
         : m_nPlayerId(nPlayerId), m_nReserved1(0), m_nPortraitId(0xffff) {}
 
     void SetPrimaryPCPortraitId(unsigned short nPortraitId);
+    void SetPrimaryPCPortraitResRef(CResRef resRef) { m_portrait.SetPortrait(resRef); }
 };
 
 #endif // CSWCPLAYER_H
@@ -608,6 +609,8 @@ public:
     int GetClientRangedAnimation(unsigned long long a, int b, int c, int d);
     __attribute__((noinline)) int GetControlledCharacterDead();
     void PlayerFlourishWeapons();
+    // Whether the player control has any stick deflection; inline in clientexoappinternal.cpp.
+    int  GetPlayerMovementInput();
     void GetDefaultActions();   // builds the radial menu for the current target
     int ShowTutorialWindow(unsigned char a, unsigned long long b, unsigned long long c, unsigned int d);
     uint64_t GetNextLoadScreenHintSTRREF(const CExoString& a, unsigned char b);

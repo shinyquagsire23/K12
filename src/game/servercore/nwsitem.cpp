@@ -40,6 +40,7 @@
 #include "nwsscriptevent.h"
 #include "restype.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // KOTOR 2's baseitems.2da rows past nwscript.nss's BASE_ITEM_* list.
 enum {
@@ -1585,7 +1586,7 @@ CExoString CSWSItem::GetPropertiesOnlyDescription()
         if (sValue.m_sString != 0 && sValue.m_sString[0] != 0 &&
             sName.m_sString != 0 && sName.m_sString[0] != 0)
         {
-            if (sName[static_cast<int>(strlen(sName.m_sString)) - 1] == '+')
+            if (sName[sName.GetLength() - 1] == '+')
                 sResult = sResult + sValue;
             else
                 sResult = sResult + ": " + sValue;
@@ -3598,7 +3599,7 @@ void CSWSItem::LoadDataFromGff(CResGFF* pGFF, CResStruct* pStruct)
     int nReadOk;
     m_baseItem = pGFF->ReadFieldINT(pStruct, const_cast<char*>("BaseItem"), nReadOk, m_baseItem);
     InitRepository(m_objectId);
-    m_sTag = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), nReadOk, m_sTag).LowerCase();
+    SetTag(pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), nReadOk, m_sTag));
     SetIdentified(pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Identified"), nReadOk, 1));
     m_description = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("Description"), nReadOk,
                                                  m_descriptionIdentified);

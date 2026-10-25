@@ -2040,7 +2040,7 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
             if (pStats == 0 || pCreature == 0)
                 return nResult;
 
-            g_pRules->m_pSpellArray->GetSpell(nSpellId);
+            g_pRules->GetSpell(nSpellId);
             if ((nFlags & 4) == 0 &&
                 pStats->GetSpellUsesLeft(nSpellId, nClassIndex, nDomainLevel, nMetaMagic) != 0)
             {
@@ -2283,8 +2283,7 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
             if (pObj->AsSWSCreature() != 0)
             {
                 CSWSCreature* pC = pObj->AsSWSCreature();
-                if (pC->m_bInParty != 0)
-                    nResult = (pC->GetCurrentHitPoints(0) < 1);
+                nResult = pC->GetDeadTemp();
             }
 
             if (pObj->m_bCommandable != 0 && nResult == 0 && pObj->GetDead() != 1 &&
@@ -2388,7 +2387,7 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
             if (pStats == 0 || pCreature == 0)
                 return nResult;
 
-            g_pRules->m_pSpellArray->GetSpell(nSpellId);
+            g_pRules->GetSpell(nSpellId);
             pCreature->ActionManager(1);
             if (oidTarget == CGameObjectArray::INVALIDOBJID)
             {
@@ -3250,6 +3249,7 @@ int CSWSMessage::HandlePlayerToServerServerChatMessage(CSWSPlayer* pPlayer, unsi
 // Party sub-opcode dispatcher; most arms send a CSWCCMessageData feedback message.
 int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nType)
 {
+    // inlined STR_RES::STR_RES()
     CExoString sPartyText;
     CResRef sRosterResRef;
     CExoString sMemberName;
@@ -3678,10 +3678,10 @@ int CSWSMessage::HandlePlayerToServerLevelUpMessage(CSWSPlayer* pPlayer, unsigne
         pStats->AddFeat(ReadWORD(16));
 
     for (unsigned char n = ReadBYTE(8); n != 0; n--)
-        pStats->m_spellsGained.Add(ReadDWORD(32));
+        pStats->AddAddedKnownSpell(0, ReadDWORD(32));
 
     for (unsigned char n = ReadBYTE(8); n != 0; n--)
-        pStats->m_spellsLost.Add(ReadDWORD(32));
+        pStats->AddRemovedKnownSpell(0, ReadDWORD(32));
 
     if (MessageReadOverflow(1))
         return nResult;
@@ -3733,7 +3733,7 @@ int CSWSMessage::HandlePlayerToServerJournalMessage(CSWSPlayer* pPlayer, unsigne
         break;
     case MSG_JOURNAL_QUEST_SCREEN_CLOSED:
         pPlayer->m_pJournalState->m_bQuestScreenOpen = 0;
-        pPlayer->m_pJournalState->m_updates.Clear();
+        pPlayer->m_pJournalState->m_updates.SetSize(0);
         break;
     case MSG_JOURNAL_REQUEST_ADD:
     {

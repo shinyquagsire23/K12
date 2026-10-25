@@ -938,7 +938,7 @@ void CSWSCreatureStats_ClassInfo::RemoveKnownSpell(unsigned char level, unsigned
 
 void CSWSCreatureStats::RemoveKnownSpell(unsigned char classIndex, unsigned int nSpellId)
 {
-    if (g_pRules->m_pSpellArray->GetSpell(nSpellId) != 0)
+    if (g_pRules->GetSpell(nSpellId) != 0)
         m_classInfo[classIndex].RemoveKnownSpell(0, nSpellId);
 }
 
@@ -2099,9 +2099,7 @@ short CSWSCreatureStats::GetArmorClassVersus(CSWSCreature* pCreature, int bVersu
     int nArmorAC = 0, nNaturalAC = 0, nShieldAC = 0;
     if (bVersus == 0)
     {
-        nNaturalAC = m_nACNaturalMod - m_nACNaturalNeg;
-        m_pOwner->GetUseMonkAbilities();
-        nNaturalAC = static_cast<signed char>(nNaturalAC + m_nACNaturalBase);
+        nNaturalAC = GetTotalACNaturalMod();
         nArmorAC = static_cast<signed char>(m_nACArmorMod + m_nACArmorBase - m_nACArmorNeg);
         nShieldAC = static_cast<signed char>(m_nACShieldMod + m_nACShieldBase - m_nACShieldNeg);
     }
@@ -2588,6 +2586,7 @@ void CSWSCreatureStats::UpdateCombatInformation()
         m_pCombatInformation->m_nAttackModOffHand = static_cast<signed char>(GetMeleeAttackBonus(1, 0, 0, 0));
         m_pCombatInformation->m_nStrDamageModOffHand = static_cast<signed char>(GetMeleeDamageBonus(1));
     }
+    GetTotalArcaneSpellFailure();
     signed char nResistance = static_cast<signed char>(m_forceResistance - m_forceResistancePenalty);
     if (nResistance < 0)
         nResistance = 0;
@@ -4332,7 +4331,7 @@ unsigned char CSWSCreatureStats::GetCasterLevel(unsigned char classIndex)
 // Appends a class slot; a third class overwrites the second.
 int CSWSCreatureStats::HasForcePowerRequirments(unsigned int nSpellId)
 {
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     if (pSpell == 0)
         return 0;
     // Constructed and destroyed but never read.
@@ -5453,19 +5452,8 @@ int CSWSCreatureStats::CanLevelUp()
     {
         if (static_cast<unsigned int>(m_nExperience) >= static_cast<unsigned int>(g_pRules->m_aExpTable[GetLevel(0)]))
         {
-#if KOTOR1
-// K1: the dying test is GetDeadTemp().
             if (m_pOwner->GetDead() == 0 && m_pOwner->GetDeadTemp() == 0)
                 return 1;
-#else
-            if (m_pOwner->GetDead() == 0)
-            {
-                if (m_pOwner->m_bInParty == 0)
-                    return 1;
-                if (m_pOwner->GetCurrentHitPoints(0) > 0)
-                    return 1;
-            }
-#endif
         }
     }
     return 0;
@@ -5945,18 +5933,17 @@ int CSWSCreatureStats::GetCreatureHasTalent(int nType, int nId)
 #if KOTOR1  // K1 asks GetIsPCDying() and GetDeadTemp() instead
     if (bDead != 0 || pCreature->GetIsPCDying() != 0 || m_pOwner->GetDeadTemp() != 0)
 #else
-    if (bDead != 0 || (pCreature->m_bInParty != 0 &&
-                       static_cast<short>(pCreature->GetCurrentHitPoints(0)) <= 0))
+    if (bDead != 0 || pCreature->GetDeadTemp() != 0)
 #endif
     {
         if (nType == 0)
-            g_pRules->m_pSpellArray->GetSpell(nId);
+            g_pRules->GetSpell(nId);
         return 0;
     }
 
     if (nType == 0)
     {
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nId);
         if (pSpell == 0)
             return 0;
         if (m_numClasses == 0)
@@ -6111,7 +6098,7 @@ int CSWSCreatureStats::GetCreatureTalentRandomSpecialAbility(int a1, int a2, int
             continue;
         int nSpellId = m_pSpellLikeAbilityList->m_pArray[i].m_nSpellId;
         unsigned char nCasterLevel = m_pSpellLikeAbilityList->m_pArray[i].m_nCasterLevel;
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         if (pSpell == 0)
             continue;
         if (CheckPowerSuitability(nSpellId, pSpell, a1, 0, 0, 0, 0, -1) != 1)
@@ -6179,7 +6166,7 @@ int CSWSCreatureStats::GetCreatureTalentRandomPowerFromItem(int a1, int a2, int&
                         if (nSlot != CSWItemProperty::UPGRADE_TYPE_NONE && (pItem->m_nUpgrades & (1 << nSlot)) == 0)
                             continue;
                         unsigned short nSpellId = pItem->GetActiveProperty(j)->m_subType;
-                        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+                        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
                         if (pSpell == 0)
                             continue;
                         if (CheckPowerSuitability(nSpellId, pSpell, a1, 0, 0, 0, 0, -1) != 1)
@@ -6236,7 +6223,7 @@ int CSWSCreatureStats::GetCreatureTalentRandomPowerFromItem(int a1, int a2, int&
                 if (nSlot != CSWItemProperty::UPGRADE_TYPE_NONE && (pItem->m_nUpgrades & (1 << nSlot)) == 0)
                     continue;
                 unsigned short nSpellId = pItem->GetActiveProperty(j)->m_subType;
-                CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+                CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
                 if (pSpell == 0)
                     continue;
                 int nFlags = pSpell->m_nCategory;
@@ -6385,7 +6372,7 @@ int CSWSCreatureStats::GetCreatureTalentRandomKnownPower(int a1, int a2, int& a3
     CExoArrayList<unsigned char>* pClasses = new CExoArrayList<unsigned char>;
     for (unsigned char j = 0; j < GetNumberKnownSpells(static_cast<unsigned char>(nClassIndex), 0); j++) {
         int nSpellId = GetKnownSpell(static_cast<unsigned char>(nClassIndex), 0, j);
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         if (pSpell == 0)
             continue;
 #if KOTOR1
@@ -6488,7 +6475,7 @@ int CSWSCreatureStats::GetCreatureTalentRandomKnownPower(int a1, int a2, int& a3
 // Whether the class slot knows the given spell.
 int CSWSCreatureStats::GetIsInKnownSpellList(unsigned char classIndex, unsigned int nSpellId)
 {
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     if (pSpell == 0)
         return 0;
     unsigned char nLevel = pSpell->GetSpellLevel(GetClass(classIndex));
@@ -6524,7 +6511,7 @@ unsigned char CSWSCreatureStats::GetSpellUsesLeft(unsigned int nSpellId, unsigne
     K2_UNUSED(a3); K2_UNUSED(a4);
     if (classIndex >= m_numClasses)
         return 0;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     if (pSpell == 0)
         return 0;
 #if KOTOR1
@@ -6584,13 +6571,13 @@ int CSWSCreatureStats::HasSpell(unsigned char nSpellLevel, unsigned int nSpellId
 #if KOTOR1
 // K1: the affordability test is the plain alignment and party cost.
     if (a != 0 && nFound != 0) {
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         int nCost = pSpell->GetAdjustedForcePoints(m_nAlignment, m_pOwner->m_bInParty, 0, 0, 0);
         return nCost <= static_cast<short>(m_nCurrentForcePoints + m_nTemporaryForcePoints);
     }
 #else
     if (a != 0 && nFound != 0) {
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         int nForceRating = 0;
         CSWSArea* pArea = static_cast<CSWSArea*>(m_pOwner->GetArea());
         if (pArea != 0)
@@ -6839,7 +6826,7 @@ int CSWSCreatureStats::CanChooseSpell(unsigned int nSpellId, unsigned char nSpel
 #endif
 {
     unsigned char nLastClass = m_numClasses - 1;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     if (pSpell == 0)
         return 0;
     if ((pSpell->m_nUserType | 4) != 5)
@@ -6940,27 +6927,9 @@ int CSWSCreatureStats::FeatAcquired(unsigned short nFeat, CExoArrayList<unsigned
     if (HasFeat(nFeat))
         return 1;
 #else
-    int nFound = 0;
-    int64_t nCount = m_feats.m_count;
-    if (nCount >= 1) {
-        unsigned short* pFeat = m_feats.m_pArray;
-        do {
-            nFound += (*pFeat == nFeat);
-            pFeat++;
-        } while (--nCount != 0);
-    }
-    if (nFound != 0)
+    if (m_feats.Contains(nFeat))
         return 1;
-    nFound = 0;
-    nCount = m_bonusFeats.m_count;
-    if (nCount >= 1) {
-        unsigned short* pFeat = m_bonusFeats.m_pArray;
-        do {
-            nFound += (*pFeat == nFeat);
-            pFeat++;
-        } while (--nCount != 0);
-    }
-    if (nFound != 0)
+    if (m_bonusFeats.Contains(nFeat))
         return 1;
 #endif
     if (pFeats != 0) {
@@ -7553,7 +7522,7 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
     if (nPortraitId >= CSWSObject::PORTRAIT_ID_CUSTOM) {
         // Calls SetPortraitId in both arms.
         m_pOwner->SetPortraitId(nPortraitId);
-        m_portrait = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Portrait"), success, m_portrait);
+        SetPortrait(pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Portrait"), success, m_portrait));
         // The copy's resref string is fetched and discarded.
         CResRef portraitCopy = m_portrait;
         portraitCopy.GetResRefStr();
@@ -7788,7 +7757,7 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
                         if (pGFF->GetListElement(&spellElem, &gainedList, j)) {
                             unsigned short nSpell =
                                 pGFF->ReadFieldWORD(&spellElem, const_cast<char*>("Spell"), success, 0xffff);
-                            pLvlStats->m_spellsGained.Add(nSpell);
+                            pLvlStats->AddAddedKnownSpell(0, nSpell);
                         }
                         j++;
                     }
@@ -7805,7 +7774,7 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
                         if (pGFF->GetListElement(&spellElem, &lostList, j)) {
                             unsigned short nSpell =
                                 pGFF->ReadFieldWORD(&spellElem, const_cast<char*>("Spell"), success, 0xffff);
-                            pLvlStats->m_spellsLost.Add(nSpell);
+                            pLvlStats->AddRemovedKnownSpell(0, nSpell);
                         }
                         j++;
                     }
@@ -8093,7 +8062,7 @@ void CSWSCreatureStats::AddKnownSpell(unsigned char nClass, unsigned int nSpell)
 {
     if (nClass >= m_numClasses)
         return;
-    if (g_pRules->m_pSpellArray->GetSpell(nSpell) == 0)
+    if (g_pRules->GetSpell(nSpell) == 0)
         return;
     if (m_bIsPC != 0 && !CSWClass::IsJedi(GetClass(nClass)))
         return;
@@ -8401,7 +8370,7 @@ void CSWSCreatureStats::SaveClassInfo(CResGFF* pGFF, CResStruct* pStruct)
 // Settles the force-point cost of a spell going un-ready.
 int CSWSCreatureStats::UnReadySpell(unsigned int nSpellId)
 {
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
 #if KOTOR1
 // K1: the cost comes out of the bonus pool first, then the main pool.
     int bResult = 0;

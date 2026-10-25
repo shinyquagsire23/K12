@@ -106,8 +106,6 @@ CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFol
     m_fReserved4 = 100.0f;
     m_fTilt = m_fPresetPitch;
 #else
-    m_fTiltSpeed = 0.0f;
-    m_fSavedTiltSpeed = 0.0f;
     m_fTurn = 0.0f;
     m_fTiltAccel = 0.0f;
     m_fTurnAccel = 0.0f;
@@ -119,14 +117,13 @@ CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFol
     // The start orientation is the target's local +Z in the XZ plane, the style's pitch, and no
     // roll.
     Quaternion qTarget = m_pTargetObject.m_pObject->GetOrientation();
-    Matrix mat = qTarget.getmatrix();
-    Vector vDir = normalize(Vector(mat.m_f[6], mat.m_f[7], mat.m_f[8]));
+    Vector vDir = normalize(qTarget.zdir());
     m_qDesiredOrientation = YawPitchRoll(Yaw(vDir), m_fPresetPitch, 0.0f);
     m_pOwner->SetOrientation(m_qDesiredOrientation);
 
     Vector vTarget = m_pTargetObject.m_pObject->GetPosition();
-    Vector vNew(vTarget.x - mat.m_f[3], vTarget.y - mat.m_f[4],
-                vTarget.z + 1.5f - mat.m_f[5]);
+    vTarget.z += 1.5f;
+    Vector vNew = vTarget - qTarget.ydir();
     m_pOwner->SetPosition(vNew);
 
     m_vLastCameraPosition = vNew;
@@ -145,6 +142,8 @@ CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFol
     m_bLookAtActive = 0;
 #if !KOTOR1  // K1 leaves m_fInterpAmount uninitialised
     m_fInterpAmount = 0.0f;
+    m_fTiltSpeed = 0.0f;
+    m_fSavedTiltSpeed = 0.0f;
 #endif
     m_bMouseRotating = g_bMouseCameraRotateToggle;
 }
@@ -182,15 +181,14 @@ CSWCameraOnAStick::CSWCameraOnAStick(CCameraSettings& settings)
 #endif
 
     Quaternion qTarget = m_pTargetObject.m_pObject->GetOrientation();
-    Matrix mat = qTarget.getmatrix();
-    Vector vDir = normalize(Vector(mat.m_f[6], mat.m_f[7], mat.m_f[8]));
+    Vector vDir = normalize(qTarget.zdir());
     m_qDesiredOrientation = YawPitchRoll(Yaw(vDir), m_fPresetPitch, 0.0f);
     // The camera starts at the target's own orientation, not at m_qDesiredOrientation.
     m_pOwner->SetOrientation(qTarget);
 
     Vector vTarget = m_pTargetObject.m_pObject->GetPosition();
-    Vector vNew(vTarget.x - mat.m_f[3], vTarget.y - mat.m_f[4],
-                vTarget.z + 1.5f - mat.m_f[5]);
+    vTarget.z += 1.5f;
+    Vector vNew = vTarget - qTarget.ydir();
 
     m_lookAtTargetId = OBJECT_INVALID;
     m_fShakeYaw = 0.0f;
@@ -424,14 +422,14 @@ Quaternion CSWCameraOnAStick::Control_SetCameraOrientation(float fDeltaTime)
 void CSWCameraOnAStick::Control_SetCameraInintalState()
 {
     Quaternion qTarget = m_pTargetObject.m_pObject->GetOrientation();
-    Matrix mat = qTarget.getmatrix();
 
-    Vector vDir = normalize(Vector(mat.m_f[6], mat.m_f[7], mat.m_f[8]));
+    Vector vDir = normalize(qTarget.zdir());
     m_qDesiredOrientation = YawPitchRoll(Yaw(vDir) + m_fShakeYaw, m_fShakeYaw + m_fPresetPitch, 0.0f);
     m_pOwner->SetOrientation(m_qDesiredOrientation);
 
     Vector vPos = m_pTargetObject.m_pObject->GetPosition();
-    Vector vNew(vPos.x - mat.m_f[3], vPos.y - mat.m_f[4], vPos.z + 1.5f - mat.m_f[5]);
+    vPos.z += 1.5f;
+    Vector vNew = vPos - qTarget.ydir();
     m_pOwner->SetPosition(vNew);
     m_vLastCameraPosition = vNew;
     m_vLastTargetPosition = vNew;
@@ -455,9 +453,7 @@ Quaternion CSWCameraOnAStick::Control_UpdateCameraDesiredOrientation(Quaternion 
             if (pLookAt != 0) {
                 Vector vTargetPos = m_pTargetObject.m_pObject->GetPosition();
 
-                Matrix mat = qDesired.getmatrix();
-                Vector vAxis(mat.m_f[3], mat.m_f[4], mat.m_f[5]);
-                Vector vCross = cross(zaxis, vAxis);
+                Vector vCross = cross(zaxis, qDesired.ydir());
 
                 Vector vDir(pLookAt->m_position.x - vTargetPos.x,
                             pLookAt->m_position.y - vTargetPos.y,
@@ -651,8 +647,7 @@ int CSWCameraOnAStick::Control(float fParam)
     m_qDesiredOrientation = Control_UpdateCameraDesiredOrientation(m_qDesiredOrientation, fParam);
 
     Vector vOwnerPos = m_pOwner->GetPosition();
-    Vector vTargetPos = m_pTargetObject.m_pObject->GetPosition();
-    Vector vTarget(vTargetPos.x, vTargetPos.y, vTargetPos.z + m_fCameraOffset);
+    Vector vTarget = GetTargetHeadPosition();
     Vector vDesired = Control_ComputeDesiredPosition(vTarget);
 
     m_fInterpAmount = Control_AccelerateInterp(m_fInterpAmount, CameraInterpAmt1, m_fInterpClip,
@@ -725,14 +720,13 @@ void CSWCameraOnAStick::ChangeTarget(CAurObject* pTarget, int bFindClearView)
     // The look direction in the XZ plane is the negated +X row of the target's matrix.
     Quaternion qTarget;
     Quaternion qOwner;
+    Vector vDir;
     qTarget = m_pTargetObject.m_pObject->GetOrientation();
     qOwner = m_pOwner->GetOrientation();
     m_pOwner->SetOrientation(YawPitchRoll(Yaw(qTarget), Pitch(qOwner), Roll(qOwner)));
 
-    Matrix mat = qTarget.getmatrix();
-    Vector vDir;
-    vDir.x = -mat.m_f[3];
-    vDir.y = -mat.m_f[4];
+    vDir = -qTarget.ydir();
+    vDir.z = 0.0f;
     vDir.Normalize();
 
     Vector vPos = m_pTargetObject.m_pObject->GetPosition();
@@ -1029,8 +1023,7 @@ int CSWCameraDeath::Control(float fDelta)
 
         // Pull back along the aim's own forward axis, the rotation's third column, by the relaxed
         // distance.
-        Matrix mat = q.getmatrix();
-        Vector vEnd = vPos + Vector(mat.m_f[6], mat.m_f[7], mat.m_f[8]) * (fDist + fApproach);
+        Vector vEnd = vPos + q.zdir() * (fDist + fApproach);
 
         // The wall probe runs from the target out past the camera by 25 percent of that reach; on a
         // hit the camera stops 25 percent into the surface the scene reported.
@@ -1188,10 +1181,9 @@ int CSWCameraNavigate::Control(float fParam)
 
         // The tilt and forward speed flip once the camera's up axis has rolled past the horizon. The
         // matrix comes from the owner's orientation, not the aimed rotation below.
-        Matrix matUp = m_pOwner->GetOrientation().getmatrix();
-        Vector vUp(matUp.m_f[6], matUp.m_f[7], matUp.m_f[8]);
+        Vector vUp = m_pOwner->GetOrientation().zdir();
         Vector vWorldUp(0.0f, 0.0f, 1.0f);
-        float fUp = vUp.x * vWorldUp.x + vUp.y * vWorldUp.y + vUp.z * vWorldUp.z;
+        float fUp = dot(vUp, vWorldUp);
         float fSign;
         if (fUp >= 0.0f)
             fSign = -1.0f;
@@ -1336,8 +1328,7 @@ Vector CSWCameraOnAStick::Control_HitCheckCamera(Vector vNewPosition)
         hitInfo.ClearOutput();
 
         // The followed object's own position, lifted by the camera's height offset.
-        Vector vObjPos = m_pTargetObject.m_pObject->GetPosition();
-        Vector vStart(vObjPos.x, vObjPos.y, vObjPos.z + m_fCameraOffset);
+        Vector vStart = GetTargetHeadPosition();
 
         // Let the server shorten the line past creatures; a wall between the two points does not move
         // it. The shortened endpoint carries forward.
@@ -1418,9 +1409,8 @@ Vector CSWCameraOnAStick::Control_HitCheckCamera(Vector vNewPosition)
 
         Vector vLine = normalize(vAway);
 
-        // The target's own local +Z, as one full expression over the rotation's third row.
-        Vector vAxis = normalize(
-            Vector(m_pTargetObject.m_pObject->GetOrientation().getmatrix().Rows()[2]));
+        // The target's own local +Z.
+        Vector vAxis = normalize(m_pTargetObject.m_pObject->GetOrientation().zdir());
 
         // The lift grows with the fraction of the line the hit consumed.
         float fLift = (fDist / fBest) * (CameraPersonalSpace + 0.15f);
@@ -1633,12 +1623,7 @@ int CSWBehaviorCameraFollow::Control(float fParam) {
 
     float fBlend = 1.0f - exp2f(-m_fFOV * fParam);
 
-    Vector vTargetPos = pTarget->GetPosition();
-    Vector vPos = Vector{
-        (vTargetPos.x + m_vOffset.x) * fBlend + m_vFollowPosition.x * (1.0f - fBlend),
-        (vTargetPos.y + m_vOffset.y) * fBlend + m_vFollowPosition.y * (1.0f - fBlend),
-        (vTargetPos.z + m_vOffset.z) * fBlend + m_vFollowPosition.z * (1.0f - fBlend)
-    };
+    Vector vPos = (pTarget->GetPosition() + m_vOffset) * fBlend + m_vFollowPosition * (1.0f - fBlend);
 
     qGoal = YawPitchRoll(m_fYaw, m_fPitch, 0.0f);
     // The owner is re-read for each call pair rather than hoisted into one local.
@@ -1648,18 +1633,7 @@ int CSWBehaviorCameraFollow::Control(float fParam) {
     pOwner->SetOrientation(qCam);
 
     pOwner = m_pOwner;
-    qCam = pOwner->GetOrientation();
-    Vector vDir = Vector{
-        2.0f * (qCam.x * qCam.z + qCam.w * qCam.y),
-        2.0f * (qCam.z * qCam.y - qCam.x * qCam.w),
-        1.0f - 2.0f * (qCam.x * qCam.x + qCam.y * qCam.y)
-    };
-
-    pOwner->SetPosition(Vector{
-        vPos.x + vDir.x * m_fDist,
-        vPos.y + vDir.y * m_fDist,
-        vPos.z + vDir.z * m_fDist
-    });
+    pOwner->SetPosition(vPos + pOwner->GetOrientation().zdir() * m_fDist);
 
     m_vFollowPosition = vPos;
     return 1;

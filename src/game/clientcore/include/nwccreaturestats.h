@@ -51,14 +51,6 @@ struct CSWCCreatureStats_FeatUse {
     unsigned char  _pad03;
 };
 
-template <class T> struct CSWCCreatureStats_OwningArray {
-    T* m_pData;
-    ~CSWCCreatureStats_OwningArray() { delete[] m_pData; m_pData = 0; }
-    operator T*() const { return m_pData; }
-    T& operator[](int64_t i) const { return m_pData[i]; }
-    CSWCCreatureStats_OwningArray& operator=(T* p) { m_pData = p; return *this; }
-};
-
 class CSWCCreatureStats {
 public:
 #if KOTOR1
@@ -189,6 +181,11 @@ public:
     int  GetCreatureChallengeRating(CSWCCreature* pCreature);
     CExoString GetFirstName();
     CExoString GetLastName();
+    void SetName(const CExoString& sFirstName, const CExoString& sLastName)
+    {
+        m_name = sFirstName;
+        m_sLastName = sLastName;
+    }
 #if KOTOR1  // K1 only
     CExoString GetFullName();
 #endif

@@ -30,6 +30,7 @@
 
 #include "KotorProgram.h"
 #include "aurglcore.h"
+#include "port/glconst.h"
 
 #ifndef _MSC_VER
 #include <cxxabi.h>
@@ -63,12 +64,11 @@ unsigned char g_useDistortionOutput;
 
 namespace {
 
+// The rest come from glconst.h.
 enum {
-    GL_LIGHTING = 0x0b50, GL_FOG = 0x0b60, GL_FOG_START = 0x0b63, GL_FOG_END = 0x0b64,
-    GL_FOG_COLOR = 0x0b66, GL_ALPHA_TEST = 0x0bc0, GL_GREATER = 0x0204, GL_GEQUAL = 0x0206,
-    GL_COLOR_ARRAY = 0x8076, GL_VERTEX_PROGRAM_ARB = 0x8620, GL_FRAGMENT_PROGRAM_ARB = 0x8804,
-    GL_MODELVIEW_MATRIX = 0x0ba6, GL_PROJECTION_MATRIX = 0x0ba7, GL_CURRENT_PROGRAM = 0x8b8d,
-    GL_BLEND = 0x0be2, GL_BLEND_DST_RGB = 0x80c8, GL_ONE = 1,
+    GL_FOG = 0x0b60, GL_FOG_START = 0x0b63, GL_FOG_END = 0x0b64, GL_FOG_COLOR = 0x0b66,
+    GL_ALPHA_TEST = 0x0bc0, GL_GREATER = 0x0204, GL_GEQUAL = 0x0206,
+    GL_PROJECTION_MATRIX = 0x0ba7, GL_CURRENT_PROGRAM = 0x8b8d, GL_BLEND_DST_RGB = 0x80c8, GL_ONE = 1,
 };
 
 // Client-array shadows. Only the colour array's enable flag and the two skinning attributes are

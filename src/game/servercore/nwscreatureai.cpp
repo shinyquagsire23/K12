@@ -835,7 +835,7 @@ int CSWSCreature::AIActionHeal(CSWSObjectActionNode* pNode)
         return ACTION_FAILED;
 #else
     GetDead();
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)
+    if (GetDeadTemp() == 1)
         return ACTION_FAILED;
 #endif
 
@@ -1016,7 +1016,7 @@ int CSWSCreature::AIActionEquipItem(CSWSObjectActionNode* pNode)
     if (GetDead() == 0 && GetIsPCDying() == 0 && GetDeadTemp() == 0 &&
 #else
     if (GetDead() == 0 &&
-        (m_bInParty == 0 || GetCurrentHitPoints(0) >= 1) &&
+        GetDeadTemp() == 0 &&
 #endif
         RunEquip(itemId, nSlot, bEquipFlag) == 1)
         return ACTION_COMPLETE;
@@ -1044,7 +1044,7 @@ int CSWSCreature::AIActionUnequipItem(CSWSObjectActionNode* pNode)
     int bUnequipMessageFlag = pNode->m_args.m_bCheckMoveAwayRun;
     int bStack = pNode->m_args.m_nCheckMoveToObjParam;
     if (GetDead() == 0 &&
-        (m_bInParty == 0 || GetCurrentHitPoints(0) >= 1) &&
+        GetDeadTemp() == 0 &&
         RunUnequip(itemId, itemId2, bStack, 0, nEquipFlag, bUnequipMessageFlag) == 1)
         return ACTION_COMPLETE;
 #endif
@@ -1060,7 +1060,7 @@ int CSWSCreature::AIActionChangeFacingPoint(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     Vector vDelta;
@@ -1360,7 +1360,7 @@ int CSWSCreature::AIActionWaitForEndOfRound(CSWSObjectActionNode* pActionNode)
     if (GetIsPCDying() == 1 || GetDeadTemp() == 1)
         return ACTION_FAILED;
 #else
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) < 1)
+    if (GetDeadTemp() == 1)
         return ACTION_FAILED;
 #endif
     if (m_pCombatRound->m_bRoundStarted == 1 && m_pCombatRound->GetSpellActionPending() == 0)
@@ -1509,9 +1509,7 @@ int CSWSCreature::AIActionPickUpItem(CSWSObjectActionNode* pNode)
 #else
     if (GetDead() != 1)
     {
-        int bIncapacitated = 0;
-        if (m_bInParty != 0)
-            bIncapacitated = (GetCurrentHitPoints(0) <= 0);
+        int bIncapacitated = GetDeadTemp();
         if (bIncapacitated != 0 || pItem == 0)
         {
             if (pMessage != 0 && pPlayer != 0)
@@ -1612,7 +1610,7 @@ int CSWSCreature::AIActionDropItem(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
         if (GetIsPCDying() != 1 && GetDeadTemp() != 1)
 #else
-        if (m_bInParty == 0 || GetCurrentHitPoints(0) > 0)
+        if (GetDeadTemp() != 1)
 #endif
         {
             CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidItem);
@@ -2287,7 +2285,7 @@ recovered:
             // The party's own recovery pays XP: 15x the player's level for a hard trap, 10x
             // otherwise.
             CServerExoApp* pApp = g_pAppManager->m_pServerExoApp;
-            CSWSCreature* pPlayer = pApp->GetCreatureByGameObjectID(pApp->GetPlayerCreatureId());
+            CSWSCreature* pPlayer = pApp->GetPlayerCreature();
             int nHardDC = pPlayer->m_pStats->GetLevel(0) + 20;
             if (nDC < nHardDC)
                 nXP = 10 * pPlayer->m_pStats->GetLevel(0);
@@ -2542,7 +2540,7 @@ removed:
     if (m_bInParty != 0)
     {
         CServerExoApp* pApp = g_pAppManager->m_pServerExoApp;
-        CSWSCreature* pPlayer = pApp->GetCreatureByGameObjectID(pApp->GetPlayerCreatureId());
+        CSWSCreature* pPlayer = pApp->GetPlayerCreature();
         int nHardDC = pPlayer->m_pStats->GetLevel(0) + 20;
         int nXP = pPlayer->m_pStats->GetLevel(0) * ((nDC < nHardDC) ? 10 : 15);
         g_pAppManager->m_pServerExoApp->GetPartyTable()->DistributeExperience(nXP, 1);
@@ -3571,7 +3569,7 @@ int CSWSCreature::AIActionDrive(CSWSObjectActionNode* pNode)
     if (GetIsPCDying() == 1 || GetDeadTemp() == 1)
         return ACTION_FAILED;
 #else
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)
+    if (GetDeadTemp() == 1)
         return ACTION_FAILED;
 #endif
 
@@ -3916,7 +3914,7 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
     if (GetIsPCDying() != 0 || GetDeadTemp() != 0)
         return ACTION_COMPLETE;
 #else
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) < 1)
+    if (GetDeadTemp() != 0)
         return ACTION_COMPLETE;
 #endif
 
@@ -4474,16 +4472,6 @@ int CSWSCreature::UpdateSubareasOnJumpPosition(const Vector& vPos, unsigned long
     return 0;
 }
 
-static int CountInSubAreaList(CExoArrayList<unsigned long long>* pList, unsigned long long objectId)
-{
-    int nFound = 0;
-    for (int64_t i = 0; i < pList->m_count; i++) {
-        if (pList->m_pArray[i] == objectId)
-            nFound++;
-    }
-    return nFound;
-}
-
 int CSWSCreature::HandleSubAreaStateChanges(CExoArrayList<unsigned long long>* pNew,
                                             CExoArrayList<unsigned long long>* pCrossed,
                                             int bCheckAreaTransitions, int bRunScripts)
@@ -4493,7 +4481,7 @@ int CSWSCreature::HandleSubAreaStateChanges(CExoArrayList<unsigned long long>* p
 
     // Subareas we were standing in that the new set drops -> fire OnExit.
     for (int64_t i = 0; i < m_currentSubareaIds.m_count; i++) {
-        if (CountInSubAreaList(pNew, m_currentSubareaIds.m_pArray[i]) != 0)
+        if (pNew->Contains(m_currentSubareaIds.m_pArray[i]) != 0)
             continue;
 
         CGameObject* pObject;
@@ -4517,7 +4505,7 @@ int CSWSCreature::HandleSubAreaStateChanges(CExoArrayList<unsigned long long>* p
     // area transition, which vetoes the whole update.
     for (int64_t i = 0; i < pNew->m_count; i++) {
         unsigned long long objectId = pNew->m_pArray[i];
-        if (CountInSubAreaList(&m_currentSubareaIds, objectId) != 0)
+        if (m_currentSubareaIds.Contains(objectId) != 0)
             continue;
 
         CGameObject* pObject;
@@ -4557,10 +4545,10 @@ int CSWSCreature::HandleSubAreaStateChanges(CExoArrayList<unsigned long long>* p
     for (int64_t i = 0; i < pCrossed->m_count; i++) {
         unsigned long long objectId = pCrossed->m_pArray[i];
 
-        int nInCurrent = CountInSubAreaList(&m_currentSubareaIds, objectId);
+        int nInCurrent = m_currentSubareaIds.Contains(objectId);
         if (nInCurrent != 0) {
             // Was inside and still is, so it was left and re-entered.
-            if (CountInSubAreaList(pNew, objectId) == 0)
+            if (pNew->Contains(objectId) == 0)
                 continue;
 
             CGameObject* pObject;
@@ -4588,7 +4576,7 @@ int CSWSCreature::HandleSubAreaStateChanges(CExoArrayList<unsigned long long>* p
         }
         if (nInCurrent == 0) {
             // Was outside and still is, so it was entered and left again.
-            if (CountInSubAreaList(pNew, objectId) != 0)
+            if (pNew->Contains(objectId) != 0)
                 continue;
 
             CGameObject* pObject;
@@ -4803,7 +4791,7 @@ int CSWSCreature::AIActionCounterSpell(CSWSObjectActionNode* pNode)
         return ACTION_FAILED;
 #else
     GetDead();  // result unused
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)
+    if (GetDeadTemp() == 1)
         return ACTION_FAILED;
 #endif
     ActivityManager(4);
@@ -4815,7 +4803,7 @@ int CSWSCreature::AIActionCounterSpell(CSWSObjectActionNode* pNode)
     if (pTarget->GetIsPCDying() != 0 || pTarget->GetDeadTemp() != 0)
         return ACTION_FAILED;
 #else
-    if (pTarget->m_bInParty != 0 && pTarget->GetCurrentHitPoints(0) <= 0)
+    if (pTarget->GetDeadTemp() != 0)
         return ACTION_FAILED;
 #endif
     CSWSArea* pArea = static_cast<CSWSArea*>(pTarget->GetArea());
@@ -4867,9 +4855,7 @@ int CSWSCreature::AIActionStanceTotalDefense(CSWSObjectActionNode* pNode)
             pClient->ServerToClientObjectId(m_objectId));
         if (nIndex >= 0)
             pClient->GetSWParty()->m_members[nIndex].SetCombatMessage(STRREF_COMBAT_MODE_ENGAGED);
-        // The re-test is dead, since the outer clause already proved it non-zero.
-        if (m_bInParty != 0)
-            bAlive = GetCurrentHitPoints(0) > 0;
+        bAlive = GetDeadTemp() == 0;
     }
     if (GetDead() == 0 && bAlive != 0 && m_pCombatRound != 0) {
         if (g_pAppManager->m_pServerExoApp->GetPauseState(2) != 0
@@ -4931,6 +4917,7 @@ int CSWSCreature::AIActionStanceTotalDefense(CSWSObjectActionNode* pNode)
 int CSWSCreature::AIActionStanceMeditative(CSWSObjectActionNode* pNode)
 {
     K2_UNUSED(pNode);
+    // inlined CSWSCreature::GetDeadTemp()
     int bAlive = 1;
     if (m_bInParty != 0)
         bAlive = GetCurrentHitPoints(0) > 0;
@@ -4972,7 +4959,7 @@ int CSWSCreature::AIActionPartyFollowLeader(CSWSObjectActionNode* pNode)
     }
 #else
     if (m_bInParty == 0 || m_pFollowInfo == 0 || GetDead() == 1 ||
-        (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0) ||
+        GetDeadTemp() == 1 ||
         m_pPathfindInfo == 0 || !(m_nAIState & AI_STATE_MOBILE)) {
         return ACTION_FAILED;
     }
@@ -4992,7 +4979,7 @@ int CSWSCreature::AIActionFollowOwner(CSWSObjectActionNode* pNode)
 {
     if (m_isPuppet == 0 || GetDead() != 0)
         return ACTION_FAILED;
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)
+    if (GetDeadTemp() != 0)
         return ACTION_FAILED;
     if (!(m_nAIState & AI_STATE_MOBILE))
         return ACTION_FAILED;
@@ -5033,7 +5020,7 @@ int CSWSCreature::AIActionEncounterCreatureDestroySelf()
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1) {
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)) {
+    if (GetDead() == 1 || GetDeadTemp() == 1) {
 #endif
         return ACTION_FAILED;
     }
@@ -5077,7 +5064,7 @@ int CSWSCreature::AIActionMoveToPoint(CSWSObjectActionNode* pNode)
     if (GetIsPCDying() == 1 || GetDeadTemp() == 1)
         return ACTION_FAILED;
 #else
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)
+    if (GetDeadTemp() == 1)
         return ACTION_FAILED;
 #endif
     if (m_bVisibleToPlayer != 0) {
@@ -5745,9 +5732,7 @@ blocked:
             m_pPathfindInfo->m_nAvoidSide = avoid.m_nSide;
             nSide = m_pPathfindInfo->m_nAvoidSide;
         }
-        float fDot = m_orientation.x * pBlocker->m_orientation.x +
-                     m_orientation.y * pBlocker->m_orientation.y +
-                     m_orientation.z * pBlocker->m_orientation.z;
+        float fDot = dot(m_orientation, pBlocker->m_orientation);
         pBlocker->m_pPathfindInfo->m_nAvoidSide = fDot < 0.0f ? nSide : (nSide == 0);
         if (nAvoid != CAvoidCreature::AVOIDCREATURE_ENDINHEX)
             return 0;
@@ -6929,7 +6914,7 @@ int CSWSCreature::AIActionChangeFacingObject(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     unsigned long long oidTarget = pNode->m_args.m_facingTargetId;
@@ -7058,7 +7043,7 @@ int CSWSCreature::AIActionForceFollowObject(CSWSObjectActionNode* pNode)
     if (GetIsPCDying() != 0 || GetDeadTemp() != 0)
         return ACTION_FAILED;
 #else
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)
+    if (GetDeadTemp() != 0)
         return ACTION_FAILED;
 #endif
 
@@ -7153,7 +7138,7 @@ int CSWSCreature::AIActionCheckMoveAwayFromLocation(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
@@ -7188,7 +7173,7 @@ int CSWSCreature::AIActionCheckMoveToObject(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     unsigned long long oidTarget = pNode->m_args.m_moveToObjectId;
@@ -7228,7 +7213,7 @@ int CSWSCreature::AIActionCheckMoveToObjectRadius(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     unsigned long long oidTarget = pNode->m_args.m_moveToObjectId;
@@ -7285,7 +7270,7 @@ int CSWSCreature::AIActionCheckMoveToPoint(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     if (!(m_nAIState & AI_STATE_MOBILE))
@@ -7328,7 +7313,7 @@ int CSWSCreature::AIActionCheckMoveToPointRadius(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     float fX = pNode->m_args.m_moveToX;
@@ -7369,7 +7354,7 @@ int CSWSCreature::AIActionCheckMoveToFollowRadius(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     float fX = pNode->m_args.m_moveToX;
@@ -7509,7 +7494,7 @@ int CSWSCreature::AIActionCheckMoveAwayFromObject(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     unsigned long long oidTarget = pNode->m_args.m_moveAwayObjectId;
@@ -7571,7 +7556,7 @@ int CSWSCreature::AIActionCheckInterAreaPathfinding(CSWSObjectActionNode* pNode)
         return ACTION_FAILED;
     }
 #else
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0) {
+    if (GetDeadTemp() == 1) {
         return ACTION_FAILED;
     }
 #endif
@@ -7631,7 +7616,7 @@ int CSWSCreature::AIActionJumpToObject(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     if (m_pPathfindInfo == 0)
@@ -7734,7 +7719,7 @@ int CSWSCreature::AIActionJumpToPoint(CSWSObjectActionNode* pNode)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1)
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
+    if (GetDead() == 1 || GetDeadTemp() == 1)
 #endif
         return ACTION_FAILED;
     if (m_pPathfindInfo == 0)
@@ -7968,7 +7953,7 @@ int CSWSCreature::AIActionItemCastSpell(CSWSObjectActionNode* pAction)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1) {
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)) {
+    if (GetDead() == 1 || GetDeadTemp() == 1) {
 #endif
         SetAnimation(SERVER_ANIMATION_PAUSE);
         m_bItemCastStarted = 0;
@@ -8001,11 +7986,7 @@ int CSWSCreature::AIActionItemCastSpell(CSWSObjectActionNode* pAction)
             if (pObj->AsSWSCreature()->GetDead() != 0)
                 goto castFailed;
             CSWSCreature* pBlocker = pObj->AsSWSCreature();
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
             if (pBlocker->GetDeadTemp() != 0)
-#else
-            if (pBlocker->m_bInParty != 0 && pBlocker->GetCurrentHitPoints(0) <= 0)
-#endif
                 goto castFailed;
         }
 
@@ -8027,7 +8008,7 @@ int CSWSCreature::AIActionItemCastSpell(CSWSObjectActionNode* pAction)
 #else
         int nSpellId = ConvertGrenadeSpellID(pProperty->m_subType);
 #endif
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         if (pSpell == 0)
             goto castFailed;
         if (pSpell->m_bHostileActivity != 0) {
@@ -8304,7 +8285,7 @@ int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() == 1 || GetIsPCDying() == 1 || GetDeadTemp() == 1) {
 #else
-    if (GetDead() == 1 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)) {
+    if (GetDead() == 1 || GetDeadTemp() == 1) {
 #endif
         RemoveSpellActionFromRound();
         ProcessPendingCombatActions();
@@ -8339,7 +8320,7 @@ int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
         SetLockOrientationToObject(oidTarget, 0);
     }
 
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     if (pSpell == 0) {
         RemoveSpellActionFromRound();
         ProcessPendingCombatActions();
@@ -8376,11 +8357,7 @@ int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
         if (pObj->AsSWSCreature()->GetDead() != 0)
             goto castBlocked;
         pBlocker = pObj->AsSWSCreature();
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
         if (pBlocker->GetDeadTemp() != 0) {
-#else
-        if (pBlocker->m_bInParty != 0 && pBlocker->GetCurrentHitPoints(0) <= 0) {
-#endif
 castBlocked:
             RemoveSpellActionFromRound();
             ProcessPendingCombatActions();

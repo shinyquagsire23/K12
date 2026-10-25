@@ -400,9 +400,6 @@ void CAurGUIStringInternal::UpdateFontScale() {
 // The ASL GL wrapper for this file.
 
 // Indices into the GL translation tables for the capabilities, primitive types and matrix modes
-// this layer uses.
-enum { kCapScissorTest = 0, kCapTexture2D = 4, kCapCullFace = 5, kCapBlend = 11 };
-enum { kPrimQuads = 6, kPrimLineLoop = 9 };
 
 // The characters 0x10..0x16 are the controller-button glyphs.
 enum { kPadGlyphFirst = 0x10, kPadGlyphCount = 7 };
@@ -410,10 +407,6 @@ enum { kPadGlyphFirst = 0x10, kPadGlyphCount = 7 };
 // An image's flip bits (the a argument of the Draw family).
 enum { kImageFlipMask = 0xc, kImageFlipV = 0x4, kImageFlipH = 0x8 };
 
-extern unsigned int enableTranslationTable[];
-extern unsigned int primTypeTranslationTable[];
-extern const int transformTranslationTable[];
-extern unsigned int blendTranslationTable[];
 int noguirender;
 
 short CAurGUIDraw::cm_nCurrentViewport;
@@ -438,7 +431,7 @@ float GetViewportAlpha() {
 // 0..1 NDC projection is installed so every widget can position in normalized units.
 void AurGUIStartLayer() {
     int anViewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT, anViewport);
+    GLRender::GetViewPort(anViewport);
 
     CAurGUIDraw::cm_nViewportStack[0].nX = static_cast<short>(anViewport[0]);
     CAurGUIDraw::cm_nViewportStack[0].nY = static_cast<short>(anViewport[1]);
@@ -448,28 +441,28 @@ void AurGUIStartLayer() {
     CAurGUIDraw::cm_fViewportAlpha[0] = 1.0f;
     CAurGUIDraw::cm_nCurrentViewport = 0;
 
-    ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Disable(Aurora::kCapDepthTest);
 
-    ASLgl::glMatrixMode(transformTranslationTable[0]);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(transformTranslationTable[2]);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
     ASLgl::glLoadIdentity();
 
-    ASLgl::glEnable(enableTranslationTable[kCapScissorTest]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 }
 
 // Pops the layer; -1 in the 16-bit index marks it as not current any more.
 void AurGUIStopLayer() {
     CAurGUIDraw::cm_nCurrentViewport = -1;
-    ASLgl::glMatrixMode(transformTranslationTable[0]);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(transformTranslationTable[2]);
-    ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapDepthTest);
 }
 
 // Pushes one scissor sub-viewport: clips the rectangle against the screen, accumulates it onto the
@@ -526,21 +519,21 @@ int AurGUISetupViewport(int x, int y, int w, int h, const Vector& vColor, bool b
                                (static_cast<unsigned int>(static_cast<int>(fGreen * 255.0f)) << 8) |
                                (static_cast<unsigned int>(static_cast<int>(fBlue * 255.0f)) << 16);
         unsigned int nColor = equal(vColor, Vector(-2.0f, -2.0f, -2.0f)) ? kColourTranslucentBlack : nPacked;
-        ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-        ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
-        ASLgl::glBegin(primTypeTranslationTable[kPrimQuads]);
+        GLRender::Disable(Aurora::kCapTexture2D);
+        GLRender::Disable(Aurora::kCapLighting);
+        GLRender::BeginImmediatePrimitive(Aurora::kPrimQuads);
         ASLgl::glColor4ubv(reinterpret_cast<const unsigned char*>(&nColor));
         ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
         ASLgl::glVertex4f(1.0f, 0.0f, 0.0f, 1.0f);
         ASLgl::glVertex4f(1.0f, 1.0f, 0.0f, 1.0f);
         ASLgl::glVertex4f(0.0f, 1.0f, 0.0f, 1.0f);
         ASLgl::glEnd();
-        ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
-        ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
+        GLRender::Enable(Aurora::kCapTexture2D);
+        GLRender::Enable(Aurora::kCapLighting);
     }
     if (bClear) {
         ASLgl::glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+        GLRender::Enable(Aurora::kCapDepthTest);
     }
     return 1;
 }
@@ -564,9 +557,9 @@ void AurGUICloseViewport() {
     ASLgl::glViewport(viewport.nX, nBottom, viewport.nWidth, viewport.nHeight);
 
     if (CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport].bBlend)
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+        GLRender::Enable(Aurora::kCapDepthTest);
     else
-        ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+        GLRender::Disable(Aurora::kCapDepthTest);
 }
 
 // Draws the debug outline of the object's bounding rect as a GL line loop in NDC. The pixel corners
@@ -577,9 +570,9 @@ void CAurGUIStringInternal::DrawBoundingRect(Vector, float) {
         return;
     }
 
-    ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
-    ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glDisable(enableTranslationTable[kCapScissorTest]);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Disable(Aurora::kCapTexture2D);
+    GLRender::Disable(Aurora::kCapBlend);
 
     const CAurGUIDraw::Viewport& viewport =
         CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport];
@@ -590,7 +583,7 @@ void CAurGUIStringInternal::DrawBoundingRect(Vector, float) {
     float fBottom = 1.0f - static_cast<float>(m_positionY + m_sizeY) / fHeight;
     float fRight = static_cast<float>(m_positionX + m_sizeX) / fWidth;
 
-    ASLgl::glBegin(primTypeTranslationTable[kPrimLineLoop]);
+    GLRender::BeginImmediatePrimitive(Aurora::kPrimLineLoop);
     unsigned char anColor[4] = { 0x66, 0xa5, 0xe5, 0xff };
     ASLgl::glColor4ubv(anColor);
     ASLgl::glVertex4f(fLeft, fTop, 0.0f, 1.0f);
@@ -600,9 +593,9 @@ void CAurGUIStringInternal::DrawBoundingRect(Vector, float) {
     ASLgl::glVertex4f(fLeft, fBottom, 0.0f, 1.0f);
     ASLgl::glEnd();
 
-    ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
-    ASLgl::glEnable(enableTranslationTable[kCapScissorTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Enable(Aurora::kCapTexture2D);
 }
 
 // The four float-overload bounding-rect accessors convert between the object's raw pixel
@@ -1003,7 +996,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
     if (CAurGUIStringInternal::GetStringSize() == 0 || noguirender)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
+    GLRender::Disable(Aurora::kCapLighting);
     GLRender::cm_bEnablePausePlane = 0;
 
     if (m_positionX == 0 && m_sizeX == 0)
@@ -1062,7 +1055,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
         m_spFontTextureD2.m_pObject->Bind();
 #endif
 
-    ASLgl::glBegin(primTypeTranslationTable[kPrimQuads]);
+    GLRender::BeginImmediatePrimitive(Aurora::kPrimQuads);
 
 #ifdef K2_HOST_BUILD
     float fHalfTexelV = 0.0f;
@@ -1320,7 +1313,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
     }
 
     ASLgl::glEnd();
-    ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
+    GLRender::Enable(Aurora::kCapLighting);
 #else
     static volatile float s_skipXAmount = 0.01125f;   // the gap a gamepad glyph leaves behind
 
@@ -1329,7 +1322,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
     if (CAurGUIStringInternal::GetStringSize() == 0 || noguirender)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
+    GLRender::Disable(Aurora::kCapLighting);
     GLRender::cm_bEnablePausePlane = 0;
 
     if (m_positionX == 0 && m_sizeX == 0)
@@ -1417,7 +1410,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
         apTextures[0]->Bind();
 #endif
 
-    ASLgl::glBegin(primTypeTranslationTable[kPrimQuads]);
+    GLRender::BeginImmediatePrimitive(Aurora::kPrimQuads);
 
     float fGlyphScale = pFontInfo->m_fWidthScale * m_fFontScale * 100.0f;
     float fUnitX =
@@ -1601,7 +1594,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
     }
 
     ASLgl::glEnd();
-    ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
+    GLRender::Enable(Aurora::kCapLighting);
 #endif
 }
 
@@ -1777,7 +1770,7 @@ CAurGUIImageInternal::~CAurGUIImageInternal()
 // alpha and makes the GUI texture current first.
 void CAurGUIImage::FlushBuffer(float fAlpha) {
     if (cm_nGUIBufferSizeUsed >= 1) {
-        ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
+        GLRender::Disable(Aurora::kCapLighting);
         GLRender::cm_bEnablePausePlane = 0;
         AurTextureMakeCurrent();
         if (cm_pMaterial != 0) {
@@ -1793,7 +1786,7 @@ void CAurGUIImage::FlushBuffer(float fAlpha) {
             RenderVertexVT* paVerts = reinterpret_cast<RenderVertexVT*>(cm_fGUIBuffer);
             GLRender::RenderObjectsVTQuadUP(paVerts, cm_nGUIBufferSizeUsed / 5);
         }
-        ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
+        GLRender::Enable(Aurora::kCapLighting);
     }
     cm_nGUIBufferSizeUsed = 0;
 }
@@ -1943,7 +1936,7 @@ void CAurGUIImageInternal::Draw(float x, float y, float w, float h, unsigned cha
     float fV = 0.5f / static_cast<float>(nFrameHeight);
 #endif
 
-    ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
+    GLRender::Disable(Aurora::kCapLighting);
     m_pMaterial->SetGUIBlendingMode();
 
     float fUV[4][2];
@@ -1967,7 +1960,7 @@ void CAurGUIImageInternal::Draw(float x, float y, float w, float h, unsigned cha
     fUV[anUV[3]][1] = 1.0f - fV;
 #endif
 
-    ASLgl::glBegin(primTypeTranslationTable[kPrimQuads]);
+    GLRender::BeginImmediatePrimitive(Aurora::kPrimQuads);
 
     if (equal(v, Vector(-1.0f, -1.0f, -1.0f))) {
         float fViewportAlpha = GetViewportAlpha() * fAlpha;
@@ -1996,7 +1989,7 @@ void CAurGUIImageInternal::Draw(float x, float y, float w, float h, unsigned cha
 
     ASLgl::glEnd();
     ASLgl::glPopMatrix();
-    ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
+    GLRender::Enable(Aurora::kCapLighting);
 }
 
 // Appends four vertices to the shared deferred GUI bank (CAurGUIImage::cm_fGUIBuffer) instead of

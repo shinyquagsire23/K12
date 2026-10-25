@@ -77,6 +77,15 @@ public:
         return count;
     }
 
+    // Like Contains, but stops at the first match and returns 1.
+    int ContainsFast(T v) const
+    {
+        for (int i = 0; i < m_count; i++)
+            if (m_pArray[i] == v)
+                return 1;
+        return 0;
+    }
+
     // Like Contains, but compares the pointees and stops at the first match.
     template <class U>
     int DerefContains(U v) const

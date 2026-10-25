@@ -711,7 +711,7 @@ bit_test:
                     return 0;
             }
 spell_check:
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pProperty->m_subType);
+            CSWSpell* pSpell = g_pRules->GetSpell(pProperty->m_subType);
             if (pSpell == 0)
                 return 0;
             if (pSpell->m_nItemTargeting != 1)
@@ -1316,10 +1316,7 @@ int CSWCCreature::LipSync(const CResRef& r) {
         CExoIni ini;
         CExoString sValue;
         if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Sound Options", "Lip Delay")) {
-            if (sValue.m_sString == 0)
-                s_fLipDelay = 0.0f;
-            else
-                s_fLipDelay = static_cast<float>(atof(sValue.m_sString));
+            s_fLipDelay = sValue.AsFLOAT();
         }
     }
 #endif
@@ -3288,9 +3285,6 @@ void CSWCCreature::PlaySoundSetSound(unsigned short nSound, int b3D) {
     CSWSCreature* pServerCreature;
     unsigned char nPriority;
     int nSizeCategory;
-#if !KOTOR1
-    short nHp;
-#endif
     CExoStreamingSoundSource* pOld;
     if (GetSoundSetStrres(nSound, strres) == 0)
         return;
@@ -3305,16 +3299,8 @@ void CSWCCreature::PlaySoundSetSound(unsigned short nSound, int b3D) {
                 if (GetServerObject())
                     pServerCreature = GetServerObject()->AsSWSCreature();
                 K2_ASSUME(pServerCreature != 0);   // the same twin the two tests above found
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
                 if (pServerCreature->GetDeadTemp() != 0 && nSound != CSWSCreature::VOICE_CHAT_DEATH)
                     return;
-#else
-                if (pServerCreature->m_bInParty != 0) {
-                    nHp = static_cast<short>(pServerCreature->GetCurrentHitPoints(0));
-                    if (nSound != CSWSCreature::VOICE_CHAT_DEATH && nHp < 1)
-                        return;
-                }
-#endif
             }
         }
     }
@@ -3372,7 +3358,7 @@ int CSWCCreature::GetSoundSetStrres(unsigned short nIdx, STR_RES& out) {
 
 // Caches the server-sent orientation as a normalized vector, then rotates to it.
 void CSWCCreature::ClientServerSyncHandler_Orientation(const Vector& v) {
-    m_vStationaryOrientation = normalize(v);
+    SetDesiredStationaryOrientation(v);
     m_vMovingOrientation = normalize(v);
     CSWCObject* pBase = static_cast<CSWCObject*>(this);  // idiom-exempt: cast-this-to-base — flat header (no
     if (pBase->CSWCObject::AnimationStationary(pBase->CSWCObject::GetCurrentAnimation()))
@@ -3473,18 +3459,8 @@ void CSWCCreature::SetLockOrientationToObject(unsigned long long objId, int flag
             if (flag != 0) {
                 m_lockOrientationObjectId = objId;
             } else if (pServerCreature->GetDead() == 0) {
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
                 if (pServerCreature->GetDeadTemp() == 0)
                     m_lockOrientationObjectId = objId;
-#else
-                if (pServerCreature->m_bInParty == 0) {
-                    m_lockOrientationObjectId = objId;
-                } else {
-                    int nCurrentHp = static_cast<short>(pServerCreature->GetCurrentHitPoints(0));
-                    if (nCurrentHp >= 1)
-                        m_lockOrientationObjectId = objId;
-                }
-#endif
             }
         }
     }
@@ -4107,7 +4083,7 @@ void CSWCCreature::SetDesiredOrientationForLock() {
                 vDelta.z = pTarget->m_position.z - m_position.z;
                 if (vDelta.x * vDelta.x + vDelta.y * vDelta.y + vDelta.z * vDelta.z > 1e-5f) {
                     vDelta.z = 0.0f;
-                    m_vStationaryOrientation = normalize(normalize(vDelta));
+                    SetDesiredStationaryOrientation(normalize(vDelta));
                 }
             }
         } else {
@@ -5094,14 +5070,8 @@ void CSWCCreature::SetCombatState(int bCombat) {
         CSWSCreature* pServerCreature = 0;
         if (GetServerObject())
             pServerCreature = GetServerObject()->AsSWSCreature();
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
         if (pServerCreature != 0 && pServerCreature->GetDead() == 0 &&
             pServerCreature->GetDeadTemp() == 0) {
-#else
-        if (pServerCreature != 0 && pServerCreature->GetDead() == 0 &&
-            (pServerCreature->m_bInParty == 0 ||
-             static_cast<short>(pServerCreature->GetCurrentHitPoints(0)) >= 1)) {
-#endif
             if (m_aEquippedItemIds[4] != OBJECT_INVALID) {
                 CGameObject* pObj =
                     g_pAppManager->m_pClientExoApp->GetGameObject(m_aEquippedItemIds[4]);
@@ -5352,10 +5322,7 @@ float CSWCCreature::ComputeSpeedFactor(float f) {
 // 1 otherwise.
 int CSWCCreature::GetMenuPoint(Vector& vOut) {
     CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
-    Quaternion q = pCamera->GetOrientation();
-    float fA1 = (q.z * q.y - q.x * q.w) * -2.0f;
-    float fA2 = (q.x * q.z + q.w * q.y) * -2.0f;
-    float fA3 = -(1.0f - 2.0f * (q.x * q.x + q.y * q.y));
+    Vector vDir = -pCamera->GetOrientation().zdir();
     vOut = m_position;
     CSWSCreature* pServerCreature = 0;
     if (GetServerObject())
@@ -5365,9 +5332,9 @@ int CSWCCreature::GetMenuPoint(Vector& vOut) {
         vOut.z += 2.0f;
     else
         vOut.z += 1.75f;
-    float fPoint = vOut.x * fA2 + vOut.y * fA1 + vOut.z * fA3;
+    float fPoint = dot(vOut, vDir);
     Vector vCamPos = pCamera->GetPosition();
-    float fCam = vCamPos.x * fA2 + vCamPos.y * fA1 + vCamPos.z * fA3;
+    float fCam = dot(vCamPos, vDir);
     vOut = pCamera->MapToScreen(vOut, true);
     CAppManager** ppMgr = &g_pAppManager;
     vOut.x *= (*ppMgr)->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
@@ -5395,13 +5362,10 @@ char CSWCCreature::GetReticlePoint(Vector& v) {
     Quaternion qIdentity;  // Identity quaternion.
     pPart->GetWorld(v, qIdentity);
     CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
-    Quaternion q = pCamera->GetOrientation();
-    float fA1 = (q.x * q.z + q.w * q.y) * -2.0f;
-    float fA2 = (q.z * q.y - q.x * q.w) * -2.0f;
-    float fA3 = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-    float fPoint = v.x * fA1 + v.y * fA2 - v.z * fA3;
+    Vector vDir = -pCamera->GetOrientation().zdir();
+    float fPoint = dot(v, vDir);
     Vector vCamPos = pCamera->GetPosition();
-    float fCam = fA1 * vCamPos.x + fA2 * vCamPos.y - fA3 * vCamPos.z;
+    float fCam = dot(vDir, vCamPos);
     char nRet = !(fPoint > fCam) ? 2 : 1;
     v = pCamera->MapToScreen(v, true);
     short nWidth = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
@@ -5756,7 +5720,7 @@ int CSWCCreature::SetAppearance(CCAppearanceInfo* pInfo, unsigned char flags, in
         m_desiredPosition = vDesired;
         SetOrientation(vOrient);
         m_vMovingOrientation = normalize(vMovingOrientation);
-        m_vStationaryOrientation = normalize(vStationaryOrientation);
+        SetDesiredStationaryOrientation(vStationaryOrientation);
     }
     if (flags & 2)
         m_pCreatureAppearance->CreateHeadAppearance(pInfo);
@@ -5802,8 +5766,8 @@ int CSWCCreature::SetAppearance(CCAppearanceInfo* pInfo, unsigned char flags, in
         SetPosition(vPos);
         m_desiredPosition = vDesired;
         SetOrientation(vOrient);
-        m_vMovingOrientation = normalize(vMovingOrientation);
-        m_vStationaryOrientation = normalize(vStationaryOrientation);
+        SetDesiredWalkOrientation(vMovingOrientation);
+        SetDesiredStationaryOrientation(vStationaryOrientation);
     }
     if (flags & 2)
         m_pCreatureAppearance->CreateHeadAppearance(pInfo);
@@ -5915,7 +5879,7 @@ void CSWCCreature::HandleConjuringCreature() {
     case SERVER_ANIMATION_CAST_3_OVERLAY: case SERVER_ANIMATION_CAST_4_OVERLAY:
     case SERVER_ANIMATION_THROW_SABER_LOOP_OVERLAY: case SERVER_ANIMATION_POWER_ATTACK:
     case SERVER_ANIMATION_CONJURE_3:
-        pSpell = g_pRules->m_pSpellArray->GetSpell(m_conjureSpellId);
+        pSpell = g_pRules->GetSpell(m_conjureSpellId);
         bGotSpell = 1;
         break;
     }
@@ -6413,7 +6377,7 @@ void CSWCCreature::SetAlignmentGoodEvil(short a) {
 // refreshes the pop-up bubble portrait.
 void CSWCCreature::SetPortrait(const CResRef& r) {
     if (GetPortrait(0) != r) {
-        m_pStats->m_portrait.m_baseResRef = r;
+        m_pStats->m_portrait.SetPortrait(r);
         SetPopUpBubblePortrait(GetPortrait(1));
     }
 }
@@ -7219,9 +7183,6 @@ void CSWCCreature::GetFriendlyInterfaceActions(CSWCObject* pTarget, int nType,
     CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(nClientId);
     CSWCCreature* pPlayerCreature;
     CSWSCreature* pServerCreature;
-#if !KOTOR1
-    short nPlayerHp;
-#endif
 #if KOTOR1  // K1 keeps the flag block inline
     if ((
 #else
@@ -7240,8 +7201,7 @@ void CSWCCreature::GetFriendlyInterfaceActions(CSWCObject* pTarget, int nType,
 #else
                 (pPlayerCreature->GetServerObject(),
                  pServerCreature = pPlayerCreature->GetServerObject()->AsSWSCreature(),
-                 pServerCreature->m_bInParty != 0 &&
-                     0 >= (nPlayerHp = pServerCreature->GetCurrentHitPoints(0))) &&
+                 pServerCreature->GetDeadTemp() != 0) &&
 #endif
                 GetServerObject() != 0 &&
                 GetServerObject()->AsSWSCreature() != 0 &&
@@ -7618,7 +7578,7 @@ void CSWCCreature::GetEquipmentForcePowers(CExoArrayList<CSWGuiInterfaceAction>&
             g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_aEquippedItemIds[i]);
         if (pItem == 0)
             continue;
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pItem->GetActivePropertySpellID(0));
+        CSWSpell* pSpell = g_pRules->GetSpell(pItem->GetActivePropertySpellID(0));
         if (pSpell == 0)
             continue;
         if ((pSpell->m_nExclusionMask & nExcludeMask) != 0)
@@ -7661,7 +7621,7 @@ void CSWCCreature::GetEquipmentForcePowers(CExoArrayList<CSWGuiInterfaceAction>&
     int64_t nIdx = list.m_count;
     for (int64_t i = 0; i < items.m_count; i++) {
         CSWCItem* pItem = items.m_pArray[i];
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pItem->GetActivePropertySpellID(0));
+        CSWSpell* pSpell = g_pRules->GetSpell(pItem->GetActivePropertySpellID(0));
         list.SetSize(static_cast<int>(nIdx + 1));
         list.m_pArray[nIdx].m_sName = pSpell->GetSpellNameText();
         list.m_pArray[nIdx].m_nActionId = static_cast<unsigned int>(pItem->m_objectId | CSWGuiInterfaceAction::ACTION_ID_SPELL);
@@ -8064,12 +8024,11 @@ void CSWCCreature::SaveCharGenCreature()
 #else
     CExoString sName = m_pStats->GetFirstName() + " " + m_pStats->GetLastName();
     while (true) {
-        if (sName.m_sString == 0 || *sName.m_sString == '\0')
+        if (sName.IsEmpty())
             break;
-        if (sName[static_cast<int>(strlen(sName.m_sString)) - 1] != ' ')
+        if (sName[sName.GetLength() - 1] != ' ')
             break;
-        int nLen = sName.m_sString != 0 ? static_cast<int>(strlen(sName.m_sString)) : 0;
-        sName = sName.SubString(0, nLen - 1);
+        sName = sName.SubString(0, sName.GetLength() - 1);
     }
     locStr.AddString(0, sName, 0);
     pGFF->WriteFieldCExoLocString(&topStruct, locStr, const_cast<char*>("FirstName"));
@@ -8714,7 +8673,7 @@ updateDone:
 #else
                 GetServerObject();  // Result discarded.
                 pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
-                if (pServer->m_bInParty != 0 && static_cast<short>(pServer->GetCurrentHitPoints(0)) <= 0)
+                if (pServer->GetDeadTemp() != 0)
                     goto groundTiltRange;
 #endif
             }
@@ -8824,11 +8783,7 @@ void CSWCCreature::RotateCreatureToOrientation(const Vector& vDir) {
         pServer = 0;
         if (GetServerObject() != 0)
             pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
         if (pServer->GetDeadTemp() != 0)
-#else
-        if (pServer->m_bInParty != 0 && static_cast<short>(pServer->GetCurrentHitPoints(0)) < 1)
-#endif
             return;
     }
 
@@ -8990,11 +8945,7 @@ void CSWCCreature::FollowAnimationUpdate() {
         if (GetServerObject() != 0)
             pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
         K2_ASSUME(pServer != 0);   // the same twin the test above found
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
         if (pServer->GetDeadTemp() != 0)
-#else
-        if (pServer->m_bInParty != 0 && static_cast<short>(pServer->GetCurrentHitPoints(0)) < 1)
-#endif
             return;
         GetServerObject();  // Result discarded.
         pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
@@ -9015,7 +8966,7 @@ void CSWCCreature::FollowAnimationUpdate() {
     unsigned short anim;
     if (fDist <= 0.0001f) {
         if (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nGlobalDialogState != 0 &&
-            AnimationDialog(m_currentAnimation) != 0) {
+            IsDoingDialogAnimation() != 0) {
             m_animationSpeed = 0.0f;
             goto rotate;
         }
@@ -9134,7 +9085,7 @@ void CSWCCreature::DriveAnimationUpdate() {
 #if KOTOR1  // K1: the dying tests are GetIsPCDying and GetDeadTemp
             if (pServer->GetIsPCDying() != 0 || pServer->GetDeadTemp() != 0)
 #else
-            if (pServer->m_bInParty != 0 && static_cast<short>(pServer->GetCurrentHitPoints(0)) < 1)
+            if (pServer->GetDeadTemp() != 0)
 #endif
                 return;
             if (pServer->IsDebilitated(0) != 0)

@@ -9,6 +9,7 @@
 #include "aurlightmanager.h"
 #include "aurinternal.h"
 #include "aurcamera.h"
+#include "aurglcore.h"
 #include "Quaternion.h"
 #include "Vector.h"
 #include "Matrix.h"
@@ -152,7 +153,7 @@ void AurEnableHeadLight();
 
 
 
-extern unsigned int lightTranslationTable[];
+extern const unsigned int lightTranslationTable[];
 enum {
     kLightAmbient       = 0,
     kLightDiffuse       = 1,
@@ -631,6 +632,7 @@ void LightManager::EnableHighestPriorityLightsFade(int nMaxLights, CAurObjectLig
             PartLight* pLight = lights.m_pData[i];
             pLight->m_fEmitterScale = weights.m_pData[i];
 
+            // inlined GLRender::EnableLight(int)
             ASLgl::glEnable(static_cast<unsigned int>(GL_LIGHT1 + i));
 
             Vector vColour = pLight->m_vLightColour * pLight->m_fEmitterScale;
@@ -639,6 +641,7 @@ void LightManager::EnableHighestPriorityLightsFade(int nMaxLights, CAurObjectLig
                        pLight->m_fLightRadius, pLight->m_nAmbientOnly);
         }
 
+        // inlined GLRender::DisableLight(int)
         for (int j = lights.m_count; j < 3; j++)
             ASLgl::glDisable(GL_LIGHT1 + j);
     }
@@ -1266,11 +1269,13 @@ void LightManager::ControlLightsFade(List<PartLight*>& fading, List<PartLight*>&
         if (vColour.x < 0.0f)
             containsnegative = 1;
 
+        // inlined GLRender::EnableLight(int)
         ASLgl::glEnable(static_cast<unsigned int>(GL_LIGHT1 + nSlot));
         SetLightGL(static_cast<int>(nSlot), fading.m_pData[nSlot]->m_vWorldPosition, vColour,
                    fading.m_pData[nSlot]->m_fLightRadius, fading.m_pData[nSlot]->m_nAmbientOnly);
     }
 
+    // inlined GLRender::DisableLight(int)
     for (unsigned int nOff = static_cast<unsigned int>(nSlot); nOff < 3; nOff++)
         ASLgl::glDisable(GL_LIGHT1 + nOff);
 
@@ -1288,41 +1293,25 @@ void LightManager::SetUpVertexProgramLightShaderConstants(int nLights, int bFade
     Matrix matCamera = CurrentCamera->m_qOrientation.getmatrix();
     Vector vCamera = CurrentCamera->m_vPosition;
 
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 92, matCamera.m_f[0], matCamera.m_f[3],
-                                          matCamera.m_f[6], vCamera.x);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 91, matCamera.m_f[1], matCamera.m_f[4],
-                                          matCamera.m_f[7], vCamera.y);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 90, matCamera.m_f[2], matCamera.m_f[5],
-                                          matCamera.m_f[8], vCamera.z);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 89, 0.0f, 0.0f, 0.0f, 1.0f);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 0.0f);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 88, CurrentCamera->m_vPosition.x,
-                                          CurrentCamera->m_vPosition.y,
-                                          CurrentCamera->m_vPosition.z, 1.0f);
+    GLRender::SetVertexShaderConstant(92, matCamera.m_f[0], matCamera.m_f[3], matCamera.m_f[6], vCamera.x);
+    GLRender::SetVertexShaderConstant(91, matCamera.m_f[1], matCamera.m_f[4], matCamera.m_f[7], vCamera.y);
+    GLRender::SetVertexShaderConstant(90, matCamera.m_f[2], matCamera.m_f[5], matCamera.m_f[8], vCamera.z);
+    GLRender::SetVertexShaderConstant(89, 0.0f, 0.0f, 0.0f, 1.0f);
+    GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
+    GLRender::SetVertexShaderConstant(88, CurrentCamera->m_vPosition.x, CurrentCamera->m_vPosition.y,
+                                      CurrentCamera->m_vPosition.z, 1.0f);
 
     int nEnv = 87;
     if (CAurInternal::m_nHeadLightEnabled) {
         nLights--;
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv, CurrentCamera->m_vPosition.x,
-                                              CurrentCamera->m_vPosition.y,
-                                              CurrentCamera->m_vPosition.z, 0.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 1, headlightambient.x,
-                                              headlightambient.y, headlightambient.z, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 2, headlightdiffuse.x,
-                                              headlightdiffuse.y, headlightdiffuse.z, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 3, 0.0f, 0.0f, 0.0f, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 4, 1.0f, 1.0f, 1.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv, CurrentCamera->m_vPosition.x, CurrentCamera->m_vPosition.y,
+                                          CurrentCamera->m_vPosition.z, 0.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 1, headlightambient.x, headlightambient.y,
+                                          headlightambient.z, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 2, headlightdiffuse.x, headlightdiffuse.y,
+                                          headlightdiffuse.z, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 3, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 4, 1.0f, 1.0f, 1.0f, 1.0f);
         nEnv -= 5;
     }
 
@@ -1361,35 +1350,24 @@ void LightManager::SetUpVertexProgramLightShaderConstants(int nLights, int bFade
             vClear.z = fBlue;
         }
 
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv, pLight->m_vWorldPosition.x,
-                                              pLight->m_vWorldPosition.y,
-                                              pLight->m_vWorldPosition.z, 0.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 1, vSet.x, vSet.y, vSet.z, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 2, vClear.x, vClear.y, vClear.z, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 3, 0.0f, 0.0f, 0.0f, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 4, 1.0f, 0.0f,
-                                              9.0f / (pLight->m_fLightRadius
-                                                      * pLight->m_fLightRadius * 2.0f), 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv, pLight->m_vWorldPosition.x, pLight->m_vWorldPosition.y,
+                                          pLight->m_vWorldPosition.z, 0.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 1, vSet.x, vSet.y, vSet.z, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 2, vClear.x, vClear.y, vClear.z, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 3, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 4, 1.0f, 0.0f,
+                                          9.0f / (pLight->m_fLightRadius * pLight->m_fLightRadius * 2.0f),
+                                          1.0f);
 
         nEnv -= 5;
     }
 
     for (int i = nUploaded; i < nLights; i++) {
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv, 0.0f, 0.0f, 0.0f, 0.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 1, 0.0f, 0.0f, 0.0f, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 2, 0.0f, 0.0f, 0.0f, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 3, 0.0f, 0.0f, 0.0f, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 4, 1.0f, 1.0f, 1.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv, 0.0f, 0.0f, 0.0f, 0.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 1, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 2, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 3, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 4, 1.0f, 1.0f, 1.0f, 1.0f);
         nEnv -= 5;
     }
 }
@@ -1414,6 +1392,7 @@ char* LightManager::SetupVertexProgramLights(char* pszBuffer, int nLights, int n
         vCamera = CurrentCamera->m_vPosition;
     }
 
+    // inlined GLRender::SetVertexShaderConstant(int, float, float, float, float)
     if (usearbvertexprograms)
         ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 92, matCamera.m_f[0], matCamera.m_f[3],
                                           matCamera.m_f[6], vCamera.x);
@@ -1447,6 +1426,7 @@ char* LightManager::SetupVertexProgramLights(char* pszBuffer, int nLights, int n
 
     int nEnv = 87;
     for (int i = 0; i < nLights; i++) {
+        // inlined GLRender::SetVertexShaderConstant(int, float, float, float, float)
         if (usearbvertexprograms)
             ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv, 0.0f, 0.0f, 0.0f, 0.0f);
         if (usearbvertexprograms)

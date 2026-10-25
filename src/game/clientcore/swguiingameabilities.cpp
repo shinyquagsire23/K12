@@ -722,12 +722,7 @@ void CSWGuiInGameAbilities::UpdateView()
         m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_featChart.m_aFlows), 0, 0, 0);
 #endif
         m_lbAbility.SetSelectedControl(static_cast<unsigned int>(m_featChart.m_nSelectedFlow), 0);
-        OnEnterFeat(m_featChart.m_aFlows.m_count < 1
-                        ? 0xffff
-                        : static_cast<unsigned short>(m_featChart.m_aFlows
-                              .m_pArray[m_featChart.m_nSelectedFlow]
-                              ->m_aSlots[m_featChart.m_nSelectedSlot]
-                              .m_nId));
+        OnEnterFeat(static_cast<unsigned short>(m_featChart.GetSelected()));
         g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_ENTER_FEAT_SCREEN, OBJECT_INVALID, OBJECT_INVALID, 0);
     } else if (nMode == 1) {
         m_btnSkills.m_text.m_params.SetColor(CGuiInGame::COLOR_BLUE);
@@ -751,12 +746,7 @@ void CSWGuiInGameAbilities::UpdateView()
         m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_powerChart.m_aFlows), 0, 0, 0);
 #endif
         m_lbAbility.SetSelectedControl(static_cast<unsigned int>(m_powerChart.m_nSelectedFlow), 0);
-        OnEnterPower(m_powerChart.m_aFlows.m_count < 1
-                         ? 0xffffffff
-                         : static_cast<unsigned int>(m_powerChart.m_aFlows
-                               .m_pArray[m_powerChart.m_nSelectedFlow]
-                               ->m_aSlots[m_powerChart.m_nSelectedSlot]
-                               .m_nId));
+        OnEnterPower(static_cast<unsigned int>(m_powerChart.GetSelected()));
         g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_ENTER_FORCE_POWER_SCREEN, OBJECT_INVALID, OBJECT_INVALID, 0);
     } else if (nMode == 0) {
         m_btnSkills.m_text.m_params.SetColor(CGuiInGame::COLOR_YELLOW);
@@ -814,12 +804,7 @@ void CSWGuiInGameAbilities::UpdateView()
 
         m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_featChart.m_aFlows), 0, 0, 0);
         m_lbAbility.SetSelectedControl(static_cast<unsigned int>(m_featChart.m_nSelectedFlow), 0);
-        OnEnterFeat(m_featChart.m_aFlows.m_count < 1
-                        ? 0xffff
-                        : static_cast<unsigned short>(m_featChart.m_aFlows
-                              .m_pArray[m_featChart.m_nSelectedFlow]
-                              ->m_aSlots[m_featChart.m_nSelectedSlot]
-                              .m_nId));
+        OnEnterFeat(static_cast<unsigned short>(m_featChart.GetSelected()));
         g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_ENTER_FEAT_SCREEN, OBJECT_INVALID, OBJECT_INVALID, 0);
     } else if (nMode == 1) {
         m_btnSkills.m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_TEXT);
@@ -847,12 +832,7 @@ void CSWGuiInGameAbilities::UpdateView()
 
         m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_powerChart.m_aFlows), 0, 0, 0);
         m_lbAbility.SetSelectedControl(static_cast<unsigned int>(m_powerChart.m_nSelectedFlow), 0);
-        OnEnterPower(m_powerChart.m_aFlows.m_count < 1
-                         ? 0xffffffff
-                         : static_cast<unsigned int>(m_powerChart.m_aFlows
-                               .m_pArray[m_powerChart.m_nSelectedFlow]
-                               ->m_aSlots[m_powerChart.m_nSelectedSlot]
-                               .m_nId));
+        OnEnterPower(static_cast<unsigned int>(m_powerChart.GetSelected()));
         g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_ENTER_FORCE_POWER_SCREEN, OBJECT_INVALID, OBJECT_INVALID, 0);
     } else if (nMode == 0) {
         m_btnSkills.m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_HIGHLIGHT);
@@ -968,7 +948,7 @@ void CSWGuiInGameAbilities::OnEnterPower(unsigned int nPower)
 {
 #if KOTOR1  // K1: the cost comes from the ForceAdjust column rounded by alignment, a non-zero
             // delta is captioned with the light/dark-side word, and there is no null-spell test.
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nPower);
+    CSWSpell* pSpell = g_pRules->GetSpell(nPower);
     unsigned char nAlignmentCode = pSpell->m_nAlignmentCode;
     int nAlignment = m_pCreature->GetServerCreature()->m_pStats->m_nAlignment;
 
@@ -1019,7 +999,7 @@ void CSWGuiInGameAbilities::OnEnterPower(unsigned int nPower)
     m_labelName.m_text.m_params.SetStrRef(pSpell->m_nNameStrRef);
     SetDescription(pSpell->m_nDescriptionStrRef);
 #else
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nPower);
+    CSWSpell* pSpell = g_pRules->GetSpell(nPower);
     if (pSpell == 0)
         return;
 
@@ -1358,7 +1338,7 @@ void CSWGuiInGameSkillEntry::SetSkill(unsigned int nId, unsigned char nType)
     }
     case ENTRY_POWER:
     {
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nId);
         if (pSpell != 0)
         {
             resRef = pSpell->m_iconResRef;

@@ -10,6 +10,7 @@
 #include "aurwindow.h"
 #include "include/aurora.h"
 #include "aurinternal.h"
+#include "aurglcore.h"
 #include "port/win32api.h"
 #include "port/win32const.h"
 
@@ -121,7 +122,6 @@ extern float clipnear;
 float clipnear = 0.100000001f;
 extern float clipfar;
 float clipfar = 50.0f;
-extern const int transformTranslationTable[3];
 
 extern "C" void gluPerspective(double fovy, double aspect, double zNear, double zFar);
 
@@ -136,10 +136,10 @@ void Reshape(int nWidth, int nHeight)
     if (nWidth < 2 || nHeight < 2)
         return;
     ASLgl::glViewport(0, 0, w, h);
-    ASLgl::glMatrixMode(transformTranslationTable[0]);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     gluPerspective(ViewAngle, static_cast<float>(w) / static_cast<float>(h), clipnear, clipfar);
-    ASLgl::glMatrixMode(transformTranslationTable[2]);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
     ASLgl::glLoadIdentity();
 }
 

@@ -97,7 +97,7 @@ int CSWPlaceableSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int siz
                         return 0;
                     }
                     // The two action-point handles are adjacent members, selected by state - 1.
-                    m_headerVec[state - 1] = WorldToLocal(Vector(posX, posY, posZ));
+                    SetActionPoint(state - 1, Vector(posX, posY, posZ));
                     state = 0;
                 }
                 continue;

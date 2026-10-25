@@ -40,6 +40,9 @@ public:
     // Allocates a fresh graph node of the given type. Linking it into the list is a separate step.
     CSWSExpressionNode* NewNode(int nType);
 
+    // A pattern metacharacter: grouping, alternation or a '*' class.
+    int IsAToken(char c) { return c == '(' || c == '*' || c == '|' || c == ')'; }
+
     // Resets every node's visit count across the whole graph, recursing into an alternation node's
     // alternate chain.
     void ClearGraph();

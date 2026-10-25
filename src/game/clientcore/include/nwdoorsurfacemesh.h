@@ -29,6 +29,9 @@ public:
     // Records the door type and writes the matching status text into m_doorState.
     void SetDoorType(int doorType);
 
+    Vector GetOpenLocation(unsigned char nPoint) { return GetActionPoint(nPoint); }
+    void SetOpenLocation(unsigned char nPoint, Vector v) { SetActionPoint(nPoint, v); }
+
     int  m_doorType;
     char m_doorState[8];
     unsigned char _padb4[4];

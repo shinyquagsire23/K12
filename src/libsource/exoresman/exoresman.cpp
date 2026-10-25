@@ -16,6 +16,7 @@
 #include "port/libcbase.h"
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
+#include "exostringinline.h"
 #include "port/crtapi.h"
 #include "restype.h"
 #include "exoresfile.h"
@@ -760,11 +761,7 @@ int CExoResMan::CreateDirectory2(const CExoString& path)
 {
     CExoString resolved;
     resolved = g_pExoBase->m_pAliasList->ResolveFileName(path, RESTYPE_INVALID);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (resolved.GetLength() == 0)
-#else
-    if (resolved.m_sString == NULL || static_cast<int>(strlen(resolved.m_sString)) == 0)
-#endif
         return false;
 #if KOTOR1
     return CreateDirectory(resolved.CStr(), NULL);
@@ -777,11 +774,7 @@ int CExoResMan::GetFreeDiskSpace(const CExoString& path, unsigned long long* pFr
 {
     CExoString resolved;
     resolved = g_pExoBase->m_pAliasList->ResolveFileName(path, RESTYPE_INVALID);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (resolved.GetLength() == 0)
-#else
-    if (resolved.m_sString == NULL || static_cast<int>(strlen(resolved.m_sString)) == 0)
-#endif
         return false;
 
 #if KOTOR1  // K1 does not ask the file system: it always reports 4 GB free
@@ -1015,7 +1008,7 @@ int CExoResMan::RemoveFile(const CExoString& path, unsigned short resType)
     }
     return 1;
 #else
-    if (resolved.m_sString == NULL || static_cast<int>(strlen(resolved.m_sString)) == 0)
+    if (resolved.GetLength() == 0)
         return 0;
     struct stat st;
     if (stat(resolved.CStr(), &st) == -1)
@@ -1117,11 +1110,7 @@ int CExoResMan::WipeDirectory(const CExoString& path, int a, int b, int c, int d
         return true;
 
     resolved = g_pExoBase->m_pAliasList->ResolveFileName(path, RESTYPE_INVALID);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (resolved.GetLength() == 0)
-#else
-    if (resolved.m_sString == NULL || static_cast<int>(strlen(resolved.m_sString)) == 0)
-#endif
         return false;
 #if KOTOR1
     return RemoveDirectory(resolved.CStr());
@@ -2872,11 +2861,11 @@ CResRef CResRef::operator+=(const CExoString& s)
         memcpy(m_sResRef, pStr, nLen < 16 ? nLen : 16);  // idiom-exempt: runtime length
     }
 #else
-    if (static_cast<int>(sCombined.m_sString ? strlen(sCombined.m_sString) : 0) > 0)
+    if (sCombined.GetLength() > 0)
         memcpy(m_sResRef, sCombined.CStr(),
-               (sCombined.m_sString ? strlen(sCombined.m_sString) : 0) > 16
+               static_cast<unsigned int>(sCombined.GetLength()) > 16
                    ? 16
-                   : (sCombined.m_sString ? strlen(sCombined.m_sString) : 0));
+                   : static_cast<unsigned int>(sCombined.GetLength()));
 #endif
     return *this;
 }

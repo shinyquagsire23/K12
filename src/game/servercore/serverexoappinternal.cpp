@@ -1031,7 +1031,7 @@ bool CServerExoAppInternal::ValidateCreateServerCharacter(CSWSPlayer* pPlayer, v
 
                                     vaultPath.Format(const_cast<char*>("SERVERVAULT:%s"), pPlayer->GetPlayerName().CStr());
                                     pPlayer->m_state = 4;
-                                    pPlayer->m_resRef = CResRef("");
+                                    pPlayer->SetFileName(CResRef(""));
                                     bResult = pPlayer->SaveServerCharacter() != 0;
                                     goto epilogue;
                                 }
@@ -3475,15 +3475,8 @@ int CServerExoAppInternal::LoadCharacterFinish(CSWSPlayer* pPlayer, int a)
     }
     else
     {
-#if KOTOR1  // K1 tests GetDeadTemp()
         if (pPlayer->GetGameObject()->AsSWSCreature()->GetDead() == 1
             || pPlayer->GetGameObject()->AsSWSCreature()->GetDeadTemp() == 1)
-#else
-        CSWSCreature* pCreature;
-        if (pPlayer->GetGameObject()->AsSWSCreature()->GetDead() == 1
-            || ((pCreature = pPlayer->GetGameObject()->AsSWSCreature())->m_bInParty != 0
-                && pCreature->GetCurrentHitPoints(0) <= 0))
-#endif
         {
             pEvent2 = new CScriptEvent();
             pEvent2->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_DEATH;
@@ -3584,12 +3577,7 @@ void CServerExoAppInternal::TempDeathUpdate()
                 allDead = false;
                 continue;
             }
-#if KOTOR1  // K1 tests GetDeadTemp()
             bool dead = pServerCreature->GetDeadTemp() != 0;
-#else
-            bool dead = pServerCreature->m_bInParty != 0 &&
-                        pServerCreature->GetCurrentHitPoints(0) < 1;
-#endif
             if (dead)
                 anyDead = true;
             else
@@ -3660,12 +3648,7 @@ void CServerExoAppInternal::TempDeathUpdate()
                             if (pServerCreature2 == 0)
                                 continue;
 
-#if KOTOR1
                             if (pServerCreature2->GetDeadTemp() != 0)
-#else
-                            if (pServerCreature2->m_bInParty != 0 &&
-                                pServerCreature2->GetCurrentHitPoints(0) < 1)
-#endif
                             {
                                 Vector pos = pServerCreature2->m_position;
                                 g_pAppManager->m_pServerExoApp->ComputeSafeLocation(
@@ -4060,7 +4043,7 @@ int CServerExoAppInternal::MainLoop()
                             if (pPlayer != 0)
                                 m_pSWSMessage->SendServerToPlayerCharList(pPlayer);
                         }
-                        m_aCharListRequests.Clear();
+                        m_aCharListRequests.SetSize(0);
                     }
                 }
             }
@@ -4140,12 +4123,9 @@ int CServerExoAppInternal::MainLoop()
 
     if (g_pAppManager->m_pLoadGameErrorInfo->m_flag == 0)
     {
-        if (g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                g_pAppManager->m_pServerExoApp->GetPlayerCreatureId()) != 0)
+        if (g_pAppManager->m_pServerExoApp->GetPlayerCreature() != 0)
         {
-            CSWSObject* pCreatureObj = static_cast<CSWSObject*>(g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                g_pAppManager->m_pServerExoApp->GetPlayerCreatureId()));
-            CSWSArea* pArea = static_cast<CSWSArea*>(pCreatureObj->GetArea());
+            CSWSArea* pArea = static_cast<CSWSArea*>(g_pAppManager->m_pServerExoApp->GetPlayerCreature()->GetArea());
             if (pArea != 0 && g_pAppManager->m_pClientExoApp->GetAreaNotReadyToDisplay() == 0)
             {
                 if (m_autoSavePending == 1)
@@ -4314,9 +4294,8 @@ void CServerExoAppInternal::StallEventSaveGame()
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(15, 0);
     UpdateScreen(0.033333335f, 0, 0);
 
-    unsigned long long playerCreatureId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
-    CSWSCreature* pPlayerCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(playerCreatureId);
-    CSWSPlayer* pClientObj = GetClientObjectByObjectId(static_cast<CSWSObject*>(pPlayerCreature)->m_objectId);
+    CSWSCreature* pPlayerCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
+    CSWSPlayer* pClientObj = GetClientObjectByObjectId(pPlayerCreature->m_objectId);
 
     if (g_bSavePlayerBIC != 0)
     {

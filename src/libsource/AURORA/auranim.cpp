@@ -13,6 +13,7 @@
 #include "include/aurbehavior.h"
 #include "List.h"
 #include "aurtexman.h"
+#include "math3d.h"
 #include "aurmaterial.h"
 #include "aurwindmanager.h"
 #include "aurprimitive.h"
@@ -140,17 +141,8 @@ static inline Vector RotateByTransposeModel(const Vector& v, const Quaternion& q
 }
 
 
-extern unsigned int enableTranslationTable[];
 
 // Capability ordinals for the port's GL translation table; this is its own numbering, not the GL
-// enums.
-enum {
-    kCapFog        = 2,
-    kCapFogStart   = 15,
-    kCapFogEnd     = 16,
-    kCapFogDensity = 17,
-    kCapFogColor   = 18,
-};
 
 // The converted targets of the base-node controllers: where position, orientation and scale live in
 // this build's Part.
@@ -2347,7 +2339,7 @@ int NewController::GetQuaternionValue(float fTime, MdlNode* pNode, Quaternion& q
     } else if (nIndex != m_target.m_nKeyCount) {
         GetQuaternionFromIndexLocation(nIndex, pNode, qFirst);
         GetQuaternionFromIndexLocation(nIndex + 1, pNode, qSecond);
-        qValue = slerp(qFirst, qSecond, fAlpha);
+        qValue = Interpolate(qFirst, qSecond, fAlpha);
     } else {
         GetQuaternionFromIndexLocation(nIndex, pNode, qValue);
     }
@@ -2468,9 +2460,7 @@ int NewController::GetVectorValue(float fTime, MdlNode* pNode, Vector& vValue)
             vSecond.x = pafValues[m_keys.m_nValueIndex + 3 * nIndex];
             vSecond.y = pafValues[m_keys.m_nValueIndex + 3 * nIndex + 1];
             vSecond.z = pafValues[m_keys.m_nValueIndex + 3 * nIndex + 2];
-            vValue.x = (1.0f - fAlpha) * vFirst.x + fAlpha * vSecond.x;
-            vValue.y = (1.0f - fAlpha) * vFirst.y + fAlpha * vSecond.y;
-            vValue.z = (1.0f - fAlpha) * vFirst.z + fAlpha * vSecond.z;
+            vValue = Interpolate(vFirst, vSecond, fAlpha);
             vValue = vValue * fScale;
             return true;
         }

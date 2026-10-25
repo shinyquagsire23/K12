@@ -157,7 +157,7 @@ void CSWPlayerControlDriving::MouseLeftRight(float f)
     Vector r = RotateByQuaternion(v, q);
 
     pCreature->SetOrientation(r);
-    pCreature->m_vStationaryOrientation = normalize(r);
+    pCreature->SetDesiredStationaryOrientation(r);
 }
 
 // The per-frame drive integrator. Each axis accelerates while its key is held, is clamped to
@@ -359,17 +359,6 @@ extern float turbospeed;
 extern float fCombatTurnSpeed;
 #include "port/crtapi.h"
 
-// The +Z axis rotated by q, factored so that the (0,0,1) source axis drops out.
-static inline Vector ForwardVector(const Quaternion& q)
-{
-    float w = q.w, x = q.x, y = q.y, z = q.z;
-    Vector r;
-    r.x = 2.0f * (x * z + y * w);
-    r.y = 2.0f * (y * z - x * w);
-    r.z = 1.0f - 2.0f * (x * x + y * y);
-    return r;
-}
-
 // The camera-relative per-frame driver:
 // - gates on the object id, the camera, the server app and both creature halves, then on the
 //   server-side party and hit-point test;
@@ -424,7 +413,7 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp()
     if (pServer->GetIsPCDying() != 0 || pServer->GetDeadTemp() != 0)
 #else
-    if (pServer->m_bInParty != 0 && pServer->GetCurrentHitPoints(0) < 1)
+    if (pServer->GetDeadTemp() != 0)
 #endif
         return 0;
 
@@ -444,10 +433,8 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
         Quaternion qCam = pointto(pCreature->m_orientation);
         Quaternion qLook = YawPitchRoll(fLookYaw + Yaw(qCam), Pitch(qCam), Roll(qCam));
 
-        Vector vFwdA = ForwardVector(qLook);
-        pCreature->SetOrientation(vFwdA);
-        Vector vFwdB = ForwardVector(qLook);
-        pServer->SetOrientation(vFwdB);
+        pCreature->SetOrientation(qLook.zdir());
+        pServer->SetOrientation(qLook.zdir());
     }
 
     // The input axis, expressed in the camera's heading.
@@ -457,7 +444,7 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
     if (m_bPlayerWalking != 0)
         vAxis = vAxis * 0.5f;
 
-    Vector vCamFwd = ForwardVector(m_pCamera->GetOrientation());
+    Vector vCamFwd = m_pCamera->GetOrientation().zdir();
     vCamFwd.z = 0.0f;
     if (vCamFwd.x != 0.0f && vCamFwd.y != 0.0f)
         vCamFwd.Normalize();
@@ -515,7 +502,7 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
             if ((pServer->m_nAIState & 2) != 0)
             {
                 pCreature->SetOrientation(vNorm);
-                pCreature->m_vMovingOrientation = normalize(vNorm);
+                pCreature->SetDesiredWalkOrientation(vNorm);
             }
             TurnVector() = vNorm;
         }

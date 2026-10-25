@@ -608,8 +608,8 @@ CSWGuiDialogComputer::CSWGuiDialogComputer(CSWGuiManager* pGuiManager)
         m_aButtons[i].SetExtent(extent);
         m_aButtons[i].m_text.m_params.SetText(CExoString(""));
         m_aButtons[i].m_tail.m_nUserData = i;
-        m_aButtons[i].m_border.m_params.SetFillImage(CResRef(szName), 0);
-        m_aButtons[i].m_borderHilight.m_params.SetFillImage(CResRef(szName), 0);
+        m_aButtons[i].m_border.m_params.SetFillImage(CResRef(szName));
+        m_aButtons[i].m_borderHilight.m_params.SetFillImage(CResRef(szName));
         m_aButtons[i].m_tail.bVisible = 0;
         m_aButtons[i].m_border.m_params.SetPulsingAlpha(1, 1, 1);
         m_aButtons[i].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 1);

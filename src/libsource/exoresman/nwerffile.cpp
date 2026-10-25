@@ -406,12 +406,7 @@ int CERFFile::WriteResource(const CExoString& filePath, void* pExtra)
     m_pFile->Write(pBuffer, nSize, 1);
     delete[] pBuffer;
 #else
-    CAppManager* pApp = g_pAppManager;
-    void* pBuffer = pApp->m_pLargeTempBuffer;
-    if (pBuffer == 0) {
-        pApp->AllocLargeTempBuffer();
-        pBuffer = pApp->m_pLargeTempBuffer;
-    }
+    void* pBuffer = g_pAppManager->GetLargeTempBuffer();
 
     // The chunk cap is one byte under the one CopyToFile uses. The copy loop counts down a separate
     // remaining-bytes variable: nSize itself is what the resource-table patch below records.
@@ -888,12 +883,7 @@ int CERFRes::CopyToFile(CExoFile* pSource, CExoFile* pDest, void* pBuffer)
 
     // The incoming buffer is unused. The body re-points it at CAppManager's shared scratch buffer,
     // which is what both the read and the write below use.
-    CAppManager* pApp = g_pAppManager;
-    pBuffer = pApp->m_pLargeTempBuffer;
-    if (pBuffer == 0) {
-        pApp->AllocLargeTempBuffer();
-        pBuffer = pApp->m_pLargeTempBuffer;
-    }
+    pBuffer = g_pAppManager->GetLargeTempBuffer();
 
     int nRemaining = m_nSize;
     while (nRemaining > 0) {

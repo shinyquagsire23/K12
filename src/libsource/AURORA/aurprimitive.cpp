@@ -24,7 +24,6 @@ inline MdlNodeTriMesh* MdlNode::AsMdlNodeTriMesh()
 
 // The ASL GL client-array state table.
 
-extern unsigned int clientStateTranslationTable[];
 
 #include "aurlightmanager.h"
 
@@ -93,11 +92,11 @@ void VertexPrimitive::SetupVertexArraysStandard()
 
     if (pTriMesh->m_bHasColorPool) {
         if (LightManager::m_pOnlyGob)
-            ASLgl::glDisableClientState(clientStateTranslationTable[2]);
+            GLRender::DisableClientState(Aurora::kClientStateColor);
         else
-            ASLgl::glEnableClientState(clientStateTranslationTable[2]);
+            GLRender::EnableClientState(Aurora::kClientStateColor);
     } else {
-        ASLgl::glDisableClientState(clientStateTranslationTable[2]);
+        GLRender::DisableClientState(Aurora::kClientStateColor);
     }
 
     SetupArrays();
@@ -245,41 +244,33 @@ unsigned char* VertexPrimitiveFlat::ReconnectArraysVAR(unsigned char* paData)
         ASLgl::glColorPointer(4, GL_UNSIGNED_BYTE, 0, paData);
         paData = reinterpret_cast<unsigned char*>(reinterpret_cast<unsigned int*>(paData) + nCount);
         if (LightManager::m_pOnlyGob)
-            ASLgl::glDisableClientState(clientStateTranslationTable[2]);
+            GLRender::DisableClientState(Aurora::kClientStateColor);
         else
-            ASLgl::glEnableClientState(clientStateTranslationTable[2]);
+            GLRender::EnableClientState(Aurora::kClientStateColor);
     } else {
-        ASLgl::glDisableClientState(clientStateTranslationTable[2]);
+        GLRender::DisableClientState(Aurora::kClientStateColor);
     }
 
     // Fall-through switch: every stage also runs the stages below it.
     switch (static_cast<short>(static_cast<MdlNodeTriMesh*>(m_pNode)->m_nTexCoordSets)) {
     case 4:
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE3);
-        GLRender::cm_uiCurrentStage = 3;
+        GLRender::ActivateTextureStage(3);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, node->m_nVertexStride, paData + node->m_nTex3Ofs);
     case 3:
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE2);
-        GLRender::cm_uiCurrentStage = 2;
+        GLRender::ActivateTextureStage(2);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, node->m_nVertexStride, paData + node->m_nTex2Ofs);
     case 2:
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        GLRender::cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, node->m_nVertexStride, paData + node->m_nTex1Ofs);
     case 1:
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        GLRender::cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, node->m_nVertexStride, paData + node->m_nTex0Ofs);
     }
 
     if (static_cast<short>(static_cast<MdlNodeTriMesh*>(m_pNode)->m_nTexCoordSets) > 0)
-        ASLgl::glEnableClientState(clientStateTranslationTable[0]);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
     else
-        ASLgl::glDisableClientState(clientStateTranslationTable[0]);
+        GLRender::DisableClientState(Aurora::kClientStateTexCoord);
 
     ASLgl::glNormalPointer(GL_FLOAT, node->m_nVertexStride, paData + node->m_nNormalOfs);
     ASLgl::glVertexPointer(3, GL_FLOAT, node->m_nVertexStride, paData + node->m_nVertexOfs);
@@ -296,9 +287,7 @@ unsigned char* VertexPrimitiveFlat::ReconnectArraysVAR(unsigned char* paData)
         if (usearbvertexprograms)
             ASLgl::glVertexAttribPointerARB(14, 3, GL_FLOAT, 0, node->m_nVertexStride,
                                             paData + node->m_nTangentOfs + 24);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        GLRender::cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
     }
 
     return paData + node->m_nVertexStride * nCount;

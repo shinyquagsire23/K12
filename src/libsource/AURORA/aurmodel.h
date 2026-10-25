@@ -681,6 +681,9 @@ struct OOAnimRun : AnimRun {
 class Gob : public CAurObject {
 public:
 
+    // Whether this Gob draws into the force-push distortion buffer: flagged itself, or its model is.
+    bool IsForcePushDistortion();
+
     Gob(char* pszName);
     virtual ~Gob();
     virtual CAurCamera* AsCAurCamera();
@@ -1692,6 +1695,11 @@ public:
     void* m_pMdxResource;
     List<char*> m_listStrings;
 };
+
+inline bool Gob::IsForcePushDistortion()
+{
+    return m_pModel != 0 && (m_bDistortion || (m_pModel->m_nFlags & Model::kModelForceDistortion) != 0);
+}
 
 class Gob;
 class Part;

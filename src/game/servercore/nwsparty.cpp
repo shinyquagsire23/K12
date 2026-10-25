@@ -540,11 +540,7 @@ unsigned long long CSWSFaction::GetLeastDamagedMember(unsigned long long oidCrea
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
         if (pCreature->GetDead() != 0)
             continue;
-#if KOTOR1  // K1 asks the creature whether it is dying
         if (pCreature->GetDeadTemp() != 0)
-#else
-        if (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) < 1)
-#endif
             continue;
         int nDamaged = pCreature->GetMaxHitPoints(1) - pCreature->GetCurrentHitPoints(0);
         if (nDamaged >= nBest)
@@ -586,11 +582,7 @@ unsigned long long CSWSFaction::GetMostDamagedMember(unsigned long long oidCreat
             continue;
         if (pCreature->GetDead() != 0)
             continue;
-#if KOTOR1  // K1 asks the creature whether it is dying
         if (pCreature->GetDeadTemp() != 0)
-#else
-        if (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) < 1)
-#endif
             continue;
         int nDamaged = pCreature->GetMaxHitPoints(1) - pCreature->GetCurrentHitPoints(0);
         if (nDamaged <= nBest)
@@ -661,10 +653,7 @@ int CSWSFaction::TransferLeadership(unsigned long long partyId, unsigned long lo
     if (GetLeader() != creatureId)
         return 0;
     m_members.Remove(partyId);
-    m_members.Add(partyId);
-    for (int64_t i = m_members.m_count - 1; i > 0; i--)
-        m_members.m_pArray[i] = m_members.m_pArray[i - 1];
-    m_members.m_pArray[0] = partyId;
+    m_members.Insert(partyId, 0);
     return 1;
 }
 

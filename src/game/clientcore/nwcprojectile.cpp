@@ -839,7 +839,7 @@ void CSWCProjectile::UnloadModel(unsigned char which)
 
 void CSWCProjectile::SetProjectileSpellId(unsigned int spellId)
 {
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(spellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(spellId);
     if (spellId == SPELL_ID_COW || pSpell != 0) {
         m_nProjectileSpellId = spellId;
         if (spellId == SPELL_ID_COW) {
@@ -1365,7 +1365,7 @@ int CSWCProjectile::UpdateCurrentBehavior()
 
         if (m_pCurrentBehavior->m_nSpawnCount != 0) {
             for (unsigned char i = 0; i < m_pCurrentBehavior->m_nSpawnCount; i++) {
-                CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(m_nProjectileSpellId);
+                CSWSpell* pSpell = g_pRules->GetSpell(m_nProjectileSpellId);
                 if (pSpell == 0)
                     break;
 
@@ -1591,11 +1591,7 @@ void CSWCProjectile::AIUpdate()
                                     static_cast<CSWCObject*>(pCreature)->GetCurrentAnimation()) == 0) {
                         CSWSCreature* pServer = pCreature->GetServerCreature();
                         if (pServer != 0 && pServer->GetDead() == 0 &&
-#if KOTOR1  // K1 tests GetDeadTemp() instead of the party/consciousness check
                             pServer->GetDeadTemp() == 0 &&
-#else
-                            (pServer->m_bInParty == 0 || pServer->GetCurrentHitPoints(0) >= 1) &&
-#endif
                             (m_nProjectileType & ~1u) == PROJECTILE_TYPE_PARRIED) {
                             int nRoll = rand_wincompatible();
                             static_cast<CSWCObject*>(pCreature)->GetAnimationBase()

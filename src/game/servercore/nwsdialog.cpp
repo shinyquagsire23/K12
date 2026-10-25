@@ -2447,9 +2447,7 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
     if (bAnyNonEmpty && bAnyEmpty)
     {
         CExoString sError(const_cast<char*>("CONVERSATION ERROR: Last Conversation Node Contains Either an END NODE or CONTINUE NODE.  Please contact a Designer!"));
-        CGuiInGame* pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
-        pGui->m_bShowBarkOnDialogEnd = 1;
-        pGui->m_sBarkOnDialogEnd = sError;
+        g_pAppManager->m_pClientExoApp->GetInGameGui()->SetDialogError(sError);
         return 0;
     }
 

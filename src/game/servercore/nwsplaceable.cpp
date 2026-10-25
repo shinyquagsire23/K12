@@ -846,8 +846,7 @@ int CSWSPlaceable::AIActionCastSpell(CSWSObjectActionNode* pAction) {
         castLoc.y = fY;
         castLoc.z = fZ;
         unsigned char pathCount = (flags & 0xff) != 0 ? 7 : 6;
-        CSWSpellArray* pSpells = g_pRules->m_pSpellArray;
-        if (pSpells->GetSpell(spellId) != 0) {
+        if (g_pRules->GetSpell(spellId) != 0) {
             m_castSpellId = spellId;
             m_castTargetId = targetId;
             m_castPosition = castLoc;
@@ -1110,7 +1109,7 @@ void CSWSPlaceable::EventHandler(unsigned int nEventType, unsigned long long nCa
                 g_pVirtualMachine->RunScript(&m_scriptsOn[ON_SCRIPT_DISARM], m_objectId, 1);
             }
             if (m_objectsOnPlaceable.m_count > 0) {
-                m_objectsOnPlaceable.Clear();
+                m_objectsOnPlaceable.SetSize(0);
             }
             break;
         case CSWSSCRIPTEVENT_EVENTTYPE_ON_USED:  // Only fires while the placeable is interactable
@@ -1155,7 +1154,7 @@ void CSWSPlaceable::EventHandler(unsigned int nEventType, unsigned long long nCa
                     }
                 }
                 if (m_objectsOnPlaceable.m_count > 0) {
-                    m_objectsOnPlaceable.Clear();
+                    m_objectsOnPlaceable.SetSize(0);
                 }
                 // Cached in a local, not re-read, since the trigger is held across
                 // every call here, which a bare member spelling cannot do.
@@ -1226,7 +1225,7 @@ void CSWSPlaceable::EventHandler(unsigned int nEventType, unsigned long long nCa
 #endif
                 }
                 if (m_objectsOnPlaceable.m_count > 0) {
-                    m_objectsOnPlaceable.Clear();
+                    m_objectsOnPlaceable.SetSize(0);
                 }
             }
             break;
@@ -1479,10 +1478,10 @@ int CSWSPlaceable::LoadPlaceable(CResGFF* pGFF, CResStruct* pStruct, int bFromTe
     // LoadTrigger uses), default-constructed first and destroyed last.
     CExoString sScript;
 
-    m_sTag = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess,
-                                        CExoString(const_cast<char*>(""))).LowerCase();
-    m_templateResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("TemplateResRef"), bSuccess,
-                                               CResRef(""));
+    SetTag(pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess,
+                                     CExoString(const_cast<char*>(""))));
+    SetTemplateResRef(pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("TemplateResRef"), bSuccess,
+                                             CResRef("")));
     m_firstName = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("LocName"), bSuccess,
                                                 CExoLocString());
     m_bAutoRemoveKey = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("AutoRemoveKey"), bSuccess, 0);
@@ -1568,7 +1567,7 @@ int CSWSPlaceable::LoadPlaceable(CResGFF* pGFF, CResStruct* pStruct, int bFromTe
         SetPortraitId(nPortraitId);
     }
 
-    m_dialogResref = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Conversation"), bSuccess, CResRef(""));
+    SetDialogResref(pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Conversation"), bSuccess, CResRef("")));
     m_bodyBagAppearanceRow = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("BodyBag"), bSuccess,
                                                   m_bodyBagAppearanceRow);
     m_bDieWhenEmpty = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("DieWhenEmpty"), bSuccess, 0);

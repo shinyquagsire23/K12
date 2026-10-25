@@ -1125,7 +1125,7 @@ int CSWSPlayer::SaveServerCharacter()
 
         if (pGff->WriteGFFFile(sPath, RESTYPE_BIC))
         {
-            m_resRef = CResRef(sFileName);
+            SetFileName(CResRef(sFileName));
             bWritten = 1;
         }
     }
@@ -1162,6 +1162,7 @@ int CSWSPlayer::SaveServerCharacter()
 
         for (;;)
         {
+            // inlined CExoArrayList<CExoString>::Contains(CExoString)
             int nMatches = 0;
 
             {
@@ -1206,7 +1207,7 @@ int CSWSPlayer::SaveServerCharacter()
             return 0;
         }
 
-        m_resRef = CResRef(sFileName);
+        SetFileName(CResRef(sFileName));
     }
 
     g_pExoResMan->UpdateResourceDirectory(CExoString("SERVERVAULT:"));

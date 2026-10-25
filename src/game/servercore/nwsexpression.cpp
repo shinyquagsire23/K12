@@ -251,7 +251,7 @@ int CSWSExpression::ParseString(CExoString sString)
             // run as one literal node.
             if (i + 1 < sString.GetLength()) {
                 char chNext = sString[i + 1];
-                if (chNext != '(' && chNext != ')' && chNext != '*' && chNext != '|')
+                if (IsAToken(chNext) == 0)
                     break;
             }
             CSWSExpressionNode* pNode = NewNode(CSWSExpressionNode::NODE_LITERAL);
@@ -394,7 +394,7 @@ int CSWSExpression::TestString(const CExoString& sString, int bStoreMatches)
             if (bStoreMatches) {
                 for (int i = 0; i < m_aMatchedStrings.m_count; i++)
                     delete m_aMatchedStrings.m_pArray[i];
-                m_aMatchedStrings.Clear();
+                m_aMatchedStrings.SetSize(0);
                 // Slot 0 is the whole subject; the rest are the pieces each path node consumed.
                 // Alternation nodes carry no text of their own and contribute no capture.
                 m_aMatchedStrings.Add(new CExoString(sString));

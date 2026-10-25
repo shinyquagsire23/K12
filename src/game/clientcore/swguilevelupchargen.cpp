@@ -148,19 +148,13 @@ bool CSWGuiLevelUpCharGen::CopyCreatureStats(CSWCCreature* pSrc, CSWCCreature* p
 
 #if KOTOR1
     // K1 copies both name strings as they are: no join, no clear.
-    CExoString& sSrcLast = pSrcStats->m_sLastName;
-    pDstStats->m_name = pSrcStats->m_name;
-    pDstStats->m_sLastName = sSrcLast;
+    pDstStats->SetName(pSrcStats->m_name, pSrcStats->m_sLastName);
 #else
     CExoString sFullName = pSrcStats->GetFirstName() + CExoString(" ") + pSrcStats->GetLastName();
-    {
-        CExoString sEmpty("");
-        pDstStats->m_name = sFullName;
-        pDstStats->m_sLastName = sEmpty;
-    }
+    pDstStats->SetName(sFullName, CExoString(""));
 #endif
 
-    pDstStats->m_portrait.m_baseResRef = pSrcStats->GetPortrait(0);
+    pDstStats->m_portrait.SetPortrait(pSrcStats->GetPortrait(0));
     pDstStats->m_nExperience = pSrcStats->m_nExperience;
     pDstStats->m_nStartingPackage = pSrcStats->m_nStartingPackage;
     pDstStats->m_nGender = pSrcStats->m_nGender;

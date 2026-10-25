@@ -459,7 +459,7 @@ void CSWSAreaOfEffectObject::SetCreator(unsigned long long creatorId)
     if (!(pCreature->m_nCastClassIndex >= CSWSObject::CAST_CLASS_SPELL_LIKE_ABILITY)) {
         m_nSpellLevel = pCreature->m_pStats->GetClassLevel(pCreature->m_nCastClassIndex, 1);
     } else {
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pCreature->GetEffectSpellId());
+        CSWSpell* pSpell = g_pRules->GetSpell(pCreature->GetEffectSpellId());
         if (pSpell == 0)
             return;
         m_nSpellLevel = pSpell->m_nSpellLevelOther * 2 - 1;
@@ -519,7 +519,7 @@ void CSWSAreaOfEffectObject::LoadAreaEffect(int nRow)
 
     CExoString sLabel;
     pTable->GetCExoStringEntry(m_nAreaEffectId, CExoString("LABEL"), &sLabel);
-    m_sTag = sLabel.LowerCase();
+    SetTag(sLabel);
 
     g_pAppManager->m_pServerExoApp->GetModule()->AddObjectToLookupTable(m_sTag, m_objectId);
 }

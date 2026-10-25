@@ -192,4 +192,13 @@ bool Interpolate(const bool& a, const bool& b, float t);
 // Linear blend truncated back to int.
 int Interpolate(const int& a, const int& b, float t);
 
+// Linear blend, t = 0 at a.
+inline Vector Interpolate(const Vector& a, const Vector& b, float t)
+{
+    Vector r = { (1.0f - t) * a.x + b.x * t, (1.0f - t) * a.y + b.y * t, (1.0f - t) * a.z + b.z * t };
+    return r;
+}
+
+inline Quaternion Interpolate(const Quaternion& a, const Quaternion& b, float t) { return slerp(a, b, t); }
+
 #endif

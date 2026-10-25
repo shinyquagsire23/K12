@@ -194,7 +194,7 @@ unsigned short CSWCCreatureStats::GetMaxHitPoints()
 int CSWCCreatureStats::CheckCustomPortrait(CResRef* pResRef, int nGender)
 {
     CSWPortrait portrait;
-    portrait.m_baseResRef = *pResRef;
+    portrait.SetPortrait(*pResRef);
     if (g_pExoResMan->Exists(portrait.GetPortrait(3), 3, static_cast<unsigned int*>(0)) == 0) {
         if (nGender == GENDER_MALE)
             *pResRef = const_cast<char*>("po_hu_m_99_");
@@ -209,7 +209,7 @@ void CSWCCreatureStats::SetPortraitId(unsigned short a)
 {
     CSWPortrait portrait;
     if (portrait.SetPortraitId(a))
-        m_portrait.m_baseResRef = portrait.GetPortrait(0);
+        m_portrait.SetPortrait(portrait.GetPortrait(0));
     m_portraitId = a;
 }
 
@@ -239,9 +239,7 @@ int CSWCCreatureStats::GetArmorClass(int nType)
                             CSWItem* pItem = pServer->m_pInventory->GetItemInSlot(CSWInventory::SLOT_BODY);
                             CSWBaseItem* pBase = (pItem != 0) ? pItem->GetBaseItem() : 0;
                             if (pItem == 0 || (pBase != 0 && pBase->m_nBaseAC == 0)) {
-                                nBonus = GetWISMod();
-                                if (nBonus < 0)
-                                    nBonus = 0;
+                                nBonus = (GetWISMod() < 0) ? 0 : GetWISMod();
                             }
                         }
                         goto done;
@@ -518,65 +516,28 @@ void CSWCCreatureStats::PayoutPowerAchievements()
 {
     static const int aLightPowers[] = { 17, 137, 180, 36, 134, 175, 44, 13, -1 };
     static const int aDarkPowers[]  = { 155, 11, 31, 177, 161, 25, 38, 32, -1 };
+    const int* apPowers[2] = { aLightPowers, aDarkPowers };
 
-    int i;
-    for (i = 0; aLightPowers[i] != -1; i++) {
-        int nSpell = aLightPowers[i];
-        bool bFound = false;
-        int n = m_classes[0].m_spellLevels[0].m_count;
-        if (n > 0) {
-            unsigned int* p = m_classes[0].m_spellLevels[0].m_pArray;
-            while (n != 0) {
-                if (*p == nSpell) { bFound = true; break; }
-                n--;
-                p++;
+    // An achievement pays out when either class slot knows every power on its list.
+    for (int nList = 0; nList < 2; nList++) {
+        const int* pPowers = apPowers[nList];
+        int i;
+        for (i = 0; pPowers[i] != -1; i++) {
+            if (!m_classes[0].m_spellLevels[0].ContainsFast(static_cast<unsigned int>(pPowers[i])) &&
+                !m_classes[1].m_spellLevels[0].ContainsFast(static_cast<unsigned int>(pPowers[i])))
+                break;
+        }
+        if (pPowers[i] == -1) {
+            switch (nList) {
+            case 0:
+                Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_ALL_LIGHT_SIDE_POWERS);
+                break;
+            case 1:
+                Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_ALL_DARK_SIDE_POWERS);
+                break;
             }
         }
-        if (!bFound) {
-            int m = m_classes[1].m_spellLevels[0].m_count;
-            if (m > 0) {
-                unsigned int* q = m_classes[1].m_spellLevels[0].m_pArray;
-                while (m != 0) {
-                    if (*q == nSpell) { bFound = true; break; }
-                    m--;
-                    q++;
-                }
-            }
-        }
-        if (!bFound)
-            break;
     }
-    if (aLightPowers[i] == -1)
-        Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_ALL_LIGHT_SIDE_POWERS);
-
-    for (i = 0; aDarkPowers[i] != -1; i++) {
-        int nSpell = aDarkPowers[i];
-        bool bFound = false;
-        int n = m_classes[0].m_spellLevels[0].m_count;
-        if (n > 0) {
-            unsigned int* p = m_classes[0].m_spellLevels[0].m_pArray;
-            while (n != 0) {
-                if (*p == nSpell) { bFound = true; break; }
-                n--;
-                p++;
-            }
-        }
-        if (!bFound) {
-            int m = m_classes[1].m_spellLevels[0].m_count;
-            if (m > 0) {
-                unsigned int* q = m_classes[1].m_spellLevels[0].m_pArray;
-                while (m != 0) {
-                    if (*q == nSpell) { bFound = true; break; }
-                    m--;
-                    q++;
-                }
-            }
-        }
-        if (!bFound)
-            break;
-    }
-    if (aDarkPowers[i] == -1)
-        Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_ALL_DARK_SIDE_POWERS);
 }
 
 
@@ -1455,7 +1416,7 @@ void CSWCCreatureStats::RemoveKnownSpell(unsigned char nClassPos, unsigned int n
 {
     if (nClassPos > 1)
         return;
-    if (g_pRules->m_pSpellArray->GetSpell(nSpellId) == 0)
+    if (g_pRules->GetSpell(nSpellId) == 0)
         return;
     m_classes[nClassPos].RemoveKnownSpell(0, nSpellId);
 }
@@ -1483,7 +1444,7 @@ void CSWCCreatureStats::AddKnownSpell(unsigned char nClassPos, unsigned int nSpe
 {
     if (nClassPos > 1)
         return;
-    if (g_pRules->m_pSpellArray->GetSpell(nSpellId) == 0)
+    if (g_pRules->GetSpell(nSpellId) == 0)
         return;
     CExoArrayList<unsigned int>& lvl = m_classes[nClassPos].m_spellLevels[0];
     if (lvl.IndexOf(nSpellId) != -1)
@@ -1560,6 +1521,7 @@ void CSWCLevelUpStats::SetDEXBase(unsigned char nScore, int bAdjustAC)
             nBonus += pClass->GetRefSaveBonus(GetClassLevel(i));
     }
 
+    // inlined CSWCCreatureStats::GetDEXMod()
     int nNewDexHalf = static_cast<int>(floor(static_cast<double>(m_abScores[1]) * 0.5));
     m_nReflexSavingThrow = static_cast<char>(nBonus + m_nDEXArmorAdjust + nNewDexHalf - 5);
 
@@ -1799,6 +1761,7 @@ void CSWCLevelUpStats::SetSkillRankBase(unsigned short nSkill, char cRank)
     // Out-of-range ability ids fall through the switch, leaving the raw id as the modifier.
     int nModifier = g_pRules->m_paSkills[nSkill].m_nKeyAbility;
     switch (nModifier) {
+    // inlined CSWCCreatureStats::Get{STR,DEX,CON,INT,WIS,CHA}Mod()
     case ABILITY_STRENGTH: nModifier = static_cast<int>(floor(static_cast<double>(m_abScores[0]) * 0.5)) - 5; break;
     case ABILITY_DEXTERITY: nModifier = m_nDEXArmorAdjust + static_cast<int>(floor(static_cast<double>(m_abScores[1]) * 0.5)) - 5; break;
     case ABILITY_CONSTITUTION: nModifier = static_cast<int>(floor(static_cast<double>(m_abScores[2]) * 0.5)) - 5; break;
@@ -1882,10 +1845,11 @@ int CSWCLevelUpStats::CanChooseFeat(unsigned short nFeat, unsigned char nNormalL
     if (!nNormal && !nBonus)
         return false;
 
-    CSWCCreatureStats_OwningArray<int> paConsumed;
+    CExoArrayList<int> lstConsumed;
+    lstConsumed.SetSize(pChosen->m_count);
+    int* paConsumed = lstConsumed.m_pArray;
     int nChosenCount = pChosen->m_count;
     if (nChosenCount != 0) {
-        paConsumed = new int[nChosenCount];
         for (int i = 0; i < nChosenCount; i++)
             paConsumed[i] = 0;
 
@@ -1906,8 +1870,6 @@ int CSWCLevelUpStats::CanChooseFeat(unsigned short nFeat, unsigned char nNormalL
                 nNormalLeft--;
             }
         }
-    } else {
-        paConsumed = 0;
     }
 
     bool bSelfConsumed = false;
@@ -2010,7 +1972,7 @@ int CSWCLevelUpStats::CanChooseSpell(unsigned int nSpell, unsigned char nLeft, C
     // K1: no per-class spell-level gate, and only the last class slot's known list is scanned;
     // a read past the count returns -1.
     unsigned char nLastPos = static_cast<unsigned char>(m_nNumClasses - 1);
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     if (pSpell == 0)
         return false;
     if (pSpell->m_nUserType != 1 && pSpell->m_nUserType != 5)
@@ -2034,7 +1996,7 @@ int CSWCLevelUpStats::CanChooseSpell(unsigned int nSpell, unsigned char nLeft, C
     return pChosen->m_count < nLeft;
 #else
     int nClassPos = m_nNumClasses - 1;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     if (pSpell == 0)
         return false;
     if ((pSpell->m_nUserType | 4) != 5)
@@ -2070,16 +2032,8 @@ int CSWCLevelUpStats::HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned in
                 if (m_classes[i].m_spellLevels[0].m_pArray[j] == nId)
                     goto next2;
         }
-        if (pChosen->m_count < 1)
+        if (pChosen->IndexOf(static_cast<unsigned int>(nId)) == -1)
             return false;
-        {
-            int j = 0;
-            while (pChosen->m_pArray[j] != static_cast<unsigned int>(nId)) {
-                j++;
-                if (pChosen->m_count == j)
-                    return false;
-            }
-        }
     next2: ;
     }
     for (int k = 0; pSpell->m_anPrereq1[k] != -1; k++) {
@@ -2090,16 +2044,8 @@ int CSWCLevelUpStats::HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned in
                 if (m_classes[i].m_spellLevels[0].m_pArray[j] == nId)
                     goto next1;
         }
-        if (pChosen->m_count < 1)
+        if (pChosen->IndexOf(static_cast<unsigned int>(nId)) == -1)
             return false;
-        {
-            int j = 0;
-            while (pChosen->m_pArray[j] != static_cast<unsigned int>(nId)) {
-                j++;
-                if (pChosen->m_count == j)
-                    return false;
-            }
-        }
     next1: ;
     }
     unsigned char nLevel = GetLevel();
@@ -2654,6 +2600,7 @@ void CSWCLevelUpStats::ClearPackage()
     AddGrantedFeats(0, false);
 #endif
     // Resets the count only; the backing array and capacity stay allocated.
+    // inlined CExoArrayList<CResRef>::DelIndex(m_count - 1), popped until empty
     if (m_lstPackageResRefs.m_count != 0)
         m_lstPackageResRefs.m_count = 0;
 }
@@ -2754,7 +2701,7 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
         { CExoString unused; }
         CResRef newResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Portrait"), success, m_portrait.m_baseResRef);
         CheckCustomPortrait(&newResRef, static_cast<unsigned>(m_nGender == GENDER_FEMALE));
-        m_portrait.m_baseResRef = newResRef;
+        m_portrait.SetPortrait(newResRef);
     }
 
     unsigned short nGoodEvil = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("GoodEvil"), success, static_cast<unsigned char>(m_alignmentGoodEvil));
@@ -2898,7 +2845,7 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
 
         for (int i = 0; i < nSpellCount; i++) {
             int nSpellId = spellIds.m_pArray[i];
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+            CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
             if (pSpell == 0)
                 continue;
 
@@ -3100,7 +3047,7 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
 
     for (int i = 0; i < nSpellCount; i++) {
         int nSpellId = m_spellLevels[0].m_pArray[i];
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         if (pSpell == 0 || (pSpell->m_nExclusionMask & nExcludeMask) != 0)
             continue;
 
@@ -3217,7 +3164,7 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
 
     for (int i = 0; i < nSpellCount; i++) {
         int nSpellId = m_spellLevels[0].m_pArray[i];
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         if (pSpell == 0)
             continue;
 
@@ -3390,7 +3337,7 @@ int CSWCCreatureStats_ClassInfo::GetMenuInfoCount(unsigned int nType)
     int nCount = 0;
     for (int i = 0; i < m_spellLevels[0].m_count; i++) {
         int nSpellId = m_spellLevels[0].m_pArray[i];
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         if (pSpell && pSpell->m_nSubRadialCount != 0) {
             unsigned char nNumSub = pSpell->m_nSubRadialCount;
             for (int j = 0; j < nNumSub; j++) {

@@ -12,22 +12,10 @@
 #include "aurStringFont.h"
 #include "aurtexman.h"
 #include "aurstring.h"
+#include "aurglcore.h"
 
 #include "port/libcbase.h"
 #include "port/libcstring.h"
-
-// The port's GL shim.
-
-// The port's GL capability, blend and matrix-mode translation tables.
-extern unsigned int enableTranslationTable[];
-extern unsigned int blendTranslationTable[];
-extern const int transformTranslationTable[3];
-
-// enableTranslationTable slots used here.
-enum { kCapBlend = 0, kCapDepthTest = 11 };
-#if KOTOR1
-enum { kCapTexture2D = 5 };
-#endif
 
 extern float DeltaT;
 extern bool g_bKeepHistory;
@@ -231,19 +219,19 @@ void PrintStringScreenPos(char* pszText, float fX, float fY)
 // The two GL state changes at the top happen even for an empty string.
 void PrintStringScreenPos_UseTextureFont(char* pszText, float fX, float fY)
 {
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
     if (pszText == 0 || *pszText == 0)
         return;
 
     int viewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT, viewport);
+    GLRender::GetViewPort(viewport);
 
     ASLgl::glPushAttrib(GL_ENABLE_BIT | GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(GL_COLOR_MATERIAL);
-    ASLgl::glMatrixMode(transformTranslationTable[0]);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::EnableColorMaterial();
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -255,10 +243,10 @@ void PrintStringScreenPos_UseTextureFont(char* pszText, float fX, float fY)
     CAurFont::s_LoadedFontList.m_pData[consoleFont]->TextOutA(pszText, static_cast<int>(strlen(pszText)));
 
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(transformTranslationTable[2]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(GL_COLOR_MATERIAL);
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::DisableColorMaterial();
+    GLRender::Disable(Aurora::kCapBlend);
     ASLgl::glPopAttrib();
 }
 
@@ -275,7 +263,7 @@ void AurPrintString(char* pszText, int nX, int nY)
         return;
 
     int viewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT, viewport);
+    GLRender::GetViewPort(viewport);
     if (viewport[2] < 300 || viewport[3] < 100)
         return;
 
@@ -288,7 +276,7 @@ void AurPrintString(char* pszText, int nX, int nY)
     if (nX + static_cast<int>(strlen(pszText)) > nCols)
         nX = static_cast<int>(nCols - strlen(pszText));
 
-    ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
+    GLRender::Disable(Aurora::kCapLighting);
     if (!initialized)
         AurInitFont();
 
@@ -305,7 +293,7 @@ void AurPrintString(char* pszText, int nX, int nY)
                                             static_cast<float>(nY) / static_cast<float>(nRows) * static_cast<float>(viewport[3]) - static_cast<float>(viewport[3] / 2));
     else
         PrintStringScreenPos(pszText, fX, static_cast<float>(nY) / static_cast<float>(nRows));
-    ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+    GLRender::Enable(Aurora::kCapLighting);
 #endif
 }
 

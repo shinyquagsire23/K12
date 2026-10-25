@@ -126,8 +126,7 @@ int CSWDoorSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
                 m_localOrigin.y = posY;
                 m_localOrigin.z = posZ;
             } else {
-                m_headerVec[static_cast<unsigned char>(doorState)] =
-                    WorldToLocal(Vector(posX, posY, posZ));
+                SetOpenLocation(static_cast<unsigned char>(doorState), Vector(posX, posY, posZ));
             }
             gotNode = 1;
             continue;

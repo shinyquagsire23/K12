@@ -561,6 +561,12 @@ public:
     int  InCreatureCombat(unsigned long long objId);
     unsigned long long GetAttackingWeapon(int nAttack);
     int  IsDriveAnimationBlocked();
+    // Whether the body model is up.
+    int  ModelIsLoaded() { return m_pModel != 0 && m_pModel->GetModel(ANIM_MODEL_BODY) != 0; }
+    // The facing the creature turns toward while it moves.
+    void SetDesiredWalkOrientation(const Vector& v) { m_vMovingOrientation = normalize(v); }
+    // The facing the creature turns toward while it stands.
+    void SetDesiredStationaryOrientation(const Vector& v) { m_vStationaryOrientation = normalize(v); }
     int  GetSoundSetStrres(unsigned short nIdx, STR_RES& out);
     void PartyMenuAwareness(unsigned int n, CSWCCreature* p);
     void BlurWeapon(int blur);

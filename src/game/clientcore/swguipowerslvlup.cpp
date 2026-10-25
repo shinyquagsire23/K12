@@ -48,20 +48,6 @@ static int FindPowerIndex(CExoArrayList<unsigned int>& aList, unsigned int nPowe
     return nIndex;
 }
 
-// The same scan with the bound test inside the body, which AddChosenPower needs.
-static int FindPowerIndexInMutator(CExoArrayList<unsigned int>& aList, unsigned int nPower)
-{
-    int nIndex = -1;
-    int64_t i = 0;
-    while (aList.m_pArray[i] != nPower)
-    {
-        i++;
-        if (aList.m_count == i)
-            return nIndex;
-    }
-    return static_cast<int>(i);
-}
-
 // The power id the chart's cursor is on, or -1 when the chart is empty.
 static int GetChartPowerId(CSWGuiSkillFlowChart& chart)
 {
@@ -266,14 +252,14 @@ void CSWGuiPowersLevelUp::InitiatePowers()
              i < pStats->GetNumberKnownSpells(nClass, 0); i++)
         {
             unsigned int nPower = static_cast<unsigned int>(pStats->GetKnownSpell(nClass, 0, i));
-            sPowerName = g_pRules->m_pSpellArray->GetSpell(static_cast<int>(nPower))->GetSpellNameText();
+            sPowerName = g_pRules->GetSpell(nPower)->GetSpellNameText();
 
             int nInsert = 0;
             int bFound = 0;
             while (static_cast<int64_t>(m_aOwnedPowers.m_count) > static_cast<int64_t>(nInsert) && !bFound)
             {
                 CExoString sExistingName =
-                    g_pRules->m_pSpellArray->GetSpell(static_cast<int>(m_aOwnedPowers.m_pArray[nInsert]))
+                    g_pRules->GetSpell(m_aOwnedPowers.m_pArray[nInsert])
                         ->GetSpellNameText();
                 if (sExistingName > sPowerName)
                     bFound = 1;
@@ -338,20 +324,20 @@ void CSWGuiPowersLevelUp::BuildAvailableList()
 
     for (unsigned short nSpell = 0; static_cast<int>(g_pRules->m_pSpellArray->m_nCount) > static_cast<int>(nSpell); nSpell++)
     {
-        if (FindPowerIndex(m_aOwnedPowers, nSpell) != -1)
+        if (m_aOwnedPowers.IndexOf(nSpell) != -1)
             continue;
-        if (FindPowerIndex(m_aChosenPowers, nSpell) != -1)
+        if (m_aChosenPowers.IndexOf(nSpell) != -1)
             continue;
-        if (FindPowerIndex(m_aAvailablePowers, nSpell) != -1)
+        if (m_aAvailablePowers.IndexOf(nSpell) != -1)
             continue;
 #if !KOTOR1  // K1 has no granted-powers list
-        if (FindPowerIndex(m_aNewPowers, nSpell) != -1)
+        if (m_aNewPowers.IndexOf(nSpell) != -1)
             continue;
 #endif
 
         if (pStats->CanChooseSpell(nSpell, m_nSelectionsMax, &m_aChosenPowers) != 0)
         {
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+            CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
             if (pSpell->m_anPrereq2[0] != -2 && pSpell->m_nNameStrRef != 0)
             {
                 sUnused = pSpell->GetSpellNameText();
@@ -361,7 +347,7 @@ void CSWGuiPowersLevelUp::BuildAvailableList()
                 while (static_cast<int64_t>(m_aAvailablePowers.m_count) > static_cast<int64_t>(nInsert) && !bFound)
                 {
                     CExoString sExistingName =
-                        g_pRules->m_pSpellArray->GetSpell(
+                        g_pRules->GetSpell(
                             static_cast<int>(m_aAvailablePowers.m_pArray[nInsert]))->GetSpellNameText();
                     if (sExistingName > sUnused)
                         bFound = 1;
@@ -528,16 +514,7 @@ void CSWGuiPowersLevelUp::OnAcceptButton()
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
 
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1  // K1 has no panel chain: one state stamp for this panel only
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     static_cast<CSWGuiLevelUpPanel*>(m_pParentPanel)->PowersSelectionCompleted();
 }
@@ -649,7 +626,7 @@ void CSWGuiPowersLevelUp::RemoveChosenPower(unsigned int nPower)
             CSWCLevelUpStats* pStats = static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats);
             unsigned int nBad;
             if (pStats->HasSpellPrereq(
-                    g_pRules->m_pSpellArray->GetSpell(m_aChosenPowers.m_pArray[0]),
+                    g_pRules->GetSpell(m_aChosenPowers.m_pArray[0]),
                     &m_aChosenPowers)
                 == 0)
             {
@@ -668,7 +645,7 @@ void CSWGuiPowersLevelUp::RemoveChosenPower(unsigned int nPower)
                         return;
                     }
                     unsigned int nCur = m_aChosenPowers.m_pArray[i];
-                    nOk = pStats->HasSpellPrereq(g_pRules->m_pSpellArray->GetSpell(nCur),
+                    nOk = pStats->HasSpellPrereq(g_pRules->GetSpell(nCur),
                                                  &m_aChosenPowers);
                     i++;
                 } while (nOk != 0);
@@ -695,21 +672,21 @@ void CSWGuiPowersLevelUp::AddChosenPower(unsigned int nPower)
     if (nCount < 1)
         return;
 
-    int nIndex = FindPowerIndexInMutator(m_aAvailablePowers, nPower);
+    int nIndex = m_aAvailablePowers.IndexOf(nPower);
     if (nIndex == -1)
         return;
 
     m_aAvailablePowers.DelIndex(nIndex);
 
     // The new power belongs in the chosen column at the first row whose name sorts after it.
-    CExoString sNewName = g_pRules->m_pSpellArray->GetSpell(static_cast<int>(nPower))->GetSpellNameText();
+    CExoString sNewName = g_pRules->GetSpell(nPower)->GetSpellNameText();
 
     int bFound = 0;
     int nInsert;
     for (nInsert = 0; !bFound && nInsert < m_aChosenPowers.m_count; nInsert++)
     {
         CExoString sExistingName =
-            g_pRules->m_pSpellArray->GetSpell(m_aChosenPowers.m_pArray[nInsert])
+            g_pRules->GetSpell(m_aChosenPowers.m_pArray[nInsert])
                 ->GetSpellNameText();
         bFound = sExistingName > sNewName;
     }
@@ -836,7 +813,7 @@ void CSWGuiPowersLevelUp::OnEnterPower(unsigned int nPower)
 
     m_nSelectedPower = nPower;
 
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(static_cast<int>(nPower));
+    CSWSpell* pSpell = g_pRules->GetSpell(nPower);
 
 #if KOTOR1  // K1 uses the global blue caption and the enabled icon colour for takeable and taken
              // rows, DISABLED_TEXT for the rest, and re-adds the 'x' glyph after the readout

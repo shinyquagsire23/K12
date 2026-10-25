@@ -800,9 +800,8 @@ int  AurMultiTextureAvailable();
 void AurTextureBindTID(unsigned int nTID, bool bCubeMap, bool bCubeStrip);
 #endif
 
-extern unsigned int enableTranslationTable[];
 extern const unsigned int texParamTargetTranslationTable[];
-extern unsigned int texParamTranslationTable[];
+extern const unsigned int texParamTranslationTable[];
 
 extern unsigned char* (*AurGetLayeredRaster)(char*, int*, int*, int*);
 extern void (*AurReleaseLayeredRaster)(void*, int, int);
@@ -1107,10 +1106,10 @@ int CAurTextureBasic::glImage(bool bParam)
         }
     }
     if (m_bCubeMap && AurCubeMapAvailable())
-        ASLgl::glDisable(enableTranslationTable[12]);
+        GLRender::Disable(Aurora::kCapTextureCubeMap);
 #if !KOTOR1
     if (bCubeStrip)
-        ASLgl::glDisable(enableTranslationTable[20]);
+        GLRender::Disable(Aurora::kCapTexture3D);
 #endif
     return m_nTIDIndex;
 }
@@ -1433,10 +1432,8 @@ void CAurTextureBasic::AsNormalizeVectorCubeMap()
     ASLgl::glGenTextures(1, reinterpret_cast<unsigned int*>(&m_nTIDIndex));
 #endif
     m_panTIDIndex[0] = m_nTIDIndex;
-    ASLgl::glEnable(enableTranslationTable[13]);
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::Enable(Aurora::kCapNormalize);
+    GLRender::SetActiveTexture(1);
     int nTID = m_nTIDIndex;
 #if KOTOR1
     ASLgl::glBindTexture(enableTranslationTable[12], nTID);
@@ -1451,10 +1448,8 @@ void CAurTextureBasic::AsNormalizeVectorCubeMap()
     ASLgl::glTexParameteri(nTarget, texParamTranslationTable[2], GL_LINEAR);
     ASLgl::glTexParameteri(nTarget, texParamTranslationTable[3], GL_LINEAR_MIPMAP_LINEAR);
 #endif
-    ASLgl::glDisable(enableTranslationTable[12]);
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::Disable(Aurora::kCapTextureCubeMap);
+    GLRender::SetActiveTexture(0);
 }
 
 // Gamma-corrects the current image, or rebuilds from the layered raster when a palette scheme
@@ -2603,7 +2598,6 @@ void ImageCopy(unsigned char* pDst, const unsigned char* pSrc, int nWidth, int n
 void ImageFlipY(unsigned char* pData, int nWidth, int nHeight, int nBpp);
 
 
-extern unsigned int enableTranslationTable[];
 
 enum {
     kCapTexture2D = 4,
@@ -2716,12 +2710,12 @@ void AurTextureBindTID(unsigned int nTID, bool bCubeMap)
     {
         if (bCubeMap)
         {
-            ASLgl::glEnable(enableTranslationTable[kCapCubeMap]);
+            GLRender::Enable(Aurora::kCapTextureCubeMap);
             bCube = true;
         }
         else
         {
-            ASLgl::glDisable(enableTranslationTable[kCapCubeMap]);
+            GLRender::Disable(Aurora::kCapTextureCubeMap);
         }
     }
 
@@ -2749,19 +2743,19 @@ void AurTextureBindTID(unsigned int nTID, bool bCubeMap, bool bCubeStrip)
     {
         if (bCubeMap)
         {
-            ASLgl::glEnable(enableTranslationTable[kCapCubeMap]);
+            GLRender::Enable(Aurora::kCapTextureCubeMap);
             bCube = true;
         }
         else
         {
-            ASLgl::glDisable(enableTranslationTable[kCapCubeMap]);
+            GLRender::Disable(Aurora::kCapTextureCubeMap);
         }
     }
 
     if (bCubeStrip)
-        ASLgl::glEnable(enableTranslationTable[kCapTexture3D]);
+        GLRender::Enable(Aurora::kCapTexture3D);
     else
-        ASLgl::glDisable(enableTranslationTable[kCapTexture3D]);
+        GLRender::Disable(Aurora::kCapTexture3D);
 
     if (nTID >= 2 && alwaysbind < 0)
         return;

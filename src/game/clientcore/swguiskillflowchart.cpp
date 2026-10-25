@@ -55,7 +55,6 @@ void CSWGuiSkillFlowChart::ClearChart() {
 }
 
 
-#define FLOWRADKEY(ss) ((ss)->GetSubRadialSpell(0))
 #define FEATPREREQS(ss) (static_cast<short>((ss)->m_nPrereqFeat1) == -1 ? 0 : static_cast<short>((ss)->m_nPrereqFeat2) == -1 ? 1 : 2)
 
 void CSWGuiSkillFlowChart::BuildSortedPowerList(CExoArrayList<unsigned>& list)
@@ -69,7 +68,7 @@ void CSWGuiSkillFlowChart::BuildSortedPowerList(CExoArrayList<unsigned>& list)
 #endif
 
     for (int nSpell = 0; nSpell < g_pRules->m_pSpellArray->m_nCount; nSpell++) {
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
         if (!pSpell)
             continue;
 #if KOTOR1  // K1: usertype 1 only
@@ -83,37 +82,21 @@ void CSWGuiSkillFlowChart::BuildSortedPowerList(CExoArrayList<unsigned>& list)
             continue;
 
         for (int64_t i = 0; i < list.m_count; i++) {
-            CSWSpell* pOther = g_pRules->m_pSpellArray->GetSpell(list.m_pArray[i]);
+            CSWSpell* pOther = g_pRules->GetSpell(list.m_pArray[i]);
             if (!pOther)
                 continue;
 
-            unsigned nO1 = FLOWRADKEY(pOther);
-            unsigned nO2 = FLOWRADKEY(pOther);
-            unsigned nM1 = FLOWRADKEY(pSpell);
-            unsigned nM2 = FLOWRADKEY(pSpell);
-            if (static_cast<int>(nO1 - nO2 / 10 * 10) > static_cast<int>(nM1 - nM2 / 10 * 10))
+            if (pOther->GetPriority(0) > pSpell->GetPriority(0))
                 goto iInsert;
-            nO1 = FLOWRADKEY(pOther);
-            nO2 = FLOWRADKEY(pOther);
-            nM1 = FLOWRADKEY(pSpell);
-            nM2 = FLOWRADKEY(pSpell);
-            if (nO1 - nO2 / 10 * 10 != nM1 - nM2 / 10 * 10)
+            if (pOther->GetPriority(0) != pSpell->GetPriority(0))
                 continue;
 
-            nO1 = FLOWRADKEY(pOther);
-            nM1 = FLOWRADKEY(pSpell);
-            if (static_cast<int>(nO1) / 1000 < static_cast<int>(nM1) / 1000)
+            if (pOther->GetMenu(0) < pSpell->GetMenu(0))
                 goto iInsert;
-            nO1 = FLOWRADKEY(pOther);
-            nM1 = FLOWRADKEY(pSpell);
-            if (static_cast<int>(nO1) / 1000 != static_cast<int>(nM1) / 1000)
+            if (pOther->GetMenu(0) != pSpell->GetMenu(0))
                 continue;
 
-            nO1 = FLOWRADKEY(pOther);
-            nO2 = FLOWRADKEY(pOther);
-            nM1 = FLOWRADKEY(pSpell);
-            nM2 = FLOWRADKEY(pSpell);
-            if (static_cast<int>(nO1 - nO2 / 1000 * 1000) / 10 <= static_cast<int>(nM1 - nM2 / 1000 * 1000) / 10)
+            if (pOther->GetSlot(0) <= pSpell->GetSlot(0))
                 continue;
         iInsert:
             list.Insert(nSpell, static_cast<int>(i));
@@ -321,7 +304,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     CResRef resRef;
     CSWGuiSkillFlow* pFlow = new CSWGuiSkillFlow();
 
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nPowerA);
+    CSWSpell* pSpell = g_pRules->GetSpell(nPowerA);
     if (nSecret)
         resRef = const_cast<char*>("ip_secret");
     else if (pSpell)
@@ -331,7 +314,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     pFlow->m_aSlots[0].m_nId = nPowerA;
     pFlow->m_aSlots[0].m_imageIcon.m_params.SetImage(resRef, 0);
 
-    pSpell = g_pRules->m_pSpellArray->GetSpell(nPowerB);
+    pSpell = g_pRules->GetSpell(nPowerB);
     if (nSecret)
         resRef = const_cast<char*>("ip_secret");
     else if (pSpell)
@@ -341,7 +324,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     pFlow->m_aSlots[1].m_nId = nPowerB;
     pFlow->m_aSlots[1].m_imageIcon.m_params.SetImage(resRef, 0);
 
-    pSpell = g_pRules->m_pSpellArray->GetSpell(nPowerC);
+    pSpell = g_pRules->GetSpell(nPowerC);
     if (nSecret)
         resRef = const_cast<char*>("ip_secret");
     else if (pSpell)
@@ -368,7 +351,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     CResRef resRef;
     CSWGuiSkillFlow* pFlow = new CSWGuiSkillFlow();
 
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nPowerA);
+    CSWSpell* pSpell = g_pRules->GetSpell(nPowerA);
     if (pSpell)
         resRef = pSpell->m_iconResRef;
     else
@@ -376,7 +359,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     pFlow->m_aSlots[0].m_nId = nPowerA;
     pFlow->m_aSlots[0].m_imageIcon.m_params.SetImage(resRef, 0);
 
-    pSpell = g_pRules->m_pSpellArray->GetSpell(nPowerB);
+    pSpell = g_pRules->GetSpell(nPowerB);
     if (pSpell)
         resRef = pSpell->m_iconResRef;
     else
@@ -384,7 +367,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     pFlow->m_aSlots[1].m_nId = nPowerB;
     pFlow->m_aSlots[1].m_imageIcon.m_params.SetImage(resRef, 0);
 
-    pSpell = g_pRules->m_pSpellArray->GetSpell(nPowerC);
+    pSpell = g_pRules->GetSpell(nPowerC);
     if (pSpell)
         resRef = pSpell->m_iconResRef;
     else
@@ -639,17 +622,9 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
 void CSWGuiSkillFlowChart::CreatePowerChart(CSWSCreatureStats* pStats, int bShowAvailable) {
     CExoArrayList<unsigned int> powers;
     CSWSpell* pChain;
-    unsigned nRadA;
-    unsigned nRadB;
 #if !KOTOR1
     unsigned nPower;
 #endif
-    unsigned nCKeyA;
-    unsigned nCKeyB;
-    unsigned nCKeyC;
-    unsigned nMKeyA;
-    unsigned nMKeyB;
-    unsigned nMKeyC;
     int nB;
     int nC;
 
@@ -657,12 +632,10 @@ void CSWGuiSkillFlowChart::CreatePowerChart(CSWSCreatureStats* pStats, int bShow
     BuildSortedPowerList(powers);
 
     for (int64_t nIdx = 0, nNext = 1; nIdx < powers.m_count; nIdx++, nNext++) {
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(powers.m_pArray[nIdx]);
+        CSWSpell* pSpell = g_pRules->GetSpell(powers.m_pArray[nIdx]);
         if (!pSpell)
             continue;
-        nRadA = FLOWRADKEY(pSpell);
-        nRadB = FLOWRADKEY(pSpell);
-        if (static_cast<int>(nRadA) - static_cast<int>(nRadB / 10 * 10) > 0)
+        if (pSpell->GetPriority(0) > 0)
             break;
 
         bool bKnown;
@@ -700,28 +673,17 @@ void CSWGuiSkillFlowChart::CreatePowerChart(CSWSCreatureStats* pStats, int bShow
                 if (bShowAvailable == 0 && !pStats->HasSpell(0, powers.m_pArray[nChain], 0))
                     continue;
 #endif
-                pChain = g_pRules->m_pSpellArray->GetSpell(powers.m_pArray[nChain]);
+                pChain = g_pRules->GetSpell(powers.m_pArray[nChain]);
                 if (!pChain)
                     continue;
-                nCKeyA = FLOWRADKEY(pChain);
-                nMKeyA = FLOWRADKEY(pSpell);
-                if (static_cast<int>(nCKeyA) / 1000 != static_cast<int>(nMKeyA) / 1000)
+                if (pChain->GetMenu(0) != pSpell->GetMenu(0))
                     continue;
-                nCKeyB = FLOWRADKEY(pChain);
-                nCKeyC = FLOWRADKEY(pChain);
-                nMKeyB = FLOWRADKEY(pSpell);
-                nMKeyC = FLOWRADKEY(pSpell);
-                if (static_cast<int>(nCKeyB - nCKeyC / 1000 * 1000) / 10 !=
-                    static_cast<int>(nMKeyB - nMKeyC / 1000 * 1000) / 10)
+                if (pChain->GetSlot(0) != pSpell->GetSlot(0))
                     continue;
-                nCKeyA = FLOWRADKEY(pChain);
-                nCKeyB = FLOWRADKEY(pChain);
-                if (nCKeyA - nCKeyB / 10 * 10 == 1)
+                if (pChain->GetPriority(0) == 1)
                     nB = powers.m_pArray[nChain];
                 else {
-                    nCKeyA = FLOWRADKEY(pChain);
-                    nCKeyB = FLOWRADKEY(pChain);
-                    if (nCKeyA - nCKeyB / 10 * 10 != 2)
+                    if (pChain->GetPriority(0) != 2)
                         continue;
                     nC = powers.m_pArray[nChain];
                 }

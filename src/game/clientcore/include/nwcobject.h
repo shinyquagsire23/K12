@@ -214,6 +214,8 @@ public:
     // </VTABLE-GEN>
 
     int  AnimationDialog(unsigned short a);
+    // Whether the current animation is one of the dialog animations.
+    int  IsDoingDialogAnimation() { return AnimationDialog(m_currentAnimation); }
     void SetFadeState(unsigned char state);
     void SetDesiredFadeState(unsigned char state, int a, unsigned int b, unsigned int c);
     float GetFinalFadeAlpha();

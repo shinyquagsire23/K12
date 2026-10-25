@@ -2077,7 +2077,7 @@ int CSWPartyTable::AddMember(int index, unsigned long long id)
     if (m_nNumPartyMembers == 0)
     {
         CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-        CSWSCreature* pPC = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+        CSWSCreature* pPC = pServerApp->GetPlayerCreature();
         if (pPC != 0 && pPC->m_stealthMode == 1)
             m_soloMode = 1;
     }
@@ -2116,7 +2116,7 @@ int CSWPartyTable::AddMember(int index, unsigned long long id)
     if (m_nNumPartyMembers == 0)
     {
         CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-        CSWSCreature* pPC = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+        CSWSCreature* pPC = pServerApp->GetPlayerCreature();
         if (pPC != 0 && pPC->m_stealthMode == 1)
             m_soloMode = 1;
     }
@@ -2249,8 +2249,7 @@ int CSWPartyTable::AddNPC(int index, CSWSCreature* pCreature)
 #endif
 
     CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    unsigned long long playerId = pServerApp->GetPlayerCreatureId();
-    CSWSCreature* pPlayer = pServerApp->GetCreatureByGameObjectID(playerId);
+    CSWSCreature* pPlayer = pServerApp->GetPlayerCreature();
     if (pPlayer != 0 && pPlayer->GetFaction() != 0)
         pPlayer->GetFaction()->AddMember(pCreature->m_objectId, 0);
 
@@ -2315,8 +2314,7 @@ int CSWPartyTable::AddPUP(int index, CSWSCreature* pCreature)
     m_pupAvailable[index] = 1;
 
     CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    unsigned long long playerId = pServerApp->GetPlayerCreatureId();
-    pServerApp->GetCreatureByGameObjectID(playerId);
+    pServerApp->GetPlayerCreature();
     CSWSFaction* pFaction = g_pAppManager->m_pServerExoApp->GetFactionManager()->GetFaction(STANDARD_FACTION_PARTYPUPPET);
     pFaction->AddMember(pCreature->m_objectId, 0);
 
@@ -2719,7 +2717,7 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
         if (curPCIndex == -1)
             return 1;
 #if KOTOR1
-        CSWSCreature* pCurNPC = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+        CSWSCreature* pCurNPC = pServerApp->GetPlayerCreature();
 #else
         CSWSCreature* pCurNPC = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_partyMemberID[curPCIndex]);
 #endif
@@ -2767,7 +2765,7 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
         }
         else
         {
-            CSWSCreature* pCurPC = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+            CSWSCreature* pCurPC = pServerApp->GetPlayerCreature();
             pCurPC->m_pStats->m_bIsPC = 0;
             pCurPC->m_bPlayerCharacter = 0;
             SaveMember(m_nControlledNPC, 0);

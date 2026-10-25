@@ -95,6 +95,35 @@ public:
     unsigned char m_bNewHilight : 1;
     unsigned char _rest26c      : 7;
     char          _pad26d[0x270 - 0x26d];
+
+#if !KOTOR1  // K1 rows only ever take the purple highlight (PopulateItemListBox writes it out)
+    // Turns the new-quest highlight on (a half-alpha bonus-coloured frame) or back to the plain
+    // row colours; a no-op when the row is already in that state.
+    void SetEncouraged(int bEncouraged);
+#endif
 };
+
+#if !KOTOR1
+#include "guiingame.h"
+
+inline void CSWGuiJournalItemEntry::SetEncouraged(int bEncouraged)
+{
+    if (m_bNewHilight == bEncouraged)
+        return;
+    m_bNewHilight = bEncouraged;
+    if (m_bNewHilight)
+    {
+        m_border.m_params.m_color = CGuiInGame::COLOR_NEW_BONUS;
+        m_border.m_params.m_fAlpha = 0.5f;
+        m_borderHilight.m_params.m_color = CGuiInGame::COLOR_NEW_BONUS;
+    }
+    else
+    {
+        m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
+        m_borderHilight.m_params.m_color =
+            *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_HIGHLIGHT);
+    }
+}
+#endif
 
 #endif // CSWGUIJOURNALITEMENTRY_H

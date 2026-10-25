@@ -99,6 +99,10 @@ public:
     float ZWorldToZLocal(float worldZ);
     float ZLocalToZWorld(float localZ);
     Vector LocalToWorld(const Vector& v);
+    // One of the mesh's two header points, in world space.
+    Vector GetActionPoint(int nPoint) { return LocalToWorld(m_headerVec[nPoint]); }
+    void SetActionPoint(int nPoint, const Vector& v) { m_headerVec[nPoint] = WorldToLocal(v); }
+    void SetMesh(const CResRef& resRef) { m_resRef = resRef; }
     Vector WorldToLocal(const Vector& v);
     Vector NormalLocalToWorld(const Vector& v);
     Vector NormalWorldToLocal(const Vector& v);

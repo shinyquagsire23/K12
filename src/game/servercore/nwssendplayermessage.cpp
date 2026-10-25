@@ -197,7 +197,7 @@ void CSWSMessage::AssignVisualEffectLists(CExoArrayList<CLoopingVisualEffect*>* 
         delete pDst->m_pArray[i];
         pDst->m_pArray[i] = 0;
     }
-    pDst->Clear();
+    pDst->SetSize(0);
 
     for (int i = 0; i < pSrc->m_count; i++)
     {
@@ -499,15 +499,7 @@ int CSWSMessage::ComputeUpdateRequired(CSWSPlayer* pPlayer, CSWSObject* pObject,
                         CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
                         if (pModule)
                         {
-                            int nCount = pModule->m_playerList.m_count;
-                            int nPartyCount = 0;
-                            if (nCount > 0)
-                            {
-                                for (int i = 0; i < nCount; i++)
-                                    if (pModule->m_playerList.m_pArray[i] == pSubject->m_objectId)
-                                        nPartyCount++;
-                            }
-                            if (nPartyCount != pLast->m_bInvisible)
+                            if (pModule->m_playerList.Contains(pSubject->m_objectId) != pLast->m_bInvisible)
                                 nFlags |= MSG_OBJECT_UPDATE_VISIBILITY;
                         }
                     }
@@ -1292,10 +1284,7 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
             }
             else
             {
-                int nIdMatches = 0;
-                for (int j = 0; j < static_cast<int>(ids.m_count); j++)
-                    nIdMatches += (ids.m_pArray[j] == nVisId) ? 1 : 0;
-                if (nIdMatches > 0)
+                if (ids.Contains(nVisId) > 0)
                     bDuplicate = 1;
             }
 
@@ -1423,23 +1412,11 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                 pObject->AsSWSDoor()->m_nFaction !=
                     static_cast<unsigned int>(pPlayer->GetGameObject()->AsSWSCreature()->m_pStats->m_factionId))
             {
-                CSWSDoor* pDoorList = pObject->AsSWSDoor();
-                int nCount = pDoorList->m_objectsAtDoor.m_count;
-                if (nCount >= 1)
-                {
-                    unsigned long long nPcId = pPlayer->GetGameObject()->AsSWSCreature()->m_objectId;
-                    int nMatches = 0;
-                    for (int i = 0; i < nCount; i++)
-                        nMatches += (pDoorList->m_objectsAtDoor.m_pArray[i] == nPcId) ? 1 : 0;
-                    if (nMatches != 0)
-                        nState = pObject->AsSWSDoor()->m_bTrapFlag != 0;
-                    else
-                        nState = 0;
-                }
+                if (pObject->AsSWSDoor()->m_objectsAtDoor.Contains(
+                        pPlayer->GetGameObject()->AsSWSCreature()->m_objectId) != 0)
+                    nState = pObject->AsSWSDoor()->m_bTrapFlag != 0;
                 else
-                {
                     nState = 0;
-                }
             }
             else
             {
@@ -1469,23 +1446,11 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                 pObject->AsSWSPlaceable()->m_nFaction !=
                     static_cast<unsigned int>(pPlayer->GetGameObject()->AsSWSCreature()->m_pStats->m_factionId))
             {
-                CSWSPlaceable* pPlaceableList = pObject->AsSWSPlaceable();
-                int nCount = pPlaceableList->m_objectsOnPlaceable.m_count;
-                if (nCount >= 1)
-                {
-                    unsigned long long nPcId = pPlayer->GetGameObject()->AsSWSCreature()->m_objectId;
-                    int nMatches = 0;
-                    for (int i = 0; i < nCount; i++)
-                        nMatches += (pPlaceableList->m_objectsOnPlaceable.m_pArray[i] == nPcId) ? 1 : 0;
-                    if (nMatches != 0)
-                        nState = pObject->AsSWSPlaceable()->m_bTrapFlag != 0;
-                    else
-                        nState = 0;
-                }
+                if (pObject->AsSWSPlaceable()->m_objectsOnPlaceable.Contains(
+                        pPlayer->GetGameObject()->AsSWSCreature()->m_objectId) != 0)
+                    nState = pObject->AsSWSPlaceable()->m_bTrapFlag != 0;
                 else
-                {
                     nState = 0;
-                }
             }
             else
             {
@@ -1656,15 +1621,7 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                     WriteBOOL(1);
                     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
                     if (pModule != 0)
-                    {
-                        int nCount = pModule->m_playerList.m_count;
-                        if (nCount >= 1)
-                        {
-                            unsigned long long nTarget = pObject->m_objectId;
-                            for (int i = 0; i < nCount; i++)
-                                nMembers += (pModule->m_playerList.m_pArray[i] == nTarget) ? 1 : 0;
-                        }
-                    }
+                        nMembers = pModule->m_playerList.Contains(pObject->m_objectId);
                     WriteBOOL(nMembers);
                 }
                 else
@@ -2193,15 +2150,7 @@ void CSWSMessage::UpdateLastUpdateObject(CSWSPlayer* pPlayer, CSWSObject* pObjec
                     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
                     if (pModule)
                     {
-                        int nCount = pModule->m_playerList.m_count;
-                        int nPartyCount = 0;
-                        if (nCount > 0)
-                        {
-                            for (int i = 0; i < nCount; i++)
-                                if (pModule->m_playerList.m_pArray[i] == pCreature->m_objectId)
-                                    nPartyCount++;
-                        }
-                        pLast->m_bInvisible = nPartyCount;
+                        pLast->m_bInvisible = pModule->m_playerList.Contains(pCreature->m_objectId);
                     }
                 }
                 else
@@ -5586,17 +5535,7 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
     g_pExoBase->GetDirectoryList(&vaultFiles, CExoString("SERVERVAULT:"), kResTypeAll, 1, 0);
 #endif
 
-    int nMatches = 0;
-    {
-        CExoString sWanted(sPlayerName);
-        for (int i = 0; i < vaultFiles.m_count; i++)
-        {
-            if (vaultFiles.m_pArray[i] == sWanted)
-                nMatches++;
-        }
-    }
-
-    if (nMatches != 0)
+    if (vaultFiles.Contains(sPlayerName) != 0)
     {
         vaultFiles.SetSize(0);
         sVaultDir.Format(const_cast<char*>("SERVERVAULT:%s"), sPlayerName.CStr());

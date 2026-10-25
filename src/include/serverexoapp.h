@@ -140,6 +140,7 @@ public:
     void DebugValidatePath_Segment(CSWSArea* a, CPathfindInformation* b, const Vector& c, const Vector& d);
     void ChangePlayerGameObject(unsigned long long a);
     unsigned long long GetPlayerCreatureId();
+    CSWSCreature* GetPlayerCreature() { return GetCreatureByGameObjectID(GetPlayerCreatureId()); }
     void MoveCreatureToPosition(unsigned long long a, const Vector& b, unsigned long long c);
     void UpdateSubareasOnMoveTo(unsigned long long a, const Vector& b, const Vector& c);
     int  IsActionsPending(unsigned long long a);

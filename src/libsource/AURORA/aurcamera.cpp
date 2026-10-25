@@ -45,9 +45,6 @@ int equal(const Vector& a, const Vector& b);
 int    g_nScreenWidth = 800;
 int    g_nScreenHeight = 600;
 char   s_frameBufferModificationsStarted;
-extern const int facingTranslationTable[3];
-extern const int fillTranslationTable[3];
-extern const int transformTranslationTable[4];
 int    overridecamera;
 Vector cameraposition;
 Quaternion cameraorientation;
@@ -167,15 +164,15 @@ void Camera::SetViewPort(int nX, int nY, int nW, int nH)
 void Camera::RenderScene()
 {
     if (m_pScene) {
-        ASLgl::glPolygonMode(facingTranslationTable[2], fillTranslationTable[2]);
-        ASLgl::glMatrixMode(transformTranslationTable[2]);
+        GLRender::SetPolygonRenderMode(Aurora::kFacingFrontAndBack, Aurora::kFillSolid);
+        GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
         ASLgl::glPushMatrix();
-        ASLgl::glMatrixMode(transformTranslationTable[0]);
+        GLRender::SetMatrixMode(Aurora::kMatrixProjection);
         ASLgl::glPushMatrix();
 
         int avwViewport[4];
         if (IosAntiAliasOn()) {
-            ASLgl::glGetIntegerv(GL_VIEWPORT, avwViewport);
+            GLRender::GetViewPort(avwViewport);
 #if KOTOR1  // K1: full-screen test against the SDL mode only, no origin test, no latch
             if (avwViewport[2] == g_SDL_mode.w && avwViewport[3] == g_SDL_mode.h) {
                 int nAAW = avwViewport[2];
@@ -191,7 +188,7 @@ void Camera::RenderScene()
                 ASLgl::glViewport(0, 0, nAAW, nAAH);
             }
         }
-        ASLgl::glGetIntegerv(GL_VIEWPORT, avwViewport);
+        GLRender::GetViewPort(avwViewport);
 
         int nViewW, nViewH;
         if (m_nViewW != 0 || m_nViewH != 0) {
@@ -211,7 +208,7 @@ void Camera::RenderScene()
         float fAspect = static_cast<float>(nViewW) / static_cast<float>(nViewH);
         m_fViewAnimDefault = static_cast<float>(nViewH) * 0.01f;
 
-        ASLgl::glMatrixMode(transformTranslationTable[0]);
+        GLRender::SetMatrixMode(Aurora::kMatrixProjection);
         ASLgl::glLoadIdentity();
 
 #if KOTOR1 && defined(K2_MOBILE_OPT)  // K1's mobile port: the far clip follows the fog end, or 10000 on a saturation frame
@@ -276,7 +273,7 @@ void Camera::RenderScene()
             Plane& q = m_viewState.m_aViewVolumes[iVolume];
                         Vector r = RotateVector(Vector(q.a, q.b, q.c), m_qOrientation);
             q.a = r.x; q.b = r.y; q.c = r.z;
-            q.d = q.d - (q.a * m_vPosition.x + q.b * m_vPosition.y + q.c * m_vPosition.z);
+            q.d = q.d - dot(r, m_vPosition);
         }
 
         Plane& qPick = m_viewState.m_aViewVolumes[frustumpick];
@@ -285,11 +282,11 @@ void Camera::RenderScene()
 
         m_nViewVolumeSet = 1;
         CurrentCamera = this;
-        ASLgl::glMatrixMode(transformTranslationTable[2]);
+        GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
         m_pScene->Render();
-        ASLgl::glMatrixMode(transformTranslationTable[0]);
+        GLRender::SetMatrixMode(Aurora::kMatrixProjection);
         ASLgl::glPopMatrix();
-        ASLgl::glMatrixMode(transformTranslationTable[2]);
+        GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
         ASLgl::glPopMatrix();
         CurrentCamera = 0;
 
@@ -306,7 +303,7 @@ Vector Camera::MouseDir(int nMouseX, int nMouseY)
     int nView[4];
     __builtin_memcpy(nView, &m_nViewX, sizeof(nView));
     if (nView[2] == 0 || nView[3] == 0)
-        ASLgl::glGetIntegerv(GL_VIEWPORT, nView);
+        GLRender::GetViewPort(nView);
 
     int nDX = nMouseX - nView[0];
     int nDY = nMouseY - nView[1];
@@ -335,7 +332,7 @@ Vector Camera::MapToScreen(Vector v, bool b)
     int nView[4];
     __builtin_memcpy(nView, &m_nViewX, sizeof(nView));
     if (nView[2] == 0 || nView[3] == 0)
-        ASLgl::glGetIntegerv(GL_VIEWPORT, nView);
+        GLRender::GetViewPort(nView);
 
     if (m_fViewAngle > 0.0f) {
         v = v - m_vPosition;
@@ -416,7 +413,7 @@ int Camera::HitCheck(int nX, int nY, Vector* pResult, CHitInfo* pInfo)
     int nView[4];
     __builtin_memcpy(nView, &m_nViewX, sizeof(nView));
     if (nView[2] == 0 || nView[3] == 0)
-        ASLgl::glGetIntegerv(GL_VIEWPORT, nView);
+        GLRender::GetViewPort(nView);
     int nXRel = nX - nView[0];
     int nYRel = nY - nView[1];
     if (nXRel >= nView[2])
@@ -520,7 +517,7 @@ bool Camera::SceneBoundaryCheck(const Vector& vStart, const Vector& vEnd, const 
     Vector vNorm = normalize(Vector(vDiff.y * vDelta.z - vDiff.z * vDelta.y,
                                     vDiff.z * vDelta.x - vDiff.x * vDelta.z,
                                     vDiff.x * vDelta.y - vDiff.y * vDelta.x));
-    float fDot = vNorm.x * vStart.x + vNorm.y * vStart.y + vNorm.z * vStart.z;
+    float fDot = dot(vNorm, vStart);
     Plane cPlane2(vNorm.x, vNorm.y, vNorm.z, -fDot);
     Vector vOut = planelineintersection(*reinterpret_cast<const Vector*>(&cPlane2), cPlane2.d,
                                         m_vPosition,

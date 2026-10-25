@@ -13,6 +13,7 @@
 #include "aurtexture.h"
 #include "AURORA/aurmodel.h"
 #include "auremitter.h"
+#include "aurglcore.h"
 
 CAurTexture* AurTextureGetNULL();
 int AurTextureMessage(CAurTexture* pTexture, char* pszLine);
@@ -26,10 +27,6 @@ void AurTextureSetLayered(CAurTexture* pTexture, char* pszName, int* pnOffset, i
 
 // The GL surface the three blend-state rows program, plus the tables they translate through.
 const float* Homogenize(const Vector& v, const float& w);
-extern unsigned int blendTranslationTable[];
-extern const unsigned int cmpTranslationTable[];
-extern const int facingTranslationTable[3];
-extern const unsigned int materialTranslationTable[];
 extern float g_fGlobalAlpha;
 int usenewalpha = 1;
 float materialalpha = 0.349999994f;
@@ -339,23 +336,21 @@ void Material::SetBlendingMode(int nMode) {
         if (fAlpha > 0.0f)
             s_useAlphaTestShader = true;
     }
-    ASLgl::glAlphaFunc(cmpTranslationTable[4], fAlpha);
+    GLRender::SetAlphaFunc(Aurora::kCmpGreater, fAlpha);
 #else
     ASLgl::glBlendFunc(blendTranslationTable[m_lstSrcBlend.m_pData[nMode]],
                        blendTranslationTable[m_lstDstBlend.m_pData[nMode]]);
     if (static_cast<int>(m_lstSrcBlend.m_pData[nMode]) == 0 && static_cast<int>(m_lstDstBlend.m_pData[nMode]) == 2) {
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(0);
+        RenderInterface::SetDepthMask(0);
     } else {
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(1);
+        RenderInterface::SetDepthMask(1);
     }
     if (!usenewalpha)
         return;
     float fAlpha = 0.0f;
     if (static_cast<int>(m_lstSrcBlend.m_pData[nMode]) == 2)
         fAlpha = static_cast<int>(m_lstDstBlend.m_pData[nMode]) == 3 ? materialalpha : 0.0f;
-    ASLgl::glAlphaFunc(cmpTranslationTable[4], fAlpha);
+    GLRender::SetAlphaFunc(Aurora::kCmpGreater, fAlpha);
 #endif
 }
 
@@ -368,7 +363,7 @@ void Material::SetGUIBlendingMode() {
     float fAlpha = 0.0f;
     if (static_cast<int>(m_lstSrcBlend.m_pData[0]) == 2)
         fAlpha = static_cast<int>(m_lstDstBlend.m_pData[0]) == 3 ? materialalpha : 0.0f;
-    ASLgl::glAlphaFunc(cmpTranslationTable[4], fAlpha);
+    GLRender::SetAlphaFunc(Aurora::kCmpGreater, fAlpha);
 }
 
 // A material whose texture is not using global alpha emits nothing.
@@ -379,7 +374,7 @@ void Material::SetMaterialColor(Vector vColor, float fAlpha) {
 #if KOTOR1  // K1 passes GL_FRONT_AND_BACK literally, with no facing table
         ASLgl::glMaterialfv(GL_FRONT_AND_BACK, materialTranslationTable[2], paColor);
 #else
-        ASLgl::glMaterialfv(facingTranslationTable[0], materialTranslationTable[2], paColor);
+        GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialDiffuse, paColor);
 #endif
     }
 }

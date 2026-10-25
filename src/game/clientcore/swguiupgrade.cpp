@@ -478,22 +478,6 @@ void CSWGuiUpgrade::OnAssemble(CSWGuiControl* pControl)
 }
 #endif
 
-// Scans a list for an item by pointer identity; -1 when it is not present.
-
-static int FindInItemArray(CExoArrayList<CSWSItem*>& rList, CSWSItem* pTarget)
-{
-    int nIdx = -1;
-    for (int i = 0; i < rList.m_count; i++)
-    {
-        if (rList.m_pArray[i] == pTarget)
-        {
-            nIdx = i;
-            break;
-        }
-    }
-    return nIdx;
-}
-
 #if KOTOR1  // K1: no OK button or locked rows; menu 1 rebuilds the lightsaber from its upcrystals
 void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
 {
@@ -550,7 +534,7 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
         if (*ppSlot != 0)
         {
             (*ppSlot)->SetPossessor(pApp->GetPlayerCreatureId(), 0, 0, OBJECT_INVALID);
-            int nFound = FindInItemArray(m_lstItemsTakenFromRepo, *ppSlot);
+            int nFound = m_lstItemsTakenFromRepo.IndexOf(*ppSlot);
             if (nFound != -1)
             {
                 m_lstItemsTakenFromRepo.DelIndex(nFound);
@@ -569,7 +553,7 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
         CSWSItem* pItem = pApp->GetItemByGameObjectID(pRow->m_oidItem);
         if (pItem == 0)
             goto FINALIZE;
-        int nFound = FindInItemArray(m_lstItemsAddedToRepo, pItem);
+        int nFound = m_lstItemsAddedToRepo.IndexOf(pItem);
         if (nFound != -1)
         {
             m_lstItemsAddedToRepo.DelIndex(nFound);
@@ -676,7 +660,7 @@ P8:
     if (*ppSlot != 0)
     {
         (*ppSlot)->SetPossessor(pApp->GetPlayerCreatureId(), 0, 0, OBJECT_INVALID);
-        int nFound = FindInItemArray(m_lstItemsTakenFromRepo, *ppSlot);
+        int nFound = m_lstItemsTakenFromRepo.IndexOf(*ppSlot);
         if (nFound != -1)
         {
             m_lstItemsTakenFromRepo.DelIndex(nFound);
@@ -699,7 +683,7 @@ P8:
     CSWSItem* pItem = pApp->GetItemByGameObjectID(pRow->m_oidItem);
     if (pItem == 0)
         goto FINALIZE;
-    int nFound = FindInItemArray(m_lstItemsAddedToRepo, pItem);
+    int nFound = m_lstItemsAddedToRepo.IndexOf(pItem);
     if (nFound != -1)
     {
         m_lstItemsAddedToRepo.DelIndex(nFound);
@@ -837,7 +821,7 @@ void CSWGuiUpgrade::OnSlotSelected(CSWGuiControl* pControl)
     if (*ppSlot != 0)
     {
         m_pItem->m_nUpgrades &= ~(1u << m_anUpgradeRow[n]);
-        int nFound = FindInItemArray(m_lstItemsTakenFromRepo, *ppSlot);
+        int nFound = m_lstItemsTakenFromRepo.IndexOf(*ppSlot);
         if (nFound != -1)
         {
             m_lstItemsTakenFromRepo.DelIndex(nFound);
@@ -1058,7 +1042,7 @@ void CSWGuiUpgrade::OnSlotSelected(CSWGuiControl* pControl)
         if (*ppSlot != 0)
         {
             m_pItem->m_nUpgrades &= ~(1u << (m_anUpgradeRow[n] & 0xff));
-            int nFound = FindInItemArray(m_lstItemsTakenFromRepo, *ppSlot);
+            int nFound = m_lstItemsTakenFromRepo.IndexOf(*ppSlot);
             if (nFound != -1)
             {
                 m_lstItemsTakenFromRepo.DelIndex(nFound);
@@ -1168,12 +1152,8 @@ void CSWGuiUpgrade::OnEnterSlot(CSWGuiControl* pControl)
             loc.GetString(g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText, 0);
             if ((sText.Find('<', 0) & sText.Find('{', 0)) != -1)
             {
-                CSWTlkTable* pTlk = g_pSWTlkTable;
-                pTlk->m_pSpeakerObj =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-                pTlk->m_gender = pTlk->GetObjectGender();
-                pTlk->m_bSuppressEnabled = static_cast<unsigned char>(pTlk->m_bSuppressEnabled | 1);
-                pTlk->ParseStr(sText);
+                CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+                g_pSWTlkTable->ParseStr(sText, pPC, 1, 1);
             }
             m_lblSlotName.m_text.m_params.SetText(sText);
             CExoString sDesc = m_apaItems[n]->GetPropertiesOnlyDescription();
@@ -1203,12 +1183,8 @@ void CSWGuiUpgrade::OnEnterSlot(CSWGuiControl* pControl)
             loc.GetString(g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText, 0);
             if ((sText.Find('<', 0) & sText.Find('{', 0)) != -1)
             {
-                CSWTlkTable* pTlk = g_pSWTlkTable;
-                pTlk->m_pSpeakerObj =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-                pTlk->m_gender = pTlk->GetObjectGender();
-                pTlk->m_bSuppressEnabled = static_cast<unsigned char>(pTlk->m_bSuppressEnabled | 1);
-                pTlk->ParseStr(sText);
+                CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+                g_pSWTlkTable->ParseStr(sText, pPC, 1, 1);
             }
             m_lblSlotName.m_text.m_params.SetText(sText);
             CExoString sDesc = m_apaItems[n]->GetPropertiesOnlyDescription();
@@ -1867,7 +1843,7 @@ void CSWGuiUpgrade::InsertUpgrade(CSWSItem* pItem, int nSlot)
 {
     if (!pItem)
         return;
-    int nFound = FindInItemArray(m_lstItemsAddedToRepo, pItem);
+    int nFound = m_lstItemsAddedToRepo.IndexOf(pItem);
     if (nFound != -1)
     {
         m_lstItemsAddedToRepo.DelIndex(nFound);
@@ -2523,12 +2499,8 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
             int nAngle = sName.Find('<', 0);
             int nBrace = sName.Find('{', 0);
             if (nAngle != -1 || nBrace != -1) {
-                g_pSWTlkTable->m_pSpeakerObj =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-                CSWTlkTable* pTlk = g_pSWTlkTable;
-                pTlk->m_gender = pTlk->GetObjectGender();
-                pTlk->m_bSuppressEnabled |= 1;
-                pTlk->ParseStr(sName);
+                CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+                g_pSWTlkTable->ParseStr(sName, pPC, 1, 1);
             }
             m_text.m_params.SetText(sName);
 
@@ -3511,8 +3483,7 @@ void CSWGuiCreateItem::OnControlStoreAButton(CSWGuiControl* pControl)
         return;
     }
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nLimit = 50;
     if (pCreature != NULL)
         nLimit = pCreature->m_pStats->GetLevel(0) * 50;
@@ -3523,12 +3494,7 @@ void CSWGuiCreateItem::OnControlStoreAButton(CSWGuiControl* pControl)
         CExoString sMessage;
         g_pTlkTable->SetCustomToken(0, CExoString(nLimit));
 
-        CSWTlkTable* pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = 0;
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled &= 0xfe;
-
-        sMessage = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_CONFIRM_CREATE_COMPONENTS);
+        sMessage = g_pSWTlkTable->Fetch(STRREF_CONFIRM_CREATE_COMPONENTS, 0, 0, 0);
         pBox->SetAllowCancel(1);
         pBox->SetMessage(sMessage);
         pBox->SetMessageColors(CGuiInGame::COLOR_UPGRADE_BORDER, CGuiInGame::COLOR_NEW_HIGHLIGHT);
@@ -3628,8 +3594,7 @@ void CSWGuiCreateItem::OnControlInvAButton(CSWGuiControl* pControl)
         return;
     }
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     unsigned int nLimit;
     if (pCreature == NULL || static_cast<unsigned int>(pCreature->m_pStats->GetLevel(0)) * 50 > 250)
@@ -3644,12 +3609,7 @@ void CSWGuiCreateItem::OnControlInvAButton(CSWGuiControl* pControl)
         CExoString sMessage;
         g_pTlkTable->SetCustomToken(0, CExoString(nLimit));
 
-        CSWTlkTable* pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = 0;
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled &= 0xfe;
-
-        sMessage = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_CONFIRM_BREAKDOWN_COMPONENTS);
+        sMessage = g_pSWTlkTable->Fetch(STRREF_CONFIRM_BREAKDOWN_COMPONENTS, 0, 0, 0);
         pBox->SetAllowCancel(1);
         pBox->SetMessage(sMessage);
         pBox->SetCallback(this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItem::SellItemCallback), pControl);
@@ -3835,8 +3795,7 @@ int CSWGuiCreateItem::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiControl*>
             if (!pArray->GetINTEntry(nRow, CExoString("skill"), &nSkill))
                 return 0;
 
-            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
             if (nSkill > pCreature->m_pStats->GetSkillRank(static_cast<unsigned char>(nBaseSkill), NULL, 0))
             {
                 pEntry->SetColors(CGuiInGame::DISABLED_TEXT, CGuiInGame::DISABLED_TEXT,
@@ -3884,8 +3843,7 @@ void CSWGuiCreateItem::OnControlEntered(CSWGuiControl* pControl)
 
     CItemRepository* pRepo = NULL;
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     if (pCreature != NULL)
         pRepo = pCreature->GetItemRepository(1);
@@ -3909,8 +3867,7 @@ void CSWGuiCreateItem::OnControlEntered(CSWGuiControl* pControl)
                     return;
 
                 int nRank = -1;
-                CSWSCreature* pChar = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                    g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+                CSWSCreature* pChar = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
                 if (pChar != NULL)
                     nRank = pChar->m_pStats->GetSkillRank(static_cast<unsigned char>(nBaseSkill), NULL, 0);
 
@@ -4818,8 +4775,7 @@ void CSWGuiCreateMedicalItem::OnControlStoreAButton(CSWGuiControl* pControl)
         return;
     }
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nLimit = 50;
     if (pCreature != NULL)
         nLimit = pCreature->m_pStats->GetLevel(0) * 50;
@@ -4830,12 +4786,7 @@ void CSWGuiCreateMedicalItem::OnControlStoreAButton(CSWGuiControl* pControl)
         CExoString sMessage;
         g_pTlkTable->SetCustomToken(0, CExoString(nLimit));
 
-        CSWTlkTable* pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = 0;
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled &= 0xfe;
-
-        sMessage = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_CONFIRM_CREATE_CHEMICALS);
+        sMessage = g_pSWTlkTable->Fetch(STRREF_CONFIRM_CREATE_CHEMICALS, 0, 0, 0);
         pBox->SetAllowCancel(1);
         pBox->SetMessage(sMessage);
         pBox->SetCallback(this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::BuyItemCallback), pControl);
@@ -4863,8 +4814,7 @@ void CSWGuiCreateMedicalItem::OnControlInvAButton(CSWGuiControl* pControl)
     if (!pItem)
         return;
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     unsigned int nLimit;
     if (pCreature == NULL || static_cast<unsigned int>(pCreature->m_pStats->GetLevel(0)) * 50 > 250)
@@ -4879,12 +4829,7 @@ void CSWGuiCreateMedicalItem::OnControlInvAButton(CSWGuiControl* pControl)
         CExoString sMessage;
         g_pTlkTable->SetCustomToken(0, CExoString(nLimit));
 
-        CSWTlkTable* pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = 0;
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled &= 0xfe;
-
-        sMessage = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_CONFIRM_BREAKDOWN_CHEMICALS);
+        sMessage = g_pSWTlkTable->Fetch(STRREF_CONFIRM_BREAKDOWN_CHEMICALS, 0, 0, 0);
         pBox->SetAllowCancel(1);
         pBox->SetMessage(sMessage);
         pBox->SetCallback(this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::SellItemCallback), pControl);
@@ -4963,8 +4908,7 @@ int CSWGuiCreateMedicalItem::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiCo
                 if (!pArray->GetINTEntry(i, CExoString("skillLevel"), &nSkill))
                     return 0;
 
-                CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                    g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+                CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
                 if (nSkill > pCreature->m_pStats->GetSkillRank(static_cast<unsigned char>(nBaseSkill), NULL, 0))
                 {
                     pEntry->SetColors(CGuiInGame::DISABLED_TEXT, CGuiInGame::DISABLED_TEXT,
@@ -5142,8 +5086,6 @@ extern int g_bDo3DGUIs;
 extern CTlkTable* g_pTlkTable;
 
 
-
-static int FindInItemArray(CExoArrayList<CSWSItem*>& rList, CSWSItem* pTarget);
 
 // The slot layout, an icon id and str-ref per slot. The last three rows are unreachable sentinels.
 
@@ -5941,7 +5883,7 @@ void CSWGuiSwoopUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
         if (*ppSlot != 0)
         {
             (*ppSlot)->SetPossessor(pApp->GetPlayerCreatureId(), 0, 0, OBJECT_INVALID);
-            int nFound = FindInItemArray(m_lstItemsTakenFromRepo, *ppSlot);
+            int nFound = m_lstItemsTakenFromRepo.IndexOf(*ppSlot);
             if (nFound != -1)
             {
                 m_lstItemsTakenFromRepo.DelIndex(nFound);
@@ -5960,7 +5902,7 @@ void CSWGuiSwoopUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
         CSWSItem* pItem = pApp->GetItemByGameObjectID(pRow->m_oidItem);
         if (pItem == 0)
             goto FINALIZE;
-        int nFound = FindInItemArray(m_lstItemsAddedToRepo, pItem);
+        int nFound = m_lstItemsAddedToRepo.IndexOf(pItem);
         if (nFound != -1)
         {
             m_lstItemsAddedToRepo.DelIndex(nFound);
@@ -6083,7 +6025,7 @@ void CSWGuiSwoopUpgrade::InsertUpgrade(CSWSItem* pItem, int nSlot)
 {
     if (!pItem)
         return;
-    int nFound = FindInItemArray(m_lstItemsAddedToRepo, pItem);
+    int nFound = m_lstItemsAddedToRepo.IndexOf(pItem);
     if (nFound != -1)
     {
         m_lstItemsAddedToRepo.DelIndex(nFound);

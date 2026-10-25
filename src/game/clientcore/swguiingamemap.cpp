@@ -290,10 +290,10 @@ void CSWGuiInGameMap::OnPanelAdded()
     // The X prompt has two states. One flag says the panel still wants to offer the "return to the
     // Ebon Hawk" text, and m_nTransitBlockedStrRef holds the StrRef it quotes.
 #if KOTOR1  // K1 suppresses the prompt through the area's Unescapable flag; there is no DisableTransit
-    if (static_cast<CSWSArea*>(pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId())->GetArea())
+    if (static_cast<CSWSArea*>(pServer->GetPlayerCreature()->GetArea())
             ->m_nUnescapable != 0)
 #else
-    if (static_cast<CSWSArea*>(pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId())->GetArea())
+    if (static_cast<CSWSArea*>(pServer->GetPlayerCreature()->GetArea())
             ->m_disableTransit != 0)
 #endif
     {

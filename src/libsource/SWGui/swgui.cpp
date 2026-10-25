@@ -1077,7 +1077,7 @@ void CSWGuiPanel::BringControlToFront(CSWGuiControl* pControl)
 
 void CSWGuiPanel::SendControlToBack(CSWGuiControl* pControl)
 {
-    int nIndex = GetPosInControlList(pControl);
+    int nIndex = m_controls.IndexOf(pControl);
 
     if (nIndex == -1)
         return;
@@ -1089,7 +1089,7 @@ void CSWGuiPanel::SendControlToBack(CSWGuiControl* pControl)
 // A control already at the front is left untouched.
 void CSWGuiPanel::BringControlForward(CSWGuiControl* pControl)
 {
-    int nIndex = GetPosInControlList(pControl);
+    int nIndex = m_controls.IndexOf(pControl);
 
     if (nIndex == -1)
         return;
@@ -1104,7 +1104,7 @@ void CSWGuiPanel::BringControlForward(CSWGuiControl* pControl)
 // The destination is one slot down, so a control already at the back is left untouched.
 void CSWGuiPanel::SendControlBack(CSWGuiControl* pControl)
 {
-    int nIndex = GetPosInControlList(pControl);
+    int nIndex = m_controls.IndexOf(pControl);
     int nDest = nIndex - 1;
 
     if (nDest < 0)
@@ -2029,7 +2029,7 @@ CSWGuiManager::CSWGuiManager()
         m_pFrameImage->SetExtent(CSWGuiExtent(0, 0, 800, 600));
     }
 
-    m_pFrameImage->m_params.SetImage(CResRef("swoop"), 0);
+    m_pFrameImage->m_params.SetImage(CResRef("swoop"));
 #endif
 }
 
@@ -2948,10 +2948,10 @@ void CSWGuiManager::BringPanelToFront(CSWGuiPanel* pPanel)
 // than returning.
 void CSWGuiManager::SendPanelToBack(CSWGuiPanel* pPanel)
 {
-    if (GetModalIndex(pPanel) != -1)
+    if (m_modalPanels.IndexOf(pPanel) != -1)
         return;
 
-    int nIndex = GetPanelIndex(pPanel);
+    int nIndex = m_panels.IndexOf(pPanel);
     if (nIndex != -1)
     {
         m_panels.DelIndex(nIndex);
@@ -2962,10 +2962,10 @@ void CSWGuiManager::SendPanelToBack(CSWGuiPanel* pPanel)
 
 void CSWGuiManager::BringPanelForward(CSWGuiPanel* pPanel)
 {
-    if (GetModalIndex(pPanel) != -1)
+    if (m_modalPanels.IndexOf(pPanel) != -1)
         return;
 
-    int nIndex = GetPanelIndex(pPanel);
+    int nIndex = m_panels.IndexOf(pPanel);
     if (nIndex != -1)
     {
         if (m_panels.m_count - 1 > nIndex)
@@ -2979,10 +2979,10 @@ void CSWGuiManager::BringPanelForward(CSWGuiPanel* pPanel)
 
 void CSWGuiManager::SendPanelBack(CSWGuiPanel* pPanel)
 {
-    if (GetModalIndex(pPanel) != -1)
+    if (m_modalPanels.IndexOf(pPanel) != -1)
         return;
 
-    int nIndex = GetPanelIndex(pPanel);
+    int nIndex = m_panels.IndexOf(pPanel);
     int nDest = nIndex - 1;
     if (nDest >= 0)
     {
@@ -3628,7 +3628,7 @@ void CSWGuiManager::HandleInputEvent(int nType, int nVal)
         for (int i = 0; i < aPanels.m_count; i++)
         {
             CSWGuiPanel* pPanel = aPanels.m_pArray[i];
-            if (GetPanelIndex(pPanel) != -1)
+            if (m_panels.IndexOf(pPanel) != -1)
                 pPanel->HandleInputEvent(nType, bHandled);
         }
     }

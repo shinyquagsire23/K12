@@ -118,10 +118,8 @@ void CSWCTrigger::UpdateAreaTransitionDisplay()
     Vector vHit;
     Vector vFacing;
     if (pGui->m_bAreaTransitionUseCameraFacing != 0) {
-        Quaternion q = g_pAppManager->m_pClientExoApp->GetModuleCamera()->GetOrientation();
         // The camera's rotated Y axis, flattened.
-        vFacing.x = (q.x * q.y - q.w * q.z) + (q.x * q.y - q.w * q.z);
-        vFacing.y = 1.0f - ((q.x * q.x + q.z * q.z) + (q.x * q.x + q.z * q.z));
+        vFacing = g_pAppManager->m_pClientExoApp->GetModuleCamera()->GetOrientation().ydir();
         vFacing.z = 0.0f;
         vFacing = normalize(vFacing);
     } else {
@@ -413,7 +411,7 @@ void CSWCTrigger::GetTargetActions(CSWCCreature* pCreature, int nType,
 void CSWCTrigger::GetMineForcePowers(CSWCCreature* pCreature, int nSpellId,
                                      CExoArrayList<CSWGuiInterfaceAction>& list)
 {
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     CSWSCreature* pServer = pCreature->GetServerCreature();
     if (pSpell == 0 || pServer == 0)
         return;
@@ -734,29 +732,21 @@ char CSWCTrigger::GetCenter(Vector& v)
     if (pCamera != 0)
     {
         Vector vCamPos = pCamera->GetPosition();
-        Quaternion q = pCamera->GetOrientation();
-        float fA1 = (q.x * q.z + q.w * q.y) * -2.0f;
-        float fA2 = (q.z * q.y - q.x * q.w) * -2.0f;
-        float fA3 = -(1.0f - 2.0f * (q.x * q.x + q.y * q.y));
+        Vector vDir = -pCamera->GetOrientation().zdir();
 
-        float fMinX = 3.402823466e+38f;
-        float fMinY = 3.402823466e+38f;
-        float fMinZ = 3.402823466e+38f;
-        float fMaxX = -3.402823466e+38f;
-        float fMaxY = -3.402823466e+38f;
-        float fMaxZ = -3.402823466e+38f;
+        Vector vMin(3.402823466e+38f, 3.402823466e+38f, 3.402823466e+38f);
+        Vector vMax(-3.402823466e+38f, -3.402823466e+38f, -3.402823466e+38f);
         for (int i = 0; i < m_nVertices; i++) {
-            fMinX = (fMinX < m_pVertices[i].x) ? fMinX : m_pVertices[i].x;
-            fMinY = (fMinY < m_pVertices[i].y) ? fMinY : m_pVertices[i].y;
-            fMinZ = (fMinZ < m_pVertices[i].z) ? fMinZ : m_pVertices[i].z;
-            fMaxX = (fMaxX > m_pVertices[i].x) ? fMaxX : m_pVertices[i].x;
-            fMaxY = (fMaxY > m_pVertices[i].y) ? fMaxY : m_pVertices[i].y;
-            fMaxZ = (fMaxZ > m_pVertices[i].z) ? fMaxZ : m_pVertices[i].z;
+            vMin.x = (vMin.x < m_pVertices[i].x) ? vMin.x : m_pVertices[i].x;
+            vMin.y = (vMin.y < m_pVertices[i].y) ? vMin.y : m_pVertices[i].y;
+            vMin.z = (vMin.z < m_pVertices[i].z) ? vMin.z : m_pVertices[i].z;
+            vMax.x = (vMax.x > m_pVertices[i].x) ? vMax.x : m_pVertices[i].x;
+            vMax.y = (vMax.y > m_pVertices[i].y) ? vMax.y : m_pVertices[i].y;
+            vMax.z = (vMax.z > m_pVertices[i].z) ? vMax.z : m_pVertices[i].z;
         }
-        Vector vCenter = Vector((fMinX + fMaxX) * 0.5f, (fMinY + fMaxY) * 0.5f,
-                                (fMinZ + fMaxZ) * 0.5f);
-        float fPoint = fA1 * vCenter.x + fA2 * vCenter.y + fA3 * vCenter.z;
-        float fCam = fA1 * vCamPos.x + fA2 * vCamPos.y + fA3 * vCamPos.z;
+        Vector vCenter = (vMin + vMax) * 0.5f;
+        float fPoint = dot(vDir, vCenter);
+        float fCam = dot(vDir, vCamPos);
         nRet = !(fPoint > fCam) ? 2 : 1;
 
         Vector vScreen = pCamera->MapToScreen(vCenter, true);
@@ -774,28 +764,26 @@ char CSWCTrigger::GetCenter(Vector& v)
 char CSWCTrigger::GetReticlePoint(Vector& v)
 {
     Gob* pGob = m_pModel->GetModel(ANIM_MODEL_BODY);
-    if (pGob == 0)
-        return GetCenter(v);
-    Quaternion qIdentity;
-    Part* pPart = pGob->GetPart(const_cast<char*>("lookathook"));
-    if (pPart == 0)
-        return GetCenter(v);
-    pPart->GetWorld(v, qIdentity);
+    if (pGob != 0) {
+        Quaternion qIdentity;
+        Part* pPart = pGob->GetPart(const_cast<char*>("lookathook"));
+        if (pPart != 0) {
+            pPart->GetWorld(v, qIdentity);
 
-    CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
-    Quaternion q = pCamera->GetOrientation();
-    float fA1 = (q.x * q.z + q.w * q.y) * -2.0f;
-    float fA2 = (q.z * q.y - q.x * q.w) * -2.0f;
-    float fA3 = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-    float fPoint = v.x * fA1 + v.y * fA2 - v.z * fA3;
-    Vector vCamPos = pCamera->GetPosition();
-    float fCam = fA1 * vCamPos.x + fA2 * vCamPos.y - fA3 * vCamPos.z;
-    int nRet = !(fPoint > fCam) ? 2 : 1;
+            CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
+            Vector vDir = -pCamera->GetOrientation().zdir();
+            float fPoint = dot(v, vDir);
+            Vector vCamPos = pCamera->GetPosition();
+            float fCam = dot(vDir, vCamPos);
+            char nRet = !(fPoint > fCam) ? 2 : 1;
 
-    v = g_pAppManager->m_pClientExoApp->GetModuleCamera()->MapToScreen(v, true);
-    short nWidth = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
-    v.x = nWidth * v.x;
-    short nHeight = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenHeight;
-    v.y = nHeight * v.y;
-    return static_cast<char>(nRet);
+            v = g_pAppManager->m_pClientExoApp->GetModuleCamera()->MapToScreen(v, true);
+            short nWidth = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
+            v.x = nWidth * v.x;
+            short nHeight = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenHeight;
+            v.y = nHeight * v.y;
+            return nRet;
+        }
+    }
+    return GetCenter(v);
 }

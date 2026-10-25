@@ -91,15 +91,7 @@ void exportparts(Gob* pGob, Part* pPart);
 
 
 
-extern unsigned int enableTranslationTable[];
 
-enum {
-    kCapFog        = 2,
-    kCapFogStart   = 15,
-    kCapFogEnd     = 16,
-    kCapFogDensity = 17,
-    kCapFogColor   = 18,
-};
 
 int enabletransform = 1;
 
@@ -237,7 +229,6 @@ static void snprintff(char* buf, uint64_t n, const char* fmt, ...);
 class CAurTexture;
 
 
-extern unsigned int clientStateTranslationTable[];
 
 
 
@@ -246,8 +237,6 @@ int doskinshadows;
 int useshadowmethod;
 float epsilon;
 int usearbvertexprograms = 1;
-extern const unsigned int cullTranslationTable[];
-extern unsigned int stencilOpTranslationTable[];
 extern int  quaternionidentityoptimization;
 
 Vector planelineintersection(const Vector& v, float f, const Vector& a, const Vector& b);
@@ -278,10 +267,6 @@ float lightsaberfudgefactor = 0.5f;
 int lightsabertotalsegments;
 int lightsaberrenderfronthalf = 1;
 
-extern unsigned int enableTranslationTable[];
-extern unsigned int blendTranslationTable[];
-extern unsigned int primTypeTranslationTable[];
-extern const int fillTranslationTable[];
 
 extern int quaternionidentityoptimization;
 
@@ -318,8 +303,6 @@ void SetBumpedOutShellIos(float f);
 void MakeMatrix4x4(float* pMatrix, const Vector& v, const Quaternion& q);
 #endif
 
-extern unsigned int blendTranslationTable[];
-extern unsigned int enableTranslationTable[];
 Vector g_vOne(1.0f, 1.0f, 1.0f);
 Vector g_vZero(0.0f, 0.0f, 0.0f);
 Vector projectioncolor(1.0f, 1.0f, 1.0f);
@@ -376,7 +359,6 @@ extern int counttrans;
 extern int countcullpart;
 extern int countdisplaycreates;
 extern int countbackshadows;
-extern unsigned int stencilOpTranslationTable[];
 class Camera;
 extern Camera* CurrentCamera;
 
@@ -395,11 +377,7 @@ struct RenderVertexC;
 
 extern int renderaabb;
 extern int countfaces;
-extern unsigned int enableTranslationTable[];
 extern int enabletransform;
-extern const unsigned int cullTranslationTable[];
-extern const int facingTranslationTable[];
-extern const int fillTranslationTable[];
 
 
 unsigned int polyhit(const Vector* verts, int vertCount, const Vector& node,
@@ -512,7 +490,7 @@ void SetupForceSightShader(Gob* gob, int a, int b, CAurTexture* c1, CAurTexture*
 // Force glow is a pulsing tint scaled into the glow colour's alpha.
     if (bForceGlow)
     {
-        ASLgl::glBlendFunc(blendTranslationTable[2], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendInvSrcAlpha);
         float fPulse = sinf(static_cast<float>(static_cast<int>(static_cast<unsigned int>(static_cast<float>(g_SceneRender_CurrentTime_ms) * 0.125f)
                                         & 0xff)) * 0.024639944f);
         fPulse = fPulse * 0.25f + 0.75f;
@@ -526,7 +504,7 @@ void SetupForceSightShader(Gob* gob, int a, int b, CAurTexture* c1, CAurTexture*
 
 // Restore the normal alpha pair, then dim the tint to 3/4 or leave it opaque.
     if (bNonForceBlend && !flag)
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
     static const GLRender::PerInstanceColor kDimColor  = { 0.0f, 0.0f, 0.0f, 0.75f };
     static const GLRender::PerInstanceColor kFullColor = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -572,7 +550,7 @@ void RenderFlatVP(VertexPrimitive* vertices, PartTriMesh* part)
     GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, pTexture0, 0, 0, 0);
     RenderFlat(vertices->AsVertexPrimitiveFlat());
 #else
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     static VertexProgram* standardvp =
         new VertexProgram(usearbvertexprograms != 0 ? szStandardVPARB : cStandardVP,
@@ -604,9 +582,8 @@ void RenderFlatVP(VertexPrimitive* vertices, PartTriMesh* part)
         SetupForceSightShader(pGob, GLRender::kPSFGlow, GLRender::kPSDesat, 0, 0, 0, 0, false);
         RenderFlat(vertices->AsVertexPrimitiveFlat());
         GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(1);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+        RenderInterface::SetDepthMask(1);
     }
     else if (pGob == 0)
     {
@@ -628,7 +605,7 @@ void RenderFlatVP(VertexPrimitive* vertices, PartTriMesh* part)
             GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
     }
 
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 
     if (bOffset)
     {
@@ -648,7 +625,7 @@ void RenderLightmappedVP(VertexPrimitive* vertices, PartTriMesh* part)
     if (!enablerenderlightmapped)
         return;
 
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     static VertexProgram* standardvp =
         new VertexProgram(usearbvertexprograms != 0 ? szStandardVPARB : cStandardVP,
@@ -658,14 +635,9 @@ void RenderLightmappedVP(VertexPrimitive* vertices, PartTriMesh* part)
 
     VertexPrimitiveFlat* pFlat = vertices->AsVertexPrimitiveFlat();
     PartTriMesh* pMesh = pFlat->m_pPart->AsPartTriMesh();
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    unsigned int nClientState = clientStateTranslationTable[0];
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glEnableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(1);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
 
     CAurTexture* pTex0 = pMesh->m_pMaterial->Textures(0).m_pObject;
     CAurTexture* pTex1 = pMesh->m_pMaterial->Textures(1).m_pObject;
@@ -673,16 +645,12 @@ void RenderLightmappedVP(VertexPrimitive* vertices, PartTriMesh* part)
     RenderFlat(pFlat);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSMultiTextureOff, 0, 0, 0, 0);
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glDisableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::ActivateTextureStage(1);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 #else
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     static VertexProgram* standardvp =
         new VertexProgram(usearbvertexprograms != 0 ? szStandardVPARB : cStandardVP,
@@ -690,13 +658,13 @@ void RenderLightmappedVP(VertexPrimitive* vertices, PartTriMesh* part)
 
     standardvp->Enable(part, true);
     RenderLightMapped(vertices->AsVertexPrimitiveFlat());
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 #endif
 }
 
 void RenderEnvironmentMappedVP(VertexPrimitive* vertices, PartTriMesh* part)
 {
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     static VertexProgram* standardcubevp =
         new VertexProgram(usearbvertexprograms != 0 ? szStandardCubeVPARB : cStandardVP,
@@ -704,19 +672,16 @@ void RenderEnvironmentMappedVP(VertexPrimitive* vertices, PartTriMesh* part)
 
     standardcubevp->Enable(part, true);
 
-    if (usearbvertexprograms != 0) {
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 0.0f, 0.0f, 1.0f, 0.0f);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16, 0.0f, 2.0f, 3.0f, 1.0f);
-    }
+    GLRender::SetVertexShaderConstant(15, 0.0f, 0.0f, 1.0f, 0.0f);
+    GLRender::SetVertexShaderConstant(16, 0.0f, 2.0f, 3.0f, 1.0f);
 
     RenderEnvironmentMapped(vertices->AsVertexPrimitiveFlat(), false, false);
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 }
 
 void RenderEMLMVP(VertexPrimitive* vertices, PartTriMesh* part)
 {
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     static VertexProgram* standardlightmapcubevp =
         new VertexProgram(usearbvertexprograms != 0 ? szStandardLightmapCubeVPARB : cStandardVP,
@@ -724,14 +689,11 @@ void RenderEMLMVP(VertexPrimitive* vertices, PartTriMesh* part)
 
     standardlightmapcubevp->Enable(part, true);
 
-    if (usearbvertexprograms != 0) {
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 0.0f, 0.0f, 1.0f, 0.0f);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16, 0.0f, 2.0f, 3.0f, 1.0f);
-    }
+    GLRender::SetVertexShaderConstant(15, 0.0f, 0.0f, 1.0f, 0.0f);
+    GLRender::SetVertexShaderConstant(16, 0.0f, 2.0f, 3.0f, 1.0f);
 
     RenderEMLM(vertices->AsVertexPrimitiveFlat());
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 }
 
 void RenderBumpmapFallback(VertexPrimitive* vertices)
@@ -743,20 +705,19 @@ void RenderBumpmapFallback(VertexPrimitive* vertices)
 
         RenderFlat(vertices->AsVertexPrimitiveFlat());
         GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(1);
+        RenderInterface::SetDepthMask(1);
     } else
 #endif
     {
-        ASLgl::glDisable(enableTranslationTable[1]);
-        ASLgl::glBlendFunc(blendTranslationTable[2], blendTranslationTable[3]);
+        GLRender::Disable(Aurora::kCapAlphaTest);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 
         RenderFlat(vertices->AsVertexPrimitiveFlat());
 
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-        ASLgl::glEnable(enableTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+        GLRender::Enable(Aurora::kCapAlphaTest);
     }
 }
 
@@ -811,9 +772,9 @@ void PartTriMesh::Draw(bool)
         RenderBumpMapped(m_pVertexPrimitive->AsVertexPrimitiveFlat());
         break;
     case RENDER_PATH_BUMPMAP_FALLBACK:
-        ASLgl::glBlendFunc(blendTranslationTable[2], blendTranslationTable[3]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         RenderFlatVP(m_pVertexPrimitive, this);
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         break;
     case RENDER_PATH_EMLM:
         RenderEMLM(m_pVertexPrimitive->AsVertexPrimitiveFlat());
@@ -850,9 +811,8 @@ void PartTriMesh::Draw(bool)
         VertexPrimitiveFlat* pFlat = m_pVertexPrimitive->AsVertexPrimitiveFlat();
         MdlNodeTriMesh* pDrawMesh = static_cast<MdlNodeTriMesh*>(pFlat->m_pNode);
 
-        ASLgl::glEnable(enableTranslationTable[9]);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, m_pGob->m_fBumpOutDistance, 0.0f, 0.0f, 1.0f);
+        GLRender::Enable(Aurora::kCapVertexProgram);
+        GLRender::SetVertexShaderConstant(12, m_pGob->m_fBumpOutDistance, 0.0f, 0.0f, 1.0f);
         SetBumpedOutShellIos(m_pGob->m_fBumpOutDistance);
         g_pBumpedOutVP->Enable(this, false);
         m_pMaterial->m_spr3.m_pObject->Bind();
@@ -871,7 +831,7 @@ void PartTriMesh::Draw(bool)
                                    pDrawMesh->m_nGeomBase,
                                    pDrawMesh->m_nLeftOverPool);
         SetBumpedOutShellIos(0.0f);
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
     }
 
     RestoreTextureMatrix();
@@ -917,9 +877,8 @@ void PartTriMesh::Draw(bool)
                 SetupForceSightShader(m_pGob, GLRender::kPSFGlow, GLRender::kPSDesat, 0, 0, 0, 0, false);
                 RenderFlat(m_pVertexPrimitive->AsVertexPrimitiveFlat());
                 GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
-                ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-                if (!g_useDistortionOutput)
-                    ASLgl::glDepthMask(1);
+                GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+                RenderInterface::SetDepthMask(1);
             } else {
                 if (m_pGob != 0 && m_pGob->IsIlluminationEnable()
                     && AurNV1xLevelShadersAvailable()) {
@@ -994,9 +953,8 @@ void PartTriMesh::Draw(bool)
         VertexPrimitiveFlat* pFlat = m_pVertexPrimitive->AsVertexPrimitiveFlat();
         MdlNodeTriMesh* pDrawMesh = static_cast<MdlNodeTriMesh*>(pFlat->m_pNode);
 
-        ASLgl::glEnable(enableTranslationTable[9]);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, m_pGob->m_fBumpOutDistance, 0.0f, 0.0f, 1.0f);
+        GLRender::Enable(Aurora::kCapVertexProgram);
+        GLRender::SetVertexShaderConstant(12, m_pGob->m_fBumpOutDistance, 0.0f, 0.0f, 1.0f);
         g_pBumpedOutVP->Enable(this, false);
         m_pMaterial->m_spr3.m_pObject->Bind();
         if (m_pMaterial->m_lstSrcBlend.m_count >= 2)
@@ -1025,16 +983,14 @@ void PartTriMesh::Draw(bool)
             nBlendSrc = blendTranslationTable[0];
             nBlendDst = blendTranslationTable[1];
             ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
-            if (!g_useDistortionOutput)
-                ASLgl::glDepthMask(1);
+            RenderInterface::SetDepthMask(1);
         } else {
             nBlendSrc = blendTranslationTable[0];
             nBlendDst = blendTranslationTable[1];
         }
         ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(1);
-        ASLgl::glDisable(enableTranslationTable[9]);
+        RenderInterface::SetDepthMask(1);
+        GLRender::Disable(Aurora::kCapVertexProgram);
     }
 
     RestoreTextureMatrix();
@@ -1241,30 +1197,27 @@ void PartShadow::Draw(bool)
     if (m_nIndexPool == -1)
         return;
 
-    unsigned int nStencil = stencilOpTranslationTable[0];
-    unsigned int nCullFront = cullTranslationTable[1];
-
     if (bVisible)
     {
-        ASLgl::glStencilOp(nStencil, nStencil, stencilOpTranslationTable[3]);
-        ASLgl::glFrontFace(nCullFront);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilIncr);
+        GLRender::SetFrontFace(Aurora::kCullCCW);
         GLRender::DrawElements(static_cast<Aurora::AuroraPrimitiveTypes>(4), m_nQuadCount * 6, 0, m_nIndexPool);
 
-        ASLgl::glStencilOp(nStencil, nStencil, stencilOpTranslationTable[4]);
-        ASLgl::glFrontFace(cullTranslationTable[0]);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilDecr);
+        GLRender::SetFrontFace(Aurora::kCullCW);
         GLRender::DrawElements(static_cast<Aurora::AuroraPrimitiveTypes>(4), m_nQuadCount * 6, 0, m_nIndexPool);
 
-        ASLgl::glFrontFace(nCullFront);
+        GLRender::SetFrontFace(Aurora::kCullCCW);
         countbackshadows++;
     }
     else
     {
-        ASLgl::glFrontFace(cullTranslationTable[0]);
-        ASLgl::glStencilOp(nStencil, stencilOpTranslationTable[3], nStencil);
+        GLRender::SetFrontFace(Aurora::kCullCW);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
         GLRender::DrawElements(static_cast<Aurora::AuroraPrimitiveTypes>(4), m_nQuadCount * 6, 0, m_nIndexPool);
 
-        ASLgl::glFrontFace(cullTranslationTable[1]);
-        ASLgl::glStencilOp(nStencil, stencilOpTranslationTable[4], nStencil);
+        GLRender::SetFrontFace(Aurora::kCullCCW);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
         GLRender::DrawElements(static_cast<Aurora::AuroraPrimitiveTypes>(4), m_nQuadCount * 6, 0, m_nIndexPool);
     }
 
@@ -1291,9 +1244,9 @@ void PartBeam::Draw(bool)
 
 void SetBeaming()
 {
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[2]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     ASLgl::glColorMask(1, 1, 1, 1);
-    ASLgl::glDisable(enableTranslationTable[5]);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glColor4fv(Homogenize(projectioncolor, projectionalpha));
     if (stenciloff)
         ASLgl::glStencilMask(0);
@@ -1402,8 +1355,8 @@ void PartAABB::Draw(bool)
     static RenderVertexC* inverseWalkMeshColorToken = reinterpret_cast<RenderVertexC*>(GetInverseWalkMeshColors());
 
     MdlNodeAABB* node = reinterpret_cast<MdlNodeAABB*>(m_pNode);
-    ASLgl::glDisable(enableTranslationTable[4]);
-    ASLgl::glDisable(enableTranslationTable[5]);
+    GLRender::Disable(Aurora::kCapTexture2D);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glColor4f(0.0f, 0.0f, 0.0f, 0.0f);
     if (!node)
         return;
@@ -1419,21 +1372,21 @@ void PartAABB::Draw(bool)
 #endif
 
     GLRender::DrawTriangles(node->Faces(), node->Vertices(), walkMeshColorToken);
-    ASLgl::glFrontFace(cullTranslationTable[0]);
+    GLRender::SetFrontFace(Aurora::kCullCW);
     GLRender::DrawTriangles(node->Faces(), node->Vertices(), inverseWalkMeshColorToken);
-    ASLgl::glFrontFace(cullTranslationTable[1]);
-    ASLgl::glPolygonMode(facingTranslationTable[0], fillTranslationTable[1]);
+    GLRender::SetFrontFace(Aurora::kCullCCW);
+    GLRender::SetPolygonRenderMode(Aurora::kFacingFront, Aurora::kFillLine);
     GLRender::DrawTriangles(node->Faces(), node->Vertices(), inverseWalkMeshColorToken);
-    ASLgl::glFrontFace(cullTranslationTable[0]);
+    GLRender::SetFrontFace(Aurora::kCullCW);
     GLRender::DrawTriangles(node->Faces(), node->Vertices(), walkMeshColorToken);
-    ASLgl::glFrontFace(cullTranslationTable[1]);
-    ASLgl::glPolygonMode(facingTranslationTable[0], fillTranslationTable[2]);
+    GLRender::SetFrontFace(Aurora::kCullCCW);
+    GLRender::SetPolygonRenderMode(Aurora::kFacingFront, Aurora::kFillSolid);
 
     if (m_pGob == 0)
         ASLgl::glPopMatrix();
 
-    ASLgl::glEnable(enableTranslationTable[4]);
-    ASLgl::glEnable(enableTranslationTable[5]);
+    GLRender::Enable(Aurora::kCapTexture2D);
+    GLRender::Enable(Aurora::kCapLighting);
 }
 
 void PartLightsaber::Draw(bool)
@@ -1447,19 +1400,18 @@ void PartLightsaber::Draw(bool)
     Quaternion qWorld;
     GetWorld(vWorldPos, qWorld);
 
-    ASLgl::glDisable(enableTranslationTable[3]);
+    GLRender::Disable(Aurora::kCapCullFace);
     if (enablelightsaberbluradd != 0) {
-        ASLgl::glBlendFunc(blendTranslationTable[2], blendTranslationTable[2]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
 #if KOTOR1  // K1: no distortion pass owns the depth mask
         ASLgl::glDepthMask(0);
 #else
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(0);
+        RenderInterface::SetDepthMask(0);
 #endif
         ASLgl::glStencilMask(0);
     }
     if (lightsaberlighting == 0)
-        ASLgl::glDisable(enableTranslationTable[5]);
+        GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     ASLgl::glPolygonMode(facingTranslationTable[2],
                          fillTranslationTable[lightsaberwireframe != 0 ? 1 : 2]);
@@ -1491,7 +1443,7 @@ void PartLightsaber::Draw(bool)
         Vector vSeg = m_avSegmentPos[nPrev];
         Quaternion qSeg = m_aqSegmentOrient[nPrev];
 
-        ASLgl::glBegin(primTypeTranslationTable[7]);
+        GLRender::BeginImmediatePrimitive(Aurora::kPrimQuadStrip);
 
         if (m_nSegmentCount > 1) {
             float fAge = 0.0f;
@@ -1804,13 +1756,13 @@ void PartLightsaber::Draw(bool)
         }
 
         ASLgl::glEnd();
-        ASLgl::glPolygonMode(facingTranslationTable[2], fillTranslationTable[2]);
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-        ASLgl::glEnable(enableTranslationTable[5]);
-        ASLgl::glEnable(enableTranslationTable[3]);
+        GLRender::SetPolygonRenderMode(Aurora::kFacingFrontAndBack, Aurora::kFillSolid);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+        GLRender::Enable(Aurora::kCapLighting);
+        GLRender::Enable(Aurora::kCapCullFace);
     } else {
 // The static path draws two piece-cap quad strips, front cap then back cap
-        ASLgl::glBegin(primTypeTranslationTable[7]);
+        GLRender::BeginImmediatePrimitive(Aurora::kPrimQuadStrip);
 
         for (int i = 0; i < nHalf; i++) {
             ASLgl::glTexCoord2f(aTexCoords[i].u, aTexCoords[i].v);
@@ -1841,17 +1793,16 @@ void PartLightsaber::Draw(bool)
         }
 
         ASLgl::glEnd();
-        ASLgl::glPolygonMode(facingTranslationTable[2], fillTranslationTable[2]);
-        ASLgl::glEnable(enableTranslationTable[3]);
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-        ASLgl::glEnable(enableTranslationTable[5]);
+        GLRender::SetPolygonRenderMode(Aurora::kFacingFrontAndBack, Aurora::kFillSolid);
+        GLRender::Enable(Aurora::kCapCullFace);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+        GLRender::Enable(Aurora::kCapLighting);
     }
 
 #if KOTOR1
     ASLgl::glDepthMask(1);
 #else
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
+    RenderInterface::SetDepthMask(1);
 #endif
     ASLgl::glStencilMask(0xff);
 }
@@ -2000,7 +1951,7 @@ void PartTriMesh::Mat()
     if (currentscene != 0 && currentscene->m_bFogEnabled != 0)
     {
         if (m_bFog)
-            ASLgl::glEnable(enableTranslationTable[2]);
+            GLRender::Enable(Aurora::kCapFog);
 #if KOTOR1 && defined(K2_MOBILE_OPT)  // K1's mobile port: drops fog only under anti-aliasing or the one fog colour
         // That colour's channels (112, 143, 142) / 255, as float bits (Scene::DoFog's table).
         enum
@@ -2016,7 +1967,7 @@ void PartTriMesh::Mat()
 #else
         if (!m_bFog)
 #endif
-            ASLgl::glDisable(enableTranslationTable[2]);
+            GLRender::Disable(Aurora::kCapFog);
     }
 
     bool bTextured;
@@ -2170,18 +2121,9 @@ void PartTriMesh::Mat()
         float fEnvY = vEnv.y;
         float fEnvZ = vEnv.z;
 
-        if (usearbvertexprograms != 0)
-        {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 93, fEnvX, fEnvY, fEnvZ, 1.0f);
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 94, s_vCurDiffuse.x,
-                                                  s_vCurDiffuse.y, s_vCurDiffuse.z, fAlpha);
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 95, s_vCurAmbient.x,
-                                                      s_vCurAmbient.y, s_vCurAmbient.z, 1.0f);
-            }
-        }
+        GLRender::SetVertexShaderConstant(93, fEnvX, fEnvY, fEnvZ, 1.0f);
+        GLRender::SetVertexShaderConstant(94, s_vCurDiffuse.x, s_vCurDiffuse.y, s_vCurDiffuse.z, fAlpha);
+        GLRender::SetVertexShaderConstant(95, s_vCurAmbient.x, s_vCurAmbient.y, s_vCurAmbient.z, 1.0f);
     }
 
     m_bMaterialHasChanged = false;
@@ -2389,13 +2331,11 @@ void PartTriMesh::Project(const Vector& light, float fDist, const Plane& plane, 
     GLRender::SetInterleavedBuffer(pNode->m_nVertexStride, pNode->m_uVertexFlags,
                                    pNode->m_pTree->AsModel()->m_nPool,
                                    static_cast<short>(pNode->m_nVertexCount) + 1, pNode, pNode->m_nGeomBase);
-    ASLgl::glFrontFace(cullTranslationTable[0]);
-    ASLgl::glStencilOp(stencilOpTranslationTable[0], stencilOpTranslationTable[3],
-                       stencilOpTranslationTable[0]);
+    GLRender::SetFrontFace(Aurora::kCullCW);
+    GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
     m_pVertexPrimitive->AsVertexPrimitiveFlat();
-    ASLgl::glFrontFace(cullTranslationTable[1]);
-    ASLgl::glStencilOp(stencilOpTranslationTable[0], stencilOpTranslationTable[4],
-                       stencilOpTranslationTable[0]);
+    GLRender::SetFrontFace(Aurora::kCullCCW);
+    GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
     m_pVertexPrimitive->AsVertexPrimitiveFlat();
 }
 
@@ -2436,8 +2376,8 @@ void PartSkin::Project(const Vector& light, float fDist, const Plane& plane, CAu
     if (useshadowmethod == 0 || usevertexprograms == 0 || AurVertexProgramsAvailable() == 0)
         return;
 
-    ASLgl::glEnableClientState(clientStateTranslationTable[4]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[6]);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib1);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib4);
 
     Part* part = m_pVertexPrimitive->m_pPart->AsPartSkin();
     MdlNodeSkin* pNode = static_cast<MdlNodeSkin*>(part->m_pNode);
@@ -2449,8 +2389,7 @@ void PartSkin::Project(const Vector& light, float fDist, const Plane& plane, CAu
     qbones.m_count = 0;
     tbones.m_count = 0;
 
-    if (usearbvertexprograms != 0)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16, 0.0f, 2.0f, 3.0f, 1.0f);
+    GLRender::SetVertexShaderConstant(16, 0.0f, 2.0f, 3.0f, 1.0f);
 
 // Walk the parent chain, composing the part's world frame.
 #if KOTOR1  // K1: the same gather through the out-of-line inverse and product operators
@@ -2638,13 +2577,11 @@ void PartSkin::Project(const Vector& light, float fDist, const Plane& plane, CAu
         } while (i < pNode->m_nBoneCount);
     }
 
-    ASLgl::glFrontFace(cullTranslationTable[0]);
-    ASLgl::glStencilOp(stencilOpTranslationTable[0], stencilOpTranslationTable[3],
-                       stencilOpTranslationTable[0]);
+    GLRender::SetFrontFace(Aurora::kCullCW);
+    GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
     m_pVertexPrimitive->AsVertexPrimitiveSkinned();
-    ASLgl::glFrontFace(cullTranslationTable[1]);
-    ASLgl::glStencilOp(stencilOpTranslationTable[0], stencilOpTranslationTable[4],
-                       stencilOpTranslationTable[0]);
+    GLRender::SetFrontFace(Aurora::kCullCCW);
+    GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
     m_pVertexPrimitive->AsVertexPrimitiveSkinned();
 }
 
@@ -2720,27 +2657,27 @@ inline void Gob::ProxyPartDraw(Part* pPart, bool b)
     K2_UNUSED(pPart);
     if (m_pTileData != 0 && m_pTileData->m_fFade < 1.0f)
     {
-        ASLgl::glEnable(enableTranslationTable[kCapFog]);
+        GLRender::Enable(Aurora::kCapFog);
 
         float fFade = m_pTileData->m_fFade * m_pTileData->m_fFade;
         Vector vSceneFog = m_pScene->m_vFogColor;
         Vector vFogColor = { vSceneFog.x * fFade, vSceneFog.y * fFade, fFade * vSceneFog.z };
-        ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &vFogColor.x);
-        ASLgl::glFogf(enableTranslationTable[kCapFogDensity], m_pScene->m_fFogDensity * 2.0f);
-        ASLgl::glFogf(enableTranslationTable[kCapFogStart],
+        GLRender::SetFogModev(Aurora::kCapFogColor, vFogColor);
+        GLRender::SetFogModef(Aurora::kCapFogDensity, m_pScene->m_fFogDensity * 2.0f);
+        GLRender::SetFogModef(Aurora::kCapFogStart,
                       m_pTileData->m_fFade * m_pScene->m_fFogStart);
-        ASLgl::glFogf(enableTranslationTable[kCapFogEnd],
+        GLRender::SetFogModef(Aurora::kCapFogEnd,
                       m_pTileData->m_fFade * m_pScene->m_fFogEnd + 0.1f);
 
         PartDraw(m_pPart, b);
 
         if (!m_pScene->m_bFogEnabled)
-            ASLgl::glDisable(enableTranslationTable[kCapFog]);
+            GLRender::Disable(Aurora::kCapFog);
         float fDensity = m_pScene->m_fFogDensity;
-        ASLgl::glFogf(enableTranslationTable[kCapFogDensity], fDensity);
-        ASLgl::glFogf(enableTranslationTable[kCapFogStart], m_pScene->m_fFogStart);
-        ASLgl::glFogf(enableTranslationTable[kCapFogEnd], m_pScene->m_fFogEnd);
-        ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &m_pScene->m_vFogColor.x);
+        GLRender::SetFogModef(Aurora::kCapFogDensity, fDensity);
+        GLRender::SetFogModef(Aurora::kCapFogStart, m_pScene->m_fFogStart);
+        GLRender::SetFogModef(Aurora::kCapFogEnd, m_pScene->m_fFogEnd);
+        GLRender::SetFogModev(Aurora::kCapFogColor, m_pScene->m_vFogColor);
     }
     else
     {
@@ -2934,7 +2871,6 @@ int environmentmapdest;
 int bumpspecular = 1;
 float diffuseintensity = 1.0f;
 extern int quaternionidentityoptimization;
-extern unsigned int fogModeTranslationTable[];
 extern char cBumpMapVP[];
 extern unsigned int* cBumpMapVPDeclaration;
 extern char cBumpMapDiffuseVP[];
@@ -2955,7 +2891,6 @@ int bumptexture = 1;
 extern int usebumpdiffuse;
 extern int usebumpspecular;
 int useonepasssolution = 1;
-extern int queryTranslationTable[];
 
 extern char szNormalmapVPARB[];
 extern unsigned int* szNormalmapVPARBDeclaration;
@@ -2994,9 +2929,6 @@ int enablenoshaderlightmaps = 1;
 int enablelighting = 1;
 extern int countparts;
 extern int countfaces;
-extern unsigned int clientStateTranslationTable[];
-extern unsigned int enableTranslationTable[];
-extern unsigned int blendTranslationTable[];
 
 void RenderFlat(VertexPrimitiveFlat* vertices);
 void RenderFlatNonTextured(VertexPrimitiveFlat* vertices);
@@ -3028,13 +2960,13 @@ void RenderMotionBlurred(VertexPrimitiveFlat* vertices)
 
     if (fMotion > 0.0f)
     {
-        unsigned char bAlpha = ASLgl::glIsEnabled(enableTranslationTable[1]);
-        ASLgl::glDisable(enableTranslationTable[1]);
+        unsigned char bAlpha = GLRender::IsEnabled(Aurora::kCapAlphaTest);
+        GLRender::Disable(Aurora::kCapAlphaTest);
 
         static VertexProgram* blurvp =
             new VertexProgram(cMotionBlurredVP, cMotionBlurredVPDeclaration);
 
-        ASLgl::glEnable(enableTranslationTable[9]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
 #if KOTOR1  // K1: no distortion pass owns the depth mask
         ASLgl::glDepthMask(0);
 #else
@@ -3075,22 +3007,12 @@ void RenderMotionBlurred(VertexPrimitiveFlat* vertices)
         }
 #endif
 
-        if (usearbvertexprograms != 0)
-        {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16,
-                currentscene->m_fFogStart,
-                currentscene->m_fFogEnd,
-                currentscene->m_bFogEnabled != 0
-                    ? 1.0f : 0.0f,
-                0.5f);
-            if (usearbvertexprograms != 0)
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 17, 0.0f, 2.0f, 0.5f, 1.0f);
-        }
+        GLRender::SetVertexShaderConstant(16, currentscene->m_fFogStart, currentscene->m_fFogEnd,
+                                          currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f, 0.5f);
+        GLRender::SetVertexShaderConstant(17, 0.0f, 2.0f, 0.5f, 1.0f);
 
 // The blur axis is the cross of the object's motion with the gob's local +Z.
-        Matrix matGob = part->m_pGob->m_qOrientation.getmatrix();
-        Vector vUp(matGob.m_f[6], matGob.m_f[7], matGob.m_f[8]);
-        Vector vBlur = cross(vMotion, vUp);
+        Vector vBlur = cross(vMotion, part->m_pGob->m_qOrientation.zdir());
 
 #if KOTOR1  // K1: the forward rotate through the out-of-line inverse
         vMotion = RotateVector(vMotion, -qLocalOrientation);
@@ -3185,26 +3107,12 @@ void RenderMotionBlurred(VertexPrimitiveFlat* vertices)
 
         vMotion = normalize(vMotion);
 
-        if (usearbvertexprograms != 0)
-        {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 50, vMotion.x, vMotion.y, vMotion.z, 1.0f);
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 51, fMotion / (fDeltaT + fDeltaT),
-                                                  part->m_pGob->m_fMaxBlurLength, 0.01f, 0.85f);
-                if (usearbvertexprograms != 0)
-                {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 52, vBlur.x, vBlur.y, vBlur.z, 0.15f);
-                    if (usearbvertexprograms != 0)
-                    {
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 53, vDelta.x, vDelta.y, vDelta.z,
-                                                          0.0f);
-                        if (usearbvertexprograms != 0)
-                            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, 0.0f, 0.0f, 0.0f, 0.0f);
-                    }
-                }
-            }
-        }
+        GLRender::SetVertexShaderConstant(50, vMotion.x, vMotion.y, vMotion.z, 1.0f);
+        GLRender::SetVertexShaderConstant(51, fMotion / (fDeltaT + fDeltaT), part->m_pGob->m_fMaxBlurLength,
+                                          0.01f, 0.85f);
+        GLRender::SetVertexShaderConstant(52, vBlur.x, vBlur.y, vBlur.z, 0.15f);
+        GLRender::SetVertexShaderConstant(53, vDelta.x, vDelta.y, vDelta.z, 0.0f);
+        GLRender::SetVertexShaderConstant(13, 0.0f, 0.0f, 0.0f, 0.0f);
 
         Vector vDiff = vDelta - vCam;
         float fDiffLen2 = vDiff.x * vDiff.x + vDiff.y * vDiff.y + vDiff.z * vDiff.z;
@@ -3215,9 +3123,8 @@ void RenderMotionBlurred(VertexPrimitiveFlat* vertices)
         {
             if (magnitude(vDiff + vMotion) > magnitude(vDiff - vMotion))
             {
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, 1.0f, 0.0f, 0.0f, 0.0f);
-                ASLgl::glFrontFace(cullTranslationTable[0]);
+                GLRender::SetVertexShaderConstant(13, 1.0f, 0.0f, 0.0f, 0.0f);
+                GLRender::SetFrontFace(Aurora::kCullCW);
             }
         }
 
@@ -3226,11 +3133,11 @@ void RenderMotionBlurred(VertexPrimitiveFlat* vertices)
         RenderFlat(vertices);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
         if (bAlpha != 0)
-            ASLgl::glEnable(enableTranslationTable[1]);
-        ASLgl::glFrontFace(cullTranslationTable[1]);
+            GLRender::Enable(Aurora::kCapAlphaTest);
+        GLRender::SetFrontFace(Aurora::kCullCCW);
     }
 
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 }
 
 void RenderShadowTriMesh(VertexPrimitiveFlat* vertices)
@@ -3243,31 +3150,25 @@ void RenderFlatNonTextured(VertexPrimitiveFlat* vertices)
     if (!enablerender)
         return;
 
-    unsigned int nSavedClientState = clientStateTranslationTable[0];
-    ASLgl::glDisableClientState(nSavedClientState);
-    ASLgl::glDisable(enableTranslationTable[4]);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::Disable(Aurora::kCapTexture2D);
     RenderFlat(vertices);
-    ASLgl::glEnable(enableTranslationTable[4]);
-    ASLgl::glEnableClientState(nSavedClientState);
+    GLRender::Enable(Aurora::kCapTexture2D);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
 }
 
 #if KOTOR1
 void DoEnvMapTransform(CAurTexture* pTexture, unsigned int nStage);
-extern const int transformTranslationTable[];
 // K1: DoEnvMapTransform's pop half.
 static inline void UndoEnvMapTransform(CAurTexture* pTexture, unsigned int nStage)
 {
     if (AurCubeMapAvailable() && pTexture->IsCubeMap())
     {
-        GLRender::cm_uiCurrentStage = nStage;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-        ASLgl::glMatrixMode(transformTranslationTable[3]);
+        GLRender::SetActiveTexture(nStage);
+        GLRender::SetMatrixMode(Aurora::kMatrixTexture);
         ASLgl::glPopMatrix();
-        ASLgl::glMatrixMode(transformTranslationTable[2]);
-        GLRender::cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
+        GLRender::SetActiveTexture(0);
     }
 }
 #endif
@@ -3325,16 +3226,10 @@ void RenderEMLM(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    ASLgl::glDisable(enableTranslationTable[1]);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-
-    unsigned int nClientState = clientStateTranslationTable[0];
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glEnableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::ActivateTextureStage(1);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
 
     GLRender::pfuncEnablePixelShaders(GLRender::kPSEnvMapLightmap, part->m_pMaterial->Textures(0).m_pObject, pEnvMap,
                                       part->m_pMaterial->Textures(1).m_pObject, 0);
@@ -3348,24 +3243,15 @@ void RenderEMLM(VertexPrimitiveFlat* vertices)
 
     GLRender::pfuncEnablePixelShaders(GLRender::kPSEnvMapLightmapOff, 0, 0, 0, 0);
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glDisableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
+    GLRender::ActivateTextureStage(1);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
+    GLRender::Enable(Aurora::kCapAlphaTest);
 
-    GLRender::cm_uiCurrentStage = 0;
-    ASLgl::glEnable(enableTranslationTable[1]);
+    GLRender::SetActiveTexture(1);
+    GLRender::Disable(Aurora::kCapTextureCubeMap);
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-    ASLgl::glDisable(enableTranslationTable[12]);
-
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 #else
     if (!renderemlm)
         return;
@@ -3401,16 +3287,10 @@ void RenderEMLM(VertexPrimitiveFlat* vertices)
     if (pEnvMap == 0)
         pEnvMap = part->m_pMaterial->Textures(5).m_pObject;
 
-    ASLgl::glDisable(enableTranslationTable[1]);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-
-    unsigned int nClientState = clientStateTranslationTable[0];
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glEnableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::ActivateTextureStage(1);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
 
     CAurTexture* pTexture0 = part->m_pMaterial->Textures(0).m_pObject;
     CAurTexture* pTexture1 = part->m_pMaterial->Textures(1).m_pObject;
@@ -3431,24 +3311,15 @@ void RenderEMLM(VertexPrimitiveFlat* vertices)
 
     GLRender::pfuncEnablePixelShaders(g_ForceSight == 0 ? GLRender::kPSEnvMapLightmapOff : GLRender::kPSDesatOff, 0, 0, 0, 0);
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glDisableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
+    GLRender::ActivateTextureStage(1);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
+    GLRender::Enable(Aurora::kCapAlphaTest);
 
-    GLRender::cm_uiCurrentStage = 0;
-    ASLgl::glEnable(enableTranslationTable[1]);
+    GLRender::SetActiveTexture(1);
+    GLRender::Disable(Aurora::kCapTextureCubeMap);
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-    ASLgl::glDisable(enableTranslationTable[12]);
-
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 #endif
 }
 
@@ -3470,20 +3341,14 @@ void RenderNV1xEMLM(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    ASLgl::glDisable(enableTranslationTable[1]);
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 
     unsigned int nSrcBlend = blendTranslationTable[2];
     ASLgl::glBlendFunc(nSrcBlend, blendTranslationTable[3]);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-
-    unsigned int nClientState = clientStateTranslationTable[0];
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glEnableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(1);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
 
     CAurTexture* pTex0 = part->m_pMaterial->Textures(0).m_pObject;
     CAurTexture* pTex1 = part->m_pMaterial->Textures(1).m_pObject;
@@ -3491,13 +3356,9 @@ void RenderNV1xEMLM(VertexPrimitiveFlat* vertices)
     RenderFlat(vertices);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSMultiTextureOff, 0, 0, 0, 0);
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glDisableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(1);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
     ASLgl::glBlendFunc(nSrcBlend, nSrcBlend);
 
     CAurTexture* pTexB = part->m_pMaterial->Textures(0).m_pObject;
@@ -3513,14 +3374,14 @@ void RenderNV1xEMLM(VertexPrimitiveFlat* vertices)
     RenderFlat(vertices);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSMultiTextureOff, 0, 0, 0, 0);
 
-    ASLgl::glDisable(enableTranslationTable[6]);
-    ASLgl::glDisable(enableTranslationTable[7]);
-    ASLgl::glDisable(enableTranslationTable[8]);
+    GLRender::Disable(Aurora::kCapTexGenS);
+    GLRender::Disable(Aurora::kCapTexGenT);
+    GLRender::Disable(Aurora::kCapTexGenR);
 #if KOTOR1
     UndoEnvMapTransform(part->m_pMaterial->Textures(5).m_pObject, 1);
 #endif
-    ASLgl::glEnable(enableTranslationTable[1]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 }
 
 void RenderLightMappedNoShaders(VertexPrimitiveFlat* vertices)
@@ -3540,39 +3401,29 @@ void RenderLightMappedNoShaders(VertexPrimitiveFlat* vertices)
     }
 
     if (part->m_pMaterial->HasEnvMap())
-        ASLgl::glDisable(enableTranslationTable[0]);
+        GLRender::Disable(Aurora::kCapBlend);
 
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glDisable(enableTranslationTable[5]);
+    GLRender::Disable(Aurora::kCapLighting);
 
     unsigned int nBlendSrc = blendTranslationTable[0];
     unsigned int nBlendDst = blendTranslationTable[1];
     ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-    ASLgl::glEnable(enableTranslationTable[4]);
+    GLRender::SetActiveTexture(0);
+    GLRender::Enable(Aurora::kCapTexture2D);
     part->m_pMaterial->BindTexture1();
     ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-    ASLgl::glEnable(enableTranslationTable[4]);
+    GLRender::SetActiveTexture(1);
+    GLRender::Enable(Aurora::kCapTexture2D);
     part->m_pMaterial->BindTexture0();
     ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-
-    unsigned int nClientState = clientStateTranslationTable[0];
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glEnableClientState(nClientState);
+    GLRender::ActivateTextureStage(1);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
 
     GLRender::SetLightmapTexCoordToStage0(node->m_nVertexStride, node->m_uVertexFlags,
                                           node->m_pTree->AsModel()->m_nPool,
@@ -3585,31 +3436,25 @@ void RenderLightMappedNoShaders(VertexPrimitiveFlat* vertices)
                                        static_cast<short>(node->m_nVertexCount) + 1,
                                        node, node->m_nGeomBase);
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glDisableClientState(nClientState);
+    GLRender::ActivateTextureStage(1);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
     if (AurMultiTextureAvailable())
         ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    ASLgl::glDisable(enableTranslationTable[4]);
+    GLRender::Disable(Aurora::kCapTexture2D);
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     part->m_pMaterial->BindTexture0();
     ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
     ASLgl::glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
-    ASLgl::glEnable(enableTranslationTable[5]);
+    GLRender::Enable(Aurora::kCapLighting);
 
     if (part->m_pMaterial->HasEnvMap())
-        ASLgl::glEnable(enableTranslationTable[0]);
+        GLRender::Enable(Aurora::kCapBlend);
 }
 
 void RenderLightMapped(VertexPrimitiveFlat* vertices)
@@ -3633,15 +3478,9 @@ void RenderLightMapped(VertexPrimitiveFlat* vertices)
     unsigned int nBlendSrc = blendTranslationTable[0];
     unsigned int nBlendDst = blendTranslationTable[1];
     ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-
-    unsigned int nClientState = clientStateTranslationTable[0];
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glEnableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(1);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
 
 #if !KOTOR1  // K1: no force-sight arm
     if (g_ForceSight)
@@ -3662,13 +3501,9 @@ void RenderLightMapped(VertexPrimitiveFlat* vertices)
         GLRender::pfuncEnablePixelShaders(GLRender::kPSMultiTextureOff, 0, 0, 0, 0);
     }
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glDisableClientState(nClientState);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(1);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
 }
 
 void RenderFlatDecal(VertexPrimitiveFlat* vertices)
@@ -3686,19 +3521,14 @@ void RenderFlatDecal(VertexPrimitiveFlat* vertices)
     CAurTexture* pTexture = vertices->m_pPart->m_pMaterial->Textures(0).m_pObject;
     GLRender::pfuncEnablePixelShaders(GLRender::kPSDecal, pTexture, 0, 0, 0);
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-
-    GLRender::cm_uiCurrentStage = 0;
-    ASLgl::glEnableClientState(clientStateTranslationTable[0]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[3]);
-    unsigned int nNormalArray = clientStateTranslationTable[1];
-    ASLgl::glDisableClientState(nNormalArray);
-    unsigned int nColorArray = clientStateTranslationTable[2];
-    ASLgl::glDisableClientState(nColorArray);
+    GLRender::ActivateTextureStage(0);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::EnableClientState(Aurora::kClientStateVertex);
+    GLRender::DisableClientState(Aurora::kClientStateNormal);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
     RenderFlat(vertices);
-    ASLgl::glEnableClientState(nNormalArray);
-    ASLgl::glEnableClientState(nColorArray);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
+    GLRender::EnableClientState(Aurora::kClientStateColor);
 }
 
 void RenderFlat(VertexPrimitiveFlat* vertices)
@@ -3720,7 +3550,7 @@ void RenderFlat(VertexPrimitiveFlat* vertices)
     MdlNodeTriMesh* node = static_cast<MdlNodeTriMesh*>(vertices->m_pNode);
     int nCount = node->m_lVertexIndicesCount.m_count;
     if (node->m_nTex0Ofs < 0)
-        ASLgl::glDisableClientState(clientStateTranslationTable[0]);
+        GLRender::DisableClientState(Aurora::kClientStateTexCoord);
 
     for (int i = 0; i < nCount; i++)
     {
@@ -3740,7 +3570,7 @@ void RenderFlat(VertexPrimitiveFlat* vertices)
                                node->m_nGeomBase, node->m_nLeftOverPool);
 
     if (node->m_nTex0Ofs < 0)
-        ASLgl::glEnableClientState(clientStateTranslationTable[0]);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
 
     if (!enablelighting)
     {
@@ -3764,33 +3594,28 @@ void RenderBumpyShiny(VertexPrimitiveFlat* vertices)
         usearbvertexprograms != 0 ? szStandardVPARB : cStandardVP, cStandardVPDeclaration);
 
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapBlend);
 
     unsigned int nSaveBlendSrc = blendTranslationTable[0];
     unsigned int nSaveBlendDst = blendTranslationTable[1];
     ASLgl::glBlendFunc(nSaveBlendSrc, nSaveBlendDst);
-    ASLgl::glDisable(enableTranslationTable[1]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
     unsigned int nShinyBlendSrc = blendTranslationTable[2];
     unsigned int nShinyBlendDst = blendTranslationTable[3];
     ASLgl::glBlendFunc(nShinyBlendSrc, nShinyBlendDst);
 
-    unsigned int nClientState0 = clientStateTranslationTable[8];
-    ASLgl::glEnableClientState(nClientState0);
-    unsigned int nClientState1 = clientStateTranslationTable[9];
-    ASLgl::glEnableClientState(nClientState1);
-    unsigned int nClientState2 = clientStateTranslationTable[10];
-    ASLgl::glEnableClientState(nClientState2);
-    unsigned int nNormalArray = clientStateTranslationTable[1];
-    ASLgl::glDisableClientState(nNormalArray);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib12);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib13);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib14);
+    GLRender::DisableClientState(Aurora::kClientStateNormal);
 
     static VertexProgram* bumpyshinyvp =
         new VertexProgram(cBumpyShinyVP, cBumpyShinyRegularVPDeclaration);
 
-    if (usearbvertexprograms != 0)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 1.0f);
+    GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 1.0f);
 
     bumpyshinyvp->Enable(part, false);
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     CAurTexture* pTex4 = part->m_pMaterial->Textures(4).m_pObject;
     CAurTexture* pTex5 = part->m_pMaterial->Textures(5).m_pObject;
@@ -3800,45 +3625,43 @@ void RenderBumpyShiny(VertexPrimitiveFlat* vertices)
     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyOff, 0, 0, 0, 0);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 
-    ASLgl::glDisableClientState(nClientState0);
-    ASLgl::glDisableClientState(nClientState1);
-    ASLgl::glDisableClientState(nClientState2);
-    ASLgl::glEnableClientState(nNormalArray);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib12);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib13);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib14);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
     ASLgl::glPopAttrib();
 
     if (enabledecal != 0)
     {
         part->m_pMaterial->BindTexture0();
-        ASLgl::glEnable(enableTranslationTable[0]);
+        GLRender::Enable(Aurora::kCapBlend);
         ASLgl::glBlendFunc(enableold == 0 ? nShinyBlendSrc : nSaveBlendSrc, nSaveBlendDst);
         standardvp->Enable(part, true);
-        ASLgl::glEnable(enableTranslationTable[9]);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 0.0f, 1.0f, 0.0f, shinyalpha);
+        GLRender::Enable(Aurora::kCapVertexProgram);
+        GLRender::SetVertexShaderConstant(15, 0.0f, 1.0f, 0.0f, shinyalpha);
         RenderFlat(vertices);
         if (usearbvertexprograms != 0)
             ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, 0);
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
     }
 
     ASLgl::glBlendFunc(nShinyBlendDst, blendTranslationTable[4]);
     standardvp->Enable(part, true);
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     if (enablerender != 0)
     {
-        unsigned int nTextureCoordArray = clientStateTranslationTable[0];
-        ASLgl::glDisableClientState(nTextureCoordArray);
-        ASLgl::glDisable(enableTranslationTable[4]);
+        GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+        GLRender::Disable(Aurora::kCapTexture2D);
         RenderFlat(vertices);
-        ASLgl::glEnable(enableTranslationTable[4]);
-        ASLgl::glEnableClientState(nTextureCoordArray);
+        GLRender::Enable(Aurora::kCapTexture2D);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
     }
 
-    ASLgl::glDisable(enableTranslationTable[9]);
-    ASLgl::glEnable(enableTranslationTable[1]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
+    GLRender::Enable(Aurora::kCapAlphaTest);
 }
 
 VertexProgram* g_pBumpyShinyPass1;
@@ -3868,8 +3691,8 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
 
     PartTriMesh* part = vertices->m_pPart->AsPartTriMesh();
 
-    ASLgl::glEnable(enableTranslationTable[0]);
-    ASLgl::glDisable(enableTranslationTable[1]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     int nLightmapped = 0;
     if (static_cast<MdlNodeTriMesh*>(vertices->m_pNode)->m_bHasLightmap && enablelightmap != 0)
@@ -3888,58 +3711,46 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         {
             if (enabledecal != 0)
             {
-                if (AurMultiTextureAvailable())
-                    ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-                unsigned int nClientState = clientStateTranslationTable[0];
-                GLRender::cm_uiCurrentStage = 1;
-                ASLgl::glEnableClientState(nClientState);
-                if (AurMultiTextureAvailable())
-                    ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-                GLRender::cm_uiCurrentStage = 0;
+                GLRender::ActivateTextureStage(1);
+                GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+                GLRender::ActivateTextureStage(0);
 
                 GLRender::pfuncEnablePixelShaders(GLRender::kPSBaseLightmap, part->m_pMaterial->Textures(0).m_pObject,
                                                   part->m_pMaterial->Textures(5).m_pObject,
                                                   part->m_pMaterial->Textures(1).m_pObject, 0);
-                ASLgl::glEnable(enableTranslationTable[9]);
+                GLRender::Enable(Aurora::kCapVertexProgram);
                 g_pBumpyShinyPass1->Enable(part, true);
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 0.0f);
+                GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
                 RenderFlat(vertices);
 
-                if (AurMultiTextureAvailable())
-                    ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-                GLRender::cm_uiCurrentStage = 1;
-                ASLgl::glDisableClientState(nClientState);
-                if (AurMultiTextureAvailable())
-                    ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-                GLRender::cm_uiCurrentStage = 0;
+                GLRender::ActivateTextureStage(1);
+                GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+                GLRender::ActivateTextureStage(0);
             }
         }
         else if (enabledecal != 0)
         {
             g_pBumpyShinyPass3->Enable(part, true);
-            ASLgl::glEnable(enableTranslationTable[9]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
             GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, part->m_pMaterial->Textures(0).m_pObject, 0, 0, 0);
             RenderFlat(vertices);
         }
         return;
     }
 
-    ASLgl::glDisable(enableTranslationTable[1]);
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     if (enablebsenvmap != 0)
     {
-        ASLgl::glEnableClientState(clientStateTranslationTable[8]);
-        ASLgl::glEnableClientState(clientStateTranslationTable[9]);
-        ASLgl::glEnableClientState(clientStateTranslationTable[10]);
-        unsigned int nNormalArray = clientStateTranslationTable[1];
-        ASLgl::glDisableClientState(nNormalArray);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib12);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib13);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib14);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
 
         VertexProgram* pVP = (nLightmapped != 0) ? g_pBumpyShinyPass5 : g_pBumpyShinyPass4;
         pVP->Enable(part, false);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 0.0f, 1.0f, 0.0f);
+        GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 1.0f, 0.0f);
 
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyTextures, part->m_pMaterial->Textures(4).m_pObject, 0, 0,
                                           part->m_pMaterial->Textures(5).m_pObject);
@@ -3947,7 +3758,7 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
 
         if (part->m_pMaterial->m_fWaterAlpha < 1.0f)
         {
-            ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
             Vector vAmbient(1.0f, 1.0f, 1.0f);
             GLRender::pfuncSetPixelShaderAmbientColor(vAmbient, part->m_pMaterial->m_fWaterAlpha);
         }
@@ -3963,20 +3774,18 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyOff, 0, 0, 0, 0);
 
-        ASLgl::glDisableClientState(clientStateTranslationTable[8]);
-        ASLgl::glDisableClientState(clientStateTranslationTable[9]);
-        ASLgl::glDisableClientState(clientStateTranslationTable[10]);
-        ASLgl::glEnableClientState(nNormalArray);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 0.0f);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib12);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib13);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib14);
+        GLRender::EnableClientState(Aurora::kClientStateNormal);
+        GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
     }
 
-    if (usearbvertexprograms != 0)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 0.0f);
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
+    GLRender::Disable(Aurora::kCapVertexProgram);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
-    ASLgl::glEnable(enableTranslationTable[1]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 #else
     static bool bEnableEMBM = ASL::GetPrefAsBool("EnableEMBM", true);
     if (!bEnableEMBM)
@@ -3996,8 +3805,8 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
     MdlNodeTriMesh* node = static_cast<MdlNodeTriMesh*>(part->m_pNode);
     Gob* pGob = (part != 0) ? part->m_pGob : 0;
 
-    ASLgl::glEnable(enableTranslationTable[0]);
-    ASLgl::glDisable(enableTranslationTable[1]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     int nLightmapped = 0;
     if (static_cast<MdlNodeTriMesh*>(vertices->m_pNode)->m_bHasLightmap && enablelightmap != 0)
@@ -4011,7 +3820,7 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
     if (currentscene->m_bFogEnabled != 0 &&
         node->m_pTree->AsModel()->m_cAffectedByFog != 0)
     {
-        ASLgl::glDisable(enableTranslationTable[2]);
+        GLRender::Disable(Aurora::kCapFog);
         bPass2 = 1;
     }
 
@@ -4025,14 +3834,9 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         {
             if (enabledecal != 0)
             {
-                if (AurMultiTextureAvailable())
-                    ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-                unsigned int nClientState = clientStateTranslationTable[0];
-                GLRender::cm_uiCurrentStage = 1;
-                ASLgl::glEnableClientState(nClientState);
-                if (AurMultiTextureAvailable())
-                    ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-                GLRender::cm_uiCurrentStage = 0;
+                GLRender::ActivateTextureStage(1);
+                GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+                GLRender::ActivateTextureStage(0);
 
                 CAurTexture* pTex0 = part->m_pMaterial->Textures(0).m_pObject;
                 CAurTexture* pTex1 = part->m_pMaterial->Textures(1).m_pObject;
@@ -4045,26 +3849,21 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
                     GLRender::pfuncEnablePixelShaders(GLRender::kPSLightmap, pTex0, pTex1, 0, 0);
                 }
 
-                ASLgl::glEnable(enableTranslationTable[9]);
+                GLRender::Enable(Aurora::kCapVertexProgram);
                 g_pBumpyShinyPass1->Enable(part, true);
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 0.0f);
+                GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
                 RenderFlat(vertices);
                 GLRender::pfuncEnablePixelShaders(GLRender::kPSMultiTextureOff, 0, 0, 0, 0);
 
-                if (AurMultiTextureAvailable())
-                    ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-                GLRender::cm_uiCurrentStage = 1;
-                ASLgl::glDisableClientState(nClientState);
-                if (AurMultiTextureAvailable())
-                    ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-                GLRender::cm_uiCurrentStage = 0;
+                GLRender::ActivateTextureStage(1);
+                GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+                GLRender::ActivateTextureStage(0);
             }
         }
         else if (enabledecal != 0)
         {
             g_pBumpyShinyPass3->Enable(part, true);
-            ASLgl::glEnable(enableTranslationTable[9]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
 
             if (g_ForceSight != 0)
             {
@@ -4092,7 +3891,7 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
             if (g_ForceSight != 0)
             {
                 GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
-                ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+                GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
                 if (g_useDistortionOutput == 0)
                     ASLgl::glDepthMask(1);
             }
@@ -4103,9 +3902,9 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         }
     }
 
-    ASLgl::glDisable(enableTranslationTable[1]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     if (enablebsenvmap != 0)
     {
@@ -4117,17 +3916,15 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         }
         else
         {
-            ASLgl::glEnableClientState(clientStateTranslationTable[8]);
-            ASLgl::glEnableClientState(clientStateTranslationTable[9]);
-            ASLgl::glEnableClientState(clientStateTranslationTable[10]);
+            GLRender::EnableClientState(Aurora::kClientStateAttrib12);
+            GLRender::EnableClientState(Aurora::kClientStateAttrib13);
+            GLRender::EnableClientState(Aurora::kClientStateAttrib14);
         }
-        unsigned int nNormalArray = clientStateTranslationTable[1];
-        ASLgl::glDisableClientState(nNormalArray);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
 
         VertexProgram* pVP = (nLightmapped != 0) ? g_pBumpyShinyPass5 : g_pBumpyShinyPass4;
         pVP->Enable(part, false);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 0.0f, 1.0f, 0.0f);
+        GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 1.0f, 0.0f);
 
         CAurTexture* pTex4 = part->m_pMaterial->Textures(4).m_pObject;
         CAurTexture* pTex5 = part->m_pMaterial->Textures(5).m_pObject;
@@ -4143,7 +3940,7 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
 
         if (part->m_pMaterial->m_fWaterAlpha < 1.0f)
         {
-            ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
             if (g_ForceSight == 0)
             {
                 Vector vAmbient(1.0f, 1.0f, 1.0f);
@@ -4171,32 +3968,30 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         }
         else
         {
-            ASLgl::glDisableClientState(clientStateTranslationTable[8]);
-            ASLgl::glDisableClientState(clientStateTranslationTable[9]);
-            ASLgl::glDisableClientState(clientStateTranslationTable[10]);
+            GLRender::DisableClientState(Aurora::kClientStateAttrib12);
+            GLRender::DisableClientState(Aurora::kClientStateAttrib13);
+            GLRender::DisableClientState(Aurora::kClientStateAttrib14);
         }
-        ASLgl::glEnableClientState(nNormalArray);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 0.0f);
+        GLRender::EnableClientState(Aurora::kClientStateNormal);
+        GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
     }
 
     if (bPass2 != 0)
     {
-        ASLgl::glEnable(enableTranslationTable[2]);
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::Enable(Aurora::kCapFog);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSFog, part->m_pMaterial->Textures(0).m_pObject, 0, 0, 0);
-        ASLgl::glEnable(enableTranslationTable[9]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
         g_pBumpyShinyPass2->Enable(part, false);
         RenderFlat(vertices);
     }
 
     ASLgl::glPopAttrib();
-    if (usearbvertexprograms != 0)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 0.0f);
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
+    GLRender::Disable(Aurora::kCapVertexProgram);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
-    ASLgl::glEnable(enableTranslationTable[1]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 #endif
 }
 
@@ -4251,22 +4046,14 @@ void RenderNoiseMapped(VertexPrimitiveFlat* vertices, int nDirtTexture, int nDir
                                   cStandardVP2Declaration);
             VertexProgram* pVP = (nDirtWorldspace == 1) ? emlmvp : lsemlmvp;
 
-            ASLgl::glEnable(enableTranslationTable[9]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
             pVP->Enable(part, true);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glEnableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::ActivateTextureStage(1);
+            GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
 
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 0.0f, 1.0f, 0.0f);
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16, 0.0f, 2.0f, 3.0f, 1.0f);
-            }
+            GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 1.0f, 0.0f);
+            GLRender::SetVertexShaderConstant(16, 0.0f, 2.0f, 3.0f, 1.0f);
 
             if (g_ForceSight != 0)
             {
@@ -4309,15 +4096,11 @@ void RenderNoiseMapped(VertexPrimitiveFlat* vertices, int nDirtTexture, int nDir
                                   cStandardVP2Declaration);
             VertexProgram* pVP = (nDirtWorldspace == 1) ? emvp : lsemvp;
 
-            ASLgl::glEnable(enableTranslationTable[9]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
             pVP->Enable(part, true);
 
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 0.0f, 1.0f, 0.0f);
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16, 0.0f, 2.0f, 3.0f, 1.0f);
-            }
+            GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 1.0f, 0.0f);
+            GLRender::SetVertexShaderConstant(16, 0.0f, 2.0f, 3.0f, 1.0f);
 
             if (pGob != 0 && pGob->m_texWatch.m_pObject != 0)
             {
@@ -4392,22 +4175,14 @@ void RenderNoiseMapped(VertexPrimitiveFlat* vertices, int nDirtTexture, int nDir
                                   cStandardVP2Declaration);
             VertexProgram* pVP = (nDirtWorldspace == 1) ? lmvp : lslmvp;
 
-            ASLgl::glEnable(enableTranslationTable[9]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
             pVP->Enable(part, true);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glEnableClientState(clientStateTranslationTable[0]);
-            if (AurMultiTextureAvailable())
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::ActivateTextureStage(1);
+            GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
 
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 0.0f, 1.0f, 0.0f);
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16, 0.0f, 2.0f, 3.0f, 1.0f);
-            }
+            GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 1.0f, 0.0f);
+            GLRender::SetVertexShaderConstant(16, 0.0f, 2.0f, 3.0f, 1.0f);
 
             if (g_ForceSight != 0)
             {
@@ -4447,15 +4222,11 @@ void RenderNoiseMapped(VertexPrimitiveFlat* vertices, int nDirtTexture, int nDir
                                   cStandardVPDeclaration);
             VertexProgram* pVP = (nDirtWorldspace == 1) ? plainvp : plainlsvp;
 
-            ASLgl::glEnable(enableTranslationTable[9]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
             pVP->Enable(part, true);
 
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 0.0f, 1.0f, 0.0f);
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16, 0.0f, 2.0f, 3.0f, 1.0f);
-            }
+            GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 1.0f, 0.0f);
+            GLRender::SetVertexShaderConstant(16, 0.0f, 2.0f, 3.0f, 1.0f);
 
             if (g_ForceSight != 0)
             {
@@ -4482,17 +4253,12 @@ void RenderNoiseMapped(VertexPrimitiveFlat* vertices, int nDirtTexture, int nDir
     }
 
 // The shared epilogue puts every unit back to how it was.
-    if (usearbvertexprograms != 0)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 28, 0.5f, 0.25f, 0.125f, 0.0675f);
+    GLRender::SetVertexShaderConstant(28, 0.5f, 0.25f, 0.125f, 0.0675f);
     RenderFlat(vertices);
-    ASLgl::glDisable(enableTranslationTable[9]);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glDisableClientState(clientStateTranslationTable[0]);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
+    GLRender::Disable(Aurora::kCapVertexProgram);
+    GLRender::ActivateTextureStage(1);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
     GLRender::pfuncEnablePixelShaders(g_ForceSight == 0 ? GLRender::kPSMultiTextureOff : GLRender::kPSDesatOff, 0, 0, 0, 0);
 }
 #endif
@@ -4533,7 +4299,7 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
 
     if (enableonepassenvmap && AurOnePassEnvMapAvailable())
     {
-        ASLgl::glDisable(enableTranslationTable[1]);
+        GLRender::Disable(Aurora::kCapAlphaTest);
 
         if (bParam3 && AurATIValidate())
             GLRender::pfuncEnablePixelShaders(GLRender::kPSEnvMapFog, part->m_pMaterial->Textures(0).m_pObject,
@@ -4550,21 +4316,17 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
         GLRender::pfuncEnablePixelShaders(GLRender::kPSMultiTextureOff, 0, 0, 0, 0);
         UndoEnvMapTransform(pEnvMap, 1);
 
-        GLRender::cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         if (AurCubeMapAvailable())
-            ASLgl::glDisable(enableTranslationTable[12]);
+            GLRender::Disable(Aurora::kCapTextureCubeMap);
 
-        GLRender::cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
 
-        ASLgl::glEnable(enableTranslationTable[1]);
+        GLRender::Enable(Aurora::kCapAlphaTest);
         return;
     }
 
-    ASLgl::glDisable(enableTranslationTable[1]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     if (environmentmapdest != 0)
     {
@@ -4578,16 +4340,16 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
 
         if (pEnvMap->IsCubeMap())
         {
-            ASLgl::glEnable(enableTranslationTable[6]);
-            ASLgl::glEnable(enableTranslationTable[7]);
-            ASLgl::glEnable(enableTranslationTable[8]);
+            GLRender::Enable(Aurora::kCapTexGenS);
+            GLRender::Enable(Aurora::kCapTexGenT);
+            GLRender::Enable(Aurora::kCapTexGenR);
         }
         else
         {
             ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
             ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-            ASLgl::glEnable(enableTranslationTable[6]);
-            ASLgl::glEnable(enableTranslationTable[7]);
+            GLRender::Enable(Aurora::kCapTexGenS);
+            GLRender::Enable(Aurora::kCapTexGenT);
         }
         UndoEnvMapTransform(pEnvMap, 0);
         RenderFlat(vertices);
@@ -4605,23 +4367,23 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
 
         if (pEnvMap->IsCubeMap())
         {
-            ASLgl::glEnable(enableTranslationTable[6]);
-            ASLgl::glEnable(enableTranslationTable[7]);
-            ASLgl::glEnable(enableTranslationTable[8]);
+            GLRender::Enable(Aurora::kCapTexGenS);
+            GLRender::Enable(Aurora::kCapTexGenT);
+            GLRender::Enable(Aurora::kCapTexGenR);
         }
         else
         {
             ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
             ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-            ASLgl::glEnable(enableTranslationTable[6]);
-            ASLgl::glEnable(enableTranslationTable[7]);
+            GLRender::Enable(Aurora::kCapTexGenS);
+            GLRender::Enable(Aurora::kCapTexGenT);
         }
         RenderFlat(vertices);
         UndoEnvMapTransform(pEnvMap, 0);
 
-        ASLgl::glDisable(enableTranslationTable[6]);
-        ASLgl::glDisable(enableTranslationTable[7]);
-        ASLgl::glDisable(enableTranslationTable[8]);
+        GLRender::Disable(Aurora::kCapTexGenS);
+        GLRender::Disable(Aurora::kCapTexGenT);
+        GLRender::Disable(Aurora::kCapTexGenR);
         ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
         part->m_pMaterial->BindTexture0();
         RenderFlat(vertices);
@@ -4633,21 +4395,17 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
         GLRender::cm_nGLCurrentTID[GLRender::cm_uiCurrentStage] = 0;
     }
 
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-    ASLgl::glEnable(enableTranslationTable[1]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+    GLRender::Enable(Aurora::kCapAlphaTest);
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-    ASLgl::glDisable(enableTranslationTable[6]);
-    ASLgl::glDisable(enableTranslationTable[7]);
-    ASLgl::glDisable(enableTranslationTable[8]);
+    GLRender::SetActiveTexture(1);
+    GLRender::Disable(Aurora::kCapTexGenS);
+    GLRender::Disable(Aurora::kCapTexGenT);
+    GLRender::Disable(Aurora::kCapTexGenR);
     if (AurCubeMapAvailable())
-        ASLgl::glDisable(enableTranslationTable[12]);
+        GLRender::Disable(Aurora::kCapTextureCubeMap);
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 #else
     if (!enablerenderenv || !enablerender)
         return;
@@ -4678,7 +4436,7 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
 
     if (enableonepassenvmap && AurOnePassEnvMapAvailable())
     {
-        ASLgl::glDisable(enableTranslationTable[1]);
+        GLRender::Disable(Aurora::kCapAlphaTest);
 
         if (bParam3 && AurATIValidate())
         {
@@ -4727,21 +4485,17 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
         RenderFlat(vertices);
         GLRender::pfuncEnablePixelShaders(g_ForceSight == 0 ? GLRender::kPSMultiTextureOff : GLRender::kPSDesatOff, 0, 0, 0, 0);
 
-        GLRender::cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         if (AurCubeMapAvailable())
-            ASLgl::glDisable(enableTranslationTable[12]);
+            GLRender::Disable(Aurora::kCapTextureCubeMap);
 
-        GLRender::cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
 
-        ASLgl::glEnable(enableTranslationTable[1]);
+        GLRender::Enable(Aurora::kCapAlphaTest);
         return;
     }
 
-    ASLgl::glDisable(enableTranslationTable[1]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     if (environmentmapdest != 0)
     {
@@ -4757,16 +4511,16 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
             ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
             ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
             ASLgl::glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-            ASLgl::glEnable(enableTranslationTable[6]);
-            ASLgl::glEnable(enableTranslationTable[7]);
-            ASLgl::glEnable(enableTranslationTable[8]);
+            GLRender::Enable(Aurora::kCapTexGenS);
+            GLRender::Enable(Aurora::kCapTexGenT);
+            GLRender::Enable(Aurora::kCapTexGenR);
         }
         else
         {
             ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
             ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-            ASLgl::glEnable(enableTranslationTable[6]);
-            ASLgl::glEnable(enableTranslationTable[7]);
+            GLRender::Enable(Aurora::kCapTexGenS);
+            GLRender::Enable(Aurora::kCapTexGenT);
         }
         RenderFlat(vertices);
 
@@ -4785,22 +4539,22 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
             ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
             ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
             ASLgl::glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-            ASLgl::glEnable(enableTranslationTable[6]);
-            ASLgl::glEnable(enableTranslationTable[7]);
-            ASLgl::glEnable(enableTranslationTable[8]);
+            GLRender::Enable(Aurora::kCapTexGenS);
+            GLRender::Enable(Aurora::kCapTexGenT);
+            GLRender::Enable(Aurora::kCapTexGenR);
         }
         else
         {
             ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
             ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-            ASLgl::glEnable(enableTranslationTable[6]);
-            ASLgl::glEnable(enableTranslationTable[7]);
+            GLRender::Enable(Aurora::kCapTexGenS);
+            GLRender::Enable(Aurora::kCapTexGenT);
         }
         RenderFlat(vertices);
 
-        ASLgl::glDisable(enableTranslationTable[6]);
-        ASLgl::glDisable(enableTranslationTable[7]);
-        ASLgl::glDisable(enableTranslationTable[8]);
+        GLRender::Disable(Aurora::kCapTexGenS);
+        GLRender::Disable(Aurora::kCapTexGenT);
+        GLRender::Disable(Aurora::kCapTexGenR);
         ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
         part->m_pMaterial->BindTexture0();
         RenderFlat(vertices);
@@ -4813,21 +4567,17 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
         GLRender::cm_nGLCurrentTID[GLRender::cm_uiCurrentStage] = 0;
     }
 
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
-    ASLgl::glEnable(enableTranslationTable[1]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+    GLRender::Enable(Aurora::kCapAlphaTest);
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-    ASLgl::glDisable(enableTranslationTable[6]);
-    ASLgl::glDisable(enableTranslationTable[7]);
-    ASLgl::glDisable(enableTranslationTable[8]);
+    GLRender::SetActiveTexture(1);
+    GLRender::Disable(Aurora::kCapTexGenS);
+    GLRender::Disable(Aurora::kCapTexGenT);
+    GLRender::Disable(Aurora::kCapTexGenR);
     if (AurCubeMapAvailable())
-        ASLgl::glDisable(enableTranslationTable[12]);
+        GLRender::Disable(Aurora::kCapTextureCubeMap);
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 #endif
 }
 
@@ -4836,10 +4586,8 @@ void DoEnvMapTransform(CAurTexture* pTexture, unsigned int nStage)
 {
     if (AurCubeMapAvailable() && pTexture->IsCubeMap())
     {
-        GLRender::cm_uiCurrentStage = nStage;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
-        ASLgl::glMatrixMode(transformTranslationTable[3]);
+        GLRender::SetActiveTexture(nStage);
+        GLRender::SetMatrixMode(Aurora::kMatrixTexture);
         ASLgl::glPushMatrix();
         float aMatrix[16];
         if (CurrentCamera != 0)
@@ -4847,10 +4595,8 @@ void DoEnvMapTransform(CAurTexture* pTexture, unsigned int nStage)
         else
             MakeMatrix4x4(aMatrix, g_vZero, Quaternion());
         ASLgl::glMultMatrixf(aMatrix);
-        ASLgl::glMatrixMode(transformTranslationTable[2]);
-        GLRender::cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
+        GLRender::SetActiveTexture(0);
     }
 }
 #endif
@@ -4863,7 +4609,7 @@ void RenderLightMappedBumpDiffuse(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
     List<PartLight*> bumpLights(
         (currentscene->m_pLightManager)
@@ -4878,7 +4624,7 @@ void RenderLightMappedBumpDiffuse(VertexPrimitiveFlat* vertices)
     if (AurPixelShadersAvailable() == 0)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[2]);
+    GLRender::Disable(Aurora::kCapFog);
 
     PartTriMesh* part = vertices->m_pPart->AsPartTriMesh();
     K2_ASSUME(part != 0);   // the primitive's owning trimesh: every primitive is built with it
@@ -4887,45 +4633,31 @@ void RenderLightMappedBumpDiffuse(VertexPrimitiveFlat* vertices)
     static VertexProgram* bumpmapvp =
         new VertexProgram(cBumpMapDiffuseVP, cBumpMapDiffuseVPDeclaration);
 
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     Vector vDiffuse;
     if (node != 0)
         vDiffuse = node->m_vDiffuse;
 
-    unsigned int nCap0, nCap8, nCap9, nCap10;
 
-    unsigned char bWasAlphaTest = ASLgl::glIsEnabled(enableTranslationTable[1]);
-    ASLgl::glDisable(enableTranslationTable[1]);
+    unsigned char bWasAlphaTest = GLRender::IsEnabled(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
-    if (AurMultiTextureAvailable() != 0)
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
+    GLRender::ActivateTextureStage(1);
 
-    nCap0 = clientStateTranslationTable[0];
-    ASLgl::glEnableClientState(nCap0);
-    nCap8 = clientStateTranslationTable[8];
-    ASLgl::glEnableClientState(nCap8);
-    nCap9 = clientStateTranslationTable[9];
-    ASLgl::glEnableClientState(nCap9);
-    nCap10 = clientStateTranslationTable[10];
-    ASLgl::glEnableClientState(nCap10);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib12);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib13);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib14);
 
     GLRender::pfuncEnablePixelShaders(GLRender::kPSLightmapBumpDiffuse, part->m_pMaterial->Textures(4).m_pObject,
                                       currentscene->m_pNormalizationCubeMap.m_pObject,
                                       part->m_pMaterial->Textures(1).m_pObject,
                                       part->m_pMaterial->Textures(0).m_pObject);
 
-    if (usearbvertexprograms != 0)
-    {
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16,
-            currentscene->m_fFogStart,
-            currentscene->m_fFogEnd,
-            currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f,
-            0.5f);
-        if (usearbvertexprograms != 0)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 17, 1.0f, -1.0f, 0.0f, 0.0f);
-    }
+    GLRender::SetVertexShaderConstant(16, currentscene->m_fFogStart, currentscene->m_fFogEnd,
+                                      currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f, 0.5f);
+    GLRender::SetVertexShaderConstant(17, 1.0f, -1.0f, 0.0f, 0.0f);
 
     Vector vLocalPosition;
     Quaternion qLocalOrientation;
@@ -5027,45 +4759,32 @@ void RenderLightMappedBumpDiffuse(VertexPrimitiveFlat* vertices)
                       vDiffuse.z * diffuseintensity * bumpLights.m_pData[k]->m_vLightColour.z);
         GLRender::pfuncSetBumpLightColor(vColor, 1.0f);
 
-        if (usearbvertexprograms != 0)
-        {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, lx, ly, lz, 1.0f);
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, cx, cy, cz, 1.0f);
-                if (usearbvertexprograms != 0)
-                {
-                    fR = bumpLights.m_pData[k]->m_fLightRadius * bumpLights.m_pData[k]->m_fLightRadius;
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
-                }
-            }
-        }
+        GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+        GLRender::SetVertexShaderConstant(13, cx, cy, cz, 1.0f);
+        fR = bumpLights.m_pData[k]->m_fLightRadius * bumpLights.m_pData[k]->m_fLightRadius;
+        GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
 
         RenderFlat(vertices);
 
         if (bWasAlphaTest != 0)
-            ASLgl::glEnable(enableTranslationTable[1]);
+            GLRender::Enable(Aurora::kCapAlphaTest);
 
         (currentscene->m_pLightManager)
             ->EnableBumpMapLights();
     }
 
-    if (AurMultiTextureAvailable() != 0)
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    GLRender::cm_uiCurrentStage = 1;
-    ASLgl::glDisableClientState(nCap0);
-    if (AurMultiTextureAvailable() != 0)
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    GLRender::cm_uiCurrentStage = 0;
-    ASLgl::glDisableClientState(nCap8);
-    ASLgl::glDisableClientState(nCap9);
-    ASLgl::glDisableClientState(nCap10);
+    GLRender::ActivateTextureStage(1);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::ActivateTextureStage(0);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib12);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib13);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib14);
 
     currentscene->DoFog();
     GLRender::pfuncEnablePixelShaders(GLRender::kPSMultiTextureOff, 0, 0, 0, 0);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
     part->m_pMaterial->Textures(0).m_pObject->Bind();
 }
 
@@ -5086,7 +4805,7 @@ void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
     List<PartLight*> bumpLights(
         (currentscene->m_pLightManager)
@@ -5099,20 +4818,20 @@ void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
     }
 
 #if KOTOR1  // K1: this first save is never restored
-    ASLgl::glIsEnabled(enableTranslationTable[1]);
+    GLRender::IsEnabled(Aurora::kCapAlphaTest);
 #else
-    unsigned char bWasAlphaTest = ASLgl::glIsEnabled(enableTranslationTable[1]);
+    unsigned char bWasAlphaTest = GLRender::IsEnabled(Aurora::kCapAlphaTest);
 #endif
-    ASLgl::glDisable(enableTranslationTable[1]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     if (AurPixelShadersAvailable() != 0)
     {
         PartTriMesh* part = vertices->m_pPart->AsPartTriMesh();
         K2_ASSUME(part != 0);   // the primitive's owning trimesh: every primitive is built with it
 #if KOTOR1  // K1: disables it here and never touches it again
-        ASLgl::glDisable(enableTranslationTable[2]);
+        GLRender::Disable(Aurora::kCapFog);
 #else
-        ASLgl::glEnable(enableTranslationTable[2]);
+        GLRender::Enable(Aurora::kCapFog);
 #endif
         MdlNodeTriMesh* node = (part != 0) ? static_cast<MdlNodeTriMesh*>(part->m_pNode) : 0;
 
@@ -5122,7 +4841,7 @@ void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
         static VertexProgram* bumpmapvp =
             new VertexProgram(cBumpMapSpecularVP, cBumpMapSpecularVPDeclaration);
 
-        ASLgl::glEnable(enableTranslationTable[9]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
 
         if (node != 0)
         {
@@ -5138,23 +4857,16 @@ void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
             vDiffuse = vScale;
         }
 
-        unsigned int nCap0, nCap8, nCap9, nCap10;
 
-        unsigned char bWasAlphaTest2 = ASLgl::glIsEnabled(enableTranslationTable[1]);
-        ASLgl::glDisable(enableTranslationTable[1]);
+        unsigned char bWasAlphaTest2 = GLRender::IsEnabled(Aurora::kCapAlphaTest);
+        GLRender::Disable(Aurora::kCapAlphaTest);
 
-        if (AurMultiTextureAvailable() != 0)
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        GLRender::cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
 
-        nCap0 = clientStateTranslationTable[0];
-        ASLgl::glEnableClientState(nCap0);
-        nCap8 = clientStateTranslationTable[8];
-        ASLgl::glEnableClientState(nCap8);
-        nCap9 = clientStateTranslationTable[9];
-        ASLgl::glEnableClientState(nCap9);
-        nCap10 = clientStateTranslationTable[10];
-        ASLgl::glEnableClientState(nCap10);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib12);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib13);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib14);
 
         switch (bmspecularexponent)
         {
@@ -5180,16 +4892,9 @@ void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
             break;
         }
 
-        if (usearbvertexprograms != 0)
-        {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16,
-                currentscene->m_fFogStart,
-                currentscene->m_fFogEnd,
-                currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f,
-                0.5f);
-            if (usearbvertexprograms != 0)
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 17, 1.0f, -1.0f, 0.0f, 0.0f);
-        }
+        GLRender::SetVertexShaderConstant(16, currentscene->m_fFogStart, currentscene->m_fFogEnd,
+                                          currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f, 0.5f);
+        GLRender::SetVertexShaderConstant(17, 1.0f, -1.0f, 0.0f, 0.0f);
 
 // The light and the camera are carried into the part's accumulated world frame.
         Quaternion qLocalOrientation;
@@ -5296,52 +5001,38 @@ void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
                 vSpecular.z * fSpecularIntensity * fBumpIntensity * pLight->m_vLightColour.z);
             GLRender::pfuncSetPixelShaderAmbientColor(vColor, 1.0f);
 
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, lx, ly, lz, 1.0f);
-                if (usearbvertexprograms != 0)
-                {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, cx, cy, cz, 1.0f);
-                    if (usearbvertexprograms != 0)
-                    {
-                        fR = bumpLights.m_pData[k]->m_fLightRadius * bumpLights.m_pData[k]->m_fLightRadius;
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
-                                                          9.0f / (fR + fR), 1.0f);
-                    }
-                }
-            }
+            GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+            GLRender::SetVertexShaderConstant(13, cx, cy, cz, 1.0f);
+            fR = bumpLights.m_pData[k]->m_fLightRadius * bumpLights.m_pData[k]->m_fLightRadius;
+            GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
 
             RenderFlat(vertices);
 
             if (bWasAlphaTest2 != 0)
-                ASLgl::glEnable(enableTranslationTable[1]);
+                GLRender::Enable(Aurora::kCapAlphaTest);
         }
 
 #if !KOTOR1
-        ASLgl::glDisable(enableTranslationTable[2]);
+        GLRender::Disable(Aurora::kCapFog);
 #endif
-        ASLgl::glDisableClientState(clientStateTranslationTable[7]);
-        ASLgl::glDisableClientState(nCap8);
-        ASLgl::glDisableClientState(nCap9);
-        ASLgl::glDisableClientState(nCap10);
-        if (AurMultiTextureAvailable() != 0)
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        GLRender::cm_uiCurrentStage = 1;
-        ASLgl::glDisableClientState(nCap0);
-        if (AurMultiTextureAvailable() != 0)
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        GLRender::cm_uiCurrentStage = 0;
+        GLRender::DisableClientState(Aurora::kClientStateAttrib5);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib12);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib13);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib14);
+        GLRender::ActivateTextureStage(1);
+        GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+        GLRender::ActivateTextureStage(0);
 
         currentscene->DoFog();
         GLRender::pfuncEnablePixelShaders(GLRender::kPSMultiTextureOff, 0, 0, 0, 0);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
     }
 
 #if !KOTOR1
     if (bWasAlphaTest != 0)
-        ASLgl::glEnable(enableTranslationTable[1]);
+        GLRender::Enable(Aurora::kCapAlphaTest);
 #endif
 }
 
@@ -5378,39 +5069,30 @@ void RenderDiffuseBumpMappedPass(VertexPrimitiveFlat* vertices)
     static VertexProgram* bumpmapvp = new VertexProgram(cBumpMapVP, cBumpMapVPDeclaration);
     bumpmapvp->Enable(part, false);
 
-    ASLgl::glEnable(enableTranslationTable[9]);
-    if (usearbvertexprograms != 0)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 17, 1.0f, -1.0f, 0.0f, 0.0f);
-    ASLgl::glEnable(enableTranslationTable[2]);
-    ASLgl::glFogi(GL_FOG_MODE, fogModeTranslationTable[0]);
-    ASLgl::glFogf(enableTranslationTable[15], 0.0f);
-    ASLgl::glFogf(enableTranslationTable[16], 1.0f);
+    GLRender::Enable(Aurora::kCapVertexProgram);
+    GLRender::SetVertexShaderConstant(17, 1.0f, -1.0f, 0.0f, 0.0f);
+    GLRender::Enable(Aurora::kCapFog);
+    GLRender::SetFogMode(Aurora::kFogLinear);
+    GLRender::SetFogModef(Aurora::kCapFogStart, 0.0f);
+    GLRender::SetFogModef(Aurora::kCapFogEnd, 1.0f);
     Vector vFog;
-    ASLgl::glFogfv(enableTranslationTable[18], &vFog.x);
+    GLRender::SetFogModev(Aurora::kCapFogColor, vFog);
 
     List<PartLight*> bumpLights(
         (currentscene->m_pLightManager)
             ->GetBumpMapLights());
 
-    unsigned int nCap7, nCap8, nCap9, nCap10, nCap11, nNormalArray, nColorArray;
     Vector& vAmbient = currentscene->m_ambient;
     GLRender::pfuncSetPixelShaderAmbientColor(vAmbient, 1.0f);
 
     ASLgl::glPushClientAttrib(2);
-    nCap7 = clientStateTranslationTable[7];
-    ASLgl::glEnableClientState(nCap7);
-    nCap8 = clientStateTranslationTable[8];
-    ASLgl::glEnableClientState(nCap8);
-    nCap9 = clientStateTranslationTable[9];
-    ASLgl::glEnableClientState(nCap9);
-    nCap10 = clientStateTranslationTable[10];
-    ASLgl::glEnableClientState(nCap10);
-    nCap11 = clientStateTranslationTable[11];
-    ASLgl::glEnableClientState(nCap11);
-    nNormalArray = clientStateTranslationTable[1];
-    ASLgl::glDisableClientState(nNormalArray);
-    nColorArray = clientStateTranslationTable[2];
-    ASLgl::glDisableClientState(nColorArray);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib5);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib12);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib13);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib14);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib15);
+    GLRender::DisableClientState(Aurora::kClientStateNormal);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
 
     GLRender::pfuncEnablePixelShaders(GLRender::kPSDiffuseBumpPass, part->m_pMaterial->Textures(4).m_pObject,
                                       currentscene->m_pNormalizationCubeMap.m_pObject, 0, 0);
@@ -5435,19 +5117,19 @@ void RenderDiffuseBumpMappedPass(VertexPrimitiveFlat* vertices)
         RenderFlat(vertices);
     }
 
-    ASLgl::glDisableClientState(nCap7);
-    ASLgl::glDisableClientState(nCap8);
-    ASLgl::glDisableClientState(nCap9);
-    ASLgl::glDisableClientState(nCap10);
-    ASLgl::glDisableClientState(nCap11);
-    ASLgl::glEnableClientState(nNormalArray);
-    ASLgl::glEnableClientState(nColorArray);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib5);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib12);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib13);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib14);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib15);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
+    GLRender::EnableClientState(Aurora::kClientStateColor);
     ASLgl::glPopClientAttrib();
 
     currentscene->DoFog();
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 }
 
 void RenderSpecularBumpMappedPass(VertexPrimitiveFlat* vertices)
@@ -5482,40 +5164,31 @@ void RenderSpecularBumpMappedPass(VertexPrimitiveFlat* vertices)
     static VertexProgram* bumpmapvp = new VertexProgram(cBumpMapVP, cBumpMapVPDeclaration);
     bumpmapvp->Enable(part, false);
 
-    ASLgl::glEnable(enableTranslationTable[9]);
-    if (usearbvertexprograms != 0)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 17, 1.0f, -1.0f, 0.0f, 0.0f);
+    GLRender::Enable(Aurora::kCapVertexProgram);
+    GLRender::SetVertexShaderConstant(17, 1.0f, -1.0f, 0.0f, 0.0f);
 
     unsigned int nBlendSrc = blendTranslationTable[0];
     ASLgl::glBlendFunc(nBlendSrc, blendTranslationTable[2]);
 
-    ASLgl::glEnable(enableTranslationTable[2]);
-    ASLgl::glFogi(GL_FOG_MODE, fogModeTranslationTable[0]);
-    ASLgl::glFogf(enableTranslationTable[15], 0.0f);
-    ASLgl::glFogf(enableTranslationTable[16], 1.0f);
+    GLRender::Enable(Aurora::kCapFog);
+    GLRender::SetFogMode(Aurora::kFogLinear);
+    GLRender::SetFogModef(Aurora::kCapFogStart, 0.0f);
+    GLRender::SetFogModef(Aurora::kCapFogEnd, 1.0f);
     Vector vFog;
-    ASLgl::glFogfv(enableTranslationTable[18], &vFog.x);
+    GLRender::SetFogModev(Aurora::kCapFogColor, vFog);
 
     List<PartLight*> bumpLights(
         (currentscene->m_pLightManager)
             ->GetBumpMapLights());
 
-    unsigned int nCap7, nCap8, nCap9, nCap10, nCap11, nNormalArray, nColorArray;
     ASLgl::glPushClientAttrib(2);
-    nCap7 = clientStateTranslationTable[7];
-    ASLgl::glEnableClientState(nCap7);
-    nCap8 = clientStateTranslationTable[8];
-    ASLgl::glEnableClientState(nCap8);
-    nCap9 = clientStateTranslationTable[9];
-    ASLgl::glEnableClientState(nCap9);
-    nCap10 = clientStateTranslationTable[10];
-    ASLgl::glEnableClientState(nCap10);
-    nCap11 = clientStateTranslationTable[11];
-    ASLgl::glEnableClientState(nCap11);
-    nNormalArray = clientStateTranslationTable[1];
-    ASLgl::glDisableClientState(nNormalArray);
-    nColorArray = clientStateTranslationTable[2];
-    ASLgl::glDisableClientState(nColorArray);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib5);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib12);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib13);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib14);
+    GLRender::EnableClientState(Aurora::kClientStateAttrib15);
+    GLRender::DisableClientState(Aurora::kClientStateNormal);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
 
     GLRender::pfuncEnablePixelShaders(GLRender::kPSSpecularBumpPass, part->m_pMaterial->Textures(0).m_pObject,
                                       part->m_pMaterial->Textures(4).m_pObject, 0,
@@ -5543,19 +5216,19 @@ void RenderSpecularBumpMappedPass(VertexPrimitiveFlat* vertices)
         RenderFlat(vertices);
     }
 
-    ASLgl::glDisableClientState(nCap7);
-    ASLgl::glDisableClientState(nCap8);
-    ASLgl::glDisableClientState(nCap9);
-    ASLgl::glDisableClientState(nCap10);
-    ASLgl::glDisableClientState(nCap11);
-    ASLgl::glEnableClientState(nNormalArray);
-    ASLgl::glEnableClientState(nColorArray);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib5);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib12);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib13);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib14);
+    GLRender::DisableClientState(Aurora::kClientStateAttrib15);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
+    GLRender::EnableClientState(Aurora::kClientStateColor);
     ASLgl::glPopClientAttrib();
 
     currentscene->DoFog();
     ASLgl::glBlendFunc(nBlendSrc, blendTranslationTable[1]);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 }
 
 // Renders bump maps through the one-pass pixel-shader path, else the two-pass fixed-function
@@ -5587,14 +5260,14 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    unsigned char bWasAlphaTest = ASLgl::glIsEnabled(enableTranslationTable[1]);
-    ASLgl::glDisable(enableTranslationTable[1]);
+    unsigned char bWasAlphaTest = GLRender::IsEnabled(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     if (AurPixelShadersAvailable() != 0 && useonepasssolution != 0)
     {
 // The one-pass pixel-shader arm.
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
 
         PartTriMesh* part = vertices->m_pPart->AsPartTriMesh();
         K2_ASSUME(part != 0);   // the primitive's owning trimesh: every primitive is built with it
@@ -5604,11 +5277,10 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
             new VertexProgram(usearbvertexprograms != 0 ? szBumpmapVPARB : cBumpMapOnePassVP,
                               cBumpMapOnePassVPDeclaration);
 
-        unsigned int nCap8, nCap9, nCap10;
         Vector vSpec;
         Vector vDiffuse;
 
-        ASLgl::glEnable(enableTranslationTable[9]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
 
         if (node != 0)
         {
@@ -5616,12 +5288,9 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
             vDiffuse = node->m_vDiffuse;
         }
 
-        nCap8 = clientStateTranslationTable[8];
-        ASLgl::glEnableClientState(nCap8);
-        nCap9 = clientStateTranslationTable[9];
-        ASLgl::glEnableClientState(nCap9);
-        nCap10 = clientStateTranslationTable[10];
-        ASLgl::glEnableClientState(nCap10);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib12);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib13);
+        GLRender::EnableClientState(Aurora::kClientStateAttrib14);
 
 #if !KOTOR1  // K1: no force-sight arm
         if (g_ForceSight != 0)
@@ -5647,16 +5316,9 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
                                               currentscene->m_pNormalizationCubeMap.m_pObject,
                                               part->m_pMaterial->Textures(0).m_pObject);
 
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16,
-                    currentscene->m_fFogStart,
-                    currentscene->m_fFogEnd,
-                    currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f,
-                    0.5f);
-                if (usearbvertexprograms != 0)
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 17, 1.0f, -1.0f, 0.0f, 0.0f);
-            }
+            GLRender::SetVertexShaderConstant(16, currentscene->m_fFogStart, currentscene->m_fFogEnd,
+                                              currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f, 0.5f);
+            GLRender::SetVertexShaderConstant(17, 1.0f, -1.0f, 0.0f, 0.0f);
 
             Quaternion qLocalOrientation;
             Vector vLocalPosition;
@@ -5791,52 +5453,42 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
                     GLRender::pfuncSetPixelShaderAmbientColor(vFallback, 1.0f);
                 }
 
-                if (usearbvertexprograms != 0)
-                {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, lx, ly, lz, 1.0f);
-                    if (usearbvertexprograms != 0)
-                    {
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, cx, cy, cz, 1.0f);
-                        if (usearbvertexprograms != 0)
-                        {
-                            fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
-                            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
-                                                              9.0f / (fR + fR), 1.0f);
-                        }
-                    }
-                }
+                GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+                GLRender::SetVertexShaderConstant(13, cx, cy, cz, 1.0f);
+                fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
 
                 RenderFlat(vertices);
 
 // The one-pass loop restores the alpha test per light; the multi-pass arm does it once at the end.
                 if (bWasAlphaTest != 0)
-                    ASLgl::glEnable(enableTranslationTable[1]);
+                    GLRender::Enable(Aurora::kCapAlphaTest);
 
                 (currentscene->m_pLightManager)
                     ->EnableBumpMapLights();
             }
         }
 
-        ASLgl::glDisableClientState(nCap8);
-        ASLgl::glDisableClientState(nCap9);
-        ASLgl::glDisableClientState(nCap10);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib12);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib13);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib14);
 
         currentscene->DoFog();
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
 #if KOTOR1  // K1: no pixel-shader reset and no ARB-specific disable
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
 #else
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
         if (usearbvertexprograms != 0)
             ASLgl::glDisable(GL_VERTEX_PROGRAM_ARB);
         else
-            ASLgl::glDisable(enableTranslationTable[9]);
+            GLRender::Disable(Aurora::kCapVertexProgram);
 #endif
     }
     else
     {
 // The multi-pass fixed-function arm.
-        ASLgl::glDisable(enableTranslationTable[2]);
+        GLRender::Disable(Aurora::kCapFog);
         if (bumpdiffuse != 0)
             RenderDiffuseBumpMappedPass(vertices);
 
@@ -5848,10 +5500,10 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
             (currentscene->m_pLightManager)
                 ->DisableBumpMapLights();
             standardvp->Enable(vertices->m_pPart, true);
-            ASLgl::glEnable(enableTranslationTable[9]);
-            ASLgl::glBlendFunc(blendTranslationTable[2], blendTranslationTable[2]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
+            GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
             RenderFlatNonTextured(vertices);
-            ASLgl::glDisable(enableTranslationTable[9]);
+            GLRender::Disable(Aurora::kCapVertexProgram);
             (currentscene->m_pLightManager)
                 ->EnableBumpMapLights();
         }
@@ -5859,10 +5511,10 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
         if (bumptexture != 0)
         {
             standardvp->Enable(vertices->m_pPart, true);
-            ASLgl::glEnable(enableTranslationTable[9]);
-            ASLgl::glBlendFunc(blendTranslationTable[5], blendTranslationTable[3]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
+            GLRender::SetBlendFunc(Aurora::kBlendDstColor, Aurora::kBlendZero);
             RenderFlatDecal(vertices);
-            ASLgl::glDisable(enableTranslationTable[9]);
+            GLRender::Disable(Aurora::kCapVertexProgram);
         }
 
         if (bumpspecular != 0)
@@ -5871,40 +5523,27 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
         currentscene->DoFog();
 
         int nFogEnabled;
-        ASLgl::glGetIntegerv(queryTranslationTable[0], &nFogEnabled);
+        GLRender::QueryIntegerv(Aurora::kQueryFog, &nFogEnabled);
         if (nFogEnabled != 0)
         {
             static VertexProgram* fogvp =
                 new VertexProgram(cFogOutputVP, cFogOutputVPDeclaration);
             fogvp->Enable(vertices->m_pPart, false);
-            ASLgl::glEnable(enableTranslationTable[9]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
 
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 20,
-                    currentscene->m_fFogStart,
-                    currentscene->m_fFogEnd,
-                    static_cast<float>(currentscene->m_nFogMode),
-                    1.0f);
-                if (usearbvertexprograms != 0)
-                {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 21,
-                        currentscene->m_vFogColor.x,
-                        currentscene->m_vFogColor.y,
-                        currentscene->m_vFogColor.z,
-                        1.0f);
-                    if (usearbvertexprograms != 0)
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 22, 1.0f, 0.0f, 0.0f, 0.0f);
-                }
-            }
+            GLRender::SetVertexShaderConstant(20, currentscene->m_fFogStart, currentscene->m_fFogEnd,
+                                              static_cast<float>(currentscene->m_nFogMode), 1.0f);
+            GLRender::SetVertexShaderConstant(21, currentscene->m_vFogColor.x, currentscene->m_vFogColor.y,
+                                              currentscene->m_vFogColor.z, 1.0f);
+            GLRender::SetVertexShaderConstant(22, 1.0f, 0.0f, 0.0f, 0.0f);
 
             ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
             RenderFlatNonTextured(vertices);
-            ASLgl::glDisable(enableTranslationTable[9]);
+            GLRender::Disable(Aurora::kCapVertexProgram);
         }
 
         if (bWasAlphaTest != 0)
-            ASLgl::glEnable(enableTranslationTable[1]);
+            GLRender::Enable(Aurora::kCapAlphaTest);
 
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, vertices->m_pPart->m_pMaterial->Textures(0).m_pObject,
                                           0, 0, 0);
@@ -5920,7 +5559,7 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
     if (enablerenderbumpmap == 0)
         return;
@@ -5937,13 +5576,13 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    unsigned char bWasAlphaTest = ASLgl::glIsEnabled(enableTranslationTable[1]);
-    ASLgl::glDisable(enableTranslationTable[1]);
+    unsigned char bWasAlphaTest = GLRender::IsEnabled(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     if (AurPixelShadersAvailable() != 0 && useonepasssolution != 0)
     {
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
 
 // The arm works through the tri-mesh identity; m_pNode is read off that.
         PartTriMesh* part = vertices->m_pPart->AsPartTriMesh();
@@ -5953,7 +5592,7 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
         static VertexProgram* normalmapvp =
             new VertexProgram(szNormalmapVPARB, szNormalmapVPARBDeclaration);
 
-        ASLgl::glEnable(enableTranslationTable[9]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
 
         Vector vSpec;
         Vector vDiffuse;
@@ -5968,17 +5607,9 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
                                           currentscene->m_pNormalizationCubeMap.m_pObject,
                                           currentscene->m_pNormalizationCubeMap.m_pObject);
 
-        if (usearbvertexprograms != 0)
-        {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16,
-                currentscene->m_fFogStart,
-                currentscene->m_fFogEnd,
-                currentscene->m_bFogEnabled != 0
-                    ? 1.0f : 0.0f,
-                0.5f);
-            if (usearbvertexprograms != 0)
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 17, 1.0f, -1.0f, 0.0f, 0.0f);
-        }
+        GLRender::SetVertexShaderConstant(16, currentscene->m_fFogStart, currentscene->m_fFogEnd,
+                                          currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f, 0.5f);
+        GLRender::SetVertexShaderConstant(17, 1.0f, -1.0f, 0.0f, 0.0f);
 
         Quaternion qLocalOrientation;
         Vector vLocalPosition;
@@ -6105,22 +5736,13 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
             else
                 GLRender::pfuncSetPixelShaderAmbientColor(vFallbackSpecular, 1.0f);
 
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, lx, ly, lz, 1.0f);
-                if (usearbvertexprograms != 0)
-                {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, cx, cy, cz, 1.0f);
-                    if (usearbvertexprograms != 0)
-                    {
-                        float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
-                                                          9.0f / (fR + fR), 1.0f);
-                    }
-                }
-            }
+            GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+            GLRender::SetVertexShaderConstant(13, cx, cy, cz, 1.0f);
+            float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+            GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
 
 // The texture-coord client array is bound on unit 1, per light.
+            // inlined GLRender::ActivateTextureStage(unsigned int)
             unsigned int nTexCoordCap = clientStateTranslationTable[0];
             if (AurMultiTextureAvailable() != 0)
                 ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
@@ -6132,6 +5754,7 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
 
             RenderFlat(vertices);
 
+            // inlined GLRender::ActivateTextureStage(unsigned int)
             if (AurMultiTextureAvailable() != 0)
                 ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
             GLRender::cm_uiCurrentStage = 1;
@@ -6141,7 +5764,7 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
             GLRender::cm_uiCurrentStage = 0;
 
             if (bWasAlphaTest != 0)
-                ASLgl::glEnable(enableTranslationTable[1]);
+                GLRender::Enable(Aurora::kCapAlphaTest);
 
             (currentscene->m_pLightManager)
                 ->EnableBumpMapLights();
@@ -6149,7 +5772,7 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
 
         currentscene->DoFog();
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
 
         if (showrancoraxes != 0)
         {
@@ -6223,7 +5846,7 @@ void RenderPhong(VertexPrimitiveFlat* vertices, AuroraRenderPaths nRenderPath)
 
     if (vertices->m_pPart->m_pGob != 0)
     {
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         return;
     }
 
@@ -6236,15 +5859,15 @@ void RenderPhong(VertexPrimitiveFlat* vertices, AuroraRenderPaths nRenderPath)
         (currentscene->m_pLightManager)
             ->GetPhongLights());
 
-    ASLgl::glEnable(enableTranslationTable[0]);
-    ASLgl::glDisable(enableTranslationTable[1]);
-    ASLgl::glBlendFunc(blendTranslationTable[2], blendTranslationTable[2]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
 
     Quaternion qOrient;
     Vector vWorld;
     vertices->m_pPart->GetWorld(vWorld, qOrient);
 
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSPhong, 0,
         currentscene->m_pNormalizationCubeMap.m_pObject,
         currentscene->m_pNormalizationCubeMap.m_pObject,
@@ -6299,31 +5922,19 @@ void RenderPhong(VertexPrimitiveFlat* vertices, AuroraRenderPaths nRenderPath)
 
         vertices->m_pPart->m_pNode->AsMdlNodeTriMesh();
 
-        if (usearbvertexprograms != 0)
-        {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, lx, ly, lz, 1.0f);
-            if (usearbvertexprograms != 0)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, 0.0f, 1.0f, 2.0f, -1.0f);
-                if (usearbvertexprograms != 0)
-                {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f,
-                                                      phongLights.m_pData[k]->m_fLightRadius,
-                                                      4.5f, 0.0f);
-                    if (usearbvertexprograms != 0)
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 0.125f, 0.5f, 0.0f, 1.0f);
-                }
-            }
-        }
+        GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+        GLRender::SetVertexShaderConstant(13, 0.0f, 1.0f, 2.0f, -1.0f);
+        GLRender::SetVertexShaderConstant(14, 1.0f, phongLights.m_pData[k]->m_fLightRadius, 4.5f, 0.0f);
+        GLRender::SetVertexShaderConstant(15, 0.125f, 0.5f, 0.0f, 1.0f);
 
         if (phongrender != 0)
             RenderFlat(vertices);
     }
 
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
-    ASLgl::glEnable(enableTranslationTable[1]);
-    ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 }
 
 extern char cHoloVPARB[];
@@ -6333,7 +5944,7 @@ void RenderHologramEffect(int nRenderPath, VertexPrimitiveFlat* vertices)
 {
     PartTriMesh* part = vertices->m_pPart->AsPartTriMesh();
 
-    ASLgl::glEnable(enableTranslationTable[9]);
+    GLRender::Enable(Aurora::kCapVertexProgram);
 
     VertexProgram* pVP = 0;
     switch (nRenderPath)
@@ -6406,6 +6017,6 @@ void RenderHologramEffect(int nRenderPath, VertexPrimitiveFlat* vertices)
         ASLgl::glBlendFunc(nBlendSrc, blendTranslationTable[1]);
     }
 
-    ASLgl::glDisable(enableTranslationTable[9]);
+    GLRender::Disable(Aurora::kCapVertexProgram);
 }
 

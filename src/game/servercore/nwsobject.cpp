@@ -1083,7 +1083,7 @@ int CSWSObject::DoSpellLevelAbsorption(CSWSObject* pAttacker) {
         return -1;
     if (m_effects.m_count < 1)
         return -1;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pAttacker->m_castSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(pAttacker->m_castSpellId);
     if (pSpell == 0)
         return -1;
     // The caster's spell level for the class the cast was made under; GetClass reports failure
@@ -2770,7 +2770,7 @@ void CSWSObject::SpellCastAndImpact(unsigned int spellId, const Vector& loc,
 {
     K2_UNUSED(a5); K2_UNUSED(a7); K2_UNUSED(a8);
     CExoString sUnused;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(spellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(spellId);
     if (pSpell == 0)
         return;
     unsigned char nPathCount = 6 + (pathType != 0);
@@ -3197,12 +3197,7 @@ void CSWSObject::SetLastHostileActor(unsigned long long oidActor, int bForce)
                    && pObject->m_objectId != m_objectId) {
             pCreature = pObject->AsSWSCreature();
         }
-#if KOTOR1  // K1's dying test is GetDeadTemp()
         if (pCreature == 0 || pCreature->GetDead() == 1 || pCreature->GetDeadTemp() == 1) {
-#else
-        if (pCreature == 0 || pCreature->GetDead() == 1
-            || (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) <= 0)) {
-#endif
             m_lastHostileActorId = OBJECT_INVALID;
             return;
         }
@@ -3287,7 +3282,7 @@ void CSWSObject::ReportOverflow(int nStrRef, int nAmount, int nLimit, int nUnuse
 void CSWSObject::CalculateLastSpellProjectileTime(unsigned char nProjectileType)
 {
     Vector vDelta = {};
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(m_castSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(m_castSpellId);
     if (pSpell == 0)
         return;
     if (pSpell->m_bHasProjectile == 0) {
@@ -3487,11 +3482,7 @@ void CSWSObject::UpdateEffectList(unsigned int nCalendarDay, unsigned int nTimeO
                 if (AsSWSCreature()->GetDead() == 0)
                 {
                     CSWSCreature* pCreature = AsSWSCreature();
-#if KOTOR1  // K1's dying test is GetDeadTemp()
                     if (pCreature->GetDeadTemp() == 0)
-#else
-                    if (pCreature->m_bInParty == 0 || pCreature->GetCurrentHitPoints(0) > 0)
-#endif
                     {
                         if (pEffect->GetInteger(4) == ITEM_PROPERTY_REGENERATION_FORCE_POINTS)
                             bBelowCap = (static_cast<short>(AsSWSCreature()->m_pStats->m_nCurrentForcePoints) <

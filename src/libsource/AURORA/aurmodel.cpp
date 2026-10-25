@@ -180,15 +180,7 @@ float IosCollisionRadiusMultiplier = 1.0f;
 #endif
 
 
-extern unsigned int enableTranslationTable[];
 
-enum {
-    kCapFog        = 2,
-    kCapFogStart   = 15,
-    kCapFogEnd     = 16,
-    kCapFogDensity = 17,
-    kCapFogColor   = 18,
-};
 
 bool TreeHasSingleTexture(Part* pPart);
 bool TreeHasGeometry(Part* pPart);
@@ -1285,7 +1277,7 @@ void Gob::ProcessGob()
 
 void Gob::RenderBoundingBox()
 {
-    ASLgl::glDisable(enableTranslationTable[3]);
+    GLRender::Disable(Aurora::kCapCullFace);
     ASLgl::glPushMatrix();
     const Vector& v = m_vPosition;
     const Quaternion& q = m_qOrientation;
@@ -1298,7 +1290,7 @@ void Gob::RenderBoundingBox()
         vMax.z = 0.1f;
     GLRender::DrawAxisAlignedFrame(m_vBoundingBoxMin, vMax, m_vGobBBox);
     ASLgl::glPopMatrix();
-    ASLgl::glEnable(enableTranslationTable[3]);
+    GLRender::Enable(Aurora::kCapCullFace);
 }
 
 Vector Gob::GetCutsceneDummyPosition()
@@ -1674,6 +1666,7 @@ void Gob::ReattachReference(CAurObject* a, char* b)
 
             Quaternion q = m_qOrientation;
             Vector v = ref->m_pObject->GetPosition();
+            // inlined Quaternion::zdir()
             Vector vDir = Vector{
                 2.0f * (q.x * q.z + q.w * q.y),
                 2.0f * (q.z * q.y - q.x * q.w),
@@ -5254,11 +5247,6 @@ extern float lightsaberfudgefactor;
 extern int lightsabertotalsegments;
 extern unsigned char g_useDistortionOutput;
 
-extern unsigned int enableTranslationTable[];
-extern unsigned int blendTranslationTable[];
-extern unsigned int primTypeTranslationTable[];
-extern const int facingTranslationTable[];
-extern const int fillTranslationTable[];
 
 extern int quaternionidentityoptimization;
 
@@ -5331,11 +5319,8 @@ struct RenderVertexV;
 
 extern int renderaabb;
 extern int countfaces;
-extern unsigned int enableTranslationTable[];
 extern int enabletransform;
-extern const unsigned int cullTranslationTable[];
 
-extern const int fillTranslationTable[];
 
 static MdlNodeTriMesh* aabb_mesh __attribute__((used));
 static CHitInfo* aabb_hitinfo __attribute__((used));

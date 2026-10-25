@@ -16,6 +16,13 @@ struct Quaternion {
 
     // Rotation matrix, defined in Matrix.h where the complete Matrix type lives.
     Matrix getmatrix() const;
+    // The matrix's rows: the rotated +X, +Y and +Z axes. Defined in Vector.h.
+    Vector xdir() const;
+    Vector ydir() const;
+    Vector zdir() const;
+    // The rotation angle in radians and its unit axis (+X for a near-zero angle). Defined in Vector.h.
+    float angle() const;
+    Vector axis() const;
 #if KOTOR1  // out of line in K1's math3d.cpp
     Quaternion& operator*=(float f);
 #endif

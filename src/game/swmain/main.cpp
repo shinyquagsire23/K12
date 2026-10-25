@@ -1184,7 +1184,7 @@ int HandleWMCharMessage(unsigned short nChar)
         CExoString sValue;
         ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                          CExoString("EnableCheats"));
-        if (sValue.m_sString != 0 && atoi(sValue.m_sString) == 1) {
+        if (sValue.AsINT() == 1) {
 #endif
             if (g_console.m_nActive != 0) {
                 if (g_bGoToKeyboardModeOff != 0)
@@ -2056,8 +2056,7 @@ void GameEnteredBackground()
 #if KOTOR1  // K1: a "BACKUPSAVE" with no screenshot, then the queued app events are re-posted
     if (g_pAppManager->m_pServerExoApp != 0) {
         void* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByPlayerId(0, 1);
-        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
         if (pPlayer != 0 && pCreature != 0 && pCreature->GetArea() != 0
             && GetMiniGamePlayingType() == 0
@@ -2108,8 +2107,7 @@ void GameEnteredBackground()
 #else
     if (g_pAppManager != 0 && g_pAppManager->m_pServerExoApp != 0) {
         void* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByPlayerId(0, 1);
-        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
         if (pPlayer != 0 && pCreature != 0 && pCreature->GetArea() != 0
             && GetMiniGamePlayingType() == 0
@@ -2237,7 +2235,7 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
     CExoString sValue;
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                          CExoString("Disable Sound")) != 0) {
-        g_bDisableSound = sValue.m_sString != 0 && atoi(sValue.m_sString) != 0;
+        g_bDisableSound = sValue.AsINT() != 0;
     } else {
         s_playIntoMovies = 1;
         sValue.Format(const_cast<char*>("%d"), 0);

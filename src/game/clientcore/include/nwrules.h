@@ -3,8 +3,8 @@
 // idiom-exempt: canonical
 #include "twodimarrays.h"
 #include "exoresman.h"
+#include "nwspell.h"
 
-class CSWSpellArray;
 class CExoString;
 class CSWBaseItemArray;
 class CSWSkill;
@@ -127,6 +127,7 @@ public:
     void    LoadRaceInfo();
     void    LoadDifficultyInfo();
     CSWFeat* GetFeat(unsigned short nFeat);
+    CSWSpell* GetSpell(unsigned int nSpellId) { return m_pSpellArray->GetSpell(nSpellId); }
     int     IsFeatUseable(unsigned char nWisdom, unsigned short nFeat);
     CExoString GetMasterFeatNameText(char nMasterFeat);
     CExoString GetMasterFeatDescriptionText(char nMasterFeat);

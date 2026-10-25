@@ -49,25 +49,25 @@ enum {
 };
 
 
-unsigned int fogModeTranslationTable[] = { 9729, 2048, 2049 };
+extern const unsigned int fogModeTranslationTable[] = { 9729, 2048, 2049 };
 int queryTranslationTable[2] = { 2912 };
 unsigned int blendTranslationTable[] = { 770, 771, 1, 0, 768, 774, 773, 772 };
 extern const int transformTranslationTable[4] = { 5889, 5888, 5888, 5890 };
 extern const unsigned int cmpTranslationTable[] = { 512, 513, 514, 515, 516, 517, 518, 519 };
 extern const unsigned int cullTranslationTable[] = { 2304, 2305 };
-unsigned int stencilOpTranslationTable[] = { 7680, 0, 7681, 7682, 7683, 5386 };
+extern const unsigned int stencilOpTranslationTable[] = { 7680, 0, 7681, 7682, 7683, 5386 };
 extern const int fillTranslationTable[3] = { 6912, 6913, 6914 };
 extern const int facingTranslationTable[3] = { 1028, 1029, 1032 };
 extern const unsigned int materialTranslationTable[] = { 5633, 4608, 4609, 5632, 4610 };
-unsigned int colorTrackingTranslationTable[] = { 5632, 4608, 4609, 4610, 5634 };
-unsigned int lightTranslationTable[] = { 4608, 4609, 4610, 4611, 4617 };
-unsigned int texParamTranslationTable[] = { 10242, 10243, 10240, 10241 };
+extern const unsigned int colorTrackingTranslationTable[] = { 5632, 4608, 4609, 4610, 5634 };
+extern const unsigned int lightTranslationTable[] = { 4608, 4609, 4610, 4611, 4617 };
+extern const unsigned int texParamTranslationTable[] = { 10242, 10243, 10240, 10241 };
 #if KOTOR1
-unsigned int clientStateTranslationTable[] = {
+extern const unsigned int clientStateTranslationTable[] = {
     32888, 32885, 32886, 32884, 34385, 34387, 34388, 34389, 34396, 34397, 34398, 34399, 34099
 };
 #else
-unsigned int clientStateTranslationTable[] = {
+extern const unsigned int clientStateTranslationTable[] = {
     32888, 32885, 32886, 32884, 34385, 34387, 34388, 34389, 34396, 34397, 34398, 34399, 34077
 };
 #endif
@@ -252,14 +252,13 @@ extern int WGL_ARB_MULTISAMPLE_BIT;
 extern int WGL_ARB_BUFFER_REGION_BIT;
 extern int EXT_SWAP_CONTROL_BIT;
 
-unsigned int primTypeTranslationTable[] = { 0, 1, 3, 4, 5, 6, 7, 8, 9, 2 };
+extern const unsigned int primTypeTranslationTable[] = { 0, 1, 3, 4, 5, 6, 7, 8, 9, 2 };
 extern int initialized;
 extern int fontOffset;
 int AurVertexBufferObjectARBAvailable();
 int AurTwoSidedStencilAvailable();
 int usetwosidedshadows;
 extern int countfaces;
-extern unsigned int enableTranslationTable[];
 #if KOTOR1
 unsigned int enableTranslationTable[] = { 3042, 3008, 2912, 2884, 3553, 2896, 3168, 3169, 3170, 34336, 2960, 2929, 34067, 2977, 0, 2915, 2916, 2914, 2918 };
 #else
@@ -312,7 +311,6 @@ extern bool skippauseplaneforscreenshot;
 #endif
 extern int  g_IosAntiAlias;
 #endif
-extern unsigned int enableTranslationTable[];
 extern bool IosIsIphone(int& nScreenWidth, int& nScreenHeight);
 extern int  ASLGetIPhoneVersion();
 extern int  ASLGetIPadVersion();
@@ -363,8 +361,6 @@ static PBUFFERARB_IOS* s_pHalfPBuffer1;
 static PBUFFERARB_IOS* s_pHalfPBuffer2;
 static PBUFFERARB_IOS* s_pHalfPBuffer3;
 
-enum { kCapBlend = 0, kCapAlphaTest = 1, kCapFog = 2, kCapTexture2D = 4, kCapLighting = 5,
-       kCapVertexProgram = 9, kCapDepthTest = 11 };
 
 int visualizepass1;
 extern int visualizepass2;
@@ -1130,34 +1126,24 @@ void GLRender::SetLightmapTexCoordToStage0(unsigned int nStride, int nFlags,
     if (bVBO)
     {
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pBuffer)));
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
             reinterpret_cast<char*>(static_cast<uint64_t>(static_cast<unsigned int>(pNode->m_nTex1Ofs))) + nGeomBase);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
             reinterpret_cast<char*>(static_cast<uint64_t>(static_cast<unsigned int>(pNode->m_nTex0Ofs))) + nGeomBase);
     }
     else
     {
         pBuffer += nGeomBase;
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
             pBuffer + pNode->m_nTex1Ofs);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
             pBuffer + pNode->m_nTex0Ofs);
     }
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(0);
 }
 
 // Binds the decal texcoords with the same body, the node's two texcoord sets the other way round.
@@ -1171,34 +1157,24 @@ void GLRender::SetDecalTexCoordToStage0(unsigned int nStride, int nFlags,
     if (bVBO)
     {
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pBuffer)));
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
             reinterpret_cast<char*>(static_cast<uint64_t>(static_cast<unsigned int>(pNode->m_nTex0Ofs))) + nGeomBase);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
             reinterpret_cast<char*>(static_cast<uint64_t>(static_cast<unsigned int>(pNode->m_nTex1Ofs))) + nGeomBase);
     }
     else
     {
         pBuffer += nGeomBase;
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
             pBuffer + pNode->m_nTex0Ofs);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
             pBuffer + pNode->m_nTex1Ofs);
     }
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(0);
 }
 
 void GLRender::DrawElementStreamQuads(Aurora::AuroraPrimitiveTypes eType, unsigned int nCount,
@@ -1864,13 +1840,9 @@ void GLRender::EnableFury(short nLevel)
     {
         if (m_pFuryTexture)
         {
-            cm_uiCurrentStage = 3;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
-            ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-            cm_uiCurrentStage = 0;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+            GLRender::SetActiveTexture(3);
+            GLRender::Disable(Aurora::kCapTexture2D);
+            GLRender::SetActiveTexture(0);
             AurTextureRelease(m_pFuryTexture);
             m_pFuryTexture = 0;
         }
@@ -2494,13 +2466,9 @@ void GLRender::SetupGrassBuffers(unsigned int nPool, int nOffset)
     float* pVertex = pVerts + nOffset;
     ASLgl::glNormalPointer(GL_FLOAT, 28, pVertex);
     ASLgl::glTexCoordPointer(2, GL_FLOAT, 28, pVertex + 12);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-    cm_uiCurrentStage = 1;
+    GLRender::ActivateTextureStage(1);
     ASLgl::glTexCoordPointer(2, GL_FLOAT, 28, pVertex + 20);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(0);
 }
 
 void* GLRender::CreatePBufferRectangle(int nWidth, int nHeight)
@@ -2578,9 +2546,9 @@ void* GLRender::CreatePBuffer(int nWidth, int nHeight)
 // Builds the modelview: the legacy-matrix path or the axis-angle form, both ending at glTranslatef(-vPosition).
 void GLRender::SetViewTransform(Vector& vPosition, Quaternion& qRotation)
 {
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     if (multmatrix)
     {
         float aMatrix[16];
@@ -2595,23 +2563,9 @@ void GLRender::SetViewTransform(Vector& vPosition, Quaternion& qRotation)
     }
     else
     {
-        float fAngle = acosf(qRotation.w) * 2.0f;
-        float fX, fY, fZ;
-        if ((fAngle < 0.0f ? -fAngle : fAngle) < 1.0e-7)
-        {
-            fX = 1.0f;
-            fY = 0.0f;
-            fZ = 0.0f;
-        }
-        else
-        {
-            Vector vAxis(qRotation.x, qRotation.y, qRotation.z);
-            float fScale = static_cast<float>(1.0 / sin(fAngle * 0.5));
-            fX = vAxis.x * fScale;
-            fY = vAxis.y * fScale;
-            fZ = vAxis.z * fScale;
-        }
-        ASLgl::glRotatef(fAngle * -57.295776f, fX, fY, fZ);
+        float fAngle = qRotation.angle();
+        Vector vAxis = qRotation.axis();
+        ASLgl::glRotatef(fAngle * -57.295776f, vAxis.x, vAxis.y, vAxis.z);
     }
     ASLgl::glTranslatef(-vPosition.x, -vPosition.y, -vPosition.z);
 }
@@ -3003,13 +2957,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
             return;
         envmapon = 1;
         tex1on = 1;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         pTex1->Bind();
         unsigned int nEnable0;
         unsigned int nEnable1;
@@ -3032,9 +2982,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         }
         ASLgl::glEnable(nEnable0);
         ASLgl::glEnable(nEnable1);
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3055,13 +3003,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSIllumDesatNoiseMultiply:
         if (!pTex1)
             return;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex1->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3080,13 +3024,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     {
         envmapon = 1;
         tex1on = 1;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         pTex0->Bind();
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         pTex2->Bind();
         unsigned int nEnable0;
         unsigned int nEnable1;
@@ -3109,14 +3049,10 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         }
         ASLgl::glEnable(nEnable0);
         ASLgl::glEnable(nEnable1);
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        cm_uiCurrentStage = 3;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex3->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3135,14 +3071,10 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSDesatNoiseLMMultiply:
         if (!pTex2)
             return;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
         cm_uiCurrentStage = 2;
@@ -3165,13 +3097,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     {
         envmapon = 1;
         tex1on = 1;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         pTex1->Bind();
         unsigned int nEnable;
         if (!pTex1->IsCubeMap())
@@ -3201,14 +3129,10 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSIllumDesatNoiseSubtract:
         if (!pTex1)
             return;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex1->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3222,24 +3146,16 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSIllumDesatBumpmap:
         tex1on = 1;
         ASLgl::glDisable(GL_LIGHTING);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         pTex1->Bind();
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         pTex2->Bind();
-        cm_uiCurrentStage = 3;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex3->Bind();
         break;
@@ -3258,13 +3174,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
             return;
         envmapon = 1;
         tex1on = 1;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         pTex2->Bind();
         unsigned int nEnable0;
         unsigned int nEnable1;
@@ -3287,9 +3199,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         }
         ASLgl::glEnable(nEnable0);
         ASLgl::glEnable(nEnable1);
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex3->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3305,13 +3215,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSIllumDesatNoiseLMAdd:
         if (!pTex2)
             return;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3329,13 +3235,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
             return;
         envmapon = 1;
         tex1on = 1;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         pTex2->Bind();
         unsigned int nEnable0;
         unsigned int nEnable1;
@@ -3358,9 +3260,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         }
         ASLgl::glEnable(nEnable0);
         ASLgl::glEnable(nEnable1);
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex3->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3372,14 +3272,10 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     }
     case kPSFGlowLM:
     case kPSDesatLM:
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
         tex1on = 1;
@@ -3390,13 +3286,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     {
         envmapon = 1;
         tex1on = 1;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         pTex0->Bind();
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         pTex2->Bind();
         unsigned int nEnable0;
         unsigned int nEnable1;
@@ -3419,9 +3311,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         }
         ASLgl::glEnable(nEnable0);
         ASLgl::glEnable(nEnable1);
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
         break;
@@ -3429,9 +3319,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
 
     case kPSHolo:
     case kPSHoloDesat:
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         m_pHologramFilterTexture->Bind();
         break;
@@ -3440,14 +3328,10 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSIllumDesatNoiseLMSubtract:
         if (!pTex2)
             return;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3459,25 +3343,15 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSNone:
         DisableCombiners(pTex0);
         ASLgl::glEnable(GL_LIGHTING);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        cm_uiCurrentStage = 3;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(3);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         cm_nGLCurrentTID[0] = 0;
         cm_nGLCurrentTID[1] = 0;
         cm_nGLCurrentTID[2] = 0;
@@ -3487,67 +3361,47 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSLightmapBumpSpecular2:
         tex1on = 1;
         ASLgl::glDisable(GL_LIGHTING);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         pTex1->Bind();
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex2->Bind();
-        cm_uiCurrentStage = 3;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex3->Bind();
         break;
 
     case kPSBumpmapOff:
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
-        cm_uiCurrentStage = 3;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(3);
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
         DisableCombiners(pTex0);
         ASLgl::glEnable(GL_LIGHTING);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         break;
 
     case kPSMultiTextureOff:
         if (AurNV2xLevelShadersAvailable())
         {
-            cm_uiCurrentStage = 3;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+            GLRender::SetActiveTexture(3);
             ASLgl::glDisable(GL_TEXTURE_3D);
             ASLgl::glBindTexture(GL_TEXTURE_3D, 0);
             cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
             ASLgl::glDisable(GL_TEXTURE_2D);
-            cm_uiCurrentStage = 2;
-            if (AurMultiTextureAvailable())
-                ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+            GLRender::SetActiveTexture(2);
             ASLgl::glDisable(GL_TEXTURE_3D);
             ASLgl::glBindTexture(GL_TEXTURE_3D, 0);
             cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
@@ -3555,9 +3409,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
             if (envmapon)
                 ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         }
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glDisable(GL_TEXTURE_3D);
         ASLgl::glBindTexture(GL_TEXTURE_3D, 0);
@@ -3570,22 +3422,16 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
             ASLgl::glDisable(GL_TEXTURE_GEN_R);
             envmapon = 0;
         }
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         DisableCombiners(pTex0);
         break;
 
     case kPSEnvMapLightmapOff:
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
-        cm_uiCurrentStage = 2;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
@@ -3593,9 +3439,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         ASLgl::glDisable(GL_TEXTURE_GEN_T);
         ASLgl::glDisable(GL_TEXTURE_GEN_R);
         DisableCombiners(pTex0);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         break;
 
     case kPSFGlow:
@@ -3606,13 +3450,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSFGlowEM:
     {
         envmapon = 1;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         pTex1->Bind();
         unsigned int nEnable;
         if (!pTex1->IsCubeMap())
@@ -3642,14 +3482,10 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
 
     case kPSHoloOff:
         DisableCombiners(pTex0);
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
         ASLgl::glDisable(GL_TEXTURE_2D);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         cm_nGLCurrentTID[0] = 0;
         cm_nGLCurrentTID[1] = 0;
         break;
@@ -3660,13 +3496,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
             return;
         envmapon = 1;
         tex1on = 1;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         pTex0->Bind();
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         pTex1->Bind();
         unsigned int nEnable0;
         unsigned int nEnable1;
@@ -3689,9 +3521,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         }
         ASLgl::glEnable(nEnable0);
         ASLgl::glEnable(nEnable1);
-        cm_uiCurrentStage = 3;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3705,13 +3535,9 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
     case kPSIllumDesatNoiseLMMultiply:
         if (!pTex1)
             return;
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
-        cm_uiCurrentStage = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3729,9 +3555,7 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
 inline void GLRender::DisableCombiners(CAurTexture* pTexture)
 {
     K2_UNUSED(pTexture);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
     ASLgl::glDisable(GL_TEXTURE_GEN_S);
     ASLgl::glDisable(GL_TEXTURE_GEN_T);
@@ -3741,10 +3565,7 @@ inline void GLRender::DisableCombiners(CAurTexture* pTexture)
     envmapon = 0;
     cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
     tex1on = 0;
-    cm_uiCurrentStage = 0;
-
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
@@ -3998,7 +3819,7 @@ void GLRender::InitExtensions()
     }
 
     if (usearbvertexprograms)
-        enableTranslationTable[kCapVertexProgram] = GL_VERTEX_PROGRAM_ARB;
+        enableTranslationTable[Aurora::kCapVertexProgram] = GL_VERTEX_PROGRAM_ARB;
 
     if (AurVertexBufferObjectARBAvailable())
         InitializeVertexBufferObjectPoolManager();
@@ -4040,15 +3861,10 @@ void GLRender::InitAttenuationTexture()
     ASLgl::glGetError();
     ASLgl::glGenTextures(1, &cm_tidAttenuationTexture);
     ASLgl::glGetError();
-    unsigned int nTexture = cm_tidAttenuationTexture;
-    ASLgl::glBindTexture(enableTranslationTable[kCapTexture2D], nTexture);
-    cm_nGLCurrentTID[cm_uiCurrentStage] = nTexture;
+    BindTexture(Aurora::kCapTexture2D, cm_tidAttenuationTexture);
 #else
     ASLgl::glGenTextures(1, &cm_tidAttenuationTexture);
-    unsigned int nTexture = cm_tidAttenuationTexture;
-    ASLgl::glBindTexture(enableTranslationTable[kCapTexture2D], nTexture);
-    ASLgl::glTexParameteri(enableTranslationTable[kCapTexture2D], GL_TEXTURE_MAX_ANISOTROPY_EXT, cm_nAnisotropy);
-    cm_nGLCurrentTID[cm_uiCurrentStage] = nTexture;
+    BindTexture(Aurora::kCapTexture2D, cm_tidAttenuationTexture);
 #endif
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -4366,14 +4182,14 @@ void GLRender::Shutdown(int nFlag)
 // The full-screen pause tint, drawn under an orthographic projection.
 void GLRender::RenderPausePlane()
 {
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glEnable(GL_BLEND);
     gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
 
     ASLgl::glBegin(7);
@@ -4432,15 +4248,15 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
     if (!(nFlags & kFBPassSaturation) || !visualizepass4 || !m_bSaturationEnabled)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4456,13 +4272,13 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #else
     if (AuroraUseARBShaders())
@@ -4474,16 +4290,15 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
     if (!(nFlags & kFBPassSaturation) || !visualizepass4 || !m_bSaturationEnabled)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
+    RenderInterface::SetDepthMask(0);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4499,14 +4314,13 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapLighting);
+    RenderInterface::SetDepthMask(1);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -4520,16 +4334,15 @@ void GLRender::FrameBufferModificationsARB2(uint64_t nFlags)
     if (!(nFlags & kFBPassSaturation) || !visualizepass4 || !m_bSaturationEnabled)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
+    RenderInterface::SetDepthMask(0);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4544,14 +4357,13 @@ void GLRender::FrameBufferModificationsARB2(uint64_t nFlags)
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapLighting);
+    RenderInterface::SetDepthMask(1);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -4573,15 +4385,15 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
     if (!(nFlags & kFBPassSaturation) || !visualizepass4 || !m_bSaturationEnabled)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4594,13 +4406,13 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #else
     if (!doframebuffer || !cm_bPBuffersAllocated || !cm_bSetUpFrameBuffer)
@@ -4616,16 +4428,15 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
     if (!(nFlags & kFBPassSaturation) || !visualizepass4 || !m_bSaturationEnabled)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
+    RenderInterface::SetDepthMask(0);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4638,14 +4449,13 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapLighting);
+    RenderInterface::SetDepthMask(1);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -4655,7 +4465,7 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
 void GLRender::FrameBufferModifications(uint64_t nFlags)
 {
 #if KOTOR1 // K1: GL_TEXTURE_2D target, no force-sight gate, no dream/fury passes
-    ASLgl::glDisable(enableTranslationTable[kCapFog]);
+    GLRender::Disable(Aurora::kCapFog);
 
     if (!doframebuffer || !cm_bPBuffersAllocated || !cm_bSetUpFrameBuffer)
         return;
@@ -4667,19 +4477,19 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         return;
     }
 
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+    GLRender::Disable(Aurora::kCapBlend);
 
     if (!cm_bFirstFrameBufferFrame && (nFlags & kFBPassSpeedBlur) && visualizepass6
         && m_bSpeedBlurEnabled && s_bSpeedBlurAppliedDefault == 1)
@@ -4708,9 +4518,7 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glFlush();
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTexture(cm_nTargetTexture);
         bBlurred = true;
     }
@@ -4776,17 +4584,17 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
     cm_bFirstFrameBufferFrame = 0;
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #else
-    ASLgl::glDisable(enableTranslationTable[kCapFog]);
+    GLRender::Disable(Aurora::kCapFog);
 
     if (!doframebuffer || !cm_bPBuffersAllocated || !cm_bSetUpFrameBuffer)
         return;
@@ -4798,19 +4606,19 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         return;
     }
 
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+    GLRender::Disable(Aurora::kCapBlend);
 
     if (!cm_bFirstFrameBufferFrame && !g_ForceSight && (nFlags & kFBPassSpeedBlur) && visualizepass6
         && m_bSpeedBlurEnabled && s_bSpeedBlurAppliedDefault == 1)
@@ -4839,9 +4647,7 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
         ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
         ASLgl::glFlush();
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTexture(cm_nTargetTexture);
         bBlurred = true;
     }
@@ -4920,9 +4726,7 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
         ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
         ASLgl::glFlush();
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTexture(cm_nTargetTexture);
         RenderDreamDistortion(nTexture);
     }
@@ -4941,22 +4745,20 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
         ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
         ASLgl::glFlush();
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTexture(cm_nTargetTexture);
         RenderFury(nTexture);
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
     cm_bFirstFrameBufferFrame = 0;
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -4969,16 +4771,16 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
     K2_UNUSED(nFlags);
 #endif
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Disable(Aurora::kCapBlend);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -5008,9 +4810,7 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
         ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTextureARB(cm_nTargetTexture);
         bBlurred = true;
     }
@@ -5084,9 +4884,7 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
         ASLgl::glCopyTexSubImage2D(GL_TEXTURE_RECTANGLE, 0, 0, 0, 0, 0, g_nScreenWidth, g_nScreenHeight);
         ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
         ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTextureARB(cm_nTargetTexture);
         RenderDreamDistortionARB(nTexture, false);
     }
@@ -5104,23 +4902,21 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
         ASLgl::glCopyTexSubImage2D(GL_TEXTURE_RECTANGLE, 0, 0, 0, 0, 0, g_nScreenWidth, g_nScreenHeight);
         ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
         ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTextureARB(cm_nTargetTexture);
         RenderDreamDistortionARB(nTexture, true);
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     cm_bFirstFrameBufferFrame = 0;
 #endif
 }
@@ -5138,16 +4934,16 @@ void GLRender::FrameBufferModificationsATI(uint64_t nFlags)
         return;
     }
 
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::Disable(Aurora::kCapBlend);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -5181,9 +4977,7 @@ void GLRender::FrameBufferModificationsATI(uint64_t nFlags)
         ASLgl::glFlush();
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTextureATI(cm_nTargetTexture);
         bBlurred = true;
     }
@@ -5264,9 +5058,7 @@ void GLRender::FrameBufferModificationsATI(uint64_t nFlags)
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
         ASLgl::glFlush();
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTextureATI(cm_nTargetTexture);
         RenderDreamDistortionATI(nTexture);
     }
@@ -5285,23 +5077,21 @@ void GLRender::FrameBufferModificationsATI(uint64_t nFlags)
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
         ASLgl::glFlush();
-        cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         RenderFrameToTextureATI(cm_nTargetTexture);
         RenderFuryATI(nTexture);
     }
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     cm_bFirstFrameBufferFrame = 0;
 #endif
 }
@@ -5359,10 +5149,10 @@ void GLRender::RenderAccumulationBlurATI(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -5425,9 +5215,7 @@ void GLRender::RenderAccumulationBlurATI(unsigned int nTexture)
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glActiveTextureARB(GL_TEXTURE1);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
@@ -5484,11 +5272,11 @@ void GLRender::RenderFrameToTexture(unsigned int nTexture)
 #endif
 #if !KOTOR1 // K1: an empty body
     wglMakeCurrent(cm_hAccumulationHDC, cm_hAccumulationHGLRC);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 128.0, 0.0, 128.0, -1.0, 1.0);
     ASLgl::glViewport(0, 0, 128, 128);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
@@ -5535,9 +5323,7 @@ void GLRender::RenderOverlayFilmNoise(unsigned int nTexture, bool bScanNoise)
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pFilmNoiseTexture->Bind();
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -5559,9 +5345,7 @@ void GLRender::RenderOverlayFilmNoise(unsigned int nTexture, bool bScanNoise)
     }
 
     ASLgl::glEnd();
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glFlush();
@@ -5575,11 +5359,11 @@ void GLRender::RenderSaturationAdjustmentATI(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #endif
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_BLEND);
@@ -5624,9 +5408,9 @@ void GLRender::RenderSaturationAdjustmentATI(unsigned int nTexture)
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -5643,10 +5427,10 @@ void GLRender::RenderFrameToTextureATI(unsigned int nTexture)
     wglMakeContextCurrentARB(cm_hAccumulationHDC, cm_hAccumulationHDC, cm_hAccumulationHGLRC);
     ASLgl::glDrawBuffer(GL_FRONT);
     ASLgl::glViewport(0, 0, 128, 128);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 128.0, 0.0, 128.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     if (AuroraUseARBShaders())
     {
@@ -5729,11 +5513,11 @@ void GLRender::RenderOverlayFilmNoiseATI(unsigned int nTexture, bool bScanNoise)
     K2_UNUSED(nTexture); K2_UNUSED(bScanNoise);
 #endif
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glBlendFunc(1, 0);
@@ -5744,9 +5528,7 @@ void GLRender::RenderOverlayFilmNoiseATI(unsigned int nTexture, bool bScanNoise)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pFilmNoiseTexture->Bind();
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -5792,15 +5574,13 @@ void GLRender::RenderOverlayFilmNoiseATI(unsigned int nTexture, bool bScanNoise)
 
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glFlush();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -5812,20 +5592,20 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #if !KOTOR1 // K1: an empty body
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapBlend);
     wglMakeCurrent(cm_hConvolutionHDC[3], cm_hConvolutionHGLRC[3]);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_COLOR_BUFFER_BIT);
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glDisable(enableTranslationTable[5]);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glBegin(7);
 
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -5864,11 +5644,11 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
 
     wglMakeCurrent(m_hDC, m_hGLRC);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -5899,9 +5679,9 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
     ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
 
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
 #endif
@@ -5920,22 +5700,22 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
         ASLgl::glClear(GL_COLOR_BUFFER_BIT);
     }
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapBlend);
     void* hDC = m_hDC;
     void* hGLRC = m_hGLRC;
     wglMakeContextCurrentARB(cm_hConvolutionHDC[3], cm_hConvolutionHDC[3], cm_hConvolutionHGLRC[3]);
     ASLgl::glDrawBuffer(GL_FRONT);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-    ASLgl::glDisable(enableTranslationTable[5]);
+    GLRender::Disable(Aurora::kCapLighting);
     FrameBufferModificationPixelShadersATI(kFBShaderFlare,  nTexture, cm_nRedTexture, cm_nGreenTexture,
                                            cm_nBlueTexture);
 
@@ -5981,11 +5761,11 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
 
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -6021,9 +5801,9 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
     ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
 
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
@@ -6046,10 +5826,10 @@ void GLRender::MipmapFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHei
     wglMakeCurrent(hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6102,10 +5882,10 @@ void GLRender::MipmapFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6165,10 +5945,10 @@ void GLRender::BloomFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6299,10 +6079,10 @@ void GLRender::BloomFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeig
 #endif
     wglMakeCurrent(hDC, hGLRC);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6636,10 +6416,10 @@ void GLRender::BloomFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6764,29 +6544,23 @@ void GLRender::RenderForceDistortion(unsigned int nTexture)
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, cm_pHeatDistortionVertexProg);
     cm_pForceDistortionTexture->GetWidth();
     ASLgl::glBlendFunc(1, 0);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-    cm_uiCurrentStage = 2;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(2);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, nTexture);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    ASLgl::glEnable(enableTranslationTable[10]); // GL_STENCIL_TEST
+    GLRender::Enable(Aurora::kCapStencilTest); // GL_STENCIL_TEST
     ASLgl::glStencilFunc(GL_LESS, 0, 1);
     ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
@@ -6810,12 +6584,10 @@ void GLRender::RenderForceDistortion(unsigned int nTexture)
     }
 
     ASLgl::glEnd();
-    ASLgl::glDisable(enableTranslationTable[10]);
+    GLRender::Disable(Aurora::kCapStencilTest);
     ASLgl::glDisable(GL_VERTEX_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, 0);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glFlush();
 #endif
 }
@@ -6827,11 +6599,11 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #endif
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -6841,9 +6613,7 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
     cm_pForceDistortionTexture->GetWidth();
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(1, 0);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
     cm_pForceDistortionTexture->Bind();
@@ -6866,7 +6636,7 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
         ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nForceDistortionShaderARB);
     }
-    ASLgl::glEnable(enableTranslationTable[10]);
+    GLRender::Enable(Aurora::kCapStencilTest);
     ASLgl::glStencilFunc(GL_LESS, 0, 1);
     ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
@@ -6891,17 +6661,15 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
     }
 
     ASLgl::glEnd();
-    ASLgl::glDisable(enableTranslationTable[10]);
+    GLRender::Disable(Aurora::kCapStencilTest);
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glDisable(GL_VERTEX_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, 0);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glFlush();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -6911,8 +6679,8 @@ void GLRender::RenderDreamDistortion(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glEnable(enableTranslationTable[1]); // GL_ALPHA_TEST
-    ASLgl::glEnable(enableTranslationTable[0]); // GL_BLEND
+    GLRender::Enable(Aurora::kCapAlphaTest); // GL_ALPHA_TEST
+    GLRender::Enable(Aurora::kCapBlend); // GL_BLEND
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -6921,9 +6689,7 @@ void GLRender::RenderDreamDistortion(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glActiveTextureARB(GL_TEXTURE2);
@@ -6985,8 +6751,8 @@ void GLRender::RenderFury(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glEnable(enableTranslationTable[1]);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapBlend);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -6995,9 +6761,7 @@ void GLRender::RenderFury(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glActiveTextureARB(GL_TEXTURE2);
@@ -7058,15 +6822,15 @@ void GLRender::RenderFury(unsigned int nTexture)
 void GLRender::RenderDreamDistortionATI(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glEnable(enableTranslationTable[1]);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapBlend);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -7075,9 +6839,7 @@ void GLRender::RenderDreamDistortionATI(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glActiveTextureARB(GL_TEXTURE2);
@@ -7144,15 +6906,15 @@ void GLRender::RenderDreamDistortionATI(unsigned int nTexture)
 void GLRender::RenderFuryATI(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glEnable(enableTranslationTable[1]);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapBlend);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -7161,9 +6923,7 @@ void GLRender::RenderFuryATI(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glActiveTextureARB(GL_TEXTURE2);
@@ -7254,13 +7014,9 @@ void GLRender::DrawLightmappedGrass(void* pVertices, int nVertexStride, void* pU
         GrassEntry* pEntry = reinterpret_cast<GrassEntry*>(pEntries);
         ASLgl::glNormalPointer(GL_FLOAT, nNormalStride, pEntry->m_afNormal);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, nNormalStride, pEntry->m_afTexCoord0);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, nNormalStride, pEntry->m_afTexCoord1);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
         ASLgl::glDrawArrays(7, nStart, nVertexCount);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, 0);
     }
@@ -7272,13 +7028,9 @@ void GLRender::DrawLightmappedGrass(void* pVertices, int nVertexStride, void* pU
         GrassEntry* pEntry = reinterpret_cast<GrassEntry*>(pEntries);
         ASLgl::glNormalPointer(GL_FLOAT, nNormalStride, pEntry->m_afNormal);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, nNormalStride, pEntry->m_afTexCoord0);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, nNormalStride, pEntry->m_afTexCoord1);
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
         ASLgl::glDrawArrays(7, nStart, nVertexCount);
     }
 }
@@ -7300,8 +7052,7 @@ void GLRender::DrawElementsInShadow(int nCount, unsigned int nPool, int nUnused)
 {
     K2_UNUSED(nUnused);
     void* paIndices = manRef->GetIndexPool(nPool);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 0.0f, 0.0f, 100000.0f);
+    GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 0.0f, 100000.0f);
     ASLgl::glDrawElements(4, nCount * 4, GL_UNSIGNED_SHORT, paIndices);
 }
 
@@ -7572,11 +7323,11 @@ static void QolSoftShadowQuad(unsigned int nProgram, unsigned int nTexture)
 {
     ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, nProgram);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glBegin(7);
@@ -7589,11 +7340,11 @@ static void QolSoftShadowQuad(unsigned int nProgram, unsigned int nTexture)
     ASLgl::glTexCoord2f(1.0f, 1.0f);
     ASLgl::glVertex4f(1.0f, 1.0f, 0.0f, 1.0f);
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
 }
 
 // Saves the scene and clears its colour for the mask; false (the hard shadows draw instead) when the
@@ -7607,9 +7358,7 @@ static bool QolSoftShadowsSetUp()
     int nWidth = s_pPBuffer->m_nWidth;
     int nHeight = s_pPBuffer->m_nHeight;
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     if (s_anQolSoftShadowTextures[0] == 0)
     {
         ASLgl::glGenTextures(4, s_anQolSoftShadowTextures);
@@ -7657,15 +7406,13 @@ static void QolSoftShadowsFinish()
     int nFramebuffer = 0;
     ASLgl::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &nFramebuffer);
     int anViewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT, anViewport);
+    GLRender::GetViewPort(anViewport);
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Disable(Aurora::kCapDepthTest);
     ASLgl::glDisable(GL_STENCIL_TEST);
     ASLgl::glDisable(GL_BLEND);
     ASLgl::glDepthMask(0);
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glEnable(GL_TEXTURE_2D);
 
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_anQolSoftShadowTextures[1]);
@@ -7688,7 +7435,7 @@ static void QolSoftShadowsFinish()
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     QolSoftShadowViewport(anViewport[0], anViewport[1], anViewport[2], anViewport[3]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Enable(Aurora::kCapDepthTest);
     ASLgl::glDepthMask(1);
     ASLgl::glStencilMask(0xff);
 }
@@ -7777,8 +7524,8 @@ void GLRender::FinishSoftShadowsATI()
         return;
     }
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapBlend);
     ASLgl::glDisable(GL_STENCIL_TEST);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -7794,11 +7541,11 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nTargetTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -7820,9 +7567,9 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glTexCoord2f(fU, fV);
     ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     wglMakeContextCurrentARB(m_hDC, m_hDC, m_hGLRC);
     ASLgl::glDrawBuffer(GL_BACK);
@@ -7830,11 +7577,11 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nBufferRegionTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -7854,19 +7601,19 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glTexCoord2f(fU, fV);
     ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
     wglMakeContextCurrentARB(cm_hSoftShadowTargetHDC, cm_hSoftShadowTargetHDC,
                              cm_hSoftShadowTargetHGLRC);
     ASLgl::glDrawBuffer(GL_FRONT);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
@@ -7875,20 +7622,20 @@ void GLRender::FinishSoftShadowsATI()
     BloomFilterATI(reinterpret_cast<HDC__*>(cm_hSoftShadowTargetPBuffer), cm_hSoftShadowTargetHGLRC, 512.0f,
                    512.0f, cm_hSoftShadowPBuffer, cm_nSoftShadowRenderTexture, 512.0f, 1);
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     ASLgl::glFlush();
     wglMakeContextCurrentARB(m_hDC, m_hDC, m_hGLRC);
     ASLgl::glDrawBuffer(GL_BACK);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -7913,11 +7660,11 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glPopAttrib();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Enable(Aurora::kCapDepthTest);
     ASLgl::glDisable(GL_STENCIL_TEST);
     ASLgl::glDepthMask(1);
     ASLgl::glStencilMask(0xff);
@@ -7928,8 +7675,8 @@ void GLRender::FinishSoftShadowsATI()
 void GLRender::FinishSoftShadowsARB()
 {
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapBlend);
     ASLgl::glDisable(GL_STENCIL_TEST);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
@@ -7942,11 +7689,11 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, cm_nTargetTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -7966,9 +7713,9 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
     ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
@@ -7977,11 +7724,11 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, cm_nBufferRegionTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -8001,19 +7748,19 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
     ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
     glBindFramebuffer(GL_FRAMEBUFFER, s_ShadowBlurFBO);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
@@ -8030,18 +7777,18 @@ void GLRender::FinishSoftShadowsARB()
 #endif
     BloomFilterARB(hDC, hGLRC, 512.0f, 512.0f, pPBuffer, cm_nSoftShadowRenderTexture, 512.0f, 1);
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -8065,11 +7812,11 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glPopAttrib();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Enable(Aurora::kCapDepthTest);
     ASLgl::glDisable(GL_STENCIL_TEST);
     ASLgl::glDepthMask(1);
     ASLgl::glStencilMask(0xff);
@@ -8105,11 +7852,11 @@ void GLRender::FinishSoftShadows()
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDisable(GL_STENCIL_TEST);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
@@ -8129,23 +7876,23 @@ void GLRender::FinishSoftShadows()
     ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
     ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     wglMakeCurrent(m_hDC, m_hGLRC);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, cm_nBufferRegionTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+    GLRender::Enable(Aurora::kCapBlend);
     ASLgl::glBlendFunc(1, 0);
     ASLgl::glDisable(GL_STENCIL_TEST);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -8172,11 +7919,11 @@ void GLRender::FinishSoftShadows()
     ASLgl::glDepthMask(0);
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
     wglMakeCurrent(cm_hSoftShadowHDC, cm_hSoftShadowHGLRC);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
     ASLgl::glViewport(0, 0, 512, 512);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -8207,11 +7954,11 @@ void GLRender::FinishSoftShadows()
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glPopAttrib();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Enable(Aurora::kCapDepthTest);
     ASLgl::glDisable(GL_STENCIL_TEST);
     ASLgl::glDepthMask(1);
     ASLgl::glStencilMask(0xff);
@@ -8448,7 +8195,7 @@ void IosAntiAliasScaleSize(int& nWidth, int& nHeight)
 void K1SceneViewportToScreen()
 {
     int anViewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT, anViewport);
+    GLRender::GetViewPort(anViewport);
     if (s_pPBuffer && anViewport[0] == 0 && anViewport[1] == 0 &&
         anViewport[2] == s_pPBuffer->m_nWidth && anViewport[3] == s_pPBuffer->m_nHeight)
         ASLgl::glViewport(0, 0, g_SDL_mode.w, g_SDL_mode.h);
@@ -8545,27 +8292,23 @@ void FrameBufferModificationsStartIos(bool bEnable)
 void RenderModificationQuad()
 {
 #if KOTOR1 // K1: the film-noise unit only (no distort pbuffer, no force-distortion unit); no setup object
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     GLRender::cm_pFilmNoiseTexture->Bind();
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 
     ASLgl::glBegin(7);
     {
@@ -8585,60 +8328,44 @@ void RenderModificationQuad()
     }
     ASLgl::glEnd();
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
 #else
     RenderModificationQuadSetup setup;
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     GLRender::cm_pFilmNoiseTexture->Bind();
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 
-    GLRender::cm_uiCurrentStage = 2;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(2);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_pDistortPBuffer->m_nTexture);
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 
-    GLRender::cm_uiCurrentStage = 3;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(3);
     ASLgl::glEnable(GL_TEXTURE_2D);
     GLRender::cm_pForceDistortionTexture->Bind();
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 
     ASLgl::glBegin(7);
     {
@@ -8658,25 +8385,17 @@ void RenderModificationQuad()
     }
     ASLgl::glEnd();
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
 
-    GLRender::cm_uiCurrentStage = 2;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(2);
     ASLgl::glDisable(GL_TEXTURE_2D);
 
-    GLRender::cm_uiCurrentStage = 3;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(3);
     ASLgl::glDisable(GL_TEXTURE_2D);
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
 #endif
@@ -8697,9 +8416,7 @@ static void K1RenderForceDistortion()
     int nWidth = s_pPBuffer->m_nWidth;
     int nHeight = s_pPBuffer->m_nHeight;
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     if (s_nK1DistortCopyTexture == 0 || s_nK1DistortCopyWidth != nWidth || s_nK1DistortCopyHeight != nHeight)
     {
         if (s_nK1DistortCopyTexture == 0)
@@ -8717,34 +8434,26 @@ static void K1RenderForceDistortion()
     ASLgl::glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, nWidth, nHeight);
     android_port_glViewportRaw(0, 0, nWidth, nHeight);
 
-    GLRender::cm_uiCurrentStage = 2;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(2);
     ASLgl::glEnable(GL_TEXTURE_2D);
     GLRender::cm_pForceDistortionTexture->Bind();
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, kPortProgramDistortion);
-    ASLgl::glEnable(enableTranslationTable[10]); // GL_STENCIL_TEST
+    GLRender::Enable(Aurora::kCapStencilTest); // GL_STENCIL_TEST
     ASLgl::glStencilFunc(GL_LESS, 0, 1);
     ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     RenderModificationQuad();
-    ASLgl::glDisable(enableTranslationTable[10]);
+    GLRender::Disable(Aurora::kCapStencilTest);
 
-    GLRender::cm_uiCurrentStage = 2;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(2);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
 }
 #endif
 
@@ -8768,9 +8477,7 @@ static void K1RenderSpeedBlur()
     int nWidth = s_pPBuffer->m_nWidth;
     int nHeight = s_pPBuffer->m_nHeight;
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     if (s_nK1SpeedBlurTexture == 0 || s_nK1SpeedBlurWidth != nWidth || s_nK1SpeedBlurHeight != nHeight)
     {
         if (s_nK1SpeedBlurTexture == 0)
@@ -8793,10 +8500,10 @@ static void K1RenderSpeedBlur()
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, kPortProgramSpeedBlur);
         ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 0, afRatio);
         ASLgl::glBindTexture(GL_TEXTURE_2D, s_nK1SpeedBlurTexture);
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+        GLRender::Enable(Aurora::kCapBlend);
         ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         RenderModificationQuad();
-        ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+        GLRender::Disable(Aurora::kCapBlend);
     }
 
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_nK1SpeedBlurTexture);
@@ -8823,8 +8530,8 @@ void FrameBufferModificationsEndIos(bool bEnable)
     if (bEnable && (SaturationThisFrameIos() || IosBloomEnabled() || GLRender::m_bFilmNoiseEnabled ||
                     IosAntiAliasOn()))
     {
-        ASLgl::glGetIntegerv(GL_VIEWPORT, anViewport);
-        ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+        GLRender::GetViewPort(anViewport);
+        GLRender::Disable(Aurora::kCapBlend);
 #ifdef K2_QOL_K1_DISTORTION
         if (bForceDistortion && GLRender::cm_pForceDistortionTexture)
             K1RenderForceDistortion();
@@ -8928,11 +8635,11 @@ void FrameBufferModificationsEndIos(bool bEnable)
         if (IosBloomEnabled())
 #endif
         {
-            ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+            GLRender::Enable(Aurora::kCapBlend);
             ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
             ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
             RenderModificationQuad();
-            ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+            GLRender::Disable(Aurora::kCapBlend);
         }
         if (!IosAntiAliasOn())
             ASLgl::glViewport(anViewport[0], anViewport[1], anViewport[2], anViewport[3]);
@@ -8948,7 +8655,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
     if (!s_frameBufferModificationsStarted)
         return;
     s_frameBufferModificationsStarted = false;
-    ASLgl::glGetIntegerv(GL_VIEWPORT, anViewport);
+    GLRender::GetViewPort(anViewport);
 
     if (GLRender::m_bDreamDistortEnabled)
         RenderDistortIos(GLRender::cm_pForceDistortionTexture, GLRender::m_pDreamDistortTexture);
@@ -8957,9 +8664,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
     {
         RenderModificationQuadSetup setup;
 
-        GLRender::cm_uiCurrentStage = 0;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         GLRender::m_pFuryTexture->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);   // GL_TEXTURE_WRAP_S = GL_CLAMP_TO_EDGE
@@ -8987,7 +8692,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
         RenderDistortIos(GLRender::cm_pForceDistortionTexture, GLRender::m_pFuryTexture);
     }
 
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+    GLRender::Disable(Aurora::kCapBlend);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBloomSource);
 
 #ifdef K2_QOL_FRAME_BUFFER_EFFECTS
@@ -9092,7 +8797,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
         // The blend this pass turns on would otherwise stay on for the copy and present quads
         // below. Wherever nothing was drawn, the scene's alpha is the clear colour's 0, so those
         // pixels would never reach the screen and Force Speed would show black there.
-        bool bBlendWasOn = ASLgl::glIsEnabled(enableTranslationTable[kCapBlend]) != 0;
+        bool bBlendWasOn = GLRender::IsEnabled(Aurora::kCapBlend) != 0;
 #endif
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSDefault);
         _aglSetCurrentPBuffer(s_pPBuffer);
@@ -9100,7 +8805,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
         ASLgl::glViewport(0, 0, s_pPBuffer->m_nWidth, s_pPBuffer->m_nHeight);
         {
             RenderModificationQuadSetup setup;
-            ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+            GLRender::Enable(Aurora::kCapBlend);
             ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
             ASLgl::glBegin(7);
@@ -9120,7 +8825,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
         }
 #ifdef K2_QOL_IMPROVEMENTS
         if (!bBlendWasOn)
-            ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+            GLRender::Disable(Aurora::kCapBlend);
 #endif
 
         _aglRestoreContext();
@@ -9157,11 +8862,11 @@ void FrameBufferModificationsEndIos(bool bEnable)
     if (!bEffects)
         return;
 #endif
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+    GLRender::Enable(Aurora::kCapBlend);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
     RenderModificationQuad();
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+    GLRender::Disable(Aurora::kCapBlend);
 #endif
 }
 
@@ -9173,19 +8878,13 @@ void RenderDistortIos(CAurTexture* pSrc, CAurTexture* pDst)
 
     RenderModificationQuadSetup setup;
 
-    GLRender::cm_uiCurrentStage = 3;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(3);
     pSrc->Bind();
 
-    GLRender::cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer3->m_nTexture);
 
-    GLRender::cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(GLRender::cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     pDst->Bind();
 
@@ -9222,10 +8921,10 @@ void GLRender::RenderAccumulationBlurARB(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -9282,9 +8981,7 @@ void GLRender::RenderAccumulationBlurARB(unsigned int nTexture)
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glActiveTextureARB(GL_TEXTURE1);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
@@ -9297,15 +8994,15 @@ void GLRender::RenderAccumulationBlurARB(unsigned int nTexture)
 void GLRender::RenderDreamDistortionARB(unsigned int nTexture, bool bFury)
 {
     K2_UNUSED(nTexture);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glEnable(enableTranslationTable[1]);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapBlend);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -9314,9 +9011,7 @@ void GLRender::RenderDreamDistortionARB(unsigned int nTexture, bool bFury)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glActiveTextureARB(GL_TEXTURE2);
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
@@ -9612,10 +9307,10 @@ void GLRender::RenderFrameToTextureARB(unsigned int nTexture)
     glBindFramebuffer(GL_FRAMEBUFFER, s_AccumulationFBO);
 #endif
     ASLgl::glViewport(0, 0, 128, 128);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 128.0, 0.0, 128.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nDecalShaderRectARB);
@@ -9665,11 +9360,11 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #endif
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -9679,9 +9374,7 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     cm_pForceDistortionTexture->GetWidth();
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(1, 0);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -9700,7 +9393,7 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nForceDistortionShaderARB);
-    ASLgl::glEnable(enableTranslationTable[10]); // GL_STENCIL_TEST
+    GLRender::Enable(Aurora::kCapStencilTest); // GL_STENCIL_TEST
     ASLgl::glStencilFunc(GL_LESS, 0, 1);
     ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
@@ -9720,16 +9413,14 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     }
 
     ASLgl::glEnd();
-    ASLgl::glDisable(enableTranslationTable[10]);
+    GLRender::Disable(Aurora::kCapStencilTest);
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glDisable(GL_VERTEX_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, 0);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetActiveTexture(0);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -9738,11 +9429,11 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
 // env parameters.
 void GLRender::RenderSaturationAdjustmentARB(unsigned int nTexture)
 {
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_BLEND);
@@ -9821,9 +9512,9 @@ void GLRender::RenderSaturationAdjustmentARB(unsigned int nTexture)
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
 #endif
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 }
 
@@ -9888,19 +9579,19 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
         ASLgl::glClear(GL_COLOR_BUFFER_BIT);
     }
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapBlend);
     glBindFramebuffer(GL_FRAMEBUFFER, s_ConvolutionFBOs[3]);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-    ASLgl::glDisable(enableTranslationTable[5]);
+    GLRender::Disable(Aurora::kCapLighting);
     FrameBufferModificationPixelShadersARB(kFBShaderFlare,  nTexture, cm_nRedTexture, cm_nGreenTexture,
                                           cm_nBlueTexture);
     ASLgl::glBegin(7);
@@ -9950,11 +9641,11 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -9986,9 +9677,9 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
     ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
 
     ASLgl::glEnd();
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
@@ -10009,10 +9700,10 @@ void GLRender::MipmapFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(pPBuffer); K2_UNUSED(fSize);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -10054,11 +9745,11 @@ void GLRender::RenderOverlayFilmNoiseARB(unsigned int nTexture, bool bScanNoise)
     K2_UNUSED(nTexture); K2_UNUSED(bScanNoise);
 #endif
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glBlendFunc(1, 0);
@@ -10069,9 +9760,7 @@ void GLRender::RenderOverlayFilmNoiseARB(unsigned int nTexture, bool bScanNoise)
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    cm_uiCurrentStage = 1;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(1);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pFilmNoiseTexture->Bind();
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -10094,14 +9783,12 @@ void GLRender::RenderOverlayFilmNoiseARB(unsigned int nTexture, bool bScanNoise)
 
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
-    cm_uiCurrentStage = 0;
-    if (AurMultiTextureAvailable())
-        ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    GLRender::SetActiveTexture(0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -10161,7 +9848,7 @@ void GLRender::DrawSphereBound(float fRadius, Vector& vCenter, const Vector& vCo
         afMatrix[9] = fTemp;
 
         ASLgl::glPushMatrix();
-        ASLgl::glMatrixMode(GL_MODELVIEW);
+        GLRender::SetMatrixMode(Aurora::kMatrixModelView);
         ASLgl::glMultMatrixf(afMatrix);
     }
 
@@ -10316,14 +10003,14 @@ void GLRender::RenderGammaCorrection()
         return;
 
     float fGamma = 1.0f / g_fGammaExponent;
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glEnable(GL_BLEND);
     gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
     if (fGamma > 1.0f)
     {
@@ -10393,11 +10080,11 @@ void GLRender::RenderGammaCorrection()
 
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDisable(GL_LIGHTING);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -10414,9 +10101,9 @@ void GLRender::RenderGammaCorrection()
 
     ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
-    ASLgl::glMatrixMode(GL_PROJECTION);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
@@ -10457,39 +10144,29 @@ void GLRender::SetInterleavedBuffer(unsigned int nStride, int nFlags, unsigned i
 
     if (nFlags & MDX_TEX0_VERTICES)
     {
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-        cm_uiCurrentStage = 0;
+        GLRender::ActivateTextureStage(0);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
                                  pData + pNode->m_nTex0Ofs);
     }
     if (nFlags & MDX_TEX1_VERTICES)
     {
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-        cm_uiCurrentStage = 1;
+        GLRender::ActivateTextureStage(1);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
                                  pData + pNode->m_nTex1Ofs);
     }
     if (nFlags & MDX_TEX2_VERTICES)
     {
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE2);
-        cm_uiCurrentStage = 2;
+        GLRender::ActivateTextureStage(2);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
                                  pData + pNode->m_nTex2Ofs);
     }
     if (nFlags & MDX_TEX3_VERTICES)
     {
-        if (AurMultiTextureAvailable())
-            ASLgl::glClientActiveTextureARB(GL_TEXTURE3);
-        cm_uiCurrentStage = 3;
+        GLRender::ActivateTextureStage(3);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, pNode->m_nVertexStride,
                                  pData + pNode->m_nTex3Ofs);
     }
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-    cm_uiCurrentStage = 0;
+    GLRender::ActivateTextureStage(0);
 
     if (AurVertexProgramsAvailable())
     {
@@ -11253,8 +10930,8 @@ void GLRender::RenderShadowArray(int nStart, int nCount, int nUnused)
     }
     else
     {
-        unsigned char bWasEnabled = ASLgl::glIsEnabled(enableTranslationTable[3]);
-        ASLgl::glEnable(enableTranslationTable[3]);
+        unsigned char bWasEnabled = GLRender::IsEnabled(Aurora::kCapCullFace);
+        GLRender::Enable(Aurora::kCapCullFace);
         ASLgl::glFrontFace(GL_CW);
         ASLgl::glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
         if (AurVertexBufferObjectARBAvailable())
@@ -11266,7 +10943,7 @@ void GLRender::RenderShadowArray(int nStart, int nCount, int nUnused)
             ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
         ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
         if (!bWasEnabled)
-            ASLgl::glDisable(enableTranslationTable[3]);
+            GLRender::Disable(Aurora::kCapCullFace);
     }
 #endif
 
@@ -11498,25 +11175,7 @@ void GLRender::Transform(const Vector& v, const Quaternion& qRot, int n)
     ASLgl::glTranslatef(p.x, p.y, p.z);
     q = qRot;
 
-    float fAngle = acosf(q.w) * 2.0f;
-    float fX, fY, fZ;
-    if ((fAngle < 0.0f ? -fAngle : fAngle) < 1.0e-7)
-    {
-        fX = 1.0f;
-        fY = 0.0f;
-        fZ = 0.0f;
-    }
-    else
-    {
-        Vector vAxis;
-        vAxis.z = q.z;
-        vAxis.y = q.y;
-        vAxis.x = q.x;
-        float fScale = static_cast<float>(1.0 / sin(fAngle * 0.5));
-        fX = vAxis.x * fScale;
-        fY = vAxis.y * fScale;
-        fZ = vAxis.z * fScale;
-    }
-
-    ASLgl::glRotatef(fAngle * 57.295776f, fX, fY, fZ);
+    float fAngle = q.angle();
+    Vector vAxis = q.axis();
+    ASLgl::glRotatef(fAngle * 57.295776f, vAxis.x, vAxis.y, vAxis.z);
 }

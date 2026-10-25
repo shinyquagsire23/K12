@@ -543,7 +543,7 @@ void CSWCObject::SetWind(int a, float f)
 
 void CSWCObject::SetPortrait(const CResRef& r)
 {
-    m_portrait.m_baseResRef = r;
+    m_portrait.SetPortrait(r);
     GetPortrait(1);
 }
 
@@ -772,13 +772,10 @@ char CSWCObject::GetReticlePoint(Vector& v)
         if (pPart != 0) {
             pPart->GetWorld(v, qIdentity);
             CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
-            Quaternion q = pCamera->GetOrientation();
-            float fA1 = (q.x * q.z + q.w * q.y) * -2.0f;
-            float fA2 = (q.z * q.y - q.x * q.w) * -2.0f;
-            float fA3 = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-            float fPoint = v.x * fA1 + v.y * fA2 - v.z * fA3;
+            Vector vDir = -pCamera->GetOrientation().zdir();
+            float fPoint = dot(v, vDir);
             Vector vCamPos = pCamera->GetPosition();
-            float fCam = fA1 * vCamPos.x + fA2 * vCamPos.y - vCamPos.z * fA3;
+            float fCam = dot(vDir, vCamPos);
             char nRet = !(fPoint > fCam) ? 2 : 1;
             v = pCamera->MapToScreen(v, true);
             short nWidth = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
@@ -1359,12 +1356,7 @@ int CSWCObject::SetAnimation(unsigned short nAnimation, int b, int nForce)
     if (g_pAppManager->m_pServerExoApp != 0 && AsSWCCreature() != 0)
     {
         CSWSCreature* pCreature = AsSWCCreature()->GetServerCreature();
-#if KOTOR1  // K1 tests GetDeadTemp(), K2 tests party membership and hit points
         if (pCreature == 0 || pCreature->GetDead() != 0 || pCreature->GetDeadTemp() != 0)
-#else
-        if (pCreature == 0 || pCreature->GetDead() != 0 ||
-            (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) <= 0))
-#endif
         {
             if (nAnimation != SERVER_ANIMATION_DEAD && nAnimation != SERVER_ANIMATION_DEAD_PRONE &&
                 nAnimation != SERVER_ANIMATION_DEAD_2)

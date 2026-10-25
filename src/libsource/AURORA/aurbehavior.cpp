@@ -566,9 +566,9 @@ CAurBehaviorCameraOnAStick::CAurBehaviorCameraOnAStick(CAurObject* pCamera, CAur
     // The camera parks m_fDist behind the target along the orientation's local +Z. The rotated Z
     // result is discarded: the camera's height is m_fHeight.
     Vector vTarget = m_pTarget.m_pObject->GetPosition();
-    Matrix mat = q.getmatrix();
-    Vector vNew(vTarget.x + mat.m_f[6] * m_fDist,
-                vTarget.y + mat.m_f[7] * m_fDist,
+    Vector vZ = q.zdir();
+    Vector vNew(vTarget.x + vZ.x * m_fDist,
+                vTarget.y + vZ.y * m_fDist,
                 m_fHeight);
     m_pOwner->SetPosition(vNew);
     m_vPos = vNew;
@@ -765,11 +765,7 @@ int CAurBehaviorCameraFollow::Control(float fParam) {
 
     pOwner = m_pOwner;
     qCam = pOwner->GetOrientation();
-    Vector vDir = Vector{
-        2.0f * (qCam.x * qCam.z + qCam.w * qCam.y),
-        2.0f * (qCam.z * qCam.y - qCam.x * qCam.w),
-        1.0f - 2.0f * (qCam.x * qCam.x + qCam.y * qCam.y)
-    };
+    Vector vDir = qCam.zdir();
 
     pOwner->SetPosition(Vector{
         vPos.x + vDir.x * m_fDist,
@@ -865,12 +861,10 @@ int CAurBehaviorCameraLooseFollow::Control(float fParam) {
         Vector vOwner = m_pOwner->GetPosition();
         Quaternion qOwner = m_pOwner->GetOrientation();
 
-        // The owner orientation's local +Z axis, projected to XY and negated, i.e. the matrix
-        // column the getmatrix() spelling would give as m_f[6]/m_f[7], flipped. It is the axis the
+        // The owner orientation's local +Z axis, negated and projected to XY. It is the axis the
         // dead-zone correction below slides the owner along.
-        Vector vDir(-2.0f * (qOwner.x * qOwner.z + qOwner.w * qOwner.y),
-                    -2.0f * (qOwner.z * qOwner.y - qOwner.x * qOwner.w),
-                    0.0f);
+        Vector vDir = -qOwner.zdir();
+        vDir.z = 0.0f;
         vDir.Normalize();
 
         Vector vDiff(vTarget.x - vOwner.x, vTarget.y - vOwner.y, 0.0f);
@@ -977,22 +971,21 @@ int CAurBehaviorCameraLooseFollow::Control(float fParam) {
     }
 
     // Blend the previous frame's position toward the target's, then push it back out along the
-    // owner's local +Z by the follow distance, the same getmatrix() column construction the
-    // on-a-stick ctor uses.
+    // owner's local +Z by the follow distance, as the on-a-stick ctor does.
     Vector vLerp = Vector(m_vFollowPosition.x * (1.0f - fBlend) + m_vGoalPosition.x * fBlend,
                           m_vFollowPosition.y * (1.0f - fBlend) + m_vGoalPosition.y * fBlend,
                           m_vFollowPosition.z * (1.0f - fBlend) + m_vGoalPosition.z * fBlend);
 
-    Matrix mat = m_pOwner->GetOrientation().getmatrix();
-    m_pOwner->SetPosition(Vector(vLerp.x + mat.m_f[6] * m_fDist,
-                                 vLerp.y + mat.m_f[7] * m_fDist,
-                                 vLerp.z + mat.m_f[8] * m_fDist));
+    Vector vZ = m_pOwner->GetOrientation().zdir();
+    m_pOwner->SetPosition(Vector(vLerp.x + vZ.x * m_fDist,
+                                 vLerp.y + vZ.y * m_fDist,
+                                 vLerp.z + vZ.z * m_fDist));
     m_vFollowPosition = vLerp;
 
-    Matrix matGoal = m_pOwner->GetOrientation().getmatrix();
-    Vector vGoal = Vector(m_vGoalPosition.x + matGoal.m_f[6] * m_fDist,
-                          m_vGoalPosition.y + matGoal.m_f[7] * m_fDist,
-                          m_vGoalPosition.z + matGoal.m_f[8] * m_fDist);
+    Vector vZGoal = m_pOwner->GetOrientation().zdir();
+    Vector vGoal = Vector(m_vGoalPosition.x + vZGoal.x * m_fDist,
+                          m_vGoalPosition.y + vZGoal.y * m_fDist,
+                          m_vGoalPosition.z + vZGoal.z * m_fDist);
 
     if (equal(vGoal, m_pOwner->GetPosition()) != 0) {
         m_bMovingToGoal = 0;

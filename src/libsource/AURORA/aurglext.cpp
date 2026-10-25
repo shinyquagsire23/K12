@@ -4,6 +4,7 @@
 #define K1_AURORA_LIST  // K1's AURORA library
 #endif
 #include "aurglext.h"
+#include "aurglcore.h"
 
 
 int existingextensions;
@@ -199,7 +200,7 @@ int AurOnePassEnvMapAvailable()
                 if (bATI)
                     returnval = AurNonRadeon8500Validate();
                 else {
-                    ASLgl::glGetIntegerv(queryTranslationTable[1], &returnval);
+                    GLRender::QueryIntegerv(Aurora::kQueryUnmapped, &returnval);
                     returnval = returnval > 1;
                 }
             } else {

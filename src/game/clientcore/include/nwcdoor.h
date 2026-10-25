@@ -3,6 +3,7 @@
 // Client-side door object. Only the door's own fields are modelled here.
 
 #include "nwcobject.h"
+#include "serveranimation.h"
 
 class CSWCCreature;
 class CSWSDoor;
@@ -71,6 +72,12 @@ public:
 
     CSWSDoor*     GetServerDoor();
     unsigned char GetState();
+    // Whether the door is playing one of its two opened animations.
+    int           GetIsOpen()
+    {
+        return GetCurrentAnimation() == SERVER_ANIMATION_DOOR_OPEN1 ||
+               GetCurrentAnimation() == SERVER_ANIMATION_DOOR_OPEN2;
+    }
     void          SetState(unsigned char state);
     void          SetIsAreaTransition(int b);
     void          UpdateAreaTransitionDisplay();

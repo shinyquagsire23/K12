@@ -26,6 +26,9 @@ public:
     void SetFillImage(const CResRef& resRef, int flag);
     void SetCornerImage(const CResRef& resRef, int flag);
     void SetEdgeImage(const CResRef& resRef, int flag);
+    void SetFillImage(const CResRef& resRef) { SetFillImage(resRef, 0); }
+    void SetCornerImage(const CResRef& resRef) { SetCornerImage(resRef, 0); }
+    void SetEdgeImage(const CResRef& resRef) { SetEdgeImage(resRef, 0); }
     void SetBorder(CSWGuiBorder* pBorder);
 
     // Declared out of line so that every assignment of a params block is a single call.
@@ -337,6 +340,7 @@ public:
     // bForce re-does the work even when the ResRef is unchanged, which is how SetImageObject
     // pushes an already-set ResRef onto a freshly bound widget.
     void SetImage(const CResRef& resRefImage, int bForce);
+    void SetImage(const CResRef& resRefImage) { SetImage(resRefImage, 0); }
 
     void SetAlignment(int nAlignment);
     void SetDrawStyle(int bDrawStyle);

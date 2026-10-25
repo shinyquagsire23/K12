@@ -291,12 +291,7 @@ void CSWSCombatRound::EndCombatRound(int bEndRound)
             m_oidAttackTarget = OBJECT_INVALID;
         } else if (pObject->AsSWSCreature() != 0) {
             CSWSCreature* pTarget = pObject->AsSWSCreature();
-#if KOTOR1  // K1 also tests GetDeadTemp
             if (pTarget->GetDead() != 0 || pTarget->GetDeadTemp() != 0) {
-#else
-            if (pTarget->GetDead() != 0
-                || (pTarget->m_bInParty != 0 && pTarget->GetCurrentHitPoints(0) <= 0)) {
-#endif
                 m_oidAttackTarget = OBJECT_INVALID;
                 if (m_bSpellCastRound != 0) {
                     oidAttackTarget = m_pCreature->m_oidAttemptedSpellTarget;
@@ -361,11 +356,7 @@ void CSWSCombatRound::EndCombatRound(int bEndRound)
     if (bEndRound != 0 && bNoAttackPending != 0 && m_spellCastRound == 0
         && (m_bCutsceneAttack | bIsPlayerCharacter) == 0
         && m_pCreature->GetDead() == 0
-#if KOTOR1
         && m_pCreature->GetDeadTemp() == 0) {
-#else
-        && (m_pCreature->m_bInParty == 0 || m_pCreature->GetCurrentHitPoints(0) >= 1)) {
-#endif
         g_pVirtualMachine->RunScript(&m_pCreature->m_scripts[CSWSCreature::CREATURE_SCRIPT_ENDROUND],
                                      m_pCreature->m_objectId, 1);
     }

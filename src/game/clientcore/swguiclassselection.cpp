@@ -721,7 +721,7 @@ void CSWGuiClassSelection::BeginPlayGame()
 
     pClientExoApp->SetPlayerCharacterName(CExoString("temp"));
 
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+    SetToBeDeleted(0);
 
     pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
     pClientExoApp->SetLoadScreenByModuleName(m_sModuleName);
@@ -741,26 +741,16 @@ void CSWGuiClassSelection::BeginPlayGame()
 
     g_pAppManager->CreateServer(0);
 
-    CSWGlobalVariableTable* pGlobals =
-        g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
-    pGlobals->SetValueNumber(CExoString("G_PC_LEVEL"), 1);
-
-    pGlobals = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
-    pGlobals->SetValueNumber(CExoString("G_PC_Align_Val"), 50);
-
-    pGlobals = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
-    pGlobals->SetValueNumber(
+    g_pAppManager->m_pServerExoApp->GetGlobalVariableTable()->SetValueNumber(CExoString("G_PC_LEVEL"), 1);
+    g_pAppManager->m_pServerExoApp->GetGlobalVariableTable()->SetValueNumber(CExoString("G_PC_Align_Val"), 50);
+    g_pAppManager->m_pServerExoApp->GetGlobalVariableTable()->SetValueNumber(
         CExoString("GBL_GAME_COMPLETE"),
         g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nGamesCompleted);
 
     m_pSelectedCreature->SaveCharGenCreature();
 
-    CNetLayer* pNet = pClientExoApp->GetNetLayer();
-    {
-        CExoString sClientName = pClientExoApp->GetClientName();
-        pNet->StartConnectToSession(0, sClientName, CExoString(""), 10,
-                                    CNetLayer::CONNECTTYPE_PLAYER);
-    }
+    pClientExoApp->GetNetLayer()->StartConnectToSession(0, pClientExoApp->GetClientName(), CExoString(""), 10,
+                                                        CNetLayer::CONNECTTYPE_PLAYER);
 
     pClientExoApp->GetSWCMessage()->SendPlayerToServerStatus_RequestStatus();
 
@@ -772,12 +762,7 @@ void CSWGuiClassSelection::BeginPlayGame()
 
     pClientExoApp->SetPlayerCharacterName(CExoString("temp"));
 
-    CSWGuiPanel* pPanel = this;
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
+    SetToBeDeleted(0);
 
     pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
     pClientExoApp->StopLoadMusic();

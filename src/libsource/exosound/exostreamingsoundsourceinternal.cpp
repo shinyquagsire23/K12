@@ -17,6 +17,7 @@
 
 #include "port/libcbase.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 #include "port/libcmath.h"
 
 #include "port/crtapi.h"
@@ -511,59 +512,55 @@ int CExoStreamingSoundSourceInternal::Play(const CResRef& resRef, unsigned short
             }
             else
             {
-                char* pszName = m_sStreamPath.m_sString;
-                if (pszName)
+                int nLen = m_sStreamPath.GetLength();
+                if (nLen != 0)
                 {
-                    int nLen = static_cast<int>(strlen(pszName));
-                    if (nLen != 0)
+                    char szFirst[4];
+                    szFirst[0] = m_sStreamPath[0];
+                    szFirst[1] = m_sStreamPath[1];
+                    szFirst[2] = m_sStreamPath[2];
+                    szFirst[3] = 0;
+
+                    int nNum = atoi(szFirst);
+                    if (_stricmp(szFirst, "gbl") == 0
+                        || _stricmp(szFirst, "avo") == 0
+                        || _stricmp(szFirst, "000") == 0
+                        || nNum > 0)
                     {
-                        char szFirst[4];
-                        szFirst[0] = m_sStreamPath[0];
-                        szFirst[1] = m_sStreamPath[1];
-                        szFirst[2] = m_sStreamPath[2];
-                        szFirst[3] = 0;
-
-                        int nNum = atoi(szFirst);
-                        if (_stricmp(szFirst, "gbl") == 0
-                            || _stricmp(szFirst, "avo") == 0
-                            || _stricmp(szFirst, "000") == 0
-                            || nNum > 0)
+                        char szMid[32];
+                        uint64_t nMid = static_cast<uint64_t>(nLen) - 3;
+                        // Copies the run after the three-character prefix, at least three bytes.
+                        if (nMid >= 4)
                         {
-                            char szMid[32];
-                            uint64_t nMid = static_cast<uint64_t>(nLen) - 3;
-                            // Copies the run after the three-character prefix, at least three bytes.
-                            if (nMid >= 4)
+                            int64_t i = 0;
+                            do
                             {
-                                int64_t i = 0;
-                                do
-                                {
-                                    szMid[i] = m_sStreamPath[static_cast<int>(i) + 3];
-                                    i++;
-                                } while (static_cast<uint64_t>(i) != nMid - 3);
-                            }
-                            else
-                            {
-                                nMid = 3;
-                            }
-                            szMid[nMid - 3] = 0;
-
-                            m_sStreamPath.Format(const_cast<char*>("HD0:STREAMVOICE\\%s\\%s\\%s"), szFirst, szMid,
-                                            m_sStreamPath.CStr());
-                            for (int i = 0; (pszOverride = GetOverridePath(i, true)) != 0; i++)
-                            {
-                                char szPath[PATH_BUFFER_SIZE];
-                                FormatName(szPath, sizeof(szPath), "%s\\streamvoice\\%s\\%s\\%s",
-                                           pszOverride, szFirst, szMid, sResRefName.CStr());
-                                m_asOverridePaths[i] = szPath;
-                            }
+                                szMid[i] = m_sStreamPath[static_cast<int>(i) + 3];
+                                i++;
+                            } while (static_cast<uint64_t>(i) != nMid - 3);
                         }
                         else
                         {
-                            m_sStreamPath.Format(const_cast<char*>("HD0:STREAMVOICE\\%s"), m_sStreamPath.CStr());
+                            nMid = 3;
                         }
+                        szMid[nMid - 3] = 0;
 
-                        goto ResolvePaths;
+                        m_sStreamPath.Format(const_cast<char*>("HD0:STREAMVOICE\\%s\\%s\\%s"), szFirst, szMid,
+                                        m_sStreamPath.CStr());
+                        for (int i = 0; (pszOverride = GetOverridePath(i, true)) != 0; i++)
+                        {
+                            char szPath[PATH_BUFFER_SIZE];
+                            FormatName(szPath, sizeof(szPath), "%s\\streamvoice\\%s\\%s\\%s",
+                                       pszOverride, szFirst, szMid, sResRefName.CStr());
+                            m_asOverridePaths[i] = szPath;
+                        }
                     }
+                    else
+                    {
+                        m_sStreamPath.Format(const_cast<char*>("HD0:STREAMVOICE\\%s"), m_sStreamPath.CStr());
+                    }
+
+                    goto ResolvePaths;
                 }
                 m_sStreamPath = "HD0:STREAMVOICE\\";
             }
@@ -1121,18 +1118,14 @@ void CExoStreamingSoundSourceInternal::InitializeSource()
 
     if (m_nResType == RESTYPE_MP3)
     {
-        char* pszName = m_sStreamPath.m_sString;
-        int nNameLen = pszName ? static_cast<int>(strlen(pszName)) : 0;
-        CExoString sBase = m_sStreamPath.Left(nNameLen - 3) + CExoString("wav");
+        CExoString sBase = m_sStreamPath.Left(m_sStreamPath.GetLength() - 3) + CExoString("wav");
 
         CExoString asNames[16];
         for (int i = 0; i < 16; i++)
         {
             if (m_asOverridePaths[i][0] == '\0')
                 break;
-            char* pszSlot = m_asOverridePaths[i].m_sString;
-            int nSlotLen = pszSlot ? static_cast<int>(strlen(pszSlot)) : 0;
-            asNames[i] = m_asOverridePaths[i].Left(nSlotLen - 3) + CExoString("wav");
+            asNames[i] = m_asOverridePaths[i].Left(m_asOverridePaths[i].GetLength() - 3) + CExoString("wav");
         }
 
         // Normalised but never read, since the conversion below takes sBase. Kept because the

@@ -1154,7 +1154,7 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_Add()
             pCreature->SetOrientation(vOrientation);
 
             pCreature->m_vMovingOrientation = normalize(vOrientation);
-            pCreature->m_vStationaryOrientation = normalize(vOrientation);
+            pCreature->SetDesiredStationaryOrientation(vOrientation);
             pCreature->m_desiredPosition = vPosition;
 
             if (g_pAppManager->m_pClientExoApp->GetGameObjectArray()->AddExternalObject(
@@ -5148,7 +5148,7 @@ int CSWCMessage::HandleServerToPlayerPlayerList(unsigned char nType)
             {
                 CSWCCreatureStats::CheckCustomPortrait(&resPortrait,
                                                        nPortraitId == MSG_PORTRAIT_ID_CUSTOM);
-                pPlayer->m_portrait.m_baseResRef = CResRef(resPortrait);
+                pPlayer->SetPrimaryPCPortraitResRef(resPortrait);
             }
         }
 
@@ -5167,13 +5167,6 @@ static const uint64_t s_anDamageTypeLabels[14] = {
     STRREF_DAMAGE_AMOUNT_FIRE, STRREF_DAMAGE_AMOUNT_DARK_SIDE, STRREF_DAMAGE_AMOUNT_SONIC, STRREF_DAMAGE_AMOUNT_ION,
     STRREF_DAMAGE_AMOUNT_ENERGY, STRREF_DAMAGE_AMOUNT_POISON
 };
-
-// Fetches a GUI string with the TLK speaker override cleared first, the priming CSWTlkTable::Fetch
-// does with no speaker and the flag dropped.
-static inline CExoString GetGUIStringNoSpeaker(uint64_t nStrRef)
-{
-    return g_pSWTlkTable->Fetch(nStrRef, 0, 0, 0);
-}
 
 // K1 has no combat buffer, so every combat line goes to the message buffer and its "unknown
 // object" name fallback is GUI strref 0. Its records also differ in their trailing fields: type 8
@@ -5930,7 +5923,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         if (MessageReadOverflow(1))
             break;
 
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
 
         if (pSpell != 0)
         {
@@ -7378,7 +7371,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             if (i != 0)
                 sOut = sOut + CExoString(", ");
 
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+            CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
             sOut = sOut + g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
         }
 
@@ -7457,35 +7450,35 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             {
                 g_pTlkTable->SetCustomToken(0, CExoString(nSelfStationary));
 
-                sOut = sOut + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_STANDING_STILL_MODIFIER);
+                sOut = sOut + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_STANDING_STILL_MODIFIER, 0, 0, 0);
             }
 
             if (nDistance != 0)
             {
                 g_pTlkTable->SetCustomToken(0, CExoString(nDistance));
 
-                sOut = sOut + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_DISTANCE_MODIFIER);
+                sOut = sOut + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_DISTANCE_MODIFIER, 0, 0, 0);
             }
 
             if (nArc != 0)
             {
                 g_pTlkTable->SetCustomToken(0, CExoString(nArc));
 
-                sOut = sOut + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_REAR_ARC_MODIFIER);
+                sOut = sOut + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_REAR_ARC_MODIFIER, 0, 0, 0);
             }
 
             if (nMove != 0)
             {
                 g_pTlkTable->SetCustomToken(0, CExoString(nMove));
 
-                sOut = sOut + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_RUN_MODIFIER);
+                sOut = sOut + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_RUN_MODIFIER, 0, 0, 0);
             }
 
             if (nCombat != 0)
             {
                 g_pTlkTable->SetCustomToken(0, CExoString(nCombat));
 
-                sOut = sOut + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_COMBAT_MODIFIER);
+                sOut = sOut + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_COMBAT_MODIFIER, 0, 0, 0);
             }
 
             g_pAppManager->m_pClientExoApp->GetInGameGui()->AppendToMsgBuffer(
@@ -7504,7 +7497,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             {
                 g_pTlkTable->SetCustomToken(0, CExoString(nTargetStationary));
 
-                sOut = sOut + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_STANDING_STILL_MODIFIER);
+                sOut = sOut + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_STANDING_STILL_MODIFIER, 0, 0, 0);
             }
 
             g_pAppManager->m_pClientExoApp->GetInGameGui()->AppendToMsgBuffer(
@@ -7869,11 +7862,11 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         if (bAutomaticHit != 0)
         {
-            sOut = sOut + CExoString(" ") + GetGUIStringNoSpeaker(STRREF_AUTOMATIC_HIT);
+            sOut = sOut + CExoString(" ") + g_pSWTlkTable->Fetch(STRREF_AUTOMATIC_HIT, 0, 0, 0);
         }
         else if (bAutomaticMiss != 0)
         {
-            sOut = sOut + CExoString(" ") + GetGUIStringNoSpeaker(STRREF_AUTOMATIC_MISS);
+            sOut = sOut + CExoString(" ") + g_pSWTlkTable->Fetch(STRREF_AUTOMATIC_MISS, 0, 0, 0);
         }
         else
         {
@@ -7947,7 +7940,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             if (nCrushOpposition != 0)
             {
                 g_pTlkTable->SetCustomToken(0, g_pAppManager->m_pClientExoApp->
-                    GetGUIString(g_pRules->m_pSpellArray->GetSpell(nCrushSpell)->m_nNameStrRef));
+                    GetGUIString(g_pRules->GetSpell(nCrushSpell)->m_nNameStrRef));
                 g_pTlkTable->SetCustomToken(1, CExoString(nCrushOpposition));
 
                 sOut = sOut + g_pSWTlkTable->Fetch(STRREF_FMT_PLUS_LABEL_VALUE, 0, 0, 0);
@@ -7956,7 +7949,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             if (nInspireFollowers != 0)
             {
                 g_pTlkTable->SetCustomToken(0, g_pAppManager->m_pClientExoApp->
-                    GetGUIString(g_pRules->m_pSpellArray->GetSpell(nInspireSpell)->m_nNameStrRef));
+                    GetGUIString(g_pRules->GetSpell(nInspireSpell)->m_nNameStrRef));
                 g_pTlkTable->SetCustomToken(1, CExoString(nInspireFollowers));
 
                 sOut = sOut + g_pSWTlkTable->Fetch(STRREF_FMT_PLUS_LABEL_VALUE, 0, 0, 0);
@@ -7972,7 +7965,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             if (nJediDefense != 0)
             {
                 g_pTlkTable->SetCustomToken(0, g_pAppManager->m_pClientExoApp->
-                    GetGUIString(g_pRules->m_pSpellArray->GetSpell(nJediDefenseFeat)->m_nNameStrRef));
+                    GetGUIString(g_pRules->GetSpell(nJediDefenseFeat)->m_nNameStrRef));
                 g_pTlkTable->SetCustomToken(1, CExoString(nJediDefense));
 
                 sOut = sOut + g_pSWTlkTable->Fetch(STRREF_FMT_PLUS_LABEL_VALUE, 0, 0, 0);
@@ -8214,7 +8207,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
             g_pTlkTable->SetCustomToken(0, CExoString(nStrDamageBonus));
 
-            sDamageList = sDamageList + CExoString(" ") + GetGUIStringNoSpeaker(STRREF_FMT_STRENGTH_MOD);
+            sDamageList = sDamageList + CExoString(" ") + g_pSWTlkTable->Fetch(STRREF_FMT_STRENGTH_MOD, 0, 0, 0);
         }
 
         if (nSpecDamageBonus != 0)
@@ -8223,7 +8216,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             // declares none.
             g_pTlkTable->SetCustomToken(0, CExoString(nSpecDamageBonus));
 
-            sDamageList = sDamageList + CExoString(" ") + GetGUIStringNoSpeaker(STRREF_FMT_WEAPON_SPECIALIZATION);
+            sDamageList = sDamageList + CExoString(" ") + g_pSWTlkTable->Fetch(STRREF_FMT_WEAPON_SPECIALIZATION, 0, 0, 0);
         }
 
         if (nDamageBonus > 0)
@@ -8233,7 +8226,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
             g_pTlkTable->SetCustomToken(0, CExoString(nDamageBonus));
 
-            sDamageList = sDamageList + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_BONUS_DAMAGE);
+            sDamageList = sDamageList + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_BONUS_DAMAGE, 0, 0, 0);
         }
 
 #if !KOTOR1
@@ -8244,7 +8237,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
             g_pTlkTable->SetCustomToken(0, CExoString(nEffectDamage));
 
-            sDamageList = sDamageList + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_MISC_EFFECT_DAMAGE);
+            sDamageList = sDamageList + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_MISC_EFFECT_DAMAGE, 0, 0, 0);
         }
 #endif
 
@@ -8255,7 +8248,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
             g_pTlkTable->SetCustomToken(0, CExoString(nSneakDamage));
 
-            sDamageList = sDamageList + CExoString(" + ") + GetGUIStringNoSpeaker(STRREF_FMT_SNEAK_ATTACK_DAMAGE);
+            sDamageList = sDamageList + CExoString(" + ") + g_pSWTlkTable->Fetch(STRREF_FMT_SNEAK_ATTACK_DAMAGE, 0, 0, 0);
         }
 
         if (nFeatSoak != 0)
@@ -8265,7 +8258,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
             g_pTlkTable->SetCustomToken(0, CExoString(nFeatSoak));
 
-            sDamageList = sDamageList + CExoString(" - ") + GetGUIStringNoSpeaker(STRREF_FMT_TOUGHNESS);
+            sDamageList = sDamageList + CExoString(" - ") + g_pSWTlkTable->Fetch(STRREF_FMT_TOUGHNESS, 0, 0, 0);
         }
 
         if (nFeatFlatDR != 0)
@@ -8275,17 +8268,17 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
             g_pTlkTable->SetCustomToken(0, CExoString(nFeatFlatDR));
 
-            sDamageList = sDamageList + CExoString(" - ") + GetGUIStringNoSpeaker(STRREF_FMT_WOOKIEE_TOUGHNESS);
+            sDamageList = sDamageList + CExoString(" - ") + g_pSWTlkTable->Fetch(STRREF_FMT_WOOKIEE_TOUGHNESS, 0, 0, 0);
         }
 
 #if !KOTOR1
         if (nSpellBonus != 0)
         {
             g_pTlkTable->SetCustomToken(
-                0, g_pRules->m_pSpellArray->GetSpell(nSpellId)->GetSpellNameText());
+                0, g_pRules->GetSpell(nSpellId)->GetSpellNameText());
             g_pTlkTable->SetCustomToken(1, CExoString(nSpellBonus));
 
-            sDamageList = sDamageList + CExoString(" - ") + GetGUIStringNoSpeaker(STRREF_FMT_SPELL_BONUS);
+            sDamageList = sDamageList + CExoString(" - ") + g_pSWTlkTable->Fetch(STRREF_FMT_SPELL_BONUS, 0, 0, 0);
         }
 #endif
 
@@ -8470,7 +8463,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         if (nPowerBonus != 0)
         {
             g_pTlkTable->SetCustomToken(0,
-                g_pRules->m_pSpellArray->GetSpell(nPowerId)->GetSpellNameText());
+                g_pRules->GetSpell(nPowerId)->GetSpellNameText());
             g_pTlkTable->SetCustomToken(1, CExoString(nPowerBonus));
 
             sTokenValue = sTokenValue + g_pSWTlkTable->Fetch(STRREF_FMT_PLUS_LABEL_VALUE, 0, 0, 0);
@@ -8479,7 +8472,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         if (nStanceBonus != 0)
         {
             g_pTlkTable->SetCustomToken(0,
-                g_pRules->m_pSpellArray->GetSpell(nStanceId)->GetSpellNameText());
+                g_pRules->GetSpell(nStanceId)->GetSpellNameText());
             g_pTlkTable->SetCustomToken(1, CExoString(nStanceBonus));
 
             sTokenValue = sTokenValue + g_pSWTlkTable->Fetch(STRREF_FMT_PLUS_LABEL_VALUE, 0, 0, 0);
@@ -9081,13 +9074,13 @@ int CSWCMessage::HandleServerToPlayerDebugInfo_Creature(unsigned long long objId
         for (unsigned int i = 0; i < nNumKnownSpells; i++)
         {
             int nSpellId = pStats->GetKnownSpell(nClassPos, 0, static_cast<unsigned char>(i));
-            if (g_pRules->m_pSpellArray->GetSpell(nSpellId) != 0)
+            if (g_pRules->GetSpell(nSpellId) != 0)
             {
                 sLine = "            ";
-                sLine = sLine + g_pRules->m_pSpellArray->GetSpell(nSpellId)->GetSpellNameText();
+                sLine = sLine + g_pRules->GetSpell(nSpellId)->GetSpellNameText();
                 pGui->AppendToMsgBuffer(sLine, kMessageTypeDebug, 0);
 
-                g_pRules->m_pSpellArray->GetSpell(nSpellId)->GetSpellNameText().CStr();
+                g_pRules->GetSpell(nSpellId)->GetSpellNameText().CStr();
             }
         }
     }
@@ -9676,7 +9669,7 @@ int CSWCMessage::HandleServerToPlayerSafeProjectileSpell()
     if (nType != 6 && nType != 7)
         return 1;
 
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
 
     if (pSpell == 0)
         return 1;
@@ -11191,7 +11184,7 @@ int CSWCMessage::HandleServerToPlayerUpdate_PlayerInfo()
                     ReadFLOAT(1.0f, 32);
                     if (nTargetType == 19 || nTargetType == 4) {
                         int nSpellId = ReadDWORD(32);
-                        g_pRules->m_pSpellArray->GetSpell(nSpellId);
+                        g_pRules->GetSpell(nSpellId);
                     }
                     break;
                 }
@@ -11674,10 +11667,10 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_Update(unsigned long long ob
 
     if (nFieldMask & MSG_OBJECT_UPDATE_ORIENTATION)
     {
-        pCreature->m_vStationaryOrientation = normalize(vOrientation);
+        pCreature->SetDesiredStationaryOrientation(vOrientation);
         if (pCreature->m_bHasWayPointSpeed != 0
                 && pCreature->m_objectId != g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-            pCreature->m_vMovingOrientation = normalize(vOrientation);
+            pCreature->SetDesiredWalkOrientation(vOrientation);
         pCreature->SetLockOrientationToObject(oidLockTarget, 0);
     }
 
@@ -11729,9 +11722,7 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_Update(unsigned long long ob
 
         if (static_cast<CSWCObject*>(pCreature)->AnimationStationary(nCurrent) == 1
                 && static_cast<CSWCObject*>(pCreature)->AnimationStationary(nAnim) == 0
-                && pCreature->m_position.x * pCreature->m_position.x
-                     + pCreature->m_position.y * pCreature->m_position.y
-                     + pCreature->m_position.z * pCreature->m_position.z <= 1.0e-5f)
+                && dot(pCreature->m_position, pCreature->m_position) <= 1.0e-5f)
         {
             // (falls through to the position snap below)
         }
@@ -11941,14 +11932,11 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_Update(unsigned long long ob
                     pCreature->SetGroundNormal(vGround);
                 }
 
-                float px = pCreature->m_position.x;
-                float py = pCreature->m_position.y;
-                float pz = pCreature->m_position.z;
-                if (!(px * px + py * py + pz * pz <= 1.0e-5f))
+                if (!(dot(pCreature->m_position, pCreature->m_position) <= 1.0e-5f))
                 {
-                    float qx = px - vPosition.x;
-                    float qy = py - vPosition.y;
-                    float qz = pz - vPosition.z;
+                    float qx = pCreature->m_position.x - vPosition.x;
+                    float qy = pCreature->m_position.y - vPosition.y;
+                    float qz = pCreature->m_position.z - vPosition.z;
                     if (!(qx * qx + qy * qy + qz * qz >= 36.0f))
                         goto LTailMask;
                 }

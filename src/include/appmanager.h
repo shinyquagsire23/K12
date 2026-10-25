@@ -18,6 +18,13 @@ public:
 
     void AllocLargeTempBuffer();
     void FreeLargeTempBuffer();
+    // The shared scratch buffer, allocated on first use.
+    unsigned char* GetLargeTempBuffer()
+    {
+        if (m_pLargeTempBuffer == 0)
+            AllocLargeTempBuffer();
+        return m_pLargeTempBuffer;
+    }
     CObjectTableManager* GetObjectTableManager(unsigned int type);
     void CreateServer(int flag);
     void DestroyServer();

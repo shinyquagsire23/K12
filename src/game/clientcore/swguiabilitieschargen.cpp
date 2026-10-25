@@ -434,7 +434,7 @@ CSWGuiAbilitiesCharGen::CSWGuiAbilitiesCharGen(CSWGuiManager* pGuiManager, CSWCC
     SetActiveControl(&m_aPointsButtons[0], 0);
     m_nHoveredRow = 0;
 
-    m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(0), 0);
+    m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(0));
     AspyrAddButtonIcon(&m_btnAccept, 'a');
     AspyrAddButtonIcon(&m_btnBack, 'b');
 }

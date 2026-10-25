@@ -304,7 +304,6 @@ extern int  usearbvertexprograms;
 extern bool gMac_ShadersNeedInit;
 extern bool gMac_GammaShaderNeedsInit;
 
-extern unsigned int enableTranslationTable[];
 
 extern char  cBumpyShinySkinVP[];
 extern char  cSkinVP[];
@@ -377,7 +376,7 @@ int CAurInternalGL::Initialize(void*, void*, unsigned int, unsigned int, unsigne
 
     if (AurVertexProgramsAvailable() != 0)
     {
-        ASLgl::glEnable(enableTranslationTable[9]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
         VertexProgram* pVP;
         pVP = new VertexProgram(usearbvertexprograms != 0 ? szBumpyShinySkinVPARB
                                                           : cBumpyShinySkinVP,
@@ -432,7 +431,7 @@ int CAurInternalGL::Initialize(void*, void*, unsigned int, unsigned int, unsigne
         g_pBumpedOutVP = pVP;
         pVP->Enable(0, false);
 
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
     }
     return 1;
 }
@@ -619,7 +618,7 @@ haveGLContext:
 
     if (AurVertexProgramsAvailable() != 0)
     {
-        ASLgl::glEnable(enableTranslationTable[9]);
+        GLRender::Enable(Aurora::kCapVertexProgram);
 
         VertexProgram* pVP;
 
@@ -676,7 +675,7 @@ haveGLContext:
         g_pBumpedOutVP = pVP;
         pVP->Enable(0, false);
 
-        ASLgl::glDisable(enableTranslationTable[9]);
+        GLRender::Disable(Aurora::kCapVertexProgram);
     }
 
     if ((bAliased == false) | (g_nAliasingMode < 1))
@@ -806,7 +805,7 @@ haveWindowStyle:
 
         if (AurVertexProgramsAvailable() != 0)
         {
-            ASLgl::glEnable(enableTranslationTable[9]);
+            GLRender::Enable(Aurora::kCapVertexProgram);
 
             VertexProgram* pVP;
 
@@ -850,7 +849,7 @@ haveWindowStyle:
             g_pBumpyShinyPass5 = pVP;
             pVP->Enable(0, false);
 
-            ASLgl::glDisable(enableTranslationTable[9]);
+            GLRender::Disable(Aurora::kCapVertexProgram);
         }
     }
 

@@ -782,8 +782,7 @@ void CSWGuiStore::OnControlInvAButton(CSWGuiControl* pControl)
     if (!pItem)
         return;
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nLimit = 250;
     if (pCreature != NULL)
     {
@@ -825,8 +824,7 @@ void CSWGuiStore::OnControlInvAButton(CSWGuiControl* pControl)
         return;
 
     // 50 credits per character level, capped at 250.
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nLimit;
     if (pCreature == NULL || pCreature->m_pStats->GetLevel(0) * 50 > 250)
         nLimit = 250;
@@ -950,8 +948,7 @@ void CSWGuiStore::OnControlStoreAButton(CSWGuiControl* pControl)
     }
 
     // The level cap is 50 credits per character level; the box shows it via custom token 0.
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nLimit = 50;
     if (pCreature != NULL)
         nLimit = pCreature->m_pStats->GetLevel(0) * 50;

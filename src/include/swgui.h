@@ -520,6 +520,27 @@ public:
     void AddExtraBorderPanel(CSWGuiManager* pGuiManager, CExoString name);
 #endif
     void CenterPanel();
+
+    // Stamps remove-and-delete on the panel and every panel chained after it; bDeferred leaves
+    // the request to the draw and input sweeps.
+    void SetToBeDeleted(int bDeferred)
+    {
+#if KOTOR1
+        // K1 has no panel chain: one stamp.
+        m_stateFlags = static_cast<unsigned short>(((m_stateFlags & ~PANEL_REMOVE_STATE_MASK)
+                                                    | (bDeferred & 1) * PANEL_REMOVE_DEFERRED)
+                                                   + PANEL_REMOVE_AND_DELETE);
+#else
+        CSWGuiPanel* pPanel = this;
+        do
+        {
+            pPanel->m_stateFlags = static_cast<unsigned short>(((pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK)
+                                                                | (bDeferred & 1) * PANEL_REMOVE_DEFERRED)
+                                                               + PANEL_REMOVE_AND_DELETE);
+            pPanel = pPanel->m_pNextInChain;
+        } while (pPanel != 0);
+#endif
+    }
 };
 
 #if KOTOR1

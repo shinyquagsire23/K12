@@ -22,6 +22,7 @@
 #include "aurtexman.h"
 #include "Quaternion.h"
 #include "Vector.h"
+#include "Matrix.h"
 #include <map>
 
 int enablegetnearestlights;
@@ -106,18 +107,6 @@ static inline Vector RotateVector(const Vector& v, const Quaternion& q);
 
 
 
-extern unsigned int enableTranslationTable[];
-extern unsigned int clientStateTranslationTable[];
-extern unsigned int blendTranslationTable[];
-extern const unsigned int cmpTranslationTable[];
-extern unsigned int stencilOpTranslationTable[];
-extern const unsigned int cullTranslationTable[];
-extern unsigned int primTypeTranslationTable[];
-extern const int transformTranslationTable[];
-extern const int facingTranslationTable[];
-extern const unsigned int materialTranslationTable[];
-extern unsigned int colorTrackingTranslationTable[];
-extern unsigned int fogModeTranslationTable[];
 
 enum { kFogLinear = 0, kFogExp = 1, kFogExp2 = 2 };
 
@@ -143,14 +132,11 @@ enum {
     kArrayVertex   = 3,  // GL_VERTEX_ARRAY
 };
 
-enum { kBlendSrcAlpha = 0, kBlendInvSrcAlpha = 1,  // GL_SRC_ALPHA / GL_ONE_MINUS_SRC_ALPHA
-       kBlendOne = 2, kBlendZero = 3 };  // GL_ONE / GL_ZERO — the soft-shadow pair
 enum { kCmpLEqual = 3, kCmpGreater = 4, kCmpAlways = 7 };  // GL_LEQUAL / GL_GREATER / GL_ALWAYS
 enum { kStencilKeep = 0, kStencilReplace = 2,  // GL_KEEP / GL_REPLACE
        kStencilIncr = 3, kStencilDecr = 4 };  // GL_INCR / GL_DECR — the shadow-volume pair
 enum { kFaceCW = 0, kFaceCCW = 1 };  // GL_CW / GL_CCW (cullTranslationTable)
 enum { kMatrixProjection = 1, kMatrixModelView = 2 };  // transformTranslationTable ordinals
-enum { kPrimQuads = 6 };  // GL_QUADS (primTypeTranslationTable)
 enum { kFaceFront = 0 };  // GL_FRONT
 enum { kMaterialAmbient = 1, kMaterialDiffuse = 2, kMaterialEmission = 3 };
 enum { kColorTrackingEmission = 0 };  // colorTrackingTranslationTable[0] = GL_EMISSION
@@ -525,9 +511,7 @@ void* Scene::HitCheckGob(Vector vStart, Vector vEnd, Vector* pvHit, CHitInfo* pI
         {
             if ((pGob->m_pModel->m_nFlags & 1) && !pInfo->m_bIncludeEffects)
                 continue;
-            if (pGob->m_bDistortion)
-                continue;
-            if (pGob->m_pModel->m_nFlags & Model::kModelForceDistortion)
+            if (pGob->IsForcePushDistortion())
                 continue;
             if (pGob->m_pModel->m_nFlags & Model::kModelHeatDistortion)
                 continue;
@@ -661,11 +645,11 @@ void Scene::RenderShadows(int, int, int bStencilShadows, int bClearStencil)
     if (!nStencilBits)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapTexture2D);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glStencilMask(0xff);
-    ASLgl::glEnable(enableTranslationTable[kCapStencilTest]);
+    GLRender::Enable(Aurora::kCapStencilTest);
 
     if (bClearStencil)
         ASLgl::glClear(GL_STENCIL_BUFFER_BIT);
@@ -681,11 +665,10 @@ void Scene::RenderShadows(int, int, int bStencilShadows, int bClearStencil)
                 GLRender::SetUpSoftShadows();
 
             ASLgl::glStencilMask(0xff);
-            ASLgl::glEnable(enableTranslationTable[kCapStencilTest]);
-            if (!g_useDistortionOutput)
-                ASLgl::glDepthMask(0);
+            GLRender::Enable(Aurora::kCapStencilTest);
+            RenderInterface::SetDepthMask(0);
             ASLgl::glColorMask(0, 0, 0, 0);
-            ASLgl::glStencilFunc(cmpTranslationTable[kCmpAlways], 0xf, 0xf);
+            GLRender::SetStencilFunc(Aurora::kCmpAlways, 0xf, 0xf);
 
             unsigned int nNormalArray = clientStateTranslationTable[kArrayNormal];
             ASLgl::glDisableClientState(nNormalArray);
@@ -715,17 +698,16 @@ void Scene::RenderShadows(int, int, int bStencilShadows, int bClearStencil)
         }
     }
 
-    ASLgl::glEnableClientState(clientStateTranslationTable[kArrayNormal]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[kArrayTexCoord]);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
     if (LightManager::m_pOnlyGob)
-        ASLgl::glEnableClientState(clientStateTranslationTable[kArrayColor]);
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
+        GLRender::EnableClientState(Aurora::kClientStateColor);
+    RenderInterface::SetDepthMask(1);
 
-    ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-    ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
+    GLRender::Enable(Aurora::kCapTexture2D);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::Disable(Aurora::kCapStencilTest);
 }
 
 void Scene::DoGobShadows()
@@ -868,12 +850,10 @@ void Scene::RenderStencilShadowsForThisLight(PartLight& light, float fWeight, in
         pVertexArray[0].pos[2] = m_vSceneFocus.z;
     }
 
-    ASLgl::glStencilFunc(cmpTranslationTable[kCmpLEqual], 1 << (nStencilBits - 1), 0xffffffff);
-    ASLgl::glStencilOp(stencilOpTranslationTable[kStencilKeep],
-                       stencilOpTranslationTable[kStencilKeep],
-                       stencilOpTranslationTable[kStencilKeep]);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+    GLRender::SetStencilFunc(Aurora::kCmpLEqual, 1 << (nStencilBits - 1), 0xffffffff);
+    GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilKeep);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapBlend);
 
 #ifdef K2_QOL_SOFT_SHADOWS
     // The mask only when SetUpSoftShadows set one up (aurglcore.cpp, QolSoftShadowsSetUp).
@@ -883,10 +863,9 @@ void Scene::RenderStencilShadowsForThisLight(PartLight& light, float fWeight, in
         && (AurSoftShadowsAvailable() || AurATISoftShadowsAvailable())
         && GLRender::cm_bSetUpImageSpaceShadows)
 #endif
-        ASLgl::glBlendFunc(blendTranslationTable[kBlendOne], blendTranslationTable[kBlendZero]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     else
-        ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                           blendTranslationTable[kBlendInvSrcAlpha]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
     pVertexArray[0].color = static_cast<unsigned int>(fWeight * 0.5f * 255.0f) << 24;
 
@@ -900,7 +879,7 @@ void Scene::RenderStencilShadowsForThisLight(PartLight& light, float fWeight, in
     }
 
     GLRender::RenderObjectsVCUP(static_cast<Aurora::AuroraPrimitiveTypes>(5), pVertexArray, 11);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Enable(Aurora::kCapDepthTest);
 }
 
 void Scene::ListSpecialPartsR(Part* pPart)
@@ -1152,12 +1131,10 @@ void Scene::RenderDynamicGeometry()
     if (enableshadows)
     {
         int nClearValue = AurGetStencilClearValue();
-        ASLgl::glEnable(enableTranslationTable[kCapStencilTest]);
+        GLRender::Enable(Aurora::kCapStencilTest);
         ASLgl::glStencilMask(0xff);
-        ASLgl::glStencilFunc(cmpTranslationTable[kCmpAlways], nClearValue, 0xffffffff);
-        ASLgl::glStencilOp(stencilOpTranslationTable[kStencilKeep],
-                           stencilOpTranslationTable[kStencilKeep],
-                           stencilOpTranslationTable[kStencilReplace]);
+        GLRender::SetStencilFunc(Aurora::kCmpAlways, nClearValue, 0xffffffff);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilReplace);
     }
 
     AurVertexProgramMakeCurrent();
@@ -1216,51 +1193,28 @@ void Scene::RenderSinglePass()
 
         if (!preferPerfToVisual && AurNV2xLevelShadersAvailable())
         {
-            Quaternion q = CurrentCamera->m_qOrientation;
+            Matrix mat = CurrentCamera->m_qOrientation.getmatrix();
             Vector vCam = CurrentCamera->m_vPosition;
-            float w = q.w, x = q.x, y = q.y, z = q.z;
-
-            if (usearbvertexprograms)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 92,
-                    1.0f - ((y * y + z * z) + (y * y + z * z)),
-                    (y * x - z * w) + (y * x - z * w),
-                    (z * x + y * w) + (z * x + y * w), vCam.x);
-                if (usearbvertexprograms)
-                {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 91,
-                        (y * x + z * w) + (y * x + z * w),
-                        1.0f - ((z * z + x * x) + (z * z + x * x)),
-                        (y * z - x * w) + (y * z - x * w), vCam.y);
-                    if (usearbvertexprograms)
-                    {
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 90,
-                            (z * x - y * w) + (z * x - y * w),
-                            (y * z + x * w) + (y * z + x * w),
-                            1.0f - ((y * y + x * x) + (y * y + x * x)), vCam.z);
-                        if (usearbvertexprograms)
-                            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 89,
-                                                              0.0f, 0.0f, 0.0f, 1.0f);
-                    }
-                }
-            }
+            GLRender::SetVertexShaderConstant(92, mat.m_f[0], mat.m_f[3], mat.m_f[6], vCam.x);
+            GLRender::SetVertexShaderConstant(91, mat.m_f[1], mat.m_f[4], mat.m_f[7], vCam.y);
+            GLRender::SetVertexShaderConstant(90, mat.m_f[2], mat.m_f[5], mat.m_f[8], vCam.z);
+            GLRender::SetVertexShaderConstant(89, 0.0f, 0.0f, 0.0f, 1.0f);
         }
 
         DoFog();
 
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-        ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                           blendTranslationTable[kBlendInvSrcAlpha]);
-        ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
+        GLRender::Enable(Aurora::kCapBlend);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+        GLRender::Disable(Aurora::kCapStencilTest);
 
         unsigned int nColorArray = clientStateTranslationTable[kArrayColor];
         ASLgl::glDisableClientState(nColorArray);
-        ASLgl::glDisable(GL_COLOR_MATERIAL);
+        GLRender::DisableColorMaterial();
 
         if (!preferPerfToVisual)
         {
             Vector vZero;
-            ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, Homogenize(vZero, 1.0f));
+            GLRender::SetLightModel(Homogenize(vZero, 1.0f));
         }
 
         ASLgl::glDepthMask(1);
@@ -1272,9 +1226,9 @@ void Scene::RenderSinglePass()
         }
 
         if (!preferPerfToVisual)
-            ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, Homogenize(m_ambient, 1.0f));
+            GLRender::SetLightModel(Homogenize(m_ambient, 1.0f));
         ASLgl::glDisableClientState(nColorArray);
-        ASLgl::glDisable(GL_COLOR_MATERIAL);
+        GLRender::DisableColorMaterial();
 
         if (!preferPerfToVisual && enablerendertriggers)
         {
@@ -1338,8 +1292,8 @@ void Scene::RenderSinglePass()
             RenderLensFlares();
             if (m_pCurrentRoom)
             {
-                ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-                ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+                GLRender::Disable(Aurora::kCapDepthTest);
+                GLRender::Disable(Aurora::kCapLighting);
                 GLRender::FrameBufferModifications2(GLRender::kFBPassAllButForceDistortion);
             }
         }
@@ -1363,18 +1317,18 @@ void Scene::RenderSinglePass()
         ASLgl::glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     }
 
-    ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapFog]);
+    GLRender::Disable(Aurora::kCapStencilTest);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapFog);
 
-    ASLgl::glDisableClientState(clientStateTranslationTable[kArrayNormal]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[kArrayTexCoord]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[kArrayVertex]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[kArrayColor]);
-    ASLgl::glDisable(GL_COLOR_MATERIAL);
+    GLRender::DisableClientState(Aurora::kClientStateNormal);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::DisableClientState(Aurora::kClientStateVertex);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
+    GLRender::DisableColorMaterial();
 }
 #else
 void Scene::RenderSinglePass()
@@ -1388,52 +1342,28 @@ void Scene::RenderSinglePass()
 
     if (AurNV2xLevelShadersAvailable())
     {
-        Quaternion q = CurrentCamera->m_qOrientation;
+        Matrix mat = CurrentCamera->m_qOrientation.getmatrix();
         Vector vCam = CurrentCamera->m_vPosition;
-        float w = q.w, x = q.x, y = q.y, z = q.z;
-
-        if (usearbvertexprograms)
-        {
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 92,
-                1.0f - ((y * y + z * z) + (y * y + z * z)),
-                (y * x - z * w) + (y * x - z * w),
-                (z * x + y * w) + (z * x + y * w), vCam.x);
-            if (usearbvertexprograms)
-            {
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 91,
-                    (y * x + z * w) + (y * x + z * w),
-                    1.0f - ((z * z + x * x) + (z * z + x * x)),
-                    (y * z - x * w) + (y * z - x * w), vCam.y);
-                if (usearbvertexprograms)
-                {
-                    ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 90,
-                        (z * x - y * w) + (z * x - y * w),
-                        (y * z + x * w) + (y * z + x * w),
-                        1.0f - ((y * y + x * x) + (y * y + x * x)), vCam.z);
-                    if (usearbvertexprograms)
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 89,
-                                                          0.0f, 0.0f, 0.0f, 1.0f);
-                }
-            }
-        }
+        GLRender::SetVertexShaderConstant(92, mat.m_f[0], mat.m_f[3], mat.m_f[6], vCam.x);
+        GLRender::SetVertexShaderConstant(91, mat.m_f[1], mat.m_f[4], mat.m_f[7], vCam.y);
+        GLRender::SetVertexShaderConstant(90, mat.m_f[2], mat.m_f[5], mat.m_f[8], vCam.z);
+        GLRender::SetVertexShaderConstant(89, 0.0f, 0.0f, 0.0f, 1.0f);
     }
 
     DoFog();
 
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                       blendTranslationTable[kBlendInvSrcAlpha]);
-    ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+    GLRender::Disable(Aurora::kCapStencilTest);
 
     unsigned int nColorArray = clientStateTranslationTable[kArrayColor];
     ASLgl::glDisableClientState(nColorArray);
-    ASLgl::glDisable(GL_COLOR_MATERIAL);
+    GLRender::DisableColorMaterial();
 
     Vector vZero;
-    ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, Homogenize(vZero, 1.0f));
+    GLRender::SetLightModel(Homogenize(vZero, 1.0f));
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
+    RenderInterface::SetDepthMask(1);
 
     if (enablerenderstatic)
     {
@@ -1441,9 +1371,9 @@ void Scene::RenderSinglePass()
         GLRender::pfuncEnablePixelShaders(GLRender::kPSFixedFunction, 0, 0, 0, 0);
     }
 
-    ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, Homogenize(m_ambient, 1.0f));
+    GLRender::SetLightModel(Homogenize(m_ambient, 1.0f));
     ASLgl::glDisableClientState(nColorArray);
-    ASLgl::glDisable(GL_COLOR_MATERIAL);
+    GLRender::DisableColorMaterial();
 
     if (enablerendertriggers)
     {
@@ -1479,10 +1409,10 @@ void Scene::RenderSinglePass()
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialAmbient], vWhite);
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialDiffuse], vWhite);
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialEmission], vBlack);
-        ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, Homogenize(vZero, 1.0f));
+        GLRender::SetLightModel(Homogenize(vZero, 1.0f));
         ASLgl::glDisableClientState(nColorArray);
-        ASLgl::glDisable(GL_COLOR_MATERIAL);
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+        GLRender::DisableColorMaterial();
+        GLRender::Enable(Aurora::kCapBlend);
         PartTriMesh::m_bMaterialHasChanged = true;
 
         for (int i = 0; i < s_listLateAdditiveMeshes.m_count; i++)
@@ -1496,9 +1426,8 @@ void Scene::RenderSinglePass()
         s_listLateAdditiveMeshes.m_count = 0;
 
         GLRender::pfuncEnablePixelShaders(GLRender::kPSFixedFunction, 0, 0, 0, 0);
-        ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, Homogenize(m_ambient, 1.0f));
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(1);
+        GLRender::SetLightModel(Homogenize(m_ambient, 1.0f));
+        RenderInterface::SetDepthMask(1);
         PartTriMesh::m_bMaterialHasChanged = true;
     }
 #endif
@@ -1526,31 +1455,31 @@ void Scene::RenderSinglePass()
     GLRender::SetFilmNoiseTexture(m_pFilmNoiseTexture);
     GLRender::cm_pForceDistortionTexture = m_pDistortionTexture;
     GLRender::m_pDreamDistortTexture = m_pLensFlareTexture;
-    ASLgl::glAlphaFunc(cmpTranslationTable[kCmpGreater], 0.0f);
+    GLRender::SetAlphaFunc(Aurora::kCmpGreater, 0.0f);
 
     RenderLensFlares();
 
     if (m_pCurrentRoom)
     {
-        ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-        ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+        GLRender::Disable(Aurora::kCapDepthTest);
+        GLRender::Disable(Aurora::kCapLighting);
         GLRender::FrameBufferModifications2(GLRender::kFBPassAllButForceDistortion);
     }
 
     FrameBufferModificationsEndIos(m_pCurrentRoom != 0);
 
-    ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapFog]);
+    GLRender::Disable(Aurora::kCapStencilTest);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapFog);
 
-    ASLgl::glDisableClientState(clientStateTranslationTable[kArrayNormal]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[kArrayTexCoord]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[kArrayVertex]);
+    GLRender::DisableClientState(Aurora::kClientStateNormal);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::DisableClientState(Aurora::kClientStateVertex);
     ASLgl::glDisableClientState(nColorArray);
-    ASLgl::glDisable(GL_COLOR_MATERIAL);
+    GLRender::DisableColorMaterial();
 }
 #endif
 
@@ -1579,7 +1508,7 @@ void Scene::RenderStaticGeometry()
 void Scene::RenderOnlyGobs()
 {
     m_pLightManager->EnableLights();
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
     AurVertexProgramMakeCurrent();
 
     for (int i = 0; i < Objects().m_count; i++)
@@ -1591,25 +1520,22 @@ void Scene::RenderOnlyGobs()
 
 void Scene::RenderMotionBlur()
 {
-    ASLgl::glEnableClientState(clientStateTranslationTable[kArrayTexCoord]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[kArrayVertex]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[kArrayNormal]);
-    ASLgl::glEnableClientState(clientStateTranslationTable[kArrayColor]);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+    GLRender::EnableClientState(Aurora::kClientStateVertex);
+    GLRender::EnableClientState(Aurora::kClientStateNormal);
+    GLRender::EnableClientState(Aurora::kClientStateColor);
 
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Enable(Aurora::kCapDepthTest);
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
+    RenderInterface::SetDepthMask(0);
 
-    ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                       blendTranslationTable[kBlendInvSrcAlpha]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+    GLRender::Enable(Aurora::kCapLighting);
 
     DoBlurBuckets();
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
+    RenderInterface::SetDepthMask(1);
 }
 
 #if !KOTOR1  // K2 only
@@ -1646,7 +1572,7 @@ void Scene::DoHologramGobBuckets()
             continue;
 
         if (rendertransparentcharacters && pGob->m_pModel && (pGob->m_pModel->m_nFlags & Model::kModelCharacter))
-            ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
+            GLRender::Disable(Aurora::kCapDepthTest);
 
         vPos = pGob->m_vPosition;
 
@@ -1677,15 +1603,14 @@ void Scene::DoHologramGobBuckets()
         if (showlightpriorityinfo && !_strnicmp(pGob->m_szName, "c_focusgob", 10))
             m_pLightManager->DebugPrintLightInfo(3, pGob->m_vPosition);
 
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-        ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                           blendTranslationTable[kBlendInvSrcAlpha]);
+        GLRender::Enable(Aurora::kCapBlend);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
         if (dogobrender)
             pGob->Render(false);
 
         if (rendertransparentcharacters && (pGob->m_pModel->m_nFlags & Model::kModelCharacter))
-            ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+            GLRender::Enable(Aurora::kCapDepthTest);
     }
 }
 #endif  // !KOTOR1
@@ -1707,7 +1632,7 @@ void Scene::DoBlurBuckets()
 
 void Scene::DoLightSaberBucket()
 {
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+    GLRender::Enable(Aurora::kCapBlend);
 
     for (int i = 0; i < g_listLightsaberBucket.m_count; i++)
     {
@@ -1802,7 +1727,7 @@ void Scene::DoGobBuckets()
             continue;
 
         if (rendertransparentcharacters && pGob->m_pModel && (pGob->m_pModel->m_nFlags & Model::kModelCharacter))
-            ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
+            GLRender::Disable(Aurora::kCapDepthTest);
 
         vPos = pGob->m_vPosition;
 
@@ -1834,15 +1759,14 @@ void Scene::DoGobBuckets()
         if (showlightpriorityinfo && !_strnicmp(pGob->m_szName, "c_focusgob", 10))
             m_pLightManager->DebugPrintLightInfo(3, pGob->m_vPosition);
 
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-        ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                           blendTranslationTable[kBlendInvSrcAlpha]);
+        GLRender::Enable(Aurora::kCapBlend);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
         if (dogobrender)
             pGob->Render(false);
 
         if (rendertransparentcharacters && (pGob->m_pModel->m_nFlags & Model::kModelCharacter))
-            ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+            GLRender::Enable(Aurora::kCapDepthTest);
     }
 
     if (interleaveanimations && g_bEnableInterleavedAnimations)
@@ -1902,7 +1826,7 @@ void Scene::DoGobBuckets()
                 continue;
 
             if (rendertransparentcharacters && pGob->m_pModel && (pGob->m_pModel->m_nFlags & Model::kModelCharacter))
-                ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
+                GLRender::Disable(Aurora::kCapDepthTest);
 
             vPos = pGob->m_vPosition;
 
@@ -1934,15 +1858,14 @@ void Scene::DoGobBuckets()
             if (showlightpriorityinfo && !_strnicmp(pGob->m_szName, "c_focusgob", 10))
                 m_pLightManager->DebugPrintLightInfo(3, pGob->m_vPosition);
 
-            ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-            ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                               blendTranslationTable[kBlendInvSrcAlpha]);
+            GLRender::Enable(Aurora::kCapBlend);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
             if (dogobrender && pGob->IsRenderingEnabled())
                 pGob->Render(false);
 
             if (rendertransparentcharacters && (pGob->m_pModel->m_nFlags & Model::kModelCharacter))
-                ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+                GLRender::Enable(Aurora::kCapDepthTest);
         }
     }
 
@@ -1968,20 +1891,18 @@ void Scene::DoDistortionBuckets()
 #ifdef K2_QOL_K1_DISTORTION
     g_bK1ForceDistortion = g_listForcePushBucket.m_count > 0;
 #endif
-    ASLgl::glEnable(enableTranslationTable[kCapStencilTest]);
+    GLRender::Enable(Aurora::kCapStencilTest);
     ASLgl::glColorMask(0, 0, 0, 0);
-    ASLgl::glStencilOp(stencilOpTranslationTable[kStencilKeep],
-                       stencilOpTranslationTable[kStencilKeep],
-                       stencilOpTranslationTable[kStencilReplace]);
+    GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilReplace);
     ASLgl::glStencilMask(1);
-    ASLgl::glStencilFunc(cmpTranslationTable[kCmpAlways], 1, 0xff);
+    GLRender::SetStencilFunc(Aurora::kCmpAlways, 1, 0xff);
 
     for (int i = 0; i < g_listForcePushBucket.m_count; i++)
         g_listForcePushBucket.m_pData[i]->Render(false);
 
     ASLgl::glColorMask(1, 1, 1, 1);
     ASLgl::glStencilMask(0xff);
-    ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
+    GLRender::Disable(Aurora::kCapStencilTest);
 }
 #else
 void Scene::DoDistortionBuckets()
@@ -1992,8 +1913,7 @@ void Scene::DoDistortionBuckets()
     g_bDistortBufferUsed = 1;
     IosSetDistortBuffer(true);
 
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(0);
+    RenderInterface::SetDepthMask(0);
     g_useDistortionOutput = true;
 
     for (int i = 0; i < g_listForcePushBucket.m_count; i++)
@@ -2010,9 +1930,9 @@ void Scene::DoTriggerBucket()
     if (!enablerender)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapTexture2D);
+    GLRender::Disable(Aurora::kCapLighting);
 
     for (int i = 0; i < triggerbucket.m_count; i++)
     {
@@ -2020,9 +1940,9 @@ void Scene::DoTriggerBucket()
             triggerbucket.m_pData[i]->Draw(false);
     }
 
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Enable(Aurora::kCapTexture2D);
+    GLRender::Enable(Aurora::kCapLighting);
 }
 
 static Vector ViewVolumeNormal(int nIndex)
@@ -2045,10 +1965,10 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
     if (!enablerender)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
+    GLRender::Disable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapTexture2D);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Disable(Aurora::kCapAlphaTest);
 
     for (int i = 0; i < triggerbucket.m_count; i++)
     {
@@ -2063,16 +1983,15 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
     {
         SetShadowStencilBuffer();
         ASLgl::glStencilMask(0xff);
-        ASLgl::glEnable(enableTranslationTable[kCapStencilTest]);
+        GLRender::Enable(Aurora::kCapStencilTest);
 
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(0);
+        RenderInterface::SetDepthMask(0);
 
         ASLgl::glColorMask(0, 0, 0, 0);
-        ASLgl::glStencilFunc(cmpTranslationTable[kCmpAlways], 0xf, 0xf);
+        GLRender::SetStencilFunc(Aurora::kCmpAlways, 0xf, 0xf);
         unsigned int nStencilKeep = stencilOpTranslationTable[kStencilKeep];
         ASLgl::glStencilOp(nStencilKeep, stencilOpTranslationTable[kStencilIncr], nStencilKeep);
-        ASLgl::glFrontFace(cullTranslationTable[kFaceCW]);
+        GLRender::SetFrontFace(Aurora::kCullCW);
         highlights.m_pData[i]->DrawVolume();
 
         ASLgl::glStencilOp(nStencilKeep, stencilOpTranslationTable[kStencilDecr], nStencilKeep);
@@ -2093,10 +2012,9 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
         ASLgl::glTranslatef(CurrentCamera->m_vPosition.x,
                             CurrentCamera->m_vPosition.y,
                             CurrentCamera->m_vPosition.z);
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-        ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                           blendTranslationTable[kBlendInvSrcAlpha]);
-        ASLgl::glStencilFunc(cmpTranslationTable[kCmpLEqual], 1 << (nStencilBits - 1), 0xffffffff);
+        GLRender::Enable(Aurora::kCapBlend);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+        GLRender::SetStencilFunc(Aurora::kCmpLEqual, 1 << (nStencilBits - 1), 0xffffffff);
         ASLgl::glStencilOp(nStencilKeep, nStencilKeep, nStencilKeep);
 
         PartTrigger* pTrigger = highlights.m_pData[i];
@@ -2112,22 +2030,21 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
             ASLgl::glColor4fv(pTrigger->m_color);
         }
 
-        ASLgl::glBegin(primTypeTranslationTable[kPrimQuads]);
+        GLRender::BeginImmediatePrimitive(Aurora::kPrimQuads);
         for (int j = 0; j < corners.m_count; j++)
             ASLgl::glVertex3fv(reinterpret_cast<const float*>(&corners.m_pData[j]));
         ASLgl::glEnd();
 
         ASLgl::glPopMatrix();
-        ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
+        GLRender::Disable(Aurora::kCapStencilTest);
 
-        if (!g_useDistortionOutput)
-            ASLgl::glDepthMask(1);
+        RenderInterface::SetDepthMask(1);
     }
 
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::Enable(Aurora::kCapTexture2D);
+    GLRender::Enable(Aurora::kCapLighting);
 }
 
 template <class T> static inline const T& min(const T& a, const T& b) { return b < a ? b : a; }
@@ -2164,14 +2081,14 @@ void Scene::RenderLensFlares()
         static_cast<Aurora::AuroraBufferRequestType>(0), 4 * sizeof(RenderVertexVTC), 0x42, 0x1011,
         &renderListToken);
 
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glBlendFunc(blendTranslationTable[kBlendOne], blendTranslationTable[kBlendOne]);
-    ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
+    GLRender::Enable(Aurora::kCapTexture2D);
 
     if (m_bFogEnabled)
-        ASLgl::glDisable(enableTranslationTable[kCapFog]);
+        GLRender::Disable(Aurora::kCapFog);
 
     unsigned int nProjectionMode = transformTranslationTable[kMatrixProjection];
     ASLgl::glMatrixMode(nProjectionMode);
@@ -2310,13 +2227,12 @@ void Scene::RenderLensFlares()
         GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
 #endif
 
-    ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                       blendTranslationTable[kBlendInvSrcAlpha]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapLighting);
 
     if (m_bFogEnabled)
-        ASLgl::glEnable(enableTranslationTable[kCapFog]);
+        GLRender::Enable(Aurora::kCapFog);
 
     ASLgl::glMatrixMode(nModelViewMode);
     ASLgl::glPopMatrix();
@@ -2328,8 +2244,8 @@ void Scene::RenderFogOfWarBoxes()
 {
     if (m_fogOfWarRooms.m_count)
     {
-        ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-        ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
+        GLRender::Disable(Aurora::kCapLighting);
+        GLRender::Disable(Aurora::kCapTexture2D);
 
         for (int i = 0; i < m_fogOfWarRooms.m_count; i++)
             GLRender::RenderBox(m_fogOfWarRooms.m_pData[i]->m_bboxMin,
@@ -2338,8 +2254,8 @@ void Scene::RenderFogOfWarBoxes()
 
     if (m_fogOfWarRooms.m_count)
     {
-        ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-        ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+        GLRender::Enable(Aurora::kCapLighting);
+        GLRender::Enable(Aurora::kCapTexture2D);
     }
 }
 
@@ -2352,7 +2268,7 @@ void Scene::DoFog()
     if (forcefogtest)
     {
         m_bFogEnabled = 1;
-        ASLgl::glEnable(enableTranslationTable[kCapFog]);
+        GLRender::Enable(Aurora::kCapFog);
         ASLgl::glFogi(GL_FOG_MODE, fogModeTranslationTable[
             m_nFogMode == 0 ? kFogLinear : (m_nFogMode == 1 ? kFogExp : kFogExp2)]);
 
@@ -2360,17 +2276,17 @@ void Scene::DoFog()
         vRed.x = 1.0f;
         vRed.y = 0.0f;
         vRed.z = 0.0f;
-        ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &vRed.x);
+        GLRender::SetFogModev(Aurora::kCapFogColor, vRed);
         m_vFogColor.x = 1.0f;
         m_vFogColor.y = 0.0f;
         m_vFogColor.z = 0.0f;
 
-        ASLgl::glFogf(enableTranslationTable[kCapFogStart], 0.1f);
+        GLRender::SetFogModef(Aurora::kCapFogStart, 0.1f);
         m_fFogStart = 0.0f;
         m_fFogEnd = 20.0f;
         m_fFogDensity = 0.1f;
-        ASLgl::glFogf(enableTranslationTable[kCapFogEnd], 20.0f);
-        ASLgl::glFogf(enableTranslationTable[kCapFogDensity], 0.1f);
+        GLRender::SetFogModef(Aurora::kCapFogEnd, 20.0f);
+        GLRender::SetFogModef(Aurora::kCapFogDensity, 0.1f);
         return;
     }
 
@@ -2454,11 +2370,11 @@ void Scene::DoFog()
 
     if (!m_bFogEnabled)
     {
-        ASLgl::glDisable(enableTranslationTable[kCapFog]);
+        GLRender::Disable(Aurora::kCapFog);
         return;
     }
 
-    ASLgl::glEnable(enableTranslationTable[kCapFog]);
+    GLRender::Enable(Aurora::kCapFog);
     ASLgl::glFogi(GL_FOG_MODE, fogModeTranslationTable[
         m_nFogMode == 0 ? kFogLinear : (m_nFogMode == 1 ? kFogExp : kFogExp2)]);
 
@@ -2466,21 +2382,21 @@ void Scene::DoFog()
     {
 // The blind-lights pass fogs everything to black rather than to the scene colour.
         Vector vBlack = { 0.0f, 0.0f, 0.0f };
-        ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &vBlack.x);
+        GLRender::SetFogModev(Aurora::kCapFogColor, vBlack);
     }
 #if !KOTOR1
     else if (g_ForceSight)
-        ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &m_vFogColorGrey.x);
+        GLRender::SetFogModev(Aurora::kCapFogColor, m_vFogColorGrey);
 #endif
     else
-        ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &m_vFogColor.x);
+        GLRender::SetFogModev(Aurora::kCapFogColor, m_vFogColor);
 
     float fStart = m_fFogStart;
-    ASLgl::glFogf(enableTranslationTable[kCapFogStart], fStart);
+    GLRender::SetFogModef(Aurora::kCapFogStart, fStart);
     float fEnd = m_fFogEnd;
-    ASLgl::glFogf(enableTranslationTable[kCapFogEnd], fEnd);
+    GLRender::SetFogModef(Aurora::kCapFogEnd, fEnd);
     float fDensity = m_fFogDensity;
-    ASLgl::glFogf(enableTranslationTable[kCapFogDensity], fDensity);
+    GLRender::SetFogModef(Aurora::kCapFogDensity, fDensity);
 }
 
 void Scene::UnlistSpecialParts(Part* pPart)
@@ -2816,7 +2732,7 @@ void Scene::DoMeshBuckets()
             tileList.Add(pTile);
     }
 
-    ASLgl::glEnableClientState(clientStateTranslationTable[kArrayTexCoord]);
+    GLRender::EnableClientState(Aurora::kClientStateTexCoord);
 
     for (int i = 0; i < tileList.m_count; i++)
     {
@@ -2867,19 +2783,17 @@ void Scene::DoBinBucket()
         return;
 
 #if !KOTOR1  // K1 blends only
-    ASLgl::glIsEnabled(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
+    GLRender::IsEnabled(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapAlphaTest);
 #endif
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                       blendTranslationTable[kBlendInvSrcAlpha]);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
 #if !KOTOR1
-    if (!g_useDistortionOutput)
-        ASLgl::glDepthMask(1);
+    RenderInterface::SetDepthMask(1);
 #endif
 
-    ASLgl::glDisable(enableTranslationTable[kCapCullFace]);
+    GLRender::Disable(Aurora::kCapCullFace);
 
     if (AurMultiTextureAvailable())
         ASLgl::glClientActiveTextureARB(GL_TEXTURE0_ARB);
@@ -2911,7 +2825,7 @@ void Scene::DoBinBucket()
 
     ASLgl::glAlphaFunc(nGreater, alphatest);
     PartTriMesh::m_bMaterialHasChanged = true;
-    ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
+    GLRender::Enable(Aurora::kCapCullFace);
 }
 
 void Scene::DoFadeBuckets()
@@ -2924,19 +2838,19 @@ void Scene::DoFadeBuckets()
         m_pLightManager->EnableLightsDynamicOnly();
 
 #if KOTOR1  // K1 has no glColorMaterial; materials go to GL_FRONT_AND_BACK
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+        GLRender::Enable(Aurora::kCapBlend);
         unsigned int nFace = GL_FRONT_AND_BACK;
-        ASLgl::glEnable(GL_COLOR_MATERIAL);
+        GLRender::EnableColorMaterial();
 #else
-        ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+        GLRender::Enable(Aurora::kCapBlend);
         unsigned int nFace = facingTranslationTable[kFaceFront];
         ASLgl::glColorMaterial(nFace, colorTrackingTranslationTable[kColorTrackingEmission]);
-        ASLgl::glEnable(GL_COLOR_MATERIAL);
+        GLRender::EnableColorMaterial();
 #endif
 
         Gob* pOnlyGob = LightManager::m_pOnlyGob;
         if (pOnlyGob)
-            ASLgl::glEnableClientState(clientStateTranslationTable[kArrayColor]);
+            GLRender::EnableClientState(Aurora::kClientStateColor);
 
         float vWhite[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
         float vBlack[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -2967,26 +2881,26 @@ void Scene::DoFadeBuckets()
 
                     if (pPart->m_pTileData != 0 && pPart->m_pTileData->m_fFade < 1.0f)
                     {
-                        ASLgl::glEnable(enableTranslationTable[kCapFog]);
+                        GLRender::Enable(Aurora::kCapFog);
 
                         float fFade = pPart->m_pTileData->m_fFade * pPart->m_pTileData->m_fFade;
                         Vector vSceneFog = m_vFogColor;
                         Vector vFogColor = { vSceneFog.x * fFade, vSceneFog.y * fFade,
                                              fFade * vSceneFog.z };
-                        ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &vFogColor.x);
-                        ASLgl::glFogf(enableTranslationTable[kCapFogDensity], m_fFogDensity * 2.0f);
-                        ASLgl::glFogf(enableTranslationTable[kCapFogStart],
+                        GLRender::SetFogModev(Aurora::kCapFogColor, vFogColor);
+                        GLRender::SetFogModef(Aurora::kCapFogDensity, m_fFogDensity * 2.0f);
+                        GLRender::SetFogModef(Aurora::kCapFogStart,
                                       pPart->m_pTileData->m_fFade * m_fFogStart);
-                        ASLgl::glFogf(enableTranslationTable[kCapFogEnd],
+                        GLRender::SetFogModef(Aurora::kCapFogEnd,
                                       pPart->m_pTileData->m_fFade * m_fFogEnd + 0.1f);
                         pPart->Draw(false);
 
                         if (!m_bFogEnabled)
-                            ASLgl::glDisable(enableTranslationTable[kCapFog]);
-                        ASLgl::glFogf(enableTranslationTable[kCapFogDensity], m_fFogDensity);
-                        ASLgl::glFogf(enableTranslationTable[kCapFogStart], m_fFogStart);
-                        ASLgl::glFogf(enableTranslationTable[kCapFogEnd], m_fFogEnd);
-                        ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &m_vFogColor.x);
+                            GLRender::Disable(Aurora::kCapFog);
+                        GLRender::SetFogModef(Aurora::kCapFogDensity, m_fFogDensity);
+                        GLRender::SetFogModef(Aurora::kCapFogStart, m_fFogStart);
+                        GLRender::SetFogModef(Aurora::kCapFogEnd, m_fFogEnd);
+                        GLRender::SetFogModev(Aurora::kCapFogColor, m_vFogColor);
                     }
                     else
                     {
@@ -3016,26 +2930,26 @@ void Scene::DoFadeBuckets()
 
                 if (pPart->m_pTileData != 0 && pPart->m_pTileData->m_fFade < 1.0f)
                 {
-                    ASLgl::glEnable(enableTranslationTable[kCapFog]);
+                    GLRender::Enable(Aurora::kCapFog);
 
                     float fFade = pPart->m_pTileData->m_fFade * pPart->m_pTileData->m_fFade;
                     Vector vSceneFog = m_vFogColor;
                     Vector vFogColor = { vSceneFog.x * fFade, vSceneFog.y * fFade,
                                          fFade * vSceneFog.z };
-                    ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &vFogColor.x);
-                    ASLgl::glFogf(enableTranslationTable[kCapFogDensity], m_fFogDensity * 2.0f);
-                    ASLgl::glFogf(enableTranslationTable[kCapFogStart],
+                    GLRender::SetFogModev(Aurora::kCapFogColor, vFogColor);
+                    GLRender::SetFogModef(Aurora::kCapFogDensity, m_fFogDensity * 2.0f);
+                    GLRender::SetFogModef(Aurora::kCapFogStart,
                                   pPart->m_pTileData->m_fFade * m_fFogStart);
-                    ASLgl::glFogf(enableTranslationTable[kCapFogEnd],
+                    GLRender::SetFogModef(Aurora::kCapFogEnd,
                                   pPart->m_pTileData->m_fFade * m_fFogEnd + 0.1f);
                     pPart->Draw(false);
 
                     if (!m_bFogEnabled)
-                        ASLgl::glDisable(enableTranslationTable[kCapFog]);
-                    ASLgl::glFogf(enableTranslationTable[kCapFogDensity], m_fFogDensity);
-                    ASLgl::glFogf(enableTranslationTable[kCapFogStart], m_fFogStart);
-                    ASLgl::glFogf(enableTranslationTable[kCapFogEnd], m_fFogEnd);
-                    ASLgl::glFogfv(enableTranslationTable[kCapFogColor], &m_vFogColor.x);
+                        GLRender::Disable(Aurora::kCapFog);
+                    GLRender::SetFogModef(Aurora::kCapFogDensity, m_fFogDensity);
+                    GLRender::SetFogModef(Aurora::kCapFogStart, m_fFogStart);
+                    GLRender::SetFogModef(Aurora::kCapFogEnd, m_fFogEnd);
+                    GLRender::SetFogModev(Aurora::kCapFogColor, m_vFogColor);
                 }
                 else
                 {
@@ -3058,9 +2972,9 @@ void Scene::DoFadeBuckets()
         }
     }
 
-    ASLgl::glDisableClientState(clientStateTranslationTable[kArrayColor]);
-    ASLgl::glDisable(GL_COLOR_MATERIAL);
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
+    GLRender::DisableColorMaterial();
+    GLRender::Disable(Aurora::kCapBlend);
 }
 
 void Scene::DoEmitterBucket()
@@ -3078,8 +2992,8 @@ void Scene::DoEmitterBucket()
 
     if (!g_RenderSkip)
     {
-        ASLgl::glEnable(enableTranslationTable[kCapStencilTest]);
-        ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
+        GLRender::Enable(Aurora::kCapStencilTest);
+        GLRender::Disable(Aurora::kCapStencilTest);
         PartEmitter::StartEmitterLayer();
     }
 
@@ -3111,8 +3025,8 @@ void Scene::DoEmitterBucket()
     if (!enableemitters)
         return;
 
-    ASLgl::glEnable(enableTranslationTable[kCapStencilTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapStencilTest]);
+    GLRender::Enable(Aurora::kCapStencilTest);
+    GLRender::Disable(Aurora::kCapStencilTest);
 
     PartEmitter::StartEmitterLayer();
 
@@ -3226,19 +3140,19 @@ void Scene::Render()
         ManageSceneBSP(this);
 
         ASLgl::glPushAttrib(GL_FOG_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
-        ASLgl::glDepthFunc(cmpTranslationTable[kCmpLEqual]);
+        GLRender::SetDepthFunc(Aurora::kCmpLEqual);
 #if KOTOR1  // K1 also resets depth test, blend, lighting and texturing
-        ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-        ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-        ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-        ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
+        GLRender::Enable(Aurora::kCapDepthTest);
+        GLRender::Disable(Aurora::kCapBlend);
+        GLRender::Enable(Aurora::kCapLighting);
+        GLRender::Enable(Aurora::kCapTexture2D);
 #endif
-        ASLgl::glEnableClientState(clientStateTranslationTable[kArrayNormal]);
-        ASLgl::glEnableClientState(clientStateTranslationTable[kArrayTexCoord]);
-        ASLgl::glEnableClientState(clientStateTranslationTable[kArrayVertex]);
-        ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-        ASLgl::glAlphaFunc(cmpTranslationTable[kCmpGreater], alphatest);
-        ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+        GLRender::EnableClientState(Aurora::kClientStateNormal);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+        GLRender::EnableClientState(Aurora::kClientStateVertex);
+        GLRender::Enable(Aurora::kCapAlphaTest);
+        GLRender::SetAlphaFunc(Aurora::kCmpGreater, alphatest);
+        GLRender::Enable(Aurora::kCapLighting);
 
 #if KOTOR1 && defined(K2_QOL_K1_ANTIALIAS)
         // Only a scene with a current room is drawn into the anti-aliasing pbuffer
@@ -3362,7 +3276,7 @@ void RenderPersonalSpace(Scene* pScene)
         return;
 #endif
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Disable(Aurora::kCapDepthTest);
     for (int i = 0; i < pScene->Objects().m_count; i++)
     {
         Gob* pGob = pScene->Objects().m_pData[i];
@@ -3382,7 +3296,7 @@ void RenderPersonalSpace(Scene* pScene)
             ASLgl::glPopMatrix();
         }
     }
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Enable(Aurora::kCapDepthTest);
 }
 
 void InitGrassBins(Vector vMin, Vector vMax, List<List<CAurTriangleBin*> >& bins)
@@ -3536,9 +3450,9 @@ void RenderPaths(Scene* pScene)
     if (renderpaths == 0)
         return;
 
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
-    ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Disable(Aurora::kCapTexture2D);
     ASLgl::glColor3f(0.6f, 1.0f, 1.0f);
 
     for (int i = 0; i < pScene->Objects().m_count; i++)
@@ -3554,9 +3468,9 @@ void RenderPaths(Scene* pScene)
         ASLgl::glEnd();
     }
 
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-    ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapTexture2D);
+    GLRender::Enable(Aurora::kCapDepthTest);
 }
 
 void RenderDrawableSquares()

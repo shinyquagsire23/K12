@@ -28,6 +28,7 @@ extern CTlkTable* g_pTlkTable;
 
 #include "port/libcstring.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // The good-evil bands of the good/evil token: below the first is the third string, above the
 // second the first.
@@ -299,11 +300,10 @@ void CSWTlkTable::GetTokenValue(const CTlkTableToken& pToken, CExoString& sValue
 
     // Trim the spaces a token substitution can leave at either end.
 #if !KOTOR1
-    while (sValue.m_sString != 0 && static_cast<int>(strlen(sValue.m_sString)) >= 1 && sValue[0] == ' ')
-        sValue = sValue.Right(static_cast<int>(strlen(sValue.m_sString)) - 1);
-    while (sValue.m_sString != 0 && static_cast<int>(strlen(sValue.m_sString)) >= 1 &&
-           sValue[static_cast<int>(strlen(sValue.m_sString)) - 1] == ' ')
-        sValue = sValue.Left(static_cast<int>(strlen(sValue.m_sString)) - 1);
+    while (sValue.GetLength() >= 1 && sValue[0] == ' ')
+        sValue = sValue.Right(sValue.GetLength() - 1);
+    while (sValue.GetLength() >= 1 && sValue[sValue.GetLength() - 1] == ' ')
+        sValue = sValue.Left(sValue.GetLength() - 1);
 #endif
 
     return;

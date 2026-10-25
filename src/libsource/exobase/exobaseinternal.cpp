@@ -513,7 +513,7 @@ int CExoBaseInternal::GetDirectoryList(CExoArrayList<CExoString>* pOut, const CE
         sExtension = "*";
 
     sPath = g_pExoBase->m_pAliasList->ResolveFileName(sDir, RESTYPE_INVALID);
-    if (sPath[(sPath.m_sString ? static_cast<int>(strlen(sPath.m_sString)) : 0) - 1] == '\\')
+    if (sPath[sPath.GetLength() - 1] == '\\')
         sPath.Format(const_cast<char*>("%s*.%s"), sPath.CStr(), sExtension.CStr());
     else
         sPath.Format(const_cast<char*>("%s\\*.%s"), sPath.CStr(), sExtension.CStr());

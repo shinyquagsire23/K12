@@ -2228,7 +2228,7 @@ void CSWGuiListBox::HandleLMouseDown()
 
     // Where the drag starts from. A box whose tallest row does not fit scrolls a whole box at a
     // time (m_nOversizedStep); everything else scrolls by the bar's own value.
-    if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0 && !bUnequalRows)
+    if (IsOversized())
         m_nDragStartScroll = m_nOversizedStep;
     else
         m_nDragStartScroll = m_scrollBar.m_nCurValue;
@@ -2366,17 +2366,17 @@ int CSWGuiListBox::HandleMouseCapturedMovement(int a, int b)
     int nThumbHeight = m_scrollBar.m_imageThumb.m_extent.h;
     int nTrackLength = m_scrollBar.m_border.GetInnerExtent().h - nThumbHeight;
 
-    if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0 && !bUnequalRows)
+    if (IsOversized())
     {
         // A row taller than the box scrolls a whole box at a time, via m_nOversizedStep.
         m_nOversizedStep = static_cast<short>(static_cast<int>(static_cast<float>(nDeltaY) / static_cast<float>(nTrackLength)
-                                 * (GetOversizedStepCount() - 1) + m_nDragStartScroll + 0.5f));
+                                 * (GetNumSegments() - 1) + m_nDragStartScroll + 0.5f));
         if (m_nOversizedStep < 1)
             m_nOversizedStep = 1;
-        m_nOversizedStep = static_cast<short>((m_nOversizedStep > GetOversizedStepCount())
-                         ? GetOversizedStepCount() : m_nOversizedStep);
+        m_nOversizedStep = static_cast<short>((m_nOversizedStep > GetNumSegments())
+                         ? GetNumSegments() : m_nOversizedStep);
         OrganizeOversized();
-        AurPrintf("pos %d/%d, dY %d (%d-%d)", m_nOversizedStep, GetOversizedStepCount(), nDeltaY,
+        AurPrintf("pos %d/%d, dY %d (%d-%d)", m_nOversizedStep, GetNumSegments(), nDeltaY,
                   nMouseY, m_nDragStartY);
     }
     else
@@ -2417,7 +2417,7 @@ void CSWGuiListBox::Draw(float fDelta)
     if (AurGUISetupViewport(m_innerExtent.x, m_innerExtent.y, m_innerExtent.w, m_innerExtent.h,
                             m_vColor, false, 1.0f))
     {
-        if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0 && !bUnequalRows)
+        if (IsOversized())
         {
             m_aControls.m_pArray[0]->Draw(fDelta);
         }
@@ -2514,17 +2514,7 @@ void CSWGuiListBox::AddControls(CExoArrayList<CSWGuiControl*>& aControls, int bO
             pControl->m_bCenterOnNativeRect = m_bCenterOnNativeRect;
 #endif
 
-            int nFound = -1;
-            for (int64_t j = 0; j < m_aControls.m_count; j++)
-            {
-                if (m_aControls.m_pArray[j] == pControl)
-                {
-                    nFound = static_cast<int>(j);
-                    break;
-                }
-            }
-
-            if (nFound == -1)
+            if (m_aControls.IndexOf(pControl) == -1)
             {
                 pControl->m_pContainer = this;
                 pControl->m_tail.nControlId = nId++;
@@ -2555,17 +2545,7 @@ void CSWGuiListBox::AddControls(CSWGuiControl** ppControls, int nCount, int bOwn
     {
         CSWGuiControl* pControl = ppControls[i];
 
-        int nFound = -1;
-        for (int64_t j = 0; j < m_aControls.m_count; j++)
-        {
-            if (m_aControls.m_pArray[j] == pControl)
-            {
-                nFound = static_cast<int>(j);
-                break;
-            }
-        }
-
-        if (nFound == -1)
+        if (m_aControls.IndexOf(pControl) == -1)
         {
             pControl->m_pContainer = this;
             pControl->m_tail.nControlId = nId++;
@@ -2608,8 +2588,7 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
                     bMoved = 1;
                 }
             }
-            else if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0
-                     && !bUnequalRows)
+            else if (IsOversized())
             {
                 int nOldStep = m_nOversizedStep;
                 bMoved = (nOldStep != 1);
@@ -2655,12 +2634,11 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
                     bMoved = 1;
                 }
             }
-            else if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0
-                     && !bUnequalRows)
+            else if (IsOversized())
             {
-                bMoved = (m_nOversizedStep != GetOversizedStepCount());
-                m_nOversizedStep = static_cast<short>((GetOversizedStepCount() >= m_nOversizedStep + 1)
-                                 ? m_nOversizedStep + 1 : GetOversizedStepCount());
+                bMoved = (m_nOversizedStep != GetNumSegments());
+                m_nOversizedStep = static_cast<short>((GetNumSegments() >= m_nOversizedStep + 1)
+                                 ? m_nOversizedStep + 1 : GetNumSegments());
                 OrganizeOversized();
             }
             else if (m_nSelectedIndex < m_aControls.m_count - 1)
@@ -2681,8 +2659,7 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
         // ---- scroll bar: line up ----
         case SWGUIEVENT_WHEEL_UP:
         case SWGUIEVENT_SCROLL_LINE_UP:
-            if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0
-                && !bUnequalRows)
+            if (IsOversized())
             {
                 m_nOversizedStep = (m_nOversizedStep - 1 < 1) ? 1 : m_nOversizedStep - 1;
                 OrganizeOversized();
@@ -2699,11 +2676,10 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
         // ---- scroll bar: line down ----
         case SWGUIEVENT_WHEEL_DOWN:
         case SWGUIEVENT_SCROLL_LINE_DOWN:
-            if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0
-                && !bUnequalRows)
+            if (IsOversized())
             {
-                m_nOversizedStep = static_cast<short>((GetOversizedStepCount() >= m_nOversizedStep + 1)
-                                 ? m_nOversizedStep + 1 : GetOversizedStepCount());
+                m_nOversizedStep = static_cast<short>((GetNumSegments() >= m_nOversizedStep + 1)
+                                 ? m_nOversizedStep + 1 : GetNumSegments());
                 OrganizeOversized();
             }
             else if (m_nTopRow < m_scrollBar.m_nMaxValue - 1
@@ -2718,8 +2694,7 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
 
         // ---- scroll bar: page up ----
         case SWGUIEVENT_SCROLL_PAGE_UP:
-            if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0
-                && !bUnequalRows)
+            if (IsOversized())
             {
                 // A page of an oversized row is m_fVisibleLines whole-box steps.
                 m_nOversizedStep = static_cast<short>(m_nOversizedStep - static_cast<int>(m_fVisibleLines));
@@ -2740,12 +2715,11 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
 
         // ---- scroll bar: page down ----
         case SWGUIEVENT_SCROLL_PAGE_DOWN:
-            if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0
-                && !bUnequalRows)
+            if (IsOversized())
             {
                 m_nOversizedStep = static_cast<short>(m_nOversizedStep + static_cast<int>(m_fVisibleLines));
-                m_nOversizedStep = static_cast<short>((m_nOversizedStep > GetOversizedStepCount())
-                                 ? GetOversizedStepCount() : m_nOversizedStep);
+                m_nOversizedStep = static_cast<short>((m_nOversizedStep > GetNumSegments())
+                                 ? GetNumSegments() : m_nOversizedStep);
                 OrganizeOversized();
             }
             else if (m_nTopRow < m_scrollBar.m_nMaxValue - 1
@@ -3038,7 +3012,7 @@ void CSWGuiListBox::OrganizeOversized()
     extent.h = m_nRowHeight;
     extent.w = m_innerExtent.w - 2 * m_nPadding;
 
-    int nSteps = GetOversizedStepCount();
+    int nSteps = GetNumSegments();
 
     int nCurValue;
     if (nSteps == m_nOversizedStep)
@@ -3141,7 +3115,7 @@ void CSWGuiListBox::OrganizeControls()
 
         // If a single row already overflows the box, re-derive how many text lines the box holds
         // from the first row's font, which OrganizeOversized scrolls by.
-        if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0 && !bUnequalRows)
+        if (IsOversized())
         {
             CSWGuiControl* pLabel = m_aControls.m_pArray[0]->AsLabel();
             if (pLabel != 0)
@@ -3159,7 +3133,7 @@ void CSWGuiListBox::OrganizeControls()
         nRowPitch = m_nRowHeight + m_nPadding;
     }
 
-    if (m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0 && !bUnequalRows)
+    if (IsOversized())
     {
         OrganizeOversized();
         return;

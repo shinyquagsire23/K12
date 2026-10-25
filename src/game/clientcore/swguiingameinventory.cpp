@@ -403,12 +403,7 @@ void CSWGuiInGameInventory::PopulateItemListBox()
         m_lbItems.SetSelectedControl(-1, 0);
         m_labelDescription.m_text.m_params.SetText(CExoString(""));
     } else if (m_bRestoreListPosition) {
-        int nMax = m_lbItems.m_aControls.m_count - m_lbItems.m_nVisibleRows;
-        if (nMax < 0)
-            nMax = 0;
-        if (nMax > m_nSavedTopRow)
-            nMax = m_nSavedTopRow;
-        m_lbItems.m_nTopRow = static_cast<short>(nMax);
+        m_lbItems.SetTopVisible(m_nSavedTopRow);
         int nLast = aControls.m_count - 1;
         m_lbItems.SetSelectedControl(static_cast<short>(nLast > m_nSavedSelectedIndex ? m_nSavedSelectedIndex : nLast), 0);
         m_bRestoreListPosition = 0;
@@ -489,12 +484,7 @@ void CSWGuiInGameInventory::PopulateItemListBox()
         m_labelDescription.m_text.m_params.SetText(CExoString(""));
     } else if (m_bRestoreListPosition) {
 
-        int nCount = m_lbItems.m_aControls.m_count;
-        int nVisible = m_lbItems.m_nVisibleRows;
-        int nMax = nCount < nVisible ? 0 : nCount - nVisible;
-        if (nMax > m_nSavedTopRow)
-            nMax = m_nSavedTopRow;
-        m_lbItems.m_nTopRow = static_cast<short>(nMax);
+        m_lbItems.SetTopVisible(m_nSavedTopRow);
         m_lbItems.SetSelectedControl(nLast > m_nSavedSelectedIndex ? m_nSavedSelectedIndex : nLast, 0);
         m_bRestoreListPosition = 0;
     } else {
@@ -727,8 +717,7 @@ void CSWGuiInGameInventory::Draw(float f)
 
     const Vector* pColor;
     if (m_bSelectedItemUsable &&
-        g_pAppManager->m_pServerExoApp
-                ->GetCreatureByGameObjectID(g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()
                 ->m_nItemUseCooldown == 0)
         pColor = &CGuiInGame::COLOR_BLUE;
     else
@@ -742,8 +731,7 @@ void CSWGuiInGameInventory::Draw(float f)
 
     const Vector* pBorderColor;
     if (!m_bSelectedItemUsable ||
-        g_pAppManager->m_pServerExoApp
-                ->GetCreatureByGameObjectID(g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()
                 ->m_nItemUseCooldown != 0) {
         m_btnUseItem.m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_GREEN);
         pBorderColor = &CGuiInGame::DISABLED_TEXT;

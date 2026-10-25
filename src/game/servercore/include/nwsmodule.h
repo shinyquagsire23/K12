@@ -239,6 +239,7 @@ public:
     CResGFF*    m_pSaveGFF;
     CExoArrayList<unsigned long long>* m_pSavedObjectIds;
     CExoString m_sTag;
+    void SetTag(const CExoString& sTag) { m_sTag = sTag.LowerCase(); }
     // Set when the pending module's resource type is a RIM archive.
     int        m_bIsNWMFile;
     char       _pad374[0x378-0x374];

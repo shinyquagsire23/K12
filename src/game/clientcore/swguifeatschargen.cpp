@@ -299,30 +299,16 @@ void CSWGuiFeatsCharGen::InitiateFeats()
         else
             pStats->AddGrantedFeats(&aGranted, false);
 #endif
-        int nGranted = aGranted.m_count;
-        if (nGranted > 0)
+        if (aGranted.m_count > 0)
         {
-            for (int i = 0; i < nGranted; i++)
+            for (int i = 0; i < aGranted.m_count; i++)
                 m_aNewFeats.Add(static_cast<unsigned short>(aGranted.m_pArray[i]));
 
             // A granted feat the creature already owns is not new: drop it from the granted list too.
-            while (0 < nGranted)
+            for (int i = aGranted.m_count - 1; i >= 0; i--)
             {
-                nGranted--;
-                unsigned short nFeat = static_cast<unsigned short>(aGranted.m_pArray[nGranted]);
-                int nOwned = 0;
-                for (int k = 0; k < m_aOwnedFeats.m_count; k++)
-                {
-                    if (m_aOwnedFeats.m_pArray[k] == nFeat)
-                        nOwned++;
-                }
-                if (nOwned != 0)
-                {
-                    // inlined CExoArrayList<unsigned int>::DelIndex(nGranted)
-                    for (int j = nGranted; j < aGranted.m_count - 1; j++)
-                        aGranted.m_pArray[j] = aGranted.m_pArray[j + 1];
-                    aGranted.m_count--;
-                }
+                if (m_aOwnedFeats.Contains(static_cast<unsigned short>(aGranted.m_pArray[i])) != 0)
+                    aGranted.DelIndex(i);
             }
 
             CSWGuiSkillInfoBox* pInfoBox =
@@ -343,7 +329,7 @@ void CSWGuiFeatsCharGen::InitiateFeats()
     else
         m_nNormalSlots = 0;
 
-    m_nSelectionsLeft = static_cast<unsigned char>(m_nNormalSlots + m_nBonusSlots);
+    m_nSelectionsLeft = static_cast<unsigned char>(m_nBonusSlots + m_nNormalSlots);
 
     if (static_cast<signed char>(m_nSelectionsLeft) == 0)
     {
@@ -765,7 +751,7 @@ void CSWGuiFeatsCharGen::RemoveChosenFeat(unsigned short nFeat)
 
     for (;;)
     {
-        int nIndex = FindFeatIndex(m_aChosenFeats, nFeat);
+        int nIndex = m_aChosenFeats.IndexOf(nFeat);
         if (nIndex == -1)
             return;
 
@@ -824,18 +810,11 @@ void CSWGuiFeatsCharGen::AddChosenFeat(unsigned short nFeat)
     if (nCount < 1)
         return;
 
-    int nIndex = FindFeatIndex(m_aAvailableFeats, nFeat);
+    int nIndex = m_aAvailableFeats.IndexOf(nFeat);
     if (nIndex == -1)
         return;
 
-    // inlined CExoArrayList<unsigned short>::DelIndex(nIndex)
-    nCount--;
-    m_aAvailableFeats.m_count = nCount;
-    if (nIndex < nCount)
-    {
-        for (int i = nIndex; i < nCount; i++)
-            m_aAvailableFeats.m_pArray[i] = m_aAvailableFeats.m_pArray[i + 1];
-    }
+    m_aAvailableFeats.DelIndex(nIndex);
 
     // Where the new feat belongs in the chosen column: the first row whose name sorts after it.
     CExoString sNewName = g_pRules->GetFeat(nFeat)->GetNameText();
@@ -853,12 +832,7 @@ void CSWGuiFeatsCharGen::AddChosenFeat(unsigned short nFeat)
     {
         m_nSelectionsLeft = static_cast<unsigned char>(m_nSelectionsLeft - 1);
 
-        // The list's own Add is what grows it; walk the tail right one slot so the appended copy is
-        // overwritten by its predecessor down to this row.
-        m_aChosenFeats.Add(nFeat);
-        for (int i = m_aChosenFeats.m_count - 1; i > nInsert - 1; i--)
-            m_aChosenFeats.m_pArray[i] = m_aChosenFeats.m_pArray[i - 1];
-        m_aChosenFeats.m_pArray[nInsert - 1] = nFeat;
+        m_aChosenFeats.Insert(nFeat, nInsert - 1);
     }
     else
     {

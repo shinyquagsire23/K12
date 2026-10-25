@@ -942,8 +942,20 @@ void CSWMiniGame::Update(float fDeltaTime)
             delete pFollower;
         }
 #else
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(push)
+#pragma warning(disable : 5205)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdelete-abstract-non-virtual-dtor"
+#endif
         if (pObject != 0 && pObject->m_bPendingDelete != 0)
             delete pObject;
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
 #endif
     }
 
@@ -1403,7 +1415,7 @@ int CSWMiniGame::Load()
     if (nValue <= 7)
         m_dof = nValue;
 
-    m_resForfeitSound = m_pRes->ReadFieldCResRef(&sMiniGame, const_cast<char*>("Music"), bSuccess, CResRef(""));
+    SetMusic(m_pRes->ReadFieldCResRef(&sMiniGame, const_cast<char*>("Music"), bSuccess, CResRef("")));
 
     float fNearClip = m_pRes->ReadFieldFLOAT(&sMiniGame, const_cast<char*>("Near_Clip"), bSuccess, 0.1f);
     float fFarClip = m_pRes->ReadFieldFLOAT(&sMiniGame, const_cast<char*>("Far_Clip"), bSuccess, 100.0f);
@@ -1451,8 +1463,8 @@ int CSWMiniGame::Load()
     {
         pPlayer = SetPlayer(models, flags, resTemp);
     }
-    models.Clear();
-    flags.Clear();
+    models.SetSize(0);
+    flags.SetSize(0);
     if (pPlayer == 0)
         return 0;
     pPlayer->Load(m_pRes, &sPlayer);
@@ -1504,13 +1516,13 @@ int CSWMiniGame::Load()
             resTemp = m_pRes->ReadFieldCResRef(&sEnemy, const_cast<char*>("Track"), bSuccess, CResRef(""));
             if (resTemp.IsValid() == 0)
             {
-                models.Clear();
-                flags.Clear();
+                models.SetSize(0);
+                flags.SetSize(0);
                 continue;
             }
             CSWMiniEnemy* pEnemy = AddEnemy(models, flags, resTemp);
-            models.Clear();
-            flags.Clear();
+            models.SetSize(0);
+            flags.SetSize(0);
             pEnemy->Load(m_pRes, &sEnemy);
         }
     }

@@ -954,10 +954,7 @@ char CSWCAnimBase::GetCenterPoint(Vector& v)
         Vector vPos = m_pModel->GetPosition();
         Quaternion qOrientation = m_pModel->GetOrientation();
         Vector vCamPos = pCamera->GetPosition();
-        Quaternion q = pCamera->GetOrientation();
-        float fA1 = (q.x * q.z + q.w * q.y) * -2.0f;
-        float fA2 = (q.z * q.y - q.x * q.w) * -2.0f;
-        float fA3 = -(1.0f - 2.0f * (q.x * q.x + q.y * q.y));
+        Vector vDir = -pCamera->GetOrientation().zdir();
         m_pModel->GetBoundingBox(vMin, vMax);
 
         Vector vCorners[8];
@@ -992,8 +989,8 @@ char CSWCAnimBase::GetCenterPoint(Vector& v)
 
         Vector vCenter = Vector((fMaxX - fMinX) * 0.5f + fMinX, (fMaxY - fMinY) * 0.5f + fMinY,
                                 (fMaxZ - fMinZ) * 0.5f + fMinZ);
-        float fPoint = fA1 * vCenter.x + fA2 * vCenter.y + fA3 * vCenter.z;
-        float fCam = fA1 * vCamPos.x + fA2 * vCamPos.y + fA3 * vCamPos.z;
+        float fPoint = dot(vDir, vCenter);
+        float fCam = dot(vDir, vCamPos);
         nRet = !(fPoint > fCam) ? 2 : 1;
 
         Vector vScreen = pCamera->MapToScreen(vCenter, true);
@@ -1018,10 +1015,7 @@ int CSWCAnimBase::GetBoundingRect(CAurObject* pObject, CSWGuiExtent& rExtent)
     Vector vPos = pObject->GetPosition();
     Quaternion qOrientation = pObject->GetOrientation();
     Vector vCamPos = pCamera->GetPosition();
-    Quaternion q = pCamera->GetOrientation();
-    float fA1 = (q.x * q.z + q.w * q.y) * -2.0f;
-    float fA2 = (q.z * q.y - q.x * q.w) * -2.0f;
-    float fA3 = -(1.0f - 2.0f * (q.x * q.x + q.y * q.y));
+    Vector vDir = -pCamera->GetOrientation().zdir();
     float fClipNear, fClipFar;
     pCamera->GetClipDist(fClipNear, fClipFar);
     pObject->GetBoundingBox(vMin, vMax);
@@ -1045,8 +1039,7 @@ int CSWCAnimBase::GetBoundingRect(CAurObject* pObject, CSWGuiExtent& rExtent)
         vCorners[i].x = vCorners[i].x + vPos.x;
         vCorners[i].y = vCorners[i].y + vPos.y;
         vCorners[i].z = vCorners[i].z + vPos.z;
-        float fDepth = fA1 * (vCorners[i].x - vCamPos.x) + fA2 * (vCorners[i].y - vCamPos.y) +
-                       fA3 * (vCorners[i].z - vCamPos.z);
+        float fDepth = dot(vDir, vCorners[i] - vCamPos);
         if (fDepth <= fClipNear)
             return 0;
         vCorners[i] = pCamera->MapToScreen(vCorners[i], true);

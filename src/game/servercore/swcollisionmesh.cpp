@@ -219,7 +219,7 @@ int CSWCollisionMesh::ConvertPlaceable(const CResRef& resRef, const CExoString& 
         sPath = sNewPath;
     }
     CSWPlaceableSurfaceMesh* pMesh = new CSWPlaceableSurfaceMesh();
-    pMesh->m_resRef = resRef;
+    pMesh->SetMesh(resRef);
     if (pMesh->LoadMesh(1) < 1)
         return -1;
     sOutName.Format(const_cast<char*>("%s%s.PWK"), sPath.CStr(), sResRef.CStr());
@@ -249,7 +249,7 @@ int CSWCollisionMesh::ConvertDoor(const CResRef& resRef, const CExoString& fileN
     for (int doorType = CSWDoorSurfaceMesh::DOOR_STATE_CLOSED; doorType <= doorTypeMax; doorType++) {
         CSWDoorSurfaceMesh* pMesh = new CSWDoorSurfaceMesh();
         pMesh->SetDoorType(doorType);
-        pMesh->m_resRef = resRef;
+        pMesh->SetMesh(resRef);
         int loaded = pMesh->LoadMesh(1);
         if (loaded < 1)
             result = loaded;

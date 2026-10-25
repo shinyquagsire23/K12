@@ -541,6 +541,7 @@ hitcheck_retry:
                             if (pLeash->AsSWCDoor()->m_bStatic != 0)
                                 goto mouseover_scan;
                             CSWCDoor* pDoor = pLeash->AsSWCDoor();
+                            // inlined CSWCDoor::GetIsOpen()
                             if (pDoor->GetCurrentAnimation() == SERVER_ANIMATION_DOOR_OPEN1 ||
                                 pDoor->GetCurrentAnimation() == SERVER_ANIMATION_DOOR_OPEN2)
                                 goto mouseover_scan;
@@ -558,11 +559,7 @@ hitcheck_retry:
                         if (pLeash->AsSWCCreature()->GetServerCreature() != 0 &&
                             pLeash->AsSWCCreature()->GetServerCreature()->GetDead() == 0) {
                             CSWSCreature* pSrv = pLeash->AsSWCCreature()->GetServerCreature();
-#if KOTOR1  // K1 tests GetDeadTemp()
                             if (pSrv->GetDeadTemp() == 0)
-#else
-                            if (pSrv->m_bInParty == 0 || pSrv->GetCurrentHitPoints(0) > 0)
-#endif
                                 goto leash_resolve;
                         }
                         if (GetModule()->m_pArea->GetIsObjectCorpse(
@@ -2299,6 +2296,7 @@ check_sentinel:
                 goto show_default;
         }
         // Backward scan of the visible-object table for the candidate id.
+        // inlined CExoArrayList<CNearestStruct>::IndexOf(void*, int (*)(void*, CNearestStruct))
         if (m_visibleTable.m_count >= 1) {
             CNearestStruct* pRow = m_visibleTable.m_pArray;
             int64_t i = 0;
@@ -2475,8 +2473,8 @@ waypoint_else:
         vFacing.z = 0.0f;
         vFacing.Normalize();
         pPlayer->SetOrientation(vFacing);
-        pPlayer->m_vMovingOrientation = normalize(vFacing);
-        pPlayer->m_vStationaryOrientation = normalize(vFacing);
+        pPlayer->SetDesiredWalkOrientation(vFacing);
+        pPlayer->SetDesiredStationaryOrientation(vFacing);
     }
     DrivePlayer(static_cast<unsigned char>(nMoveBits));
     pPlayer->m_appliedCommandTag = nTag;
@@ -2510,15 +2508,15 @@ turn_in_place:
             Vector vFacing =
                 RotateByQuaternion(pPlayer->m_orientation, YawPitchRoll(30.0f, 0.0f, 0.0f));
             vFacing.Normalize();
-            pPlayer->m_vMovingOrientation = normalize(vFacing);
-            pPlayer->m_vStationaryOrientation = normalize(vFacing);
+            pPlayer->SetDesiredWalkOrientation(vFacing);
+            pPlayer->SetDesiredStationaryOrientation(vFacing);
             m_pSWCMessage->SendPlayerToServerInput_TurnOnSpot(vFacing);
         } else if (m_keyboardModalFlags[4] != 0 && m_keyboardModalFlags[3] == 0) {
             Vector vFacing =
                 RotateByQuaternion(pPlayer->m_orientation, YawPitchRoll(-30.0f, 0.0f, 0.0f));
             vFacing.Normalize();
-            pPlayer->m_vMovingOrientation = normalize(vFacing);
-            pPlayer->m_vStationaryOrientation = normalize(vFacing);
+            pPlayer->SetDesiredWalkOrientation(vFacing);
+            pPlayer->SetDesiredStationaryOrientation(vFacing);
             m_pSWCMessage->SendPlayerToServerInput_TurnOnSpot(vFacing);
         }
     }
@@ -2593,12 +2591,12 @@ bool CClientExoAppInternal::DrivePlayer(unsigned char nMoveBits)
         Quaternion q = YawPitchRoll(30.0f, 0.0f, 0.0f);
         vMove = RotateByQuaternion(vMove, q);
         Vector vOriented = RotateByQuaternion(pPlayer->m_orientation, q);
-        pPlayer->m_vMovingOrientation = normalize(vOriented);
+        pPlayer->SetDesiredWalkOrientation(vOriented);
     } else if ((nMoveBits & DRIVE_TURN_RIGHT) != 0) {
         Quaternion q = YawPitchRoll(-30.0f, 0.0f, 0.0f);
         vMove = RotateByQuaternion(vMove, q);
         Vector vOriented = RotateByQuaternion(pPlayer->m_orientation, q);
-        pPlayer->m_vMovingOrientation = normalize(vOriented);
+        pPlayer->SetDesiredWalkOrientation(vOriented);
     }
 
     vMove.Normalize();
@@ -2962,13 +2960,8 @@ void CClientExoAppInternal::GetDefaultActions()
     if (pPlayerChar == 0)
         return;
 
-#if KOTOR1
     if (pPlayerServer != 0 && pPlayerServer->GetDead() == 0)
         pPlayerServer->GetDeadTemp();
-#else
-    if (pPlayerServer != 0 && pPlayerServer->GetDead() == 0 && pPlayerServer->m_bInParty != 0)
-        pPlayerServer->GetCurrentHitPoints(0);
-#endif
 
     if (pTarget == 0)
         return;
@@ -2980,13 +2973,7 @@ void CClientExoAppInternal::GetDefaultActions()
 
     for (int i = 0; i < m_actions.m_count; i++)
         m_actions.m_pArray[i].Clear();
-    // inlined CExoArrayList<CSWGuiInterfaceAction>::Clear()
-    if (m_actions.m_pArray) {
-        delete[] m_actions.m_pArray;
-        m_actions.m_pArray = 0;
-        m_actions.m_capacity = 0;
-    }
-    m_actions.m_count = 0;
+    m_actions.SetSize(0);
 
     switch (nType) {
     case CSWCCreature::INTERFACE_TARGET_NONE: {
@@ -3117,7 +3104,6 @@ void CClientExoAppInternal::GetDefaultActions()
                     CSWCCreature* pPlayerCreature;
 #if !KOTOR1
                     CSWSCreature* pServerCreature;
-                    short nPlayerHp;
 #endif
                     if (pObject != 0 && pObject->AsSWCCreature() != 0 &&
                         (pPlayerCreature = static_cast<CSWCCreature*>(pObject->AsSWCCreature()),
@@ -3128,8 +3114,7 @@ void CClientExoAppInternal::GetDefaultActions()
                         pPlayerCreature->GetServerCreature()->GetDeadTemp() != 0) {
 #else
                         (pServerCreature = pPlayerCreature->GetServerCreature(),
-                         pServerCreature->m_bInParty != 0 &&
-                             0 >= (nPlayerHp = pServerCreature->GetCurrentHitPoints(0)))) {
+                         pServerCreature->GetDeadTemp() != 0)) {
 #endif
                         if (pObj->AsSWCPlaceable()->GetServerPlaceable() != 0 &&
                             pObj->AsSWCPlaceable()->GetServerPlaceable()->m_bPartyInteract == 0) {
@@ -3164,7 +3149,6 @@ void CClientExoAppInternal::GetDefaultActions()
                     CSWCCreature* pPlayerCreature;
 #if !KOTOR1
                     CSWSCreature* pServerCreature;
-                    short nPlayerHp;
 #endif
                     if (pObject != 0 && pObject->AsSWCCreature() != 0 &&
                         (pPlayerCreature = static_cast<CSWCCreature*>(pObject->AsSWCCreature()),
@@ -3175,8 +3159,7 @@ void CClientExoAppInternal::GetDefaultActions()
                         pPlayerCreature->GetServerCreature()->GetDeadTemp() != 0) {
 #else
                         (pServerCreature = pPlayerCreature->GetServerCreature(),
-                         pServerCreature->m_bInParty != 0 &&
-                             0 >= (nPlayerHp = pServerCreature->GetCurrentHitPoints(0)))) {
+                         pServerCreature->GetDeadTemp() != 0)) {
 #endif
                         if (pObj->AsSWCPlaceable()->GetServerPlaceable() != 0 &&
                             pObj->AsSWCPlaceable()->GetServerPlaceable()->m_bPartyInteract == 0) {
@@ -3227,9 +3210,7 @@ void CClientExoAppInternal::GetDefaultActions()
         int nDoorAreaMenuDisabled = pObj->m_pArea->GetServerArea()->m_nPlayerRestrictMode;
         CExoString sName;
         CSWCDoor* pDoor = pObj->AsSWCDoor();
-        if (pDoor->GetCurrentAnimation() != SERVER_ANIMATION_DOOR_OPEN1 &&
-            pDoor->GetCurrentAnimation() != SERVER_ANIMATION_DOOR_OPEN2 &&
-            pObj->AsSWCDoor()->m_bStatic == 0) {
+        if (!pDoor->GetIsOpen() && pObj->AsSWCDoor()->m_bStatic == 0) {
             m_actions.SetSize(1);
             K2_ASSUME(m_actions.m_pArray != 0);   // SetSize allocated it
             m_actions.m_pArray[0].m_sName =

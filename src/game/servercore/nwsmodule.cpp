@@ -1191,31 +1191,6 @@ unsigned long long CSWSModule::FindObjectByTagOrdinal(const CExoString& tag, uns
     return m_tagTable.m_pArray[nIndex].m_oid;
 }
 
-// Inserts a node at nIndex in the table's array, growing the array if needed.
-static void InsertTagNodeAt(CExoArrayList<CSWSTagNode>& aTable, int nIndex, CSWSTagNode v)
-{
-    // inlined CExoArrayList<CSWSTagNode>::Insert(v, nIndex)
-    CSWSTagNode vKeep = v;
-    if (aTable.m_count == aTable.m_capacity)
-    {
-        int nNewCapacity = (aTable.m_count != 0) ? aTable.m_count * 2 : 16;
-        CSWSTagNode* paOld = aTable.m_pArray;
-        aTable.m_capacity = nNewCapacity;
-        aTable.m_pArray = new CSWSTagNode[nNewCapacity];
-        K2_ASSUME(aTable.m_count < nNewCapacity);
-        for (long long i = 0; i < static_cast<long long>(aTable.m_count); i++)
-            aTable.m_pArray[i] = paOld[i];
-        delete[] paOld;
-    }
-    int nOldCount = aTable.m_count;
-    K2_ASSUME(nOldCount < aTable.m_capacity && nIndex >= 0 && nIndex <= nOldCount);
-    aTable.m_count = nOldCount + 1;
-    aTable.m_pArray[nOldCount] = vKeep;
-    for (int i = nOldCount; i > nIndex; i--)
-        aTable.m_pArray[i] = aTable.m_pArray[i - 1];
-    aTable.m_pArray[nIndex] = v;
-}
-
 // Inserts {tag, id} at the end of the tag's own run, so a second object with the same tag gets the
 // higher ordinal.
 bool CSWSModule::AddObjectToLookupTable(const CExoString& tag, unsigned long long objectId)
@@ -1230,7 +1205,7 @@ bool CSWSModule::AddObjectToLookupTable(const CExoString& tag, unsigned long lon
     while (nIndex < m_tagTable.m_count && tag == m_tagTable.m_pArray[nIndex].m_sTag)
         nIndex++;
 
-    InsertTagNodeAt(m_tagTable, nIndex, node);
+    m_tagTable.Insert(node, nIndex);
     return true;
 }
 
@@ -1305,7 +1280,7 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
     m_sDescription = m_pRes->ReadFieldCExoLocString(&sStruct, const_cast<char*>("Mod_Description"), bSuccess,
                                                    CExoLocString());
     m_startMovie = m_pRes->ReadFieldCResRef(&sStruct, const_cast<char*>("Mod_StartMovie"), bSuccess, CResRef(""));
-    m_sTag = m_pRes->ReadFieldCExoString(&sStruct, const_cast<char*>("Mod_Tag"), bSuccess, CExoString("")).LowerCase();
+    SetTag(m_pRes->ReadFieldCExoString(&sStruct, const_cast<char*>("Mod_Tag"), bSuccess, CExoString("")));
 
     m_pEntryInfo->m_entryArea =
         m_pRes->ReadFieldCResRef(&sStruct, const_cast<char*>("Mod_Entry_Area"), bSuccess, CResRef(""));

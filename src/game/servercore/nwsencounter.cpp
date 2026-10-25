@@ -974,7 +974,7 @@ int CSWSEncounter::ReadEncounterFromGff(CResGFF* pGFF, CResStruct* pStruct, int 
 
     m_localizedName = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("LocalizedName"), bSuccess,
                                                     m_localizedName);
-    m_sTag = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, m_sTag).LowerCase();
+    SetTag(pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, m_sTag));
     g_pAppManager->m_pServerExoApp->GetModule()->AddObjectToLookupTable(m_sTag, m_objectId);
 
     CResList geometryList;

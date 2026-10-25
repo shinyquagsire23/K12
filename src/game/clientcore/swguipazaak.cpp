@@ -1703,10 +1703,7 @@ int CSWGuiPazaakGame::DoGameSequence()
         m_bPlayerStarts = !m_bPlayerStarts;
         return 1;
     case GAME_STATE_END_MATCH:
-        for (CSWGuiPanel* pPanel = this; pPanel; pPanel = pPanel->m_pNextInChain) {
-            pPanel->m_stateFlags &= static_cast<unsigned short>(~PANEL_REMOVE_STATE_MASK);
-            pPanel->m_stateFlags |= PANEL_REMOVE_AND_DELETE;
-        }
+        SetToBeDeleted(0);
         g_pAppManager->m_pClientExoApp->EndPazaakGame(
             m_pPazaak->m_players[0].m_nRoundsWon > m_pPazaak->m_players[1].m_nRoundsWon, m_pPazaak->m_nWager, 0,
             m_pPazaak->m_oidOpponent);
@@ -1715,8 +1712,7 @@ int CSWGuiPazaakGame::DoGameSequence()
         StartNewGame();
         return 0;
     case GAME_STATE_PLAYER_DRAW: {
-        CPazaakCard card = m_pPazaak->DrawCard();
-        m_pPazaak->m_players[0].AddGameCard(card);
+        m_pPazaak->DrawPlayerCard();
         g_pExoSound->PlayOneShotSound(CResRef(m_apszCueSounds[1]), PRIORITY_GROUP_GUI, 0, 0, 0.0f, 0.0f);
         if ((m_anTutorialState[0] & TUTORIAL_SHOWN_FIRST_DRAW) == 0) {
             m_anTutorialState[0] |= TUTORIAL_SHOWN_FIRST_DRAW;
@@ -1807,9 +1803,7 @@ int CSWGuiPazaakGame::DoGameSequence()
         }
         return 0;
     case GAME_STATE_OPPONENT_PLAY: {
-        int nResult = m_pPazaak->PlayAITurn(m_pPazaak->m_players[1], m_pPazaak->m_players[0],
-                                            static_cast<CSWPazaak::EAIState>(m_pPazaak->m_nAIState));
-        m_pPazaak->m_nAIState = nResult;
+        int nResult = m_pPazaak->AIPlayNPCTurn();
         switch (nResult) {
         case CSWPazaak::EAISTATE_START_TURN:
             m_nGameState = GAME_STATE_SET_OVER;
@@ -3055,8 +3049,8 @@ void CSWGuiPazaakCard::SetCard(CPazaakCard card) {
                         s = "+1T";
                     break;
                 case PAZAAK_CARD_DOUBLE:  // blank ("D") unless a value was copied
-                    if (card.m_nValue)
-                        s.Format(const_cast<char*>("%d"), card.m_nValue);
+                    if (card.GetCardValue())
+                        s.Format(const_cast<char*>("%d"), card.GetCardValue());
                     else
                         s = "D";
                     break;
@@ -3073,6 +3067,7 @@ void CSWGuiPazaakCard::SetCard(CPazaakCard card) {
                         s = "3&6";
                     break;
                 case PAZAAK_CARD_PLUS_MINUS_1_2: {  // ±1/±2: ceil(|value|) to at least 1, apply the sign
+                    // inlined CPazaakCard::GetCardValue()
                     int v = card.m_nValue ? card.m_nValue : 1;
                     s.Format(const_cast<char*>("%d"), card.m_bIsNegative ? -v : v);
                     break;

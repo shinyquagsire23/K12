@@ -144,6 +144,15 @@ public:
     int FindPotentialChangeTotal(CPazaakPlayer& player, int nTarget, int& rnBest, int nBest);
 #endif
     void LoadInitialSideDeck(int nDeckIndex, CPazaakCard* pSidedeck);
+
+    // Deals the player the next card off the main deck.
+    void DrawPlayerCard() { m_players[0].AddGameCard(DrawCard()); }
+    // Runs the opponent's next turn step and records it as the step to run after; returns that step.
+    int AIPlayNPCTurn()
+    {
+        m_nAIState = PlayAITurn(m_players[1], m_players[0], static_cast<EAIState>(m_nAIState));
+        return m_nAIState;
+    }
 };
 #if KOTOR1
 K2_LAYOUT_ASSERT(sizeof(CPazaakCard) == 8, "K1 CPazaakCard size");

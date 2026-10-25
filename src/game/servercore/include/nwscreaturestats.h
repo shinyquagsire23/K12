@@ -310,6 +310,12 @@ public:
     void UpdateINTModifier() { m_nINTMod = static_cast<unsigned char>(CalcStatModifier(GetINTStat())); }
     void UpdateWISModifier() { m_nWISMod = static_cast<signed char>(CalcStatModifier(GetWISStat())); }
     void UpdateCHAModifier() { m_nCHAMod = static_cast<unsigned char>(CalcStatModifier(GetCHAStat())); }
+    // The base failure plus the two modifiers after it, capped at 100 (percent).
+    unsigned char GetTotalArcaneSpellFailure()
+    {
+        unsigned int nTotal = m_nArcaneSpellFailure + m_nReserved7 + m_nReserved8;
+        return static_cast<unsigned char>(nTotal >= 100 ? 100 : nTotal);
+    }
     signed char GetTotalACNaturalMod() { return static_cast<signed char>(m_nACNaturalMod - m_nACNaturalNeg + GetACNaturalBase()); }
     void SetDialog(const CResRef& cDialog) { m_conversation = cDialog; }
     int  CanLevelUp();

@@ -557,8 +557,7 @@ int CSWSObject::AIActionSetCommandable(CSWSObjectActionNode* pNode) {
     int bAlive = 1;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bAlive = pCreature->GetCurrentHitPoints(0) > 0;
+        bAlive = pCreature->GetDeadTemp() == 0;
     }
     int bDead = GetDead();
     if (bAlive && bDead == 0) {
@@ -591,8 +590,7 @@ int CSWSObject::AIActionDoCommand(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     if (bDying || bDead == 1)
@@ -615,8 +613,7 @@ int CSWSObject::AIActionPauseDialog(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     if (bDying || bDead == 1) {
@@ -641,8 +638,7 @@ int CSWSObject::AIActionResumeDialog(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     if (bDying || bDead == 1) {
@@ -681,8 +677,7 @@ int CSWSObject::AIActionWait(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     if (bDying || bDead == 1)
@@ -709,8 +704,7 @@ int CSWSObject::AIActionCloseDoor(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     if (bDying || bDead == 1)
@@ -765,8 +759,7 @@ int CSWSObject::AIActionOpenDoor(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     if (bDying || bDead == 1) {
@@ -890,11 +883,7 @@ int CSWSObject::AIActionDialogObject(CSWSObjectActionNode* pNode)
             CSWCCreature* pMember = pParty->GetCharacter(i);
             if (pMember != 0 && pMember->GetServerCreature() != 0) {
                 CSWSCreature* pServer = pMember->GetServerCreature();
-#if KOTOR1
                 if (pServer->GetDeadTemp() == 0)
-#else
-                if (pServer->m_bInParty == 0 || pServer->GetCurrentHitPoints(0) > 0)
-#endif
                     goto partyReady;
             }
         }
@@ -920,8 +909,7 @@ partyReady:
         }
 
         g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(m_objectId);
-        CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pPlayer == 0)
             return ACTION_IN_PROGRESS;
         CGameObject* pPlayerClient = g_pAppManager->m_pClientExoApp->GetGameObject(
@@ -1107,11 +1095,7 @@ partyReady:
             g_pExoInput->SetActive(0);
             g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bHoldFadeInForDialog = 1;
             oidSpeaker = pLeaderServer->m_objectId;
-#if KOTOR1
             if (pOwner->GetDeadTemp() != 0) {
-#else
-            if (pOwner->m_bInParty != 0 && pOwner->GetCurrentHitPoints(0) <= 0) {
-#endif
                 CGameEffect* pEffect = new CGameEffect(1);
                 pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_RESURRECTION);
                 pEffect->m_durationTypeBits = (pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK)
@@ -1209,8 +1193,7 @@ int CSWSObject::AIActionLockObject(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     pCreature = AsSWSCreature();
@@ -1474,8 +1457,7 @@ int CSWSObject::AIActionUnlockObject(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     pCreature = AsSWSCreature();
@@ -1917,7 +1899,7 @@ int CSWSObject::AIActionGiveItem(CSWSObjectActionNode* pNode) {
             pTarget->AsSWSCreature()->AcquireItem(&pItem, pItem->m_possessorId, OBJECT_INVALID, bNotGold);
             if (bNotify != 0 && pTarget->AsSWSCreature()->m_bInParty != 0) {
 #if !KOTOR1
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_aReceivedItemNames.Add(sName);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->AddReceivedItemToList(sName);
 #endif
                 g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_RECEIVED, 0);
             }
@@ -2044,8 +2026,7 @@ int CSWSObject::AIActionPlayAnimation(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pCreature = AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDying = pCreature->GetCurrentHitPoints(0) < 1;
+        bDying = pCreature->GetDeadTemp();
     }
     int bDead = GetDead();
     if (bDying || bDead == 1)
@@ -2184,8 +2165,7 @@ int CSWSObject::AIActionUseObject(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pSelf = AsSWSCreature();
-        if (pSelf->m_bInParty != 0)
-            bDying = pSelf->GetCurrentHitPoints(0) < 1;
+        bDying = pSelf->GetDeadTemp();
     }
     int bDead = GetDead();
     if (bDying || bDead == 1)
@@ -2212,8 +2192,7 @@ int CSWSObject::AIActionUseObject(CSWSObjectActionNode* pNode) {
         int bTargetDying = 0;
         if (pTarget->AsSWSCreature() != 0) {
             CSWSCreature* pTargetCreature = pTarget->AsSWSCreature();
-            if (pTargetCreature->m_bInParty != 0)
-                bTargetDying = pTargetCreature->GetCurrentHitPoints(0) < 1;
+            bTargetDying = pTargetCreature->GetDeadTemp();
         }
         int bTargetDead = pTarget->GetDead();
         if (bTargetDying || bTargetDead == 1)
@@ -2419,8 +2398,7 @@ int CSWSObject::AIActionDoorSaber(CSWSObjectActionNode* pNode) {
     int bDying = 0;
     if (AsSWSCreature() != 0) {
         CSWSCreature* pSelf = AsSWSCreature();
-        if (pSelf->m_bInParty != 0)
-            bDying = pSelf->GetCurrentHitPoints(0) < 1;
+        bDying = pSelf->GetDeadTemp();
     }
     // Plain truthiness here, not the unlock twin's `bDead == 1`.
     int bDead = GetDead();

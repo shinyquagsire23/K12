@@ -12,6 +12,7 @@
 #if defined(_MSC_VER) && !defined(__clang__)
 
 #include <float.h>
+#include <math.h>  // the math builtins below name its functions
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -102,6 +103,7 @@ static __forceinline long long __builtin_expect(long long x, long long expected)
 #define __builtin_fmaxf fmaxf
 #define __builtin_sinf sinf
 #define __builtin_cosf cosf
+#define __builtin_acosf acosf
 #define __builtin_sin sin
 #define __builtin_cos cos
 #define __builtin_pow pow

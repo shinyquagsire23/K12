@@ -1513,10 +1513,8 @@ int CSWSEffectListHandler::OnApplyAbilityIncrease(CSWSObject* pObject, CGameEffe
         if (pCreature->GetDeadTemp() != 0)
             return 1;
 #else
-        if (pCreature->m_bInParty != 0) {
-            if (pCreature->GetCurrentHitPoints(0) < 1)
+        if (pCreature->GetDeadTemp() != 0)
                 return 1;
-        }
 #endif
     }
     return nAmount < 1;
@@ -1546,8 +1544,7 @@ int CSWSEffectListHandler::OnApplyAbilityDecrease(CSWSObject* pObject, CGameEffe
             return 1;
         bDown = pCreature->GetDeadTemp();
 #else
-        if (pCreature->m_bInParty != 0)
-            bDown = pCreature->GetCurrentHitPoints(0) < 1;
+        bDown = pCreature->GetDeadTemp();
 #endif
     }
     if (nAmount < 1)
@@ -1673,7 +1670,7 @@ int CSWSEffectListHandler::OnRemoveKnockdown(CSWSObject* pObject, CGameEffect* p
 #if KOTOR1  // the dying tests are GetIsPCDying() / GetDeadTemp()
             if (pCreature->GetIsPCDying() == 0 && pCreature->GetDeadTemp() == 0) {
 #else
-            if (pCreature->m_bInParty == 0 || pCreature->GetCurrentHitPoints(0) >= 1) {
+            if (pCreature->GetDeadTemp() == 0) {
 #endif
                 pCreature->SetAnimation(SERVER_ANIMATION_READY);
                 pObject->m_bCommandable = 1;
@@ -2942,7 +2939,7 @@ int CSWSEffectListHandler::OnApplyPoison(CSWSObject* pObject, CGameEffect* pEffe
             return 0;
         }
 #if !KOTOR1
-        if (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) <= 0) {
+        if (pCreature->GetDeadTemp() != 0) {
             g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
                 0, 0, pEffect->m_creatorId, pCreature->m_objectId,
                 CServerAIMaster::EVENT_REMOVE_EFFECT, pEffect);
@@ -3585,9 +3582,7 @@ int CSWSEffectListHandler::OnApplyFactionModifier(CSWSObject* pObject, CGameEffe
     pObject->ClearAllActions(1);
     if (pObject->AsSWSCreature() != 0) {
         CSWSCreature* pCreature = pObject->AsSWSCreature();
-        int bDown = 0;
-        if (pCreature->m_bInParty != 0)
-            bDown = pCreature->GetCurrentHitPoints(0) < 1;
+        int bDown = pCreature->GetDeadTemp();
         if ((pObject->GetDead() | bDown) == 0) {
             pCreature->ClearVisibleList();
             pCreature->UpdateVisibleList(0);
@@ -3623,9 +3618,7 @@ int CSWSEffectListHandler::OnRemoveFactionModifier(CSWSObject* pObject, CGameEff
             pObject->ClearAllActions(1);
             if (pObject->AsSWSCreature() != 0) {
                 CSWSCreature* pCreature = pObject->AsSWSCreature();
-                int bDown = 0;
-                if (pCreature->m_bInParty != 0)
-                    bDown = pCreature->GetCurrentHitPoints(0) < 1;
+                int bDown = pCreature->GetDeadTemp();
                 if ((pObject->GetDead() | bDown) == 0) {
                     pCreature->ClearVisibleList();
                     pCreature->UpdateVisibleList(0);
@@ -4327,7 +4320,7 @@ int CSWSEffectListHandler::OnRemoveHitPointChangeWhenDying(CSWSObject* pObject,
     } else if (pCreature->GetDead() != 0 || pCreature->GetDeadTemp() != 0) {
 #else
     if (pCreature->GetDead() != 0 ||
-        (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) <= 0)) {
+        pCreature->GetDeadTemp() != 0) {
 #endif
         CGameEffect* pDeath = new CGameEffect(1);
         pDeath->m_subType = GAME_EFFECT_DEATH;
@@ -4370,9 +4363,7 @@ int CSWSEffectListHandler::OnRemoveTemporaryHitpoints(CSWSObject* pObject, CGame
             (bWasDown == 0 && pCreature->GetDeadTemp() == 1)) {
 #else
         int bWasDead = pCreature->GetDead();
-        int bWasDown = 0;
-        if (pCreature->m_bInParty != 0)
-            bWasDown = pCreature->GetCurrentHitPoints(0) < 1;
+        int bWasDown = pCreature->GetDeadTemp();
         if (pEffect != 0) {
             int nRemaining = 0;
             if (pCreature->m_nHitPointBonus16 > pEffect->GetInteger(0))
@@ -4380,8 +4371,7 @@ int CSWSEffectListHandler::OnRemoveTemporaryHitpoints(CSWSObject* pObject, CGame
             pCreature->m_hitPointBonus = nRemaining;
         }
         if ((bWasDead == 0 && pCreature->GetDead() == 1) ||
-            (bWasDown == 0 && pCreature->m_bInParty != 0 &&
-             pCreature->GetCurrentHitPoints(0) <= 0)) {
+            (bWasDown == 0 && pCreature->GetDeadTemp() != 0)) {
 #endif
             CGameEffect* pDeath = new CGameEffect(1);
             pDeath->m_subType = GAME_EFFECT_DEATH;
@@ -4649,9 +4639,7 @@ int CSWSEffectListHandler::OnRemoveWounding(CSWSObject* pObject, CGameEffect* pE
         int bWasDown = pCreature->GetDeadTemp();
 #else
         int bWasDead = pCreature->GetDead();
-        int bWasDown = 0;
-        if (pCreature->m_bInParty != 0)
-            bWasDown = pCreature->GetCurrentHitPoints(0) < 1;
+        int bWasDown = pCreature->GetDeadTemp();
 #endif
         pCreature->SetCurrentHitPoints(pCreature->GetCurrentHitPoints(1) - 1);
         CExoString sBloodColor;
@@ -4668,14 +4656,8 @@ int CSWSEffectListHandler::OnRemoveWounding(CSWSObject* pObject, CGameEffect* pE
         else if (sBloodColor == "Y")
             pBlood->SetInteger(0, VFX_COM_BLOOD_YELLOW);
         pCreature->ApplyEffect(pBlood, 0, 0);
-#if KOTOR1
         if ((bWasDead == 0 && pCreature->GetDead() != 0) ||
             (bWasDown == 0 && pCreature->GetDeadTemp() != 0)) {
-#else
-        if ((bWasDead == 0 && pCreature->GetDead() != 0) ||
-            (bWasDown == 0 && pCreature->m_bInParty != 0 &&
-             pCreature->GetCurrentHitPoints(0) <= 0)) {
-#endif
             CGameEffect* pDeath = new CGameEffect(1);
             pDeath->m_subType = GAME_EFFECT_DEATH;
             pDeath->m_durationTypeBits = CGameEffect::DURATION_TYPE_INSTANTANEOUS |
@@ -4831,7 +4813,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
 #else
     if (pObject != 0 && pObject->AsSWSCreature() != 0) {
         CSWSCreature* pCre = pObject->AsSWSCreature();
-        nDeadGate = pCre->m_bInParty != 0 && pCre->GetCurrentHitPoints(0) < 1;
+        nDeadGate = pCre->GetDeadTemp() != 0;
     }
 #endif
     K2_ASSUME(pObject != 0);
@@ -4917,7 +4899,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
             int nAnim = pCr->m_nAnimation;
             if (static_cast<unsigned>(nAnim - SERVER_ANIMATION_CONJURE_1) < 2
                 || nAnim == SERVER_ANIMATION_CONJURE_3) {
-                CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pCr->m_castSpellId);
+                CSWSpell* pSpell = g_pRules->GetSpell(pCr->m_castSpellId);
                 if (pSpell != 0 && pSpell->m_bUseConcentration == 1) {
                     unsigned int nRoll = g_pRules->RollDice(1, 20);
                     pCr->GetNearestEnemy(4.0f, OBJECT_INVALID, OBJECT_INVALID);
@@ -4968,12 +4950,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
             }
         }
         g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(pCr->m_objectId);
-#if KOTOR1
         if (pCr->m_bPlayerCharacter == 0 && pCr->GetDead() == 0 && pCr->GetDeadTemp() == 0 &&
-#else
-        if (pCr->m_bPlayerCharacter == 0 && pCr->GetDead() == 0 &&
-            (pCr->m_bInParty == 0 || pCr->GetCurrentHitPoints(0) >= 1) &&
-#endif
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsLeader(pCr->m_objectId) == 0)
             g_pVirtualMachine->RunScript(&pCr->m_scripts[CSWSCreature::CREATURE_SCRIPT_DAMAGED],
                                          pCr->m_objectId, 1);
@@ -5024,14 +5001,8 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
         if (pCr->GetDead() == 0 && pCr->GetDeadTemp() == 0)
             return 1;
 #else
-        if (pCr->GetDead() == 0) {
-            if (pCr->m_bInParty != 0) {
-                if (pCr->GetCurrentHitPoints(0) > 0)
-                    return 1;
-            } else {
-                return 1;
-            }
-        }
+        if (pCr->GetDead() == 0 && pCr->GetDeadTemp() == 0)
+            return 1;
 #endif
         CGameEffect* pDeath = new CGameEffect(1);
         pDeath->m_subType = GAME_EFFECT_DEATH;
@@ -5171,7 +5142,7 @@ int CSWSEffectListHandler::OnApplyKnockdown(CSWSObject* pObject, CGameEffect* pE
 #if KOTOR1  // the dying tests are GetIsPCDying() / GetDeadTemp()
     if (pCreature->GetIsPCDying() != 0 || pCreature->GetDeadTemp() != 0)
 #else
-    if (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) < 1)
+    if (pCreature->GetDeadTemp() != 0)
 #endif
         return 0;
     pCreature->m_pCombatRound->SetRoundPaused(1, oidCreator);
@@ -5370,10 +5341,8 @@ int CSWSEffectListHandler::OnApplyHeal(CSWSObject* pObject, CGameEffect* pEffect
                     return 1;
                 int bWasDying = pCreature->GetIsPCDying();
 #else
-                if (pCreature->m_bInParty != 0) {
-                    if (pCreature->GetCurrentHitPoints(0) < 1)
+                if (pCreature->GetDeadTemp() != 0)
                         return 1;
-                }
 #endif
                 int nTotal = nHeal + static_cast<short>(pCreature->GetCurrentHitPoints(1));
                 if (nTotal > static_cast<short>(pCreature->GetMaxHitPoints(1))) {
@@ -5531,11 +5500,7 @@ int CSWSEffectListHandler::OnApplyDeath(CSWSObject* pObject, CGameEffect* pEffec
             if (bHave == 0)
                 fDelay = 3.0f;
             fDelay *= 1000.0f;
-#if KOTOR1
             if (pCreature->GetDeadTemp() != 0) {
-#else
-            if (pCreature->m_bInParty != 0 && static_cast<short>(pCreature->GetCurrentHitPoints(0)) < 1) {
-#endif
                 CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
                 CScriptEvent* pEvent = new CScriptEvent();
                 pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_DEATH;
@@ -5586,14 +5551,8 @@ int CSWSEffectListHandler::OnApplyDeath(CSWSObject* pObject, CGameEffect* pEffec
                     if (pPartyMember->GetServerCreature() == 0)
                         continue;
                     CSWSCreature* pMemberServer = pPartyMember->GetServerCreature();
-#if KOTOR1
                     if (pMemberServer->GetDeadTemp() == 0)
                         bLivingFound = 1;
-#else
-                    if (pMemberServer->m_bInParty == 0 ||
-                        static_cast<short>(pMemberServer->GetCurrentHitPoints(0)) >= 1)
-                        bLivingFound = 1;
-#endif
                 }
                 if (bLivingFound != 0)
                     g_pAppManager->m_pClientExoApp->SetAutoPaused(1, 9);
@@ -5653,7 +5612,7 @@ int CSWSEffectListHandler::OnApplyLightsaberThrow(CSWSObject* pObject, CGameEffe
     unsigned long long nId2 = pEffect->GetObjectID(2);
     int nSpellId =
             (pEffect->GetInteger(0) == 0) ? FORCE_POWER_LIGHT_SABER_THROW : FORCE_POWER_LIGHT_SABER_THROW_ADVANCED;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     int nPauseMS = pSpell->m_nCastPauseMS;
     CGameObject* apTarget[3];
     apTarget[0] = 0;
@@ -5778,7 +5737,7 @@ lPostDistance:
     anIds[3] = pEffect->GetObjectID(2);
     int nSpellId =
             (pEffect->GetInteger(0) == 0) ? FORCE_POWER_LIGHT_SABER_THROW : FORCE_POWER_LIGHT_SABER_THROW_ADVANCED;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     int nPauseMS = pSpell->m_nCastPauseMS;
     apObj[0] = 0;
     if (anIds[0] != OBJECT_INVALID) {

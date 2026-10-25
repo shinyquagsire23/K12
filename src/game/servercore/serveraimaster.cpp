@@ -103,13 +103,7 @@ CGameObject* CServerAIList::GetObjectAtPosition(int index)
 int CServerAIList::RemoveObject(unsigned long long id)
 {
     if (m_aObjectIds.Contains(id)) {
-        int nFound = -1;
-        for (int64_t i = 0; i < m_aObjectIds.m_count; i++) {
-            if (m_aObjectIds[static_cast<int>(i)] == id) {
-                nFound = static_cast<int>(i);
-                break;
-            }
-        }
+        int nFound = m_aObjectIds.IndexOf(id);
         if (nFound != -1) {
             m_aObjectIds.DelIndex(nFound);
         }

@@ -100,6 +100,13 @@ public:
     void SetSkillStatusAll(unsigned char bStatus);
     void SetSelectedSkill(unsigned int nId);
     int  SetTopLeft();
+    // The id in the selected slot of the selected flow; -1 when the chart is empty.
+    int GetSelected()
+    {
+        if (m_aFlows.m_count < 1)
+            return -1;
+        return m_aFlows.m_pArray[m_nSelectedFlow]->m_aSlots[m_nSelectedSlot].m_nId;
+    }
 
     CExoArrayList<CSWGuiSkillFlow*> m_aFlows;
     unsigned char m_nSelectedSlot;

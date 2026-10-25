@@ -672,7 +672,7 @@ void CSWCArea::UnloadArea()
         g_pAppManager->m_pClientExoApp->GetInGameGui()->FadeAndStopDialogAmbientTrack();
     AurGrassClearInfo();
     ClearTilePathNodes();
-    m_triggerIdList.Clear();
+    m_triggerIdList.SetSize(0);
     if (m_apWeatherGobs[0] != 0) { delete m_apWeatherGobs[0]; m_apWeatherGobs[0] = 0; }
     if (m_apWeatherGobs[1] != 0) { delete m_apWeatherGobs[1]; m_apWeatherGobs[1] = 0; }
     if (m_apWeatherGobs[2] != 0) { delete m_apWeatherGobs[2]; m_apWeatherGobs[2] = 0; }
@@ -696,7 +696,7 @@ void CSWCArea::UnloadArea()
             i++;
         } while (i != nSounds);
     }
-    m_soundObjectIdList.Clear();
+    m_soundObjectIdList.SetSize(0);
     if (m_pAmbientSound != 0)
         m_pAmbientSound->StopSounds(0);
     if (m_pLightningGob != 0) {
@@ -1121,9 +1121,7 @@ void CSWCArea::Update(float deltaTime)
         float fPX = pPlayer->m_position.x;
         float fPY = pPlayer->m_position.y;
         float fPZ = pPlayer->m_position.z + 15.0f;
-        Quaternion qCam = pCamera->GetOrientation();
-        vFwd.x = (qCam.x * qCam.z + qCam.w * qCam.y) * 2.0f;
-        vFwd.y = (qCam.y * qCam.z - qCam.x * qCam.w) * 2.0f;
+        vFwd = pCamera->GetOrientation().zdir();
         vFwd.z = 0.0f;
         vFwd = normalize(vFwd);
         vRight = cross(vFwd, Vector(0.0f, 0.0f, 1.0f));
@@ -1231,11 +1229,9 @@ void CSWCArea::Update(float deltaTime)
         }
 #endif
         Vector vCamPos = pCamera->GetPosition();
-        Quaternion qCam = pCamera->GetOrientation();
         // The camera's forward axis (rotated +Z), projected onto the ground plane and normalized:
         // the emitters' placement frame.
-        vDir.x = (qCam.x * qCam.z + qCam.w * qCam.y) * 2.0f;
-        vDir.y = (qCam.y * qCam.z - qCam.x * qCam.w) * 2.0f;
+        vDir = pCamera->GetOrientation().zdir();
         vDir.z = 0.0f;
         vDir = normalize(vDir);
         // A hexagon of radius 4.5 around the camera (rows at 90/150/210/270/330/30 degrees, in

@@ -11,6 +11,7 @@
 
 #include "Vector.h"
 #include "aurscene.h"
+#include "aurglcore.h"
 #include "AURORA/aurmodel.h"
 
 // Segment probes owned by the math TU.
@@ -38,14 +39,9 @@ float parttriggeralpha;
 
 // The GL entry points this file calls.
 
-// Capability ordinals for the port's GL calls.
-enum { kCapBlend = 0, kCapTexture2D = 4, kCapLighting = 5 };
 
 // In the translation tables, enable indices are GL capabilities, blend indices GL blend factors and
 // prim type indices primitive modes.
-extern unsigned int enableTranslationTable[];
-extern unsigned int blendTranslationTable[];
-extern unsigned int primTypeTranslationTable[];
 
 // The trigger node every trigger part is built on.
 MdlNodeTrigger global_nodetrigger(const_cast<char*>("trigger"));
@@ -291,22 +287,22 @@ void PartTrigger::Draw(bool)
         return;
 
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_TEXTURE_BIT);
-    ASLgl::glDisable(enableTranslationTable[kCapBlend]);
-    ASLgl::glDisable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapBlend);
+    GLRender::Disable(Aurora::kCapTexture2D);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glColor4fv(afColor);
-    ASLgl::glBegin(primTypeTranslationTable[9]);
+    GLRender::BeginImmediatePrimitive(Aurora::kPrimLineLoop);
     for (int i = 0; i < m_listOutline.m_count; i++)
         ASLgl::glVertex3fv(reinterpret_cast<const float*>(&m_listOutline.m_pData[i]));
     ASLgl::glEnd();
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
+    GLRender::Enable(Aurora::kCapBlend);
 
     if (m_bAdditive)
-        ASLgl::glBlendFunc(blendTranslationTable[2], blendTranslationTable[2]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
     else
-        ASLgl::glBlendFunc(blendTranslationTable[0], blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
-    ASLgl::glBegin(primTypeTranslationTable[3]);
+    GLRender::BeginImmediatePrimitive(Aurora::kPrimTriangles);
     for (int i = 0; i < m_listFillTriangles.m_count; i++)
         ASLgl::glVertex3fv(reinterpret_cast<const float*>(&m_listFillTriangles.m_pData[i]));
     ASLgl::glEnd();

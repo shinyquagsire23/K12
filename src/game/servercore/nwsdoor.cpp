@@ -265,7 +265,7 @@ void CSWSDoor::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                 g_pVirtualMachine->RunScript(&m_scriptSlots[4], m_objectId, 1);
             }
             if (m_objectsAtDoor.m_count > 0) {
-                m_objectsAtDoor.Clear();
+                m_objectsAtDoor.SetSize(0);
             }
             break;
         case CSWSSCRIPTEVENT_EVENTTYPE_ON_MINE_TRIGGERED: {  // the open-lock / trap-trigger attempt
@@ -322,7 +322,7 @@ void CSWSDoor::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                     }
                 }
                 if (m_objectsAtDoor.m_count > 0) {
-                    m_objectsAtDoor.Clear();
+                    m_objectsAtDoor.SetSize(0);
                 }
                 // Cached in a local so all three calls read the same trigger.
 #if !KOTOR1
@@ -377,7 +377,7 @@ void CSWSDoor::EventHandler(unsigned int nEventType, unsigned long long nCallerI
 #endif
                 }
                 if (m_objectsAtDoor.m_count > 0) {
-                    m_objectsAtDoor.Clear();
+                    m_objectsAtDoor.SetSize(0);
                 }
                 // Cached in a local so all three calls read the same trigger.
 #if !KOTOR1
@@ -417,13 +417,7 @@ void CSWSDoor::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                     if (pArea->m_bTransitionPending != 0) {
                         // A transition is already armed: only the event carrying its own id wins.
                         if (pEvent->GetInteger(0) != pArea->m_activeTransitionID) break;
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
                         if (pClicker->GetDead() == 0 && pClicker->GetDeadTemp() == 0) {
-#else
-                        if (pClicker->GetDead() == 0 &&
-                            (pClicker->m_bInParty == 0 ||
-                             pClicker->GetCurrentHitPoints(0) > 0)) {
-#endif
                             CServerExoApp* pServerExoApp = g_pAppManager->m_pServerExoApp;
                             pServerExoApp->SetMoveToModulePending(1);
                             pServerExoApp->SetMoveToModuleString(m_linkedToModule);
@@ -610,9 +604,7 @@ Vector CSWSDoor::GetActionPoint(int state, unsigned char pointIndex) {
     } else {
         return Vector{-9999999.0f, -9999999.0f, -9999999.0f};
     }
-    CSWCollisionMesh* pMesh = m_meshVariants[meshIdx];
-    Vector* pPoint = &pMesh->m_headerVec[pointIndex];
-    return pMesh->LocalToWorld(*pPoint);
+    return m_meshVariants[meshIdx]->GetOpenLocation(pointIndex);
 }
 
 #if !KOTOR1  // K1 has no difficulty-scaled GetOpenLockDC
@@ -985,6 +977,7 @@ int CSWSDoor::LoadDoorExternal(CResGFF* pGFF, CResStruct* pStruct, int external)
                 str = result;
             }
             if (success) {
+                // inlined CSWSObject::SetTag(CExoString const&)
                 m_sTag = str.LowerCase();
             }
 #endif
@@ -1057,8 +1050,8 @@ int CSWSDoor::LoadDoor(CResGFF* pGFF, CResStruct* pStruct, int bClampCurrentHP)
 #endif
     m_closeLockDC = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("CloseLockDC"), bSuccess, m_closeLockDC);
     m_secretDoorDC = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("SecretDoorDC"), bSuccess, m_secretDoorDC);
-    m_sTag = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, m_sTag).LowerCase();
-    m_dialogResref = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Conversation"), bSuccess, CResRef(""));
+    SetTag(pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, m_sTag));
+    SetDialogResref(pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Conversation"), bSuccess, CResRef("")));
 
     unsigned short nPortraitId = pGFF->ReadFieldWORD(pStruct, const_cast<char*>("PortraitId"), bSuccess, PORTRAIT_ID_NONE);
     if (nPortraitId >= PORTRAIT_ID_CUSTOM) {
@@ -1170,7 +1163,7 @@ int CSWSDoor::LoadDoor(CResGFF* pGFF, CResStruct* pStruct, int bClampCurrentHP)
          i <= CSWDoorSurfaceMesh::DOOR_STATE_OPEN2; i++) {
         m_meshVariants[i] = new CSWDoorSurfaceMesh();
         m_meshVariants[i]->SetDoorType(i);
-        m_meshVariants[i]->m_resRef = CResRef(sModelName);
+        m_meshVariants[i]->SetMesh(CResRef(sModelName));
         m_meshVariants[i]->LoadMesh(0);
         m_meshVariants[i]->ComputeMeshNormals();
     }

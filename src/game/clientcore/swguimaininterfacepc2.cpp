@@ -1122,37 +1122,37 @@ void CSWGuiMainInterface::Update(float fDelta) {
     m_lblMenuBg.m_tail.bVisible = bShowMenu;
 #else
     if (g_pAppManager->m_pServerExoApp->GetPartyTable()->m_nNumPartyMembers >= 1) {
-        m_tbSolo.m_border.m_params.SetFillImage(CResRef("i_solo_ios"), 0);
-        m_tbSolo.m_borderHilight.m_params.SetFillImage(CResRef("i_solo1_ios"), 0);
+        m_tbSolo.m_border.m_params.SetFillImage(CResRef("i_solo_ios"));
+        m_tbSolo.m_borderHilight.m_params.SetFillImage(CResRef("i_solo1_ios"));
         m_tbSolo.bToggledOn =
                        (g_pAppManager->m_pServerExoApp->GetPartyTable()->m_soloMode & 1);
     } else {
-        m_tbSolo.m_border.m_params.SetFillImage(CResRef("i_solo_off"), 0);
-        m_tbSolo.m_borderHilight.m_params.SetFillImage(CResRef("i_solo_off"), 0);
+        m_tbSolo.m_border.m_params.SetFillImage(CResRef("i_solo_off"));
+        m_tbSolo.m_borderHilight.m_params.SetFillImage(CResRef("i_solo_off"));
         m_tbSolo.bToggledOn = 0;
     }
     if (pPlayer && pPlayer->IsStealthCapable()) {
-        m_tbStealth.m_border.m_params.SetFillImage(CResRef("i_mistealth_ios"), 0);
-        m_tbStealth.m_borderHilight.m_params.SetFillImage(CResRef("i_mistealth1_ios"), 0);
+        m_tbStealth.m_border.m_params.SetFillImage(CResRef("i_mistealth_ios"));
+        m_tbStealth.m_borderHilight.m_params.SetFillImage(CResRef("i_mistealth1_ios"));
         m_tbStealth.bToggledOn = pPlayer->m_nStealthState & 1;
     } else {
-        m_tbStealth.m_border.m_params.SetFillImage(CResRef("i_stealth_off"), 0);
-        m_tbStealth.m_borderHilight.m_params.SetFillImage(CResRef("i_stealth_off"), 0);
+        m_tbStealth.m_border.m_params.SetFillImage(CResRef("i_stealth_off"));
+        m_tbStealth.m_borderHilight.m_params.SetFillImage(CResRef("i_stealth_off"));
         m_tbStealth.bToggledOn = 0;
     }
     if (pPlayer && pPlayer->CanSwapWeapons()) {
-        m_btnSwapWeapons.m_border.m_params.SetFillImage(CResRef("i_swapwpn_ios"), 0);
-        m_btnSwapWeapons.m_borderHilight.m_params.SetFillImage(CResRef("i_swapwpn_ios2"), 0);
+        m_btnSwapWeapons.m_border.m_params.SetFillImage(CResRef("i_swapwpn_ios"));
+        m_btnSwapWeapons.m_borderHilight.m_params.SetFillImage(CResRef("i_swapwpn_ios2"));
     } else {
-        m_btnSwapWeapons.m_border.m_params.SetFillImage(CResRef("i_swapwpn_off"), 0);
-        m_btnSwapWeapons.m_borderHilight.m_params.SetFillImage(CResRef("i_swapwpn_off"), 0);
+        m_btnSwapWeapons.m_border.m_params.SetFillImage(CResRef("i_swapwpn_off"));
+        m_btnSwapWeapons.m_borderHilight.m_params.SetFillImage(CResRef("i_swapwpn_off"));
     }
     if (g_pAppManager->m_pClientExoApp->CanFlourish() & 1) {
-        m_btnFlourish.m_border.m_params.SetFillImage(CResRef("i_flrish_ios"), 0);
-        m_btnFlourish.m_borderHilight.m_params.SetFillImage(CResRef("i_flrish1_ios"), 0);
+        m_btnFlourish.m_border.m_params.SetFillImage(CResRef("i_flrish_ios"));
+        m_btnFlourish.m_borderHilight.m_params.SetFillImage(CResRef("i_flrish1_ios"));
     } else {
-        m_btnFlourish.m_border.m_params.SetFillImage(CResRef("i_flrish_off"), 0);
-        m_btnFlourish.m_borderHilight.m_params.SetFillImage(CResRef("i_flrish_off"), 0);
+        m_btnFlourish.m_border.m_params.SetFillImage(CResRef("i_flrish_off"));
+        m_btnFlourish.m_borderHilight.m_params.SetFillImage(CResRef("i_flrish_off"));
     }
     m_tbPause.bToggledOn = g_pAppManager->m_pClientExoApp->GetPausedByCombat() & 1;
     CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
@@ -1642,8 +1642,8 @@ void CSWGuiMainInterface::UpdateIndicator(float fDelta) {
     }
     m_targetActionMenu.SetFriend(nFriendly, bPoisoned);
     CResRef sBg(nFriendly == 0 ? "ios_action_bg2" : "ios_action_bg");
-    m_actionMenuHalves[1].m_border.m_params.SetFillImage(sBg, 0);
-    m_actionMenuHalves[1].m_borderHilight.m_params.SetFillImage(sBg, 0);
+    m_actionMenuHalves[1].m_border.m_params.SetFillImage(sBg);
+    m_actionMenuHalves[1].m_borderHilight.m_params.SetFillImage(sBg);
     if (nRet == 0) {
         bVisible = false;
         bLive = true;
@@ -1747,7 +1747,7 @@ void CSWGuiMainInterface::UpdateIndicator(float fDelta) {
         sExtent.w = sExtent.h = nW;
         m_lblTargetIndicator.SetExtent(sExtent);
         m_lblTargetIndicator.m_border.m_params.m_fRotate = fRot;
-        m_lblTargetIndicator.m_border.m_params.SetFillImage(sImage, 0);
+        m_lblTargetIndicator.m_border.m_params.SetFillImage(sImage);
         bVisible = true;
         bLive = true;
     }
@@ -1850,7 +1850,7 @@ void CSWGuiMainInterface::OnCharacterClicked(CSWGuiControl* pControl) {
         return;
 #else
     CSWSCreature* pServer = pChar->GetServerCreature();
-    if (pServer->m_bInParty != 0 && pServer->GetCurrentHitPoints(0) < 1)
+    if (pServer->GetDeadTemp() != 0)
         return;
 #endif
     g_pAppManager->m_pClientExoApp->ChangeCharacter(nIndex, 1);
@@ -2515,7 +2515,7 @@ void CSWGuiMainInterface::GetActionIcon(CSWSCombatRound* pCombatRound, CSWSObjec
             resFallback = const_cast<char*>("i_equipm");
             break;
         case CSWSCombatRoundAction::TYPE_CAST_SPELL: {
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pRoundAction->m_nSpellId);
+            CSWSpell* pSpell = g_pRules->GetSpell(pRoundAction->m_nSpellId);
             if (pSpell) {
                 resIcon = pSpell->m_iconResRef;
                 resFallback = const_cast<char*>("i_powerm");
@@ -2571,7 +2571,7 @@ void CSWGuiMainInterface::GetActionIcon(CSWSCombatRound* pCombatRound, CSWSObjec
             resFallback = const_cast<char*>("i_equipm");
             break;
         case CSWSCombatRoundAction::TYPE_CAST_SPELL: {
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pRoundAction->m_nSpellId);
+            CSWSpell* pSpell = g_pRules->GetSpell(pRoundAction->m_nSpellId);
             if (pSpell) {
                 resIcon = pSpell->m_iconResRef;
                 resFallback = const_cast<char*>("i_powerm");
@@ -2606,7 +2606,7 @@ void CSWGuiMainInterface::GetActionIcon(CSWSCombatRound* pCombatRound, CSWSObjec
 #endif
         }
     } else if (nId == AIACTION_CAST_SPELL) {
-        resIcon = g_pRules->m_pSpellArray->GetSpell(pActionNode->m_args.m_spellId)->m_iconResRef;
+        resIcon = g_pRules->GetSpell(pActionNode->m_args.m_spellId)->m_iconResRef;
         resFallback = const_cast<char*>("i_powerm");
     } else if (nId == AIACTION_ITEM_CAST_SPELL) {
         CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(static_cast<unsigned int>(pActionNode->m_args.m_useItemPropItemId));
@@ -2935,14 +2935,9 @@ void CSWGuiFloatyText::Update(float fDelta) {
         if (pObject && pObject->AsSWCCreature()) {
             Gob* pModel = pObject->GetModel(0xff, 1);
             CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
-            Quaternion q = pCamera->GetOrientation();
-            float fA1 = (q.x * q.z + q.w * q.y) * -2.0f;
-            float fA2 = (q.z * q.y - q.x * q.w) * -2.0f;
-            float fA3 = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-            Vector vPos = pModel->GetPosition();
-            float fPoint = vPos.x * fA1 + vPos.y * fA2 - vPos.z * fA3;
-            Vector vCamPos = pCamera->GetPosition();
-            float fCam = fA1 * vCamPos.x + fA2 * vCamPos.y - fA3 * vCamPos.z;
+            Vector vDir = -pCamera->GetOrientation().zdir();
+            float fPoint = dot(pModel->GetPosition(), vDir);
+            float fCam = dot(pCamera->GetPosition(), vDir);
             if (fPoint > fCam) {
                 Vector vScreen = pCamera->MapToScreen(pModel->GetPosition(), true);
                 int nX = static_cast<int>(vScreen.x *
@@ -4074,17 +4069,11 @@ void CSWGuiMainInterface::DrawMap(float fDelta) {
                 } else {
 #endif
                 CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
-                Quaternion q = pCamera->GetOrientation();
                 m_lblArrow.m_border.m_params.m_fRotate =
-                    pArea->GetMapRotateCCWFromWorldOrientation(Vector(
 #if KOTOR1
-                        (q.x * q.y - q.w * q.z) * 2.0f,
-                        1.0f - (q.x * q.x + q.z * q.z) * 2.0f,
-                        (q.x * q.w + q.y * q.z) * 2.0f));
+                    pArea->GetMapRotateCCWFromWorldOrientation(pCamera->GetOrientation().ydir());
 #else
-                        (q.x * q.z + q.w * q.y) * -2.0f,
-                        (q.z * q.y - q.x * q.w) * -2.0f,
-                        -(1.0f - (q.x * q.x + q.y * q.y) * 2.0f)));
+                    pArea->GetMapRotateCCWFromWorldOrientation(-pCamera->GetOrientation().zdir());
 #endif
 #if defined(K2_UI_XBOX) || defined(K2_FIX_ENGINE_BUGS)
                 }
@@ -5548,7 +5537,7 @@ void CSWGuiMainInterface::PopulateMenus(int nUnused) {
     // Dim everything while the leader is dead or down: 1 == "no action is usable right now".
     int bDimmed = 1;
     if (pCreature && !pCreature->GetDead()) {
-        if (pCreature->m_bInParty == 0 || pCreature->GetCurrentHitPoints(0) >= 1)
+        if (pCreature->GetDeadTemp() == 0)
             bDimmed = 0;
     }
     if (pPC->m_objectId != m_lastPlayerId) {
@@ -8150,8 +8139,8 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 
     }
     const CResRef sHalfBg("ios_action_bg");
-    m_actionMenuHalves[0].m_border.m_params.SetFillImage(sHalfBg, 0);
-    m_actionMenuHalves[0].m_borderHilight.m_params.SetFillImage(sHalfBg, 0);
+    m_actionMenuHalves[0].m_border.m_params.SetFillImage(sHalfBg);
+    m_actionMenuHalves[0].m_borderHilight.m_params.SetFillImage(sHalfBg);
     m_actionMenuHalves[0].m_borderHilight.m_params.m_flags.nFillStyle = 2;
     m_actionMenuHalves[0].m_border.m_params.m_flags.nFillStyle = 2;
     {
@@ -8168,8 +8157,8 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_actionMenuIos.AddControl(&m_actionMenuHalves[0]);
     SendControlToBack(&m_actionMenuHalves[0]);
     const CResRef sHalfBg2("ios_action_bg2");
-    m_actionMenuHalves[1].m_border.m_params.SetFillImage(sHalfBg2, 0);
-    m_actionMenuHalves[1].m_borderHilight.m_params.SetFillImage(sHalfBg2, 0);
+    m_actionMenuHalves[1].m_border.m_params.SetFillImage(sHalfBg2);
+    m_actionMenuHalves[1].m_borderHilight.m_params.SetFillImage(sHalfBg2);
     m_actionMenuHalves[1].m_borderHilight.m_params.m_flags.nFillStyle = 2;
     m_actionMenuHalves[1].m_border.m_params.m_flags.nFillStyle = 2;
     {
@@ -8210,16 +8199,16 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     sFullScreen.h = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenHeight;
     m_btnHelpClose.SetExtent(sFullScreen);
     m_btnHelpClose.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpClose.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpClose.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpClose.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpClose.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpClose.m_tail.bFocusOnHover = 0;
     m_btnHelpClose.AddEvent(INPUTEVENT_GUI_BACK, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_btnHelpClose.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_btnHelpClose.AddEvent(INPUTEVENT_GUI_B, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_btnHelpPage.SetExtent(sFullScreen);
     m_btnHelpPage.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpPage.m_tail.bFocusOnHover = 0;
     m_btnHelpPage.AddEvent(INPUTEVENT_GUI_BACK, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
@@ -8228,8 +8217,8 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_helpPanel.AddControl(&m_btnHelpPage);
     m_btnHelpHint.m_tail.bFocusOnHover = 0;
     m_btnHelpHint.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpHint.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpHint.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpHint.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpHint.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpHint.m_tail.bFocusOnHover = 0;
     m_helpPanel.AddControl(&m_btnHelpHint);
     m_btnHelpPage.AddEvent(INPUTEVENT_GUI_BACK, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
@@ -8269,9 +8258,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         sCorner.y = static_cast<int>(fY * 398.0f);
         sCorner.w = static_cast<int>(fX * 252.0f);
         sCorner.h = static_cast<int>(fY * 96.0f);
-        m_btnFeedback.m_border.m_params.SetCornerImage(CResRef("uibit_brdr_16bct"), 0);
-        m_btnFeedback.m_border.m_params.SetEdgeImage(CResRef("uibit_brdr_16bet"), 0);
-        m_btnFeedback.m_border.m_params.SetFillImage(CResRef("uibit_fill_2bt"), 0);
+        m_btnFeedback.m_border.m_params.SetCornerImage(CResRef("uibit_brdr_16bct"));
+        m_btnFeedback.m_border.m_params.SetEdgeImage(CResRef("uibit_brdr_16bet"));
+        m_btnFeedback.m_border.m_params.SetFillImage(CResRef("uibit_fill_2bt"));
         m_btnFeedback.m_border.m_params.m_nBorderDim = 16;
         m_btnFeedback.m_border.m_params.m_color.r = CGuiInGame::COLOR_NEW_GREEN.x;
         m_btnFeedback.m_border.m_params.m_color.g = CGuiInGame::COLOR_NEW_GREEN.y;
@@ -8280,9 +8269,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 #if !KOTOR1  // K2-only: K1's CSWGuiBorderParams lacks this field
         m_btnFeedback.m_border.m_params.m_nInnerOffsetY = 12;
 #endif
-        m_btnFeedback.m_borderHilight.m_params.SetCornerImage(CResRef("uibit_brdr_16bct"), 0);
-        m_btnFeedback.m_borderHilight.m_params.SetEdgeImage(CResRef("uibit_brdr_16bet"), 0);
-        m_btnFeedback.m_borderHilight.m_params.SetFillImage(CResRef("uibit_fill_2bt"), 0);
+        m_btnFeedback.m_borderHilight.m_params.SetCornerImage(CResRef("uibit_brdr_16bct"));
+        m_btnFeedback.m_borderHilight.m_params.SetEdgeImage(CResRef("uibit_brdr_16bet"));
+        m_btnFeedback.m_borderHilight.m_params.SetFillImage(CResRef("uibit_fill_2bt"));
         m_btnFeedback.m_borderHilight.m_params.m_nBorderDim = 16;
         m_btnFeedback.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_NEW_GREEN.x;
         m_btnFeedback.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_NEW_GREEN.y;
@@ -8926,7 +8915,7 @@ void CSWGuiMainInterface::Draw(float fDelta) {
     if (m_bPartyItemUsePending != 0) {
         CSWSCreature* pServer = pPlayer->GetServerCreature();
         if (pServer != 0 && (pServer->IsDebilitated(0) || pServer->GetDead() ||
-                             (pServer->m_bInParty && pServer->GetCurrentHitPoints(0) <= 0)))
+                             pServer->GetDeadTemp() != 0))
             m_bPartyItemUsePending = 0;
     }
     if (m_bPartyItemUsePending != 0) {
@@ -9338,17 +9327,12 @@ void CSWGuiMainInterface::UpdatePortraits() {
             int nCurHP = pServer->GetCurrentHitPoints(0);
             int nMaxHP = pServer->GetMaxHitPoints(1);
             int bPoisoned = pServer->m_bPoisoned;
-            m_aCharacters[nSlot].m_aBars[0].SetMaxValue(nMaxHP);
-            m_aCharacters[nSlot].m_aBars[0].SetCurValue(nCurHP);
-            m_aCharacters[nSlot].m_aBars[0].m_borderProgress.m_params.m_color = bPoisoned ?
-                reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_GREEN) : reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_RED);
-            m_aCharacters[nSlot].m_nMaxHP = nMaxHP;
-            m_aCharacters[nSlot].m_nCurHP = nCurHP;
-            m_aCharacters[nSlot].m_bToolTipDirty = 1;
+            m_aCharacters[nSlot].SetHealth(nCurHP, nMaxHP, bPoisoned);
             short nFPBonus = pServer->m_pStats->m_nTemporaryForcePoints;
             short nFPCur = pServer->m_pStats->m_nCurrentForcePoints;
             short nMaxFP = pServer->GetMaxForcePoints();
             short nFPCurTot = nFPBonus + nFPCur;
+            // inlined CSWGuiMainInterfaceChar::SetForce(int, int)
             if (nMaxFP == 0) {
                 m_aCharacters[nSlot].m_aBars[1].SetMaxValue(1);
                 m_aCharacters[nSlot].m_aBars[1].SetCurValue(0);
@@ -9370,7 +9354,7 @@ void CSWGuiMainInterface::UpdatePortraits() {
             m_aCharacters[nSlot].m_bToolTipDirty = 1;
             if (pServer->GetDead()) {
                 nState = 1;
-            } else if (pServer->m_bInParty && pServer->GetCurrentHitPoints(0) <= 0) {
+            } else if (pServer->GetDeadTemp() != 0) {
                 nState = 1;
             } else if (pServer->m_pStats->CanLevelUp()) {
                 CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
@@ -9436,17 +9420,12 @@ void CSWGuiMainInterface::UpdatePortraits() {
                 int nCurHPMirror = pServer->GetCurrentHitPoints(0);
                 int nMaxHPMirror = pServer->GetMaxHitPoints(1);
                 int bPoisonedMirror = pServer->m_bPoisoned;
-                m_aCharacters[3].m_aBars[0].SetMaxValue(nMaxHPMirror);
-                m_aCharacters[3].m_aBars[0].SetCurValue(nCurHPMirror);
-                m_aCharacters[3].m_aBars[0].m_borderProgress.m_params.m_color = bPoisonedMirror ?
-                    reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_GREEN) : reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_RED);
-                m_aCharacters[3].m_nCurHP = nCurHPMirror;
-                m_aCharacters[3].m_nMaxHP = nMaxHPMirror;
-                m_aCharacters[3].m_bToolTipDirty = 1;
+                m_aCharacters[3].SetHealth(nCurHPMirror, nMaxHPMirror, bPoisonedMirror);
                 short nFPBonusMirror = pServer->m_pStats->m_nTemporaryForcePoints;
                 short nFPCurMirror = pServer->m_pStats->m_nCurrentForcePoints;
                 short nMaxFPMirror = pServer->GetMaxForcePoints();
                 short nFPCurTotMirror = nFPBonusMirror + nFPCurMirror;
+                // inlined CSWGuiMainInterfaceChar::SetForce(int, int)
                 if (nMaxFPMirror == 0) {
                     m_aCharacters[3].m_aBars[1].SetMaxValue(1);
                     m_aCharacters[3].m_aBars[1].SetCurValue(0);

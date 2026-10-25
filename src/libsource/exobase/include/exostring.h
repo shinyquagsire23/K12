@@ -55,4 +55,12 @@ public:
     int  StripNonAlphaNumeric(int bLower, int bAllowAt, int bAllowPunct);
 
     void Format(char* fmt, ...);
+
+    // Buffer management: m_nBufferLength is set first, then the buffer allocated to it.
+    void AllocString() { m_sString = new char[m_nBufferLength]; }
+    void DeallocString()
+    {
+        delete[] m_sString;
+        m_sString = 0;
+    }
 };

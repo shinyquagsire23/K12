@@ -186,10 +186,8 @@ void CSWCDoor::UpdateAreaTransitionDisplay()
 
     Vector vFacing;
     if (pGui->m_bAreaTransitionUseCameraFacing != 0) {
-        Quaternion q = g_pAppManager->m_pClientExoApp->GetModuleCamera()->GetOrientation();
         // The camera's rotated Y axis, flattened.
-        vFacing.x = (q.x * q.y - q.w * q.z) + (q.x * q.y - q.w * q.z);
-        vFacing.y = 1.0f - ((q.x * q.x + q.z * q.z) + (q.x * q.x + q.z * q.z));
+        vFacing = g_pAppManager->m_pClientExoApp->GetModuleCamera()->GetOrientation().ydir();
         vFacing.z = 0.0f;
         vFacing = normalize(vFacing);
     } else {
@@ -603,8 +601,7 @@ void CSWCDoor::GetTargetActions(CSWCCreature* pCreature, int nType,
 
 #if KOTOR1  // K1 has only the security and bash entries
     if (nType != 1) {
-        if (nType == 0 && GetCurrentAnimation() != SERVER_ANIMATION_DOOR_OPEN1 &&
-            GetCurrentAnimation() != SERVER_ANIMATION_DOOR_OPEN2 &&
+        if (nType == 0 && !GetIsOpen() &&
             m_bStatic == 0 && m_bPlot == 0 && nAreaMenuDisabled == 0 && m_bLocked != 0) {
             list.SetSize(nOldCount + 1);
             list.m_pArray[nOldCount].m_sName =
@@ -631,7 +628,7 @@ void CSWCDoor::GetTargetActions(CSWCCreature* pCreature, int nType,
         if (nType != 1) {
             if (nType != 0)
                 return;
-            if (GetCurrentAnimation() == SERVER_ANIMATION_DOOR_OPEN1 || GetCurrentAnimation() == SERVER_ANIMATION_DOOR_OPEN2)
+            if (GetIsOpen())
                 return;
             if (m_bStatic != 0)
                 return;

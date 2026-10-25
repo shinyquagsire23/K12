@@ -97,14 +97,14 @@ void CSWGuiPowersFeatsSkillsDebugMenu::CreatePowersSubMenu()
     int64_t nCount = g_pRules->m_pSpellArray->m_nCount;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
     for (int64_t i = 0; i < nCount; i++) {
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(static_cast<int>(i));
+        CSWSpell* pSpell = g_pRules->GetSpell(static_cast<int>(i));
         if (pSpell->m_nUserType == 1 && pSpell->m_nNameStrRef != 0) {
 #if KOTOR1
             CExoString s("Add ");
-            s = s + g_pRules->m_pSpellArray->GetSpell(static_cast<int>(i))->GetSpellNameText();
+            s = s + g_pRules->GetSpell(static_cast<int>(i))->GetSpellNameText();
 #else
             CExoString s = CExoString("Add ") +
-                g_pRules->m_pSpellArray->GetSpell(static_cast<int>(i))->GetSpellNameText();
+                g_pRules->GetSpell(static_cast<int>(i))->GetSpellNameText();
 #endif
             CSWGuiButton* pButton = CreateOption(s,
                 static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPowersFeatsSkillsDebugMenu::OnPowerPicked),
@@ -128,11 +128,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::CreateSkillsSubMenu()
     CExoArrayList<CSWGuiControl*> list;
     int64_t nCount = g_pRules->m_nNumSkills;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
-    if (nCount != 0) {
-        list.m_capacity = static_cast<int>(nCount);
-        list.m_pArray = new CSWGuiControl*[nCount];
-    }
-    list.m_count = static_cast<int>(nCount);
+    list.SetSize(static_cast<int>(nCount));
     for (int64_t i = 0; i < nCount; i++) {
         CExoString s("Add ");
         s = s + g_pRules->m_paSkills[i].GetNameText();
@@ -158,11 +154,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::CreateFeatsSubMenu()
     CExoArrayList<CSWGuiControl*> list;
     int64_t nCount = g_pRules->m_nFeatIndices;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
-    if (nCount != 0) {
-        list.m_capacity = static_cast<int>(nCount);
-        list.m_pArray = new CSWGuiControl*[nCount];
-    }
-    list.m_count = static_cast<int>(nCount);
+    list.SetSize(static_cast<int>(nCount));
     for (int64_t i = 0; i < nCount; i++) {
         CExoString s("Add ");
         s = s + g_pRules->GetFeat(g_pRules->m_paFeatIndices[i])->GetNameText();
@@ -208,7 +200,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::OnPowerPicked(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
         int nSpell = static_cast<int>(pControl->m_tail.m_nUserData);
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
         CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
         if (pSpell && pCreature)
@@ -223,7 +215,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::OnPowerPicked(CSWGuiControl* pControl)
 void CSWGuiPowersFeatsSkillsDebugMenu::AddPrerequisiteSpells(unsigned int nSpell,
                                                              CSWSCreature* pCreature)
 {
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     if (pCreature && pSpell) {
         unsigned char nClass = pCreature->m_pStats->m_numClasses - 1;
         for (int* pnPrereq = pSpell->m_anPrereq1; *pnPrereq != -1; pnPrereq++) {

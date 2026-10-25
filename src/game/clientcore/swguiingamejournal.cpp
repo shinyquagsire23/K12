@@ -219,14 +219,7 @@ void CSWGuiInGameJournal::OnPanelRemoved()
 #if !KOTOR1  // K1 rows have no exit handler
 void CSWGuiInGameJournal::OnControlExited(CSWGuiControl* pControl)
 {
-    CSWGuiJournalItemEntry* pEntry = static_cast<CSWGuiJournalItemEntry*>(pControl);
-    if (pEntry->m_bNewHilight)
-    {
-        pEntry->m_bNewHilight = 0;
-        pEntry->m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
-        pEntry->m_borderHilight.m_params.m_color =
-            *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_HIGHLIGHT);
-    }
+    static_cast<CSWGuiJournalItemEntry*>(pControl)->SetEncouraged(0);
 }
 #endif
 
@@ -301,27 +294,24 @@ void CSWGuiInGameJournal::PopulateItemListBox()
 #else
         if (sText.Find('<', 0) != -1 || sText.Find('{', 0) != -1)
         {
-            g_pSWTlkTable->m_pSpeakerObj =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            g_pSWTlkTable->m_gender = g_pSWTlkTable->GetObjectGender();
-            g_pSWTlkTable->m_bSuppressEnabled |= 1;
-            g_pSWTlkTable->ParseStr(sText);
+            CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            g_pSWTlkTable->ParseStr(sText, pPC, 1, 1);
         }
         pRow->m_text.m_params.SetText(sText);
 #endif
 
+#if KOTOR1
         if (pEntry->m_bNewUnobserved && !pRow->m_bNewHilight)
         {
             pRow->m_bNewHilight = 1;
             pRow->m_border.m_params.m_fAlpha = 0.5f;
-#if KOTOR1
             pRow->m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_PURPLE);
             pRow->m_borderHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_PURPLE);
-#else
-            pRow->m_border.m_params.m_color = CGuiInGame::COLOR_NEW_BONUS;
-            pRow->m_borderHilight.m_params.m_color = CGuiInGame::COLOR_NEW_BONUS;
-#endif
         }
+#else
+        if (pEntry->m_bNewUnobserved)
+            pRow->SetEncouraged(1);
+#endif
         aRows.Add(pRow);
     }
 
@@ -360,8 +350,7 @@ void CSWGuiInGameJournal::OnControlEntered(CSWGuiControl* pControl)
         SJournalEntry* pEntry = GetQuestEntryAt(nIndex);
         if (pEntry)
         {
-            if (m_aNewQuestRows.Contains(nIndex) == 0)
-                m_aNewQuestRows.Add(nIndex);
+            m_aNewQuestRows.AddUnique(nIndex);
 
             CExoString sText;
             pEntry->m_locText.GetString(g_pAppManager->m_pClientExoApp->GetClientLanguage(),
@@ -377,6 +366,7 @@ void CSWGuiInGameJournal::OnControlEntered(CSWGuiControl* pControl)
 #if !KOTOR1  // K1 has no token expansion
             if (sText.Find('<', 0) != -1 || sText.Find('{', 0) != -1)
             {
+                // inlined CSWTlkTable::ParseStr(CExoString&, CGameObject*, int, int)
                 g_pSWTlkTable->m_pSpeakerObj =
                     g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
                 g_pSWTlkTable->m_gender = g_pSWTlkTable->GetObjectGender();

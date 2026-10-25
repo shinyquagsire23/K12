@@ -659,6 +659,8 @@ public:
     int  GetDeadTemp();
 #else
     void SetCombatState(int a, unsigned char b, int c);
+    // A party member at zero hit points is down rather than dead.
+    int  GetDeadTemp() { return m_bInParty != 0 && GetCurrentHitPoints(0) < 1; }
 #endif
     // Pulls the whole faction into combat against oidAttacker: every member in spot
     // range that already dislikes the attacker enters combat.
@@ -772,6 +774,17 @@ public:
     int  IsAttackSuccessful(int a);
     int  IsAttackParried(int a);
     int  IsAttackMiss(int a);
+    // Files an attack's result as m_attackResult's hit (0) / miss (1) / parried (2); any other
+    // result leaves it alone.
+    void SetAttackResult(int nResult)
+    {
+        if (IsAttackSuccessful(nResult))
+            m_attackResult = 0;
+        else if (IsAttackMiss(nResult))
+            m_attackResult = 1;
+        else if (IsAttackParried(nResult))
+            m_attackResult = 2;
+    }
     void SetMovementRateFactor(float f);
 #if KOTOR1
     float GetMovementRateFactor();

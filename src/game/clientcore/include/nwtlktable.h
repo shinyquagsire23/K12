@@ -53,6 +53,8 @@ public:
     unsigned char GetObjectGender();
 
     CExoString Fetch(uint64_t strRef, CGameObject* pObject, int nMode, int bFlag);
+    using CTlkTable::ParseStr;
+    void ParseStr(CExoString& s, CGameObject* pObject, int nMode, int bFlag);
 
     CGameObject* m_pSpeakerObj;
     unsigned char m_bSuppressEnabled;
@@ -72,4 +74,13 @@ inline CExoString CSWTlkTable::Fetch(uint64_t strRef, CGameObject* pObject, int 
     m_gender = GetObjectGender();
     m_bSuppressEnabled = static_cast<unsigned char>((m_bSuppressEnabled & ~SUPPRESS_ENABLED) | (bFlag & 1));
     return g_pAppManager->m_pClientExoApp->GetGUIString(strRef);
+}
+
+inline void CSWTlkTable::ParseStr(CExoString& s, CGameObject* pObject, int nMode, int bFlag)
+{
+    K2_UNUSED(nMode);
+    m_pSpeakerObj = pObject;
+    m_gender = GetObjectGender();
+    m_bSuppressEnabled = static_cast<unsigned char>((m_bSuppressEnabled & ~SUPPRESS_ENABLED) | (bFlag & 1));
+    CTlkTable::ParseStr(s);
 }

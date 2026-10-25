@@ -44,12 +44,7 @@ void CSWGuiInGameSoloModeQuery::Draw(float f)
         || g_pAppManager->m_pClientExoApp->GetAreaNotReadyToDisplay() != 0
         || (pServerCreature != 0
             && (pServerCreature->GetDead() != 0
-#if KOTOR1  // K1 tests GetDeadTemp() for the dying case
                 || pServerCreature->GetDeadTemp() != 0)))
-#else
-                || (pServerCreature->m_bInParty != 0
-                    && pServerCreature->GetCurrentHitPoints(0) <= 0))))
-#endif
     {
         // The second assignment overwrites the first in the guarded case; the pair stays unfolded.
         unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;

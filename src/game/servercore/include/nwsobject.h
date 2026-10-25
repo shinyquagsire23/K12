@@ -130,6 +130,9 @@ public:
     unsigned char _pad02c[0x30 - 0x2c];
     CExoString    m_sTag;
     CResRef       m_portrait;
+
+    // Tags are stored lower-cased.
+    void SetTag(const CExoString& sTag) { m_sTag = sTag.LowerCase(); }
     unsigned short m_portraitId;
     unsigned char _pad052[0x58 - 0x52];
     CSWSDialog*   m_pDialog;
@@ -763,7 +766,10 @@ struct CSWActionQueueEntry {
 
     unsigned long long m_targetId;
 
-    CSWActionQueueEntry()
+    CSWActionQueueEntry() { ClearData(); }
+
+    // Back to an empty slot.
+    void ClearData()
     {
         m_nGroupId = SLOT_EMPTY;
         m_nActionId = SLOT_EMPTY;

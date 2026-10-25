@@ -11,17 +11,7 @@
 CExoFileThread* g_ExoFileThread;
 
 #include "port/libcstring.h"
-
-// Length of a CExoString without going through GetLength(), so a call's result is not evaluated
-// twice.
-static inline int sLen(const CExoString& s)
-{
-#if KOTOR1  // K1: CExoString::GetLength is out of line
-    return s.GetLength();
-#else
-    return s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0;
-#endif
-}
+#include "exostringinline.h"
 
 CExoAliasListInternal::CExoAliasListInternal()
     : m_pList(0)
@@ -50,7 +40,7 @@ void CExoAliasListInternal::Add(const CExoString& alias, const CExoString& path)
 
     sAlias = sAlias.UpperCase();
 
-    if (sPath.CStr()[sLen(sPath) - 1] != '\\')
+    if (sPath.CStr()[sPath.GetLength() - 1] != '\\')
         sPath = sPath + "\\";
 
     CExoAliasListEntry* pPrev = 0;
@@ -87,7 +77,7 @@ void CExoAliasListInternal::ChangePath(const CExoString& alias, const CExoString
     sAlias = sAlias.UpperCase();
 
     char* pPathStr = static_cast<char*>(sPath.CStr());
-    if (pPathStr[sLen(sPath) - 1] != '\\')
+    if (pPathStr[sPath.GetLength() - 1] != '\\')
         sPath = sPath + "\\";
 
     for (CExoAliasListEntry* pCur = m_pList; pCur != 0; pCur = pCur->m_pNext)
@@ -152,7 +142,7 @@ const CExoString& CExoAliasListInternal::GetAliasPath(const CExoString& alias, i
         return m_sNotFound;
 
     if (flag == 0)
-        flag = sLen(alias);
+        flag = alias.GetLength();
 
     for (CExoAliasListEntry* pCur = m_pList; pCur != 0; pCur = pCur->m_pNext)
     {
@@ -181,7 +171,7 @@ CExoString CExoAliasListInternal::ResolveFileName(const CExoString& path, unsign
     if (path.CStr()[nPos + 1] == '\\')
         nSkip = nPos + 1;
 
-    if (sLen(g_pExoBase->GetResourceExtension(resType)) != 0)
+    if (g_pExoBase->GetResourceExtension(resType).GetLength() != 0)
     {
         sResult.Format(const_cast<char*>("%s%s.%s"), g_pExoBase->m_pAliasList->GetAliasPath(path, nPos).CStr(),
                        path.CStr() + nSkip + 1, g_pExoBase->GetResourceExtension(resType).CStr());

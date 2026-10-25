@@ -5,9 +5,155 @@
 #ifndef GLRENDER_H
 #define GLRENDER_H
 #include "k2stdint.h"
+#include "port/aslglapi.h"
+#include "Vector.h"
 
 namespace Aurora { enum AuroraBufferRequestType { }; }
-namespace Aurora { enum AuroraPrimitiveTypes { }; }
+
+// The engine's render-state enums. Each value indexes the translation table of the same family
+// (aurglcore.cpp) that holds the GL constant it stands for.
+namespace Aurora {
+enum AuroraEnableEnums {        // enableTranslationTable
+    kCapBlend = 0,
+    kCapAlphaTest = 1,
+    kCapFog = 2,
+    kCapCullFace = 3,
+    kCapTexture2D = 4,
+    kCapLighting = 5,
+    kCapTexGenS = 6,
+    kCapTexGenT = 7,
+    kCapTexGenR = 8,
+    kCapVertexProgram = 9,
+    kCapStencilTest = 10,
+    kCapDepthTest = 11,
+    kCapTextureCubeMap = 12,
+    kCapNormalize = 13,
+    kCapFogStart = 15,          // 15-18 are glFog parameter names, not capabilities
+    kCapFogEnd = 16,
+    kCapFogDensity = 17,
+    kCapFogColor = 18,
+#if !KOTOR1
+    kCapMultisample = 19,
+    kCapTexture3D = 20,
+#endif
+};
+enum AuroraClientStates {       // clientStateTranslationTable
+    kClientStateTexCoord = 0,
+    kClientStateNormal = 1,
+    kClientStateColor = 2,
+    kClientStateVertex = 3,
+    kClientStateAttrib1 = 4,    // the NV vertex-attribute arrays 1, 3, 4, 5, 12, 13, 14, 15
+    kClientStateAttrib3 = 5,
+    kClientStateAttrib4 = 6,
+    kClientStateAttrib5 = 7,
+    kClientStateAttrib12 = 8,
+    kClientStateAttrib13 = 9,
+    kClientStateAttrib14 = 10,
+    kClientStateAttrib15 = 11,
+};
+// blendTranslationTable. The values are Aurora::AuroraBlendModes, which aurmaterial.h declares.
+enum {
+    kBlendSrcAlpha = 0,
+    kBlendInvSrcAlpha = 1,
+    kBlendOne = 2,
+    kBlendZero = 3,
+    kBlendSrcColor = 4,
+    kBlendDstColor = 5,
+    kBlendInvDstAlpha = 6,
+    kBlendDstAlpha = 7,
+};
+enum AuroraTransStates {        // transformTranslationTable
+    kMatrixProjection = 0,
+    kMatrixModelView = 1,
+    kMatrixModelView2 = 2,
+    kMatrixTexture = 3,
+};
+enum AuroraFacingModes {        // facingTranslationTable
+    kFacingFront = 0,
+    kFacingBack = 1,
+    kFacingFrontAndBack = 2,
+};
+enum AuroraFillModes {          // fillTranslationTable
+    kFillPoint = 0,
+    kFillLine = 1,
+    kFillSolid = 2,
+};
+enum AuroraCullModes {          // cullTranslationTable (glFrontFace)
+    kCullCW = 0,
+    kCullCCW = 1,
+};
+enum AuroraStencilOps {         // stencilOpTranslationTable
+    kStencilKeep = 0,
+    kStencilZero = 1,
+    kStencilReplace = 2,
+    kStencilIncr = 3,
+    kStencilDecr = 4,
+    kStencilInvert = 5,
+};
+enum AuroraCmpFuncs {           // cmpTranslationTable
+    kCmpNever = 0,
+    kCmpLess = 1,
+    kCmpEqual = 2,
+    kCmpLEqual = 3,
+    kCmpGreater = 4,
+    kCmpNotEqual = 5,
+    kCmpGEqual = 6,
+    kCmpAlways = 7,
+};
+enum AuroraFogModes {           // fogModeTranslationTable
+    kFogLinear = 0,
+    kFogExp = 1,
+    kFogExp2 = 2,
+};
+enum AuroraMaterialProperties { // materialTranslationTable
+    kMaterialShininess = 0,
+    kMaterialAmbient = 1,
+    kMaterialDiffuse = 2,
+    kMaterialEmission = 3,
+    kMaterialSpecular = 4,
+};
+enum AuroraColorTrackingModes { // colorTrackingTranslationTable
+    kColorTrackingEmission = 0,
+    kColorTrackingAmbient = 1,
+    kColorTrackingDiffuse = 2,
+    kColorTrackingSpecular = 3,
+    kColorTrackingAmbientAndDiffuse = 4,
+};
+enum AuroraQueryEnums {         // queryTranslationTable
+    kQueryFog = 0,
+    kQueryUnmapped = 1,         // both images' table holds 0 here, which no glGet accepts
+};
+enum AuroraPrimitiveTypes {     // primTypeTranslationTable
+    kPrimPoints = 0,
+    kPrimLines = 1,
+    kPrimLineStrip = 2,
+    kPrimTriangles = 3,
+    kPrimTriangleStrip = 4,
+    kPrimTriangleFan = 5,
+    kPrimQuads = 6,
+    kPrimQuadStrip = 7,
+    kPrimPolygon = 8,
+    kPrimLineLoop = 9,
+};
+}
+
+extern unsigned int enableTranslationTable[];
+extern const unsigned int clientStateTranslationTable[];
+extern unsigned int blendTranslationTable[];
+extern const int transformTranslationTable[4];
+extern const int facingTranslationTable[3];
+extern const int fillTranslationTable[3];
+extern const unsigned int cullTranslationTable[];
+extern const unsigned int stencilOpTranslationTable[];
+extern const unsigned int cmpTranslationTable[];
+extern const unsigned int fogModeTranslationTable[];
+extern const unsigned int materialTranslationTable[];
+extern const unsigned int colorTrackingTranslationTable[];
+extern int queryTranslationTable[2];
+extern const unsigned int primTypeTranslationTable[];
+
+int AurMultiTextureAvailable();
+extern int usearbvertexprograms;
 
 // The interleaved vertex records the GL pools hold. They stay trivially constructible, with raw
 // float triples rather than Vectors: a Vector would add a zero-init loop to every pool new[].
@@ -55,8 +201,136 @@ struct Quaternion;
 struct Plane;
 template <class T> class List;
 
+#if !KOTOR1
+extern unsigned char g_useDistortionOutput;
+#endif
+
+// The depth-mask wrapper. While distortion output is on, the GL backend owns the mask; K1 has no
+// distortion output.
+class RenderInterface {
+public:
+    static void SetDepthMask(unsigned char bMask)
+    {
+#if !KOTOR1
+        if (!g_useDistortionOutput)
+#endif
+            ASLgl::glDepthMask(bMask);
+    }
+};
+
 class GLRender {
 public:
+    // The state wrappers: each translates its Aurora enum through the family's table.
+    static void Enable(Aurora::AuroraEnableEnums eCap) { ASLgl::glEnable(enableTranslationTable[eCap]); }
+    static void Disable(Aurora::AuroraEnableEnums eCap) { ASLgl::glDisable(enableTranslationTable[eCap]); }
+    static unsigned char IsEnabled(Aurora::AuroraEnableEnums eCap)
+    {
+        return ASLgl::glIsEnabled(enableTranslationTable[eCap]);
+    }
+    static void EnableClientState(Aurora::AuroraClientStates eState)
+    {
+        ASLgl::glEnableClientState(clientStateTranslationTable[eState]);
+    }
+    static void DisableClientState(Aurora::AuroraClientStates eState)
+    {
+        ASLgl::glDisableClientState(clientStateTranslationTable[eState]);
+    }
+    // eSrc/eDst are Aurora::AuroraBlendModes (the Aurora::kBlend* values).
+    static void SetBlendFunc(unsigned int eSrc, unsigned int eDst)
+    {
+        ASLgl::glBlendFunc(blendTranslationTable[eSrc], blendTranslationTable[eDst]);
+    }
+    static void EnableColorMaterial() { ASLgl::glEnable(GL_COLOR_MATERIAL); }
+    static void DisableColorMaterial() { ASLgl::glDisable(GL_COLOR_MATERIAL); }
+    static void EnableLight(int nLight) { ASLgl::glEnable(GL_LIGHT0 + nLight); }
+    static void DisableLight(int nLight) { ASLgl::glDisable(GL_LIGHT0 + nLight); }
+    static void SetMatrixMode(Aurora::AuroraTransStates eMode)
+    {
+        ASLgl::glMatrixMode(transformTranslationTable[eMode]);
+    }
+    static void GetViewPort(int* pnViewport) { ASLgl::glGetIntegerv(GL_VIEWPORT, pnViewport); }
+    static void QueryIntegerv(Aurora::AuroraQueryEnums eQuery, int* pnOut)
+    {
+        ASLgl::glGetIntegerv(queryTranslationTable[eQuery], pnOut);
+    }
+    static void SetPolygonRenderMode(Aurora::AuroraFacingModes eFacing, Aurora::AuroraFillModes eFill)
+    {
+        ASLgl::glPolygonMode(facingTranslationTable[eFacing], fillTranslationTable[eFill]);
+    }
+    static void SetFrontFace(Aurora::AuroraCullModes eCull) { ASLgl::glFrontFace(cullTranslationTable[eCull]); }
+    static void SetStencilOp(Aurora::AuroraStencilOps eFail, Aurora::AuroraStencilOps eZFail,
+                             Aurora::AuroraStencilOps eZPass)
+    {
+        ASLgl::glStencilOp(stencilOpTranslationTable[eFail], stencilOpTranslationTable[eZFail],
+                           stencilOpTranslationTable[eZPass]);
+    }
+    static void SetStencilFunc(Aurora::AuroraCmpFuncs eFunc, int nRef, unsigned int nMask)
+    {
+        ASLgl::glStencilFunc(cmpTranslationTable[eFunc], nRef, nMask);
+    }
+    static void SetAlphaFunc(Aurora::AuroraCmpFuncs eFunc, float fRef)
+    {
+        ASLgl::glAlphaFunc(cmpTranslationTable[eFunc], fRef);
+    }
+    static void SetDepthFunc(Aurora::AuroraCmpFuncs eFunc) { ASLgl::glDepthFunc(cmpTranslationTable[eFunc]); }
+    static void SetFogMode(Aurora::AuroraFogModes eMode)
+    {
+        ASLgl::glFogi(GL_FOG_MODE, fogModeTranslationTable[eMode]);
+    }
+    static void SetFogModef(Aurora::AuroraEnableEnums eParam, float fValue)
+    {
+        ASLgl::glFogf(enableTranslationTable[eParam], fValue);
+    }
+    static void SetFogModev(Aurora::AuroraEnableEnums eParam, Vector& vValue)
+    {
+        ASLgl::glFogfv(enableTranslationTable[eParam], &vValue.x);
+    }
+    static void SetLightModel(const float* pfAmbient) { ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, pfAmbient); }
+    static void SetColorMaterial(Aurora::AuroraFacingModes eFacing, Aurora::AuroraColorTrackingModes eMode)
+    {
+        ASLgl::glColorMaterial(facingTranslationTable[eFacing], colorTrackingTranslationTable[eMode]);
+    }
+    static void SetMaterialv(Aurora::AuroraFacingModes eFacing, Aurora::AuroraMaterialProperties eProperty,
+                             const float* pfValue)
+    {
+        ASLgl::glMaterialfv(facingTranslationTable[eFacing], materialTranslationTable[eProperty], pfValue);
+    }
+    static void BeginImmediatePrimitive(Aurora::AuroraPrimitiveTypes eType)
+    {
+        ASLgl::glBegin(primTypeTranslationTable[eType]);
+    }
+    // nColor is packed AABBGGRR; glColor4ubv reads it in memory order.
+    static void SetVertexColor(unsigned int nColor)
+    {
+        ASLgl::glColor4ubv(reinterpret_cast<const unsigned char*>(&nColor));
+    }
+    static void SetVertexShaderConstant(int nIndex, float fX, float fY, float fZ, float fW)
+    {
+        if (usearbvertexprograms)
+            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nIndex, fX, fY, fZ, fW);
+    }
+    // The client-side (vertex array) unit, then the server-side (texture environment) unit.
+    static void ActivateTextureStage(unsigned int nStage)
+    {
+        if (AurMultiTextureAvailable())
+            ASLgl::glClientActiveTextureARB(GL_TEXTURE0 + nStage);
+        cm_uiCurrentStage = nStage;
+    }
+    static void SetActiveTexture(unsigned int nStage)
+    {
+        cm_uiCurrentStage = nStage;
+        if (AurMultiTextureAvailable())
+            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+    }
+    static void BindTexture(Aurora::AuroraEnableEnums eTarget, unsigned int nTID)
+    {
+        ASLgl::glBindTexture(enableTranslationTable[eTarget], nTID);
+#if !KOTOR1
+        ASLgl::glTexParameteri(enableTranslationTable[eTarget], GL_TEXTURE_MAX_ANISOTROPY_EXT, cm_nAnisotropy);
+#endif
+        cm_nGLCurrentTID[cm_uiCurrentStage] = nTID;
+    }
+
     // Vertex-pool family. RequestPool's fifth argument is an out-pointer written with the pool
     // handle; LockPool returns the locked base pointer.
     static unsigned int RequestPool(Aurora::AuroraBufferRequestType eType, unsigned int a,

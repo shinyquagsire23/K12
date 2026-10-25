@@ -108,6 +108,11 @@ CSWBaseItemArray::~CSWBaseItemArray()
     }
 }
 
+inline void CSWBaseItem::SetItemClassResRefChunk(char* pszClass)
+{
+    strncpy(m_resRefStem, pszClass, sizeof(m_resRefStem) - 1);
+}
+
 // Loads the whole baseitems.2da table: one C2DA round trip, one array of rows, then a flat per-row
 // run of column reads. The column order below is the table's own read order, not the struct's
 // offset order.
@@ -138,7 +143,7 @@ void CSWBaseItemArray::Load()
         m_pItems[nRow].m_nModelType = static_cast<unsigned char>(nValue);
 
         pTable->GetCExoStringEntry(nRow, CExoString("ItemClass"), &sValue);
-        strncpy(m_pItems[nRow].m_resRefStem, sValue.CStr(), sizeof(m_pItems[nRow].m_resRefStem) - 1);
+        m_pItems[nRow].SetItemClassResRefChunk(sValue.CStr());
 
         pTable->GetINTEntry(nRow, CExoString("GenderSpecific"), &nValue);
         m_pItems[nRow].m_bHasTextureVariation = static_cast<unsigned char>(nValue);
@@ -147,10 +152,10 @@ void CSWBaseItemArray::Load()
         m_pItems[nRow].m_bHasEnvMap = nValue;
 
         pTable->GetCExoStringEntry(nRow, CExoString("DefaultModel"), &sValue);
-        m_pItems[nRow].m_defaultModelResRef = CResRef(sValue);
+        m_pItems[nRow].SetDefaultModelResRef(CResRef(sValue));
 
         pTable->GetCExoStringEntry(nRow, CExoString("DefaultIcon"), &sValue);
-        m_pItems[nRow].m_defaultIconResRef = CResRef(sValue);
+        m_pItems[nRow].SetDefaultIconResRef(CResRef(sValue));
 
         pTable->GetINTEntry(nRow, CExoString("Container"), &nValue);
         m_pItems[nRow].m_bContainer = nValue;

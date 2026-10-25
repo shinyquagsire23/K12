@@ -800,7 +800,7 @@ int CSWVirtualMachineCommands::ExecuteCommandResistSpell(int nCommand, int nArgC
     CGameObject* pTargetGO = g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget);
     if (pCasterGO && pTargetGO) {
         int nSpellId = pCasterGO->AsSWSObject()->m_castSpellId;
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         if (pSpell) {
             CGameObject* pSelfGO = g_pAppManager->m_pServerExoApp->GetGameObject(m_oidSelf);
             int nCasterLevel;
@@ -1208,7 +1208,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetSpellFormMask(int nCommand, int 
     int nSpell;
     if (!g_pVirtualMachine->StackPopInteger(&nSpell))
         return VM_ERROR_POP_FAILED;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     int nMask = pSpell ? static_cast<int>(pSpell->m_nSpellFormMask) : 0;
     if (!g_pVirtualMachine->StackPushInteger(nMask))
         return VM_ERROR_PUSH_FAILED;
@@ -1222,7 +1222,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetSpellBaseForcePointCost(int nCom
     int nSpell;
     if (!g_pVirtualMachine->StackPopInteger(&nSpell))
         return VM_ERROR_POP_FAILED;
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     int nCost = pSpell ? pSpell->m_nBaseForcePoints : 0;
     if (!g_pVirtualMachine->StackPushInteger(nCost))
         return VM_ERROR_PUSH_FAILED;
@@ -1873,13 +1873,10 @@ int CSWVirtualMachineCommands::ExecuteCommandIsAIState(int nCommand, int nArgCou
                 if (pObject->AsSWSCreature()->GetIsPCDying() == 0)
                     nValue = pObject->AsSWSCreature()->GetDeadTemp() != 0;
 #else
-                // The discarded cast is deliberate, since both tests below read the local.
+                // The discarded cast is deliberate, since the test below reads the local.
                 pObject->AsSWSCreature();
                 CSWSCreature* pC = pObject->AsSWSCreature();
-                if (pC->m_bInParty == 0)
-                    nValue = 0;
-                else
-                    nValue = pC->GetCurrentHitPoints(0) <= 0;
+                nValue = pC->GetDeadTemp();
 #endif
             }
         } else
@@ -3453,25 +3450,12 @@ int CSWVirtualMachineCommands::ExecuteCommandGetInPersistentObject(int nCommand,
                                 goto pushInvalid;
                             }
                             // The calls below are kept for their side effects only.
-#if KOTOR1  // K1 uses GetDeadTemp()
                             if (pCandidate->AsSWSCreature() != 0)
                                 pCandidate->AsSWSCreature()->GetDeadTemp();
-#else
-                            if (pCandidate->AsSWSCreature() != 0) {
-                                CSWSCreature* pCreature = pCandidate->AsSWSCreature();
-                                if (pCreature->m_bInParty != 0)
-                                    pCreature->GetCurrentHitPoints(0);
-                            }
-#endif
                             if (pAreaOfEffect->InAreaOfEffect(vPos) != 0 &&
                                 pCandidate->AsSWSObject()->GetDead() == 0) {
                                 CSWSCreature* pCreature = pCandidate->AsSWSCreature();
-#if KOTOR1
                                 if (pCreature->GetDeadTemp() == 0) {
-#else
-                                if (pCreature->m_bInParty == 0 ||
-                                    pCreature->GetCurrentHitPoints(0) >= 1) {
-#endif
                                     oidResult = pArea->m_aObjectsByX.m_pArray[nIndex];
                                     pAreaOfEffect->m_nScanIndex = static_cast<unsigned short>(nIndex + 1);
                                     goto pushFound;
@@ -3529,12 +3513,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetInPersistentObject(int nCommand,
                             if (pTrigger->InTrigger(vPos) != 0 &&
                                 pCandidate->AsSWSObject()->GetDead() == 0) {
                                 CSWSCreature* pCreature = pCandidate->AsSWSCreature();
-#if KOTOR1
                                 if (pCreature->GetDeadTemp() == 0) {
-#else
-                                if (pCreature->m_bInParty == 0 ||
-                                    pCreature->GetCurrentHitPoints(0) >= 1) {
-#endif
                                     oidResult = pArea->m_aObjectsByX.m_pArray[nIndex];
                                     pTrigger->m_nScanIndex = static_cast<unsigned short>(nIndex + 1);
                                     goto pushFound;
@@ -3600,7 +3579,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetObjectInShape(int nCommand, int 
     }
 
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pPlayer = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = pServer->GetPlayerCreature();
     CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetModule()->GetArea();
     if (pPlayer != 0 && pArea != 0) {
         vTarget = pLocation->m_vPosition;
@@ -3868,12 +3847,9 @@ int CSWVirtualMachineCommands::ExecuteCommandGetLastHostileActor(int nCommand, i
                         pActorCreature->GetIsPCDying() != 1 && pActorCreature->GetDeadTemp() == 0)
                         bStillValid = 1;
 #else
-                    if (pActorCreature != 0 && pActorCreature->GetDead() != 1) {
-                        if (pActorCreature->m_bInParty == 0)
-                            bStillValid = 1;
-                        else if (pActorCreature->GetCurrentHitPoints(0) > 0)
-                            bStillValid = 1;
-                    }
+                    if (pActorCreature != 0 && pActorCreature->GetDead() != 1 &&
+                        pActorCreature->GetDeadTemp() == 0)
+                        bStillValid = 1;
 #endif
                 }
             }
@@ -4243,7 +4219,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestObject(int nCommand, int 
     } else {
         vSource = pLocation->m_vPosition;
         CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-        CSWSCreature* pPlayer = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+        CSWSCreature* pPlayer = pServer->GetPlayerCreature();
         if (pPlayer == 0)
             goto push;
         pArea = static_cast<CSWSArea*>(pPlayer->GetArea());
@@ -4277,10 +4253,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestObject(int nCommand, int 
                 unsigned long long oidCandidate = pArea->m_aObjectsByX.m_pArray[nScan];
                 // Skip already-collected ids, since the two directions can meet, and the index can
                 // duplicate an id while it is re-sorted.
-                int nDuplicates = 0;
-                for (int i = 0; i < alObjects.m_count; i++)
-                    nDuplicates += (alObjects.m_pArray[i] == oidCandidate);
-                if (nDuplicates != 0)
+                if (alObjects.Contains(oidCandidate))
                     goto advance;
                 if (pObjectArray->GetGameObject(oidCandidate, reinterpret_cast<CGameObject**>(&pCandidate))
                         != CGameObjectArray::SUCCESS)
@@ -4433,7 +4406,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestObject(int nCommand, int 
 #if KOTOR1  // K1 uses GetIsPCDying() and GetDeadTemp()
                     if (pCreature->GetIsPCDying() == 1 || pCreature->GetDeadTemp() == 1)
 #else
-                    if (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) < 1)
+                    if (pCreature->GetDeadTemp() == 1)
 #endif
                         goto advance;
                     break;
@@ -4488,14 +4461,8 @@ push:
         // Kept for its side effects only; the probe's result is discarded.
         CSWSCreature* pNearest =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidResult);
-#if KOTOR1
         if (nCommand != CMD_GetNearestObjectByTag && pNearest != 0 && pNearest->GetDead() == 0)
             pNearest->GetDeadTemp();
-#else
-        if (nCommand != CMD_GetNearestObjectByTag && pNearest != 0 && pNearest->GetDead() == 0 &&
-            pNearest->m_bInParty != 0)
-            pNearest->GetCurrentHitPoints(0);
-#endif
     }
 
     if (!g_pVirtualMachine->StackPushObject(oidResult))
@@ -5280,13 +5247,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetPartyLeader(int nCommand, int nA
             if (pMember && pMember->GetServerCreature()) {
                 CSWSCreature* pCreature = pMember->GetServerCreature();
                 if (pCreature->m_bInParty == 1 && pCreature->m_bPlayerCharacter == 1) {
-#if KOTOR1  // K1 uses GetDeadTemp()
                     if (pCreature->GetDead() == 1 || pCreature->GetDeadTemp() == 1) {
-#else
-                    if (pCreature->GetDead() == 1
-                        || (pCreature->m_bInParty != 0
-                            && pCreature->GetCurrentHitPoints(0) <= 0)) {
-#endif
                         CGameEffect* pEffect = new CGameEffect(1);
                         pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_RESURRECTION);
                         pEffect->m_durationTypeBits = (pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK)
@@ -9596,7 +9557,7 @@ int CSWVirtualMachineCommands::ExecuteCommandCreatureFlourishWeapon(int nCommand
     if (pClientCreature->m_nSwitchWeaponsCooldown > 0)
         return 0;
     if (pCreature->GetDead() == 0
-        && (pCreature->m_bInParty == 0 || pCreature->GetCurrentHitPoints(0) > 0)) {
+        && pCreature->GetDeadTemp() == 0) {
         unsigned char nAttackType = pClientCreature->GetAnimationBase()->m_nWeaponClass;
         if (nAttackType == 1 || nAttackType == 8)
             return 0;
@@ -9807,7 +9768,7 @@ int CSWVirtualMachineCommands::ExecuteCommandCreateItemOnObject(int nCommand, in
                         g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_RECEIVED, 0);
 #else
                     if (pObject->AsSWSCreature()->m_bInParty != 0 && bSuppressMessage == 0) {
-                        g_pAppManager->m_pClientExoApp->GetInGameGui()->m_aReceivedItemNames.Add(sItemName);
+                        g_pAppManager->m_pClientExoApp->GetInGameGui()->AddReceivedItemToList(sItemName);
                         g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_RECEIVED, 0);
                     }
 #endif
@@ -11901,8 +11862,7 @@ int CSWVirtualMachineCommands::ExecuteCommandActionPauseConversation(int nComman
 #else
     if (pObject->AsSWSCreature() != 0) {
         CSWSCreature* pCreature = pObject->AsSWSCreature();
-        if (pCreature->m_bInParty != 0)
-            bDown = pCreature->GetCurrentHitPoints(0) < 1;
+        bDown = pCreature->GetDeadTemp();
     }
     if (pObject->AsSWSObject()->GetDead() == 1) {
         pObject->AsSWSObject()->SetLockOrientationToObject(CGameObjectArray::INVALIDOBJID);
@@ -12290,14 +12250,14 @@ int CSWVirtualMachineCommands::ExecuteCommandGetCasterLevel(int nCommand, int nA
             if (pCreature->m_bItemCastSpell != 0) {
                 nCasterLevel = pCreature->m_nItemCastSpellLevel;
             } else if (pCreature->m_nCastClassIndex == CAST_CLASS_NONE) {
-                pSpell = g_pRules->m_pSpellArray->GetSpell(pCreature->m_castSpellId);
+                pSpell = g_pRules->GetSpell(pCreature->m_castSpellId);
             } else if (pCreature->m_nCastClassIndex == CAST_CLASS_SPELL_LIKE_ABILITY) {
                 nCasterLevel = pCreature->m_pStats->GetSpellLikeAbilityCasterLevel(nSpellId);
             } else {
                 nCasterLevel = pCreature->m_pStats->GetClassLevel(pCreature->m_nCastClassIndex, 1);
             }
         } else if (pPlaceable != 0) {
-            pSpell = g_pRules->m_pSpellArray->GetSpell(pPlaceable->m_castSpellId);
+            pSpell = g_pRules->GetSpell(pPlaceable->m_castSpellId);
         }
         if (pSpell != 0) {
             nCasterLevel = pSpell->m_nSpellLevelOther * 2 - 1;
@@ -14301,7 +14261,7 @@ int CSWVirtualMachineCommands::ExecuteCommandCastSpell(int nCommand, int nArgCou
                 continue;
             if (pCreature->m_pStats->GetSpellUsesLeft(nSpellId, static_cast<unsigned char>(i), 0, 0) == 0)
                 continue;
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+            CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
             if (pSpell == 0)
                 continue;
             if (pSpell->GetSpellLevel(pCreature->m_pStats->GetClass(static_cast<unsigned char>(i))) == CSWSpell::SPELL_LEVEL_NONE)
@@ -16598,7 +16558,7 @@ int CSWVirtualMachineCommands::ExecuteCommandTalentAccess(int nCommand, int nArg
     } else if (nCommand == CMD_GetCategoryFromTalent) {
         int nCategory = 0;
         if (pTalent->m_nType == TALENT_TYPE_FORCE) {
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pTalent->m_nId);
+            CSWSpell* pSpell = g_pRules->GetSpell(pTalent->m_nId);
             if (pSpell != 0)
                 nCategory = pSpell->m_nCategory;
         } else if (pTalent->m_nType == TALENT_TYPE_FEAT) {
@@ -18478,7 +18438,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetItemStackSize(int nCommand, int 
             if (pPossessor != 0 && pPossessor->m_bInParty != 0) {
                 pPossessor->SendFeedbackMessage(FEEDBACK_ITEM_ACQUIRED, pMsg);
 #if !KOTOR1  // K1 has no received-item name list
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_aReceivedItemNames.Add(
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->AddReceivedItemToList(
                     pItem->m_localizedName);
 #endif
                 g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_RECEIVED, 0);

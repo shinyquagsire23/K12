@@ -146,7 +146,7 @@ static inline Quaternion MakeWindRotation(float cA, float sA, float cB, float sB
 
 Vector WindManager::GetGlobalWindNoPoint(const Vector& v, float f)
 {
-    if (m_vWind.x == 0.0f && m_vWind.y == 0.0f && m_vWind.z == 0.0f)
+    if (m_vWind.IsZero())
         return m_vWind;
 
     int nX = NoiseIndex(v.x);
@@ -190,6 +190,7 @@ Vector WindManager::GetGlobalWind(Vector v, float f)
 {
     if (m_vWind.x == 0.0f && m_vWind.y == 0.0f && m_vWind.z == 0.0f) {
         Vector vStill = pointSourceWindVector(v);
+        // inlined Vector::IsZero()
         if (vStill.x == 0.0f && vStill.y == 0.0f && vStill.z == 0.0f)
             return m_vWind;
     }

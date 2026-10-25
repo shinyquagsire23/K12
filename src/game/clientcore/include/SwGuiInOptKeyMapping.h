@@ -32,6 +32,8 @@ public:
     int  IsKeyUsedAlready(unsigned int nKeyCode, int nActionId, int nEventClass,
                           unsigned int nInputClassMask);
     void SetCaptureEvent(CSWGuiKeyMapButton* pButton);
+    // Starts or stops raw keyboard capture for a rebind.
+    void SetCaptureKeyboardMode(int bCapture);
 
     void OnDefaultClick(CSWGuiControl* pControl);
     void OnAcceptClick(CSWGuiControl* pControl);
@@ -89,6 +91,8 @@ public:
     void ResetToDefault();
     void PostChangeToEvent();
     void SetEditing(int bEditing);
+    // Locks the row: it is drawn in the disabled colours and accepts no rebind.
+    void SetUnchangable();
     // Returns KEY_INVALID when the key is not bindable, KEY_GOOD when it was applied, and
     // KEY_ALREADYUSED when another action already uses it.
     int  UpdateEvent(unsigned int nKey);
@@ -120,5 +124,22 @@ public:
     int m_nReserved1;
     int m_nSortPos;
 };
+
+#include "exoinput.h"
+#include "guiingame.h"
+
+inline void CSWGuiInGameOptKeyMappings::SetCaptureKeyboardMode(int bCapture)
+{
+    m_bCapturing = bCapture;
+    g_pExoInput->SetCaptureKeyboardKeys(bCapture);
+}
+
+inline void CSWGuiKeyMapButton::SetUnchangable()
+{
+    m_bDisabled = 1;
+    m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::DISABLED_ICON_COLOR);
+    m_text.m_params.SetColor(CGuiInGame::DISABLED_TEXT);
+    m_borderHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::DISABLED_ICON_COLOR);
+}
 
 #endif // CSWGUIKEYMAPBUTTON_H

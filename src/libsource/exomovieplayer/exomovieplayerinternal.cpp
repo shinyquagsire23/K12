@@ -30,9 +30,6 @@
 
 extern int g_nScreenWidth;
 extern int g_nScreenHeight;
-extern const unsigned int cmpTranslationTable[];
-extern const int transformTranslationTable[];
-extern unsigned int enableTranslationTable[];
 
 #include "port/libcstring.h"
 
@@ -165,19 +162,19 @@ void CExoMoviePlayerInternal::ShowFrame(int, int, int, int)
     }
 
     ASLgl::glClear(GL_COLOR_BUFFER_BIT);  // GL_COLOR_BUFFER_BIT
-    ASLgl::glAlphaFunc(cmpTranslationTable[7], 0.0f);
-    ASLgl::glMatrixMode(transformTranslationTable[0]);
+    GLRender::SetAlphaFunc(Aurora::kCmpAlways, 0.0f);
+    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
-    ASLgl::glDisable(enableTranslationTable[11]);
-    ASLgl::glDisable(enableTranslationTable[5]);
-    ASLgl::glEnable(enableTranslationTable[4]);
-    ASLgl::glDisable(enableTranslationTable[0]);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapTexture2D);
+    GLRender::Disable(Aurora::kCapBlend);
     ASLgl::glOrtho(-dHalfHeight, dHalfHeight, -dHalfWidth, dHalfWidth, -1.0, 1.0);
-    ASLgl::glMatrixMode(transformTranslationTable[2]);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
     ASLgl::glLoadIdentity();
     GLRender::RenderObjectsVTQuad(m_nVertexPool, 4);
-    ASLgl::glEnable(enableTranslationTable[11]);
-    ASLgl::glEnable(enableTranslationTable[0]);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapBlend);
     BinkDoFrame(m_pBink);
 }
 

@@ -5,6 +5,7 @@
 #include "exobase.h"
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 #include "restype.h"
 
 int CExoKeyTable::AddDirectoryContents(int)
@@ -39,7 +40,7 @@ int CExoKeyTable::AddDirectoryContents(int)
     CResRef resRef;
 
     CExoString overrideLit("OVERRIDE");
-    int prefixLen = (overrideLit.m_sString != NULL) ? static_cast<int>(strlen(overrideLit.m_sString)) : 0;
+    int prefixLen = overrideLit.GetLength();
     int numSubdirs;
     if (m_sFileName.ComparePrefixNoCase(overrideLit, prefixLen) == 0) {
         numSubdirs = 0;

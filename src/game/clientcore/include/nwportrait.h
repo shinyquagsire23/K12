@@ -20,7 +20,7 @@ public:
     CResRef GetPortrait(unsigned char nState);
     int     SetPortraitId(unsigned short a);
 
-    void    SetBaseResRef(CResRef resRef) { m_baseResRef = resRef; }
+    void    SetPortrait(const CResRef& resRef) { m_baseResRef = resRef; }
 
     static int ReplacePortraitTexture(CAurObject* pObject, const CResRef& resRef);
 };

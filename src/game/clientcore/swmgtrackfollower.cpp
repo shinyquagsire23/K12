@@ -687,7 +687,7 @@ CSWTrackFollower::~CSWTrackFollower() {
     int nModels = m_models.m_count;
     for (int i = 0; i < nModels; i++)
         delete m_models.m_pArray[i].pModel;
-    m_models.Clear();
+    m_models.SetSize(0);
     // The gun banks are freed only when the death path did not already do it (see OnDeath).
     if ((m_flags & FLAG_DEAD) == 0) {
         for (int i = m_gunBanks.m_count - 1; i >= 0; i--) {
@@ -1389,6 +1389,7 @@ void CSWMiniPlayer::Control(float fDelta, CSWMGPhysicsState& cur, CSWMGPhysicsSt
     {
         // The previous state's velocity x and position are saved, the velocity's x cleared and the
         // pair stored back; zeroing the member's x alone is not the same state.
+        // inlined CSWMiniGame::Set{Current,Previous}PhysicsState(CSWMGPhysicsState)
         m_pMiniGame->m_curPhysicsState.m_vVelocity.x = 0.0f;
         Vector vVel = m_pMiniGame->m_prevPhysicsState.m_vVelocity;
         Vector vPos = m_pMiniGame->m_prevPhysicsState.m_vPosition;

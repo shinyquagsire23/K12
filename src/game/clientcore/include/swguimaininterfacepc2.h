@@ -129,6 +129,14 @@ public:
     void SetupGoto(int a, int b, CSWGuiManager* pGuiManager);
     void DrawStack(float f, int a, int b);
     void DrawEffects(float f, int a);
+
+#if !KOTOR1  // K1 swaps the bar's fill image instead of its colour (UpdatePortraits writes it out)
+    // Refreshes the vitality bar (green while poisoned) and the tooltip's hit-point numbers.
+    void SetHealth(int nCur, int nMax, int bPoisoned);
+#endif
+    // Refreshes the force bar and the tooltip's force-point numbers; a creature without force
+    // points shows an empty bar.
+    void SetForce(int nCur, int nMax);
 };
 
 #if KOTOR1  // K1 spaces the four slots further apart
@@ -730,3 +738,35 @@ K2_LAYOUT_ASSERT(__builtin_offsetof(CSWGuiMainInterface, m_targetActionMenu) == 
               "K1 CSWGuiMainInterface layout");
 #endif
 
+#include "guiingame.h"
+
+#if !KOTOR1
+inline void CSWGuiMainInterfaceChar::SetHealth(int nCur, int nMax, int bPoisoned)
+{
+    m_aBars[0].SetMaxValue(nMax);
+    m_aBars[0].SetCurValue(nCur);
+    m_aBars[0].m_borderProgress.m_params.m_color = bPoisoned
+        ? reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_GREEN)
+        : reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_RED);
+    m_nMaxHP = nMax;
+    m_nCurHP = nCur;
+    m_bToolTipDirty = 1;
+}
+#endif
+
+inline void CSWGuiMainInterfaceChar::SetForce(int nCur, int nMax)
+{
+    if (nMax == 0)
+    {
+        m_aBars[1].SetMaxValue(1);
+        m_aBars[1].SetCurValue(0);
+    }
+    else
+    {
+        m_aBars[1].SetMaxValue(nMax);
+        m_aBars[1].SetCurValue(nCur);
+    }
+    m_nMaxFP = nMax;
+    m_nCurFP = nCur;
+    m_bToolTipDirty = 1;
+}

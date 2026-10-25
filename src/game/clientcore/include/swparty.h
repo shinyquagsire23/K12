@@ -9,6 +9,8 @@
 
 #include "Vector.h"
 #include "Quaternion.h"
+#include "strref.h"
+#include "gameobjectarray.h"
 
 class CSWCCreature;
 
@@ -146,6 +148,31 @@ struct CSWPartyMemberData {
     // Posts a strref to this member's combat feedback line, the same channel the main interface
     // drives client-side.
     void SetCombatMessage(uint64_t nStrRef);
+
+    // Restarts the follow-the-leader state machine (the slot's id and formation offset stay).
+    void Reset()
+    {
+        m_nFollowState = FOLLOW_STATE_NEW;
+        m_nStateSteps = 0;
+        m_followDistance = 0.0f;
+        m_bReseatSafePosition = 0;
+        m_followOrientation.x = 0.0f;
+        m_nReserved1 = 0;
+        m_nReserved2 = 0;
+        m_nReserved3 = 0;
+        m_vPathPoint.x = 0.0f;
+        m_vPathPoint.y = 0.0f;
+        m_vPathPoint.z = 0.0f;
+        m_followPoint.x = 0.0f;
+        m_followPoint.y = 0.0f;
+        m_followPoint.z = 0.0f;
+        m_bFollowPointValid = 0;
+        m_followOrientation.y = 1.0f;
+        m_followOrientation.z = 0.0f;
+        m_fPathSpanRatio = 1.0f;
+        m_oidLastTarget = OBJECT_INVALID;
+        m_nCombatMessageStrRef = STRREF_COMBAT_MODE_ENGAGED;
+    }
 };
 
 struct CSWParty {

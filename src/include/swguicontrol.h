@@ -572,13 +572,26 @@ public:
     void LoadProtoItem(CResGFF* pGFF, CResStruct& resStruct);
     static void UpdateArrowPulsing(float fTime);
     void HandleMouseMove();
+    // A box whose tallest row does not fit scrolls a whole box at a time (m_nOversizedStep).
+    int IsOversized()
+    {
+        return m_nRowHeight + m_nPadding > m_innerExtent.h && m_aControls.m_count > 0 && !bUnequalRows;
+    }
     // How many whole-box scroll steps an oversized row needs.
-    int GetOversizedStepCount()
+    int GetNumSegments()
     {
         if (m_innerExtent.h == 0)
             return 1;
         return static_cast<int>(m_fVisibleLines * m_nRowHeight / m_innerExtent.h + 0.9999f)
              - static_cast<int>(m_fVisibleLines) + 1;
+    }
+    // Scrolls to nRow, clamped so the last page stays full.
+    void SetTopVisible(short nRow)
+    {
+        int nTop = m_aControls.m_count < m_nVisibleRows ? 0 : m_aControls.m_count - m_nVisibleRows;
+        if (nTop > nRow)
+            nTop = nRow;
+        m_nTopRow = static_cast<short>(nTop);
     }
     CSWGuiControl* HitCheckMouseLocal(int* pnIndex);
     CSWGuiControl* GetControl(int nIndex);

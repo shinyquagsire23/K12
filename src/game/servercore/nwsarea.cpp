@@ -1863,7 +1863,7 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
 
     m_areaName = m_pRes->ReadFieldCExoLocString(pStruct, const_cast<char*>("Name"), bSuccess, CExoLocString());
 
-    m_sDebugName = m_pRes->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, CExoString("")).LowerCase();
+    SetTag(m_pRes->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, CExoString("")));
     m_nAreaFlags = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("Flags"), bSuccess, 0);
 
     m_cameraStyle = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("CameraStyle"), bSuccess, 0);
@@ -2753,17 +2753,8 @@ int CSWSArea::AIUpdate()
 // Keeps the X-sorted object index ordered after one object moves.
 int CSWSArea::UpdatePositionInObjectsArray(CGameObject* pObject)
 {
+    int nIndex = m_aObjectsByX.IndexOf(pObject->m_objectId);
     int nCount = m_aObjectsByX.m_count;
-    int nIndex = -1;
-
-    for (int i = 0; i < nCount; i++)
-    {
-        if (m_aObjectsByX.m_pArray[i] == pObject->m_objectId)
-        {
-            nIndex = i;
-            break;
-        }
-    }
 
 #ifdef K2_FIX_ENGINE_BUGS
     // An object missing from the index would otherwise make the swap below read the word before

@@ -98,7 +98,7 @@ CSWRK4SplitAcceleration::CSWRK4SplitAcceleration(float a, float b, float c)
 Vector CSWRK4SplitAcceleration::GetAccelerationVector(CSWPhysicsState& state, Vector const& vVelocity)
 {
     float fDamping = m_fAcceleration;
-    if (vVelocity.x == 0.0f && vVelocity.y == 0.0f && vVelocity.z == 0.0f) {
+    if (vVelocity.IsZero()) {
         fDamping = m_fDeceleration;
     }
     return vVelocity * fDamping - state.m_vValue * (fDamping / m_fMaxSpeed);

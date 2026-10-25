@@ -499,26 +499,11 @@ void CSWGuiInGameMenu::Draw(float f)
 
     short nCurHP = pServer->GetCurrentHitPoints(0);
     short nMaxHP = pServer->GetMaxHitPoints(1);
-    m_charSlot.m_aBars[0].SetMaxValue(nMaxHP);
-    m_charSlot.m_aBars[0].SetCurValue(nCurHP);
-    // A poisoned character's vitality bar goes sickly green instead of red.
-    m_charSlot.m_aBars[0].m_borderProgress.m_params.m_color =
-        pServer->m_bPoisoned ? reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_GREEN)
-                             : reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_RED);
-    m_charSlot.m_nMaxHP = nMaxHP;
-    m_charSlot.m_nCurHP = nCurHP;
-    m_charSlot.m_bToolTipDirty = 1;
+    m_charSlot.SetHealth(nCurHP, nMaxHP, pServer->m_bPoisoned);
 
     short nCurFP = static_cast<short>(pStats->m_nCurrentForcePoints + pStats->m_nTemporaryForcePoints);
     short nMaxFP = pServer->GetMaxForcePoints();
-    // A force-less character gets a full-scale empty bar rather than a zero-width one.
-    short nBarMax = (nMaxFP != 0) ? nMaxFP : 1;
-    short nBarCur = (nMaxFP == 0) ? 0 : nCurFP;
-    m_charSlot.m_aBars[1].SetMaxValue(nBarMax);
-    m_charSlot.m_aBars[1].SetCurValue(nBarCur);
-    m_charSlot.m_nMaxFP = nMaxFP;
-    m_charSlot.m_nCurFP = nCurFP;
-    m_charSlot.m_bToolTipDirty = 1;
+    m_charSlot.SetForce(nCurFP, nMaxFP);
 
     // The portrait's state overlay, and (only in the ordinary state) how many of the creature's
     // live effect icons are beneficial vs harmful.
@@ -526,7 +511,7 @@ void CSWGuiInGameMenu::Draw(float f)
     unsigned char nGoodIcons = 0;
     unsigned char nBadIcons = 0;
     if (pServer->GetDead() ||
-        (pServer->m_bInParty != 0 && pServer->GetCurrentHitPoints(0) < 1))
+        pServer->GetDeadTemp() != 0)
     {
         nState = 1;
     }
@@ -1347,12 +1332,10 @@ void CSWGuiMessageBox::FixMessageLabel()
     int nScrollBarWidth = m_lbMessage.m_scrollBar.m_extent.w;
     m_lbMessage.SetScrollBarExtent(0, 1);
 
-    if (m_lbMessage.m_nRowHeight + m_lbMessage.m_nPadding > m_lbMessage.m_innerExtent.h
-        && m_lbMessage.m_aControls.m_count >= 1 && !m_lbMessage.bUnequalRows)
+    if (m_lbMessage.IsOversized())
     {
         int nFontHeight = m_lblMessage.m_text.GetFontHeight();
-        while (m_lbMessage.m_nRowHeight + m_lbMessage.m_nPadding > m_lbMessage.m_innerExtent.h
-               && m_lbMessage.m_aControls.m_count >= 1 && !m_lbMessage.bUnequalRows)
+        while (m_lbMessage.IsOversized())
         {
             if (!(fScale * 440.0f > extentPanel.w) && !(fScale * 280.0f > extentPanel.h))
                 break;
@@ -1364,8 +1347,7 @@ void CSWGuiMessageBox::FixMessageLabel()
                 m_lbMessage.SetExtent(extentList);
                 AddMessageLabel();
             }
-            if (m_lbMessage.m_nRowHeight + m_lbMessage.m_nPadding <= m_lbMessage.m_innerExtent.h
-                || m_lbMessage.m_aControls.m_count < 1 || m_lbMessage.bUnequalRows)
+            if (!m_lbMessage.IsOversized())
                 break;
             if (fScale * 280.0f > extentPanel.h)
             {
@@ -1378,8 +1360,7 @@ void CSWGuiMessageBox::FixMessageLabel()
         }
         SetExtent(extentPanel);
     }
-    if (m_lbMessage.m_nRowHeight + m_lbMessage.m_nPadding > m_lbMessage.m_innerExtent.h
-        && m_lbMessage.m_aControls.m_count >= 1 && !m_lbMessage.bUnequalRows)
+    if (m_lbMessage.IsOversized())
     {
         m_lbMessage.SetScrollBarExtent(nScrollBarWidth, 1);
         AddMessageLabel();
@@ -1528,12 +1509,10 @@ void CSWGuiMessageBox::FixMessageLabel()
 
     // While the single row still overflows the list box, spend the space budget on width first
     // (up to 440 scaled pixels) and then on height (up to 280).
-    if (m_lbMessage.m_nRowHeight + m_lbMessage.m_nPadding > m_lbMessage.m_innerExtent.h
-        && m_lbMessage.m_aControls.m_count >= 1 && !m_lbMessage.bUnequalRows)
+    if (m_lbMessage.IsOversized())
     {
         int nFontHeight = m_lblMessage.m_text.GetFontHeight();
-        while (m_lbMessage.m_nRowHeight + m_lbMessage.m_nPadding > m_lbMessage.m_innerExtent.h
-               && m_lbMessage.m_aControls.m_count >= 1 && !m_lbMessage.bUnequalRows)
+        while (m_lbMessage.IsOversized())
         {
             // Out of budget in both directions -- the label will just have to scroll.
             if (!(K2_MSGBOX_MAX_W > static_cast<float>(extentPanel.w))
@@ -1547,8 +1526,7 @@ void CSWGuiMessageBox::FixMessageLabel()
                 m_lbMessage.SetExtent(extentList);
                 AddMessageLabel();
             }
-            if (m_lbMessage.m_nRowHeight + m_lbMessage.m_nPadding <= m_lbMessage.m_innerExtent.h
-                || m_lbMessage.m_aControls.m_count < 1 || m_lbMessage.bUnequalRows)
+            if (!m_lbMessage.IsOversized())
                 break;
             if (K2_MSGBOX_MAX_H > static_cast<float>(extentPanel.h))
             {
@@ -1561,8 +1539,7 @@ void CSWGuiMessageBox::FixMessageLabel()
         }
         SetExtent(extentPanel);
     }
-    if (m_lbMessage.m_nRowHeight + m_lbMessage.m_nPadding > m_lbMessage.m_innerExtent.h
-        && m_lbMessage.m_aControls.m_count >= 1 && !m_lbMessage.bUnequalRows)
+    if (m_lbMessage.IsOversized())
     {
         // Still overflowing after every growth step -- give the scroll bar back.
         m_lbMessage.SetScrollBarExtent(nScrollBarWidth, 1);
@@ -3032,6 +3009,7 @@ void CSWGuiStatusSummary::OnPanelAdded()
                 if (nMask & (1 << j))
                 {
                     CExoString sMember;
+                    // inlined CSWTlkTable::Fetch(unsigned long, CGameObject*, int, int)
                     switch (j)
                     {
                     case NPC_ATTON:

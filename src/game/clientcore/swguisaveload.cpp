@@ -967,7 +967,6 @@ void CSWGuiSaveLoad::LoadPCAutoSave(const CExoString& sModule, bool bCloud)
     CExoString sSaveName;
     CExoString sGamePath;
     CExoString sDeadSlot;
-    CSWGuiPanel* pPanel;
 
     g_pAppManager->m_pServerExoApp->UnloadModule();
     g_pAppManager->m_pServerExoApp->SetLoadingModule(1);
@@ -1048,12 +1047,7 @@ void CSWGuiSaveLoad::LoadPCAutoSave(const CExoString& sModule, bool bCloud)
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(50, 1);
     UpdateScreen(0.033333335f, 0, 0);
 
-    pPanel = this;
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
+    SetToBeDeleted(0);
 
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(10, 1);
     g_pAppManager->m_pClientExoApp->SetLoadStep(0, 10);
@@ -1135,9 +1129,6 @@ bool CSWGuiSaveLoad::CopyGameToFutureGame(unsigned int a, const CExoString& b)
 
 void CSWGuiSaveLoad::WriteGame(const CExoString& sModule)
 {
-#if !KOTOR1
-    CSWGuiPanel* pPanel;
-#endif
     CSWGuiSaveLoadEntry* pEntry = static_cast<CSWGuiSaveLoadEntry*>(m_saveList.GetSelectedControl());
 
     if (pEntry->m_nSaveSlot >= 1000) {
@@ -1163,16 +1154,12 @@ void CSWGuiSaveLoad::WriteGame(const CExoString& sModule)
 #if KOTOR1
         g_pAppManager->m_pClientExoApp->SendSaveGameRequest(pEntry->m_nSaveSlot, sName, sModule);
 
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+        SetToBeDeleted(0);
 #else
         g_pAppManager->m_pServerExoApp->GetPartyTable()->m_saveNumber = pEntry->m_nSaveSlot;
         g_pAppManager->m_pClientExoApp->SendSaveGameRequest(pEntry->m_nSaveSlot, sName, sModule);
 
-        pPanel = this;
-        do {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel != 0);
+        SetToBeDeleted(0);
 #endif
 
         m_pGuiManager->PopModalPanel();

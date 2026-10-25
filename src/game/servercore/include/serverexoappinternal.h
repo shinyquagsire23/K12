@@ -151,6 +151,12 @@ public:
                                                 float fD);
     Vector     Control_HitCheckCamera(Vector vNewPosition);
     Quaternion Control_SetCameraOrientation(float fDeltaTime);
+    // The target's position raised by the style's camera offset.
+    Vector GetTargetHeadPosition() {
+        Vector v = m_pTargetObject.m_pObject->GetPosition();
+        v.z += m_fCameraOffset;
+        return v;
+    }
 
     SafePointer<CAurObject> m_pTargetObject;
     SafePointer<CAurObject> m_pCombatCamera;

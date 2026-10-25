@@ -198,6 +198,7 @@ extern float         mouseCameraMovement;
 
 #include "port/crtapi.h"
 #include "port/k2qolapi.h"
+#include "exostringinline.h"
 
 extern char* g_asMouseCursorNames[];
 
@@ -847,8 +848,7 @@ void CClientExoAppInternal::UpdateSoundEngine()
 
         CSWCameraOnAStick* pOnAStick = static_cast<CSWCameraOnAStick*>(pCamera->GetBehavior(BEHAVIOR_CAMERA_ON_A_STICK));
         if (pOnAStick != 0) {
-            Vector vTarget = pOnAStick->m_pTargetObject.m_pObject->GetPosition();
-            vTarget.z += pOnAStick->m_fCameraOffset;
+            Vector vTarget = pOnAStick->GetTargetHeadPosition();
             vListener.x += (vTarget.x - vListener.x) * 0.75f;
             vListener.y += (vTarget.y - vListener.y) * 0.75f;
             vListener.z += (vTarget.z - vListener.z) * 0.75f;
@@ -873,11 +873,7 @@ void CClientExoAppInternal::UpdateSoundEngine()
                     pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
                     if (pGui->m_lastShotValid != 0) {
                         pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
-                        float fShotD = pGui->m_lastShotD;
-                        float fBase = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-                        vListener.x = vListener.x - 2.0f * (q.x * q.z + q.w * q.y) * fShotD;
-                        vListener.y = vListener.y - 2.0f * (q.z * q.y - q.x * q.w) * fShotD;
-                        vListener.z = vListener.z - fBase * fShotD;
+                        vListener = vListener - q.zdir() * pGui->m_lastShotD;
                     }
                 }
             }
@@ -885,14 +881,8 @@ void CClientExoAppInternal::UpdateSoundEngine()
 
         g_pExoSound->SetListenerPosition(vListener);
 
-        vFwd.x = -2.0f * (q.x * q.z + q.w * q.y);
-        vFwd.y = -2.0f * (q.z * q.y - q.x * q.w);
-        float fOne = 1.0f;
-        Vector vUp;
-        vUp.x = 2.0f * (q.x * q.y - q.w * q.z);
-        vUp.y = fOne - 2.0f * (q.x * q.x + q.z * q.z);
-        vUp.z = 2.0f * (q.x * q.w + q.z * q.y);
-        vFwd.z = -(fOne - 2.0f * (q.x * q.x + q.y * q.y));
+        vFwd = -q.zdir();
+        Vector vUp = q.ydir();
         g_pExoSound->SetListenerOrientation(vFwd, vUp);
     }
 
@@ -3283,12 +3273,7 @@ int CClientExoAppInternal::ChangeCharacterToNextLivingPartyMember(int bOverride,
     CSWSCreature* pCreature = 0;
     if (bOverride) {
         pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(pPlayer->m_gameObjectId);
-#if KOTOR1  // K1 also tests GetDeadTemp()
         if (pCreature == 0 || pCreature->GetDead() != 0 || pCreature->GetDeadTemp() != 0)
-#else
-        if (pCreature == 0 || pCreature->GetDead() != 0 ||
-            (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) < 1))
-#endif
             bForce = true;
         else
             bForce = false;
@@ -3306,11 +3291,7 @@ int CClientExoAppInternal::ChangeCharacterToNextLivingPartyMember(int bOverride,
             CSWSCreature* pSrv = pNew->GetServerCreature();
             bool bDead = pSrv->GetDead() != 0;
             CSWSCreature* pSrv2 = pNew->GetServerCreature();
-#if KOTOR1
             bool bHp = pSrv2->GetDeadTemp() != 0;
-#else
-            bool bHp = pSrv2->m_bInParty != 0 && pSrv2->GetCurrentHitPoints(0) < 1;
-#endif
             if (bDead || bHp) {
                 nTries--;
             } else if (bForce || pCreature->m_objectId == pPlayer->m_gameObjectId) {
@@ -3420,9 +3401,7 @@ void CClientExoAppInternal::InitializeClientOptions()
 #else
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                          CExoString("PrivacyConsent"))) {
-        int nConsent = 0;
-        if (sValue.m_sString)
-            nConsent = atoi(sValue.m_sString);
+        int nConsent = sValue.AsINT();
         g_PrivacyChecked = 1;
         g_PrivacyConsentGiven = nConsent != 0;
         // The SDKs get the flag re-read from memory.
@@ -3433,7 +3412,7 @@ void CClientExoAppInternal::InitializeClientOptions()
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                          CExoString("TooltipDelay Sec"))) {
-        if (!sValue.m_sString || atoi(sValue.m_sString) <= 0) {
+        if (sValue.AsINT() <= 0) {
             sValue.Format(const_cast<char*>("1"));
             ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                               CExoString("TooltipDelay Sec"));
@@ -3445,7 +3424,7 @@ void CClientExoAppInternal::InitializeClientOptions()
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Graphics Options"),
                          CExoString("EnableHardwareMouse"))) {
-        m_pClientOptions->SetEnableHardwareMouseCursor(sValue.m_sString ? atoi(sValue.m_sString) != 0 : 0);
+        m_pClientOptions->SetEnableHardwareMouseCursor(sValue.AsINT() != 0);
     } else {
         m_pClientOptions->SetEnableHardwareMouseCursor(1);
         sValue.Format(const_cast<char*>("%d"), 1);
@@ -4807,7 +4786,7 @@ bool CClientExoAppInternal::CanFlourish()
     if (pClient &&
         (pServer = pClient->GetServerCreature()) != 0 &&
         pServer->GetDead() == 0 &&
-        (pServer->m_bInParty == 0 || pServer->GetCurrentHitPoints(0) > 0))
+        pServer->GetDeadTemp() == 0)
     {
         if (static_cast<CSWSArea*>(pServer->GetArea())->m_nPlayerRestrictMode != 0)
             return 0;
@@ -4820,6 +4799,15 @@ bool CClientExoAppInternal::CanFlourish()
     return 1;
 }
 #endif
+
+inline int CClientExoAppInternal::GetPlayerMovementInput()
+{
+    if (m_pPlayerControl == 0)
+        return 0;
+    if (m_pPlayerControl->GetLeftRight() != 0.0f)
+        return 1;
+    return m_pPlayerControl->GetUpDown() != 0.0f;
+}
 
 void CClientExoAppInternal::PlayerFlourishWeapons()
 {
@@ -4882,7 +4870,7 @@ lblMusic:
         goto lblMusic;
     if (pServer->GetDead() != 0)
         goto lblMusic;
-    if (pServer->m_bInParty != 0 && pServer->GetCurrentHitPoints(0) < 1)
+    if (pServer->GetDeadTemp() != 0)
         goto lblMusic;
     if (!CanFlourish())
         return;
@@ -4904,10 +4892,7 @@ lblMusic:
     }
 
 lblMusic:
-    int bFlourishAnim =
-        (m_pPlayerControl == 0) ||
-        (m_pPlayerControl->GetLeftRight() == 0.0f &&
-         m_pPlayerControl->GetUpDown() == 0.0f);
+    int bFlourishAnim = !GetPlayerMovementInput();
 
     CSWCCreature* pPlayer2 = GetPlayerCreature();
     if (bFlourishAnim) {
@@ -5063,15 +5048,16 @@ int CClientExoAppInternal::ReadVideoModeSettings(unsigned int* pWidth, unsigned 
 
     int nResult = ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"),
                                    CExoString("Graphics Options"), CExoString("Width"));
-    *pWidth = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+    *pWidth = sValue.AsINT();
 
     ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"),
                      CExoString("Graphics Options"), CExoString("Height"));
-    *pHeight = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+    *pHeight = sValue.AsINT();
     *pRefreshRate = 32;
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"),
                          CExoString("Graphics Options"), CExoString("RefreshRate"))) {
+        // inlined CExoString::AsINT()
         if (sValue.m_sString == 0)
             g_nDesiredFullScreenRefreshRate = 0;
         else
@@ -5570,7 +5556,7 @@ void CSWCPlayer::SetPrimaryPCPortraitId(unsigned short nPortraitId) {
                                                               CExoString("BaseResRef"),
                                                               &sBaseResRef);
         sBaseResRef = sPrefix + sBaseResRef;
-        m_portrait.SetBaseResRef(CResRef(sBaseResRef.CStr()));
+        SetPrimaryPCPortraitResRef(CResRef(sBaseResRef.CStr()));
     }
     m_nPortraitId = nPortraitId;
 }
@@ -6134,7 +6120,7 @@ uint64_t CClientExoAppInternal::GetNextLoadScreenHintSTRREF(const CExoString& sM
                 ini.ReadIniEntry(sIniValue, sIniFile, sIniSection, sIniKey);
             }
             {
-                CExoString sIniValue2((sIniValue.m_sString ? atoi(sIniValue.m_sString) : 0) | (1 << nModuleIdx));
+                CExoString sIniValue2(sIniValue.AsINT() | (1 << nModuleIdx));
                 CExoString sIniFile2(".\\swkotor2.ini");
                 CExoString sIniSection2("Game Options");
                 CExoString sIniKey2("UnlockedPlanetSongs");
@@ -6840,7 +6826,7 @@ void CClientExoAppInternal::ChangeCharacter(int nLeader, int bPlaySound)
             if (pServer->GetDead() || pServer->GetDeadTemp())
 #else
             if (pServer->GetDead() ||
-                (pServer->m_bInParty && pServer->GetCurrentHitPoints(0) <= 0))
+                pServer->GetDeadTemp() != 0)
 #endif
                 bPlaySound = 0;
         }
@@ -7338,7 +7324,7 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Graphics Options"),
                          CExoString("AllowWindowedMode"))) {
-        g_bAllowWindowedMode = (sValue.m_sString ? atoi(sValue.m_sString) : 0) != 0;
+        g_bAllowWindowedMode = sValue.AsINT() != 0;
     }
 
     g_pAurora = NewCAurora();
@@ -7359,7 +7345,7 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                          CExoString("EnableReleaseLogging"))) {
         CExoDebug* pDebug = g_pExoBase->m_pDebug;
-        pDebug->m_bEnableReleaseLogging = (sValue.m_sString ? atoi(sValue.m_sString) : 0) != 0;
+        pDebug->m_bEnableReleaseLogging = sValue.AsINT() != 0;
     }
 
     g_bExtendedResourceTracking = 0;
@@ -7425,7 +7411,7 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Graphics Options"),
                          CExoString("Texture Quality"))) {
-        int nPack = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        int nPack = sValue.AsINT();
         if (nPack <= 3) {
             SetTexturePack(static_cast<unsigned char>(nPack), 0);
             goto tex_done;
@@ -7453,21 +7439,16 @@ tex_done:;
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                          CExoString("Disable Movies"))) {
-        m_bDisableMovies = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bDisableMovies = sValue.AsINT();
     } else {
         m_bDisableMovies = 0;
     }
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Display Options"),
                          CExoString("Disable Intro Movies"))) {
-        if (sValue.m_sString) {
-            int nIntro = atoi(sValue.m_sString);
-            m_bDisableIntroMovies = nIntro;
-            if (nIntro != 0)
-                goto intro_done;
-        } else {
-            m_bDisableIntroMovies = 0;
-        }
+        m_bDisableIntroMovies = sValue.AsINT();
+        if (m_bDisableIntroMovies != 0)
+            goto intro_done;
         sValue.Format(const_cast<char*>("%d"), 1);
         ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Display Options"),
                           CExoString("Disable Intro Movies"));
@@ -8918,7 +8899,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
     case FEEDBACK_SPELL_IMMUNITY:
     {
         unsigned long long oid = pData->GetObjectID(0);
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pData->GetInteger(0));
+        CSWSpell* pSpell = g_pRules->GetSpell(pData->GetInteger(0));
         if (GetObjectName(oid, sObjectName) == 0)
 #if KOTOR1
             sObjectName = GetGUIString(0);
@@ -9637,7 +9618,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
     case 222:
     {
         CExoString sSpellName;
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(pData->GetInteger(0));
+        CSWSpell* pSpell = g_pRules->GetSpell(pData->GetInteger(0));
         if (pSpell != 0)
             sSpellName = pSpell->GetSpellNameText();
         g_pTlkTable->SetCustomToken(0, sSpellName);
@@ -9922,8 +9903,8 @@ hilited:;
                 pServer->AsSWSCreature()->GetMaxForcePoints();
                 for (int i = 0; i < g_pRules->m_pSpellArray->m_nCount; i++) {
                     if (pServer->AsSWSCreature()->m_pStats->HasSpell(0, i, 1))
-                        if (g_pRules->m_pSpellArray->GetSpell(i))
-                            g_pRules->m_pSpellArray->GetSpell(i)->m_sName.CStr();
+                        if (g_pRules->GetSpell(i))
+                            g_pRules->GetSpell(i)->m_sName.CStr();
                 }
                 for (int i = 0; i < g_pRules->m_nFeats; i++) {
                     if (pServer->AsSWSCreature()->m_pStats->HasFeat(static_cast<unsigned short>(i)))
@@ -9984,6 +9965,7 @@ void CClientExoAppInternal::DoPassiveSelection(float fDelta)
 
         {
             for (int i = 0; i < nCount; i++) {
+                // inlined CExoArrayList<unsigned long>::Contains(unsigned long) const
                 int nParity = 0;
                 for (int j = 0; j < listNear.m_count; j++)
                     if (listNear.m_pArray[j] == listAround.m_pArray[i])
@@ -10055,7 +10037,7 @@ void CClientExoAppInternal::DoPassiveSelection(float fDelta)
             if (pSrvC && (pSrvC->GetDead() || pSrvC->GetDeadTemp())) {
 #else
             if (pSrvC && (pSrvC->GetDead()
-                          || (pSrvC->m_bInParty != 0 && pSrvC->GetCurrentHitPoints(0) <= 0))) {
+                          || pSrvC->GetDeadTemp() != 0)) {
 #endif
                 m_fTargetChanging = 1.5f;
                 goto commit_picked;
@@ -10411,14 +10393,11 @@ epilogue:
 // Console command.
 const char* SpawnChar(char* pTemplate)
 {
-    CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pPlayer == 0)
         return "ERROR: No player creature present.";
 
-    Vector vSpawn(pPlayer->m_orientation.x * 5.0f + pPlayer->m_position.x,
-                  pPlayer->m_orientation.y * 5.0f + pPlayer->m_position.y,
-                  pPlayer->m_orientation.z * 5.0f + pPlayer->m_position.z);
+    Vector vSpawn = pPlayer->m_orientation * 5.0f + pPlayer->m_position;
 
     CSWSCreature* pCreature = new CSWSCreature(OBJECT_INVALID, 0);
     CResRef resRef(pTemplate);

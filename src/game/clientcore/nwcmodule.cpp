@@ -516,21 +516,11 @@ void CSWCModule::TurnCamera(float fParam1, float fParam2) {
                 float fRoll = Roll(q);
                 q = YawPitchRoll(fYaw, fPitch, fRoll);
 
-                Vector vDir = Vector{
-                    2.0f * (q.x * q.z + q.w * q.y),
-                    2.0f * (q.z * q.y - q.x * q.w),
-                    1.0f - 2.0f * (q.x * q.x + q.y * q.y)
-                };
-                pCreature->SetOrientation(vDir);
+                pCreature->SetOrientation(q.zdir());
 
                 if (pCreature->GetServerCreature() != 0) {
                     CSWSCreature* pServer = pCreature->GetServerCreature();
-                    vDir = Vector{
-                        2.0f * (q.x * q.z + q.w * q.y),
-                        2.0f * (q.z * q.y - q.x * q.w),
-                        1.0f - 2.0f * (q.x * q.x + q.y * q.y)
-                    };
-                    pServer->SetOrientation(vDir);
+                    pServer->SetOrientation(q.zdir());
                 }
             }
         }
@@ -817,11 +807,7 @@ int CSWCModule::GetNextCameraPosition(float fDeltaTime, Vector* pvPos) {
     Quaternion qCam = m_pCamera->GetOrientation();
     Quaternion q = normalize(slerp(qCam, qTarget, fBlend));
 
-    Vector vDir = Vector{
-        2.0f * (q.x * q.z + q.w * q.y),
-        2.0f * (q.z * q.y - q.x * q.w),
-        1.0f - 2.0f * (q.x * q.x + q.y * q.y)
-    };
+    Vector vDir = q.zdir();
 
     m_vCameraPos = vBlended;
     pvPos->z = vBlended.z + vDir.z * fClampedDist;
@@ -841,7 +827,7 @@ float CSWCModule::UpdateNormalCameraCollision(float fDeltaTime, float fDistDelta
     if (m_pArea != 0) pScene = m_pArea->m_pScene;
     CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
     if (pPlayer == 0 || pScene == 0 || m_pCamera == 0) return fDistDelta;
-    if (pPlayer->m_pModel == 0 || pPlayer->m_pModel->GetModel(CSWCObject::ANIM_MODEL_BODY) == 0) return fDistDelta;
+    if (!pPlayer->ModelIsLoaded()) return fDistDelta;
 
     Vector vCamPos = m_pCamera->GetPosition();
     Vector vStart = pPlayer->m_position + m_vCameraOffset;
@@ -872,18 +858,14 @@ float CSWCModule::UpdateNormalCameraCollision(float fDeltaTime, float fDistDelta
     Quaternion qCam = m_pCamera->GetOrientation();
     q = normalize(slerp(qCam, q, fBlend));
 
-    Vector vDir2 = Vector{
-        2.0f * (q.x * q.z + q.w * q.y),
-        2.0f * (q.z * q.y - q.x * q.w),
-        1.0f - 2.0f * (q.x * q.x + q.y * q.y)
-    };
+    Vector vDir2 = q.zdir();
 
     Vector vPos = pPlayer->m_position;
     Vector vNew = (vPos + Vector(0.0f, 0.0f, 1.0f)) * fBlend + vLastPos * fInvBlend;
     vLastPos = vNew;
 
     float fEndDist = max(fDist, g_fMinDist);
-    Vector vCamEnd = Vector{vNew.x + vDir2.x * fEndDist, vNew.y + vDir2.y * fEndDist, vNew.z + vDir2.z * fEndDist};
+    Vector vCamEnd = vNew + vDir2 * fEndDist;
     Vector vHit1 = Vector{0.0f, 0.0f, 0.0f};
     Vector vHit2 = Vector{0.0f, 0.0f, 0.0f};
     float fHit = 0.0f;          // the collision-limit distance
@@ -1148,7 +1130,7 @@ float CSWCModule::UpdatePushCameraCollision(float fDeltaTime, float fDistDelta) 
     if (m_pArea != 0) pScene = m_pArea->m_pScene;
     CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
     if (pPlayer == 0 || pScene == 0 || m_pCamera == 0) return fDistDelta;
-    if (pPlayer->m_pModel == 0 || pPlayer->m_pModel->GetModel(CSWCObject::ANIM_MODEL_BODY) == 0) return fDistDelta;
+    if (!pPlayer->ModelIsLoaded()) return fDistDelta;
 
     Vector vCamPos = m_pCamera->GetPosition();
     Vector vStart = pPlayer->m_position + m_vCameraOffset;
@@ -1178,18 +1160,14 @@ float CSWCModule::UpdatePushCameraCollision(float fDeltaTime, float fDistDelta) 
     Quaternion qCam = m_pCamera->GetOrientation();
     q = normalize(slerp(qCam, q, fBlend));
 
-    Vector vDir2 = Vector{
-        2.0f * (q.x * q.z + q.w * q.y),
-        2.0f * (q.z * q.y - q.x * q.w),
-        1.0f - 2.0f * (q.x * q.x + q.y * q.y)
-    };
+    Vector vDir2 = q.zdir();
 
     Vector vPos = pPlayer->m_position;
     Vector vNew = (vPos + Vector(0.0f, 0.0f, 1.0f)) * fBlend + vLastPos * (1.0f - fBlend);
     vLastPos = vNew;
 
     float fEndDist = max(fDist, g_fMinDist);
-    Vector vCamEnd = Vector{vNew.x + vDir2.x * fEndDist, vNew.y + vDir2.y * fEndDist, vNew.z + vDir2.z * fEndDist};
+    Vector vCamEnd = vNew + vDir2 * fEndDist;
     float fHit = 0.0f;          // the collision-limit distance
     float fRet = fDistDelta;    // the return accumulator
     bool bIsPush = false;

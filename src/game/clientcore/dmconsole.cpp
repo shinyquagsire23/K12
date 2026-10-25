@@ -740,9 +740,7 @@ char* giveforcepowers(char* sArgs) {
     CExoIni ini;
     CExoString sValue;
     CExoString sKey;
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature =
-        pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     int bAny = 0;
     for (int i = 1; i < 1000; i++) {

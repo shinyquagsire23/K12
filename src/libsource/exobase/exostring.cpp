@@ -13,6 +13,7 @@ enum {
 #include "port/libcbase.h"
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
+#include "exostringinline.h"
 extern "C" {
 }
 
@@ -387,13 +388,13 @@ void CExoString::Format(char* pszFormat, ...)
             m_nBufferLength = 0;
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 frees the buffer with scalar delete
             delete m_sString;
-#else
-            delete[] m_sString;
-#endif
             m_sString = NULL;
+#else
+            DeallocString();
+#endif
         }
         m_nBufferLength = nLength + 1;
-        m_sString = new char[m_nBufferLength];
+        AllocString();
     }
     K2_ASSUME(s_pszBuffer != NULL);   // allocated on the first call (bInit), only ever replaced since
     strncpy(m_sString, s_pszBuffer, nLength);
@@ -483,18 +484,12 @@ CExoString CExoString::LowerCase() const
 {
     CExoString result;
     if (m_sString != NULL) {
-        result.m_nBufferLength = static_cast<unsigned int>(strlen(m_sString) + 1);
-        result.m_sString = new char[result.m_nBufferLength];
-        const char* src = m_sString;
-        int i = 0;
-        char c = src[0];
-        if (c != '\0') {
-            do {
-                K2_ASSUME(static_cast<unsigned int>(i) + 1 < result.m_nBufferLength);   // src[i] is not the NUL
-                result.m_sString[i] = static_cast<unsigned char>(c - 'A') < 26 ? static_cast<char>(c + ('a' - 'A')) : c;
-                c = src[i + 1];
-                i++;
-            } while (c != '\0');
+        result.m_nBufferLength = GetLength() + 1;
+        result.AllocString();
+        int i;
+        for (i = 0; m_sString[i] != '\0'; i++) {
+            char c = m_sString[i];
+            result.m_sString[i] = static_cast<unsigned char>(c - 'A') < 26 ? static_cast<char>(c + ('a' - 'A')) : c;
         }
         result.m_sString[i] = '\0';
     }
@@ -505,18 +500,12 @@ CExoString CExoString::UpperCase() const
 {
     CExoString result;
     if (m_sString != NULL) {
-        result.m_nBufferLength = static_cast<unsigned int>(strlen(m_sString) + 1);
-        result.m_sString = new char[result.m_nBufferLength];
-        const char* src = m_sString;
-        int i = 0;
-        char c = src[i];
-        if (c != '\0') {
-            do {
-                K2_ASSUME(static_cast<unsigned int>(i) + 1 < result.m_nBufferLength);   // src[i] is not the NUL
-                result.m_sString[i] = static_cast<unsigned char>(c - 'a') < 26 ? static_cast<char>(c - ('a' - 'A')) : c;
-                i++;
-                c = src[i];
-            } while (c != '\0');
+        result.m_nBufferLength = GetLength() + 1;
+        result.AllocString();
+        int i;
+        for (i = 0; m_sString[i] != '\0'; i++) {
+            char c = m_sString[i];
+            result.m_sString[i] = static_cast<unsigned char>(c - 'a') < 26 ? static_cast<char>(c - ('a' - 'A')) : c;
         }
         result.m_sString[i] = '\0';
     }
@@ -529,18 +518,23 @@ CExoString CExoString::operator+(const CExoString& other) const
     int lenOther = (other.m_sString != NULL) ? static_cast<int>(strlen(other.m_sString)) : 0;
     int lenThis  = (m_sString != NULL) ? static_cast<int>(strlen(m_sString)) : 0;
     if (lenThis != 0 || lenOther != 0) {
+        if (result.m_sString != NULL) {
+            result.DeallocString();
+            result.m_nBufferLength = 0;
+        }
         if (lenOther == 0) {
             result.m_nBufferLength = lenThis + 1;
-            result.m_sString = new char[result.m_nBufferLength];
+            result.AllocString();
             strcpy(result.m_sString, m_sString);
         } else if (lenThis == 0) {
             result.m_nBufferLength = lenOther + 1;
-            result.m_sString = new char[result.m_nBufferLength];
+            result.AllocString();
             strcpy(result.m_sString, other.m_sString);
         } else {
             result.m_nBufferLength = lenOther + 1 + lenThis;
-            result.m_sString = new char[result.m_nBufferLength];
-            strcat(strcpy(result.m_sString, m_sString), other.m_sString);
+            result.AllocString();
+            strcpy(result.m_sString, m_sString);
+            strcat(result.m_sString, other.m_sString);
         }
     }
     return result;
@@ -572,17 +566,15 @@ int CExoString::CompareNoCase(const CExoString& other) const
     const char* p1 = other.m_sString;
     if (p1 == NULL)
         return m_sString == NULL;
-    int lenOther = static_cast<int>(strlen(p1));
+    int lenOther = other.GetLength();
     const char* p2 = m_sString;
     if (p2 == NULL)
         return 0;
-    if (lenOther != static_cast<int>(strlen(p2)))
+    if (lenOther != GetLength())
         return 0;
-    if (lenOther < 1)
-        return 1;
-    for (int n = lenOther; n != 0; n--) {
-        signed char c1 = *p1;
-        signed char c2 = *p2;
+    for (int i = 0; i < lenOther; i++) {
+        signed char c1 = p1[i];
+        signed char c2 = p2[i];
         if (c1 != c2) {
             if (static_cast<unsigned>(c1 - 'A') <= 25) {
                 if (c1 + ('a' - 'A') != c2)
@@ -594,8 +586,6 @@ int CExoString::CompareNoCase(const CExoString& other) const
                 return 0;
             }
         }
-        p1++;
-        p2++;
     }
     return 1;
 }

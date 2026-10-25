@@ -28,6 +28,10 @@ public:
     void SetSkillRankChange(unsigned short nSkill, char nRank);
     void AddFeat(unsigned short nFeat);
 
+    // nClass indexes the per-class known-spell lists, of which a level has exactly one.
+    void AddAddedKnownSpell(unsigned char nClass, unsigned int nSpell) { (&m_spellsGained)[nClass].Add(nSpell); }
+    void AddRemovedKnownSpell(unsigned char nClass, unsigned int nSpell) { (&m_spellsLost)[nClass].Add(nSpell); }
+
     // The level's per-skill rank delta; both LevelUp and LevelDown call it twice per skill, once
     // as the gate and once for the delta itself.
     unsigned char GetSkillRankChange(unsigned short nSkill);

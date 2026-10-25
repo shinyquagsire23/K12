@@ -153,7 +153,8 @@ public:
     CExoLinkedList<NWAreaExpansion_st> m_expansionList;
     CExoString             m_sComments;
     CExoLocString          m_areaName;
-    CExoString             m_sDebugName;
+    CExoString             m_sDebugName;  // the area's tag, lower-cased
+    void SetTag(const CExoString& sTag) { m_sDebugName = sTag.LowerCase(); }
     CSWSAreaHeaderIds*     m_pHeaderIds;
     CExoString             m_scriptOnHeartbeat;
     CExoString             m_scriptOnUserDefined;

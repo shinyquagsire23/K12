@@ -139,15 +139,8 @@ int CSWMGBehaviorBullet::Control(float fParam)
         return 0;
     }
 
-    Quaternion q = pOwner->GetOrientation();
-
-    // Column 1 of the rotation matrix is the model's local Y axis.
-    Vector vDir;
-    vDir.x = (q.x * q.y - q.w * q.z) + (q.x * q.y - q.w * q.z);
-    vDir.y = 1.0f - ((q.x * q.x + q.z * q.z) + (q.x * q.x + q.z * q.z));
-    vDir.z = (q.y * q.z + q.x * q.w) + (q.y * q.z + q.x * q.w);
-
-    Vector vOffset = vDir * (m_bullet.m_fSpeed * fParam);
+    // The model's local Y axis.
+    Vector vOffset = pOwner->GetOrientation().ydir() * (m_bullet.m_fSpeed * fParam);
     pOwner->SetPosition(vOffset + m_pOwner->GetPosition());
     return 1;
 }

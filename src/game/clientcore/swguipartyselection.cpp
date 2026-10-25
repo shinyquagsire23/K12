@@ -705,8 +705,7 @@ void CSWGuiPartySelection::OnPanelAdded()
 
     // An unescapable area routes every toggle to the solo-mode query box, otherwise the roster is
     // edited directly. The box's mode and StrRef are seeded together.
-    m_bCanChangeParty = static_cast<CSWSArea*>(pServerApp->GetCreatureByGameObjectID(
-                      pServerApp->GetPlayerCreatureId())->GetArea())->m_nUnescapable
+    m_bCanChangeParty = static_cast<CSWSArea*>(pServerApp->GetPlayerCreature()->GetArea())->m_nUnescapable
                       ? (m_bFromScript != 0) : 1;
     m_nCannotChangeStrRef = STRREF_CANNOT_CHANGE_PARTY_NOW;
 

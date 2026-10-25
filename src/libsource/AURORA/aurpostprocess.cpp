@@ -702,7 +702,7 @@ void MdlNodeTriMesh::BuildNeighborLists()
         face.Normal() = vNormal;
         Vector& vP0 = pVerts[pFace.m_paVertIndices[0]];
         Vector& vN = face.Normal();
-        face.m_fPlaneDist = -(vN.x * vP0.x + vN.y * vP0.y + vN.z * vP0.z);
+        face.m_fPlaneDist = -dot(vN, vP0);
         for (int k = 0; k < 3; k++) {
             int nV0 = pFace.m_paVertIndices[k];
             int nV1 = pFace.m_paVertIndices[(k + 1) % 3];

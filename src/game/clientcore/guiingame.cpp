@@ -304,10 +304,7 @@ CGuiInGame::CGuiInGame()
     CExoIni ini;
     CExoString value;
     if (ini.ReadIniEntry(value, ".\\swkotor2.ini", "Display Options", "Compass") != 0) {
-        if (value.m_sString != 0)
-            m_compassEnabled = atoi(value.m_sString) != 0;
-        else
-            m_compassEnabled = 0;
+        m_compassEnabled = value.AsINT() != 0;
     }
 #endif
 
@@ -1152,15 +1149,8 @@ int CGuiInGame::CanPlayDialogAnimations(unsigned long long objId)
 
     if (pCreature->GetDead() != 0) return 0;
 
-#if KOTOR1  // K1: GetDeadTemp instead of the in-party hit-point test
     if (pCreature->GetDeadTemp() != 0) return 0;
     return 1;
-#else
-    if (pCreature->m_bInParty == 0) return 1;
-
-    if (pCreature->GetCurrentHitPoints(0) >= 1) return 1;
-    return 0;
-#endif
 }
 
 // Resets the previous frame's animated objects to idle.
@@ -1483,6 +1473,7 @@ void CGuiInGame::ShowSoloModeQuery(int text)
             if (bDeadTemp != 0) goto playSound;
             goto doQuery;
 #else
+            // inlined CSWSCreature::GetDeadTemp()
             if (pServerCreature->m_bInParty != 0) {
                 short hp = pServerCreature->GetCurrentHitPoints(0);
                 if (bMultiPartyMember && hp >= 1) goto doQuery;
@@ -2136,13 +2127,7 @@ Vector CGuiInGame::GetDialogCameraPosition(int bOffsetByOrientation)
 
     vPos = pCamera->GetPosition();
     if (bOffsetByOrientation != 0) {
-        Quaternion q = pCamera->GetOrientation();
-        Vector vDir = {
-            -2.0f * (q.x * q.z + q.w * q.y),
-            -2.0f * (q.z * q.y - q.x * q.w),
-            -(1.0f - 2.0f * (q.x * q.x + q.y * q.y))
-        };
-        vDir = normalize(vDir);
+        Vector vDir = normalize(-pCamera->GetOrientation().zdir());
         vPos.x += vDir.x * 5.0f;
         vPos.y += vDir.y * 5.0f;
         vPos.z += vDir.z * 5.0f;
@@ -4244,20 +4229,11 @@ bool CGuiInGame::HandleDialogReplies(unsigned int a1, unsigned long long a2, uns
                 pTlk->m_bSuppressEnabled &= ~1;
                 pTlk->ParseStr(text);
 #if !KOTOR1
-                while (text.m_sString != 0) {
-                    if (static_cast<int>(strlen(text.m_sString)) < 1) break;
-                    if (text[0] != ' ') break;
-                    int len = text.m_sString ? static_cast<int>(strlen(text.m_sString)) : 0;
-                    text = text.SubString(1, len - 1);
-                }
+                while (text.GetLength() >= 1 && text[0] == ' ')
+                    text = text.SubString(1, text.GetLength() - 1);
                 // An empty reply is not trimmed either.
-                while (text.m_sString != 0) {
-                    if (static_cast<int>(strlen(text.m_sString)) < 1) break;
-                    int lenA = text.m_sString ? static_cast<int>(strlen(text.m_sString)) : 0;
-                    if (text[lenA - 1] != ' ') break;
-                    int lenB = text.m_sString ? static_cast<int>(strlen(text.m_sString)) : 0;
-                    text = text.SubString(0, lenB - 1);
-                }
+                while (text.GetLength() >= 1 && text[text.GetLength() - 1] == ' ')
+                    text = text.SubString(0, text.GetLength() - 1);
 #endif
             }
             SetReplyData(i, text, paA[i], paB[i], paC[i], paD[i], paE[i], paF[i], paG[i], paH[i],
@@ -4640,14 +4616,7 @@ void CGuiInGame::UpdateCreatedInGameGUI(int oldPanel, int newPanel)
     if (oldPanel != -1) {
         CSWGuiPanel* pPanel = m_apScreenPanels[oldPanel];
         if (pPanel != 0) {
-#if KOTOR1  // K1: no panel chain, one stamp
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-#else
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel != 0);
-#endif
+            pPanel->SetToBeDeleted(0);
             m_apScreenPanels[oldPanel] = 0;
         }
     }
@@ -5060,15 +5029,13 @@ void CGuiInGame::UpdateShotCamera(unsigned int nShotType, int nCharId, float fC,
                     if (pSrvObj != 0 && pSrvObj->AsSWSCreature() != 0) {
                         pSrvObj->AsSWSCreature()->SetOrientation(vOrient);
                     }
-                    CSWCCreature* pCreature = pObjB->AsSWCCreature();
-                    pCreature->m_vStationaryOrientation = normalize(vOrient);
+                    pObjB->AsSWCCreature()->SetDesiredStationaryOrientation(vOrient);
                     pObjB->AsSWCCreature()->SetOrientation(vOrient);
                 } else {
                     if (pSrvObj != 0 && pSrvObj->AsSWSCreature() != 0) {
                         pSrvObj->AsSWSCreature()->SetOrientation(vDirAB);
                     }
-                    CSWCCreature* pCreature = pObjB->AsSWCCreature();
-                    pCreature->m_vStationaryOrientation = normalize(vDirAB);
+                    pObjB->AsSWCCreature()->SetDesiredStationaryOrientation(vDirAB);
                     pObjB->AsSWCCreature()->SetOrientation(vDirAB);
                 }
             }
@@ -5127,15 +5094,13 @@ void CGuiInGame::UpdateShotCamera(unsigned int nShotType, int nCharId, float fC,
                     if (pSrvObj != 0 && pSrvObj->AsSWSCreature() != 0) {
                         pSrvObj->AsSWSCreature()->SetOrientation(vOrient);
                     }
-                    CSWCCreature* pCreature = pObjA->AsSWCCreature();
-                    pCreature->m_vStationaryOrientation = normalize(vOrient);
+                    pObjA->AsSWCCreature()->SetDesiredStationaryOrientation(vOrient);
                     pObjA->AsSWCCreature()->SetOrientation(vOrient);
                 } else {
                     if (pSrvObj != 0 && pSrvObj->AsSWSCreature() != 0) {
                         pSrvObj->AsSWSCreature()->SetOrientation(-vDirAB);
                     }
-                    CSWCCreature* pCreature = pObjA->AsSWCCreature();
-                    pCreature->m_vStationaryOrientation = normalize(-vDirAB);
+                    pObjA->AsSWCCreature()->SetDesiredStationaryOrientation(-vDirAB);
                     pObjA->AsSWCCreature()->SetOrientation(-vDirAB);
                 }
             }

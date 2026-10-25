@@ -85,18 +85,16 @@ Vector CSWBehaviorCameraCombat::CalculateDesiredLocation(CSWCCreature* pCreature
     Quaternion q = YawPitchRoll(fTurn, 0.0f, 0.0f) * pCamera->GetOrientation();
     fYaw = Yaw(q);
 
-    // The stand-off slides along the orientation's local +Z projected to XY.
-    vDir.x = 2.0f * (q.x * q.y - q.w * q.z);
-    vDir.y = 1.0f - 2.0f * (q.x * q.x + q.z * q.z);
+    // The stand-off slides along the orientation's local +Y projected to XY.
+    vDir = q.ydir();
     vDir.z = 0.0f;
     vDir.Normalize();
 
     // The horizontal lanes are pulled back along that axis by the style's distance, while z is the
     // creature's head height plus the style's height, where the axis plays no part.
-    return Vector(vCreaturePos.x + vDir.x * -m_fDistance,
-                  vCreaturePos.y + vDir.y * -m_fDistance,
-                  pCreature->m_position.z + pCreature->m_pCreatureAppearance->GetHeadHeightOffset()
-                      + m_fHeight);
+    Vector vRet = vCreaturePos + vDir * -m_fDistance;
+    vRet.z = pCreature->m_position.z + pCreature->m_pCreatureAppearance->GetHeadHeightOffset() + m_fHeight;
+    return vRet;
 }
 
 // Refreshes the option-driven accelerator gains, refreshes the rotate latch and mouse cursor, then
@@ -361,14 +359,10 @@ Vector CSWBehaviorCameraCombat::DetermineSafePosition(CSWCCreature* pCreature,
     Vector vNorm = normalize(vAway);
 
     // The creature model's local +Z.
-    Vector vAxis = normalize(
-        Vector(pCreature->GetModel(CSWCObject::ANIM_MODEL_BODY, 1)->GetOrientation().getmatrix().Rows()[2]));
+    Vector vAxis = normalize(pCreature->GetModel(CSWCObject::ANIM_MODEL_BODY, 1)->GetOrientation().zdir());
 
     // The lift is proportional to how much of the stand-off distance is left over.
-    float fLift = (fBest / fDist) * (CameraPersonalSpace + 0.15f);
-    vPos = Vector(vPos.x - vNorm.x * fBest + vAxis.x * fLift,
-                  vPos.y - vNorm.y * fBest + vAxis.y * fLift,
-                  vPos.z - vNorm.z * fBest + vAxis.z * fLift);
+    vPos = vPos - vNorm * fBest + vAxis * ((fBest / fDist) * (CameraPersonalSpace + 0.15f));
     return vPos;
 }
 

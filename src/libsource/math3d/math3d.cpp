@@ -277,12 +277,11 @@ Vector planesegmentintersection(const Vector& vNormal, float fDist, const Vector
     static Vector dif;
     dif = vLineEnd - vLineStart;
 
-    float fDenom = vNormal.x * dif.x + vNormal.y * dif.y + vNormal.z * dif.z;
+    float fDenom = dot(vNormal, dif);
     float fT = 0.0f;
     if (fDenom != 0.0f)
     {
-        fT = -(vNormal.x * vLineStart.x + vNormal.y * vLineStart.y + vNormal.z * vLineStart.z
-               + fDist) / fDenom;
+        fT = -(dot(vNormal, vLineStart) + fDist) / fDenom;
         // Clamp the crossing parameter to the segment.
         if (fT > 1.0f)
             fT = 1.0f;
@@ -546,7 +545,7 @@ void Plane::Transform(const Vector& vPoint, const Quaternion& q)
     a = newnormal.x;
     b = newnormal.y;
     c = newnormal.z;
-    d = -(newnormal.x*origin.x + newnormal.y*origin.y + newnormal.z*origin.z);
+    d = -dot(newnormal, origin);
 }
 
 #if KOTOR1  // K1: the quaternion operators are defined here, not in the header
@@ -732,9 +731,7 @@ float Roll(Quaternion q)
     Quaternion qPitch(xaxis, DegToRad(-Pitch(q)));
     q = qPitch * q;
 
-    float fB = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
-    float fA = -2.0f * (q.x * q.z - q.w * q.y);
-    return atan2f(fA, fB) * 57.295776f;
+    return atan2f(-q.xdir().z, q.xdir().x) * 57.295776f;
 }
 
 float Yaw(const Vector& v)
@@ -800,8 +797,8 @@ Quaternion RotationArc(Vector from, Vector to)
 bool polyhit(const Vector* pa, int nCount, const Vector& b, const float& fRadius,
               const Vector& c, const Vector& d, Vector* pOut)
 {
-    float fDistC = b.x * c.x + b.y * c.y + b.z * c.z + fRadius;
-    float fDistD = b.x * d.x + b.y * d.y + b.z * d.z + fRadius;
+    float fDistC = dot(b, c) + fRadius;
+    float fDistD = dot(b, d) + fRadius;
 
     if (fDistC == fDistD)
         return 0;
@@ -821,7 +818,7 @@ bool polyhit(const Vector* pa, int nCount, const Vector& b, const float& fRadius
     for (int i = 1; i <= nCount; i++)
     {
         side = cross(pa[i % nCount] - pa[i - 1], the_point - pa[i - 1]);
-        fDot = side.x * b.x + side.y * b.y + side.z * b.z;
+        fDot = dot(side, b);
         bInside = fDot >= -1e-05f;
         if (!bInside)
             break;

@@ -1130,6 +1130,7 @@ void CSWGuiInGameEquip::SetDescription(const CExoString& sDescription) {
     int nLt = sDesc.Find('<', 0);
     int nGt = sDesc.Find('>', 0);
     if ((nLt & nGt) != -1) {
+        // inlined CSWTlkTable::ParseStr(CExoString&, CGameObject*, int, int)
         auto pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
         CSWTlkTable* pTlk = g_pSWTlkTable;
         pTlk->m_pSpeakerObj = pPC;
@@ -1788,9 +1789,9 @@ void CSWGuiInGameEquip::UpdateInventory() {
     Vector colorNewText = CGuiInGame::COLOR_NEW_TEXT;
 
     // The two primary-hand slot labels start from their generic icon at full alpha.
-    m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.SetFillImage(GetIcon(GUI_SLOT_WEAP_L), 0);
+    m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.SetFillImage(GetIcon(GUI_SLOT_WEAP_L));
     m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.m_fAlpha = 1.0f;
-    m_apSlotLabels[GUI_SLOT_WEAP_L2].m_border.m_params.SetFillImage(GetIcon(GUI_SLOT_WEAP_L2), 0);
+    m_apSlotLabels[GUI_SLOT_WEAP_L2].m_border.m_params.SetFillImage(GetIcon(GUI_SLOT_WEAP_L2));
     m_apSlotLabels[GUI_SLOT_WEAP_L2].m_border.m_params.m_fAlpha = 1.0f;
 
     m_lblAtkL2.m_text.m_params.SetText("");
@@ -1880,13 +1881,13 @@ void CSWGuiInGameEquip::UpdateInventory() {
                 if (nSlot == 1) {
                     if (pServerItem->GetBaseItem()->m_nWeaponSize == CSWBaseItem::WEAPON_SIZE_LARGE
                         || pServerItem->GetBaseItem()->m_weaponWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
-                        m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.SetFillImage(resRef, 0);
+                        m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.SetFillImage(resRef);
                         m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.m_fAlpha = 0.25f;
                     }
                 } else if (nSlot == 10) {
                     if (pServerItem->GetBaseItem()->m_nWeaponSize == CSWBaseItem::WEAPON_SIZE_LARGE
                         || pServerItem->GetBaseItem()->m_weaponWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
-                        m_apSlotLabels[GUI_SLOT_WEAP_L2].m_border.m_params.SetFillImage(resRef, 0);
+                        m_apSlotLabels[GUI_SLOT_WEAP_L2].m_border.m_params.SetFillImage(resRef);
                         m_apSlotLabels[GUI_SLOT_WEAP_L2].m_border.m_params.m_fAlpha = 0.25f;
                     }
                 }
@@ -1911,9 +1912,9 @@ void CSWGuiInGameEquip::UpdateInventory() {
             // The comparison is deliberate rather than an assignment. A `d` item on the right hand
             // is mirrored onto the left pair.
             if ((nWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED && nSlot == GUI_SLOT_WEAP_R) || nWieldType != CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
-                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(resRef, 0);
+                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(resRef);
             if ((nWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED && nSlot == GUI_SLOT_WEAP_R2) || nWieldType != CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
-                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(resRef, 0);
+                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(resRef);
         } else {
             // An empty right-hand slot shows the unarmed readout.
             int bReadout = 0;
@@ -1983,7 +1984,7 @@ void CSWGuiInGameEquip::UpdateInventory() {
                     break;
                 }
 
-                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(GetIcon(nSlot), 0);
+                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(GetIcon(nSlot));
             }
         }
 
@@ -2836,13 +2837,8 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
             // A '<' or '{' in the name means it is a TLK token string; resolve it through the client
             // talk table with the party leader as the speaker.
             if (sName.Find('<', 0) != -1 || sName.Find('{', 0) != -1) {
-                CSWTlkTable* pTlk;
-                g_pSWTlkTable->m_pSpeakerObj =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-                pTlk = g_pSWTlkTable;
-                pTlk->m_gender = pTlk->GetObjectGender();
-                pTlk->m_bSuppressEnabled |= 1;
-                pTlk->ParseStr(sName);
+                CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+                g_pSWTlkTable->ParseStr(sName, pPC, 1, 1);
             }
             if (bIsEquipped != 0)
                 sName = sName + " (" + g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_EQUIPPED) + ")";

@@ -1151,7 +1151,7 @@ unsigned long long CSWSCreature::GetNearestEnemy(float fRange, unsigned long lon
 #else
                     pObject->AsSWSCreature();
                     CSWSCreature* pTarget = pObject->AsSWSCreature();
-                    if (pTarget->m_bInParty == 0 || pTarget->GetCurrentHitPoints(0) > 0) {
+                    if (pTarget->GetDeadTemp() == 0) {
 #endif
                         CSWVisibilityNode* pNode = GetVisibleListElement(pObject->m_objectId);
                         if (pNode != 0 && (pNode->m_flags & VISIBILITY_SEEN)) {
@@ -1221,7 +1221,7 @@ unsigned long long CSWSCreature::GetNearestEnemy(float fRange, unsigned long lon
 #else
                     pObject->AsSWSCreature();
                     CSWSCreature* pTarget = pObject->AsSWSCreature();
-                    if (pTarget->m_bInParty == 0 || pTarget->GetCurrentHitPoints(0) > 0) {
+                    if (pTarget->GetDeadTemp() == 0) {
 #endif
                         CSWVisibilityNode* pNode = GetVisibleListElement(pObject->m_objectId);
                         if (pNode != 0 && (pNode->m_flags & VISIBILITY_SEEN)) {
@@ -1381,7 +1381,7 @@ void CSWSCreature::BroadcastSpellCast(unsigned int nSpell, int a2, unsigned char
                                       unsigned short a4, unsigned long long oidTarget)
 {
     K2_UNUSED(a2); K2_UNUSED(a3); K2_UNUSED(a4);
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
     if (pArea != 0) {
         m_aSpellCastBroadcastList.Clear();
@@ -2686,7 +2686,7 @@ int CSWSCreature::ToggleMode(unsigned char nMode)
     if (GetIsPCDying() || GetDeadTemp())
         return 0;
 #else
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) < 1)
+    if (GetDeadTemp() != 0)
         return 0;
 #endif
     switch (nMode) {
@@ -2971,16 +2971,8 @@ void CSWSCreature::UpdateCombatRoundTimer()
     if (pObject->AsSWSObject() == 0)
         return;
     CSWSObject* pTarget = pObject->AsSWSObject();
-#if KOTOR1  // K1: a downed target is GetDeadTemp()
     if (pTarget->GetDead() != 0 ||
         (pTarget->AsSWSCreature() != 0 && pTarget->AsSWSCreature()->GetDeadTemp() != 0)) {
-#else
-    CSWSCreature* pTargetCreature;
-    if (pTarget->GetDead() != 0 ||
-        (pTarget->AsSWSCreature() != 0 &&
-         (pTargetCreature = pTarget->AsSWSCreature())->m_bInParty != 0 &&
-         pTargetCreature->GetCurrentHitPoints(0) <= 0)) {
-#endif
         m_pCombatRound->EndCombatRound(1);
     }
 }
@@ -3405,11 +3397,7 @@ void CSWSCreature::SetAnimation(int nAnimation)
         }
     }
 
-#if KOTOR1
     if ((GetDead() != 0 || GetDeadTemp() != 0) &&
-#else
-    if ((GetDead() != 0 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)) &&
-#endif
         nNewAnimation != SERVER_ANIMATION_DEAD && nNewAnimation != SERVER_ANIMATION_DEAD_PRONE && nNewAnimation != SERVER_ANIMATION_DEAD_2)
         return;
 
@@ -5764,7 +5752,7 @@ int CSWSCreature::ResetCombatAnimations(int a)
     if (GetIsPCDying() || GetDeadTemp())
         return 0;
 #else
-    if (m_bInParty != 0 && GetCurrentHitPoints(0) < 1)
+    if (GetDeadTemp() != 0)
         return 0;
 #endif
     if (!AnimationStationary(static_cast<unsigned short>(m_nAnimation)))
@@ -6125,7 +6113,7 @@ void CSWSCreature::CancelCombat(int bEndRound)
 
 void CSWSCreature::AddSpellWithPrerequisites(unsigned int nSpell)
 {
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpell);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     if (pSpell != 0) {
         int nPrereq = pSpell->m_anPrereq1[0];
         if (nPrereq != -1) {
@@ -7528,7 +7516,7 @@ int CSWSCreature::GetHasPlotItemUseableOnObject()
             if (!pItem->GetPropertyByType(&pProp, ITEM_PROPERTY_ACTIVATE_ITEM, 0))
                 continue;
             unsigned short nSubType = pProp->m_subType;
-            CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSubType);
+            CSWSpell* pSpell = g_pRules->GetSpell(nSubType);
             if (pSpell != 0 && pSpell->m_nItemTargeting == 2)
                 return 1;
         }
@@ -8393,11 +8381,7 @@ CSWSCreature::~CSWSCreature()
 
 void CSWSCreature::SetLockOrientationToObject(unsigned long long objectId, int a)
 {
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
     if (a != 0 || (GetDead() == 0 && GetDeadTemp() == 0)) {
-#else
-    if (a != 0 || (GetDead() == 0 && (m_bInParty == 0 || GetCurrentHitPoints(0) >= 1))) {
-#endif
         if (objectId == CGameObjectArray::INVALIDOBJID &&
             m_lockOrientationToObjectId != CGameObjectArray::INVALIDOBJID &&
             m_lockOrientationToObjectId != m_objectId) {
@@ -8808,7 +8792,7 @@ void CSWSCreature::AIUpdate()
         }
     }
 #else
-    if (GetDead() == 0 && m_bInParty != 0 && GetCurrentHitPoints(0) > 0 && m_bInParty != 0) {
+    if (GetDead() == 0 && GetDeadTemp() == 0 && m_bInParty != 0) {
         HandleHPRegeneration();
         HandleFPRegeneration();
     }
@@ -9442,7 +9426,7 @@ int CSWSCreature::AddItemCastSpellActions(unsigned long long oidItem, int nPrope
 #else
     int nSpellId = ConvertGrenadeSpellID(nSubType);
 #endif
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     if (pSpell == 0)
         return 0;
     if (GetArea() == 0)
@@ -9621,7 +9605,7 @@ int CSWSCreature::AddCastSpellActions(unsigned int nSpellId, int nClassIndex, in
         vTarget = static_cast<CSWSObject*>(pTargetObj)->m_position;
     }
 
-    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
     if (pSpell == 0)
         return 0;
     if (GetArea() == 0)
@@ -9873,8 +9857,7 @@ void CSWSCreature::HandleAlignmentInfluence()
                 goto havePlayer;
         }
     }
-    pPlayer = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 havePlayer:
 
     float fPrestigeScale;
@@ -10121,8 +10104,7 @@ int CSWSCreature::GetIsCreatureBumpable(CSWSCreature* pCreature)
         return 0;
     if (pCreature->m_bInParty != 0)
         return 0;
-    CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pPlayer == this) {
         if (pPlayer != pCreature) {
             CExoLinkedListNode* pHead = pCreature->m_actionList.m_pInternal->m_pHead;
@@ -10562,7 +10544,7 @@ void CSWSCreature::RecomputeAmbientAnimationState()
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp()
     if (GetDead() != 0 || GetIsPCDying() != 0 || GetDeadTemp() != 0) {
 #else
-    if (GetDead() != 0 || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)) {
+    if (GetDead() != 0 || GetDeadTemp() != 0) {
 #endif
         if (m_ambientAnimationState != 3 && m_ambientAnimationState != 4 &&
             m_ambientAnimationState != 14) {
@@ -10626,7 +10608,7 @@ void CSWSCreature::EventHandler(unsigned int nEventType, unsigned long long nCal
         if (pData != 0 && GetDead() == 0 && GetIsPCDying() == 0 && GetDeadTemp() == 0)
 #else
         if (pData != 0 && GetDead() == 0 &&
-            (m_bInParty == 0 || GetCurrentHitPoints(0) >= 1))
+            GetDeadTemp() == 0)
 #endif
             SetAnimation(static_cast<int>(reinterpret_cast<uintptr_t>(pData)));
     } else if (nEventType == static_cast<unsigned int>(CServerAIMaster::EVENT_TIMED_EVENT)) {
@@ -10750,7 +10732,7 @@ void CSWSCreature::EventHandler(unsigned int nEventType, unsigned long long nCal
         if (GetDead() == 0 && GetDeadTemp() == 0)
             g_pVirtualMachine->RunScript(&m_scripts[CREATURE_SCRIPT_ATTACKED], m_objectId, 1);
 #else
-        if (GetDead() == 0 && (m_bInParty == 0 || GetCurrentHitPoints(0) >= 1)) {
+        if (GetDead() == 0 && GetDeadTemp() == 0) {
             g_pVirtualMachine->RunScript(&m_scripts[CREATURE_SCRIPT_ATTACKED], m_objectId, 1);
             RemoveMindTrickEffects();
         }
@@ -10913,13 +10895,8 @@ void CSWSCreature::EventHandler(unsigned int nEventType, unsigned long long nCal
             m_bLastSpellHarmful = pEvent->GetInteger(1);
             if (m_bLastSpellHarmful == 1)
                 SetLastHostileActor(m_oidLastSpellCaster, 0);
-#if KOTOR1
             if (GetDead() == 0 && GetDeadTemp() == 0)
                 g_pVirtualMachine->RunScript(&m_scripts[CREATURE_SCRIPT_SPELLAT], m_objectId, 1);
-#else
-            if (GetDead() == 0 && (m_bInParty == 0 || GetCurrentHitPoints(0) >= 1))
-                g_pVirtualMachine->RunScript(&m_scripts[CREATURE_SCRIPT_SPELLAT], m_objectId, 1);
-#endif
             CSWSCreature* pCaster =
                 g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_oidLastSpellCaster);
             if (pCaster != 0) {
@@ -11155,7 +11132,7 @@ int CSWSCreature::RunUnequip(unsigned long long itemId, unsigned long long targe
         CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
         if (nOverride != -1)
             pPlayer = pServer->GetClientObjectByObjectId(
-                pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId())->m_objectId);
+                pServer->GetPlayerCreature()->m_objectId);
         else
             pPlayer = pServer->GetClientObjectByObjectId(m_objectId);
     }
@@ -11376,12 +11353,7 @@ int CSWSCreature::ValidNearestObjectType(CGameObject* pObject, int& nOut)
     switch (pObject->m_objectType) {
     case GAME_OBJECT_TYPE_CREATURE: {
         CSWSCreature* pCreature = pObject->AsSWSCreature();
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
         if (pCreature->GetDead() == 0 && pCreature->GetDeadTemp() == 0) {
-#else
-        if (pCreature->GetDead() == 0 &&
-            (pCreature->m_bInParty == 0 || pCreature->GetCurrentHitPoints(0) >= 1)) {
-#endif
             CSWVisibilityNode* pNode = GetVisibleListElement(pCreature->m_objectId);
             if ((pNode == NULL || (pNode->m_flags & VISIBILITY_SEEN) == 0) &&
                 !DoSpotDetection(pCreature, 0))
@@ -11399,10 +11371,7 @@ int CSWSCreature::ValidNearestObjectType(CGameObject* pObject, int& nOut)
             return 0;
         if (pTrigger->m_bTrap == 0)
             return 0;
-        int nFound = 0;
-        for (int i = 0; i < pTrigger->m_objectsInTrigger.m_count; i++)
-            nFound += (pTrigger->m_objectsInTrigger.m_pArray[i] == m_objectId);
-        if (nFound != 0)
+        if (pTrigger->m_objectsInTrigger.Contains(m_objectId))
             return 1;
         if (pTrigger->GetReputation(m_objectId, 0) > 89)
             return 1;
@@ -11447,7 +11416,7 @@ void CSWSCreature::GetNearestObjects(float fHostileRange, float fRange,
         if (pArea->m_aObjectsByX.m_pArray[nIndex] == m_objectId)
             break;
     }
-    listAround.Clear();
+    listAround.SetSize(0);
     if (nIndex >= pArea->m_aObjectsByX.m_count)
         return;
 
@@ -11647,16 +11616,7 @@ CResRef CSWSCreature::GetPortraitBasedOnAlignment()
 void CSWSCreature::UpdateActionQueue()
 {
     for (int i = 0; i < NUM_ACTION_QUEUE_ENTRIES; i++)
-    {
-        m_actionQueue[i].m_nGroupId = 0xffff;
-        m_actionQueue[i].m_nActionId = AIACTION_NONE;
-        m_actionQueue[i].m_nAltActionId = AIACTION_NONE;
-        m_actionQueue[i].m_vTarget.x = 0.0f;
-        m_actionQueue[i].m_vTarget.y = 0.0f;
-        m_actionQueue[i].m_vTarget.z = 0.0f;
-        m_actionQueue[i].m_targetId = OBJECT_INVALID;
-        m_actionQueue[i].m_nSpellId = -1;
-    }
+        m_actionQueue[i].ClearData();
 
     int nEntry;
     int nSkipped = 0;
@@ -11773,16 +11733,7 @@ void CSWSCreature::UpdateActionQueue()
 
 done:
     for (; nEntry < NUM_ACTION_QUEUE_ENTRIES; nEntry++)
-    {
-        m_actionQueue[nEntry].m_nGroupId = 0xffff;
-        m_actionQueue[nEntry].m_nActionId = AIACTION_NONE;
-        m_actionQueue[nEntry].m_nAltActionId = AIACTION_NONE;
-        m_actionQueue[nEntry].m_vTarget.x = 0.0f;
-        m_actionQueue[nEntry].m_vTarget.y = 0.0f;
-        m_actionQueue[nEntry].m_vTarget.z = 0.0f;
-        m_actionQueue[nEntry].m_targetId = OBJECT_INVALID;
-        m_actionQueue[nEntry].m_nSpellId = -1;
-    }
+        m_actionQueue[nEntry].ClearData();
 }
 
 int CSWSCreature::LoadFromTemplate(const CResRef& resRef, int flag)
@@ -12147,9 +12098,7 @@ void CSWSCreature::UpdateAttributesOnEffect(CGameEffect* pEffect)
             int bWasDown = GetDeadTemp();
 #else
             int bWasDead = GetDead();
-            int bWasDown = 0;
-            if (m_bInParty != 0)
-                bWasDown = (GetCurrentHitPoints(0) <= 0);
+            int bWasDown = GetDeadTemp();
 #endif
 
             short nOldMaxHitPoints = GetMaxHitPoints(1);
@@ -12160,11 +12109,7 @@ void CSWSCreature::UpdateAttributesOnEffect(CGameEffect* pEffect)
             // Either the CON loss just killed it outright, or it was already down and the
             // re-based pool left a party member at or below zero.
             if ((bWasDead == 0 && GetDead() != 0) ||
-#if KOTOR1
                 (bWasDown == 0 && GetDeadTemp() != 0))
-#else
-                (bWasDown == 0 && m_bInParty != 0 && GetCurrentHitPoints(0) <= 0))
-#endif
             {
                 CGameEffect* pDeathEffect = new CGameEffect(1);
                 pDeathEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_DEATH);
@@ -12704,26 +12649,7 @@ int CSWSCreature::ClearAction(CSWSObjectActionNode* pNode, int bIsCurrentAction)
             if (nIndex >= 0 && nIndex <= 2) {
                 CSWPartyMemberData* pMember =
                     &g_pAppManager->m_pClientExoApp->GetSWParty()->m_members[nIndex];
-                pMember->m_nFollowState = CSWPartyMemberData::FOLLOW_STATE_NEW;
-                pMember->m_nStateSteps = 0;
-                pMember->m_followDistance = 0.0f;
-                pMember->m_bReseatSafePosition = 0;
-                pMember->m_followOrientation.x = 0.0f;
-                pMember->m_nReserved1 = 0;
-                pMember->m_nReserved2 = 0;
-                pMember->m_nReserved3 = 0;
-                pMember->m_vPathPoint.x = 0.0f;
-                pMember->m_vPathPoint.y = 0.0f;
-                pMember->m_vPathPoint.z = 0.0f;
-                pMember->m_followPoint.x = 0.0f;
-                pMember->m_followPoint.y = 0.0f;
-                pMember->m_followPoint.z = 0.0f;
-                pMember->m_bFollowPointValid = 0;
-                pMember->m_followOrientation.y = 1.0f;
-                pMember->m_followOrientation.z = 0.0f;
-                pMember->m_fPathSpanRatio = 1.0f;
-                pMember->m_oidLastTarget = OBJECT_INVALID;
-                pMember->m_nCombatMessageStrRef = STRREF_COMBAT_MODE_ENGAGED;
+                pMember->Reset();
             }
         }
         break;

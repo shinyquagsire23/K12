@@ -694,7 +694,7 @@ int CSWSTrigger::LoadTrigger(CResGFF* pGFF, CResStruct* pStruct)
     CExoString sTag;
     sTag = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, CExoString(const_cast<char*>("")));
     if (bSuccess == 1)
-        m_sTag = sTag.LowerCase();
+        SetTag(sTag);
 
     m_localizedName = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("LocalizedName"), bSuccess,
                                                     CExoLocString());
@@ -913,13 +913,7 @@ void CSWSTrigger::EventHandler(unsigned int nEventType, unsigned long long nCall
                         // A transition is already armed (this is the re-fired event): the id must
                         // match and the traveller must still be alive.
                         if (pEvent->GetInteger(1) == pArea->m_activeTransitionID) {
-#if KOTOR1  // K1 tests GetDeadTemp instead of hit points
                             if (pEnterer->GetDead() != 0 || pEnterer->GetDeadTemp() != 0) {
-#else
-                            if (pEnterer->GetDead() != 0 ||
-                                (pEnterer->m_bInParty != 0 &&
-                                 pEnterer->GetCurrentHitPoints(0) <= 0)) {
-#endif
                                 g_pAppManager->m_pClientExoApp->GetInGameGui()->StopGlobalFade();
                             } else {
                                 CServerExoApp* pServerExoApp = g_pAppManager->m_pServerExoApp;

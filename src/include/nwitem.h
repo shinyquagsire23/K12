@@ -128,6 +128,10 @@ public:
     void           SetRequiredFeatCount(unsigned char count);
     int            GetIsOneHanded();
     int            GetIsTwoHanded();
+    void           SetDefaultIconResRef(const CResRef& r) { m_defaultIconResRef = r; }
+    void           SetDefaultModelResRef(const CResRef& r) { m_defaultModelResRef = r; }
+    // Copies up to 11 characters of the item class into m_resRefStem; inline in nwitem.cpp.
+    void           SetItemClassResRefChunk(char* pszClass);
 
     // Builds the art resref for one appearance of this base item from m_resRefStem:
     //   icon "i%s_%c_%03d" / "i%s_%03d"    model "%s_%c_%03d" / "%s_%03d"

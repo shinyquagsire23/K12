@@ -7,18 +7,17 @@
 
 #include "port/libcmath.h"
 
-// The node's split-plane equation at `v`.
-static inline float BSPPlaneDist(const Plane& plane, const Vector& v)
-{
-    return plane.a * v.x + plane.b * v.y + plane.c * v.z + plane.d;
-}
-
-// The split plane's normal. planelineintersection takes a `Vector const&` while the node stores a
-// whole `Plane`, so both call sites pass the node's own plane and the normal is read out of its first
-// three floats.
+// The split plane's normal. planelineintersection and dot take a `Vector const&` while the node
+// stores a whole `Plane`, so the normal is read out of the plane's first three floats.
 static inline const Vector& BSPPlaneNormal(const Plane& plane)
 {
     return reinterpret_cast<const Vector&>(plane);
+}
+
+// The node's split-plane equation at `v`.
+static inline float BSPPlaneDist(const Plane& plane, const Vector& v)
+{
+    return dot(BSPPlaneNormal(plane), v) + plane.d;
 }
 
 BSPNode::BSPNode(Vector vNormal, float fDist)
@@ -222,9 +221,7 @@ void BSPTraverseVolumeApprox(BSPNode* pNode, const Vector& v, List<Plane>& plane
             pNode->m_lBackPlanes.Add(planes.m_pData[i]);
         }
 
-        float fDot = planes.m_pData[i].a * pNode->m_plane.a
-                   + planes.m_pData[i].b * pNode->m_plane.b
-                   + planes.m_pData[i].c * pNode->m_plane.c;
+        float fDot = dot(BSPPlaneNormal(planes.m_pData[i]), BSPPlaneNormal(pNode->m_plane));
 
         if (nMask == 2)
         {

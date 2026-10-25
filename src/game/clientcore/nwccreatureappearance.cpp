@@ -19,6 +19,7 @@
 #include "restype.h"
 #include "handmaidenappearance.h"
 #include "nwscriptconst.h"
+#include "exostringinline.h"
 
 // The shared formatter every appearance-suffix path uses.
 static void FormatAppearanceSuffix(char* pBuf, uint64_t nSize, const char* pFmt, ...) {
@@ -682,11 +683,7 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
     g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
         pInfo->core.m_nAppearanceId, CTwoDimArrays::COL2DA_APPEARANCETABLE_ENVMAP, &sEnvMap);
     bool bHasEnvMap;
-#if KOTOR1
     if (sEnvMap.GetLength() < 1)
-#else
-    if (sEnvMap.m_sString == nullptr || static_cast<int>(strlen(sEnvMap.m_sString)) < 1)
-#endif
     {
         bHasEnvMap = false;
     }
@@ -732,7 +729,7 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
         CExoString sAltTexture;
         g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(
             nHeadRow, CExoString("ALTTEXTURE"), &sAltTexture);
-        if (sAltTexture.m_sString != nullptr && static_cast<int>(strlen(sAltTexture.m_sString)) >= 1)
+        if (sAltTexture.GetLength() >= 1)
         {
             sTextureResRef = sAltTexture;
             bHasAltTexture = true;
@@ -1115,7 +1112,7 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
     {
         CExoString sAltTex;
         g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("ALTTEXTURE"), &sAltTex);
-        if (sAltTex.m_sString == nullptr || static_cast<int>(strlen(sAltTex.m_sString)) < 1)
+        if (sAltTex.GetLength() < 1)
         {
             m_pCreature->RestoreTexture(CSWCAnimBase::ANIM_MODEL_HEAD);
         }

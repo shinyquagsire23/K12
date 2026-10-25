@@ -2434,7 +2434,7 @@ int CSWSArea::NoCreaturesOnLine(const Vector& from, const Vector& to,
         float fCombinedSq = fCombined * fCombined;
 #else
         // K2 skips party members below 1 HP, and both sides' ignore-path flags.
-        if (pCreature->m_bInParty != 0 && pCreature->GetCurrentHitPoints(0) < 1)
+        if (pCreature->GetDeadTemp() != 0)
             continue;
         if (!bSkipBump && pSelf->GetIsCreatureBumpable(pCreature) != 0)
             continue;
@@ -3108,6 +3108,7 @@ int CSWSArea::ShrinkLineByCreatures(const Vector& from, const Vector& to, Vector
         float fSpace = pCreature->m_pPathfindInfo->m_fPersonalSpace;
         if (!(fDx * fDx + fDy * fDy > fSpace * fSpace))
             continue;
+        // inlined CExoArrayList<CSWSCreature*>::Add(CSWSCreature*)
         {
             int count = creatures.m_count;
             if (count == creatures.m_capacity)

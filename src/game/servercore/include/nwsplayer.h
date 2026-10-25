@@ -134,6 +134,7 @@ public:
     unsigned char m_state;
     CResRef m_resRef;
     char _padad[0xb4 - 0xad];
+    void SetFileName(const CResRef& resRef) { m_resRef = resRef; }
     int  m_characterLoaded;
     int  m_saveListIndex;
     char _padbc[0xc0 - 0xbc];

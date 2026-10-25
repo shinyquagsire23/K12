@@ -149,6 +149,7 @@ public:
     CExoLocString m_description;
     unsigned int  m_nFaction;
     CResRef       m_dialogResref;
+    void SetDialogResref(const CResRef& cResRef) { m_dialogResref = cResRef; }
     unsigned char _pad36c[0x370 - 0x36c];
     int           m_bGroundPile;
     unsigned char m_hardness;
@@ -224,6 +225,7 @@ public:
     unsigned char _pad564[0x568 - 0x564];
     unsigned long long m_oidInventoryWalkItem;
     CResRef       m_templateResRef;
+    void SetTemplateResRef(const CResRef& cResRef) { m_templateResRef = cResRef; }
     unsigned int  m_effectSpellId;
     int           m_lightIsOn;
     int           m_bLightIsOnDirty;

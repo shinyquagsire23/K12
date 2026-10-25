@@ -194,6 +194,12 @@ public:
 #endif
     int                     m_bShowBarkOnDialogEnd;
     CExoString              m_sBarkOnDialogEnd;
+    // Queues a message to bark once the dialog closes.
+    void SetDialogError(const CExoString& sError)
+    {
+        m_bShowBarkOnDialogEnd = 1;
+        m_sBarkOnDialogEnd = sError;
+    }
     int                     m_bDialogCameraSet;
     int                     m_bAnimatedCameraActive;
     int                     m_bAnimatedCameraLoaded;
@@ -256,6 +262,7 @@ public:
     int                     m_bKeepStealthInDialog;
     char                    _pad11f4[0x11f8-0x11f4];
     CExoArrayList<CExoLocString>   m_aReceivedItemNames;
+    void AddReceivedItemToList(const CExoLocString& sName) { m_aReceivedItemNames.Add(sName); }
     CExoArrayList<unsigned short>  m_aSortedFeats;
     CExoArrayList<unsigned int>    m_aSortedPowers;
 #endif

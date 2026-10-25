@@ -80,6 +80,7 @@ public:
     unsigned char m_appearance;
     unsigned char m_genericType;
     CResRef       m_dialogResref;
+    void SetDialogResref(CResRef cResRef) { m_dialogResref = cResRef; }
     unsigned char _pad432[0x434 - 0x432];
     float         m_bearing;
     unsigned int  m_nFaction;

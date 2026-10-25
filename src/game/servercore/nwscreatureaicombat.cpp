@@ -1060,7 +1060,7 @@ int CSWSCreature::AIActionPhysicalAttacks(CSWSObjectActionNode* pNode)
 #if KOTOR1
             || GetIsPCDying() != 0 || GetDeadTemp() != 0
 #else
-            || (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)
+            || GetDeadTemp() != 0
 #endif
             || (m_nAIState & 0x84) != 0x84
             || oidTarget == m_objectId) {
@@ -1076,12 +1076,7 @@ int CSWSCreature::AIActionPhysicalAttacks(CSWSObjectActionNode* pNode)
     int bTargetDown = 0;
     if (pObject->AsSWSCreature() != 0) {
         CSWSCreature* pTargetCreature = pObject->AsSWSCreature();
-#if KOTOR1
         bTargetDown = pTargetCreature->GetDeadTemp();
-#else
-        if (pTargetCreature->m_bInParty != 0)
-            bTargetDown = pTargetCreature->GetCurrentHitPoints(0) <= 0;
-#endif
     }
     if (pObject->GetDead() != 0 || bTargetDown != 0)
         return ACTION_COMPLETE;
@@ -1682,19 +1677,10 @@ int CSWSCreature::GetFlatFooted()
 #if !KOTOR1  // K2 only
 int CSWSCreature::IsDebilitated(int a)
 {
-    int bDebilitated;
-    switch (m_nState) {
-    case EFFECT_STATE_NONE:
-    case EFFECT_STATE_CONFUSED:
-    case EFFECT_STATE_DROID_CONFUSED:
-        bDebilitated = 0;
-        if (m_bInParty != 0 && GetCurrentHitPoints(0) <= 0)
-            bDebilitated = 1;
-        break;
-    default:
+    int bDebilitated = 0;
+    if ((m_nState != EFFECT_STATE_NONE && m_nState != EFFECT_STATE_CONFUSED &&
+         m_nState != EFFECT_STATE_DROID_CONFUSED) || GetDeadTemp() != 0)
         bDebilitated = 1;
-        break;
-    }
     if (a != 0 && m_nStancePosture == STANCE_POSTURE_MEDITATIVE)
         bDebilitated = 1;
     return bDebilitated;
@@ -3465,11 +3451,11 @@ void CSWSCreature::CreateNewAttackActions(int bForce, int bHaveTarget,
 #else
             if (pTarget->GetDead() != 0)
                 bHaveTarget = 0;
-            else if (pTarget->m_bInParty != 0 && pTarget->GetCurrentHitPoints(0) < 1)
+            else if (pTarget->GetDeadTemp() != 0)
                 bHaveTarget = 0;
             else if (GetDead() != 0)
                 bHaveTarget = 0;
-            else if (m_bInParty != 0 && GetCurrentHitPoints(0) < 1)
+            else if (GetDeadTemp() != 0)
                 bHaveTarget = 0;
             else if (GetReputation(oidTarget, 0) >= 11) {
                 bHaveTarget = 1;
@@ -3726,13 +3712,7 @@ void CSWSCreature::ResolveMeleeAttack(CSWSObject* pTarget, int a, int nTime, int
 
         pAttack->ResolveAttackToMeleeSubAttack(i, nImpactTime);
 
-        unsigned char nResult = pAttack->m_nAttackResult;
-        if (static_cast<unsigned char>(nResult - 1) < 3)
-            m_attackResult = 0;
-        else if (static_cast<unsigned char>(nResult - 4) < 3)
-            m_attackResult = 1;
-        else if (static_cast<unsigned char>(nResult - 8) < 3)
-            m_attackResult = 2;
+        SetAttackResult(pAttack->m_nAttackResult);
     }
 
 #if !KOTOR1  // K1: no Fury
@@ -3866,7 +3846,7 @@ unsigned char CSWSCreature::SavingThrowRoll(unsigned char nSave, unsigned short 
     case SAVING_THROW_TYPE_DEATH: {
         if (m_nImpactSpellId == -1)
             break;
-        CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(m_nImpactSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(m_nImpactSpellId);
         if (pSpell == 0)
             break;
         if (static_cast<unsigned char>(pSpell->m_nUserType - 1) > 1)
@@ -4043,14 +4023,14 @@ int CSWSCreature::AIActionCombat(CSWSObjectActionNode* pNode)
                     g_pRules->m_p2DArrays->m_pSpells->GetINTEntry(
                         nSpellId, CExoString("FORCEHOSTILE"), &nForceHostile);
 #if KOTOR1  // K1: no grenade spell-id conversion; any non-hostile cast on another target drops it.
-                    CSWSpell* pSpell = g_pRules->m_pSpellArray->GetSpell(nSpellId);
+                    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
                     if (pSpell != 0 && pSpell->m_bHostileActivity != 0)
                         SetActivity(ACTIVITY_STEALTH, 0, 0);
                     if (nForceHostile <= 0 && pAction->m_oidSpellTarget != m_objectId)
                         pAction->m_oidSpellTarget = OBJECT_INVALID;
 #else
                     CSWSpell* pSpell =
-                        g_pRules->m_pSpellArray->GetSpell(ConvertGrenadeSpellID(nSpellId));
+                        g_pRules->GetSpell(ConvertGrenadeSpellID(nSpellId));
                     if (pSpell != 0 && pSpell->m_bHostileActivity != 0)
                         SetActivity(ACTIVITY_STEALTH, 0, 0);
                     // The spell pointer is re-dereferenced here without the null guard the

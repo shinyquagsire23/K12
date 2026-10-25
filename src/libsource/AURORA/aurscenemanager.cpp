@@ -115,7 +115,6 @@ int countbinbucket;
 int countactivebins;
 int countmodels;
 
-extern unsigned int clientStateTranslationTable[];
 
 int buildstaticshadows = 1;
 float minshadowdim = 1.0f;
@@ -1107,10 +1106,10 @@ void BSPCreateStaticProjections(Scene* pScene)
     if (buildstaticshadows == 0)
         return;
 
-    ASLgl::glEnableClientState(clientStateTranslationTable[3]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[2]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[0]);
-    ASLgl::glDisableClientState(clientStateTranslationTable[1]);
+    GLRender::EnableClientState(Aurora::kClientStateVertex);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
+    GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    GLRender::DisableClientState(Aurora::kClientStateNormal);
 
     List<PartLight*> shadowLights;
     shadowLights = pScene->m_pLightManager->GetShadowLights(1);
@@ -1967,7 +1966,7 @@ void ManageSceneBSP(Scene* pScene)
     for (int64_t i = 0; i < pScene->m_pLightManager->m_enabledLights.m_count; i++) {
         PartLight* pLight = pScene->m_pLightManager->m_enabledLights.m_pData[i];
         Vector vColour = pLight->m_vLightColour;
-        if (vColour.x != 0.0f || vColour.y != 0.0f || vColour.z != 0.0f)
+        if (!vColour.IsZero())
             countlights++;
     }
 
@@ -1989,7 +1988,7 @@ void ManageSceneBSP(Scene* pScene)
             }
 #endif
 
-            if (pGob->m_pModel != 0 && (pGob->m_bDistortion || (pGob->m_pModel->m_nFlags & 2) != 0)) {
+            if (pGob->IsForcePushDistortion()) {
                 g_listForcePushBucket.Add(pGob);
             } else if (pGob->m_pModel != 0 && (pGob->m_pModel->m_nFlags & Model::kModelLightsaber) != 0) {
                 // A null model falls to gobbucket, not to this test.
