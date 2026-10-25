@@ -31,8 +31,12 @@ int CAuroraModelX::Load() {
 
     char* pData = static_cast<char*>(m_pRes->GetMDXDataPtr());
     CResHelperInfo* pInfo = reinterpret_cast<CResHelperInfo*>(pData - RESHELPERINFO_SIZE);
+#if KOTOR1
+    SetResHelperInfo(pInfo, RESTYPE_MDX, this);
+#else
     pInfo->m_pResHelper = this;
     pInfo->m_nResType = RESTYPE_MDX;
+#endif
     return 1;
 }
 

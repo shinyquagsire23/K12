@@ -298,6 +298,22 @@ struct CResHelperInfo {
 #pragma pack(pop)
 static_assert(sizeof(CResHelperInfo) == 10, "the ten-byte info block");
 
+#if KOTOR1
+#include "alignedptr.h"
+// K1's model, MDX, 4PC, DDS, PLT and font loaders stamp the block field by field through CAlignedPtr.
+inline void SetResHelperInfo(CResHelperInfo* pInfo, unsigned short nResType, void* pResHelper)
+{
+    // A packed member's address may not be taken, so the two fields are addressed by offset.
+    char* pBlock = reinterpret_cast<char*>(pInfo);
+    // raw-offset: the packed block's first field
+    CAlignedPtr<unsigned short>(reinterpret_cast<unsigned short*>(pBlock + __builtin_offsetof(CResHelperInfo, m_nResType)))
+        .Set(nResType);
+    // raw-offset: the packed block's unaligned pointer field
+    CAlignedPtr<void*>(reinterpret_cast<void**>(pBlock + __builtin_offsetof(CResHelperInfo, m_pResHelper)))
+        .Set(pResHelper);
+}
+#endif
+
 class CRes {  // idiom-exempt: canonical
 public:
     // m_dwFlags.

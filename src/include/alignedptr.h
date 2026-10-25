@@ -23,12 +23,11 @@ struct CAlignedPtr {
 
     T Get() const
     {
-        T t;
         if (m_bAligned) {
-            t = *m_p;
-        } else {
-            __builtin_memcpy(&t, reinterpret_cast<const char*>(m_p), sizeof(T));
+            return *m_p;
         }
+        T t;
+        __builtin_memcpy(&t, reinterpret_cast<const char*>(m_p), sizeof(T));
         return t;
     }
     T Get(int n) const

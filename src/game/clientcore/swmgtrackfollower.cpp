@@ -668,14 +668,10 @@ CAurObject* CSWTrackFollower::AddModel(CAurObject* pModel, unsigned char nRotati
             return pModel;
     }
 
-    if (nModels == m_models.m_capacity) {
-        m_models.Allocate(nModels != 0 ? nModels * 2 : 16);
-        nModels = m_models.m_count;
-    }
-
-    m_models.m_pArray[nModels].pModel = pModel;
-    m_models.m_pArray[nModels].nRotatingModel = nRotatingModel;
-    m_models.m_count = nModels + 1;
+    SWMGFollowerModel model;
+    model.pModel = pModel;
+    model.nRotatingModel = nRotatingModel;
+    m_models.Add(model);
 
     if (m_pTrack != 0)
         pModel->AttachToObject(m_pTrack, const_cast<char*>("modelhook"), 0);

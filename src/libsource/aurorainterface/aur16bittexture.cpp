@@ -44,8 +44,12 @@ int CAurora16BitTexture::Load() {
 
     char* pData = static_cast<char*>(m_pRes->Get4PCDataPtr());
     CResHelperInfo* pInfo = reinterpret_cast<CResHelperInfo*>(pData - RESHELPERINFO_SIZE);
+#if KOTOR1
+    SetResHelperInfo(pInfo, RESTYPE_4PC, this);
+#else
     pInfo->m_pResHelper = this;
     pInfo->m_nResType = RESTYPE_4PC;
+#endif
     return 1;
 }
 

@@ -794,9 +794,7 @@ void CSWGuiInGameInventory::OnPanelRemoved()
         delete m_lists.m_aItemEntry.m_pArray[i];
         m_lists.m_aItemEntry.m_pArray[i] = 0;
     }
-#if KOTOR1
     m_lists.m_aItemEntry.m_count = 0;
-#endif
     m_lists.m_aItemEntry.Clear();
     g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems()->ClearNewItems(
         m_lists.m_aUsedOid);

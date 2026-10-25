@@ -4,6 +4,7 @@
 
 #include "exostring.h"
 #include "resgff.h"
+#include "CExoArrayListDtors.h"
 
 class CSWGuiControl;
 class CSWGuiPanel;
@@ -81,29 +82,6 @@ struct CSWGuiControlEvent {
     CSWGuiObject* pObj;
     void (CSWGuiObject::*pFn)(CSWGuiControl*);
     int nEventType;
-};
-
-// An owning grow-on-demand array; CSWGuiControl holds its child-control and bound-event lists as
-// members of this type.
-template <class T>
-struct CSWGuiControlList {
-    ~CSWGuiControlList()
-    {
-        if (pa)
-            operator delete[](pa);
-        pa = 0;
-    }
-#if KOTOR1  // K1 copies both lists through the array's own operator=
-    CSWGuiControlList& operator=(const CSWGuiControlList& other)
-    {
-        // raw-offset: the control list is an array list's layout without the base; copied as one
-        *reinterpret_cast<CExoArrayList<T>*>(this) = *reinterpret_cast<const CExoArrayList<T>*>(&other);
-        return *this;
-    }
-#endif
-    T*  pa;
-    int nCount;
-    int nCapacity;
 };
 
 // The trailing flags byte, current event, control id, activate sound and user data.
@@ -184,13 +162,13 @@ public:
     int                m_nReserved2;
 #endif
     CSWGuiControl* m_pParent;
-    CSWGuiControlList<CSWGuiControl*> m_childControls;
+    CExoArrayList<CSWGuiControl*> m_childControls;
     unsigned long long m_nToolTipStrRef;
     CExoString     m_sToolTipText;
     int            m_nBoundInputEventId;
     int            m_nReserved3;
     CSWGuiObject*  m_pContainer;
-    CSWGuiControlList<CSWGuiControlEvent> m_events;
+    CExoArrayList<CSWGuiControlEvent> m_events;
     CSWGuiControlTail m_tail;
 };
 

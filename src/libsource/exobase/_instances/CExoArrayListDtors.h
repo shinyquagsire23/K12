@@ -80,6 +80,17 @@ public:
 
     void AddUnique(T v);
 
+    // Index of the first match, or -1. A member template, so the explicit instantiations in
+    // CExoArrayList.cpp do not emit it.
+    template <class U = T>
+    int IndexOf(U v) const
+    {
+        for (int64_t i = 0; i < m_count; i++)
+            if (m_pArray[i] == v)
+                return static_cast<int>(i);
+        return -1;
+    }
+
     void DelIndex(int index) {
         m_count--;
         for (int i = index; i < m_count; i++)

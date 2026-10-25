@@ -493,15 +493,7 @@ CSWCObject* CClientExoAppInternal::SelectNearestObject(int nForward, unsigned ch
             if (pPruneObj == 0) {
                 pSelected = 0;
 phase1_delete:
-                iVar7 = m_visibleTable.m_count;
-                m_visibleTable.m_count = iVar7 - 1;
-                if (static_cast<int>(lPruneEnd) < iVar7) {
-                    long long lVar11 = lVar17;
-                    do {
-                        lVar11++;
-                        pPruneRows[lVar11 - 1] = pPruneRows[lVar11];
-                    } while (lVar11 < m_visibleTable.m_count);
-                }
+                m_visibleTable.DelIndex(static_cast<int>(lVar17));
             } else {
                 pSelected = pPruneObj->AsSWCObject();
                 if (pSelected == 0)
@@ -575,14 +567,7 @@ select_loop:
             if (pObj == 0) {
                 pSelected = 0;
 ph2_delete:
-                iVar8 = m_visibleTable.m_count - 1;
-                m_visibleTable.m_count = iVar8;
-                if (iVar15 < iVar8) {
-                    do {
-                        lVar19++;
-                        pRows[lVar19 - 1] = pRows[lVar19];
-                    } while (lVar19 < m_visibleTable.m_count);
-                }
+                m_visibleTable.DelIndex(iVar15);
 joined:
                 bVar4 = false;
                 uVar16 = static_cast<unsigned int>(uVar18);
@@ -1020,9 +1005,7 @@ void CClientExoAppInternal::UpdateRumble(float fRumble)
                         fLow = (fLow > fMagLow) ? fLow : fMagLow;
                         fHigh = (fHigh > fMagHigh) ? fHigh : fMagHigh;
                     } else {
-                        --m_rumblePatterns.m_count;
-                        for (int64_t j = i; j < m_rumblePatterns.m_count; ++j)
-                            m_rumblePatterns.m_pArray[j] = m_rumblePatterns.m_pArray[j + 1];
+                        m_rumblePatterns.DelIndex(i);
                     }
                 }
             }
@@ -7092,15 +7075,9 @@ int CClientExoAppInternal::PlayRumblePattern(int nPattern)
 
 int CClientExoAppInternal::StopRumblePattern(int pattern)
 {
-    int64_t count = m_rumblePatterns.m_count;
-    if (count < 1)
-        return 0;
-    for (int64_t i = 0; i < count; ++i) {
+    for (int i = 0; i < m_rumblePatterns.m_count; i++) {
         if (m_rumblePatterns.m_pArray[i].nPattern == pattern) {
-            --count;
-            m_rumblePatterns.m_count = static_cast<int>(count);
-            for (int64_t j = i; j < m_rumblePatterns.m_count; ++j)
-                m_rumblePatterns.m_pArray[j] = m_rumblePatterns.m_pArray[j + 1];
+            m_rumblePatterns.DelIndex(i);
             return 1;
         }
     }

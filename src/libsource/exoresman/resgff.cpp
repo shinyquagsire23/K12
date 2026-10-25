@@ -2569,8 +2569,11 @@ int CResGFF::AddList(CResList* pList, CResStruct* pStruct, char* sLabel)
                 pField->nDataOrDataOffset = tmp;
 #if KOTOR1
                 pFieldRef.Set(field);
-#endif
+                tmp = 0;
+                CResGFFAlignedPtr<unsigned int>(pNew).Set(tmp);
+#else
                 pNew[0] = 0;
+#endif
                 pList->m_struct = *pStruct;
                 strncpy(pList->m_label, sLabel, 16);
                 return 1;

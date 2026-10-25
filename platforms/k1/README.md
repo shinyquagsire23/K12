@@ -56,7 +56,7 @@ the port's `override/` shadows 61 of them with touch re-layouts. Those re-layout
 `console/k2console.cpp`, the `_x` Pazaak) is written against layouts and classes K1 does not have, so a K1 xbox
 build compiles none of it. The one exception is the console name keyboard (`console/k2namekeyboard.cpp`): its
 K1 branch builds the Switch's 13x5 key grid in code from K1's PC `name` layout and APK art, and it is pushed by
-the chargen Name step and the save-name dialog. What is still open is in `platforms/BUGS.md`
+the chargen Name step and the save-name dialog. What is still open is in `BUGS.md`
 ("K1 pc / xbox UI"). A host pad is read through SDL's GameController API so its numbering is Android's
 (`k1sdl.cpp`). Scripted input for these builds: `click:X,Y`, `move:X,Y`, `ldown:`/`lup:`/`rdown:`/`rup:X,Y`,
 `rel:DX,DY`, `keydown:` / `keyup:SCANCODE`, `joy:N`, `jaxis:AXIS,VALUE` (below).

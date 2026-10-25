@@ -12,61 +12,8 @@ class CResGFF;
 struct CResStruct;
 class CSWGuiInterfaceAction;
 
-struct CSWCCreatureStats_KnownSpellLevel {
-    int*          m_pKnownSpells;
-    int           m_nNumKnownSpells;
-    int           m_nAllocated;
-
-    int Find(int nValue) const
-    {
-        for (int64_t i = 0; i < m_nNumKnownSpells; i++)
-            if (m_pKnownSpells[i] == nValue)
-                return static_cast<int>(i);
-        return -1;
-    }
-
-    void Remove(int nValue)
-    {
-        int i = 0;
-        do {
-            if (m_pKnownSpells[i] == nValue)
-                break;
-            i++;
-        } while (i < m_nNumKnownSpells);
-        if (i == m_nNumKnownSpells)
-            return;
-        m_nNumKnownSpells--;
-        if (m_nNumKnownSpells > i) {
-            int k = i;
-            do {
-                m_pKnownSpells[k] = m_pKnownSpells[k + 1];
-                k++;
-            } while (k < m_nNumKnownSpells);
-        }
-    }
-
-    void Add(int nValue)
-    {
-        int idx = m_nNumKnownSpells;
-        if (m_nNumKnownSpells == m_nAllocated) {
-            int newcap = m_nNumKnownSpells != 0 ? m_nNumKnownSpells * 2 : 16;
-            int* pOld = m_pKnownSpells;
-            m_nAllocated = newcap;
-            m_pKnownSpells = new int[newcap];
-            K2_ASSUME(m_nNumKnownSpells < newcap);   // twice the count, or 16 for an empty list
-            for (int64_t i = 0; i < m_nNumKnownSpells; i++)
-                m_pKnownSpells[i] = pOld[i];
-            delete[] pOld;
-            idx = m_nNumKnownSpells;
-        }
-        int* pSlot = &m_pKnownSpells[idx];
-        m_nNumKnownSpells = idx + 1;
-        *pSlot = nValue;
-    }
-};
-
 struct CSWCCreatureStats_ClassInfo {
-    CSWCCreatureStats_KnownSpellLevel m_spellLevels[2];
+    CExoArrayList<unsigned int> m_spellLevels[2];
     unsigned char m_nSpellsPerDayLeft;
     unsigned char m_nReserved1;
     unsigned short m_nReserved2;

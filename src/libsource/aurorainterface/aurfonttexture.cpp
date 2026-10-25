@@ -80,8 +80,12 @@ int CAuroraFontTexture::Load() {
     CResHelperInfo* pInfo = reinterpret_cast<CResHelperInfo*>(static_cast<char*>(m_pRes->GetFNTHeaderPtr())
                                               + *static_cast<int*>(m_pRes->GetFNTHeaderPtr()) * FNT_GLYPH_SIZE
                                               + FNT_HEADER_SIZE);
+#if KOTOR1
+    SetResHelperInfo(pInfo, RESTYPE_FNT, this);
+#else
     pInfo->m_nResType = RESTYPE_FNT;
     pInfo->m_pResHelper = this;
+#endif
     return 1;
 }
 

@@ -542,19 +542,17 @@ void CSWCWorldJournal::AddEntry(unsigned int nId, const CExoString& sName, const
 void CSWCWorldJournal::DeleteEntryStrRef(uint64_t nStrRef)
 {
     int n = m_entries.m_count;
-    for (int64_t i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
         if ((m_entries.m_pArray[i].m_nEntryFlags & 1) == 0)
             continue;
         if (m_entries.m_pArray[i].m_nEntryId != nStrRef)
             continue;
 
-        m_entries.DelIndex(static_cast<int>(i));
+        m_entries.DelIndex(i);
         int* pSort = m_sortOrder.m_pArray;
         for (int k = 0; k < n; k++) {
             if (pSort[k] == i) {
-                m_sortOrder.m_count--;
-                for (int64_t m = k; m < m_sortOrder.m_count; m++)
-                    pSort[m] = pSort[m + 1];
+                m_sortOrder.DelIndex(k);
                 n = m_sortOrder.m_count;
             }
             if (k != n && pSort[k] > i)
@@ -568,7 +566,7 @@ void CSWCWorldJournal::DeleteEntryStrRef(uint64_t nStrRef)
 void CSWCWorldJournal::DeleteEntry(unsigned int nEntry)
 {
     int n = m_entries.m_count;
-    for (int64_t i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
         int nIndex = m_sortOrder.m_pArray[i];
         if (m_entries.m_pArray[nIndex].m_nEntryFlags & 1)
             continue;
@@ -577,9 +575,7 @@ void CSWCWorldJournal::DeleteEntry(unsigned int nEntry)
 
         m_entries.DelIndex(nIndex);
         int nRemoved = m_sortOrder.m_pArray[i];
-        m_sortOrder.m_count--;
-        for (int64_t k = i; k < m_sortOrder.m_count; k++)
-            m_sortOrder.m_pArray[k] = m_sortOrder.m_pArray[k + 1];
+        m_sortOrder.DelIndex(i);
         n = m_sortOrder.m_count;
         for (int k = 0; k < n; k++) {
             if (m_sortOrder.m_pArray[k] > nRemoved)

@@ -10322,28 +10322,9 @@ int CSWCMessage::HandleServerToPlayerUpdate_CharacterSheet()
             if (MessageReadOverflow(1))
                 return 0;
 
-            // AddUnique, written out, counts existing occurrences and appends only when absent.
-            int nNum = pStats->m_lstFeats.m_count;
-            int nCount = 0;
-            for (int64_t k = 0; k < nNum; k++)
-                if (pStats->m_lstFeats.m_pArray[k] == nFeat)
-                    nCount++;
-            if (nCount != 0)
+            if (pStats->m_lstFeats.Contains(nFeat) != 0)
                 continue;
-
-            int idx = nNum;
-            if (nNum == pStats->m_lstFeats.m_capacity) {
-                int newcap = nNum != 0 ? nNum * 2 : 16;
-                unsigned short* pOld = pStats->m_lstFeats.m_pArray;
-                pStats->m_lstFeats.m_capacity = newcap;
-                pStats->m_lstFeats.m_pArray = new unsigned short[newcap];
-                for (int64_t k = 0; k < nNum; k++)
-                    pStats->m_lstFeats.m_pArray[k] = pOld[k];
-                delete[] pOld;
-                idx = pStats->m_lstFeats.m_count;
-            }
-            pStats->m_lstFeats.m_count = idx + 1;
-            pStats->m_lstFeats.m_pArray[idx] = nFeat;
+            pStats->m_lstFeats.Add(nFeat);
         }
 
         unsigned short nNumBonusFeats = ReadWORD(16);
@@ -10355,29 +10336,9 @@ int CSWCMessage::HandleServerToPlayerUpdate_CharacterSheet()
             if (MessageReadOverflow(1))
                 return 0;
 
-            // The count is loaded once and reused by the scan, the capacity compare and the copy;
-            // re-reading the field instead is a different program.
-            int nNum = pStats->m_lstBonusFeats.m_count;
-            int nCount = 0;
-            for (int64_t k = 0; k < nNum; k++)
-                if (pStats->m_lstBonusFeats.m_pArray[k] == nFeat)
-                    nCount++;
-            if (nCount != 0)
+            if (pStats->m_lstBonusFeats.Contains(nFeat) != 0)
                 continue;
-
-            int idx = nNum;
-            if (nNum == pStats->m_lstBonusFeats.m_capacity) {
-                int newcap = nNum != 0 ? nNum * 2 : 16;
-                unsigned short* pOld = pStats->m_lstBonusFeats.m_pArray;
-                pStats->m_lstBonusFeats.m_capacity = newcap;
-                pStats->m_lstBonusFeats.m_pArray = new unsigned short[newcap];
-                for (int64_t k = 0; k < nNum; k++)
-                    pStats->m_lstBonusFeats.m_pArray[k] = pOld[k];
-                delete[] pOld;
-                idx = pStats->m_lstBonusFeats.m_count;
-            }
-            pStats->m_lstBonusFeats.m_count = idx + 1;
-            pStats->m_lstBonusFeats.m_pArray[idx] = nFeat;
+            pStats->m_lstBonusFeats.Add(nFeat);
         }
     }
 
@@ -11176,77 +11137,17 @@ int CSWCMessage::HandleServerToPlayerUpdate_PlayerInfo()
                 return 0;
 
             if (cTag == 'A') {
-                if (pCreature) {
-                    int nNum = pStats->m_lstFeats.m_count;
-                    int nMatches = 0;
-                    for (int64_t k = 0; k < nNum; k++)
-                        if (pStats->m_lstFeats.m_pArray[k] == nFeat)
-                            nMatches++;
-                    if (nMatches == 0) {
-                        int idx = nNum;
-                        if (nNum == pStats->m_lstFeats.m_capacity) {
-                            int newcap = nNum != 0 ? nNum * 2 : 16;
-                            unsigned short* pOld = pStats->m_lstFeats.m_pArray;
-                            pStats->m_lstFeats.m_capacity = newcap;
-                            pStats->m_lstFeats.m_pArray = new unsigned short[newcap];
-                            for (int64_t k = 0; k < nNum; k++)
-                                pStats->m_lstFeats.m_pArray[k] = pOld[k];
-                            delete[] pOld;
-                            idx = pStats->m_lstFeats.m_count;
-                        }
-                        pStats->m_lstFeats.m_count = idx + 1;
-                        pStats->m_lstFeats.m_pArray[idx] = nFeat;
-                    }
-                }
+                if (pCreature)
+                    pStats->m_lstFeats.AddUnique(nFeat);
             } else if (cTag == 'X') {
-                if (pCreature) {
-                    int nNum = pStats->m_lstBonusFeats.m_count;
-                    int64_t k;
-                    for (k = 0; k < nNum; k++)
-                        if (pStats->m_lstBonusFeats.m_pArray[k] == nFeat)
-                            break;
-                    if (k != nNum) {
-                        pStats->m_lstBonusFeats.m_count = nNum - 1;
-                        for (int64_t j = k; j < nNum - 1; j++)
-                            pStats->m_lstBonusFeats.m_pArray[j] = pStats->m_lstBonusFeats.m_pArray[j + 1];
-                    }
-                }
+                if (pCreature)
+                    pStats->m_lstBonusFeats.Remove(nFeat);
             } else if (cTag == 'B') {
-                if (pCreature) {
-                    int nNum = pStats->m_lstBonusFeats.m_count;
-                    int nMatches = 0;
-                    for (int64_t k = 0; k < nNum; k++)
-                        if (pStats->m_lstBonusFeats.m_pArray[k] == nFeat)
-                            nMatches++;
-                    if (nMatches == 0) {
-                        int idx = nNum;
-                        if (nNum == pStats->m_lstBonusFeats.m_capacity) {
-                            int newcap = nNum != 0 ? nNum * 2 : 16;
-                            unsigned short* pOld = pStats->m_lstBonusFeats.m_pArray;
-                            pStats->m_lstBonusFeats.m_capacity = newcap;
-                            pStats->m_lstBonusFeats.m_pArray = new unsigned short[newcap];
-                            for (int64_t k = 0; k < nNum; k++)
-                                pStats->m_lstBonusFeats.m_pArray[k] = pOld[k];
-                            delete[] pOld;
-                            idx = pStats->m_lstBonusFeats.m_count;
-                        }
-                        pStats->m_lstBonusFeats.m_count = idx + 1;
-                        pStats->m_lstBonusFeats.m_pArray[idx] = nFeat;
-                    }
-                }
+                if (pCreature)
+                    pStats->m_lstBonusFeats.AddUnique(nFeat);
             } else {
-                if (pCreature) {
-                    int nNum = pStats->m_lstFeats.m_count;
-                    int64_t k;
-                    for (k = 0; k < nNum; k++)
-                        if (pStats->m_lstFeats.m_pArray[k] == nFeat)
-                            break;
-                    if (k != nNum) {
-                        pStats->m_lstFeats.m_count = nNum - 1;
-                        for (int64_t j = k; j < nNum - 1; j++)
-                            pStats->m_lstFeats.m_pArray[j] = pStats->m_lstFeats.m_pArray[j + 1];
-                    }
-                }
+                if (pCreature)
+                    pStats->m_lstFeats.Remove(nFeat);
             }
         }
 

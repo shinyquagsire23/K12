@@ -931,6 +931,18 @@ partyReady:
         if (pPlayerClient->AsSWCObject() == 0)
             return ACTION_IN_PROGRESS;
 
+#ifdef K2_HOST_BUILD
+        {
+            static int s_nLastHeld;
+            CClientExoApp* pClientApp = g_pAppManager->m_pClientExoApp;
+            int nHeld = (pClientApp->GetAreaNotReadyToDisplay() != 0) | (pClientApp->GetPausedByCombat() != 0) << 1
+                        | (pClientApp->GetAutoPaused() != 0) << 2;
+            if (nHeld != s_nLastHeld)
+                fprintf(stderr, "k2: dialog start %s (area not ready %d, paused by combat %d, auto-paused %d)\n",
+                        nHeld ? "held" : "free", nHeld & 1, (nHeld >> 1) & 1, (nHeld >> 2) & 1);
+            s_nLastHeld = nHeld;
+        }
+#endif
         // Not a good moment to start talking, so put the action back and try again next tick.
         if (g_pAppManager->m_pClientExoApp->GetAreaNotReadyToDisplay() != 0
             || g_pAppManager->m_pClientExoApp->GetPausedByCombat() != 0

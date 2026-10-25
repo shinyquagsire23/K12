@@ -156,40 +156,6 @@ struct CNearestStruct {
     char                _pad0a[6];
 };
 
-// Growable array behind the visible-object table.
-struct CExoVisibleTable {
-    CNearestStruct* m_pArray;
-    int             m_count;
-    int             m_capacity;
-
-    CExoVisibleTable() { __builtin_memset(static_cast<void*>(this), 0, sizeof(*this)); }
-
-    void Allocate(int n)
-    {
-        CNearestStruct* pOld = m_pArray;
-        m_capacity = n;
-        m_pArray = new CNearestStruct[n];
-        K2_ASSUME(m_count <= n);   // the one caller, SetSize, clears the count first
-        for (int i = 0; i < m_count; i++)
-            m_pArray[i] = pOld[i];
-        delete[] pOld;
-    }
-    void SetSize(int n)
-    {
-        if (n == 0) {
-            if (m_pArray) {
-                delete[] m_pArray;
-                m_pArray = 0;
-                m_capacity = 0;
-            }
-        } else {
-            Allocate(n);
-        }
-        m_count = n;
-    }
-    ~CExoVisibleTable() { delete[] m_pArray; m_pArray = 0; }
-};
-
 // Client application object, the pimpl behind CClientExoApp. It holds the timer set, the
 // connection, the module and every piece of per-frame input, movie and GUI state.
 class CClientExoAppInternal {
@@ -395,7 +361,7 @@ public:
     class CSWPlayerControl* m_pPlayerControl;
     float               m_fDriveInterruptDelay;
     char                _pad3fc[4];
-    CExoVisibleTable    m_visibleTable;
+    CExoArrayList<CNearestStruct> m_visibleTable;
     unsigned long long  m_lastTarget;
     unsigned long long  m_lastClickedOnTarget;
     int                 m_bInputDisabled;

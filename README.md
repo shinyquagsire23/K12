@@ -86,6 +86,6 @@ The only contributions accepted are playtesting, issue submissions, and matching
 ```
 engine          : 14,337 funcs / 5,009,668 bytes  (of 20,881/6,121,816 raw dynsym)
 transcribed     : 13990 funcs / 4,960,228 bytes  (99.0131% of engine)
-exact-matched   : 11837 funcs / 2,409,748 bytes  (48.1020% of engine)  <- COVERAGE
-match rate      : 11837/13990 funcs (84.6%), 2,409,748/4,960,228 bytes (48.6%)  <- of what we transcribed
+exact-matched   : 11851 funcs / 2,413,528 bytes  (48.1774% of engine)  <- COVERAGE
+match rate      : 11851/13990 funcs (84.7%), 2,413,528/4,960,228 bytes (48.7%)  <- of what we transcribed
 ```

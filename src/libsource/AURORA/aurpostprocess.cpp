@@ -11,6 +11,9 @@
 #include "Matrix.h"
 #include "aurmaterial.h"
 #include "aurparse.h"
+#if KOTOR1
+#include "alignedptr.h"
+#endif
 
 // NodeVertex::m_nTexCoordFlags: which texture-coordinate sets the vertex carries.
 enum {
@@ -1055,8 +1058,14 @@ void MdlNodeTriMesh::CalculateTangentSpaceBasis()
 
             for (int c = 0; c < 3; c++) {
                 for (int r = 0; r < 3; r++) {
+#if KOTOR1
+                    CAlignedPtr<unsigned int>(reinterpret_cast<unsigned int*>(
+                        pPool + (c * 3 + r) * 4 + m_nVertexStride * nIndex + m_nTangentOfs + m_nGeomBase))
+                        .Set(reinterpret_cast<unsigned int&>(mtx.m_f[r * 3 + c]));
+#else
                     *reinterpret_cast<float*>(&pPool[m_nGeomBase + m_nVertexStride * nIndex + m_nTangentOfs
                                     + (c * 3 + r) * 4]) = mtx.m_f[r * 3 + c];
+#endif
                 }
             }
         }

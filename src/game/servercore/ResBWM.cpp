@@ -2,6 +2,9 @@
 #include "resBWM.h"
 
 #include "port/libcstring.h"
+#if KOTOR1
+#include "alignedptr.h"
+#endif
 
 extern void ByteSwap(int* p);
 extern void ByteSwap(float* p);
@@ -42,8 +45,7 @@ int CResBWM::OnResourceServiced()
 
     m_pBWMData = pFile;
     m_nBWMSize = m_nSize;
-    CResBWMHeader header = *static_cast<CResBWMHeader*>(pFile);
-    m_header = header;
+    m_header = CAlignedPtr<CResBWMHeader>(static_cast<CResBWMHeader*>(pFile)).Get();
     m_pParsed = &m_header;
     m_pParsed = strncmp(reinterpret_cast<char*>(&m_header), "BWM V1.0", 8) == 0 ? &m_header : 0;
     m_bLoaded = 1;

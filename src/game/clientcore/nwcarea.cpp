@@ -732,9 +732,7 @@ void CSWCArea::UnloadArea()
             if (pEntry->m_pLight != 0)
                 delete pEntry->m_pLight;
             delete m_placeableObjectLights.m_pArray[i];
-            m_placeableObjectLights.m_count--;
-            for (int k = i; k < m_placeableObjectLights.m_count; k++)
-                m_placeableObjectLights.m_pArray[k] = m_placeableObjectLights.m_pArray[k + 1];
+            m_placeableObjectLights.DelIndex(i);
         }
     }
     for (int i = m_staticPlaceableIdList.m_count - 1; i >= 0; i--) {
@@ -743,9 +741,7 @@ void CSWCArea::UnloadArea()
         if (pArr->Delete(m_staticPlaceableIdList.m_pArray[i], &pObj) == CGameObjectArray::SUCCESS &&
             pObj != 0 && pObj->AsSWCPlaceable() != 0 && pObj != 0)
             delete pObj;
-        m_staticPlaceableIdList.m_count--;
-        for (int k = i; k < m_staticPlaceableIdList.m_count; k++)
-            m_staticPlaceableIdList.m_pArray[k] = m_staticPlaceableIdList.m_pArray[k + 1];
+        m_staticPlaceableIdList.DelIndex(i);
     }
     if (m_pReserved1 != 0) {
         operator delete[](m_pReserved1);

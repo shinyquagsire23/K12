@@ -44,9 +44,9 @@ CSWGuiControl::CSWGuiControl()
 {
     // The tail flags are split around the zeroing of the event array.
     m_pContainer = 0;
-    m_events.pa = 0;
-    m_events.nCount = 0;
-    m_events.nCapacity = 0;
+    m_events.m_pArray = 0;
+    m_events.m_count = 0;
+    m_events.m_capacity = 0;
     m_tail.bActive = 0;
     m_tail.bVisible = 1;
     m_tail.bEnabled = 1;
@@ -117,8 +117,8 @@ void CSWGuiControl::HideToolTip()
 
 int CSWGuiControl::GetIsChild(CSWGuiControl* pControl)
 {
-    for (int i = 0; i < m_childControls.nCount; i++) {
-        if (m_childControls.pa[i] == pControl)
+    for (int i = 0; i < m_childControls.m_count; i++) {
+        if (m_childControls.m_pArray[i] == pControl)
             return 1;
     }
     return 0;
@@ -322,20 +322,7 @@ void CSWGuiControl::HandleRMouseUp()
 
 void CSWGuiControl::AddChildControl(CSWGuiControl* pChild)
 {
-    if (m_childControls.nCount == m_childControls.nCapacity) {
-        int nOldCount = m_childControls.nCount;
-        CSWGuiControl** pOld = m_childControls.pa;
-        int nNewCapacity = nOldCount == 0 ? 16 : nOldCount * 2;
-        m_childControls.nCapacity = nNewCapacity;
-        m_childControls.pa = new CSWGuiControl*[nNewCapacity];
-        K2_ASSUME(nOldCount < nNewCapacity);   // twice the count, or 16
-        for (int i = 0; i < nOldCount; i++)
-            m_childControls.pa[i] = pOld[i];
-        if (pOld)
-            operator delete[](pOld);
-    }
-    K2_ASSUME(m_childControls.nCount < m_childControls.nCapacity);   // a full list grew above
-    m_childControls.pa[m_childControls.nCount++] = pChild;
+    m_childControls.Add(pChild);
 }
 
 void CSWGuiNavigable::HandleInputEvent(int type, int val)
@@ -393,12 +380,12 @@ void CSWGuiControl::HandleInputEvent(int type, int val)
         }
     }
     // A slot whose type matches but whose function pointer is null is skipped, not dispatched.
-    int nCount = m_events.nCount;
+    int nCount = m_events.m_count;
     for (int i = 0; i < nCount; i++) {
-        if (m_events.pa[i].nEventType == type && !!m_events.pa[i].pFn) {
+        if (m_events.m_pArray[i].nEventType == type && !!m_events.m_pArray[i].pFn) {
             m_tail.nCurrentEventType = type;
             m_tail.nCurrentEventArg = val;
-            (m_events.pa[i].pObj->*m_events.pa[i].pFn)(this);
+            (m_events.m_pArray[i].pObj->*m_events.m_pArray[i].pFn)(this);
             return;
         }
     }
@@ -406,12 +393,12 @@ void CSWGuiControl::HandleInputEvent(int type, int val)
 
 int CSWGuiControl::GetEvent(int nEventType, CSWGuiObject** ppObj, void (CSWGuiObject::**ppFn)(CSWGuiControl*))
 {
-    for (int i = 0; i < m_events.nCount; i++) {
-        if (m_events.pa[i].nEventType == nEventType) {
+    for (int i = 0; i < m_events.m_count; i++) {
+        if (m_events.m_pArray[i].nEventType == nEventType) {
             if (ppObj)
-                *ppObj = m_events.pa[i].pObj;
+                *ppObj = m_events.m_pArray[i].pObj;
             if (ppFn)
-                *ppFn = m_events.pa[i].pFn;
+                *ppFn = m_events.m_pArray[i].pFn;
             return 1;
         }
     }
@@ -425,40 +412,29 @@ int CSWGuiControl::GetEvent(int nEventType, CSWGuiObject** ppObj, void (CSWGuiOb
 void CSWGuiControl::AddEvent(int nEventType, CSWGuiObject* pObj, void (CSWGuiObject::*pFn)(CSWGuiControl*))
 {
     int nFoundIndex = -1;
-    CSWGuiControlEvent* p = m_events.pa;
-    for (int i = 0; i < m_events.nCount; i++, p++) {
-        if (p->nEventType == nEventType) {
+    int nCount = m_events.m_count;
+    for (int i = 0; i < nCount; i++) {
+        if (m_events.m_pArray[i].nEventType == nEventType) {
             nFoundIndex = i;
             break;
         }
     }
     if (nFoundIndex >= 0) {
         if (pFn) {
-            m_events.pa[nFoundIndex].pObj = pObj;
-            m_events.pa[nFoundIndex].pFn = pFn;
+            m_events.m_pArray[nFoundIndex].pObj = pObj;
+            m_events.m_pArray[nFoundIndex].pFn = pFn;
         } else {
-            for (int i = nFoundIndex + 1; i < m_events.nCount; i++)
-                m_events.pa[i - 1] = m_events.pa[i];
-            m_events.nCount--;
+            m_events.DelIndex(nFoundIndex);
         }
         return;
     }
     if (!pFn)
         return;
-    if (m_events.nCount == m_events.nCapacity) {
-        int nNewCapacity = m_events.nCount == 0 ? 16 : m_events.nCount * 2;
-        m_events.nCapacity = nNewCapacity;
-        CSWGuiControlEvent* paNew = new CSWGuiControlEvent[nNewCapacity];
-        for (int i = 0; i < m_events.nCount; i++)
-            paNew[i] = m_events.pa[i];
-        if (m_events.pa)
-            operator delete[](m_events.pa);
-        m_events.pa = paNew;
-    }
-    m_events.pa[m_events.nCount].pObj = pObj;
-    m_events.pa[m_events.nCount].pFn = pFn;
-    m_events.pa[m_events.nCount].nEventType = nEventType;
-    m_events.nCount++;
+    CSWGuiControlEvent ev;
+    ev.pObj = pObj;
+    ev.pFn = pFn;
+    ev.nEventType = nEventType;
+    m_events.Add(ev);
 }
 
 void CSWGuiNavigable::Load(CResGFF* pGFF, CResStruct& resStruct)
@@ -559,9 +535,7 @@ CSWGuiControl& CSWGuiControl::operator=(const CSWGuiControl& other)
     m_nReserved2 = other.m_nReserved2;
     m_pParent = other.m_pParent;
 
-    m_childControls.nCount = 0;
-    for (int i = 0; i < other.m_childControls.nCount; i++)
-        AddChildControl(other.m_childControls.pa[i]);
+    m_childControls = other.m_childControls;
 
     m_nToolTipStrRef = other.m_nToolTipStrRef;
     m_sToolTipText = other.m_sToolTipText;
@@ -569,24 +543,7 @@ CSWGuiControl& CSWGuiControl::operator=(const CSWGuiControl& other)
     m_nReserved3 = other.m_nReserved3;
     m_pContainer = other.m_pContainer;
 
-    // Copied element by element rather than through AddEvent, which would merge same-type
-    // entries and drop null handlers.
-    m_events.nCount = 0;
-    for (int i = 0; i < other.m_events.nCount; i++) {
-        CSWGuiControlEvent ev = other.m_events.pa[i];
-        if (m_events.nCount == m_events.nCapacity) {
-            int nOld = m_events.nCount;
-            CSWGuiControlEvent* pOld = m_events.pa;
-            int nNewCapacity = nOld == 0 ? 16 : nOld * 2;
-            m_events.nCapacity = nNewCapacity;
-            m_events.pa = new CSWGuiControlEvent[nNewCapacity];
-            for (int k = 0; k < nOld; k++)
-                m_events.pa[k] = pOld[k];
-            if (pOld)
-                delete[] pOld;
-        }
-        m_events.pa[m_events.nCount++] = ev;
-    }
+    m_events = other.m_events;
 
     m_tail = other.m_tail;
     return *this;

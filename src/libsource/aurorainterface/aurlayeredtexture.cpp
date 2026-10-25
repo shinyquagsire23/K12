@@ -38,8 +38,12 @@ int CAuroraLayeredTexture::Load() {
     }
 
     CResHelperInfo* pInfo = reinterpret_cast<CResHelperInfo*>(pData + nWidth * nHeight * PLT_BYTES_PER_PIXEL + RESHELPERINFO_TRAILING_GAP);
+#if KOTOR1
+    SetResHelperInfo(pInfo, RESTYPE_PLT, this);
+#else
     pInfo->m_nResType = RESTYPE_PLT;
     pInfo->m_pResHelper = this;
+#endif
     return 1;
 }
 
