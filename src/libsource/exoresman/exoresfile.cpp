@@ -743,6 +743,7 @@ int CExoResourceImageFile::UnloadHeader()
 }
 
 
+// EFFECTIVE: two conditional branches have the opposite polarity; same targets.
 int CExoEncapsulatedFile::LoadHeader(unsigned char nFormatTag)
 {
     CExoString sText;

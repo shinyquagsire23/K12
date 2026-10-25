@@ -3,6 +3,7 @@
 
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
+#include "exostringinline.h"
 
 CNetLayer* g_pcTmpNetLayer;
 
@@ -145,11 +146,7 @@ bool CNetLayer::StartConnectToSession(unsigned int playerId, const CExoString& t
     if (m_bConnecting == 1) return false;
     m_bConnecting = 0;
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     unsigned int msgLen = target.GetLength() + 9;
-#else
-    unsigned int msgLen = target.m_sString ? static_cast<unsigned int>(strlen(target.m_sString)) + 9 : 9;
-#endif
     K2_ASSUME(msgLen >= 9);   // the 9-byte header plus the target length, which is far below 4 GB
     unsigned char* msg = new unsigned char[msgLen];
     msg[6] = 0;
@@ -157,13 +154,8 @@ bool CNetLayer::StartConnectToSession(unsigned int playerId, const CExoString& t
     msg[4] = 'U';
     msg[5] = 0;
     msg[7] = static_cast<unsigned char>(connectType);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     msg[8] = static_cast<unsigned char>(target.GetLength());
     memcpy(msg + 9, target.CStr(), static_cast<unsigned int>(target.GetLength()));  // idiom-exempt: runtime length (strlen-derived, no compile-time size)
-#else
-    msg[8] = target.m_sString ? static_cast<unsigned char>(strlen(target.m_sString)) : 0;
-    memcpy(msg + 9, target.CStr(), target.m_sString ? static_cast<unsigned int>(strlen(target.m_sString)) : 0);  // idiom-exempt: runtime length (strlen-derived, no compile-time size)
-#endif
 
     SendMessageToPlayer(playerId, msg, msgLen, a4);
 

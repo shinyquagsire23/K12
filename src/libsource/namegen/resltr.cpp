@@ -26,6 +26,7 @@ CResLTR::~CResLTR()
 }
 
 // Frees the parsed tables innermost-first.
+// EFFECTIVE: the hoisted bigram null tests use the opposite cset/tbz polarity.
 int CResLTR::OnResourceFreed()
 {
     m_bLoaded = 0;

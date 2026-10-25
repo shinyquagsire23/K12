@@ -537,12 +537,12 @@ CGameObjectArray* CServerExoApp::GetObjectArray()
     return m_pInternal->m_pObjectArray;
 }
 
-CExoLinkedList<CSWSPlayerListEntry>* CServerExoApp::GetPlayerList()
+CExoLinkedList<CSWSClient>* CServerExoApp::GetPlayerList()
 {
     return m_pInternal->m_pPlayerList;
 }
 
-CExoLinkedList<CSWSPlayerListEntry>* CServerExoApp::GetSysAdminList()
+CExoLinkedList<CSWSClient>* CServerExoApp::GetSysAdminList()
 {
     return m_pInternal->m_pSysAdminList;
 }

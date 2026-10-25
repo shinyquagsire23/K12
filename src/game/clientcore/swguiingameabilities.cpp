@@ -41,6 +41,7 @@
 #include "exoinput.h"
 #include "tutorial.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // Controller-glyph helpers, defined elsewhere in the port.
 void AspyrAddButtonIcon(CSWGuiButton* pButton, char nIcon);
@@ -332,12 +333,7 @@ __attribute__((noinline))
 void CSWGuiInGameAbilities::SetDescription(const CExoString& sDescription)
 {
     m_labelDesc.m_text.m_params.SetText(sDescription);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     UpdateDescriptionListBox(sDescription.GetLength() > 0);
-#else
-    UpdateDescriptionListBox(sDescription.m_sString != 0
-                             && static_cast<int>(strlen(sDescription.m_sString)) > 0);
-#endif
 }
 
 void CSWGuiInGameAbilities::OnPanelAdded()
@@ -1106,11 +1102,7 @@ void CSWGuiInGameAbilities::SetDescription(unsigned int nStrRef)
     STR_RES res;
     g_pTlkTable->Fetch(nStrRef, res, CTlkTable::GENDER_MALE);
     m_labelDesc.m_text.m_params.SetText(res.text);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     UpdateDescriptionListBox(res.text.GetLength() > 0);
-#else
-    UpdateDescriptionListBox(res.text.m_sString != 0 && static_cast<int>(strlen(res.text.m_sString)) > 0);
-#endif
 }
 
 void CSWGuiInGameAbilities::UpdateDescriptionListBox(int bHasText)

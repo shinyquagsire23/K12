@@ -45,7 +45,7 @@ int CSWSAmbientSound::GetPlayersInArea(CExoArrayList<unsigned long long>* pPlaye
 {
     pPlayers->Clear();
 
-    CExoLinkedList<CSWSPlayerListEntry>* ppList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppList == 0)
         return pPlayers->m_count;
 

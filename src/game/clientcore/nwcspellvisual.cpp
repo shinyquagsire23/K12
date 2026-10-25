@@ -13,6 +13,7 @@ extern CExoSound* g_pExoSound;
 #include "port/libcstring.h"
 
 #include "port/libcbase.h"
+#include "exostringinline.h"
 
 #if KOTOR1  // K1: model files are SDL_RWops streams
 struct SDL_RWops;
@@ -195,11 +196,7 @@ bool CSWCSpellCastVisual::LoadConjureVisual(CResRef r1, CResRef r2, CResRef r3, 
     // Each arm instances the conjure model under its body part, clears the matching done flag and
     // arms the effectively unfired 9999-second donefade callback on it.
     r1.CopyToString(sName);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sName.GetLength() > 0) {
-#else
-    if (sName.m_sString != 0 && static_cast<int>(strlen(sName.m_sString)) > 0) {
-#endif
         m_pConjureHeadVisual = NewCAurObject(sName.CStr(), const_cast<char*>("conjurevisual"), 0, 0);
         if (m_pConjureHeadVisual) {
             m_bConjureHeadDone = 0;
@@ -211,11 +208,7 @@ bool CSWCSpellCastVisual::LoadConjureVisual(CResRef r1, CResRef r2, CResRef r3, 
     }
 
     r2.CopyToString(sName);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sName.GetLength() > 0) {
-#else
-    if (sName.m_sString != 0 && static_cast<int>(strlen(sName.m_sString)) > 0) {
-#endif
         m_pConjureHandVisual = NewCAurObject(sName.CStr(), const_cast<char*>("conjurevisual"), 0, 0);
         if (m_pConjureHandVisual) {
             m_bConjureHandDone = 0;
@@ -227,11 +220,7 @@ bool CSWCSpellCastVisual::LoadConjureVisual(CResRef r1, CResRef r2, CResRef r3, 
     }
 
     r3.CopyToString(sName);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sName.GetLength() > 0) {
-#else
-    if (sName.m_sString != 0 && static_cast<int>(strlen(sName.m_sString)) > 0) {
-#endif
         m_pConjureGroundVisual = NewCAurObject(sName.CStr(), const_cast<char*>("conjuregroundvisual"), 0, 0);
         if (m_pConjureGroundVisual) {
             m_bConjureGroundDone = 0;

@@ -170,6 +170,7 @@ extern int preferPerfToVisual;
 #include "nwmessagetypes.h"
 #include "nwportrait.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 #if KOTOR1
 // KOTOR 2's spells.2da rows the shared code names; KOTOR 1's nwscript.nss has no such powers.
@@ -1710,11 +1711,7 @@ void CSWCCreature::ResolveSpecialAttackVisuals(int a, int b, int c) {
     CExoString sVisual;
     g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
         sRow, CExoString("Imp_Impact_Node"), &sVisual);
-#if KOTOR1
     if (!sVisual.IsEmpty()) {  // K1 only
-#else
-    if (sVisual.m_sString != 0 && sVisual.m_sString[0] != '\0') {
-#endif
         CExoString sHook;
         if (c == 0)
             sHook = "root";
@@ -4884,21 +4881,13 @@ int CSWCCreature::PlayHitSound(CSWCCombatAttackData* pData, int a) {
                     g_pRules->m_p2DArrays->m_pAppearanceSounds->GetCExoStringEntry(
                         nSoundAppType, CTwoDimArrays::COL2DA_APPEARANCESOUNDS_ARMORTYPE,
                         &sMaterial);
-#if KOTOR1  // K1 calls IsEmpty out of line
                     if (sMaterial.IsEmpty()) {
-#else
-                    if (sMaterial.m_sString == 0 || *sMaterial.m_sString == 0) {
-#endif
                         CSWCItem* pArmor =
                             g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(
                                 pCreature->m_aEquippedItemIds[1]);
                         if (pArmor != 0)
                             sMaterial = pArmor->GetBaseItem()->m_sArmorType;
-#if KOTOR1  // K1 calls IsEmpty out of line
                         if (sMaterial.IsEmpty())
-#else
-                        if (sMaterial.m_sString == 0 || *sMaterial.m_sString == 0)
-#endif
                             sMaterial = "leather";
                     }
                 }
@@ -5628,6 +5617,7 @@ CSWCCombatAttackData::~CSWCCombatAttackData()
 }
 
 // The same reset as the constructor, plus releasing the chained next node.
+// EFFECTIVE: the zero and 0xffffffff stores merge at different widths (a q store here, d and x in the orig).
 void CSWCCombatAttackData::ClearAttackData()
 {
     m_nDataType = ATTACK_DATA_NONE;

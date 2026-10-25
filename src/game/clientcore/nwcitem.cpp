@@ -30,6 +30,7 @@
 extern CExoSound* g_pExoSound;
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 extern int hitcheck_static_trimesh_parts;
 
@@ -535,13 +536,8 @@ CExoString CSWCItem::GetName(int nForm)
     CExoString sName;
     if (nForm == 0)
         return m_sDisplayName;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (m_sDisplayName.GetLength() > 0
         && m_bIdentified != 0)
-#else
-    if (m_sDisplayName.m_sString != 0 && static_cast<int>(strlen(m_sDisplayName.m_sString)) > 0
-        && m_bIdentified != 0)
-#endif
         return m_sDisplayName;
     g_pTlkTable->Fetch(static_cast<unsigned int>(g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)
                            ->m_nNameStrRef),

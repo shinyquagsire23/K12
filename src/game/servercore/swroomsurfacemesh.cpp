@@ -38,7 +38,7 @@ int CSWRoomSurfaceMesh::LoadMeshBinary(CResBWM* pRes)
     CResBWMRoomHeader* pHeader = reinterpret_cast<CResBWMRoomHeader*>(pRes->m_pParsed);
     int rootAABBIndex;
     int edgeCount;
-    CSWRoomSurfaceMeshEdgeAdjacency* pEdgeAdjacency;
+    CSWRoomSurfaceExternalEdge* pEdgeAdjacency;
     if (pHeader == 0) {
         rootAABBIndex = 0;
         pEdgeAdjacency = 0;
@@ -57,7 +57,7 @@ int CSWRoomSurfaceMesh::LoadMeshBinary(CResBWM* pRes)
 #endif
         edgeCount = pHeader->nEdgeCount;
         rootAABBIndex = pHeader->nRootAABBIndex;
-        pEdgeAdjacency = reinterpret_cast<CSWRoomSurfaceMeshEdgeAdjacency*>(pData + pHeader->offEdgeAdjacency);
+        pEdgeAdjacency = reinterpret_cast<CSWRoomSurfaceExternalEdge*>(pData + pHeader->offEdgeAdjacency);
     }
     m_rootAABBIndex = rootAABBIndex;
 
@@ -65,7 +65,7 @@ int CSWRoomSurfaceMesh::LoadMeshBinary(CResBWM* pRes)
         m_aEdgeAdjacency.m_count = edgeCount;
         m_aEdgeAdjacency.m_capacity = edgeCount;
         m_aEdgeAdjacency.m_pArray = pEdgeAdjacency;
-        m_bEdgeDataLoaded = 1;
+        m_aEdgeAdjacency.m_bStatic = 1;
     }
 
     int aabbCount;
@@ -84,7 +84,7 @@ int CSWRoomSurfaceMesh::LoadMeshBinary(CResBWM* pRes)
         m_aAABBNodes.m_count = aabbCount;
         m_aAABBNodes.m_capacity = aabbCount;
         m_aAABBNodes.m_pArray = pAABBNodes;
-        m_bAABBDataLoaded = 1;
+        m_aAABBNodes.m_bStatic = 1;
     }
 
     void* pBorderEnds;
@@ -100,7 +100,7 @@ int CSWRoomSurfaceMesh::LoadMeshBinary(CResBWM* pRes)
         m_aBorderEnds.m_pArray = static_cast<int*>(pBorderEnds);
         m_aBorderEnds.m_count = nBorderEndCount;
         m_aBorderEnds.m_capacity = nBorderEndCount;
-        m_bBorderEndsLoaded = 1;
+        m_aBorderEnds.m_bStatic = 1;
     }
     return 1;
 }
@@ -131,7 +131,7 @@ int CSWRoomSurfaceMesh::SaveBinaryMesh(const CExoString& fileName)
         unsigned int edgeCount = m_aEdgeAdjacency.m_count;
         header.nEdgeCount = edgeCount;
         header.offEdgeAdjacency = static_cast<unsigned int>(ftell(pFile));
-        fwrite(m_aEdgeAdjacency.m_pArray, sizeof(CSWRoomSurfaceMeshEdgeAdjacency), edgeCount, pFile);
+        fwrite(m_aEdgeAdjacency.m_pArray, sizeof(CSWRoomSurfaceExternalEdge), edgeCount, pFile);
         unsigned int nBorderEndCount = m_aBorderEnds.m_count;
         header.nBorderEndCount = nBorderEndCount;
         header.offBorderEnds = static_cast<unsigned int>(ftell(pFile));
@@ -145,12 +145,11 @@ int CSWRoomSurfaceMesh::SaveBinaryMesh(const CExoString& fileName)
 
 // Builds the material masks by scanning the surface-material 2DA's line-of-sight, walk and
 // walk-check columns.
-CSWRoomSurfaceMesh::CSWRoomSurfaceMesh() : CSWCollisionMesh(RESTYPE_MDL, RESTYPE_WOK)
+CSWRoomSurfaceMesh::CSWRoomSurfaceMesh()
+    : CSWCollisionMesh(RESTYPE_MDL, RESTYPE_WOK), m_aEdgeAdjacency(0), m_aBorderEnds(0), m_aAABBNodes(0)
 {
     m_paTriAdjacency = 0;
-    m_bEdgeDataLoaded = 0;
-    m_bBorderEndsLoaded = 0;
-    m_bAABBDataLoaded = 0;
+    m_aAABBNodes = CExoStaticArrayList<CSWRoomSurfaceMeshAABBNode>(0);
     m_walkCheckMaterialMask = 0;
     m_allMaterialsMask = 0;
     m_losMaterialMask = 0;
@@ -763,26 +762,26 @@ CSWRoomSurfaceMesh::~CSWRoomSurfaceMesh()
         m_aAABBNodes.m_pArray = 0;
         m_aAABBNodes.m_count = 0;
         m_aAABBNodes.m_capacity = 0;
-        m_bAABBDataLoaded = 0;
+        m_aAABBNodes.m_bStatic = 0;
         m_paTriAdjacency = 0;
         m_aEdgeAdjacency.m_pArray = 0;
         m_aEdgeAdjacency.m_count = 0;
         m_aEdgeAdjacency.m_capacity = 0;
-        m_bEdgeDataLoaded = 0;
+        m_aEdgeAdjacency.m_bStatic = 0;
         m_aBorderEnds.m_pArray = 0;
         m_aBorderEnds.m_count = 0;
         m_aBorderEnds.m_capacity = 0;
-        m_bBorderEndsLoaded = 0;
+        m_aBorderEnds.m_bStatic = 0;
 #else
         m_aAABBNodes.m_pArray = 0;
         m_aAABBNodes.m_count = 0;
         m_aAABBNodes.m_capacity = 0;
-        m_bAABBDataLoaded = 0;
+        m_aAABBNodes.m_bStatic = 0;
         m_aBorderEnds.m_pArray = 0;
         m_aBorderEnds.m_count = 0;
         m_aBorderEnds.m_capacity = 0;
-        m_bBorderEndsLoaded = 0;
-        m_bEdgeDataLoaded = 0;
+        m_aBorderEnds.m_bStatic = 0;
+        m_aEdgeAdjacency.m_bStatic = 0;
         m_paTriAdjacency = 0;
         m_aEdgeAdjacency.m_pArray = 0;
         m_aEdgeAdjacency.m_count = 0;
@@ -797,10 +796,10 @@ CSWRoomSurfaceMesh::~CSWRoomSurfaceMesh()
         m_paTriAdjacency = 0;
 #endif
 
-        if (!m_bEdgeDataLoaded)
+        if (!m_aEdgeAdjacency.m_bStatic)
             m_aEdgeAdjacency.Clear();
 
-        if (!m_bBorderEndsLoaded)
+        if (!m_aBorderEnds.m_bStatic)
             m_aBorderEnds.Clear();
     }
 }
@@ -1169,8 +1168,8 @@ int CSWRoomSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
                     CSWRoomSurfaceMeshAABBNode* parent = stack.m_pArray[stack.m_count - 1];
                     int parentIdx = stackIndices.m_pArray[stackIndices.m_count - 1];
                     stack.m_pArray[stack.m_count - 1] = 0;
-                    stack.m_count--;
-                    stackIndices.m_count--;
+                    stack.DelIndex(stack.m_count - 1);
+                    stackIndices.DelIndex(stackIndices.m_count - 1);
                     if (parent->child1 == -1) {
                         parent->child1 = idx;
                         stack.Add(parent);
@@ -1217,8 +1216,7 @@ int CSWRoomSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
         m_rootAABBIndex = idx;
         for (int i = 0; i < nNodes; i++) {
             CSWRoomSurfaceMeshAABBNode* node = allNodes.m_pArray[i];
-            if (m_bAABBDataLoaded == 0)
-                m_aAABBNodes.Add(*node);
+            m_aAABBNodes.Add(*node);
             if (node != 0)
                 delete node;
             allNodes.m_pArray[i] = 0;
@@ -1237,12 +1235,12 @@ void CSWRoomSurfaceMesh::ComputeRoomBorder()
     if (m_nWalkableTriangleCount == 0)
         return;
 
-    CExoArrayList<CSWRoomSurfaceMeshEdgeAdjacency*> edgePtrs;
-    CExoArrayList<CSWRoomSurfaceMeshEdgeAdjacency*> border;
+    CExoArrayList<CSWRoomSurfaceExternalEdge*> edgePtrs;
+    CExoArrayList<CSWRoomSurfaceExternalEdge*> border;
 
     for (int i = 0; i < m_nWalkableTriangleCount * 3; i++) {
         if (m_paTriAdjacency[i] == -1) {
-            CSWRoomSurfaceMeshEdgeAdjacency* record = new CSWRoomSurfaceMeshEdgeAdjacency(i);
+            CSWRoomSurfaceExternalEdge* record = new CSWRoomSurfaceExternalEdge(i);
             edgePtrs.Add(record);
         }
     }
@@ -1260,7 +1258,7 @@ void CSWRoomSurfaceMesh::ComputeRoomBorder()
                 j++;
                 K2_ASSUME(j < nExterior);
             }
-            CSWRoomSurfaceMeshEdgeAdjacency* record = edgePtrs.m_pArray[j];
+            CSWRoomSurfaceExternalEdge* record = edgePtrs.m_pArray[j];
             border.Add(record);
             indices[j] = -1;
             int curEdge = record->edge;
@@ -1274,7 +1272,7 @@ void CSWRoomSurfaceMesh::ComputeRoomBorder()
                 for (j = 0; j < nExterior; j++) {
                     if (indices[j] == -1)
                         continue;
-                    CSWRoomSurfaceMeshEdgeAdjacency* cand = edgePtrs.m_pArray[j];
+                    CSWRoomSurfaceExternalEdge* cand = edgePtrs.m_pArray[j];
                     if (m_paTriVertIndices[cand->edge] != endVertex)
                         continue;
                     border.Add(cand);
@@ -1284,9 +1282,7 @@ void CSWRoomSurfaceMesh::ComputeRoomBorder()
                     int delta2 = (curEdge % 3 == 2) ? -2 : 1;
                     if (m_paTriVertIndices[curEdge + delta2] == ringStartVertex) {
                         open = false;
-                        if (m_bBorderEndsLoaded == 0) {
-                            m_aBorderEnds.Add(consumed);
-                        }
+                        m_aBorderEnds.Add(consumed);
                     }
                     break;
                 }
@@ -1294,24 +1290,23 @@ void CSWRoomSurfaceMesh::ComputeRoomBorder()
                 // A ring with no continuation (a malformed walkmesh) ends where its chain stops.
                 if (open && j == nExterior) {
                     open = false;
-                    if (m_bBorderEndsLoaded == 0) {
-                        m_aBorderEnds.Add(consumed);
-                    }
+                    m_aBorderEnds.Add(consumed);
                 }
 #endif
             }
         }
 
         for (int i = 0; i < border.m_count; i++) {
-            if (m_bEdgeDataLoaded == 0) {
-                CSWRoomSurfaceMeshEdgeAdjacency value = *border.m_pArray[i];
-                CExoArrayList<CSWRoomSurfaceMeshEdgeAdjacency>& edges =
+            if (m_aEdgeAdjacency.m_bStatic == 0) {
+                CSWRoomSurfaceExternalEdge value = *border.m_pArray[i];
+                CExoArrayList<CSWRoomSurfaceExternalEdge>& edges =
                     m_aEdgeAdjacency;
+                // inlined CExoArrayList<CSWRoomSurfaceExternalEdge>::Add(value)
                 int eidx = edges.m_count;
                 if (eidx == edges.m_capacity) {
-                    CSWRoomSurfaceMeshEdgeAdjacency* pOld = edges.m_pArray;
+                    CSWRoomSurfaceExternalEdge* pOld = edges.m_pArray;
                     edges.m_capacity = (eidx != 0) ? eidx * 2 : 16;
-                    edges.m_pArray = new CSWRoomSurfaceMeshEdgeAdjacency[edges.m_capacity];
+                    edges.m_pArray = new CSWRoomSurfaceExternalEdge[edges.m_capacity];
                     for (int64_t ei = 0; ei < eidx; ei++) {
                         K2_ASSUME(ei < edges.m_capacity);   // the new capacity is twice the old count
                         edges.m_pArray[ei] = pOld[ei];

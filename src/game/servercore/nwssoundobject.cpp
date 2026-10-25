@@ -166,7 +166,7 @@ void CSWSSoundObject::ChangePosition(Vector newPos) {
     SetPosition(newPos, 1, 1, 0);
     CAppManager** const ppMgr = &g_pAppManager;
     CSWSMessage* pMsg = (*ppMgr)->m_pServerExoApp->GetSWSMessage();
-    CExoLinkedList<CSWSPlayerListEntry>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
     if (pMsg != 0 && pList != 0) {
         CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
         if (pNode != 0) {
@@ -189,7 +189,7 @@ void CSWSSoundObject::Play() {
     m_active = 1;
     CAppManager** const ppMgr = &g_pAppManager;
     CSWSMessage* pMsg = (*ppMgr)->m_pServerExoApp->GetSWSMessage();
-    CExoLinkedList<CSWSPlayerListEntry>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
     if (pMsg != 0 && pList != 0) {
         CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
         if (pNode != 0) {
@@ -212,7 +212,7 @@ void CSWSSoundObject::Stop() {
     m_active = 0;
     CAppManager** const ppMgr = &g_pAppManager;
     CSWSMessage* pMsg = (*ppMgr)->m_pServerExoApp->GetSWSMessage();
-    CExoLinkedList<CSWSPlayerListEntry>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
     if (pMsg != 0 && pList != 0) {
         CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
         if (pNode != 0) {

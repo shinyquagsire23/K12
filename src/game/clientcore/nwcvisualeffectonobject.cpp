@@ -34,6 +34,7 @@ unsigned short CSWCVisualEffectOnObject::m_nMotionBlurVFXCount;
 #include "port/libcstring.h"
 #include "port/libcmath.h"
 #include "serverexoappinternal.h"
+#include "exostringinline.h"
 
 extern CAppManager* g_pAppManager;
 
@@ -923,11 +924,7 @@ void CSWCVisualEffectOnObject::StopVisualEffect(int a)
             sId, CExoString("SoundCessation"), &sSound) == 0)
         sSound = "";
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (pTarget != 0 && sSound.GetLength() > 0)
-#else
-    if (pTarget != 0 && sSound.m_sString != 0 && static_cast<int>(strlen(sSound.m_sString)) > 0)
-#endif
         g_pExoSound->Play3DOneShotSound(CResRef(sSound), pTarget->m_position, 1.5f,
                                         PRIORITY_GROUP_NORMAL_SPELL_EFFECTS, 0, 0, 0.0f, 0.0f);
 
@@ -2329,23 +2326,13 @@ int CSWCVisualEffectOnObject::LoadVisualEffect(unsigned short a, int b, unsigned
         if (nSizeCategory > CREATURE_SIZE_LARGE)
             g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
                 sId, CExoString("Imp_Root_H_Node"), &sRootNode);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (nSizeCategory >= CREATURE_SIZE_LARGE
             && sRootNode.GetLength() == 0)
-#else
-        if (nSizeCategory >= CREATURE_SIZE_LARGE
-            && (sRootNode.m_sString == 0 || static_cast<int>(strlen(sRootNode.m_sString)) == 0))
-#endif
             g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
                 sId, CExoString("Imp_Root_L_Node"), &sRootNode);
     }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (nSizeCategory > CREATURE_SIZE_INVALID
         && sRootNode.GetLength() == 0)
-#else
-    if (nSizeCategory > CREATURE_SIZE_INVALID
-        && (sRootNode.m_sString == 0 || static_cast<int>(strlen(sRootNode.m_sString)) == 0))
-#endif
         g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
             sId, CExoString("Imp_Root_M_Node"), &sRootNode);
 
@@ -2367,33 +2354,19 @@ int CSWCVisualEffectOnObject::LoadVisualEffect(unsigned short a, int b, unsigned
                 if (nSizeCategory > CREATURE_SIZE_LARGE)
                     g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
                         sLowViolence, CExoString("Imp_Root_H_Node"), &sRootNode);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                 if (nSizeCategory >= CREATURE_SIZE_LARGE
                     && sRootNode.GetLength() == 0)
-#else
-                if (nSizeCategory >= CREATURE_SIZE_LARGE
-                    && (sRootNode.m_sString == 0 || static_cast<int>(strlen(sRootNode.m_sString)) == 0))
-#endif
                     g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
                         sLowViolence, CExoString("Imp_Root_L_Node"), &sRootNode);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                 if (nSizeCategory > CREATURE_SIZE_INVALID
                     && sRootNode.GetLength() == 0)
-#else
-                if (nSizeCategory > CREATURE_SIZE_INVALID
-                    && (sRootNode.m_sString == 0 || static_cast<int>(strlen(sRootNode.m_sString)) == 0))
-#endif
                     g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
                         sLowViolence, CExoString("Imp_Root_M_Node"), &sRootNode);
             }
         }
     }
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sRootNode.GetLength() == 0)
-#else
-    if (sRootNode.m_sString == 0 || static_cast<int>(strlen(sRootNode.m_sString)) == 0)
-#endif
     {
         bHasImpact = g_pRules->m_p2DArrays->m_pVisualEffect->GetINTEntry(
             sId, CExoString("ProgFX_Impact"), &nProgFXImpact);
@@ -2532,11 +2505,7 @@ int CSWCVisualEffectOnObject::LoadVisualEffect(unsigned short a, int b, unsigned
             m_nEffectId2 = static_cast<unsigned short>(nProgFXCessation);
     }
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sRootNode.GetLength() > 0)
-#else
-    if (sRootNode.m_sString != 0 && static_cast<int>(strlen(sRootNode.m_sString)) > 0)
-#endif
     {
         m_apSlotEffect[0] = NewCAurObject(sRootNode.CStr(), const_cast<char*>("fxground"), 0, 0);
         if (m_apSlotEffect[0] != 0)
@@ -2546,11 +2515,7 @@ int CSWCVisualEffectOnObject::LoadVisualEffect(unsigned short a, int b, unsigned
             m_apSlotEffect[0]->DisableFog();
         }
     }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sImpactNode.GetLength() > 0)
-#else
-    if (sImpactNode.m_sString != 0 && static_cast<int>(strlen(sImpactNode.m_sString)) > 0)
-#endif
     {
         m_apSlotEffect[1] = NewCAurObject(sImpactNode.CStr(), const_cast<char*>("fximpact"), 0, 0);
         if (m_apSlotEffect[1] != 0)
@@ -2560,11 +2525,7 @@ int CSWCVisualEffectOnObject::LoadVisualEffect(unsigned short a, int b, unsigned
             m_apSlotEffect[1]->DisableFog();
         }
     }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sHeadCon.GetLength() > 0)
-#else
-    if (sHeadCon.m_sString != 0 && static_cast<int>(strlen(sHeadCon.m_sString)) > 0)
-#endif
     {
         m_apSlotEffect[2] = NewCAurObject(sHeadCon.CStr(), const_cast<char*>("fxhead"), 0, 0);
         if (m_apSlotEffect[2] != 0)
@@ -2694,20 +2655,11 @@ void CSWCVisualEffectOnObject::StartVisualEffect()
             sSoundId, CTwoDimArrays::COL2DA_VISUALEFFECT_SOUNDDURATION, &sSoundDuration) == 0)
         sSoundDuration = "";
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (pTarget != 0 && sSoundImpact.GetLength() > 0)
-#else
-    if (pTarget != 0 && sSoundImpact.m_sString != 0
-        && static_cast<int>(strlen(sSoundImpact.m_sString)) > 0)
-#endif
         g_pExoSound->Play3DOneShotSound(CResRef(sSoundImpact), pTarget->m_position, 1.5f,
                                         PRIORITY_GROUP_NORMAL_SPELL_EFFECTS, 0, 0, 0.0f, 0.0f);
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sSoundDuration.GetLength() > 0)
-#else
-    if (sSoundDuration.m_sString != 0 && static_cast<int>(strlen(sSoundDuration.m_sString)) > 0)
-#endif
     {
         m_pSoundSource = new CExoSoundSource(CResRef(sSoundDuration));
         m_pSoundSource->Set3D(1);

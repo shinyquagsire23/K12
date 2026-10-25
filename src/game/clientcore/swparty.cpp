@@ -955,7 +955,7 @@ void CSWParty::SetLeader(int nIndex)
                                                     &fPartySecondaryRange);
 
     CSWSPlayer* pPlayer = 0;
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = pServer->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = pServer->GetPlayerList();
     CExoLinkedListNode* pNode = ppPlayers->m_pInternal->m_pHead;
     if (pNode != 0) {
         pPlayer = static_cast<CSWSPlayer*>(pNode->m_pData);

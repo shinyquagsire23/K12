@@ -110,12 +110,12 @@ public:
 
 // Which directed edge of the adjacent triangle, encoded as a triangle index times three plus the edge
 // slot, or -1; and which room that edge borders, -1 when it borders none.
-struct CSWRoomSurfaceMeshEdgeAdjacency {
+struct CSWRoomSurfaceExternalEdge {
     int edge;
     int room;
 
-    CSWRoomSurfaceMeshEdgeAdjacency() : edge(-1), room(-1) {}
-    CSWRoomSurfaceMeshEdgeAdjacency(int edge_) : edge(edge_), room(-1) {}
+    CSWRoomSurfaceExternalEdge() : edge(-1), room(-1) {}
+    CSWRoomSurfaceExternalEdge(int edge_) : edge(edge_), room(-1) {}
 };
 
 // The per-room walkmesh header section within a raw BWM data blob. It is the base walkmesh header,
@@ -206,18 +206,9 @@ public:
     int* m_paTriAdjacency;
 #endif
 
-    CExoArrayList<CSWRoomSurfaceMeshEdgeAdjacency> m_aEdgeAdjacency;
-    int m_bEdgeDataLoaded;
-
-    CExoArrayList<int> m_aBorderEnds;
-    int m_bBorderEndsLoaded;
-
-    unsigned char _pad_dc_e0[0xe0 - 0xdc];
-
-    CExoArrayList<CSWRoomSurfaceMeshAABBNode> m_aAABBNodes;
-    int m_bAABBDataLoaded;
-
-    unsigned char _pad_f4_f8[0xf8 - 0xf4];
+    CExoStaticArrayList<CSWRoomSurfaceExternalEdge> m_aEdgeAdjacency;
+    CExoStaticArrayList<int> m_aBorderEnds;
+    CExoStaticArrayList<CSWRoomSurfaceMeshAABBNode> m_aAABBNodes;
     CExoArrayList<Vector> m_aCrossingPoints;
     CExoArrayList<int>    m_aCrossingEdges;
 

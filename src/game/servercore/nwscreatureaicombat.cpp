@@ -121,6 +121,7 @@ extern float g_fInjuredLevel;
 
 
 #include "port/libcmath.h"
+#include "exostringinline.h"
 
 
 int CSWSCreature::IsAttackSuccessful(int a) {
@@ -1808,13 +1809,7 @@ int CSWSCreature::GetWeaponDischargeHand(int nWeaponType, int nHand)
     g_pRules->m_p2DArrays->m_pWeaponDischarge->GetCExoStringEntry(
         sRow, CExoString("SwitchMask"), &sMask);
     CExoString sSub = sMask.SubString(nHand, 1);
-#if KOTOR1  // K1 calls CExoString::AsINT out of line.
     int nResult = sSub.AsINT();
-#else
-    int nResult = 0;
-    if (sSub.m_sString != 0)
-        nResult = atoi(sSub.m_sString);
-#endif
     return nResult;
 }
 

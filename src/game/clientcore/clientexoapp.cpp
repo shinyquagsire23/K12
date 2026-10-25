@@ -1735,6 +1735,7 @@ void CClientExoApp::AddCDKey(const CExoString& sKey)
 {
     CClientExoAppInternal* pInternal = m_pInternal;
     CExoString sUpper = sKey.UpperCase();
+    // inlined CExoArrayList<CExoString>::Add(sUpper)
     int idx = pInternal->m_sCDKeys.m_count;
     if (idx == pInternal->m_sCDKeys.m_capacity) {
         pInternal->m_sCDKeys.Allocate(idx != 0 ? idx * 2 : 16);

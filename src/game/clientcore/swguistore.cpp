@@ -41,6 +41,7 @@ void AspyrAddButtonIcon(CSWGuiButton* pButton, char nIcon);
 #include "exoinput.h"
 #include "nwscriptconst.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // Merchant panel with the buy and sell lists, the item description box and the two refusal paths.
 
@@ -1437,11 +1438,7 @@ void CSWGuiStore::SetDescription(const CExoString& sDescription)
     CSWGuiText* pText = &m_lblDescription.m_text;
 
     CSWGuiExtent extent = m_lblDescription.m_extent;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sDescription.GetLength() >= 1)
-#else
-    if (sDescription.m_sString && static_cast<int>(strlen(sDescription.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

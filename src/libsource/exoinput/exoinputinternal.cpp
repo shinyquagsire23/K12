@@ -40,7 +40,7 @@ CExoInputInternal::~CExoInputInternal()
     // The repeat-timer list nodes belong to the member's own destructor; the records do not.
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
     while (pNode != 0) {
-        CInputEventRepeat* pRec = static_cast<CInputEventRepeat*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+        CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
         if (pRec != 0)
             ::operator delete(pRec);
         m_repeatList.m_pInternal->GetNext(pNode);
@@ -547,12 +547,12 @@ void CExoInputInternal::ClearEventRepeat(unsigned int nEvent)
     if (m_aEvents.m_pArray[static_cast<int>(nEvent)] != 0 && m_aEvents.m_pArray[static_cast<int>(nEvent)]->m_nEventClass == INPUTKIND_BUTTON) {
         CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
         if (pNode != 0) {
-            CInputEventRepeat* pRec = static_cast<CInputEventRepeat*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+            CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
             while (pRec == 0 || static_cast<unsigned int>(pRec->m_nEventIndex) != nEvent) {
                 m_repeatList.m_pInternal->GetNext(pNode);
                 if (pNode == 0)
                     return;
-                pRec = static_cast<CInputEventRepeat*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+                pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
             }
             pRec->m_nEmittedValue = 0;
             pRec->m_nRepeatCount = 0;
@@ -569,7 +569,7 @@ void CExoInputInternal::SetEventNonRepeatable(unsigned int nEvent)
     if (m_aEvents.m_pArray[static_cast<int>(nEvent)] != 0 && m_aEvents.m_pArray[static_cast<int>(nEvent)]->m_nEventClass == INPUTKIND_BUTTON) {
         CExoLinkedListNode* pNode = m_repeatList.GetHeadPos();
         if (pNode != 0) {
-            CInputEventRepeat* pRec = m_repeatList.GetAtPos(pNode);
+            CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
             while (pRec == 0 || static_cast<unsigned int>(pRec->m_nEventIndex) != nEvent) {
                 do {
                     m_repeatList.GetNext(pNode);
@@ -590,7 +590,7 @@ int CExoInputInternal::SetEventRepeatable(unsigned int nEvent, unsigned int p2, 
         return 0;
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
     if (pNode != 0) {
-        CInputEventRepeat* pRec = static_cast<CInputEventRepeat*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+        CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
         while (true) {
             if (pRec != 0 && static_cast<unsigned int>(pRec->m_nEventIndex) == nEvent) {
                 pRec->m_nRepeatWait = p2;
@@ -600,10 +600,10 @@ int CExoInputInternal::SetEventRepeatable(unsigned int nEvent, unsigned int p2, 
             m_repeatList.m_pInternal->GetNext(pNode);
             if (pNode == 0)
                 break;
-            pRec = static_cast<CInputEventRepeat*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+            pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
         }
     }
-    CInputEventRepeat* pNew = static_cast<CInputEventRepeat*>(::operator new(sizeof(CInputEventRepeat)));
+    CExoInputRepeatEvent* pNew = static_cast<CExoInputRepeatEvent*>(::operator new(sizeof(CExoInputRepeatEvent)));
     pNew->m_nEventIndex = nEvent;
     pNew->m_nRepeatWait = p2;
     pNew->m_nRepeatRate = p3;
@@ -1281,7 +1281,7 @@ void CExoInputInternal::ClearEvents()
 
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
     while (pNode != 0) {
-        CInputEventRepeat* pRec = static_cast<CInputEventRepeat*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+        CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
         pRec->m_nRepeatState = 0;
         pRec->m_nRepeatCount = 0;
         m_repeatList.m_pInternal->GetNext(pNode);
@@ -1973,7 +1973,7 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
     CExoLinkedListInternal* pRepeat = m_repeatList.m_pInternal;
     CExoLinkedListNode* pRep = pRepeat->m_pHead;
     while (pRep != 0) {
-        CInputEventRepeat* pRec = static_cast<CInputEventRepeat*>(pRepeat->GetAtPos(pRep));
+        CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(pRepeat->GetAtPos(pRep));
         if (pRec != 0 && IsEventInClass(pRec->m_nEventIndex, nInputClass) != 0) {
             // The repeat record mirrors the bound descriptor's current state word. A nonzero state
             // arms the timer, a state change restarts it, and the two thresholds (the first-repeat and

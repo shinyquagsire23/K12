@@ -784,6 +784,7 @@ void MdlNodeTriMesh::InternalGenVertices()
         if (face.m_anVertIndices[0] == face.m_anVertIndices[1] ||
             face.m_anVertIndices[0] == face.m_anVertIndices[2] ||
             face.m_anVertIndices[1] == face.m_anVertIndices[2]) {
+            // inlined List<MaxFace>::DelIndex(i)
             m_faces.m_count--;
             for (int64_t j = i; j < static_cast<int64_t>(m_faces.m_count); j++)
                 m_faces.m_pData[j] = m_faces.m_pData[j + 1];

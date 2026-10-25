@@ -58,6 +58,7 @@
 #include "restype.h"
 #include "enginevfx.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // What a command handler returns when it fails; the virtual machine aborts the script on any
 // negative result. A handler reports a failed stack push as -2000 and a failed pop as -2001, though
@@ -10027,11 +10028,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetStringLength(int nCommand, int n
     int nLength;
     if (!g_pVirtualMachine->StackPopString(&sString))
         return VM_ERROR_POP_FAILED;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     nLength = sString.GetLength();
-#else
-    nLength = sString.m_sString != 0 ? static_cast<int>(strlen(sString.m_sString)) : 0;
-#endif
     if (!g_pVirtualMachine->StackPushInteger(nLength))
         return VM_ERROR_PUSH_FAILED;
     return 0;
@@ -10763,7 +10760,7 @@ int CSWVirtualMachineCommands::ExecuteCommandDeleteJournalWorldAllEntries(int nC
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
     if (pModule != 0)
         pModule->DeleteWorldJournalAllEntries();
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppPlayers == 0)
         return 0;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
@@ -10868,7 +10865,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetEnteringObject(int nCommand, int
 int CSWVirtualMachineCommands::ExecuteCommandGetJournalEntry(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+    CExoLinkedList<CSWSClient>* ppPlayers;
     CExoLinkedListNode* pNodePos;
     CSWSCreature* pCreature;
     int nState;
@@ -10901,7 +10898,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetJournalEntry(int nCommand, int n
 int CSWVirtualMachineCommands::ExecuteCommandRemoveJournalQuestEntry(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+    CExoLinkedList<CSWSClient>* ppPlayers;
     CExoLinkedListNode* pNodePos;
     CSWSCreature* pCreature;
     CExoString sPlotId;
@@ -14503,11 +14500,7 @@ int CSWVirtualMachineCommands::ExecuteCommandBeginConversation(int nCommand, int
                     pSelfSnapshot->m_nAnimation = SERVER_ANIMATION_PAUSE;
                 }
             }
-#if KOTOR1  // K1 has IsEmpty out of line
             if (sDialogResRef.IsEmpty())
-#else
-            if (sDialogResRef.m_sString == 0 || sDialogResRef.m_sString[0] == 0)
-#endif
                 sDialogResRef = pSelfObject->m_sLastConversation;
             int nDialogFlag = pSelfObject->m_bPrivateConversation;
             g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(pTargetObject->m_objectId);
@@ -15694,7 +15687,7 @@ int CSWVirtualMachineCommands::ExecuteCommandDeleteJournalWorldEntry(int nComman
         return VM_ERROR_POP_FAILED;
     if (pModule != 0)
         pModule->DeleteWorldJournalEntry(nEntry);
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppPlayers == 0)
         return 0;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
@@ -15721,7 +15714,7 @@ int CSWVirtualMachineCommands::ExecuteCommandDeleteJournalWorldEntryStrref(int n
         return VM_ERROR_POP_FAILED;
     if (pModule != 0)
         pModule->DeleteWorldJournalEntryStrref(nStrRef);
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppPlayers == 0)
         return 0;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
@@ -16040,7 +16033,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetMapPinEnabled(int nCommand, int 
     if (pWaypoint != 0 && pWaypoint->m_bHasMapNote != 0) {
         pWaypoint->m_bMapNoteEnabled = bEnabled;
         CSWSMessage* pMessage;
-        CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+        CExoLinkedList<CSWSClient>* ppPlayers;
         pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
         ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
         if (ppPlayers == 0)
@@ -16637,7 +16630,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetJournalQuestEntryPicture(int nCo
     int bAllPlayers;
     int nPictureIndex;
     unsigned long long oidObject;
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+    CExoLinkedList<CSWSClient>* ppPlayers;
     CExoLinkedListNode* pNodePos;
     CSWSCreature* pCreature;
     CSWSFaction* pFaction;
@@ -17338,7 +17331,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetCustomToken(int nCommand, int nA
     if (nToken > CTlkTable::CUSTOMTOKEN_RESERVED_END) {
         g_pTlkTable->SetCustomToken(nToken, sValue);
         CSWSMessage* pMessage;
-        CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+        CExoLinkedList<CSWSClient>* ppPlayers;
         pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
         ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
         if (pMessage != 0 && ppPlayers != 0) {
@@ -17365,7 +17358,7 @@ int CSWVirtualMachineCommands::ExecuteCommandAddJournalWorldEntry(int nCommand, 
     int nIndex;
     unsigned int nDay;
     unsigned int nTime;
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+    CExoLinkedList<CSWSClient>* ppPlayers;
     CSWSMessage* pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
     if (!g_pVirtualMachine->StackPopInteger(&nIndex))
@@ -17412,7 +17405,7 @@ int CSWVirtualMachineCommands::ExecuteCommandAddJournalWorldEntryStrref(int nCom
     g_pAppManager->m_pServerExoApp->GetWorldTimer()->GetWorldTime(&nDay, &nTime);
     if (pModule != 0)
         pModule->AddWorldJournalEntryStrref(nNameStrRef, nTextStrRef, nDay, nTime);
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppPlayers == 0)
         return 0;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
@@ -18561,7 +18554,7 @@ int CSWVirtualMachineCommands::ExecuteCommandAddJournalQuestEntry(int nCommand, 
     K2_UNUSED(nCommand);
     CExoString sPlotId;
     int nState;
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+    CExoLinkedList<CSWSClient>* ppPlayers;
     CExoLinkedListNode* pNodePos;
     unsigned int nWorldDay;
     unsigned int nWorldTime;

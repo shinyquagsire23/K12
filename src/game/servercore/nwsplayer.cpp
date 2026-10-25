@@ -29,6 +29,7 @@
 
 #include "port/libcbase.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 CSWSPlayerInventoryGUI::CSWSPlayerInventoryGUI()
 {
@@ -1182,13 +1183,8 @@ int CSWSPlayer::SaveServerCharacter()
             }
 
             sSuffix = CExoString(nSuffix);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             sBaseName = sBaseName.SubString(
                 0, 16 - sSuffix.GetLength());
-#else
-            sBaseName = sBaseName.SubString(
-                0, static_cast<int>(16 - (sSuffix.m_sString ? strlen(sSuffix.m_sString) : 0)));
-#endif
             sFileName = sBaseName + sSuffix;
 #if KOTOR1
             sFileName = sFileName.LowerCase();

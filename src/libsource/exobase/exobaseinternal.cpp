@@ -19,6 +19,7 @@
 
 #include "Win32Find.h"
 #include "restype.h"
+#include "exostringinline.h"
 
 
 enum { DRIVE_CDROM = 5 };
@@ -611,11 +612,7 @@ unsigned int CExoBaseInternal::GetDirectorySize(const CExoString& sDir)
 
     sPath = g_pExoBase->m_pAliasList->ResolveFileName(sDir, RESTYPE_INVALID);
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sPath[sPath.GetLength() - 1] == '\\')
-#else
-    if (sPath[(sPath.m_sString ? static_cast<int>(strlen(sPath.m_sString)) : 0) - 1] == '\\')
-#endif
         sPath.Format(const_cast<char*>("%s*.*"), sPath.CStr());
     else
         sPath.Format(const_cast<char*>("%s\\*.*"), sPath.CStr());

@@ -202,6 +202,7 @@ int g_bEnableMovementSpeedDebugging = 1;
 extern int g_bDisableDamage;
 
 #include "port/crtapi.h"
+#include "exostringinline.h"
 
 
 
@@ -744,11 +745,7 @@ void CSWSCreature::SetCombatState(int bCombat, unsigned char nCombatType, int bF
                 g_pAppManager->m_pServerExoApp->GetGameObject(pRound->m_oidMaster);
             if (pObject != 0 && pObject->AsSWSObject() != 0) {
                 sTargetTag = pObject->AsSWSObject()->m_sTag;
-#if KOTOR1  // K1: CExoString::IsEmpty is out of line
                 if (sTargetTag.IsEmpty())
-#else
-                if (sTargetTag.m_sString == 0 || sTargetTag.m_sString[0] == 0)
-#endif
                     sTargetTag = NULL_NAME;
             }
             sWarning.Format(const_cast<char*>("WARNING:  %x %s %d %d %d %d %x %s %x"), m_objectId, m_sTag.CStr(),
@@ -3305,13 +3302,8 @@ int CSWSCreature::EvaluateLock(CSWSObject* pObject, int bNewLockState)
         CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
         if (pPlaceable->m_bLocked == bNewLockState)
             return 1;
-#if KOTOR1
         if (pPlaceable->m_keyName.IsEmpty())
             return 0;
-#else
-        if (pPlaceable->m_keyName.m_sString == 0 || *pPlaceable->m_keyName.m_sString == 0)
-            return 0;
-#endif
         unsigned long long oidKey =
             GetItemRepository(1)->FindItemWithTag(pPlaceable->m_keyName);
         CSWSItem* pKey = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidKey);
@@ -10966,14 +10958,8 @@ void CSWSCreature::EventHandler(unsigned int nEventType, unsigned long long nCal
                 AddMatchedExpressionString(pEvent->GetString(i));
             // An empty or literally "default" dialogue slot falls back to the generic henchman
             // conversation rather than running nothing.
-#if KOTOR1  // K1: CExoString::IsEmpty is out of line
             if (m_scripts[CREATURE_SCRIPT_DIALOGUE].IsEmpty() ||
                 m_scripts[CREATURE_SCRIPT_DIALOGUE] == "default")
-#else
-            if (m_scripts[CREATURE_SCRIPT_DIALOGUE].m_sString == 0 ||
-                *m_scripts[CREATURE_SCRIPT_DIALOGUE].m_sString == 0 ||
-                m_scripts[CREATURE_SCRIPT_DIALOGUE] == "default")
-#endif
                 m_scripts[CREATURE_SCRIPT_DIALOGUE] = "k_hen_dialogue01";
             m_scripts[CREATURE_SCRIPT_DIALOGUE].CStr();  // stripped debug line
             g_pVirtualMachine->RunScript(&m_scripts[CREATURE_SCRIPT_DIALOGUE], m_objectId, 1);
@@ -11912,6 +11898,7 @@ void CSWSCreature::ReadScriptsFromGff(CResGFF* pGff, CResStruct* pStruct)
     m_scripts[CREATURE_SCRIPT_ENDDIALOGUE] = sScript;
 }
 
+// EFFECTIVE: one and-of-two-bools test is cbnz in the orig and tbnz #0 here.
 void CSWSCreature::ReadItemsFromGff(CResGFF* pGff, CResStruct* pStruct, int bUseObjectIds,
                                     int nPossessorFlag, int bFromTemplate)
 {

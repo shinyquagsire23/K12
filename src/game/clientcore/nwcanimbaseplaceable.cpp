@@ -10,6 +10,7 @@
 #include "port/libcstring.h"
 
 #include "port/libcbase.h"
+#include "exostringinline.h"
 class CAurObject;
 #if KOTOR1  // K1: the model streams are SDL_RWops
 struct SDL_RWops;
@@ -58,11 +59,7 @@ CExoString CSWCAnimBasePlaceable::GetAnimationName(unsigned short nAnimation)
             nAnimId, CTwoDimArrays::COL2DA_ANIMATIONS_NAME, &sResult))
         sResult = "";
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sResult.GetLength() > 0)
-#else
-    if (sResult.m_sString != 0 && static_cast<int>(strlen(sResult.m_sString)) > 0)
-#endif
         return sResult;
 
     if (static_cast<unsigned short>(nAnimation - 1000) <= 1727 - 1000)  // the cutscene banks

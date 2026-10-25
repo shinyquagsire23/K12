@@ -318,6 +318,7 @@ void CSWGuiFeatsCharGen::InitiateFeats()
                 }
                 if (nOwned != 0)
                 {
+                    // inlined CExoArrayList<unsigned int>::DelIndex(nGranted)
                     for (int j = nGranted; j < aGranted.m_count - 1; j++)
                         aGranted.m_pArray[j] = aGranted.m_pArray[j + 1];
                     aGranted.m_count--;
@@ -827,6 +828,7 @@ void CSWGuiFeatsCharGen::AddChosenFeat(unsigned short nFeat)
     if (nIndex == -1)
         return;
 
+    // inlined CExoArrayList<unsigned short>::DelIndex(nIndex)
     nCount--;
     m_aAvailableFeats.m_count = nCount;
     if (nIndex < nCount)

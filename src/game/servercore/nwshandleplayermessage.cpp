@@ -3998,7 +3998,7 @@ int CSWSMessage::HandlePlayerToServerPlayModuleCharacterList_Start(CSWSPlayer* p
         return 0;
 
     CAppManager** const ppMgr = &g_pAppManager;
-    CExoLinkedList<CSWSPlayerListEntry>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
     if (pNode != 0) {
         do {

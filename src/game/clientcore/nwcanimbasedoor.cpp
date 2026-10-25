@@ -9,6 +9,7 @@
 #include "port/libcstring.h"
 
 #include "port/libcbase.h"
+#include "exostringinline.h"
 class CAurObject;
 #if KOTOR1  // K1: model files are SDL_RWops streams
 struct SDL_RWops;
@@ -55,11 +56,7 @@ CExoString CSWCAnimBaseDoor::GetAnimationName(unsigned short nAnimation)
             nAnimId, CTwoDimArrays::COL2DA_ANIMATIONS_NAME, &sResult))
         sResult = "";
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sResult.GetLength() <= 0)
-#else
-    if (sResult.m_sString == 0 || static_cast<int>(strlen(sResult.m_sString)) <= 0)
-#endif
     {
         CExoString sMsg;
         sMsg.Format(const_cast<char*>("CSWCAnimBaseDoor::GetAnimationName(): No name for server animation %d"),

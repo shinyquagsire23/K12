@@ -119,6 +119,7 @@ void CSWGuiObject::SetExtent(const CSWGuiExtent& extent)
 }
 #endif
 
+// EFFECTIVE: one member address is formed earlier in the orig (an add moves, 4 B).
 CSWGuiPanel::~CSWGuiPanel()
 {
     delete m_pBackground;

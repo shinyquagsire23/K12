@@ -15,6 +15,7 @@ void HandleLoadError(uint64_t strRef);
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // Builds the CRC-32 table the hash walks, then clears the identifier table and the values.
 CSWGlobalVariableTable::CSWGlobalVariableTable()
@@ -410,11 +411,7 @@ void CSWGlobalVariableTable::ReadCatalogue(const CResRef& resRef)
     {
         if (!cat.GetCExoStringEntry(i, CExoString("Name"), &sName))
             continue;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (sName.GetLength() > 21)
-#else
-        if (sName.m_sString != 0 && static_cast<int>(strlen(sName.m_sString)) > 21)
-#endif
         {
             CExoString sMsg;
             sMsg.Format(const_cast<char*>("Script var '%s' longer than %d letters!"), sName.CStr(), 21);

@@ -288,7 +288,7 @@ void CSWSModule::UpdateTime(unsigned int nCalendarDay, unsigned int nTimeOfDay, 
     if (nMask == 0)
         return;
 
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayerList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayerList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pos = ppPlayerList->m_pInternal->m_pHead;
     while (pos != 0) {
         CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayerList->m_pInternal->GetAtPos(pos));
@@ -1194,6 +1194,7 @@ unsigned long long CSWSModule::FindObjectByTagOrdinal(const CExoString& tag, uns
 // Inserts a node at nIndex in the table's array, growing the array if needed.
 static void InsertTagNodeAt(CExoArrayList<CSWSTagNode>& aTable, int nIndex, CSWSTagNode v)
 {
+    // inlined CExoArrayList<CSWSTagNode>::Insert(v, nIndex)
     CSWSTagNode vKeep = v;
     if (aTable.m_count == aTable.m_capacity)
     {
@@ -1688,6 +1689,7 @@ void CSWSModule::AddObjectToLimbo(unsigned long long objectId)
         if (m_limboList.m_pArray[i] == objectId)
             return;
 
+    // inlined CExoArrayList<unsigned long long>::Add(objectId)
     if (m_limboList.m_count == m_limboList.m_capacity)
     {
         int nNewCapacity = (m_limboList.m_count == 0) ? 16 : m_limboList.m_count * 2;
@@ -2111,7 +2113,7 @@ void CSWSModule::AddWorldJournalEntry(int nIndex, const CExoString& sName, const
 {
     CSWSMessage* pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
 
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+    CExoLinkedList<CSWSClient>* ppPlayers;
 
     CWorldJournalEntry entry;
     entry.m_nEntryId = nIndex;
@@ -2146,7 +2148,7 @@ void CSWSModule::AddWorldJournalEntryStrref(uint64_t nNameStrRef, uint64_t nText
 {
     CSWSMessage* pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
 
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers;
+    CExoLinkedList<CSWSClient>* ppPlayers;
 
     CWorldJournalEntry entry;
     entry.m_nEntryId = static_cast<unsigned int>(nNameStrRef);
@@ -2193,7 +2195,7 @@ void CSWSModule::DeleteWorldJournalEntry(int nIndex)
     if (pMsg == 0)
         return;
 
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppPlayers == 0)
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
@@ -2222,7 +2224,7 @@ void CSWSModule::DeleteWorldJournalEntryStrref(uint64_t nStrRef)
         nPosition--;
     }
 
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppPlayers == 0)
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
@@ -2243,7 +2245,7 @@ void CSWSModule::DeleteWorldJournalAllEntries()
 
     m_worldJournal.SetSize(0);
 
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppPlayers == 0)
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;

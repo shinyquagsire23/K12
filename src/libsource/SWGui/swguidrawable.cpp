@@ -28,6 +28,7 @@ float GetResolutionTextScalar();
 #include "port/crtapi.h"
 #include "port/k2qolapi.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 CSWGuiTextParams::CSWGuiTextParams()
 {
@@ -425,15 +426,9 @@ CSWGuiEditText::CSWGuiEditText()
 void CSWGuiEditText::RemoveLastChar()
 {
     CExoString sCaret;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (m_sText.GetLength() > 0)
     {
         m_sText = m_sText.SubString(0, m_sText.GetLength() - 1);
-#else
-    if (m_sText.m_sString != 0 && static_cast<int>(strlen(m_sText.m_sString)) > 0)
-    {
-        m_sText = m_sText.SubString(0, (m_sText.m_sString ? static_cast<int>(strlen(m_sText.m_sString)) : 0) - 1);
-#endif
         if (!m_bCaretVisible)
             m_params.SetText(m_sText);
         else
@@ -448,13 +443,8 @@ void CSWGuiEditText::AddNewChar(char* sChar)
 {
     CExoString sCaret;
     int nLimit = m_nMaxLength;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if ((nLimit & 0xffff) != 0xffff &&
         m_sText.GetLength() >= static_cast<short>(nLimit))
-#else
-    if ((nLimit & 0xffff) != 0xffff &&
-        (m_sText.m_sString ? static_cast<int>(strlen(m_sText.m_sString)) : 0) >= static_cast<short>(nLimit))
-#endif
         return;
     m_sText = m_sText + CExoString(sChar);
     if (!m_bCaretVisible)

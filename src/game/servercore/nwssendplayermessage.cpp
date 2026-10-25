@@ -68,6 +68,7 @@ extern int g_bEnableMovementSpeedDebugging;
 #include "feedbackmessage.h"
 #include "nwsaiaction.h"
 #include "nwscriptconst.h"
+#include "exostringinline.h"
 
 // Resource types (CExoResMan, CExoFile and the directory lister).
 enum {
@@ -118,13 +119,7 @@ int CSWSMessage::HasValidString(CExoLocString& s, unsigned char nLang)
         s.GetString(0, &nPlayerLanguage, &sText, &bReference) ||
         s.m_nStrRef == 0xFFFFFFFF)
     {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         return sText.GetLength() > 0;
-#else
-        if (sText.m_sString == 0)
-            return 0;
-        return static_cast<int>(strlen(sText.m_sString)) > 0;
-#endif
     }
     return 1;
 }
@@ -700,13 +695,8 @@ void CSWSMessage::AddPlaceableAppearanceToMessage(CSWSPlaceable* pPlaceable)
     CExoLocString locDescription;
     GetLocStringServer(0xffffffff, pPlaceable->m_description, locDescription, sDescription, 0);
 
-#if KOTOR1  // K1: the out-of-line CExoString::IsEmpty
     int bEmpty = sDescription.IsEmpty();
     WriteBOOL(bEmpty == 0);
-#else
-    const char* pText = sDescription.m_sString;
-    WriteBOOL(pText != 0 && pText[0] != 0);
-#endif
 }
 
 void CSWSMessage::AddItemAppearanceToMessage(CSWSItem* pItem)
@@ -3036,7 +3026,7 @@ int CSWSMessage::SendServerToPlayerChatStrRefMessage(unsigned char nVolume,
                                                      unsigned long long speakerId,
                                                      unsigned int nStrRef)
 {
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (pList == 0)
         return 0;
 
@@ -3098,7 +3088,7 @@ __attribute__((noinline)) int CSWSMessage::SendServerToPlayerChatMessage(unsigne
                                                const CExoString& sTellTargetName)
 {
     K2_UNUSED(sTellTargetName);
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (pList == 0)
         return 0;
 
@@ -3283,7 +3273,7 @@ int CSWSMessage::SendServerToPlayerCombatRoundStarted(CSWSPlayer* pPlayer)
 // Fans the quick-chat line out to every player in the speaker's area within chatting distance.
 int CSWSMessage::SendServerToPlayerQuickChatMessage(unsigned long long objectId, unsigned short nChat)
 {
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (pList == 0)
         return 0;
 
@@ -3818,12 +3808,7 @@ int CSWSMessage::SendServerToPlayerJournalFullUpdateNotNeeded(CSWSPlayer* pPlaye
 
 int CSWSMessage::SendServerToPlayerChat_ServerTell(unsigned int nPlayerId, const CExoString& sText)
 {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sText.GetLength() + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString != 0 ? static_cast<int>(strlen(sText.m_sString)) : 0) + 4,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCExoString(sText, 32);
 
     unsigned char* pMsg;
@@ -3837,12 +3822,7 @@ int CSWSMessage::SendServerToPlayerChat_ServerTell(unsigned int nPlayerId, const
 int CSWSMessage::SendServerToPlayerChat_Talk(unsigned int nPlayerId, unsigned long long speakerId,
                                              const CExoString& sText)
 {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sText.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString != 0 ? static_cast<int>(strlen(sText.m_sString)) : 0) + 12,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteOBJECTIDServer(speakerId);
     WriteCExoString(sText, 32);
 
@@ -3858,12 +3838,7 @@ int CSWSMessage::SendServerToPlayerChat_Whisper(unsigned int nPlayerId,
                                                 unsigned long long speakerId,
                                                 const CExoString& sText)
 {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sText.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString != 0 ? static_cast<int>(strlen(sText.m_sString)) : 0) + 12,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteOBJECTIDServer(speakerId);
     WriteCExoString(sText, 32);
 
@@ -3879,11 +3854,7 @@ int CSWSMessage::SendServerToPlayerAIActionPlaySound(unsigned int nPlayerId,
                                                      unsigned long long objectId,
                                                      const CExoString& sSound)
 {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sSound.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sSound.m_sString != 0 ? static_cast<int>(strlen(sSound.m_sString)) : 0) + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteOBJECTIDServer(objectId);
     WriteCExoString(sSound, 32);
 
@@ -3902,11 +3873,7 @@ int CSWSMessage::SendServerToPlayerSetCustomToken(unsigned int nPlayerId, int nT
                                                   const CExoString& sValue)
 {
     unsigned char* pMsg;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     unsigned int nSize = sValue.GetLength() + 8;
-#else
-    unsigned int nSize = (sValue.m_sString != 0 ? static_cast<int>(strlen(sValue.m_sString)) : 0) + 8;
-#endif
 
     CreateWriteMessage(nSize, nPlayerId, 1);
     WriteINT(nToken, 32);
@@ -3923,11 +3890,7 @@ int CSWSMessage::SendServerToPlayerJournalRemoveQuest(CSWSPlayer* pPlayer,
                                                       const CExoString& sQuestTag)
 {
     unsigned char* pMsg;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     unsigned int nSize = sQuestTag.GetLength();
-#else
-    unsigned int nSize = sQuestTag.m_sString != 0 ? static_cast<int>(strlen(sQuestTag.m_sString)) : 0;
-#endif
 
     CreateWriteMessage(nSize, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteCExoString(sQuestTag, 32);
@@ -4332,11 +4295,7 @@ int CSWSMessage::SendServerToPlayerModuleUpdate_Time(CSWSPlayer* pPlayer, unsign
 int CSWSMessage::SendServerToPlayerMapPinAdded(CSWSPlayer* pPlayer, Vector vPos,
                                                const CExoString& sLabel, unsigned int nPin)
 {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sLabel.GetLength() + 16, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sLabel.m_sString != 0 ? static_cast<int>(strlen(sLabel.m_sString)) : 0) + 16, MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteFLOAT(vPos.x, 1.0f, 32);
     WriteFLOAT(vPos.y, 1.0f, 32);
     WriteFLOAT(vPos.z, 1.0f, 32);
@@ -4358,13 +4317,8 @@ int CSWSMessage::SendServerToPlayerJournalAddWorld(CSWSPlayer* pPlayer, int nId,
                                                    unsigned int nB)
 {
     unsigned char* pMsg;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     int nTitleLen = sTitle.GetLength();
     int nTextLen = sText.GetLength();
-#else
-    int nTitleLen = sTitle.m_sString != 0 ? static_cast<int>(strlen(sTitle.m_sString)) : 0;
-    int nTextLen = sText.m_sString != 0 ? static_cast<int>(strlen(sText.m_sString)) : 0;
-#endif
     unsigned int nSize = nTitleLen + 12 + nTextLen;
 
     CreateWriteMessage(nSize, MSG_PLAYERID_ALL_CLIENTS, 1);
@@ -4385,7 +4339,7 @@ int CSWSMessage::SendServerToPlayerJournalAddWorld(CSWSPlayer* pPlayer, int nId,
 // the object, built and sent inside the loop.
 int CSWSMessage::SendServerToAllPlayersCreatureUpdate_StripEquippedItems(unsigned long long objectId)
 {
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
     if (pNode != 0) {
         do {
@@ -4608,7 +4562,7 @@ int CSWSMessage::SendServerToPlayerPlayerList_All(CSWSPlayer* pPlayer)
 {
     CreateWriteMessage(512, MSG_PLAYERID_ALL_CLIENTS, 1);
 
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (pList == 0)
         return 0;
 
@@ -4852,11 +4806,7 @@ int CSWSMessage::SendServerToPlayerJournalSetQuestPicture(CSWSPlayer* pPlayer,
                                                           const CExoString& sPicture, int nId)
 {
     unsigned char* pMsg;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     unsigned int nSize = sPicture.GetLength() + 4;
-#else
-    unsigned int nSize = (sPicture.m_sString != 0 ? static_cast<int>(strlen(sPicture.m_sString)) : 0) + 4;
-#endif
 
     CreateWriteMessage(nSize, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteCExoString(sPicture, 32);
@@ -4926,12 +4876,7 @@ int CSWSMessage::SendServerToPlayerChat_Tell(unsigned int nPlayerId, unsigned lo
     if (pCreature == 0)
         return 0;
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sText.GetLength() + 24, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString != 0 ? static_cast<int>(strlen(sText.m_sString)) : 0) + 24,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteOBJECTIDServer(speakerId);
     WriteCExoString(sText, 32);
     WriteFLOAT(pCreature->m_position.x, 1.0f, 32);
@@ -4957,12 +4902,7 @@ int CSWSMessage::SendServerToPlayerChat_Party(unsigned int nPlayerId, unsigned l
         return 0;
 
     // The size addend here is smaller than Chat_Tell's.
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sText.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString != 0 ? static_cast<int>(strlen(sText.m_sString)) : 0) + 12,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteOBJECTIDServer(speakerId);
     WriteCExoString(sText, 32);
     WriteFLOAT(pCreature->m_position.x, 1.0f, 32);
@@ -5457,12 +5397,7 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
         }
 
         // The resource ref doubles as a decimal index into the module's player list.
-#if KOTOR1  // K1: CExoString::AsINT is out of line
         if (pGff->GetListElement(&playerStruct, &playerList, sCharIndex.AsINT()) == 0)
-#else
-        if (pGff->GetListElement(&playerStruct, &playerList,
-                                 sCharIndex.m_sString ? atoi(sCharIndex.m_sString) : 0) == 0)
-#endif
         {
             pRes->Release();
             g_pExoResMan->ReleaseResObject(pRes);
@@ -5609,11 +5544,7 @@ int CSWSMessage::SendServerToPlayerCharacterDownloadFail(CSWSPlayer* pPlayer)
 
     pPlayer->m_resRef.CopyToString(sResRef);
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sResRef.GetLength(), MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage(sResRef.m_sString != 0 ? static_cast<unsigned int>((strlen)(sResRef.m_sString)) : 0u, MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCExoString(sResRef, 32);
     WriteBOOL(pPlayer->m_state == 4);
 
@@ -5682,13 +5613,8 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
             for (int64_t i = 0; i < vaultFiles.m_count; i++)
             {
                 sCharName = vaultFiles.m_pArray[i];
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                 sCharName = sCharName.SubString(
                     0, sCharName.GetLength() - 4);
-#else
-                sCharName = sCharName.SubString(
-                    0, (sCharName.m_sString != 0 ? static_cast<int>(strlen(sCharName.m_sString)) : 0) - 4);
-#endif
 
                 CResGFF* pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "),
                                             CResRef(sCharName));
@@ -5749,13 +5675,8 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
     for (int64_t i = 0; i < vaultFiles.m_count; i++)
     {
         sCharName = vaultFiles.m_pArray[i];
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         sCharName = sCharName.SubString(
             0, sCharName.GetLength() - 4);
-#else
-        sCharName = sCharName.SubString(
-            0, (sCharName.m_sString != 0 ? static_cast<int>(strlen(sCharName.m_sString)) : 0) - 4);
-#endif
 
         CResGFF* pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "), CResRef(sCharName));
         if (pGff->m_nValid != 0)
@@ -6448,7 +6369,7 @@ int CSWSMessage::SendServerToPlayerChatMultiLangMessage(unsigned char nLanguage,
     if (nLanguage != 8)
         return 0;
 
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (pList == 0)
         return 0;
 
@@ -6596,11 +6517,7 @@ int CSWSMessage::SendServerToPlayerJournalAddQuest(CSWSPlayer* pPlayer, const CE
                                                    int nQuestEntryXP)
 {
     unsigned char* pMsg;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     unsigned int nSize = sPlotId.GetLength() + 22;
-#else
-    unsigned int nSize = (sPlotId.m_sString != 0 ? static_cast<int>(strlen(sPlotId.m_sString)) : 0) + 22;
-#endif
 
     CreateWriteMessage(nSize, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteCExoLocStringServer(locName, 0);
@@ -6673,12 +6590,7 @@ int CSWSMessage::SendServerToPlayerChat_Shout(unsigned int nPlayerId, unsigned l
     CSWSCreature* pCreature =
         g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(speakerId);
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CreateWriteMessage(sText.GetLength() + 24, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString != 0 ? static_cast<int>(strlen(sText.m_sString)) : 0) + 24,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
 
     if (pCreature != 0)
     {

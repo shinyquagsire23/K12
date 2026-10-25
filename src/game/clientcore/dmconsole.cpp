@@ -41,6 +41,7 @@ extern CExoString g_returnCode;
 #include "port/libcstdlib.h"
 
 #include "port/crtapi.h"
+#include "exostringinline.h"
 
 // The appearance.2da rows (KOTOR 2's labels) whose models the animation census skips.
 enum {
@@ -359,11 +360,7 @@ char* dm_setrace(char* sArgs) {
     CExoString sLabel;
     char* pszResult = const_cast<char*>("Failure");
     g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(nRace, CExoString("LABEL"), &sLabel);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sLabel.GetLength() >= 1) {
-#else
-    if (sLabel.m_sString && static_cast<int>(strlen(sLabel.m_sString)) >= 1) {
-#endif
         CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
         pszResult = g_pAppManager->m_pClientExoApp->GetSWCMessage()
                         ->SendPlayerToServerUpdate_AppearanceRace(pCreature->m_objectId, nRace)
@@ -762,11 +759,7 @@ char* giveforcepowers(char* sArgs) {
             }
             break;
         }
-#if KOTOR1
         int nSpell = sValue.AsINT();
-#else
-        int nSpell = sValue.m_sString ? atoi(sValue.m_sString) : 0;
-#endif
         if (!pCreature->m_pStats->HasSpell(0, nSpell, 1)) {
             pCreature->AddSpellWithPrerequisites(nSpell);
         }

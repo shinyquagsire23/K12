@@ -23,6 +23,7 @@ const unsigned char CSWClass::CCLASS_SITHASSASSIN = 16;
 #endif
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 // Seeds the row's defaults. The bonus-feat clear starts one entry in, since the normal-feat clear
 // owns that slot.
@@ -567,11 +568,7 @@ void CSWClass::LoadSkillsTable(const CExoString& sTable)
 void CSWClass::LoadSpellGainTable(const CExoString& sTable)
 {
     int nValue;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sTable.GetLength() < 1)
-#else
-    if (sTable.m_sString == 0 || static_cast<int>(strlen(sTable.m_sString)) < 1)
-#endif
         return;
 
     C2DA* p2DAJedi = new C2DA(CResRef("CLS_SPGN_JEDI"), 0);

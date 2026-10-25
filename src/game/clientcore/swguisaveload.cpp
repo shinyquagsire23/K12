@@ -57,6 +57,7 @@ extern CExoSound* g_pExoSound;
 #include "port/crtapi.h"
 #include "exoinput.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // The longest save name the name panel's edit box and the virtual keyboard take.
 enum { SAVE_NAME_MAX_LENGTH = 16 };
@@ -1077,17 +1078,10 @@ bool CSWGuiSaveLoad::UnpackGame(unsigned int nSlot, const CExoString& sModule, C
 
     g_pExoResMan->NukeDirectory("GAMEINPROGRESS:", 1, 1);
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     futureGamePath = futureGamePath.Left(
         futureGamePath.GetLength() - 1);
     gameInProgressPath = gameInProgressPath.Left(
         gameInProgressPath.GetLength() - 1);
-#else
-    futureGamePath = futureGamePath.Left(
-        futureGamePath.m_sString != 0 ? static_cast<int>(strlen(futureGamePath.m_sString)) - 1 : -1);
-    gameInProgressPath = gameInProgressPath.Left(
-        gameInProgressPath.m_sString != 0 ? static_cast<int>(strlen(gameInProgressPath.m_sString)) - 1 : -1);
-#endif
 
 #if KOTOR1
     static_cast<void>(_rename(futureGamePath.CStr(), gameInProgressPath.CStr()));
@@ -2801,13 +2795,8 @@ void CSWGuiSaveLoadEntry::LoadData(const CExoString& fileName)
         m_nSaveSlot = (sSlot.m_sString != 0) ? atoi(sSlot.m_sString) : 0;
     }
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     m_saveName = fileName.Right(
         fileName.GetLength() - nSep - 3);
-#else
-    m_saveName = fileName.Right(
-        (fileName.m_sString != 0 ? static_cast<int>(strlen(fileName.m_sString)) : 0) - nSep - 3);
-#endif
 
     if (m_nSaveSlot == 2 && m_saveName == "cloud")
         m_bCloudSave = 1;
@@ -2897,11 +2886,7 @@ void CSWGuiSaveLoadEntry::LoadData(const CExoString& fileName)
             CExoString sValue = pGff->ReadFieldCExoString(&cResStruct, sLive.CStr(), nType, sLive);
 
             const CExoString& path = g_pExoBase->m_pAliasList->GetAliasPath(sLive, 0);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (path.GetLength() == 0)
-#else
-            if (path.m_sString == 0 || static_cast<unsigned int>(strlen(path.m_sString)) == 0)
-#endif
             {
                 if (nLiveContent & (1 << (i - 1)))
                 {

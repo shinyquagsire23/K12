@@ -276,7 +276,7 @@ extern "C" {
 
 DIR* opendir(const char* pszPath)
 {
-    if (!pszPath || pszPath[0] == '/' || DrivePath(pszPath)) return RealOpendir(pszPath);
+    if (pszPath[0] == '/' || DrivePath(pszPath)) return RealOpendir(pszPath);
     std::vector<std::string> dirs;
     std::string install;
     k2shim_layer_dirs(pszPath, dirs, install);

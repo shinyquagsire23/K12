@@ -8,6 +8,7 @@
 #include "resgff.h"
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 // Entries named "NW_JOURNAL*" mirror the owning creature's journal state: "NW_JOURNAL_ENTRY<tag>",
 // "NW_JOURNAL_DATE<tag>", "NW_JOURNAL_TIME<tag>" and "NW_JOURNAL_PICTURE<tag>". The letter after
@@ -21,13 +22,8 @@ enum {
     JOURNAL_VAR_TAG_MAX_LENGTH  = 128,
 };
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
 #define NW_JOURNAL_OWNER_AND_LENGTH(sName) \
     (m_pOwner != 0 && (sName).GetLength() >= JOURNAL_VAR_KIND_INDEX)
-#else
-#define NW_JOURNAL_OWNER_AND_LENGTH(sName) \
-    (m_pOwner != 0 && (sName).m_sString != 0 && static_cast<int>(strlen((sName).m_sString)) >= JOURNAL_VAR_KIND_INDEX)
-#endif
 
 const int CSWSScriptVarTable::VARTYPE_INTEGER  = 1;
 const int CSWSScriptVarTable::VARTYPE_FLOAT    = 2;

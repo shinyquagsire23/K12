@@ -17,6 +17,7 @@
 
 #include "port/crtapi.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 extern Vector zaxis;
 
@@ -552,11 +553,7 @@ CExoString CSWCAnimBase::GetAnimationName(unsigned short nAnimation)
             nAnimId, CTwoDimArrays::COL2DA_ANIMATIONS_NAME, &sResult))
         sResult = "";
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sResult.GetLength() > 0)
-#else
-    if (sResult.m_sString != 0 && static_cast<int>(strlen(sResult.m_sString)) > 0)
-#endif
         return sResult;
 
     CExoString sSuffix;
@@ -588,11 +585,7 @@ CExoString CSWCAnimBase::GetAnimationName(unsigned short nAnimation)
     }
 
     // NONE keeps its empty name instead of falling back to PAUSE's.
-#if KOTOR1  // K1: CExoString::IsEmpty is out of line
     bool bHasName = !sResult.IsEmpty();
-#else
-    bool bHasName = sResult.m_sString != 0 && sResult.m_sString[0] != 0;
-#endif
     if (nAnimation != SERVER_ANIMATION_NONE && !bHasName)
     {
         unsigned short nDefaultId = ServerToClientAnimation(SERVER_ANIMATION_PAUSE);

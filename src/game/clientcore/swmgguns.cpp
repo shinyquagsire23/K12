@@ -280,6 +280,7 @@ CAurObject* CSWMGGunBank::RemoveGun(CAurObject* pGun)
 
     pGun->AttachToObject(NULL, NULL, 0);
 
+    // inlined CExoArrayList<CAurObject*>::DelIndex(nIndex)
     m_aGuns.m_count--;
     for (int i = nIndex; i < m_aGuns.m_count; i++)
         m_aGuns.m_pArray[i] = m_aGuns.m_pArray[i + 1];

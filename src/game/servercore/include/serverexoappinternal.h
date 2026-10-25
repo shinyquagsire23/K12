@@ -62,20 +62,6 @@ struct Vector;
 
 #include "pathfindinfo.h"
 #include "exolinkedlistinternal.h"
-// A per-connection player record, held in the player and sysadmin lists.
-class CSWSPlayerListEntry {
-public:
-    virtual ~CSWSPlayerListEntry();
-    virtual CSWSPlayer* AsSWSPlayer();
-    unsigned int       m_playerId;
-    unsigned int       m_language;
-    char               _pad010[0x3c-0x10];
-    unsigned char      m_loginConfirmed;
-    char               _pad03d[0x58-0x3d];
-    unsigned long long m_pcObjectId;
-    char               _pad060[0x6c-0x60];
-    int                m_characterListReady;
-};
 class CVirtualMachineCmdImplementer;
 
 struct CWalkHitInfo;
@@ -448,8 +434,8 @@ public:
     void*                                  m_pConnectionLib;
     CGameObjectArray*                      m_pObjectArray;
     unsigned long long                     m_moduleObjectId;
-    CExoLinkedList<CSWSPlayerListEntry>*   m_pPlayerList;
-    CExoLinkedList<CSWSPlayerListEntry>*   m_pSysAdminList;
+    CExoLinkedList<CSWSClient>*   m_pPlayerList;
+    CExoLinkedList<CSWSClient>*   m_pSysAdminList;
     int                                    m_debugMode;
     char _pad_100c0[0x100c0-0x100bc];
     CExoLinkedList<unsigned long long>*    m_exclusionList1;

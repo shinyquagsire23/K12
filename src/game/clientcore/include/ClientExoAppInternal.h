@@ -95,7 +95,7 @@ struct LiveContentEntry {
 
 
 // One queued animation, holding the name, its float and int parameters, and an unused halfword.
-struct QueuedAnim {
+struct CQueuedAnim {
     CExoString     m_sName;
     float          m_fParam;
     int            m_nParam;
@@ -281,7 +281,7 @@ public:
 #else
     char                m_sScreenShotFile[20];
 #endif
-    CExoLinkedList<QueuedAnim*> m_queuedAnims;
+    CExoLinkedList<CQueuedAnim> m_queuedAnims;
     float               m_fQueuedAnimDelay;
     char                _pad22c[0x230-0x22c];
     unsigned long long  m_oidReserved1;

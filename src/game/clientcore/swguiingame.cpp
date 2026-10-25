@@ -43,6 +43,7 @@
 #include "nwscriptconst.h"
 #include "enginevfx.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 
 #if KOTOR1
@@ -1667,12 +1668,7 @@ void CSWGuiMessageBox::AddMessageLabel()
     extent.w = m_lbMessage.m_innerExtent.w - 2 * m_lbMessage.m_nPadding;
     m_lblMessage.SetExtent(extent);
     CSWGuiText* pText = &m_lblMessage.m_text;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (m_lblMessage.m_text.m_params.m_sText.GetLength() >= 1)
-#else
-    if (m_lblMessage.m_text.m_params.m_sText.m_sString
-        && static_cast<int>(strlen(m_lblMessage.m_text.m_params.m_sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

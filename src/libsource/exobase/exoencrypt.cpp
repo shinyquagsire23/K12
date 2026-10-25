@@ -7,6 +7,7 @@
 
 #include "port/libcbase.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 // RFC 1321's padding block, non-const on purpose.
 static unsigned char s_pPadding[64] = {
@@ -25,13 +26,8 @@ CExoString CExoEncrypt::EncryptString(const CExoString& sInput)
     char szHex[40];
 
     MD5Init();
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     MD5Update(reinterpret_cast<unsigned char*>(sInput.CStr()),
               sInput.GetLength());
-#else
-    MD5Update(reinterpret_cast<unsigned char*>(sInput.CStr()),
-              sInput.m_sString != 0 ? static_cast<unsigned int>(strlen(sInput.m_sString)) : 0);
-#endif
     MD5Final();
 
     for (int i = 0; i < 16; i++)

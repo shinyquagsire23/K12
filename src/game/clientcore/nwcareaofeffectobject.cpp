@@ -25,6 +25,7 @@ extern CExoSound* g_pExoSound;
 
 #include "port/crtapi.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 extern int quaternionidentityoptimization;
 
@@ -804,11 +805,7 @@ int CSWCAreaOfEffectObject::SetEnvMap(int a, int b, const CResRef& r) {
             CResRef envMap(pModule->m_pArea->m_defaultEnvMap);
             envMap.CopyToString(sEnvMap);
         }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (sEnvMap.GetLength() == 0)
-#else
-        if (sEnvMap.m_sString == 0 || static_cast<int>(strlen(sEnvMap.m_sString)) == 0)
-#endif
             return 0;
     } else {
         r.CopyToString(sEnvMap);
@@ -834,11 +831,7 @@ int CSWCAreaOfEffectObject::SetEnvMap(unsigned char nSubObject, int a, int b, co
             CResRef envMap(pModule->m_pArea->m_defaultEnvMap);
             envMap.CopyToString(sEnvMap);
         }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (sEnvMap.GetLength() == 0)
-#else
-        if (sEnvMap.m_sString == 0 || static_cast<int>(strlen(sEnvMap.m_sString)) == 0)
-#endif
             return 0;
     } else {
         r.CopyToString(sEnvMap);

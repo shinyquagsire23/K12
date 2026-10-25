@@ -44,6 +44,7 @@ int g_bEnableLiveContentIgnore;
 
 #include "port/libcbase.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 // Reads the EnableCheats ini key; a nonzero value also flags the save as cheated.
 int GetCheatsTurnedOn() {
@@ -52,21 +53,11 @@ int GetCheatsTurnedOn() {
     if (g_pAppManager->m_pServerExoApp) {
         if (ini.ReadIniEntry(sValue, CExoString(EXO_GAME_INI), CExoString("Game Options"),
                              CExoString("EnableCheats"))) {
-#if KOTOR1
             int nValue = sValue.AsINT();
             if (nValue) {
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->m_cheatUsedFlags = 1;
                 return nValue == 1;
             }
-#else
-            if (sValue.m_sString) {
-                int nValue = atoi(sValue.m_sString);
-                if (nValue) {
-                    g_pAppManager->m_pServerExoApp->GetPartyTable()->m_cheatUsedFlags = 1;
-                    return nValue == 1;
-                }
-            }
-#endif
         }
     }
     return 0;

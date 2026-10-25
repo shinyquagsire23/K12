@@ -2018,7 +2018,7 @@ void CSWPartyTable::DistributeExperience(int xp, int flag)
                 pCreature->m_pStats->AutoLevelup(1);
         }
     }
-    CExoLinkedList<CSWSPlayerListEntry>* ppList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CSWSPlayer* pPlayer = static_cast<CSWSClient*>(ppList->m_pInternal->m_pHead->m_pData)->AsSWSPlayer();
     unsigned long long playerId = pPlayer->m_gameObjectId;
     CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(playerId);
@@ -2704,7 +2704,7 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
     CExoString saveName;
     CClientExoApp* pClientApp = g_pAppManager->m_pClientExoApp;
     CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    CExoLinkedList<CSWSPlayerListEntry>* ppList = pServerApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppList = pServerApp->GetPlayerList();
     CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppList->m_pInternal->m_pHead ? ppList->m_pInternal->m_pHead->m_pData : 0);
     K2_ASSUME(pPlayer != 0);
     CSWSCreature* pOldPC = pServerApp->GetCreatureByGameObjectID(pPlayer->m_gameObjectId);

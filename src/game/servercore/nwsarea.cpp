@@ -94,6 +94,7 @@ const float CSWSArea::MAX_OBJECT_CHATSHOUTSILENT_DISTANCE = 1000.0f;
 
 #include "port/libcstring.h"
 #include "port/crtapi.h"
+#include "exostringinline.h"
 
 // Debug walk-square overlay used by the testpathpoints console command.
 void AurRemoveAllDrawableSquares();
@@ -600,12 +601,7 @@ void CSWSArea::IncreaseAILevelPriority()
         else if (pGameObject->AsSWSDoor() != 0)
         {
             CSWSDoor* pDoor = pGameObject->AsSWSDoor();
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (pDoor->m_scriptSlots[5].GetLength() >= 1 && pDoor->m_bStatic == 0)
-#else
-            if (pDoor->m_scriptSlots[5].m_sString != 0 &&
-                static_cast<int>(strlen(pDoor->m_scriptSlots[5].m_sString)) >= 1 && pDoor->m_bStatic == 0)
-#endif
                 pAIMaster->SetAILevel(pObject, 1);
         }
         else if (pGameObject->AsSWSPlaceable() != 0 && pGameObject->AsSWSPlaceable()->m_bStatic == 0)
@@ -2879,7 +2875,7 @@ void CSWSArea::SetCurrentWeather(unsigned char nWeather, int bTurnOn)
         }
     }
 
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
 
     if (pList != 0)
     {

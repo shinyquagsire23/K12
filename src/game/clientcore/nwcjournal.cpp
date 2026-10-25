@@ -429,24 +429,28 @@ SJournalEntry* CSWCJournal::GetActiveEntryAt(int i)
 // Empties both pages, freeing the storage of each of the four lists.
 void CSWCJournal::ClearAll()
 {
+    // inlined CExoArrayList<SJournalEntry>::Clear()
     if (m_done.m_entries.m_pArray) {
         delete[] m_done.m_entries.m_pArray;
         m_done.m_entries.m_pArray = 0;
         m_done.m_entries.m_capacity = 0;
     }
     m_done.m_entries.m_count = 0;
+    // inlined CExoArrayList<int>::Clear()
     if (m_done.m_sortOrder.m_pArray) {
         delete[] m_done.m_sortOrder.m_pArray;
         m_done.m_sortOrder.m_pArray = 0;
         m_done.m_sortOrder.m_capacity = 0;
     }
     m_done.m_sortOrder.m_count = 0;
+    // inlined CExoArrayList<SJournalEntry>::Clear()
     if (m_active.m_entries.m_pArray) {
         delete[] m_active.m_entries.m_pArray;
         m_active.m_entries.m_pArray = 0;
         m_active.m_entries.m_capacity = 0;
     }
     m_active.m_entries.m_count = 0;
+    // inlined CExoArrayList<int>::Clear()
     if (m_active.m_sortOrder.m_pArray) {
         delete[] m_active.m_sortOrder.m_pArray;
         m_active.m_sortOrder.m_pArray = 0;

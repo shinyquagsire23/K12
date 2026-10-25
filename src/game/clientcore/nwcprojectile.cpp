@@ -27,6 +27,7 @@
 #include <cstdio>
 #include "serveranimation.h"
 #include "soundprioritygroup.h"
+#include "exostringinline.h"
 
 #if KOTOR1  // K1: model files are SDL_RWops streams
 struct SDL_RWops;
@@ -871,17 +872,8 @@ int CSWCProjectile::LoadModel(const CResRef& r, unsigned char which, unsigned ch
 void CSWCProjectile::CreateMuzzleFlash(const CExoString& sModel, CAurObject* pAttachTo,
                                       const CExoString& sPart)
 {
-#if KOTOR1  // K1 has CExoString::IsEmpty out of line
     if (sModel.IsEmpty() || pAttachTo == 0)
         return;
-#else
-    if (sModel.m_sString == 0)
-        return;
-    if (sModel.m_sString[0] == 0)
-        return;
-    if (pAttachTo == 0)
-        return;
-#endif
 
     m_pMuzzleFlash = NewCAurObject(sModel.CStr(), const_cast<char*>("muzzleflash"), 0, 0);
     m_pMuzzleFlash->AttachToObject(pAttachTo, sPart.CStr(), 3);

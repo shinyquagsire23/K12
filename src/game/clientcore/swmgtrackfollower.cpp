@@ -166,6 +166,7 @@ CAurObject* CSWTrackFollower::RemoveModel(CAurObject* pModel) {
     int nModels = m_models.m_count;
     for (int i = 0; i < nModels; i++) {
         if (m_models.m_pArray[i].pModel == pModel) {
+            // inlined CExoArrayList<SWMGFollowerModel>::DelIndex(i)
             m_models.m_count--;
             for (int j = i; j < m_models.m_count; j++)
                 m_models.m_pArray[j] = m_models.m_pArray[j + 1];
@@ -289,6 +290,7 @@ CResRef CSWTrackFollower::GetSoundName(int index) {
 // Points a sound channel at a new resref and returns that channel's live source. Channel 1 only
 // carries a name (the one-shot death sound); channel 0 owns the streaming source, built on first
 // use and torn down when the name goes invalid.
+// EFFECTIVE: one null test is a branch in the orig and a cinc select here.
 CExoSoundSource* CSWTrackFollower::SetSoundName(int index, CResRef const& resSound) {
     if (index >= 0) {
         if (index == 0) {
@@ -1024,19 +1026,13 @@ CSWMiniPlayer::CSWMiniPlayer(CSWMiniGame* pMiniGame)
     m_nStartHookOrientationZ = 0;
 #endif
 #if KOTOR1  // K1: half the reserved capacities
-    m_keyInfo.Allocate(4);
-    m_keyInfo.m_count = 4;
-    m_keyInfo2.Allocate(4);
-    m_keyInfo2.m_count = 4;
-    m_paKeyInfo.Allocate(8);
-    m_paKeyInfo.m_count = 8;
+    m_keyInfo.SetSize(4);
+    m_keyInfo2.SetSize(4);
+    m_paKeyInfo.SetSize(8);
 #else
-    m_keyInfo.Allocate(8);
-    m_keyInfo.m_count = 8;
-    m_keyInfo2.Allocate(8);
-    m_keyInfo2.m_count = 8;
-    m_paKeyInfo.Allocate(16);
-    m_paKeyInfo.m_count = 16;
+    m_keyInfo.SetSize(8);
+    m_keyInfo2.SetSize(8);
+    m_paKeyInfo.SetSize(16);
 #endif
     m_keyInfo.m_count = 0;
     m_keyInfo2.m_count = 0;

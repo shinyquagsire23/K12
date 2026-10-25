@@ -2977,22 +2977,7 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
             if (pObj->AsSWSTrigger()->LineSegmentIntersectTrigger(from, to) != 0)
             {
                 unsigned long long id = m_objects.m_pArray[i];
-                int count = pOut->m_count;
-                if (count == pOut->m_capacity)
-                {
-                    int newCap = (count == 0) ? 16 : count * 2;
-                    pOut->m_capacity = newCap;
-                    unsigned long long* pOld = pOut->m_pArray;
-                    unsigned long long* pNew = new unsigned long long[newCap];
-                    K2_ASSUME(count < newCap);
-                    pOut->m_pArray = pNew;
-                    for (int64_t k = 0; k < count; k++)
-                        pNew[k] = pOld[k];
-                    delete[] pOld;
-                    count = pOut->m_count;
-                }
-                pOut->m_count = count + 1;
-                pOut->m_pArray[count] = id;
+                pOut->Add(id);
                 nFound = 1;
             }
         }
@@ -3001,22 +2986,7 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
             if (pObj->AsSWSAreaOfEffectObject()->LineSegmentIntersectAreaOfEffect(from, to) != 0)
             {
                 unsigned long long id = m_objects.m_pArray[i];
-                int count = pOut->m_count;
-                if (count == pOut->m_capacity)
-                {
-                    int newCap = (count == 0) ? 16 : count * 2;
-                    pOut->m_capacity = newCap;
-                    unsigned long long* pOld = pOut->m_pArray;
-                    unsigned long long* pNew = new unsigned long long[newCap];
-                    K2_ASSUME(count < newCap);
-                    pOut->m_pArray = pNew;
-                    for (int64_t k = 0; k < count; k++)
-                        pNew[k] = pOld[k];
-                    delete[] pOld;
-                    count = pOut->m_count;
-                }
-                pOut->m_count = count + 1;
-                pOut->m_pArray[count] = id;
+                pOut->Add(id);
                 nFound = 1;
             }
         }
@@ -3025,22 +2995,7 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
             if (pObj->AsSWSEncounter()->LineSegmentIntersectActivateArea(from, to) != 0)
             {
                 unsigned long long id = m_objects.m_pArray[i];
-                int count = pOut->m_count;
-                if (count == pOut->m_capacity)
-                {
-                    int newCap = (count == 0) ? 16 : count * 2;
-                    pOut->m_capacity = newCap;
-                    unsigned long long* pOld = pOut->m_pArray;
-                    unsigned long long* pNew = new unsigned long long[newCap];
-                    K2_ASSUME(count < newCap);
-                    pOut->m_pArray = pNew;
-                    for (int64_t k = 0; k < count; k++)
-                        pNew[k] = pOld[k];
-                    delete[] pOld;
-                    count = pOut->m_count;
-                }
-                pOut->m_count = count + 1;
-                pOut->m_pArray[count] = id;
+                pOut->Add(id);
                 nFound = 1;
             }
         }
@@ -3076,22 +3031,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
             if (pObj->AsSWSTrigger()->InTrigger(pos) != 0)
             {
                 unsigned long long id = m_objects.m_pArray[i];
-                int count = pOut->m_count;
-                if (count == pOut->m_capacity)
-                {
-                    int newCap = (count == 0) ? 16 : count * 2;
-                    pOut->m_capacity = newCap;
-                    unsigned long long* pOld = pOut->m_pArray;
-                    unsigned long long* pNew = new unsigned long long[newCap];
-                    K2_ASSUME(count < newCap);
-                    pOut->m_pArray = pNew;
-                    for (int64_t k = 0; k < count; k++)
-                        pNew[k] = pOld[k];
-                    delete[] pOld;
-                    count = pOut->m_count;
-                }
-                pOut->m_count = count + 1;
-                pOut->m_pArray[count] = id;
+                pOut->Add(id);
                 nFound = 1;
             }
         }
@@ -3100,22 +3040,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
             if (pObj->AsSWSAreaOfEffectObject()->InAreaOfEffect(pos) != 0)
             {
                 unsigned long long id = m_objects.m_pArray[i];
-                int count = pOut->m_count;
-                if (count == pOut->m_capacity)
-                {
-                    int newCap = (count == 0) ? 16 : count * 2;
-                    pOut->m_capacity = newCap;
-                    unsigned long long* pOld = pOut->m_pArray;
-                    unsigned long long* pNew = new unsigned long long[newCap];
-                    K2_ASSUME(count < newCap);
-                    pOut->m_pArray = pNew;
-                    for (int64_t k = 0; k < count; k++)
-                        pNew[k] = pOld[k];
-                    delete[] pOld;
-                    count = pOut->m_count;
-                }
-                pOut->m_count = count + 1;
-                pOut->m_pArray[count] = id;
+                pOut->Add(id);
                 nFound = 1;
             }
         }
@@ -3124,22 +3049,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
             if (pObj->AsSWSEncounter()->GetInActivateArea(pos) != 0)
             {
                 unsigned long long id = m_objects.m_pArray[i];
-                int count = pOut->m_count;
-                if (count == pOut->m_capacity)
-                {
-                    int newCap = (count == 0) ? 16 : count * 2;
-                    pOut->m_capacity = newCap;
-                    unsigned long long* pOld = pOut->m_pArray;
-                    unsigned long long* pNew = new unsigned long long[newCap];
-                    K2_ASSUME(count < newCap);
-                    pOut->m_pArray = pNew;
-                    for (int64_t k = 0; k < count; k++)
-                        pNew[k] = pOld[k];
-                    delete[] pOld;
-                    count = pOut->m_count;
-                }
-                pOut->m_count = count + 1;
-                pOut->m_pArray[count] = id;
+                pOut->Add(id);
                 nFound = 1;
             }
         }
@@ -3149,22 +3059,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
             if (pObj->AsSWSDoor()->InDoor(pos) != 0)
             {
                 unsigned long long id = m_objects.m_pArray[i];
-                int count = pOut->m_count;
-                if (count == pOut->m_capacity)
-                {
-                    int newCap = (count == 0) ? 16 : count * 2;
-                    pOut->m_capacity = newCap;
-                    unsigned long long* pOld = pOut->m_pArray;
-                    unsigned long long* pNew = new unsigned long long[newCap];
-                    K2_ASSUME(count < newCap);
-                    pOut->m_pArray = pNew;
-                    for (int64_t k = 0; k < count; k++)
-                        pNew[k] = pOld[k];
-                    delete[] pOld;
-                    count = pOut->m_count;
-                }
-                pOut->m_count = count + 1;
-                pOut->m_pArray[count] = id;
+                pOut->Add(id);
                 nFound = 1;
             }
         }

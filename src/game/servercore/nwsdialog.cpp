@@ -66,6 +66,7 @@ bool s_oondarDone;
 #endif
 
 #include "port/crtapi.h"
+#include "exostringinline.h"
 #if !KOTOR1
 static void __attribute__((noinline)) FormatPath(char* pBuf, int nLen, const char* pszFmt, ...) {
     __builtin_va_list ap;
@@ -344,13 +345,8 @@ void CSWSDialog::GiveDialogPlotXP(int nXpKind, float fAmount)
 void CSWSDialog::AddJournalEntry(const CExoString& sEntry, unsigned int nState,
                                  unsigned int nPlayerId)
 {
-#if KOTOR1  // CExoString::IsEmpty is out of line
     if (sEntry.IsEmpty())
         return;
-#else
-    if (sEntry.m_sString == 0 || sEntry.m_sString[0] == 0)
-        return;
-#endif
 
     CSWSPlayer* pPlayer =
         static_cast<CSWSPlayer*>(g_pAppManager->m_pServerExoApp->GetClientObjectByPlayerId(nPlayerId, 0));

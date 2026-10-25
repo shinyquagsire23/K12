@@ -2225,6 +2225,7 @@ void CSWGuiMainMenu::DeleteModuleList()
 {
     while (m_aModuleNames.m_count > 0)
     {
+        // inlined CExoArrayList<CExoString>::DelIndex(0)
         m_aModuleNames.m_count--;
         if (m_aModuleNames.m_count > 0)
         {
@@ -2235,6 +2236,7 @@ void CSWGuiMainMenu::DeleteModuleList()
         }
     }
 
+    // inlined CExoArrayList<CExoString>::Clear()
     if (m_aModuleNames.m_pArray)
     {
         delete[] m_aModuleNames.m_pArray;

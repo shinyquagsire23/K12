@@ -241,6 +241,7 @@ CSWSObject::~CSWSObject()
         if (pEffect)
             delete pEffect;
     }
+    // inlined CExoArrayList<CGameEffect*>::Clear()
     if (m_effects.m_pArray) {
         delete[] m_effects.m_pArray;
         m_effects.m_pArray = 0;
@@ -1061,6 +1062,7 @@ void CSWSObject::RemoveEffect(CGameEffect* pEffect) {
             }
         }
     }
+    // inlined CExoArrayList<CGameEffect*>::DelIndex(nIndex)
     m_effects.m_count--;
     for (int j = nIndex; m_effects.m_count > j; j++)
         m_effects.m_pArray[j] = m_effects.m_pArray[j + 1];
@@ -2049,7 +2051,7 @@ void CSWSObject::PlaySoundSet(CSWSPlayer* pPlayer, unsigned char nSoundSet) {
         pMessage->SendServerToPlayerVoiceChat_Play(pPlayer, m_objectId, nSoundSet);
         return;
     }
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppPlayers == 0)
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
@@ -3248,7 +3250,7 @@ void CSWSObject::ReportOverflow(int nStrRef, int nAmount, int nLimit, int nUnuse
     if (g_pAppManager->m_pServerExoApp->GetDebugMode() != 1)
         return;
     CSWSMessage* pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (pMessage == 0)
         return;
     if (ppPlayers == 0)

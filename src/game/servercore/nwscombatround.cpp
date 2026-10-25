@@ -2065,6 +2065,7 @@ void CSWSCombatAttackData::RemoveTopSubAttack()
 {
     if (m_subAttacks.m_count > 0)
     {
+        // inlined CExoArrayList<CSWSCombatSubAttack>::DelIndex(0)
         m_subAttacks.m_count--;
         for (int64_t i = 0; i < m_subAttacks.m_count; i++)
         {

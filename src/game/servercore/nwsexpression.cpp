@@ -5,6 +5,7 @@
 #include "CExoArrayListImpl.h"
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 CSWSExpressionNode::CSWSExpressionNode()
 {
@@ -171,11 +172,7 @@ int CSWSExpression::ParseString(CExoString sString)
     CExoArrayList<char> aChars;
 
     int nDepth = 0;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     int nLength = sString.GetLength();
-#else
-    int nLength = (sString.m_sString != NULL) ? static_cast<int>(strlen(sString.m_sString)) : 0;
-#endif
     for (int i = 0; i < nLength; i++) {
         char ch = sString[i];
         switch (ch) {
@@ -252,11 +249,7 @@ int CSWSExpression::ParseString(CExoString sString)
             aChars.Add(ch);
             // Keep accumulating while the next character is another literal; otherwise flush the
             // run as one literal node.
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (i + 1 < sString.GetLength()) {
-#else
-            if (i + 1 < ((sString.m_sString != NULL) ? static_cast<int>(strlen(sString.m_sString)) : 0)) {
-#endif
                 char chNext = sString[i + 1];
                 if (chNext != '(' && chNext != ')' && chNext != '*' && chNext != '|')
                     break;
@@ -313,11 +306,7 @@ int CSWSExpression::TestString(const CExoString& sString, int bStoreMatches)
     CExoArrayList<CSWSExpressionNode*> aPath;
     aPath.Add(NewNode(CSWSExpressionNode::NODE_JOIN));
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     int nLen = sTest.GetLength();
-#else
-    int nLen = (sTest.m_sString != NULL) ? static_cast<int>(strlen(sTest.m_sString)) : 0;
-#endif
     int nPos = 0;
     int nIndex = 0;
 
@@ -327,13 +316,8 @@ int CSWSExpression::TestString(const CExoString& sString, int bStoreMatches)
         case CSWSExpressionNode::NODE_LITERAL: {
             // For a literal run, the whole of m_sText has to be present at nPos.
             aPath.Add(pNode);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             int nTextLen =
                 pNode->m_sText.GetLength();
-#else
-            int nTextLen =
-                (pNode->m_sText.m_sString != NULL) ? static_cast<int>(strlen(pNode->m_sText.m_sString)) : 0;
-#endif
             for (int i = 0; i < nTextLen; i++) {
                 if (sTest[nPos + i] != pNode->m_sText[i]) {
                     nIndex++;

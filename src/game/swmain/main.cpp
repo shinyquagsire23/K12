@@ -135,6 +135,7 @@ bool IsGameModded()
 #include "port/k1gui.h"
 #endif
 #include "port/crtapi.h"
+#include "exostringinline.h"
 
 // GL enum translation tables, mapping the engine's ordinals onto the API's values.
 extern unsigned int enableTranslationTable[];
@@ -1431,11 +1432,7 @@ void ReInitAurora(unsigned int nWidth, unsigned int nHeight, unsigned char nBits
 
     if (ini.ReadIniEntry(sValue, CExoString(EXO_GAME_INI), CExoString("Graphics Options"),
                          CExoString("Disable Write-Only VBO")) != 0) {
-#if KOTOR1
         if (sValue.AsINT() == 1)
-#else
-        if (sValue.m_sString != 0 && atoi(sValue.m_sString) == 1)
-#endif
             AurDisableVertexBufferObjectsWriteOnly();
         else
             AurEnableVertexBufferObjectsWriteOnly();

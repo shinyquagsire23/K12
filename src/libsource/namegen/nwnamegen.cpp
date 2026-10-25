@@ -11,6 +11,7 @@ static const float kRandMax = 32767.0f;
 #endif
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
+#include "exostringinline.h"
 
 // The name tables' letter codes past 'a'..'z', and the species that picks the animal table.
 enum {
@@ -225,13 +226,8 @@ CExoString CSWNameGen::GetRandomName(unsigned short nSpecies, unsigned char nGen
             if (nGender & 4)
                 sLast = sTable + CExoString("l");
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (sFirst.GetLength() != 0 &&
                 sLast.GetLength() != 0) {
-#else
-            if (sFirst.m_sString != 0 && static_cast<int>(strlen(sFirst.m_sString)) != 0 &&
-                sLast.m_sString != 0 && static_cast<int>(strlen(sLast.m_sString)) != 0) {
-#endif
                 CExoString sFirstPart;
                 CExoString sLastPart;
 
@@ -259,13 +255,8 @@ CExoString CSWNameGen::GetRandomName(unsigned short nSpecies, unsigned char nGen
                         m_bTableLoaded = 0;
                         m_pRes->Release();
                     }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                     if (sFirstPart.GetLength() >= 1 &&
                         sLastPart.GetLength() >= 1)
-#else
-                    if (sFirstPart.m_sString != 0 && static_cast<int>(strlen(sFirstPart.m_sString)) >= 1 &&
-                        sLastPart.m_sString != 0 && static_cast<int>(strlen(sLastPart.m_sString)) >= 1)
-#endif
                         return sFirstPart + CExoString(" ") + sLastPart;
                     return CExoString("");
                 }
@@ -293,22 +284,12 @@ CExoString CSWNameGen::GetRandomName(unsigned short nSpecies, unsigned char nGen
                                 m_bTableLoaded = 0;
                                 m_pRes->Release();
                             }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                             if (sFirstPart.GetLength() >= 1 &&
                                 sLastPart.GetLength() > 0)
-#else
-                            if (sFirstPart.m_sString != 0 && static_cast<int>(strlen(sFirstPart.m_sString)) >= 1 &&
-                                sLastPart.m_sString != 0 && static_cast<int>(strlen(sLastPart.m_sString)) > 0)
-#endif
                                 break;
                         }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                         if (sFirstPart.GetLength() >= 1 &&
                             sLastPart.GetLength() >= 1)
-#else
-                        if (sFirstPart.m_sString != 0 && static_cast<int>(strlen(sFirstPart.m_sString)) >= 1 &&
-                            sLastPart.m_sString != 0 && static_cast<int>(strlen(sLastPart.m_sString)) >= 1)
-#endif
                             return sFirstPart + CExoString(" ") + sLastPart;
                     }
                 }
@@ -326,19 +307,11 @@ CExoString CSWNameGen::GetRandomName(unsigned short nSpecies, unsigned char nGen
         m_pRes->Release();
     }
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sFirst.GetLength() >= 1) {
-#else
-    if (sFirst.m_sString != 0 && static_cast<int>(strlen(sFirst.m_sString)) >= 1) {
-#endif
         SetResRef(CResRef(sFirst), 0);
         if (!m_pRes->Demand())
             return CExoString("");
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     } else if (sLast.GetLength() >= 1) {
-#else
-    } else if (sLast.m_sString != 0 && static_cast<int>(strlen(sLast.m_sString)) >= 1) {
-#endif
         SetResRef(CResRef(sLast), 0);
         if (!m_pRes->Demand())
             return CExoString("");

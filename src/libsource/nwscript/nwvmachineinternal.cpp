@@ -11,6 +11,7 @@
 #include "gameobjectarray.h"
 
 #include <string.h>
+#include "exostringinline.h"
 
 enum { SCRIPT_SITUATION_COUNT = 8 };        // m_aScriptSituations
 enum { INSTRUCTION_PTR_STACK_SIZE = 128 };  // m_anInstructionPtrs
@@ -114,13 +115,8 @@ int CVirtualMachineInternal::SetUpScriptSituation(CVirtualMachineScript* pSituat
 int CVirtualMachineInternal::RunScript(CExoString* pScriptName, unsigned long long objectId,
                                        int nParam)
 {
-#if KOTOR1  // K1: CExoString::IsEmpty out of line, compared against 1
     if (pScriptName == 0 || pScriptName->IsEmpty() == 1)
         return 0;
-#else
-    if (pScriptName == 0 || pScriptName->m_sString == 0 || *pScriptName->m_sString == 0)
-        return 0;
-#endif
 
     // -1 is "no situation live": the very first entry re-seats the embedding VM's own stack.
     if (m_nSituationCount == -1) {
@@ -1113,6 +1109,7 @@ CVirtualMachineStack::~CVirtualMachineStack()
     ClearStack();
 }
 
+// EFFECTIVE: the value and type array pointers are reloaded at different points in the loop.
 void CVirtualMachineStack::ClearStack()
 {
     if (m_pTypeData == 0) {

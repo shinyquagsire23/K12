@@ -19,6 +19,7 @@
 
 #include "port/libcstring.h"
 #include "exoinput.h"
+#include "exostringinline.h"
 
 float GetResolutionTextScalar();
 #if KOTOR1
@@ -190,12 +191,7 @@ void CSWGuiQuestItem::OnControlEntered(CSWGuiControl* pControl)
     CSWGuiText* pText = &m_lblDescription.m_text;
 
     CSWGuiExtent extent = m_lblDescription.m_extent;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (m_lblDescription.m_text.m_params.m_sText.GetLength() >= 1)
-#else
-    if (m_lblDescription.m_text.m_params.m_sText.m_sString != 0 &&
-        static_cast<int>(strlen(m_lblDescription.m_text.m_params.m_sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

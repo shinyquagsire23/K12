@@ -2,6 +2,9 @@
 // steps, and the mouse, cursor and hit-check handling.
 
 #include "k2stdint.h"
+#ifdef K2_FIX_ENGINE_BUGS
+#include <cinttypes>
+#endif
 #include "port/Mac/MacMain.h"
 #include <string>
 #include "CExoArrayListImpl.h"
@@ -2617,7 +2620,7 @@ void CClientExoAppInternal::ReadPlayBackInputEvents()
     int           nCX, nCY;
     int           nMsgA, nMsgC;
     unsigned int  nSize;
-    unsigned long long nOid;
+    uint64_t      nOid;
     float         fA, fB, fC;
     CExoFile*     pFile;
     int           bMsgStarted = 0;
@@ -2635,7 +2638,20 @@ void CClientExoAppInternal::ReadPlayBackInputEvents()
 #if KOTOR1 || defined(K2_FIX_ENGINE_BUGS)
     static_cast<void>(sscanf(&szLine[7], "%d", &nStart));
 #else
+    // The original passes cType as a second, unused argument.
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(push)
+#pragma warning(disable : 4474)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-extra-args"
+#endif
     static_cast<void>(sscanf(&szLine[7], "%d", &nStart, &cType));
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
 #endif
 
     while (true) {
@@ -2701,10 +2717,10 @@ void CClientExoAppInternal::ReadPlayBackInputEvents()
             } while (nSpaces3 < 3);
 
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)
-            // K1 scans the 32-bit size with "%ld".
-            static_cast<void>(sscanf(szLine, "%d %d %ld ", &nMsgA, &nMsgC, &nSize));
+            // K1 scans the 32-bit size with "%ld", which stores 64 bits at its address.
+            static_cast<void>(sscanf(szLine, "%d %d %ld ", &nMsgA, &nMsgC, reinterpret_cast<int64_t*>(&nSize)));
 #elif defined(K2_FIX_ENGINE_BUGS)
-            static_cast<void>(sscanf(szLine, "%d %d %u ", &nMsgA, &nMsgC, &nSize));
+            static_cast<void>(sscanf(szLine, "%d %d %" SCNu32 " ", &nMsgA, &nMsgC, &nSize));
 #else
             static_cast<void>(sscanf(szLine, "%d %d %d ", &nMsgA, &nMsgC, &nSize));
 #endif
@@ -2759,11 +2775,12 @@ void CClientExoAppInternal::ReadPlayBackInputEvents()
             pEvt->m_nTime = nTime - nStart;
             pEvt->m_type = cType;
 #ifdef K2_FIX_ENGINE_BUGS
-            static_cast<void>(sscanf(szLine, "%llx %f %f %f", &nOid, &fA, &fB, &fC));
+            static_cast<void>(sscanf(szLine, "%" SCNx64 " %f %f %f", &nOid, &fA, &fB, &fC));
 #elif KOTOR1
             static_cast<void>(sscanf(szLine, "%lx %f %f %f", &nOid, &fA, &fB, &fC));
 #else
-            static_cast<void>(sscanf(szLine, "%x %f %f %f", &nOid, &fA, &fB, &fC));
+            // %x stores 32 bits: the id's high half keeps whatever the slot held.
+            static_cast<void>(sscanf(szLine, "%x %f %f %f", reinterpret_cast<unsigned int*>(&nOid), &fA, &fB, &fC));
 #endif
             pEvt->m_oid = nOid;
             pEvt->m_fA = fA;
@@ -2963,6 +2980,7 @@ void CClientExoAppInternal::GetDefaultActions()
 
     for (int i = 0; i < m_actions.m_count; i++)
         m_actions.m_pArray[i].Clear();
+    // inlined CExoArrayList<CSWGuiInterfaceAction>::Clear()
     if (m_actions.m_pArray) {
         delete[] m_actions.m_pArray;
         m_actions.m_pArray = 0;

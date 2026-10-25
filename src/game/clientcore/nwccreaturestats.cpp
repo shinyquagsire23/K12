@@ -1460,7 +1460,7 @@ void CSWCCreatureStats::RemoveKnownSpell(unsigned char nClassPos, unsigned int n
     m_classes[nClassPos].RemoveKnownSpell(0, nSpellId);
 }
 
-// CExoArrayList<unsigned int>::Add, with the element slot addressed before the count is stored.
+// inlined CExoArrayList<unsigned int>::Add(nValue)
 static inline void AppendKnownSpell(CExoArrayList<unsigned int>& lvl, unsigned int nValue)
 {
     int idx = lvl.m_count;
@@ -2423,24 +2423,11 @@ void CSWCLevelUpStats::CalcNumberFeats(unsigned char& nNormal, unsigned char& nB
 // first-level racial bonus feats, the last class slot's class-progression grants (the
 // Jedi-multiclass range gated separately), PC-only grants, and a fixed companion cascade keyed on
 // the party tag. Every grant site repeats the dedup/grow/append block.
+// inlined CExoArrayList<unsigned short>::AddUnique(nId), as its deferred-inline form
 #define KOTOR2_GRANT_FEAT(nId, bAlsoAddToList)                                 \
     do {                                                                      \
-        int nFound = 0;                                                      \
-        for (int i = 0; i < m_lstFeats.m_count; i++)                                 \
-            if (m_lstFeats.m_pArray[i] == (nId))                                        \
-                nFound++;                                                    \
-        if (nFound == 0) {                                                   \
-            if (m_lstFeats.m_count == m_lstFeats.m_capacity) {                           \
-                int newcap = m_lstFeats.m_count != 0 ? m_lstFeats.m_count * 2 : 16;         \
-                unsigned short* pOld = m_lstFeats.m_pArray;                             \
-                m_lstFeats.m_capacity = newcap;                                   \
-                m_lstFeats.m_pArray = new unsigned short[newcap];                       \
-                for (int64_t j = 0; j < m_lstFeats.m_count; j++)                       \
-                    m_lstFeats.m_pArray[j] = pOld[j];                                   \
-                delete[] pOld;                                              \
-            }                                                                \
-            m_lstFeats.m_pArray[m_lstFeats.m_count++] = (nId);                                 \
-        }                                                                    \
+        if (m_lstFeats.Contains(nId) == 0)                                    \
+            m_lstFeats.Add(nId);                                              \
         if (pFeats && (bAlsoAddToList))                                      \
             pFeats->Add(nId);                                               \
     } while (0)

@@ -42,6 +42,7 @@ Quaternion operator-(const Quaternion& q);
 #endif
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 CSWSTrigger* CSWSTrigger::AsSWSTrigger() {
     return this;
@@ -663,12 +664,7 @@ int CSWSTrigger::LoadTrigger(CResGFF* pGFF, CResStruct* pStruct)
     m_scriptSlots[6] = sScript;
 
     m_trapType = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("TrapType"), bSuccess, m_trapType);
-#if KOTOR1  // K1 calls CExoString::IsEmpty out of line
     if (m_scriptSlots[4].IsEmpty() || m_scriptSlots[4] == "default") {
-#else
-    if (m_scriptSlots[4].m_sString == 0 || m_scriptSlots[4].m_sString[0] == 0 ||
-        m_scriptSlots[4] == "default") {
-#endif
         CExoString sTrapScript;
         g_pRules->m_p2DArrays->m_pTraps->GetCExoStringEntry(m_trapType,
                                                             CExoString("TrapScript"),
@@ -992,12 +988,7 @@ void CSWSTrigger::EventHandler(unsigned int nEventType, unsigned long long nCall
         m_oidEnteringObject = pEvent->GetObjectID(0);
         // An unset or still-"default" script on a transition trigger falls back to the stock
         // transition script.
-#if KOTOR1  // K1 calls CExoString::IsEmpty out of line
         if (m_scriptSlots[6].IsEmpty() || m_scriptSlots[6] == "default") {
-#else
-        if (m_scriptSlots[6].m_sString == 0 || m_scriptSlots[6].m_sString[0] == 0 ||
-            m_scriptSlots[6] == "default") {
-#endif
             if (m_bAreaTransition == 1) {
                 m_scriptSlots[6] = "NW_G0_Transition";
             }

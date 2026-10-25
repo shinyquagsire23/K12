@@ -47,6 +47,7 @@
 #include "factionmanager.h"
 #include "tutorial.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // The galaxy map's planet slots (CSWPartyTable's planet flags).
 enum {
@@ -420,11 +421,7 @@ void CSWGuiInGameMap::OnDownArrowPressed(CSWGuiControl* pControl)
 void CSWGuiInGameMap::SetMapNote(const CExoString& sMapNote)
 {
     CExoString sText;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sMapNote.GetLength() != 0)
-#else
-    if (sMapNote.m_sString != 0 && static_cast<int>(strlen(sMapNote.m_sString)) != 0)
-#endif
     {
         // The "Map Note" caption; the shipped text reads "Map Note: <name>".
         sText = g_pTlkTable->GetSimpleString(STRREF_MAP_NOTE) + CExoString(": ") + sMapNote;

@@ -8,6 +8,7 @@
 #include "nwsrules.h"
 #include "port/libcstring.h"
 #include "nwscriptconst.h"
+#include "exostringinline.h"
 
 // m_nMaxDexBonus for an item that does not cap the dexterity bonus, and GetRequiredFeat's answer
 // past the end of the list.
@@ -273,13 +274,8 @@ void CSWBaseItemArray::Load()
         m_pItems[nRow].m_nBodyVar = 1;
         // The returned copy is discarded.
         sValue.UpperCase();
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (sValue.GetLength() == 1
             && sValue[0] >= 'A' && sValue[0] <= 'Z')
-#else
-        if (sValue.m_sString != 0 && static_cast<int>(strlen(sValue.m_sString)) == 1
-            && sValue[0] >= 'A' && sValue[0] <= 'Z')
-#endif
             m_pItems[nRow].m_nBodyVar = sValue[0] - '@';
 
         unsigned char nReqFeatCount = 0;

@@ -49,6 +49,7 @@ int nRenderDoorBBox;
 extern int g_bEnableCombatDebugging;
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 CSWSDoor* CSWSDoor::AsSWSDoor() {
     return this;
@@ -1109,12 +1110,7 @@ int CSWSDoor::LoadDoor(CResGFF* pGFF, CResStruct* pStruct, int bClampCurrentHP)
                                                            CResRef(m_scriptSlots[13])).GetResRefStr());
 
     m_trapType = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("TrapType"), bSuccess, m_trapType);
-#if KOTOR1  // K1: the out-of-line IsEmpty
     if (m_scriptSlots[9].IsEmpty() || m_scriptSlots[9] == "default") {
-#else
-    if (m_scriptSlots[9].m_sString == 0 || m_scriptSlots[9].m_sString[0] == 0
-        || m_scriptSlots[9] == "default") {
-#endif
         CExoString sMineScript;
         g_pRules->m_p2DArrays->m_pTraps->GetCExoStringEntry(m_trapType, CExoString("MineScript"),
                                                             &sMineScript);

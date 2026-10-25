@@ -10,6 +10,7 @@
 #include "swguiingame.h"
 #include "guiingame.h"
 #include "swgui.h"
+#include "CExoArrayListImpl.h"
 #include "swguicontrol.h"
 #include "swguiportraitchargen.h"
 #if KOTOR1
@@ -337,25 +338,7 @@ void CSWGuiQuickPanel::DoQuickStats()
         unsigned short nFeat = aFeats.m_pArray[i];
         CSWCCreatureStats* pStats = m_pCreature->m_pStats;
 
-        int nFound = 0;
-        for (int j = 0; j < pStats->m_lstFeats.m_count; j++)
-            if (pStats->m_lstFeats.m_pArray[j] == nFeat)
-                nFound++;
-
-        if (nFound == 0)
-        {
-            if (pStats->m_lstFeats.m_count == pStats->m_lstFeats.m_capacity)
-            {
-                int newcap = pStats->m_lstFeats.m_count != 0 ? pStats->m_lstFeats.m_count * 2 : 16;
-                unsigned short* pOld = pStats->m_lstFeats.m_pArray;
-                pStats->m_lstFeats.m_capacity = newcap;
-                pStats->m_lstFeats.m_pArray = new unsigned short[newcap];
-                for (int64_t j = 0; j < pStats->m_lstFeats.m_count; j++)
-                    pStats->m_lstFeats.m_pArray[j] = pOld[j];
-                delete[] pOld;
-            }
-            pStats->m_lstFeats.m_pArray[pStats->m_lstFeats.m_count++] = nFeat;
-        }
+        pStats->m_lstFeats.AddUnique(nFeat);
     }
 
     static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->m_nSkillPointsRemaining = 0;

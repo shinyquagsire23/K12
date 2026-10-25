@@ -39,13 +39,11 @@ public:
     int  ComparePrefixNoCase(const CExoString& other, int nCount) const;
 
     char* CStr() const;
-#if KOTOR1
-    // K1 only; K2 open-codes these.
+    // K2: inline, exostringinline.h; K1: out of line.
+    int   GetLength() const;
     int   AsINT() const;
     float AsFLOAT() const;
-    int   GetLength() const;
     int   IsEmpty() const;
-#endif
     int  Find(const CExoString& other, int nStart) const;
     int  Find(char ch, int nStart) const;
     int  FindNot(char ch, int nStart) const;

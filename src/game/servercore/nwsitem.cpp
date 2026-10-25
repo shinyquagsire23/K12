@@ -462,7 +462,7 @@ void CSWSItem::CloseItemForAllPlayers()
     CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
     if (pBaseItem == 0 || pBaseItem->m_bContainer == 0) return;
 
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
     if (pNode != 0) {
         do {

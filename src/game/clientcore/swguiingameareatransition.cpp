@@ -14,6 +14,7 @@
 float GetResolutionTextScalar();
 #include "port/libcstring.h"
 #include "port/k2qolapi.h"
+#include "exostringinline.h"
 
 #if KOTOR1  // K1: the "areatransition" layout, scaled by the panel itself
 CSWGuiInGameAreaTransition::CSWGuiInGameAreaTransition(CSWGuiManager* pGuiManager)
@@ -126,11 +127,7 @@ void CSWGuiInGameAreaTransition::SetTransitionObject(unsigned long long objId, c
                 int nDash = sName.Find(CExoString("-"), 0);
                 if (nDash != -1)
                 {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                     int nLength = sName.GetLength();
-#else
-                    int nLength = sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0;
-#endif
                     sName = sName.Right(nLength - nDash - 2);
                 }
                 m_lblDescription.m_text.m_params.SetText(sName);

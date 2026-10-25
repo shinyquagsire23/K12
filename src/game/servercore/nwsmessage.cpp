@@ -10,6 +10,7 @@
 void ByteSwap(unsigned long long* p);
 #include "port/libcbase.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 // Byte-swaps an object id into network order, setting the list-type bit unless the id is invalid.
 void CSWSMessage::WriteOBJECTIDServer(unsigned long long nObjectId)
@@ -56,80 +57,46 @@ void CSWSMessage::WriteCExoLocStringServer(CExoLocString& s, unsigned char nLang
         int nModuleLanguage = g_pAppManager->m_pServerExoApp->GetModuleLanguage();
         if (s.GetStringLoc(nPlayerLanguage, &sString, nLang))
         {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (static_cast<uint64_t>(m_nWriteMessageSize) +
                     sString.GetLength() + 4 >
                 m_nWriteMessageBufferSize)
                 ExtendWriteBuffer(sString.GetLength() + 4);
-#else
-            if (static_cast<uint64_t>(m_nWriteMessageSize) +
-                    (sString.m_sString != 0 ? static_cast<int>(strlen(sString.m_sString)) : 0) + 4 >
-                m_nWriteMessageBufferSize)
-                ExtendWriteBuffer(sString.m_sString != 0 ? static_cast<unsigned int>(strlen(sString.m_sString)) + 4 : 4);
-#endif
             WriteBOOL(0);
             WriteCExoString(sString, 32);
         }
         else if (nPlayerLanguage && s.GetStringLoc(0, &sString, nLang))
         {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (static_cast<uint64_t>(m_nWriteMessageSize) +
                     sString.GetLength() + 4 >
                 m_nWriteMessageBufferSize)
                 ExtendWriteBuffer(sString.GetLength() + 4);
-#else
-            if (static_cast<uint64_t>(m_nWriteMessageSize) +
-                    (sString.m_sString != 0 ? static_cast<int>(strlen(sString.m_sString)) : 0) + 4 >
-                m_nWriteMessageBufferSize)
-                ExtendWriteBuffer(sString.m_sString != 0 ? static_cast<unsigned int>(strlen(sString.m_sString)) + 4 : 4);
-#endif
             WriteBOOL(0);
             WriteCExoString(sString, 32);
         }
         else if (nModuleLanguage != 0 && nModuleLanguage != nPlayerLanguage &&
                  s.GetStringLoc(nModuleLanguage, &sString, nLang))
         {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (static_cast<uint64_t>(m_nWriteMessageSize) +
                     sString.GetLength() + 4 >
                 m_nWriteMessageBufferSize)
                 ExtendWriteBuffer(sString.GetLength() + 4);
-#else
-            if (static_cast<uint64_t>(m_nWriteMessageSize) +
-                    (sString.m_sString != 0 ? static_cast<int>(strlen(sString.m_sString)) : 0) + 4 >
-                m_nWriteMessageBufferSize)
-                ExtendWriteBuffer(sString.m_sString != 0 ? static_cast<unsigned int>(strlen(sString.m_sString)) + 4 : 4);
-#endif
             WriteBOOL(0);
             WriteCExoString(sString, 32);
         }
         else if (s.GetString(0, &nPlayerLanguage, &sString, &nFlag))
         {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (static_cast<uint64_t>(m_nWriteMessageSize) +
                     sString.GetLength() + 4 >
                 m_nWriteMessageBufferSize)
                 ExtendWriteBuffer(sString.GetLength() + 4);
-#else
-            if (static_cast<uint64_t>(m_nWriteMessageSize) +
-                    (sString.m_sString != 0 ? static_cast<int>(strlen(sString.m_sString)) : 0) + 4 >
-                m_nWriteMessageBufferSize)
-                ExtendWriteBuffer(sString.m_sString != 0 ? static_cast<unsigned int>(strlen(sString.m_sString)) + 4 : 4);
-#endif
             WriteBOOL(0);
             WriteCExoString(sString, 32);
         }
         else if (s.m_nStrRef == 0xFFFFFFFF)
         {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             if (sString.GetLength() +
                 m_nWriteMessageSize > m_nWriteMessageBufferSize)
                 ExtendWriteBuffer(sString.GetLength());
-#else
-            if ((sString.m_sString != 0 ? static_cast<int>(strlen(sString.m_sString)) : 0) +
-                m_nWriteMessageSize > m_nWriteMessageBufferSize)
-                ExtendWriteBuffer(sString.m_sString != 0 ? static_cast<unsigned int>(strlen(sString.m_sString)) : 0);
-#endif
             WriteBOOL(0);
             WriteCExoString(sString, 32);
         }
@@ -156,12 +123,7 @@ bool CSWSMessage::GetLocStringServer(unsigned int playerId, CExoLocString& in,
         int nLanguage = g_pAppManager->m_pServerExoApp->GetPlayerLanguage(playerId);
         in.GetString(nLanguage, &s1, flag);
         out.GetString(nLanguage, &s2, flag);
-#if KOTOR1  // K1: CExoString::IsEmpty out of line
         if (!s2.IsEmpty() && !s1.IsEmpty())
-#else
-        if (s2.m_sString != 0 && *s2.m_sString != 0 &&
-            s1.m_sString != 0 && *s1.m_sString != 0)
-#endif
         {
             outStr = s1 + " " + s2;
         }

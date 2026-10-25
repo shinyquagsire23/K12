@@ -167,7 +167,7 @@ struct CExoInputClass {
 
 // A repeat-timer record in the repeat list, keyed by event index.
 #pragma pack(push, 4)
-struct CInputEventRepeat {
+struct CExoInputRepeatEvent {
     int          m_nEventIndex;
     unsigned int m_nRepeatWait;
     unsigned int m_nRepeatRate;
@@ -198,8 +198,8 @@ public:
     unsigned char          m_aReserved1[0x010-0x00c];
     CExoInputClass          m_aEventClass[6];
     CExoArrayList<CExoInputEventDesc*> m_aEvents;
-    CExoLinkedList<CExoInputEventDesc**> m_cooldownList;
-    CExoLinkedList<CInputEventRepeat>    m_repeatList;
+    CExoLinkedList<CExoInputEventDesc*> m_cooldownList;
+    CExoLinkedList<CExoInputRepeatEvent>    m_repeatList;
     int            m_nLastTimer;
     unsigned char  m_aReserved2[0x248-0x244];
     CExoRawInputInternal*  m_pMainDevice;

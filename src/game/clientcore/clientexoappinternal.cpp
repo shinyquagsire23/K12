@@ -452,6 +452,8 @@ void CClientExoAppInternal::SetLastTarget(unsigned long long id, int b)
     m_bLastTargetChanged = (old != id) ? (b & 1) : 0;
 }
 
+int TestNearestStruct(void* pObjectId, CNearestStruct nearest);
+
 CSWCObject* CClientExoAppInternal::SelectNearestObject(int nForward, unsigned char nMode)
 {
     if (m_pInGameGui->TutorialReasonWillShowWindow(TUTORIAL_CYCLE_TARGETS) &&
@@ -462,180 +464,106 @@ CSWCObject* CClientExoAppInternal::SelectNearestObject(int nForward, unsigned ch
         m_tutorialReason = TUTORIAL_CYCLE_TARGETS;
     }
 
-    CSWCObject* pSelected = 0;
-    unsigned char uVar13 = 0;  // category filter (0/1/2)
-    int iVar7 = 0;  // loop counter
-    unsigned int uVar18 = 0;  // current row index
-    int iVar15 = 0;  // signed view of the row index
-    unsigned int uVar16 = 0;  // wrap/clamp index
-    int iVar8 = 0;  // hostile-result temp
-    bool bVar4 = false;  // candidate passed the filter
-    bool bVar5 = false;  // bVar4 kept across the adjust step
-    CNearestStruct* pRows = 0;  // m_visibleTable.m_pArray
-    long long lVar19 = 0;  // row index
-    CGameObject* pObj = 0;  // GetGameObject out
-    unsigned char cVar6 = 0;
-    CSWCCreature* pPC = 0;  // player-creature cache
-    CSWCCreature* pCreature = 0;  // AsSWCCreature() result
+    if (m_visibleTable.m_count == 0)
+        return 0;
 
-    iVar7 = m_visibleTable.m_count;
-    if (iVar7 == 0) {
-        pSelected = 0;
-        return pSelected;
-    }
-    if (nMode != 0 && 0 < iVar7) {
-        CNearestStruct* pPruneRows = m_visibleTable.m_pArray;
-        long long lPruneEnd = static_cast<long long>(iVar7);
-        long long lVar17 = 0;  // row being examined
-        do {
-            lVar17 = lPruneEnd - 1;
-            CGameObject* pPruneObj = GetGameObject(pPruneRows[lVar17].m_objectId);
-            if (pPruneObj == 0) {
-                pSelected = 0;
-phase1_delete:
-                m_visibleTable.DelIndex(static_cast<int>(lVar17));
-            } else {
-                pSelected = pPruneObj->AsSWCObject();
-                if (pSelected == 0)
-                    goto phase1_delete;
-                unsigned char cPruneSee = pPruneRows[lVar17].m_canSee;
-                if (cPruneSee == CNearestStruct::CANSEE_UNKNOWN) {
-                    CSWCCreature* pPrunePC = m_pParty->GetPlayerCharacter();
-                    cPruneSee = static_cast<unsigned char>(pPrunePC->CanSee(pSelected));
-                    pPruneRows[lVar17].m_canSee = cPruneSee;
+    // A hostile-only pick first drops every row that no longer resolves or cannot be seen, from the
+    // end, and keeps the filter only when a visible hostile creature is left.
+    CSWCObject* pObject = 0;
+    unsigned char nFilter = 0;
+    if (nMode != 0) {
+        for (int i = m_visibleTable.m_count - 1; i >= 0; i--) {
+            CGameObject* pGameObject = GetGameObject(m_visibleTable.m_pArray[i].m_objectId);
+            pObject = pGameObject != 0 ? pGameObject->AsSWCObject() : 0;
+            if (pObject != 0) {
+                unsigned char cCanSee = m_visibleTable.m_pArray[i].m_canSee;
+                if (cCanSee == CNearestStruct::CANSEE_UNKNOWN) {
+                    cCanSee = static_cast<unsigned char>(m_pParty->GetPlayerCharacter()->CanSee(pObject));
+                    m_visibleTable.m_pArray[i].m_canSee = cCanSee;
                 }
-                if (cPruneSee == 0)
-                    goto phase1_delete;
-                CSWCCreature* pPruneCreature = pSelected->AsSWCCreature();
-                if (pPruneCreature != 0) {
-                    iVar7 = pSelected->IsHostile();
-                    uVar13 = nMode;
-                    if (iVar7 != 0)
-                        goto phase2;
+                if (cCanSee != 0) {
+                    if (pObject->AsSWCCreature() != 0 && pObject->IsHostile() != 0) {
+                        nFilter = nMode;
+                        break;
+                    }
+                    continue;
                 }
             }
-            lPruneEnd = lVar17;
-        } while (0 < lVar17);
-        uVar13 = 0;  // prune exhausted, no hostile creature
+            m_visibleTable.DelIndex(i);
+        }
     }
 
-phase2:
-    iVar7 = m_visibleTable.m_count;
+    // Start one step past the current target, or at the first (last, walking forward) row.
+    int nCount = m_visibleTable.m_count;
+    int nIndex;
     if (m_lastTarget == OBJECT_INVALID) {
-        uVar16 = 0;
-        if (nForward != 0)
-            uVar16 = iVar7 - 1;
-        uVar18 = static_cast<unsigned int>(uVar16);
+        nIndex = nForward != 0 ? nCount - 1 : 0;
     } else {
-        uVar16 = iVar7 - 1;
-        uVar18 = static_cast<unsigned int>(uVar16);
-        if (0 < iVar7) {
-            CNearestStruct* pFindRow = m_visibleTable.m_pArray;
-            iVar15 = 0;
-            long long lFindLeft = static_cast<long long>(iVar7);
-            do {
-                if (pFindRow->m_objectId == m_lastTarget) {
-                    if (-1 < iVar15 && iVar15 < iVar7) {
-                        if (nForward == 0) {
-                            unsigned int uVar2 = 0;
-                            if (iVar15 < static_cast<int>(uVar16))
-                                uVar2 = iVar15 + 1;
-                            uVar18 = uVar2;
-                        } else if (iVar15 != 0) {
-                            uVar18 = static_cast<unsigned int>(iVar15 - 1);
-                        }
-                        goto select_loop;
-                    }
+        nIndex = nCount - 1;
+        int nCurrent = m_visibleTable.IndexOf(reinterpret_cast<void*>(m_lastTarget), TestNearestStruct);
+        if (nCurrent >= 0 && nCurrent < nCount) {
+            if (nForward == 0)
+                nIndex = nCurrent < nIndex ? nCurrent + 1 : 0;
+            else if (nCurrent != 0)
+                nIndex = nCurrent - 1;
+        } else if (nForward == 0) {
+            nIndex = 0;
+        }
+    }
+
+    // Walk at most one lap, dropping stale rows, until a row passes the filter and is visible.
+    if (nCount != 0) {
+        int nTries = nCount;
+        do {
+            CGameObject* pGameObject = GetGameObject(m_visibleTable.m_pArray[nIndex].m_objectId);
+            pObject = pGameObject != 0 ? pGameObject->AsSWCObject() : 0;
+            int bFound = 0;
+            int bRemove = 0;
+            if (pObject == 0) {
+                bRemove = 1;
+            } else {
+                int bTest = 0;
+                switch (nFilter) {
+                case 0:
+                    bTest = 1;
+                    break;
+                case 1:
+                    bTest = pObject->IsHostile() == 0;
+                    break;
+                case 2:
+                    bTest = pObject->AsSWCCreature() != 0 && pObject->IsHostile() != 0;
                     break;
                 }
-                iVar15++;
-                lFindLeft--;
-                pFindRow++;
-            } while (lFindLeft != 0);
-        }
-        uVar16 = (nForward != 0) ? uVar16 : 0;
-        uVar18 = static_cast<unsigned int>(uVar16);
-    }
-
-select_loop:
-    if (iVar7 != 0) {
-        pRows = m_visibleTable.m_pArray;
-        do {
-            iVar15 = static_cast<int>(uVar18);
-            lVar19 = static_cast<long long>(iVar15);
-            pObj = GetGameObject(pRows[iVar15].m_objectId);
-            if (pObj == 0) {
-                pSelected = 0;
-ph2_delete:
-                m_visibleTable.DelIndex(iVar15);
-joined:
-                bVar4 = false;
-                uVar16 = static_cast<unsigned int>(uVar18);
-                bVar5 = false;
-                if (nForward == 0)
-                    goto fwd0_accept;
-                goto fwd_adjust;
-            }
-
-            pSelected = pObj->AsSWCObject();
-            if (pSelected == 0)
-                goto ph2_delete;
-
-            if (uVar13 != 0) {
-                if (uVar13 == 2) {
-                    pCreature = pSelected->AsSWCCreature();
-                    if (pCreature != 0 && pSelected->IsHostile() != 0)
-                        goto accept2;
-                } else if (uVar13 == 1 && pSelected->IsHostile() == 0) {
-                    goto accept2;  // filter == 1 accepts non-hostile objects
+                if (bTest) {
+                    unsigned char cCanSee = m_visibleTable.m_pArray[nIndex].m_canSee;
+                    if (cCanSee == CNearestStruct::CANSEE_UNKNOWN) {
+                        cCanSee = static_cast<unsigned char>(m_pParty->GetPlayerCharacter()->CanSee(pObject));
+                        m_visibleTable.m_pArray[nIndex].m_canSee = cCanSee;
+                    }
+                    if (cCanSee == 0)
+                        bRemove = 1;
+                    else
+                        bFound = 1;
                 }
-                uVar18 = static_cast<unsigned int>(iVar15 + (nForward == 0));
-                goto joined;
+                if (!bRemove)
+                    nIndex += (nForward == 0);
             }
-
-accept2:
-            cVar6 = pRows[iVar15].m_canSee;
-            if (cVar6 == CNearestStruct::CANSEE_UNKNOWN) {
-                pPC = m_pParty->GetPlayerCharacter();
-                cVar6 = static_cast<unsigned char>(pPC->CanSee(pSelected));
-                pRows[iVar15].m_canSee = cVar6;
+            if (bRemove)
+                m_visibleTable.DelIndex(nIndex);
+            if (nForward == 0) {
+                if (nIndex >= m_visibleTable.m_count)
+                    nIndex = 0;
+            } else if (nIndex <= 0 || nIndex > m_visibleTable.m_count) {
+                nIndex = m_visibleTable.m_count - 1;
+            } else {
+                nIndex--;
             }
-            if (cVar6 == 0)
-                goto ph2_delete;
-            bVar4 = true;
-            uVar16 = static_cast<unsigned int>(iVar15 + (nForward == 0));
-            bVar5 = bVar4;
-            if (nForward != 0)
-                goto fwd_adjust;
-
-fwd0_accept:
-            iVar15 = m_visibleTable.m_count;
-            if (iVar15 <= static_cast<int>(uVar16))
-                uVar16 = 0;
-            uVar18 = static_cast<unsigned int>(uVar16);
-            if (bVar5)
-                goto found;
-            goto loop_tail;
-
-        fwd_adjust:
-            if (static_cast<int>(uVar16) < 1) {
-                iVar15 = m_visibleTable.m_count;
-fwd_clamp:
-                uVar18 = static_cast<unsigned int>(iVar15 - 1);
-                if (!bVar4)
-                    goto loop_tail;
-                goto found;
+            if (bFound) {
+                m_lastTarget = pObject->m_objectId;
+                ShowObject(pObject, 1, 1, 1);
+                return pObject;
             }
-            iVar15 = m_visibleTable.m_count;
-            if (iVar15 < static_cast<int>(uVar16))
-                goto fwd_clamp;
-            uVar18 = uVar16 - 1;
-            if (bVar4)
-                goto found;
-
-loop_tail:
-            iVar7--;
-        } while (iVar7 != 0 && m_visibleTable.m_count != 0);
+        } while (--nTries != 0 && m_visibleTable.m_count != 0);
     }
 
     if (m_visibleTable.m_count == 0) {
@@ -646,12 +574,7 @@ loop_tail:
         if (pLeader != 0)
             pLeader->LookAt(OBJECT_INVALID, 10.0f);
     }
-    return pSelected;
-
-found:
-    m_lastTarget = pSelected->m_objectId;
-    ShowObject(pSelected, 1, 1, 1);
-    return pSelected;
+    return pObject;
 }
 
 void CClientExoAppInternal::UpdateHostileHilite(float fDelta)
@@ -1495,12 +1418,12 @@ CExoString CClientExoAppInternal::GetDisplayCharacterForKey(int key)
 
 void CClientExoAppInternal::AddQueuedAnim(const CExoString& sName, unsigned short nFlags, float f, int n)
 {
-    QueuedAnim* p = new QueuedAnim;
+    CQueuedAnim* p = new CQueuedAnim;
     p->m_sName = sName;
     p->m_fParam = f;
     p->m_nParam = n;
     p->m_nAnimation = nFlags;
-    m_queuedAnims.m_pInternal->AddTail(p);
+    m_queuedAnims.AddTail(p);
 }
 
 void CClientExoAppInternal::BusyWaitMuteSound()
@@ -6351,7 +6274,7 @@ void CClientExoAppInternal::Uninitialize()
     m_pWalkToRingVFX = 0;
 
     while (m_queuedAnims.m_pInternal->m_pHead != 0) {
-        QueuedAnim* pAnim = static_cast<QueuedAnim*>(m_queuedAnims.m_pInternal->RemoveHead());
+        CQueuedAnim* pAnim = m_queuedAnims.RemoveHead();
         if (pAnim)
             delete pAnim;  // runs ~CExoString on m_sName, then frees
     }
@@ -8064,7 +7987,7 @@ update_phase:
             m_fQueuedAnimDelay = 0.0f;
             if (m_queuedAnims.m_pInternal->m_pHead) {
                 CExoString sName;
-                QueuedAnim* pAnim = reinterpret_cast<QueuedAnim*>(m_queuedAnims.RemoveHead());
+                CQueuedAnim* pAnim = m_queuedAnims.RemoveHead();
                 if (pAnim) {
                     float fB, fA;
 #if KOTOR1
@@ -8090,7 +8013,7 @@ update_phase:
                     }
                     if (m_queuedAnims.m_pInternal->m_pHead && fA == -1.0f) {
                         do {
-                            pAnim = reinterpret_cast<QueuedAnim*>(m_queuedAnims.RemoveHead());
+                            pAnim = m_queuedAnims.RemoveHead();
                             if (pAnim) {
                                 pPlayer = GetPlayerCreature();
                                 Gob* pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);

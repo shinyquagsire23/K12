@@ -12,6 +12,15 @@ public:
 
     CExoArrayList(const CExoArrayList& other);
 
+    // Reserves n slots up front; the count stays 0. A constructor template, so the explicit
+    // instantiations in CExoArrayList.cpp do not emit it (the arm64 images export none).
+    template <class N>
+    explicit CExoArrayList(N n) : m_pArray(0), m_count(0), m_capacity(0)
+    {
+        if (n != 0)
+            Allocate(n);
+    }
+
     ~CExoArrayList() { delete[] m_pArray; m_pArray = 0; }
 
     void Clear()
@@ -91,6 +100,18 @@ public:
         return -1;
     }
 
+    // Index of the first element the predicate accepts, or -1 (also for a null predicate).
+    template <class U = T>
+    int IndexOf(void* pData, int (*pfnTest)(void*, U)) const
+    {
+        if (pfnTest == 0)
+            return -1;
+        for (int i = 0; i < m_count; i++)
+            if (pfnTest(pData, m_pArray[i]))
+                return i;
+        return -1;
+    }
+
     void DelIndex(int index) {
         m_count--;
         for (int i = index; i < m_count; i++)
@@ -108,5 +129,27 @@ public:
             Allocate(n);
         }
         m_count = n;
+    }
+};
+
+// A list that can alias a loaded resource buffer: while m_bStatic is set it does not own its array,
+// so Add and SetSize leave it alone.
+template <class T>
+class CExoStaticArrayList : public CExoArrayList<T> {
+public:
+    int m_bStatic;
+
+    explicit CExoStaticArrayList(int n) : CExoArrayList<T>(n) { m_bStatic = 0; }
+
+    void Add(T v)
+    {
+        if (m_bStatic == 0)
+            CExoArrayList<T>::Add(v);
+    }
+
+    void SetSize(int n)
+    {
+        if (m_bStatic == 0)
+            CExoArrayList<T>::SetSize(n);
     }
 };

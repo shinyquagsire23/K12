@@ -11278,7 +11278,7 @@ int CSWCMessage::HandleServerToPlayerUpdate_PlayerInfo()
                     pNode->m_flags = (pNode->m_flags & ~kVisibleHeard) | ((bB & 1) << 1);
                 pNode->m_flags = (pNode->m_flags & ~kVisibleInactive) | ((bC & 1) << 4);
 
-                // The visibility list's add is written out longhand, allocation included.
+                // inlined CExoArrayList<CSWVisibilityNode*>::Add(pNode)
                 int idx = pCreature->m_visibilityList.m_count;
                 if (idx == pCreature->m_visibilityList.m_capacity) {
                     int newcap = idx != 0 ? idx * 2 : 16;

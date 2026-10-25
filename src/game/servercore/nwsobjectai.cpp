@@ -2008,7 +2008,7 @@ int CSWSObject::AIActionPlaySound(CSWSObjectActionNode* pNode) {
     CExoString sSound;
     sSound = *pNode->m_args.m_pSoundName;
     CSWSMessage* pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
-    CExoLinkedList<CSWSPlayerListEntry>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
         float fMaxDistSq = CSWSArea::MAX_OBJECT_CHATTALK_DISTANCE *

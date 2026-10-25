@@ -21,6 +21,7 @@
 
 #include "port/libcbase.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 // CServerInfo::m_nUpdatedFlags: which parts of the server information a sysadmin reply refreshed.
 enum {
@@ -116,23 +117,12 @@ __attribute__((noinline))
 #endif
 int CClientMsgSysAdmin::SendSysAdminToServerMessage(const CExoString& sMessage)
 {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     unsigned int nLength = sMessage.GetLength() + 1;
-#else
-    unsigned int nLength = 1;
-    if (sMessage.m_sString != 0)
-        nLength = static_cast<unsigned int>(strlen(sMessage.m_sString)) + 1;
-#endif
 
     unsigned char* pBuffer = new unsigned char[nLength];
     pBuffer[0] = 's';
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     memcpy(pBuffer + 1, sMessage.CStr(),
            sMessage.GetLength());
-#else
-    memcpy(pBuffer + 1, sMessage.CStr(),
-           sMessage.m_sString ? static_cast<int>(strlen(sMessage.m_sString)) : 0);
-#endif
 
     return g_pAppManager->m_pClientExoApp->GetNetLayer()->SendMessageToPlayer(
         CNetLayer::PLAYERID_SERVER, pBuffer, nLength, 0);
@@ -265,11 +255,7 @@ int CClientMsgSysAdmin::HandleServerToSysAdminMessage(unsigned char* pMessage, u
         nResult = 1;
         if (sToken3[nPos] != '\n')
             break;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         nLength = sToken3.GetLength();
-#else
-        nLength = sToken3.m_sString ? static_cast<int>(strlen(sToken3.m_sString)) : 0;
-#endif
         if (GetTokenPair(reinterpret_cast<unsigned char*>(sToken3.CStr() + nPos + 1), static_cast<unsigned int>(nLength) - nNext,
                          sToken1, sToken2, sToken3) != 3)
             break;

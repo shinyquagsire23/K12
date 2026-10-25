@@ -1,6 +1,6 @@
 /* k1lzma.c -- LzmaLib's LzmaUncompress, for K1's MacDecompress (k1port.h).
  *
- * K1 ships its BIFs LZMA-compressed (data/*.bzf in the main OBB) and libandroid_port.so's
+ * K1 ships its BIFs LZMA-compressed (the main OBB's data/ .bzf files) and libandroid_port.so's
  * MacDecompress decodes each resource with libLzmaLib.so's LzmaUncompress: 5 property bytes, then
  * the raw LZMA stream. That is LzmaLib.c's body, over the LZMA SDK's LzmaDec.c (public domain). */
 #include <stdlib.h>

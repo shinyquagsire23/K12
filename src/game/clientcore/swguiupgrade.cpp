@@ -55,6 +55,7 @@
 #include "nwscriptconst.h"
 #include "itemtype.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // The create-item filter's slot groups: weapons, and everything worn but the weapons.
 enum UpgradeFilterSlots {
@@ -428,11 +429,7 @@ void CSWGuiUpgrade::Update3DView()
 
     CAurObject* pNewModel = pScene->AddModel(sModel, -1);
     if (pNewModel != 0) {
-#if KOTOR1  // K1: out-of-line IsEmpty
         if (!sTexture.IsEmpty()) {
-#else
-        if (sTexture.m_sString != 0 && *sTexture.m_sString != 0) {
-#endif
             pNewModel->ReplaceTexture(const_cast<char*>(""), static_cast<char*>(sTexture.CStr()));
         }
         if (pModel->GetPart(static_cast<char*>(sRotateHook.CStr())) != 0) {
@@ -2003,11 +2000,7 @@ void CSWGuiUpgrade::SetDescription(const CExoString& s)
     CSWGuiControl* pCaption;
     CSWGuiText* pText = &m_lblDescription.m_text;
     CSWGuiExtent ext = m_lblDescription.m_extent;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (s.GetLength() >= 1)
-#else
-    if (s.m_sString && static_cast<int>(strlen(s.m_sString)) >= 1)
-#endif
         ext.h = pText->GetIdealHeight();
     else
         ext.h = pText->GetFontHeight();
@@ -2643,17 +2636,7 @@ void CSWUpgradeItemEntry::SetExtent(const CSWGuiExtent& extent) {
     m_borderIcon.m_extent = eIcon;
     CSWGuiExtent eText = eIcon;
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     float fTextH = fScale * static_cast<float>((m_textCount.m_params.m_sText.GetLength() > 2) ? 42 : 21);
-#else
-    float fTextH;
-    if (m_textCount.m_params.m_sText.m_sString != 0) {
-        int nLen = static_cast<int>(strlen(m_textCount.m_params.m_sText.m_sString));
-        fTextH = fScale * static_cast<float>((nLen > 2) ? 42 : 21);
-    } else {
-        fTextH = fScale * 21.0f;
-    }
-#endif
     float fLabel = fScale * 19.0f;
 
     eText.x = static_cast<int>(static_cast<float>(nX) + (fIcon - fTextH));
@@ -6875,11 +6858,7 @@ void CSWGuiUpgradeItemSelect::SetDescription(const CExoString& sDescription)
     CSWGuiText* pText = &m_lblDescription.m_text;
 
     CSWGuiExtent extent = m_lblDescription.m_extent;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sDescription.GetLength() >= 1)
-#else
-    if (sDescription.m_sString && static_cast<int>(strlen(sDescription.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

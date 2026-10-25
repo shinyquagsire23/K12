@@ -250,6 +250,7 @@ static int GobFindInsertIdx(char* pszName)
 #if !KOTOR1
 static void GobInsertAt(int nIdx, Gob* pGob)
 {
+    // inlined List<Gob*>::Insert(pGob, nIdx)
     if (gobs.m_count == gobs.m_capacity)
     {
         int nNew = gobs.m_capacity ? (gobs.m_capacity << 1) : 16;

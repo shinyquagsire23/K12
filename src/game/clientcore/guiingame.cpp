@@ -32,6 +32,7 @@ float AspyrHackCameraYaw;
 #include "port/libcstring.h"
 #include "port/libcmath.h"
 #include "port/crtapi.h"
+#include "exostringinline.h"
 
 CSWGuiDynamic* g_pDynamicGUI;
 
@@ -894,14 +895,7 @@ void CGuiInGame::ShowDialogReplies(unsigned int a, unsigned int b)
         static_cast<CSWGuiDialog*>(m_pActiveDialogPanel)->SetReplies(m_repliesCount, m_paReplyText, m_paReplyLinkIndices, a, 0);
         static_cast<CSWGuiDialog*>(m_pActiveDialogPanel)->m_nCurrentEntry = b;
         static_cast<CSWGuiDialog*>(m_pActiveDialogPanel)->SetDialogMessage(*m_paReplyText);
-#if KOTOR1  // K1: IsEmpty is out of line
         unsigned int hasText = !m_paReplyText->IsEmpty();
-#else
-        unsigned int hasText = 0;
-        if (m_paReplyText->m_sString != 0) {
-            hasText = (m_paReplyText->m_sString[0] != 0);
-        }
-#endif
         m_dialogSelectionA = 0;
         m_dialogSelectionB = hasText;
         m_dialogSelectionActive = 1;
@@ -2739,11 +2733,7 @@ bool CGuiInGame::HandleDialogReplyChosen(unsigned int a1, unsigned int a2, unsig
 {
     K2_UNUSED(a1); K2_UNUSED(a2); K2_UNUSED(a3); K2_UNUSED(objId); K2_UNUSED(b); K2_UNUSED(c);
     CExoString localText = text;
-#if KOTOR1  // K1: IsEmpty is out of line
     if (!text.IsEmpty()) {
-#else
-    if (text.m_sString != 0 && *text.m_sString != 0) {
-#endif
         unsigned long long playerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
         CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
         unsigned long long clientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
@@ -4032,11 +4022,7 @@ int CGuiInGame::IsOnDialogNonDependantList(const CExoString& text)
 
 void CGuiInGame::AddToDialogNonDependantList(const CExoString& text)
 {
-#if KOTOR1  // K1: IsEmpty is out of line
     if (text.CompareNoCase("") == 0 && !text.IsEmpty()) {
-#else
-    if (text.CompareNoCase("") == 0 && text.m_sString != 0 && *text.m_sString != '\0') {
-#endif
         if (!IsOnDialogNonDependantList(text)) {
             CExoString* pNew = new CExoString();
             *pNew = text;
@@ -4247,11 +4233,7 @@ bool CGuiInGame::HandleDialogReplies(unsigned int a1, unsigned long long a2, uns
         InitializeRepliesData(count);
         for (unsigned int i = 0; i < count; i++) {
             text = paText[i];
-#if KOTOR1  // K1: IsEmpty; the parsed reply is not trimmed
             if (!text.IsEmpty()) {
-#else
-            if (text.m_sString != 0 && *text.m_sString != 0) {
-#endif
                 unsigned long long playerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
                 CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
                 unsigned long long clientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);

@@ -49,6 +49,7 @@ enum : unsigned int {
 #include "port/libcstring.h"
 #include "port/libcmath.h"
 #include "port/libctime.h"
+#include "exostringinline.h"
 
 int CERFFile::Reset()
 {
@@ -101,21 +102,11 @@ int CERFFile::AddResource(CExoString& filePath)
     }
 
     int nColon = filePath.Find(CExoString(":"), 0);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     sName = filePath.Right(
         filePath.GetLength() - nColon - 1);
-#else
-    sName = filePath.Right(
-        (filePath.m_sString ? static_cast<int>(strlen(filePath.m_sString)) : 0) - nColon - 1);
-#endif
     int nDot = sName.Find(CExoString("."), 0);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     sExt = sName.Right(
         sName.GetLength() - nDot - 1);
-#else
-    sExt = sName.Right(
-        (sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0) - nDot - 1);
-#endif
     sName = sName.Left(nDot);
 
     unsigned short nResType = g_pExoBase->GetResTypeFromExtension(sExt);
@@ -394,21 +385,11 @@ int CERFFile::WriteResource(const CExoString& filePath, void* pExtra)
     CExoFile* pFile = new CExoFile(filePath, RESTYPE_INVALID, CExoString("rb"));
 
     int nColon = filePath.Find(CExoString(":"), 0);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CExoString sName = filePath.Right(
         filePath.GetLength() - nColon - 1);
-#else
-    CExoString sName = filePath.Right(
-        (filePath.m_sString ? static_cast<int>(strlen(filePath.m_sString)) : 0) - nColon - 1);
-#endif
     int nDot = sName.Find(CExoString("."), 0);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CExoString sExt = sName.Right(
         sName.GetLength() - nDot - 1);
-#else
-    CExoString sExt = sName.Right(
-        (sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0) - nDot - 1);
-#endif
     sName = sName.Left(nDot);
 
     unsigned short nResType = g_pExoBase->GetResTypeFromExtension(sExt);
@@ -962,11 +943,7 @@ void CERFString::SetText(CExoString& text)
     if (m_pString != 0) {
         delete[] m_pString;
     }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     m_nLength = text.GetLength();
-#else
-    m_nLength = text.m_sString ? static_cast<int>(strlen(text.m_sString)) : 0;
-#endif
     m_pString = new char[m_nLength + 1];
     memcpy(m_pString, text.CStr(), m_nLength);  // idiom-exempt: a runtime byte count, not a sizeof
     m_pString[m_nLength] = 0;

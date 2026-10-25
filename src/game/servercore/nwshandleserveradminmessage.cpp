@@ -2,6 +2,7 @@
 #include "serverexoappinternal.h"
 #include "restype.h"
 #include <string.h>
+#include "exostringinline.h"
 
 static int GetTokenPair(unsigned char* pBuffer, unsigned int nSize,
                         CExoString& sToken0, CExoString& sToken1, CExoString& sToken2);   // below
@@ -96,21 +97,9 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
                 if (nSpace >= 1)
                 {
                     int nSlot;
-#if KOTOR1  // K1: CExoString::AsINT is out of line
                     nSlot = sOut.Left(nSpace).AsINT();
-#else
-                    {
-                        CExoString sSlotStr(sOut.Left(nSpace));
-                        nSlot = sSlotStr.m_sString != 0 ? atoi(sSlotStr.m_sString) : 0;
-                    }
-#endif
                     sSaveName = sOut.SubString(nSpace + 1, -1);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                     if (nSlot >= 2 && sSaveName.GetLength() >= 1)
-#else
-                    if (nSlot >= 2 && sSaveName.m_sString != 0
-                        && static_cast<int>(strlen(sSaveName.m_sString)) >= 1)
-#endif
                     {
                         CExoArrayList<CExoString> saveList;
                         g_pExoBase->GetDirectoryList(&saveList, CExoString("SAVES:"), RESTYPE_INVALID, 1, 0);
@@ -154,12 +143,8 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
         if (ParseToken("Boot", &pBuffer, nSize, 1))
         {
             if (nSize == 0) return 0;
-#if KOTOR1  // K1 still parses the player id (out-of-line AsINT, result unused)
             if (ParseGetString(pBuffer, nSize, sOut, 256))
                 sOut.AsINT();
-#else
-            ParseGetString(pBuffer, nSize, sOut, 256);
-#endif
         }
         else if (ParseToken("SAPass", &pBuffer, nSize, 1))
         {
@@ -252,11 +237,7 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
                 break;
             }
             nReturnAccum = 1;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             int nLen = sToken2.GetLength();
-#else
-            int nLen = sToken2.m_sString != 0 ? static_cast<int>(strlen(sToken2.m_sString)) : 0;
-#endif
             nTokens = GetTokenPair(reinterpret_cast<unsigned char*>(sToken2.CStr() + nPos + 1),
                                    nLen - (nPos + 1), sToken0, sToken1, sToken2);
             if (nTokens != 3)

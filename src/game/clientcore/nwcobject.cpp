@@ -37,6 +37,7 @@
 #include "port/libcstring.h"
 #include "port/crtapi.h"
 #include "serveranimation.h"
+#include "exostringinline.h"
 
 // Componentwise Vector equality.
 int equal(const Vector& a, const Vector& b);
@@ -1111,11 +1112,7 @@ int CSWCObject::SetEnvMap(int a, int b, const CResRef& r)
             CResRef areaEnv = pModule->m_pArea->m_defaultEnvMap;
             areaEnv.CopyToString(envName);
         }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (envName.GetLength() == 0)
-#else
-        if (envName.m_sString == 0 || static_cast<int>(strlen(envName.m_sString)) == 0)
-#endif
             return 0;
     } else {
         r.CopyToString(envName);
@@ -1135,11 +1132,7 @@ int CSWCObject::SetEnvMap(unsigned char a, int b, int c, const CResRef& r)
             CResRef areaEnv = pModule->m_pArea->m_defaultEnvMap;
             areaEnv.CopyToString(envName);
         }
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (envName.GetLength() == 0)
-#else
-        if (envName.m_sString == 0 || static_cast<int>(strlen(envName.m_sString)) == 0)
-#endif
             return 0;
     } else {
         r.CopyToString(envName);

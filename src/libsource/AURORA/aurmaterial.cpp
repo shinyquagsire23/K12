@@ -107,6 +107,7 @@ enum { kMbIconExclamation = 0x30, kMbSystemModal = 0x1000 };
 
 // Loads the seven texture stages: the four name parameters fill the first four watchers and the
 // three .txi name buffers ParseField filled fill the last three, each buffer freed as it is used.
+// EFFECTIVE: clang tail-duplicates one AurTextureGetNULL() arm (5 call sites, the orig 4); same calls on every path.
 void Material::InitializeTextures(char* pszTexture, char* p2, char* p3, char* p4)
 {
     if (pszTexture != 0 && pszTexture[0] != 0 && strcmp(NULL_NAME, pszTexture) != 0)

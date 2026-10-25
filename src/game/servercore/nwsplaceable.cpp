@@ -48,6 +48,7 @@ void* operator new(size_t size);
 #include "nwscriptconst.h"
 #include "nwsdialog.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // The item local boolean set once a data pad's text has been shown in the datapad box.
 enum {
@@ -536,7 +537,7 @@ void CSWSPlaceable::CloseInventory(unsigned long long playerId, int flag) {
 }
 
 void CSWSPlaceable::ClosePlaceableForAllPlayers() {
-    CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
     if (pNode != 0) {
         do {
@@ -1079,12 +1080,7 @@ void CSWSPlaceable::EventHandler(unsigned int nEventType, unsigned long long nCa
             }
             // Unlike the door's twin, the placeable also treats an absent or empty script name
             // as unset: three short-circuited disjuncts, in this order.
-#if KOTOR1  // K1: the out-of-line IsEmpty
             if (m_scriptsOn[ON_SCRIPT_DIALOG].IsEmpty() || m_scriptsOn[ON_SCRIPT_DIALOG] == "default") {
-#else
-            if (m_scriptsOn[ON_SCRIPT_DIALOG].m_sString == 0 || m_scriptsOn[ON_SCRIPT_DIALOG].m_sString[0] == 0 ||
-                m_scriptsOn[ON_SCRIPT_DIALOG] == "default") {
-#endif
                 m_scriptsOn[ON_SCRIPT_DIALOG] = "k_hen_dialogue01";
             }
             g_pVirtualMachine->RunScript(&m_scriptsOn[ON_SCRIPT_DIALOG], m_objectId, 1);
@@ -1630,13 +1626,8 @@ int CSWSPlaceable::LoadPlaceable(CResGFF* pGFF, CResStruct* pStruct, int bFromTe
     pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("OnTrapTriggered"), bSuccess,
                             CResRef("")).CopyToString(sScript);
     m_scriptsOn[ON_SCRIPT_TRAP_TRIGGERED] = sScript;
-#if KOTOR1  // K1: the out-of-line IsEmpty
     if (m_scriptsOn[ON_SCRIPT_TRAP_TRIGGERED].IsEmpty() ||
         m_scriptsOn[ON_SCRIPT_TRAP_TRIGGERED] == "default") {
-#else
-    if (m_scriptsOn[ON_SCRIPT_TRAP_TRIGGERED].m_sString == 0 || m_scriptsOn[ON_SCRIPT_TRAP_TRIGGERED].m_sString[0] == 0 ||
-        m_scriptsOn[ON_SCRIPT_TRAP_TRIGGERED] == "default") {
-#endif
         CExoString sTrapScript;
         g_pRules->m_p2DArrays->m_pTraps->GetCExoStringEntry(m_trapType,
                                                             CExoString("MineScript"),

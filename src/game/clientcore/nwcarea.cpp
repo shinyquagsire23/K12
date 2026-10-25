@@ -662,6 +662,7 @@ int CSWCArea::SetWeather(unsigned char nWeather, float f)
     return 1;
 }
 
+// EFFECTIVE: the sound loop's entry guard is cmp #1/b.lt here, cmp #0/b.le in the orig.
 void CSWCArea::UnloadArea()
 {
 #if !KOTOR1
@@ -1603,6 +1604,7 @@ void CSWCArea::ClearAllMapPins()
         if (pPin != 0)
             delete pPin;
     }
+    // inlined CExoArrayList<CSWCMapPin*>::Clear()
     if (m_mapPins.m_pArray != 0) {
         delete[] m_mapPins.m_pArray;
         m_mapPins.m_pArray = 0;

@@ -22,6 +22,7 @@
 #include <string.h>
 #include "exoinput.h"
 #include "tutorial.h"
+#include "exostringinline.h"
 
 #if KOTOR1
 void IosAddButtonIcon(CSWGuiButton* pButton, char nIcon);  // the platform's button glyph
@@ -236,11 +237,7 @@ void CSWGuiScriptSelect::SetDescription(unsigned int nStrRef)
 
     CSWGuiExtent extent = m_lblColour.m_extent;
     CSWGuiText* pText = &m_lblColour.m_text;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (strRes.text.GetLength() > 0)
-#else
-    if (strRes.text.m_sString != 0 && static_cast<int>(strlen(strRes.text.m_sString)) > 0)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

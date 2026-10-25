@@ -82,6 +82,7 @@ static inline void SystemTimeToFileTime(const SystemTimeWords* pSystemTime, unsi
 #include "port/libcbase.h"
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
+#include "exostringinline.h"
 
 
 CServerExoAppInternal* CServerExoAppInternal::s_pServerExoAppInternal;
@@ -94,9 +95,9 @@ CServerExoAppInternal::CServerExoAppInternal()
     m_serverMode = 0;
     m_moduleObjectId = CGameObjectArray::INVALIDOBJID;
 
-    m_pPlayerList = new CExoLinkedList<CSWSPlayerListEntry>;
+    m_pPlayerList = new CExoLinkedList<CSWSClient>;
 
-    m_pSysAdminList = new CExoLinkedList<CSWSPlayerListEntry>;
+    m_pSysAdminList = new CExoLinkedList<CSWSClient>;
 
     m_forceUpdate = 0;
     m_pSWSMessage = 0;
@@ -151,7 +152,7 @@ CServerExoAppInternal::~CServerExoAppInternal()
     {
         while (m_pPlayerList->m_pInternal->m_pHead)
         {
-            CSWSPlayerListEntry* pData = static_cast<CSWSPlayerListEntry*>(m_pPlayerList->m_pInternal->RemoveHead());
+            CSWSClient* pData = static_cast<CSWSClient*>(m_pPlayerList->m_pInternal->RemoveHead());
             if (pData)
             {
                 delete pData;
@@ -163,7 +164,7 @@ CServerExoAppInternal::~CServerExoAppInternal()
     {
         while (m_pSysAdminList->m_pInternal->m_pHead)
         {
-            CSWSPlayerListEntry* pData = static_cast<CSWSPlayerListEntry*>(m_pSysAdminList->m_pInternal->RemoveHead());
+            CSWSClient* pData = static_cast<CSWSClient*>(m_pSysAdminList->m_pInternal->RemoveHead());
             if (pData)
             {
                 delete pData;
@@ -411,7 +412,7 @@ void CServerExoAppInternal::ForceRunAreaOnExitScripts()
         do
         {
             void* pElem = m_pPlayerList->m_pInternal->GetAtPos(pNode);
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayerListEntry*>(pElem)->AsSWSPlayer();
+            CSWSPlayer* pPlayer = static_cast<CSWSClient*>(pElem)->AsSWSPlayer();
             if (pPlayer != 0)
             {
                 CGameObject* pGameObj = pPlayer->GetGameObject();
@@ -736,19 +737,8 @@ int CServerExoAppInternal::LoadGame(unsigned int a, const CExoString& b, const C
 void CServerExoAppInternal::ExecuteLoadModule(const CExoString& moduleName)
 {
     const char* pDesc = "";
-#if KOTOR1  // K1 tests the description with IsEmpty()
     if (GetModule() != 0 && !GetModule()->m_sModuleResourceName.IsEmpty())
         pDesc = GetModule()->m_sModuleResourceName.CStr();
-#else
-    if (GetModule() != 0)
-    {
-        char* pDescStr = GetModule()->m_sModuleResourceName.m_sString;
-        if (pDescStr != 0 && *pDescStr != 0)
-        {
-            pDesc = GetModule()->m_sModuleResourceName.CStr();
-        }
-    }
-#endif
     DumpLogCounters(const_cast<char*>(pDesc));
     SendEnteringStartNewModuleMessage();
     g_pExoInput->ClearEvents();
@@ -790,11 +780,7 @@ bool CServerExoAppInternal::LoadCharacterStart(unsigned char loadType, CSWSPlaye
         {
             CExoString resRefStr;
             resRef.CopyToString(resRefStr);
-#if KOTOR1  // K1 parses the character id with AsINT()
             unsigned int characterId = resRefStr.AsINT();
-#else
-            unsigned int characterId = (resRefStr.m_sString != 0) ? atoi(resRefStr.m_sString) : 0;
-#endif
             pPlayer->LoadCharacterFromIFO(characterId, 0, 1);
         }
         goto finishLoad;
@@ -931,9 +917,9 @@ CExoString CServerExoAppInternal::GetPlayerListString()
     {
         do
         {
-            CSWSPlayerListEntry* elem = static_cast<CSWSPlayerListEntry*>(m_pSysAdminList->GetAtPos(pos));
+            CSWSClient* elem = static_cast<CSWSClient*>(m_pSysAdminList->GetAtPos(pos));
             void* pNetLayer = g_pAppManager->m_pServerExoApp->GetNetLayer();
-            unsigned int playerId = elem->m_playerId;
+            unsigned int playerId = elem->m_nPlayerId;
             CNetLayerPlayerInfo* pInfo = static_cast<CNetLayer*>(pNetLayer)->GetPlayerInfo(playerId);
             name = pInfo->m_sName.CStr();
             result = result + "\n" + name;
@@ -950,9 +936,9 @@ CExoString CServerExoAppInternal::GetPlayerListString()
     {
         do
         {
-            CSWSPlayerListEntry* elem = static_cast<CSWSPlayerListEntry*>(m_pPlayerList->GetAtPos(pos));
+            CSWSClient* elem = static_cast<CSWSClient*>(m_pPlayerList->GetAtPos(pos));
             void* pNetLayer = g_pAppManager->m_pServerExoApp->GetNetLayer();
-            unsigned int playerId = elem->m_playerId;
+            unsigned int playerId = elem->m_nPlayerId;
             CNetLayerPlayerInfo* pInfo = static_cast<CNetLayer*>(pNetLayer)->GetPlayerInfo(playerId);
             name = pInfo->m_sName.CStr();
             result = result + "\n" + name;
@@ -1118,11 +1104,11 @@ unsigned long long CServerExoAppInternal::GetPlayerCreatureId()
 
 int CServerExoAppInternal::ValidatePlayerLogin(void* a)
 {
-    if (static_cast<CSWSPlayerListEntry*>(a)->m_loginConfirmed != 1)
+    if (static_cast<CSWSPlayer*>(a)->m_connectionState != 1)
     {
-        static_cast<CSWSPlayerListEntry*>(a)->m_loginConfirmed = 1;
-        m_pSWSMessage->SendServerToPlayerLogin_Confirm(static_cast<CSWSPlayerListEntry*>(a)->m_playerId);
-        m_pSWSMessage->SendServerToPlayerModule_Info(static_cast<CSWSPlayerListEntry*>(a)->m_playerId);
+        static_cast<CSWSPlayer*>(a)->m_connectionState = 1;
+        m_pSWSMessage->SendServerToPlayerLogin_Confirm(static_cast<CSWSPlayer*>(a)->m_nPlayerId);
+        m_pSWSMessage->SendServerToPlayerModule_Info(static_cast<CSWSPlayer*>(a)->m_nPlayerId);
     }
     return 1;
 }
@@ -1516,9 +1502,9 @@ unsigned long long CServerExoAppInternal::GetFirstPCObject()
     m_pcObjectIterPos = pNode;
     if (pNode != 0)
     {
-        CSWSPlayerListEntry* p = static_cast<CSWSPlayerListEntry*>(pList->GetAtPos(pNode));
+        CSWSPlayer* p = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
         if (p != 0)
-            return p->m_pcObjectId;
+            return p->m_gameObjectId;
     }
     return CGameObjectArray::INVALIDOBJID;
 }
@@ -1527,9 +1513,9 @@ unsigned long long CServerExoAppInternal::GetNextPCObject()
 {
     if (m_pcObjectIterPos != 0)
     {
-        CSWSPlayerListEntry* p = static_cast<CSWSPlayerListEntry*>(m_pPlayerList->m_pInternal->GetNext(m_pcObjectIterPos));
+        CSWSPlayer* p = static_cast<CSWSPlayer*>(m_pPlayerList->GetNext(m_pcObjectIterPos));
         if (p != 0)
-            return p->m_pcObjectId;
+            return p->m_gameObjectId;
     }
     return CGameObjectArray::INVALIDOBJID;
 }
@@ -1671,9 +1657,9 @@ unsigned int CServerExoAppInternal::GetPlayerLanguage(unsigned int playerId)
     {
         while (1)
         {
-            CSWSPlayerListEntry* p = static_cast<CSWSPlayerListEntry*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
-            if (p != 0 && p->m_playerId == playerId)
-                return p->m_language;
+            CSWSClient* p = static_cast<CSWSClient*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+            if (p != 0 && p->m_nPlayerId == playerId)
+                return p->m_nLanguage;
             m_pPlayerList->m_pInternal->GetNext(pNode);
             if (pNode == 0)
                 break;
@@ -2193,7 +2179,7 @@ int CServerExoAppInternal::UnloadModule()
         do
         {
             void* pElem = m_pPlayerList->GetAtPos(pNode);
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayerListEntry*>(pElem)->AsSWSPlayer();
+            CSWSPlayer* pPlayer = static_cast<CSWSClient*>(pElem)->AsSWSPlayer();
             if (pPlayer != 0)
             {
                 CObjectTableManager* pObjTable = g_pAppManager->GetObjectTableManager(1);
@@ -2825,6 +2811,7 @@ void CServerExoAppInternal::StartServices(int a)
     m_autoSaveTimerFlag = 0;
 }
 
+// EFFECTIVE: two extra EH trampoline branches into the shared landing pads.
 void CServerExoAppInternal::StopServices()
 {
     CExoString timestamp;
@@ -3310,7 +3297,7 @@ void CServerExoAppInternal::AddCharListRequest(unsigned int id)
 int CServerExoAppInternal::StorePlayerCharacters()
 {
 
-    CExoLinkedList<CSWSPlayerListEntry>* pPlayerList = m_pPlayerList;
+    CExoLinkedList<CSWSClient>* pPlayerList = m_pPlayerList;
     CResGFF gff;
     CResList list;
     CExoLinkedListNode* pos;
@@ -3337,7 +3324,7 @@ int CServerExoAppInternal::StorePlayerCharacters()
         while (pos != 0)
         {
             pNode = pPlayerList->GetAtPos(pos);
-            pTarget = static_cast<CSWSPlayerListEntry*>(pNode)->AsSWSPlayer();
+            pTarget = static_cast<CSWSClient*>(pNode)->AsSWSPlayer();
             if (pTarget != 0)
             {
                 pTarget->m_saveListIndex = -1;
@@ -3510,18 +3497,18 @@ int CServerExoAppInternal::LoadCharacterFinish(CSWSPlayer* pPlayer, int a)
         pEvent1->SetObjectID(0, pGameObj3->m_objectId);
 
         CSWSMessage* pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
-        CExoLinkedList<CSWSPlayerListEntry>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
+        CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
         CGameObject* pGameObj4 = pPlayer->GetGameObject();
         CSWSCreature* pMyCreature = pGameObj4->AsSWSCreature();
 
         CExoLinkedListNode* pNode = pList->GetHeadPos();
         while (pNode != 0)
         {
-            CSWSPlayerListEntry* pElem = pList->GetAtPos(pNode);
-            if (pElem != 0 && pElem->m_characterListReady != 0 && pMsg != 0)
+            CSWSClient* pElem = pList->GetAtPos(pNode);
+            if (pElem != 0 && static_cast<CSWSPlayer*>(pElem)->m_bPlayModuleListingCharacters != 0 && pMsg != 0)
             {
                 pMsg->SendServerToPlayerPlayModuleCharacterListResponse(
-                    pElem->m_playerId,
+                    pElem->m_nPlayerId,
                     pMyCreature->m_objectId, 1);
             }
             pList->GetNext(pNode);
@@ -4219,8 +4206,8 @@ int CServerExoAppInternal::MainLoop()
     if (m_bNeedCharacterPending == 1)
     {
         // sic: reads the head node's payload directly instead of calling GetAtPos().
-        CSWSPlayerListEntry* pFirstPlayer = static_cast<CSWSPlayerListEntry*>(m_pPlayerList->m_pInternal->m_pHead->m_pData);
-        m_pSWSMessage->SendServerToPlayerLogin_NeedCharacter(pFirstPlayer->m_playerId);
+        CSWSClient* pFirstPlayer = static_cast<CSWSClient*>(m_pPlayerList->m_pInternal->m_pHead->m_pData);
+        m_pSWSMessage->SendServerToPlayerLogin_NeedCharacter(pFirstPlayer->m_nPlayerId);
         m_bNeedCharacterPending = 0;
     }
 
