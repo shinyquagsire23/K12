@@ -1275,6 +1275,8 @@ int CSWPartyTable::LoadTableInfo()
     CResStruct struct1;
     CResList list1;
     int bSuccess;
+    int soloMode;
+    int availCount;
 
     pGff->GetList(&list1, &topStruct, const_cast<char*>("PT_MEMBERS"));
 
@@ -1293,7 +1295,7 @@ int CSWPartyTable::LoadTableInfo()
     if (bSuccess == 0)
         m_nTotalPlayedSecondsAccum = pGff->ReadFieldDWORD(&topStruct, const_cast<char*>("PT_PLAYEDMINUTES"), bSuccess, 0) * 60;
     m_nControlledNPC = pGff->ReadFieldINT(&topStruct, const_cast<char*>("PT_CONTROLLED_NPC"), bSuccess, -1);
-    int soloMode = pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("PT_SOLOMODE"), bSuccess, static_cast<unsigned char>(m_soloMode));
+    soloMode = pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("PT_SOLOMODE"), bSuccess, static_cast<unsigned char>(m_soloMode));
     if (soloMode == 0)
         UnstealthParty(0);
     m_soloMode = soloMode;
@@ -1328,7 +1330,7 @@ int CSWPartyTable::LoadTableInfo()
     }
 
     pGff->GetList(&list1, &topStruct, const_cast<char*>("PT_AVAIL_PUPS"));
-    int availCount = 3;
+    availCount = 3;
     if (pGff->GetListCount(&list1) <= 2)
         availCount = pGff->GetListCount(&list1);
     for (int i = 0; i < availCount; i++)
@@ -1394,21 +1396,24 @@ int CSWPartyTable::LoadTableInfo()
     }
 
     unsigned char defaultTutShown[33] = {};
+    CGuiInGame* pGuiInGame;
     pGff->ReadFieldVOID(&topStruct, g_pAppManager->m_pClientExoApp->GetInGameGui()->m_tutorialWindowShown, sizeof(CGuiInGame::m_tutorialWindowShown), const_cast<char*>("PT_TUT_WND_SHOWN"), bSuccess, defaultTutShown);
-    CGuiInGame* pGuiInGame = g_pAppManager->m_pClientExoApp->GetInGameGui();
+    pGuiInGame = g_pAppManager->m_pClientExoApp->GetInGameGui();
     pGuiInGame->m_lastGuiPanel =
         pGff->ReadFieldINT(&topStruct, const_cast<char*>("PT_LAST_GUI_PNL"), bSuccess, g_pAppManager->m_pClientExoApp->GetInGameGui()->m_lastGuiPanel);
     m_forfeitViolations = pGff->ReadFieldINT(&struct1, const_cast<char*>("FORFEITVIOL"), bSuccess, 0);
     m_forfeitConditions = pGff->ReadFieldINT(&struct1, const_cast<char*>("FORFEITCONDS"), bSuccess, 0);
 
     CExoString text;
+    unsigned int msgType;
+    unsigned char msgColor;
     pGff->GetList(&list1, &topStruct, const_cast<char*>("PT_FB_MSG_LIST"));
     for (int i = 0; i < static_cast<int>(pGff->GetListCount(&list1)); i++)
     {
         pGff->GetListElement(&struct1, &list1, i);
         text = pGff->ReadFieldCExoString(&struct1, const_cast<char*>("PT_FB_MSG_MSG"), bSuccess, CExoString(""));
-        unsigned int msgType = pGff->ReadFieldDWORD(&struct1, const_cast<char*>("PT_FB_MSG_TYPE"), bSuccess, kMessageTypeDebug);
-        unsigned char msgColor = pGff->ReadFieldBYTE(&struct1, const_cast<char*>("PT_FB_MSG_COLOR"), bSuccess, 0);
+        msgType = pGff->ReadFieldDWORD(&struct1, const_cast<char*>("PT_FB_MSG_TYPE"), bSuccess, kMessageTypeDebug);
+        msgColor = pGff->ReadFieldBYTE(&struct1, const_cast<char*>("PT_FB_MSG_COLOR"), bSuccess, 0);
         g_pAppManager->m_pClientExoApp->GetInGameGui()->AppendToMsgBuffer(text, msgType, msgColor);
     }
 
@@ -1427,16 +1432,17 @@ int CSWPartyTable::LoadTableInfo()
     {
         pGff->GetListElement(&struct1, &list1, i);
         text = pGff->ReadFieldCExoString(&struct1, const_cast<char*>("PT_COM_MSG_MSG"), bSuccess, CExoString(""));
-        unsigned int msgType = pGff->ReadFieldDWORD(&struct1, const_cast<char*>("PT_COM_MSG_TYPE"), bSuccess, kMessageTypeDebug);
-        unsigned char msgColor = pGff->ReadFieldBYTE(&struct1, const_cast<char*>("PT_COM_MSG_COOR"), bSuccess, 0);
+        msgType = pGff->ReadFieldDWORD(&struct1, const_cast<char*>("PT_COM_MSG_TYPE"), bSuccess, kMessageTypeDebug);
+        msgColor = pGff->ReadFieldBYTE(&struct1, const_cast<char*>("PT_COM_MSG_COOR"), bSuccess, 0);
         g_pAppManager->m_pClientExoApp->GetInGameGui()->AppendToCombatBuffer(text, msgType, msgColor);
     }
 
     pGff->GetList(&list1, &topStruct, const_cast<char*>("PT_COST_MULT_LIST"));
     for (int i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
     {
+        CSWBaseItem* pBaseItem;
         pGff->GetListElement(&struct1, &list1, i);
-        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(i);
+        pBaseItem = g_pRules->GetBaseItem(i);
         pBaseItem->m_costMultiplier =
             pGff->ReadFieldFLOAT(&struct1, const_cast<char*>("PT_COST_MULT_VALUE"), bSuccess, 1.0f);
     }
@@ -2221,8 +2227,8 @@ int CSWPartyTable::AddNPC(int index, CSWSCreature* pCreature)
     int totalXP;
     if (lvl != 0)
     {
-        int step = 0;
         int i = 0;
+        int step = 0;
         totalXP = 0;
         unsigned char curLevel;
         do
@@ -2261,11 +2267,12 @@ int CSWPartyTable::AddNPC(int index, CSWSCreature* pCreature)
     {
         CExoString availName;
         availName.Format(const_cast<char*>("AVAILNPC%d"), index);
-        gipPath.Format(const_cast<char*>("GAMEINPROGRESS:%s"), availName.CStr());
+        char* pszAvailName = availName.CStr();
+        gipPath.Format(const_cast<char*>("GAMEINPROGRESS:%s"), pszAvailName);
     }
 
-    CResGFF* pGff = new CResGFF();
     CResStruct topStruct;
+    CResGFF* pGff = new CResGFF();
     {
         CExoString fileType("UTC ");
         CExoString version("V2.0");
@@ -2323,11 +2330,12 @@ int CSWPartyTable::AddPUP(int index, CSWSCreature* pCreature)
     {
         CExoString availName;
         availName.Format(const_cast<char*>("AVAILPUP%d"), index);
-        gipPath.Format(const_cast<char*>("GAMEINPROGRESS:%s"), availName.CStr());
+        char* pszAvailName = availName.CStr();
+        gipPath.Format(const_cast<char*>("GAMEINPROGRESS:%s"), pszAvailName);
     }
 
-    CResGFF* pGff = new CResGFF();
     CResStruct topStruct;
+    CResGFF* pGff = new CResGFF();
     {
         CExoString fileType("UTC ");
         CExoString version("V2.0");
@@ -2710,6 +2718,8 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
     Vector pos = {};
     bool bFromTemplate = false;
     CSWSCreature* pNewPC;
+    unsigned long long newId;
+    CSWParty* pParty;
     int curPCIndex = m_nControlledNPC;
     if (index == -1)
     {
@@ -2725,15 +2735,14 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
         SaveMember(m_nControlledNPC, 0);
         pNewPC = new CSWSCreature(OBJECT_INVALID, 0);
         AddGameInProgress();
-        CResRef resRef("PC");
-        if (pNewPC->LoadFromTemplate(resRef, 0) == 0)
+        if (pNewPC->LoadFromTemplate(CResRef("PC"), 0) == 0)
         {
             delete pNewPC;
             return 0;
         }
         RemoveGameInProgress();
-        orient = pOldPC->m_orientation;
         pos = pOldPC->m_position;
+        orient = pOldPC->m_orientation;
         bFromTemplate = true;
         KillNPCObject(m_nControlledNPC, 1);
     }
@@ -2746,8 +2755,8 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
         if (curPCIndex == -1)
         {
             saveName = "GAMEINPROGRESS:PC";
-            CResGFF* pGff = new CResGFF();
             CResStruct topStruct;
+            CResGFF* pGff = new CResGFF();
             {
                 CExoString fileType("UTC ");
                 CExoString version("V2.0");
@@ -2769,7 +2778,6 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
             pCurPC->m_bPlayerCharacter = 0;
             SaveMember(m_nControlledNPC, 0);
         }
-        unsigned long long newId;
         if (m_npcAvailable[index] != 0)
             newId = m_partyMemberID[index];
         else
@@ -2778,8 +2786,8 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
         if (pNewPC == 0)
         {
             pNewPC = pServerApp->GetCreatureByGameObjectID(GetNPCObject(index, 1, 1));
-            orient = pOldPC->m_orientation;
             pos = pOldPC->m_position;
+            orient = pOldPC->m_orientation;
             bFromTemplate = true;
         }
         if (m_nControlledNPC == -1)
@@ -2801,7 +2809,7 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
         if (pNewPC == 0)
             return 0;
     }
-    CSWParty* pParty = pClientApp->GetSWParty();
+    pParty = pClientApp->GetSWParty();
     pParty->ClearParty();
     pNewPC->SetInParty(1, 1);
     pNewPC->m_pStats->m_bIsPC = 1;

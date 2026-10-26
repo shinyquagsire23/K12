@@ -399,8 +399,8 @@ void CGameEffect::LoadGameEffect(CResGFF* pGff, CResStruct* pStruct)
     m_durationTypeBits = pGff->ReadFieldWORD(pStruct, const_cast<char*>("SubType"), bSuccess, 0);
     m_fDuration = pGff->ReadFieldFLOAT(pStruct, const_cast<char*>("Duration"), bSuccess, 0.0f);
     m_bSkipOnLoad = pGff->ReadFieldBYTE(pStruct, const_cast<char*>("SkipOnLoad"), bSuccess, 0);
-    unsigned int nExpireDay = pGff->ReadFieldDWORD(pStruct, const_cast<char*>("ExpireDay"), bSuccess, 0);
-    SetExpiryTime(nExpireDay, pGff->ReadFieldDWORD(pStruct, const_cast<char*>("ExpireTime"), bSuccess, 0));
+    SetExpiryTime(pGff->ReadFieldDWORD(pStruct, const_cast<char*>("ExpireDay"), bSuccess, 0),
+                  pGff->ReadFieldDWORD(pStruct, const_cast<char*>("ExpireTime"), bSuccess, 0));
     SetCreator(pGff->ReadFieldDWORD(pStruct, const_cast<char*>("CreatorId"), bSuccess, 0));
     // After SetCreator, which writes the spell id itself when the creator resolves to a real object;
     // the stored spell id wins.
@@ -415,10 +415,10 @@ void CGameEffect::LoadGameEffect(CResGFF* pGff, CResStruct* pStruct)
     if (m_subType == CSWSEffectListHandler::EFFECT_DAMAGE && m_numIntegers <= 20)
 #endif
     {
+        int nSrc = 0;
+        unsigned int nDst = 0;
         if (pGff->GetList(&sList, pStruct, const_cast<char*>("IntList")) == 1)
         {
-            int nSrc = 0;
-            unsigned int nDst = 0;
             while (nDst < 21)
             {
                 // The read block appears once per arm; only the store and increment tail is shared.

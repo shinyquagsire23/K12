@@ -2281,8 +2281,8 @@ int CSWSObject::AIActionUseObject(CSWSObjectActionNode* pNode) {
                     AddActionToFront(AIACTION_USE_OBJECT, pNode->m_nGroupId,
                                      ACTION_PARAM_OBJECT, &oidTarget, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                    float fWait;
                     CSWCObject* pClient = static_cast<CSWCObject*>(pPlaceable->GetClientPlaceable());
+                    float fWait;
                     if (pClient == 0) {
                         fWait = 0.5f;
                     } else {

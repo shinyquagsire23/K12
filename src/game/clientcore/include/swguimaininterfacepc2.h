@@ -130,10 +130,9 @@ public:
     void DrawStack(float f, int a, int b);
     void DrawEffects(float f, int a);
 
-#if !KOTOR1  // K1 swaps the bar's fill image instead of its colour (UpdatePortraits writes it out)
-    // Refreshes the vitality bar (green while poisoned) and the tooltip's hit-point numbers.
+    // Refreshes the vitality bar (green while poisoned; K2 sets the bar's colour, K1 its fill
+    // image) and the tooltip's hit-point numbers.
     void SetHealth(int nCur, int nMax, int bPoisoned);
-#endif
     // Refreshes the force bar and the tooltip's force-point numbers; a creature without force
     // points shows an empty bar.
     void SetForce(int nCur, int nMax);
@@ -757,6 +756,24 @@ inline void CSWGuiMainInterfaceChar::SetHealth(int nCur, int nMax, int bPoisoned
     m_aBars[0].m_borderProgress.m_params.m_color = bPoisoned
         ? reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_GREEN)
         : reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_RED);
+    m_nMaxHP = nMax;
+    m_nCurHP = nCur;
+    m_bToolTipDirty = 1;
+}
+#else
+// K1: the health bar's fill is an image, green while poisoned.
+inline void CSWGuiMainInterfaceChar::SetHealth(int nCur, int nMax, int bPoisoned)
+{
+    m_aBars[0].SetMaxValue(nMax);
+    m_aBars[0].SetCurValue(nCur);
+#ifdef K1_UI_XBOX
+    CResRef sGreen("lbl_healthp");
+    CResRef sRed("lbl_health");
+#else
+    CResRef sGreen("greenfill");
+    CResRef sRed("redfill");
+#endif
+    m_aBars[0].m_borderProgress.m_params.SetFillImage(bPoisoned ? sGreen : sRed, 0);
     m_nMaxHP = nMax;
     m_nCurHP = nCur;
     m_bToolTipDirty = 1;

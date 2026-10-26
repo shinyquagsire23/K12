@@ -1123,20 +1123,13 @@ void CSWGuiInGameEquip::SetDescription(const CExoString& sDescription) {
 }
 #else
 void CSWGuiInGameEquip::SetDescription(const CExoString& sDescription) {
-    CSWGuiControl* pRow;
-
     CExoString sDesc(sDescription);
 
     int nLt = sDesc.Find('<', 0);
     int nGt = sDesc.Find('>', 0);
     if ((nLt & nGt) != -1) {
-        // inlined CSWTlkTable::ParseStr(CExoString&, CGameObject*, int, int)
-        auto pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-        CSWTlkTable* pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = pPC;
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled |= 1;
-        pTlk->ParseStr(sDesc);
+        CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+        g_pSWTlkTable->ParseStr(sDesc, pPC, 1, 1);
     }
 
     m_lblDescription.m_text.m_params.SetText(sDesc);
@@ -1153,12 +1146,13 @@ void CSWGuiInGameEquip::SetDescription(const CExoString& sDescription) {
     else
         extent.h = pText->GetFontHeight();
 #ifndef K2_FIX_ENGINE_BUGS
-    extent.h = static_cast<int>(extent.h * GetResolutionTextScalar());
+    float fScale = GetResolutionTextScalar();
+    extent.h = static_cast<int>(extent.h * fScale);
 #endif
     m_lblDescription.SetExtent(extent);
 
-    pRow = &m_lblDescription;
-    m_lbDesc.AddControls(&pRow, 1, 0, 0, 0);
+    CSWGuiControl* apRows[1] = { &m_lblDescription };
+    m_lbDesc.AddControls(apRows, 1, 0, 0, 0);
     m_lbDesc.SetSelectedControl(&m_lblDescription, 0);
 }
 #endif

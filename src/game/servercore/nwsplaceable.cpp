@@ -307,10 +307,10 @@ int CSWSPlaceable::AcquireItemsFromObject(unsigned long long oidOwner, int flag)
         return 0;
 
     CSWSItem* pItem;
+    CItemRepository* pRepository =
+        pCreature != 0 ? pCreature->GetItemRepository(1) : pPlaceable->m_pItemRepository;
     CExoArrayList<CSWSItem*> list;
-    CItemRepository* pRepository;
     if (pCreature != 0) {
-        pRepository = pCreature->GetItemRepository(1);
 #if KOTOR1  // K1 scans 14 equip slots
         for (int i = 0; i < 14; i++) {
 #else
@@ -321,7 +321,6 @@ int CSWSPlaceable::AcquireItemsFromObject(unsigned long long oidOwner, int flag)
                 list.Add(pItem);
         }
     } else {
-        pRepository = pPlaceable->m_pItemRepository;
         flag = 0;
     }
     for (unsigned int i = 0; i < pRepository->ItemListGetCount(); i++) {
@@ -1534,8 +1533,12 @@ int CSWSPlaceable::LoadPlaceable(CResGFF* pGFF, CResStruct* pStruct, int bFromTe
 
     // "Static" defaults to the inverse of useability when the field is absent, is vetoed outright
     // for a placeholder object (m_bPlaceholder), and a static placeable is implicitly plot-protected.
-    unsigned char bStaticField = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Static"), bSuccess, 0);
     int bStatic;
+    unsigned short nPortraitId;
+#if KOTOR1
+    unsigned char bOpen;
+#endif
+    unsigned char bStaticField = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Static"), bSuccess, 0);
     if (bSuccess)
         bStatic = bStaticField;
     else
@@ -1567,8 +1570,7 @@ int CSWSPlaceable::LoadPlaceable(CResGFF* pGFF, CResStruct* pStruct, int bFromTe
 
     // The portrait load is identical to CSWSTrigger::LoadTrigger's, where both unset sentinel
     // values and send it down the resref fallback.
-    unsigned short nPortraitId =
-        pGFF->ReadFieldWORD(pStruct, const_cast<char*>("PortraitId"), bSuccess, PORTRAIT_ID_NONE);
+    nPortraitId = pGFF->ReadFieldWORD(pStruct, const_cast<char*>("PortraitId"), bSuccess, PORTRAIT_ID_NONE);
     if (nPortraitId >= PORTRAIT_ID_CUSTOM) {
         SetPortrait(pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Portrait"), bSuccess, CResRef("")));
     } else {
@@ -1651,23 +1653,25 @@ int CSWSPlaceable::LoadPlaceable(CResGFF* pGFF, CResStruct* pStruct, int bFromTe
     m_bIsBodyBag = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("IsBodyBag"), bSuccess, static_cast<unsigned char>(m_bIsBodyBag));
     m_corpse.m_bIsCorpse = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("IsCorpse"), bSuccess, static_cast<unsigned char>(m_corpse.m_bIsCorpse));
 #if !KOTOR1
+    unsigned char bOpen;
     m_nPCLevelAtSpawn = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("PCLevelAtSpawn"), bSuccess, m_nPCLevelAtSpawn);
 #endif
 
     // For the animation, an open container is pinned to the "opened" pose outright; otherwise a
     // raw "Animation" id wins, and failing that the legacy "AnimationState" enum is mapped through
     // a small table indexed at (state - 1).
-    unsigned char bOpen = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Open"), bSuccess, 0);
+    bOpen = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Open"), bSuccess, 0);
     m_bInventoryOpen = bOpen;
     if (bOpen) {
         SetAnimation(SERVER_ANIMATION_PLACEABLE_OPEN);
     } else {
-        int nAnimation = pGFF->ReadFieldINT(pStruct, const_cast<char*>("Animation"), bSuccess, 0);
+        int nAnimation;
+        unsigned char nAnimationState;
+        nAnimation = pGFF->ReadFieldINT(pStruct, const_cast<char*>("Animation"), bSuccess, 0);
         if (bSuccess) {
             SetAnimation(nAnimation);
         } else {
-            unsigned char nAnimationState =
-                pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("AnimationState"), bSuccess, 0);
+            nAnimationState = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("AnimationState"), bSuccess, 0);
             if (bSuccess) {
                 switch (nAnimationState) {
                 case 1:  nAnim = SERVER_ANIMATION_PLACEABLE_OPEN; break;
@@ -1690,8 +1694,9 @@ int CSWSPlaceable::LoadPlaceable(CResGFF* pGFF, CResStruct* pStruct, int bFromTe
         for (unsigned int i = 0; i < pGFF->GetListCount(&itemList); i++) {
             CSWSItem* pItem = 0;
             CResStruct itemStruct;
+            unsigned int nObjectId;
             pGFF->GetListElement(&itemStruct, &itemList, i);
-            unsigned int nObjectId = pGFF->ReadFieldDWORD(&itemStruct, const_cast<char*>("ObjectId"),
+            nObjectId = pGFF->ReadFieldDWORD(&itemStruct, const_cast<char*>("ObjectId"),
                                                            bSuccess, OBJECT_INVALID);
             pItem = new CSWSItem(nObjectId);
             if (bFromTemplate) {

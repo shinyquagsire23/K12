@@ -28,6 +28,7 @@
 #include "nwseffectlist.h"
 #include "nwseffect.h"
 #include "nwccreaturestats.h"
+#include <algorithm>
 #include "nwupdatestats.h"
 #include "nwccreature.h"
 #include "guiingame.h"
@@ -9101,11 +9102,18 @@ void CSWGuiMainInterface::Draw(float fDelta) {
 void CSWGuiMainInterface::UpdatePortraits() {
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
     CExoString sScratch;
+    CSWCCreature* pChar;
+    CSWSCreature* pServer;
+    bool bShow;
+    int nSlot;
+    int nState;
+    int nEffA;
+    int nEffB;
     for (int nI = 0; nI < 3; nI++) {
-        CSWCCreature* pChar = pParty->GetCharacter(nI);
-        CSWSCreature* pServer = pChar ? pChar->GetServerCreature() : 0;
-        bool bShow = pServer != 0;
-        int nSlot = nI;
+        pChar = pParty->GetCharacter(nI);
+        pServer = pChar ? pChar->GetServerCreature() : 0;
+        bShow = pServer != 0;
+        nSlot = nI;
         if (m_fRotationTimer > 0.0f) {
             if (nI == 0) {
                 nSlot = 1;
@@ -9127,48 +9135,20 @@ void CSWGuiMainInterface::UpdatePortraits() {
             }
         }
         if (pServer != 0) {
-            int nState;
-            int nEffA = 0;
-            int nEffB = 0;
+            nEffA = 0;
+            nEffB = 0;
             m_aCharacters[nSlot].m_sFirstName = pChar->m_pStats->m_name;
             m_aCharacters[nSlot].m_sLastName = pChar->m_pStats->m_sLastName;
             m_aCharacters[nSlot].m_aLabels[5].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
-            short nCurHP = pServer->GetCurrentHitPoints(0);
-            short nMaxHP = pServer->GetMaxHitPoints(1);
-            int bPoisoned = pServer->m_bPoisoned;
-            m_aCharacters[nSlot].m_aBars[0].SetMaxValue(nMaxHP);
-            m_aCharacters[nSlot].m_aBars[0].SetCurValue(nCurHP);
-#ifdef K1_UI_XBOX
-            CResRef sGreen("lbl_healthp");
-            CResRef sRed("lbl_health");
-#else
-            CResRef sGreen("greenfill");
-            CResRef sRed("redfill");
-#endif
-            m_aCharacters[nSlot].m_aBars[0].m_borderProgress.m_params.SetFillImage(bPoisoned ? sGreen : sRed, 0);
-            m_aCharacters[nSlot].m_nMaxHP = nMaxHP;
-            m_aCharacters[nSlot].m_nCurHP = nCurHP;
-            m_aCharacters[nSlot].m_bToolTipDirty = 1;
-            short nFPBonus = pServer->m_pStats->m_nTemporaryForcePoints;
-            short nFPCur = pServer->m_pStats->m_nCurrentForcePoints;
-            short nMaxFP = pServer->GetMaxForcePoints();
-            short nFPCurTot = nFPBonus + nFPCur;
-            if (nMaxFP == 0) {
-                m_aCharacters[nSlot].m_aBars[1].SetMaxValue(1);
-                m_aCharacters[nSlot].m_aBars[1].SetCurValue(0);
-            } else {
-                m_aCharacters[nSlot].m_aBars[1].SetMaxValue(nMaxFP);
-                m_aCharacters[nSlot].m_aBars[1].SetCurValue(nFPCurTot);
-            }
-            m_aCharacters[nSlot].m_nMaxFP = nMaxFP;
-            m_aCharacters[nSlot].m_nCurFP = nFPCurTot;
-            m_aCharacters[nSlot].m_bToolTipDirty = 1;
+            m_aCharacters[nSlot].SetHealth(pServer->GetCurrentHitPoints(0), pServer->GetMaxHitPoints(1),
+                                           pServer->m_bPoisoned);
+            m_aCharacters[nSlot].SetForce(static_cast<short>(pServer->m_pStats->m_nTemporaryForcePoints
+                                                             + pServer->m_pStats->m_nCurrentForcePoints),
+                                          pServer->GetMaxForcePoints());
             m_aCharacters[nSlot].m_nLevel = pServer->m_pStats->GetLevel(0) & 0xff;
             m_aCharacters[nSlot].m_bToolTipDirty = 1;
-            int nExpDiff = pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience;
-            if (nExpDiff < 1)
-                nExpDiff = 0;
-            m_aCharacters[nSlot].m_nXPToLevel = nExpDiff;
+            m_aCharacters[nSlot].m_nXPToLevel =
+                std::max(0, static_cast<int>(pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience));
             m_aCharacters[nSlot].m_bToolTipDirty = 1;
             if (pServer->GetDead() || pServer->GetDeadTemp()) {
                 nState = 1;
@@ -9200,95 +9180,46 @@ void CSWGuiMainInterface::UpdatePortraits() {
             }
             if (pServer->IsDebilitated(0) == 0 && m_combatMessage == STRREF_PLAYER_DEBILITATED)
                 SetCombatMessage(STRREF_COMBAT_MODE_ENGAGED);
-            m_aCharacters[nSlot].m_aLabels[5].m_tail.bVisible = 1;
-            m_aCharacters[nSlot].m_aLabels[0].m_tail.bVisible = 1;
-            m_aCharacters[nSlot].m_aBars[0].m_tail.bVisible = 1;
-            m_aCharacters[nSlot].m_aBars[1].m_tail.bVisible = 1;
-            m_aCharacters[nSlot].m_aLabels[1].m_tail.bVisible = (nState & 2) != 0;
-            m_aCharacters[nSlot].m_aLabels[2].m_tail.bVisible = (nState & 1) != 0;
-            m_aCharacters[nSlot].m_aLabels[3].m_tail.bVisible = (nState & 4) != 0;
-            m_aCharacters[nSlot].m_aLabels[4].m_tail.bVisible = (nState & 4) != 0;
-            m_aCharacters[nSlot].m_nGoodEffectCount = static_cast<unsigned char>(nState == 0 ? nEffA : 0);
-            m_aCharacters[nSlot].m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
-            m_aCharacters[nSlot].m_btnChar.m_tail.bVisible = 1;
+            m_aCharacters[nSlot].Show(1, static_cast<unsigned char>(nState), static_cast<unsigned char>(nEffA),
+                                      static_cast<unsigned char>(nEffB));
             if (nSlot == 0 && m_fRotationTimer > 0.0f) {
                 m_charOffscreen.m_sFirstName = pChar->m_pStats->m_name;
                 m_charOffscreen.m_sLastName = pChar->m_pStats->m_sLastName;
                 m_charOffscreen.m_aLabels[5].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
-                short nCurHPMirror = pServer->GetCurrentHitPoints(0);
-                short nMaxHPMirror = pServer->GetMaxHitPoints(1);
-                int bPoisonedMirror = pServer->m_bPoisoned;
-                m_charOffscreen.m_aBars[0].SetMaxValue(nMaxHPMirror);
-                m_charOffscreen.m_aBars[0].SetCurValue(nCurHPMirror);
-#ifdef K1_UI_XBOX
-                CResRef sGreenMirror("lbl_healthp");
-                CResRef sRedMirror("lbl_health");
-#else
-                CResRef sGreenMirror("greenfill");
-                CResRef sRedMirror("redfill");
-#endif
-                m_charOffscreen.m_aBars[0].m_borderProgress.m_params.SetFillImage(bPoisonedMirror ? sGreenMirror : sRedMirror, 0);
-                m_charOffscreen.m_nCurHP = nCurHPMirror;
-                m_charOffscreen.m_nMaxHP = nMaxHPMirror;
-                m_charOffscreen.m_bToolTipDirty = 1;
-                short nFPBonusMirror = pServer->m_pStats->m_nTemporaryForcePoints;
-                short nFPCurMirror = pServer->m_pStats->m_nCurrentForcePoints;
-                short nMaxFPMirror = pServer->GetMaxForcePoints();
-                short nFPCurTotMirror = nFPBonusMirror + nFPCurMirror;
-                if (nMaxFPMirror == 0) {
-                    m_charOffscreen.m_aBars[1].SetMaxValue(1);
-                    m_charOffscreen.m_aBars[1].SetCurValue(0);
-                } else {
-                    m_charOffscreen.m_aBars[1].SetMaxValue(nMaxFPMirror);
-                    m_charOffscreen.m_aBars[1].SetCurValue(nFPCurTotMirror);
-                }
-                m_charOffscreen.m_nCurFP = nFPCurTotMirror;
-                m_charOffscreen.m_nMaxFP = nMaxFPMirror;
-                m_charOffscreen.m_bToolTipDirty = 1;
+                m_charOffscreen.SetHealth(pServer->GetCurrentHitPoints(0), pServer->GetMaxHitPoints(1),
+                                          pServer->m_bPoisoned);
+                m_charOffscreen.SetForce(static_cast<short>(pServer->m_pStats->m_nTemporaryForcePoints
+                                                            + pServer->m_pStats->m_nCurrentForcePoints),
+                                         pServer->GetMaxForcePoints());
                 m_charOffscreen.m_nLevel = pServer->m_pStats->GetLevel(0) & 0xff;
                 m_charOffscreen.m_bToolTipDirty = 1;
-                int nExpDiffMirror = pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience;
-                if (nExpDiffMirror < 1)
-                    nExpDiffMirror = 0;
-                m_charOffscreen.m_nXPToLevel = nExpDiffMirror;
+                m_charOffscreen.m_nXPToLevel =
+                    std::max(0, static_cast<int>(pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience));
                 m_charOffscreen.m_bToolTipDirty = 1;
-                m_charOffscreen.m_aLabels[5].m_tail.bVisible = 1;
-                m_charOffscreen.m_aLabels[0].m_tail.bVisible = 1;
-                m_charOffscreen.m_aBars[0].m_tail.bVisible = 1;
-                m_charOffscreen.m_aBars[1].m_tail.bVisible = 1;
-                m_charOffscreen.m_aLabels[1].m_tail.bVisible = (nState & 2) != 0;
-                m_charOffscreen.m_aLabels[2].m_tail.bVisible = (nState & 1) != 0;
-                m_charOffscreen.m_aLabels[3].m_tail.bVisible = (nState & 4) != 0;
-                m_charOffscreen.m_aLabels[4].m_tail.bVisible = (nState & 4) != 0;
-                m_charOffscreen.m_nGoodEffectCount = static_cast<unsigned char>(nState == 0 ? nEffA : 0);
-                m_charOffscreen.m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
-                m_charOffscreen.m_btnChar.m_tail.bVisible = 1;
+                m_charOffscreen.Show(1, static_cast<unsigned char>(nState), static_cast<unsigned char>(nEffA),
+                                     static_cast<unsigned char>(nEffB));
             }
         }
-        if (!bShow) {
-            m_aCharacters[nI].m_aLabels[5].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[0].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aBars[0].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aBars[1].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[1].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[2].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[3].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[4].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_nGoodEffectCount = 0;
-            m_aCharacters[nI].m_nBadEffectCount = 0;
-            m_aCharacters[nI].m_btnChar.m_tail.bVisible = 0;
-        }
+        if (!bShow)
+            m_aCharacters[nI].Show(0, 0, 0, 0);
     }
 }
 #else
 void CSWGuiMainInterface::UpdatePortraits() {
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
     CExoString sScratch;
+    CSWCCreature* pChar;
+    CSWSCreature* pServer;
+    bool bShow;
+    int nSlot;
+    int nState;
+    int nEffA;
+    int nEffB;
     for (int nI = 0;; nI++) {
-        CSWCCreature* pChar = pParty->GetCharacter(nI);
-        CSWSCreature* pServer = pChar ? pChar->GetServerCreature() : 0;
-        bool bShow = pServer != 0;
-        int nSlot = nI;
+        pChar = pParty->GetCharacter(nI);
+        pServer = pChar ? pChar->GetServerCreature() : 0;
+        bShow = pServer != 0;
+        nSlot = nI;
         if (m_fRotationTimer > 0.0f) {
             if (nI == 0) {
                 nSlot = 1;
@@ -9309,48 +9240,31 @@ void CSWGuiMainInterface::UpdatePortraits() {
                 bShow = true;
             }
         }
-        int nState = 0;
-        int nEffA = 0;
-        int nEffB = 0;
+        nState = 0;
+        nEffA = 0;
+        nEffB = 0;
         if (pServer != 0) {
             m_aCharacters[nSlot].m_sFirstName = pChar->m_pStats->GetFirstName();
             m_aCharacters[nSlot].m_sLastName = pChar->m_pStats->GetLastName();
             m_aCharacters[nSlot].m_aLabels[4].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
-            int nCurHP = pServer->GetCurrentHitPoints(0);
-            int nMaxHP = pServer->GetMaxHitPoints(1);
-            int bPoisoned = pServer->m_bPoisoned;
-            m_aCharacters[nSlot].SetHealth(nCurHP, nMaxHP, bPoisoned);
-            short nFPBonus = pServer->m_pStats->m_nTemporaryForcePoints;
-            short nFPCur = pServer->m_pStats->m_nCurrentForcePoints;
-            short nMaxFP = pServer->GetMaxForcePoints();
-            short nFPCurTot = nFPBonus + nFPCur;
-            // inlined CSWGuiMainInterfaceChar::SetForce(int, int)
-            if (nMaxFP == 0) {
-                m_aCharacters[nSlot].m_aBars[1].SetMaxValue(1);
-                m_aCharacters[nSlot].m_aBars[1].SetCurValue(0);
-            } else {
-                m_aCharacters[nSlot].m_aBars[1].SetMaxValue(nMaxFP);
-                m_aCharacters[nSlot].m_aBars[1].SetCurValue(nFPCurTot);
-            }
-            m_aCharacters[nSlot].m_nMaxFP = nMaxFP;
-            m_aCharacters[nSlot].m_nCurFP = nFPCurTot;
-            m_aCharacters[nSlot].m_bToolTipDirty = 1;
+            m_aCharacters[nSlot].SetHealth(pServer->GetCurrentHitPoints(0), pServer->GetMaxHitPoints(1),
+                                           pServer->m_bPoisoned);
+            m_aCharacters[nSlot].SetForce(static_cast<short>(pServer->m_pStats->m_nTemporaryForcePoints
+                                                             + pServer->m_pStats->m_nCurrentForcePoints),
+                                          pServer->GetMaxForcePoints());
             m_aCharacters[nSlot].m_nLevel = pServer->m_pStats->GetLevel(0) & 0xff;
             m_aCharacters[nSlot].m_bToolTipDirty = 1;
-            int nExpDiff;
-            if (static_cast<int>(pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience) < 1)
-                nExpDiff = 0;
-            else
-                nExpDiff = pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience;
-            m_aCharacters[nSlot].m_nXPToLevel = nExpDiff;
+            m_aCharacters[nSlot].m_nXPToLevel =
+                static_cast<int>(pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience) < 1
+                    ? 0
+                    : pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience;
             m_aCharacters[nSlot].m_bToolTipDirty = 1;
             if (pServer->GetDead()) {
                 nState = 1;
             } else if (pServer->GetDeadTemp() != 0) {
                 nState = 1;
             } else if (pServer->m_pStats->CanLevelUp()) {
-                CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
-                if (pOptions->m_bAutoLevelUpNPCs && pChar->m_objectId !=
+                if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bAutoLevelUpNPCs && pChar->m_objectId !=
                     g_pAppManager->m_pClientExoApp->GetPlayerCreature()->m_objectId &&
                     pServer->m_bPlayerMadeCharacter == 0) {
                     pServer->m_pStats->AutoLevelup(1);
@@ -9364,13 +9278,8 @@ void CSWGuiMainInterface::UpdatePortraits() {
                     nState = 4;
                 }
             } else if (pServer->IsDebilitated(0)) {
-                if (nI == 0 && m_fCombatMessageTimer == -1.0f) {
-                    m_lblCombatModeMsg.m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_HIGHLIGHT);
-                    m_combatMessage = STRREF_PLAYER_DEBILITATED;
-                    m_lblCombatModeMsg.m_text.m_params.SetText(
-                        g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_PLAYER_DEBILITATED));
-                    m_lblCombatModeMsg.m_text.m_params.m_fAlpha = 1.0f;
-                }
+                if (nI == 0)
+                    SetCombatMessage(STRREF_PLAYER_DEBILITATED);
                 nState = 2;
             } else {
                 int nGood = 0;
@@ -9387,80 +9296,32 @@ void CSWGuiMainInterface::UpdatePortraits() {
                 nEffA = nGood;
                 nEffB = nBad;
             }
-            if (pServer->IsDebilitated(0) == 0 && m_combatMessage == STRREF_PLAYER_DEBILITATED &&
-                m_fCombatMessageTimer == -1.0f) {
-                m_lblCombatModeMsg.m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_HIGHLIGHT);
-                m_combatMessage = STRREF_COMBAT_MODE_ENGAGED;
-                m_lblCombatModeMsg.m_text.m_params.SetText(
-                    g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_COMBAT_MODE_ENGAGED));
-                m_lblCombatModeMsg.m_text.m_params.m_fAlpha = 1.0f;
-            }
-            m_aCharacters[nSlot].m_aLabels[4].m_tail.bVisible = 1;
-            m_aCharacters[nSlot].m_aLabels[0].m_tail.bVisible = 1;
-            m_aCharacters[nSlot].m_aBars[0].m_tail.bVisible = 1;
-            m_aCharacters[nSlot].m_aBars[1].m_tail.bVisible = 1;
-            m_aCharacters[nSlot].m_aLabels[1].m_tail.bVisible = (nState & 2) != 0;
-            m_aCharacters[nSlot].m_aLabels[2].m_tail.bVisible = (nState & 1) != 0;
-            m_aCharacters[nSlot].m_aLabels[3].m_tail.bVisible = (nState & 4) != 0;
-            m_aCharacters[nSlot].m_nGoodEffectCount = static_cast<unsigned char>(nState == 0 ? nEffA : 0);
-            m_aCharacters[nSlot].m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
-            m_aCharacters[nSlot].m_btnChar.m_tail.bVisible = 1;
+            if (pServer->IsDebilitated(0) == 0 && m_combatMessage == STRREF_PLAYER_DEBILITATED)
+                SetCombatMessage(STRREF_COMBAT_MODE_ENGAGED);
+            m_aCharacters[nSlot].Show(1, static_cast<unsigned char>(nState), static_cast<unsigned char>(nEffA),
+                                      static_cast<unsigned char>(nEffB));
             if (nSlot == 0 && m_fRotationTimer > 0.0f) {
                 m_charOffscreen.m_sFirstName = pChar->m_pStats->GetFirstName();
                 m_charOffscreen.m_sLastName = pChar->m_pStats->GetLastName();
                 m_charOffscreen.m_aLabels[4].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
-                int nCurHPMirror = pServer->GetCurrentHitPoints(0);
-                int nMaxHPMirror = pServer->GetMaxHitPoints(1);
-                int bPoisonedMirror = pServer->m_bPoisoned;
-                m_charOffscreen.SetHealth(nCurHPMirror, nMaxHPMirror, bPoisonedMirror);
-                short nFPBonusMirror = pServer->m_pStats->m_nTemporaryForcePoints;
-                short nFPCurMirror = pServer->m_pStats->m_nCurrentForcePoints;
-                short nMaxFPMirror = pServer->GetMaxForcePoints();
-                short nFPCurTotMirror = nFPBonusMirror + nFPCurMirror;
-                // inlined CSWGuiMainInterfaceChar::SetForce(int, int)
-                if (nMaxFPMirror == 0) {
-                    m_charOffscreen.m_aBars[1].SetMaxValue(1);
-                    m_charOffscreen.m_aBars[1].SetCurValue(0);
-                } else {
-                    m_charOffscreen.m_aBars[1].SetMaxValue(nMaxFPMirror);
-                    m_charOffscreen.m_aBars[1].SetCurValue(nFPCurTotMirror);
-                }
-                m_charOffscreen.m_nCurFP = nFPCurTotMirror;
-                m_charOffscreen.m_nMaxFP = nMaxFPMirror;
-                m_charOffscreen.m_bToolTipDirty = 1;
+                m_charOffscreen.SetHealth(pServer->GetCurrentHitPoints(0), pServer->GetMaxHitPoints(1),
+                                          pServer->m_bPoisoned);
+                m_charOffscreen.SetForce(static_cast<short>(pServer->m_pStats->m_nTemporaryForcePoints
+                                                            + pServer->m_pStats->m_nCurrentForcePoints),
+                                         pServer->GetMaxForcePoints());
                 m_charOffscreen.m_nLevel = pServer->m_pStats->GetLevel(0) & 0xff;
                 m_charOffscreen.m_bToolTipDirty = 1;
-                int nExpDiffMirror;
-                if (static_cast<int>(pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience) < 1)
-                    nExpDiffMirror = 0;
-                else
-                    nExpDiffMirror = pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience;
-                m_charOffscreen.m_nXPToLevel = nExpDiffMirror;
+                m_charOffscreen.m_nXPToLevel =
+                    static_cast<int>(pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience) < 1
+                        ? 0
+                        : pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience;
                 m_charOffscreen.m_bToolTipDirty = 1;
-                m_charOffscreen.m_aLabels[4].m_tail.bVisible = 1;
-                m_charOffscreen.m_aLabels[0].m_tail.bVisible = 1;
-                m_charOffscreen.m_aBars[0].m_tail.bVisible = 1;
-                m_charOffscreen.m_aBars[1].m_tail.bVisible = 1;
-                m_charOffscreen.m_aLabels[1].m_tail.bVisible = (nState & 2) != 0;
-                m_charOffscreen.m_aLabels[2].m_tail.bVisible = (nState & 1) != 0;
-                m_charOffscreen.m_aLabels[3].m_tail.bVisible = (nState & 4) != 0;
-                m_charOffscreen.m_nGoodEffectCount = static_cast<unsigned char>(nState == 0 ? nEffA : 0);
-                m_charOffscreen.m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
-                m_charOffscreen.m_btnChar.m_tail.bVisible = 1;
+                m_charOffscreen.Show(1, static_cast<unsigned char>(nState), static_cast<unsigned char>(nEffA),
+                                     static_cast<unsigned char>(nEffB));
             }
         }
-        if (!bShow) {
-            m_aCharacters[nI].m_aLabels[4].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[0].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aBars[0].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aBars[1].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[1].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[2].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_aLabels[3].m_tail.bVisible = 0;
-            m_aCharacters[nI].m_nGoodEffectCount = 0;
-            m_aCharacters[nI].m_nBadEffectCount = 0;
-            m_aCharacters[nI].m_btnChar.m_tail.bVisible = 0;
-        }
+        if (!bShow)
+            m_aCharacters[nI].Show(0, 0, 0, 0);
         if (nI == 2)
             break;
     }

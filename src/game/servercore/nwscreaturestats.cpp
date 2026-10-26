@@ -2431,6 +2431,13 @@ short CSWSCreatureStats::GetArmorClassVersus(CSWSCreature* pCreature, int bVersu
 // Rebuilds m_pCombatInformation from the two filtered effect passes.
 void CSWSCreatureStats::UpdateCombatInformation()
 {
+    CExoArrayList<CGameEffect*> effects;
+    CCombatInformation* pInfo;
+    CSWSItem* pOnHand;
+    CSWSItem* pOffHand;
+    signed char nResistance;
+    int nCreatureSize;
+    int nDie;
     if (m_pCombatInformation != 0)
     {
         delete m_pCombatInformation;
@@ -2438,7 +2445,6 @@ void CSWSCreatureStats::UpdateCombatInformation()
     }
     K2_ASSUME(m_pCombatInformation != 0);
 
-    CExoArrayList<CGameEffect*> effects;
     {
         CExoArrayList<CGameEffect*> filtered = m_pOwner->GetFilteredEffectList(1);
         for (int64_t i = 0; i < filtered.m_count; i++)
@@ -2447,12 +2453,13 @@ void CSWSCreatureStats::UpdateCombatInformation()
     for (int64_t i = 0; i < effects.m_count; i++)
     {
         CGameEffect* pEffect = effects.m_pArray[i];
+        CCombatInformationNode* pNode;
         if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_ONHAND ||
             pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_OFFHAND ||
             pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_UNARMED ||
             pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_MISC)
         {
-            CCombatInformationNode* pNode = new CCombatInformationNode();
+            pNode = new CCombatInformationNode();
             if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_ATTACK_INCREASE)
                 pNode->m_cValue = static_cast<signed char>(pEffect->GetInteger(0));
             else
@@ -2481,17 +2488,19 @@ void CSWSCreatureStats::UpdateCombatInformation()
     for (int64_t i = 0; i < effects.m_count; i++)
     {
         CGameEffect* pEffect = effects.m_pArray[i];
+        CCombatInformationNode* pNode;
+        unsigned short nDamageFlags;
         if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_ONHAND ||
             pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_OFFHAND ||
             pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_MISC ||
             pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_UNARMED)
         {
-            CCombatInformationNode* pNode = new CCombatInformationNode();
+            pNode = new CCombatInformationNode();
             if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_DAMAGE_INCREASE)
                 pNode->m_cValue = static_cast<signed char>(pEffect->GetInteger(0));
             else
                 pNode->m_cValue = static_cast<signed char>(-pEffect->GetInteger(0));
-            unsigned short nDamageFlags = static_cast<unsigned short>(pEffect->GetInteger(1));
+            nDamageFlags = static_cast<unsigned short>(pEffect->GetInteger(1));
             if (nDamageFlags > (CSWSEffectListHandler::DAMAGE_FLAG_PHYSICAL &
                                 ~CSWSEffectListHandler::DAMAGE_FLAG_BASE_DAMAGE))
                 pNode->m_nModifierType = static_cast<unsigned char>(Log_Base2(nDamageFlags));
@@ -2519,12 +2528,10 @@ void CSWSCreatureStats::UpdateCombatInformation()
         }
     }
 
-    CCombatInformation* pInfo = m_pCombatInformation;
+    pInfo = m_pCombatInformation;
     pInfo->m_nNumOnHandAttacks = 1;
-    CSWSItem* pOnHand =
-            static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
-    CSWSItem* pOffHand =
-            static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON));
+    pOnHand = static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
+    pOffHand = static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON));
     if (pOffHand != 0 &&
         g_pRules->GetBaseItem(pOffHand->m_baseItem)->m_nWeaponType != 0)
         m_pCombatInformation->m_bOffHandWeaponEquipped = 1;
@@ -2561,7 +2568,7 @@ void CSWSCreatureStats::UpdateCombatInformation()
         m_pCombatInformation->m_nStrDamageModOffHand = static_cast<signed char>(GetMeleeDamageBonus(1));
     }
     GetTotalArcaneSpellFailure();
-    signed char nResistance = static_cast<signed char>(m_forceResistance - m_forceResistancePenalty);
+    nResistance = static_cast<signed char>(m_forceResistance - m_forceResistancePenalty);
     if (nResistance < 0)
         nResistance = 0;
     m_pCombatInformation->m_nForceResistance = nResistance;
@@ -2569,11 +2576,11 @@ void CSWSCreatureStats::UpdateCombatInformation()
         -(reinterpret_cast<unsigned char*>(&m_nArmorCheckPenalty)[1] + reinterpret_cast<unsigned char*>(&m_nArmorCheckPenalty)[0]);
     m_pOwner->GetUseMonkAbilities();
     m_pCombatInformation->m_nDefaultDamageDie = 1;
-    int nCreatureSize = m_pOwner->m_nCreatureSize;
+    nCreatureSize = m_pOwner->m_nCreatureSize;
 #if KOTOR1
-    int nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 2 : 1;
+    nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 2 : 1;
 #else
-    int nDie = 4;
+    nDie = 4;
 #endif
     if (m_pOwner->GetUseMonkAbilities() == 1)
         nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 4 : 6;
@@ -3916,7 +3923,8 @@ CSWSCreatureStats::CSWSCreatureStats(CSWSCreature* pOwner) : m_pOwner(NULL)
 #if !KOTOR1
     if (m_pOwner != 0 && m_pOwner->m_bPlayerMadeCharacter != 0)
     {
-        if (GetLevel(0) >= 30)
+        unsigned char nLevel = GetLevel(0);
+        if (nLevel >= 30)
             Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_LEVEL_30);
     }
 #endif
@@ -4736,16 +4744,19 @@ void CSWSCreatureStats::SetExperience(unsigned int nExp, int bLevelUp)
     if (bLevelUp == 0)
         return;
     int nDelta = nExp - nOldExp;
+    unsigned char nLevel;
+    unsigned char nPrevLevel;
+    CSWLevelStats* pLevelStats;
     if (nDelta < 0)
     {
-        unsigned char nLevel = GetLevel(0);
+        nLevel = GetLevel(0);
         while (g_pAppManager->m_pServerExoApp->GetServerInfo()->m_nMinCharacterLevel < nLevel
                && nLevel != 0)
         {
-            unsigned char nPrevLevel = nLevel - 1;
+            nPrevLevel = nLevel - 1;
             if (static_cast<unsigned int>(g_pRules->m_aExpTable[nPrevLevel]) <= static_cast<unsigned int>(m_nExperience))
                 break;
-            CSWLevelStats* pLevelStats = 0;
+            pLevelStats = 0;
             if (m_bIsPC != 0 && m_levelStats.m_count > nPrevLevel)
                 pLevelStats = m_levelStats.m_pArray[nPrevLevel];
             nLevel--;
@@ -4756,7 +4767,7 @@ void CSWSCreatureStats::SetExperience(unsigned int nExp, int bLevelUp)
     {
         while (CanLevelUp() && m_levelStats.m_count > GetLevel(0))
         {
-            CSWLevelStats* pLevelStats = m_levelStats.m_pArray[GetLevel(0)];
+            pLevelStats = m_levelStats.m_pArray[GetLevel(0)];
             if (pLevelStats != 0)
                 LevelUp(pLevelStats, 0);
         }
@@ -6697,15 +6708,17 @@ int CSWSCreatureStats::CanChooseFeat(unsigned short nFeat, unsigned char nNormal
     for (unsigned short i = 0; i < pChosenFeats->m_count; i++)
     {
         unsigned short nChosen = pChosenFeats->m_pArray[i];
+        CSWClass* pChosenClass;
+        int bChosenNormal;
+        int bChosenBonus;
         CSWFeat* pChosenFeat = g_pRules->GetFeat(nChosen);
         if (pChosenFeat == 0)
             continue;
-        CSWClass* pChosenClass =
-            &g_pRules->m_paClasses[GetClass(m_numClasses - 1)];
+        pChosenClass = &g_pRules->m_paClasses[GetClass(m_numClasses - 1)];
         if (pChosenClass == 0)
             continue;
-        int bChosenNormal = pChosenClass->IsNormalFeat(nChosen);
-        int bChosenBonus = pChosenClass->IsBonusFeat(nChosen);
+        bChosenNormal = pChosenClass->IsNormalFeat(nChosen);
+        bChosenBonus = pChosenClass->IsBonusFeat(nChosen);
         if (bChosenBonus != 0)
         {
             if (nBonusLeft != 0 && bChosenNormal == 0)

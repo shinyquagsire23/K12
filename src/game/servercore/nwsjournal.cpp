@@ -81,16 +81,25 @@ void CSWSJournal::SetState(const CExoString& sPlotId, unsigned int nState, int b
         i = m_entries.m_count - 1;
     }
 
+    CResStruct topStruct;
+    CResList catList;
     CResGFF* pGff = new CResGFF(RESTYPE_JRL, const_cast<char*>("JRL "), CResRef("Global"));
     if (pGff->m_nValid) {
-        CResStruct topStruct;
         pGff->GetTopLevelStruct(&topStruct);
-        CResList catList;
         pGff->GetList(&catList, &topStruct, const_cast<char*>("Categories"));
 
         CResStruct catStruct;
-        int nCategories = pGff->GetListCount(&catList);
-        for (int c = 0; c < nCategories; c++) {
+        int nCategories;
+        int c;
+        unsigned int nPriority;
+        unsigned short nPicture;
+        int nPlotIndex;
+        int nPlanetId;
+        CServerExoApp* pServerApp;
+        CSWSPlayer* pPlayer;
+        CResList entryList;
+        nCategories = pGff->GetListCount(&catList);
+        for (c = 0; c < nCategories; c++) {
             pGff->GetListElement(&catStruct, &catList, c);
             sTag = pGff->ReadFieldCExoString(&catStruct, const_cast<char*>("Tag"), bSuccess, CExoString(""));
             if (bSuccess && sTag != "" && sPlotId.CompareNoCase(sTag)) {
@@ -102,8 +111,7 @@ void CSWSJournal::SetState(const CExoString& sPlotId, unsigned int nState, int b
                     nFlags |= MSG_JOURNAL_QUEST_NAME;
                 }
 
-                unsigned int nPriority =
-                    pGff->ReadFieldDWORD(&catStruct, const_cast<char*>("Priority"), bSuccess, 0);
+                nPriority = pGff->ReadFieldDWORD(&catStruct, const_cast<char*>("Priority"), bSuccess, 0);
                 if (nPriority != m_entries.m_pArray[i].m_nPriority) {
                     nFlags |= MSG_JOURNAL_QUEST_PRIORITY;
                     m_entries.m_pArray[i].m_nPriority = nPriority;
@@ -112,18 +120,17 @@ void CSWSJournal::SetState(const CExoString& sPlotId, unsigned int nState, int b
                     nFlags |= MSG_JOURNAL_QUEST_STATE;
                     m_entries.m_pArray[i].m_nState = nState;
                 }
-                unsigned short nPicture =
-                    pGff->ReadFieldWORD(&catStruct, const_cast<char*>("Picture"), bSuccess, 0);
+                nPicture = pGff->ReadFieldWORD(&catStruct, const_cast<char*>("Picture"), bSuccess, 0);
                 if (m_entries.m_pArray[i].m_nPicture != nPicture) {
                     nFlags |= MSG_JOURNAL_QUEST_PICTURE;
                     m_entries.m_pArray[i].m_nPicture = nPicture;
                 }
-                int nPlotIndex = pGff->ReadFieldINT(&catStruct, const_cast<char*>("PlotIndex"), bSuccess, 0);
+                nPlotIndex = pGff->ReadFieldINT(&catStruct, const_cast<char*>("PlotIndex"), bSuccess, 0);
                 if (nPlotIndex != m_entries.m_pArray[i].m_nPlotIndex) {
                     nFlags |= MSG_JOURNAL_QUEST_PLOT_INDEX;
                     m_entries.m_pArray[i].m_nPlotIndex = nPlotIndex;
                 }
-                int nPlanetId = pGff->ReadFieldINT(&catStruct, const_cast<char*>("PlanetID"), bSuccess, 0);
+                nPlanetId = pGff->ReadFieldINT(&catStruct, const_cast<char*>("PlanetID"), bSuccess, 0);
                 if (nPlanetId != m_entries.m_pArray[i].m_nPlanetId) {
                     nFlags |= MSG_JOURNAL_QUEST_PLANET;
                     m_entries.m_pArray[i].m_nPlanetId = nPlanetId;
@@ -131,11 +138,19 @@ void CSWSJournal::SetState(const CExoString& sPlotId, unsigned int nState, int b
 
                 // Among the category's numbered entries, find the one this state selects and take
                 // its text.
-                CResList entryList;
                 pGff->GetList(&entryList, &catStruct, const_cast<char*>("EntryList"));
                 CResStruct entryStruct;
-                int nEntries = pGff->GetListCount(&entryList);
-                for (int k = 0; k < nEntries; k++) {
+                int nEntries;
+                int k;
+                float fXpPercentage;
+                int nPlotXP;
+                int nAward;
+                unsigned short nEnd;
+                CSWSPlayerJournalState* pState;
+                int bFoundRecord;
+                int nUpdCount;
+                nEntries = pGff->GetListCount(&entryList);
+                for (k = 0; k < nEntries; k++) {
                     pGff->GetListElement(&entryStruct, &entryList, k);
                     if (pGff->ReadFieldDWORD(&entryStruct, const_cast<char*>("ID"), bSuccess, 0) == nState) {
                         if ((locString = pGff->ReadFieldCExoLocString(
@@ -147,21 +162,20 @@ void CSWSJournal::SetState(const CExoString& sPlotId, unsigned int nState, int b
 
                         // The XP award is a percentage of the plot's own XP budget, which lives
                         // in the "Plot" table at this quest's plot index row. Rounded half up.
-                        float fXpPercentage = pGff->ReadFieldFLOAT(
+                        fXpPercentage = pGff->ReadFieldFLOAT(
                             &entryStruct, const_cast<char*>("XP_Percentage"), bSuccess, 0.0f);
                         if (bSuccess) {
-                            int nPlotXP = 0;
+                            nPlotXP = 0;
                             g_pRules->m_p2DArrays->m_pPlotXP->GetINTEntry(
                                 m_entries.m_pArray[i].m_nPlotIndex, CExoString("XP"), &nPlotXP);
-                            int nAward = static_cast<int>(fXpPercentage * static_cast<float>(nPlotXP) + 0.5f);
+                            nAward = static_cast<int>(fXpPercentage * static_cast<float>(nPlotXP) + 0.5f);
                             if (m_entries.m_pArray[i].m_nQuestEntryXP != nAward) {
                                 nFlags |= MSG_JOURNAL_QUEST_EXPERIENCE;
                                 m_entries.m_pArray[i].m_nQuestEntryXP = nAward;
                             }
                         }
 
-                        unsigned short nEnd =
-                            pGff->ReadFieldWORD(&entryStruct, const_cast<char*>("End"), bSuccess, 0);
+                        nEnd = pGff->ReadFieldWORD(&entryStruct, const_cast<char*>("End"), bSuccess, 0);
                         if (m_entries.m_pArray[i].m_bEnd != nEnd)
                             m_entries.m_pArray[i].m_bEnd = static_cast<unsigned char>(nEnd);
                         nFlags |= MSG_JOURNAL_QUEST_END;
@@ -171,11 +185,10 @@ void CSWSJournal::SetState(const CExoString& sPlotId, unsigned int nState, int b
 
                 m_entries.m_pArray[i].m_bNewUnobserved = (bFlag == 0);
 
-                CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-                CSWSPlayer* pPlayer =
-                    pServerApp->GetClientObjectByObjectId(pServerApp->GetPlayerCreatureId());
+                pServerApp = g_pAppManager->m_pServerExoApp;
+                pPlayer = pServerApp->GetClientObjectByObjectId(pServerApp->GetPlayerCreatureId());
                 if (pPlayer != 0) {
-                    CSWSPlayerJournalState* pState = pPlayer->m_pJournalState;
+                    pState = pPlayer->m_pJournalState;
                     if (pState->m_bQuestScreenOpen) {
                         pMessage->SendServerToPlayerJournalAddQuest(
                             pPlayer, sPlotId.LowerCase(), nState,
@@ -186,8 +199,8 @@ void CSWSJournal::SetState(const CExoString& sPlotId, unsigned int nState, int b
                             m_entries.m_pArray[i].m_nPlanetId,
                             m_entries.m_pArray[i].m_nQuestEntryXP);
                     } else if (!pState->m_bFullUpdateNeeded) {
-                        int bFoundRecord = 0;
-                        int nUpdCount = pState->m_updates.m_count;
+                        bFoundRecord = 0;
+                        nUpdCount = pState->m_updates.m_count;
                         for (int j = 0; j < nUpdCount; j++) {
                             if (pState->m_updates.m_pArray[j].m_sQuestTag.CompareNoCase(sPlotId)) {
                                 CSWSPlayerJournalQuestUpdates& rec = pState->m_updates.m_pArray[j];
@@ -223,9 +236,8 @@ void CSWSJournal::SetState(const CExoString& sPlotId, unsigned int nState, int b
         // worth recording. Just hand the player the entry as it stands if they are looking at it.
         delete pGff;
         {
-            CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-            CSWSPlayer* pPlayer =
-                pServerApp->GetClientObjectByObjectId(pServerApp->GetPlayerCreatureId());
+            pServerApp = g_pAppManager->m_pServerExoApp;
+            pPlayer = pServerApp->GetClientObjectByObjectId(pServerApp->GetPlayerCreatureId());
             if (pPlayer != 0 && pPlayer->m_pJournalState != 0
                 && pPlayer->m_pJournalState->m_bQuestScreenOpen) {
                 pMessage->SendServerToPlayerJournalAddQuest(
@@ -250,6 +262,11 @@ void CSWSJournal::SetDate(const CExoString& sPlotId, unsigned int nDate, int bFl
 {
     SJournalEntry entry;
     CSWSPlayerJournalQuestUpdates update;
+    CServerExoApp* pServerApp;
+    CSWSPlayer* pPlayer;
+    CSWSPlayerJournalState* pState;
+    int nUpdCount;
+    unsigned short flags;
 
     int bAlreadyPresent = 0;
     int nCount = m_entries.m_count;
@@ -266,15 +283,15 @@ void CSWSJournal::SetDate(const CExoString& sPlotId, unsigned int nDate, int bFl
         m_entries.Add(entry);
     }
 
-    CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    CSWSPlayer* pPlayer = pServerApp->GetClientObjectByObjectId(pServerApp->GetPlayerCreatureId());
+    pServerApp = g_pAppManager->m_pServerExoApp;
+    pPlayer = pServerApp->GetClientObjectByObjectId(pServerApp->GetPlayerCreatureId());
     if (pPlayer == 0)
         return;
-    CSWSPlayerJournalState* pState = pPlayer->m_pJournalState;
+    pState = pPlayer->m_pJournalState;
     if (pState->m_bFullUpdateNeeded)
         return;
 
-    int nUpdCount = pState->m_updates.m_count;
+    nUpdCount = pState->m_updates.m_count;
     for (int j = 0; j < nUpdCount; j++) {
         if (pState->m_updates.m_pArray[j].m_sQuestTag.CompareNoCase(sPlotId)) {
             CSWSPlayerJournalQuestUpdates& rec = pState->m_updates.m_pArray[j];
@@ -288,7 +305,7 @@ void CSWSJournal::SetDate(const CExoString& sPlotId, unsigned int nDate, int bFl
         }
     }
     update.m_sQuestTag = sPlotId.LowerCase();
-    unsigned short flags = bAlreadyPresent ? MSG_JOURNAL_QUEST_DATE : MSG_JOURNAL_QUEST_ALL;
+    flags = bAlreadyPresent ? MSG_JOURNAL_QUEST_DATE : MSG_JOURNAL_QUEST_ALL;
     if (bFlag)
         flags |= MSG_JOURNAL_QUEST_OBSERVED;
     update.m_updateFlags = flags;
@@ -300,6 +317,11 @@ void CSWSJournal::SetTime(const CExoString& sPlotId, unsigned int nTime, int bFl
 {
     SJournalEntry entry;
     CSWSPlayerJournalQuestUpdates update;
+    CServerExoApp* pServerApp;
+    CSWSPlayer* pPlayer;
+    CSWSPlayerJournalState* pState;
+    int nUpdCount;
+    unsigned short flags;
 
     int bAlreadyPresent = 0;
     int nCount = m_entries.m_count;
@@ -316,15 +338,15 @@ void CSWSJournal::SetTime(const CExoString& sPlotId, unsigned int nTime, int bFl
         m_entries.Add(entry);
     }
 
-    CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    CSWSPlayer* pPlayer = pServerApp->GetClientObjectByObjectId(pServerApp->GetPlayerCreatureId());
+    pServerApp = g_pAppManager->m_pServerExoApp;
+    pPlayer = pServerApp->GetClientObjectByObjectId(pServerApp->GetPlayerCreatureId());
     if (pPlayer == 0)
         return;
-    CSWSPlayerJournalState* pState = pPlayer->m_pJournalState;
+    pState = pPlayer->m_pJournalState;
     if (pState->m_bFullUpdateNeeded)
         return;
 
-    int nUpdCount = pState->m_updates.m_count;
+    nUpdCount = pState->m_updates.m_count;
     for (int j = 0; j < nUpdCount; j++) {
         if (pState->m_updates.m_pArray[j].m_sQuestTag.CompareNoCase(sPlotId)) {
             CSWSPlayerJournalQuestUpdates& rec = pState->m_updates.m_pArray[j];
@@ -338,7 +360,7 @@ void CSWSJournal::SetTime(const CExoString& sPlotId, unsigned int nTime, int bFl
         }
     }
     update.m_sQuestTag = sPlotId.LowerCase();
-    unsigned short flags = bAlreadyPresent ? MSG_JOURNAL_QUEST_TIME : MSG_JOURNAL_QUEST_ALL;
+    flags = bAlreadyPresent ? MSG_JOURNAL_QUEST_TIME : MSG_JOURNAL_QUEST_ALL;
     if (bFlag)
         flags |= MSG_JOURNAL_QUEST_OBSERVED;
     update.m_updateFlags = flags;
@@ -419,6 +441,12 @@ void CSWSJournal::Destroy(const CExoString& sPlotId)
     CSWSMessage* pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
     CSWSPlayerJournalQuestUpdates update;
     CExoLocString locName;
+    int bEnd;
+    CServerExoApp* pApp;
+    CSWSPlayer* pPlayer;
+    CSWSPlayerJournalState* pState;
+    int nCount;
+    int k;
 
     while (--i >= 0) {
         if (m_entries.m_pArray[i].m_sPlotId.CompareNoCase(sPlotId))
@@ -427,27 +455,26 @@ void CSWSJournal::Destroy(const CExoString& sPlotId)
     if (i < 0)
         return;
 
-    int bEnd = m_entries.m_pArray[i].m_bEnd;
+    bEnd = m_entries.m_pArray[i].m_bEnd;
     locName = m_entries.m_pArray[i].m_locName;
     // inlined CExoArrayList<SJournalEntry>::DelIndex(i)
     m_entries.m_count--;
     for (int64_t j = i + 1; j <= m_entries.m_count; j++)
         m_entries.m_pArray[j - 1] = m_entries.m_pArray[j];
 
-    CServerExoApp* pApp = g_pAppManager->m_pServerExoApp;
-    CSWSPlayer* pPlayer = pApp->GetClientObjectByObjectId(pApp->GetPlayerCreatureId());
+    pApp = g_pAppManager->m_pServerExoApp;
+    pPlayer = pApp->GetClientObjectByObjectId(pApp->GetPlayerCreatureId());
     if (!pPlayer)
         return;
 
-    CSWSPlayerJournalState* pState = pPlayer->m_pJournalState;
+    pState = pPlayer->m_pJournalState;
     if (pState->m_bQuestScreenOpen) {
         pMsg->SendServerToPlayerJournalRemoveQuest(pPlayer, sPlotId.LowerCase());
         return;
     }
 
     if (!pState->m_bFullUpdateNeeded) {
-        int nCount = pState->m_updates.m_count;
-        int k;
+        nCount = pState->m_updates.m_count;
         for (k = 0; k < nCount; k++) {
             if (pState->m_updates.m_pArray[k].m_sQuestTag.CompareNoCase(sPlotId))
                 break;

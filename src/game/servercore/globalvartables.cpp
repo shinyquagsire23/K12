@@ -419,6 +419,7 @@ void CSWGlobalVariableTable::ReadCatalogue(const CResRef& resRef)
         }
         if (!cat.GetCExoStringEntry(i, CExoString("Type"), &sType))
             continue;
+        int nSlot;
         if (FindIdentifierIndex(sName) >= 0)
         {
             CExoString sMsg;
@@ -426,7 +427,6 @@ void CSWGlobalVariableTable::ReadCatalogue(const CResRef& resRef)
             continue;
         }
 
-        int nSlot;
         if (sType.CompareNoCase("BOOLEAN"))
             nSlot = AddIdentifierBoolean(sName);
         else if (sType.CompareNoCase("NUMBER"))
@@ -479,6 +479,7 @@ void CSWGlobalVariableTable::ReadTableWithCatalogue(CResGFF* pGFF, CResStruct& s
     CResList   list1;
     CResList   list2;
     int        bSuccess;
+    int        nSlot;
 
     pGFF->ReadFieldVOID(&sTop, aBooleans, sizeof(aBooleans), const_cast<char*>("ValBoolean"), bSuccess, &nDefault);
     if (bSuccess)
@@ -491,7 +492,7 @@ void CSWGlobalVariableTable::ReadTableWithCatalogue(CResGFF* pGFF, CResStruct& s
                                               CExoString(""));
             if (bSuccess && sName != "")
             {
-                int nSlot = FindIdentifierIndex(sName);
+                nSlot = FindIdentifierIndex(sName);
                 if (nSlot < 0)
                 {
                     nSlot = AddIdentifierBoolean(sName);
@@ -520,7 +521,7 @@ void CSWGlobalVariableTable::ReadTableWithCatalogue(CResGFF* pGFF, CResStruct& s
                                               CExoString(""));
             if (bSuccess && sName != "")
             {
-                int nSlot = FindIdentifierIndex(sName);
+                nSlot = FindIdentifierIndex(sName);
                 if (nSlot < 0)
                 {
                     nSlot = AddIdentifierNumber(sName);
@@ -549,7 +550,7 @@ void CSWGlobalVariableTable::ReadTableWithCatalogue(CResGFF* pGFF, CResStruct& s
                                               CExoString(""));
             if (bSuccess && sName != "")
             {
-                int nSlot = FindIdentifierIndex(sName);
+                nSlot = FindIdentifierIndex(sName);
                 if (nSlot < 0)
                 {
                     nSlot = AddIdentifierLocation(sName);
@@ -603,7 +604,7 @@ void CSWGlobalVariableTable::ReadTableWithCatalogue(CResGFF* pGFF, CResStruct& s
                                               CExoString(""));
             if (bSuccess && sName != "")
             {
-                int nSlot = FindIdentifierIndex(sName);
+                nSlot = FindIdentifierIndex(sName);
                 if (nSlot < 0)
                 {
                     nSlot = AddIdentifierString(sName);

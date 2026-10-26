@@ -746,6 +746,7 @@ int CSWSTrigger::LoadTrigger(CResGFF* pGFF, CResStruct* pStruct)
     vPos.y = pGFF->ReadFieldFLOAT(pStruct, const_cast<char*>("YPosition"), bPosLoaded, 0.0f);
     vPos.z = pGFF->ReadFieldFLOAT(pStruct, const_cast<char*>("ZPosition"), bPosLoaded, 0.0f);
 
+    CResList geometryList;
     Vector vOri = {};
     int bOriLoaded = 0;
     vOri.x = pGFF->ReadFieldFLOAT(pStruct, const_cast<char*>("XOrientation"), bOriLoaded, 0.0f);
@@ -814,7 +815,6 @@ int CSWSTrigger::LoadTrigger(CResGFF* pGFF, CResStruct* pStruct)
     if (bOriLoaded != 0)
         SetOrientation(vOri);
 
-    CResList geometryList;
     if (pGFF->GetList(&geometryList, pStruct, const_cast<char*>("Geometry")))
         LoadTriggerGeometry(pGFF, geometryList);
 

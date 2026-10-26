@@ -603,8 +603,9 @@ int CItemRepository::AddItem(CSWSItem** ppItem, int bStack, int nPossessor, int 
                 if (bFound == 0 && m_bPartyInventory)
                 {
                     pCur->m_localizedName.GetString(nLanguage, &sSortName, 0);
-                    if (static_cast<unsigned int>((*ppItem)->m_baseItem) < static_cast<unsigned int>(pCur->m_baseItem) ||
-                        ((*ppItem)->m_baseItem == pCur->m_baseItem && sName < sSortName))
+                    unsigned int nBaseItem = (*ppItem)->m_baseItem;
+                    if (nBaseItem < static_cast<unsigned int>(pCur->m_baseItem) ||
+                        (nBaseItem == static_cast<unsigned int>(pCur->m_baseItem) && sName < sSortName))
                     {
                         bFound = 1;
                         nIndex = i;
@@ -621,9 +622,9 @@ int CItemRepository::AddItem(CSWSItem** ppItem, int bStack, int nPossessor, int 
                 {
                     // Absorbed: the incoming item is gone, so the client is told to drop it and
                     // *ppItem is re-pointed at the survivor.
+                    CSWSPlayer* pPlayer = 0;
                     if (pObject != 0)
                     {
-                        CSWSPlayer* pPlayer = 0;
                         if (pObject->m_objectType == CGameObject::OBJECT_TYPE_CREATURE)
                             pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(
                                 m_objectId);
@@ -1439,7 +1440,6 @@ void CSWSItem::GetPropertyStrings(unsigned short nType, unsigned short nSubType,
 {
     int nIndex = -1;
     int nMapped;
-    C2DA* pParamTable;
     C2DA* pSubTypeTable;
     if (g_pRules->m_p2DArrays->m_pItemPropDef->GetINTEntry(nType, CExoString("Name"), &nIndex) == 0)
         return;
@@ -1519,14 +1519,14 @@ void CSWSItem::GetPropertyStrings(unsigned short nType, unsigned short nSubType,
         s2 = g_pAppManager->m_pClientExoApp->GetGUIString(nIndex);
         delete pSubTypeTable;
     }
+    C2DA* pTable;
     if (nValue != PROPERTY_VALUE_NONE)
     {
         if (g_pRules->m_p2DArrays->m_pItemPropDef->GetINTEntry(nType, CExoString("CostTableResRef"),
                                                                &nMapped) == 1)
         {
-            C2DA* pCostTable =
-                g_pRules->m_p2DArrays->GetIPRPCostTable(static_cast<unsigned char>(nMapped));
-            pCostTable->GetINTEntry(nValue, CExoString("Name"), &nIndex);
+            pTable = g_pRules->m_p2DArrays->GetIPRPCostTable(static_cast<unsigned char>(nMapped));
+            pTable->GetINTEntry(nValue, CExoString("Name"), &nIndex);
 #if KOTOR1
             s3 = g_pAppManager->m_pClientExoApp->GetGUIString(nIndex);
 #else
@@ -1540,8 +1540,8 @@ void CSWSItem::GetPropertyStrings(unsigned short nType, unsigned short nSubType,
         if (g_pRules->m_p2DArrays->m_pItemPropDef->GetINTEntry(nType, CExoString("Param1ResRef"),
                                                                &nMapped) == 1)
         {
-            pParamTable = g_pRules->m_p2DArrays->GetIPRPParamTable(static_cast<unsigned char>(nMapped));
-            pParamTable->GetINTEntry(nSlot, CExoString("Name"), &nIndex);
+            pTable = g_pRules->m_p2DArrays->GetIPRPParamTable(static_cast<unsigned char>(nMapped));
+            pTable->GetINTEntry(nSlot, CExoString("Name"), &nIndex);
             s4 = g_pAppManager->m_pClientExoApp->GetGUIString(nIndex);
         }
         else
@@ -1557,9 +1557,9 @@ void CSWSItem::GetPropertyStrings(unsigned short nType, unsigned short nSubType,
                     if (pSubTypeTable->GetINTEntry(nSubType, CExoString("Param1ResRef"), &nMapped)
                         == 1)
                     {
-                        pParamTable
+                        pTable
                             = g_pRules->m_p2DArrays->GetIPRPParamTable(static_cast<unsigned char>(nMapped));
-                        pParamTable->GetINTEntry(nSlot, CExoString("Name"), &nIndex);
+                        pTable->GetINTEntry(nSlot, CExoString("Name"), &nIndex);
                         s4 = g_pAppManager->m_pClientExoApp->GetGUIString(nIndex);
                     }
                 }
@@ -1825,9 +1825,10 @@ void CSWSItem::AddFeatRequirements(CExoString& sOut)
             nFeat = FEAT_ARMOUR_PROF_HEAVY;
     }
     int nCount = 0;
+    unsigned short nFeatId;
     for (int i = 0; i < GetBaseItem()->m_nRequiredFeats; i++)
     {
-        unsigned short nFeatId = GetBaseItem()->GetRequiredFeat(static_cast<unsigned char>(i));
+        nFeatId = GetBaseItem()->GetRequiredFeat(static_cast<unsigned char>(i));
         if (nFeatId == 0 ||
             (nFeatId >= FEAT_ARMOUR_PROF_HEAVY && nFeatId <= FEAT_ARMOUR_PROF_MEDIUM && nFeatId != nFeat))
             continue;
@@ -2035,13 +2036,12 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
     }
     else
     {
-        unsigned char nDice = g_pRules->GetBaseItem(m_baseItem)->m_nNumDice;
-        unsigned char nDieSize =
-            g_pRules->GetBaseItem(m_baseItem)->m_nDieToRoll;
+        int nMin;
+        int nMax;
+        nMin = g_pRules->GetBaseItem(m_baseItem)->m_nNumDice;
+        nMax = g_pRules->GetBaseItem(m_baseItem)->m_nDieToRoll * nMin;
         CExoString sDamageType;
         GetDamageTypeString(GetDamageFlags(), sDamageType);
-        int nMin = nDice;
-        int nMax = nDieSize * nDice;
         if (GetPropertyByTypeExists(ITEM_PROPERTY_DECREASED_DAMAGE, 0) || GetPropertyByTypeExists(ITEM_PROPERTY_ENHANCEMENT_BONUS, 0) ||
             GetPropertyByTypeExists(ITEM_PROPERTY_DAMAGE_BONUS, 0))
         {
@@ -2059,9 +2059,9 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
                 }
                 else if (pProp->m_type == ITEM_PROPERTY_DAMAGE_BONUS)
                 {
+                    int nAddMin, nAddMax;
                     if ((1 << pProp->m_subType) & GetDamageFlags())
                     {
-                        int nAddMin, nAddMax;
                         GetPropertyDamageRange(pProp->m_costTableValue, nAddMin, nAddMax);
                         nMin += nAddMin;
                         nMax += nAddMax;
@@ -2098,15 +2098,20 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
     CExoString sValue;
     CExoString s1, s2, s3, s4;
     CExoString sSpare;
+    int nMin;
+    int nMax;
+    int nIndex;
+    int bFound;
+    CSWItemProperty* pProp;
     if (GetPropertyByTypeExists(ITEM_PROPERTY_DAMAGE_BONUS_VS_ALIGNMENT_GROUP, 0))
     {
-        int nMin = 0;
-        int nMax = 0;
-        int nIndex = -1;
-        int bFound = 0;
+        nMin = 0;
+        nMax = 0;
+        nIndex = -1;
+        bFound = 0;
         for (int i = 0; i < m_nPassiveProperties; i++)
         {
-            CSWItemProperty* pProp = &m_pPassiveProperties[i];
+            pProp = &m_pPassiveProperties[i];
             if (pProp == 0)
                 continue;
             if (pProp->m_nUpgradeType != CSWItemProperty::UPGRADE_TYPE_NONE && (m_nUpgrades & (1 << pProp->m_nUpgradeType)) == 0)
@@ -2123,7 +2128,7 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
         }
         if (bFound != 0)
         {
-            CSWItemProperty* pProp = &m_pPassiveProperties[nIndex];
+            pProp = &m_pPassiveProperties[nIndex];
             GetPropertyStrings(pProp->m_type, pProp->m_subType, PROPERTY_VALUE_NONE, pProp->m_nParam1Value,
                                s1, s2, s3, s4, 0);
             if (nMin == nMax)
@@ -2140,13 +2145,13 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
     }
     if (GetPropertyByTypeExists(ITEM_PROPERTY_DAMAGE_BONUS_VS_RACIAL_GROUP, 0))
     {
-        int nMin = 0;
-        int nMax = 0;
-        int nIndex = -1;
-        int bFound = 0;
+        nMin = 0;
+        nMax = 0;
+        nIndex = -1;
+        bFound = 0;
         for (int i = 0; i < m_nPassiveProperties; i++)
         {
-            CSWItemProperty* pProp = &m_pPassiveProperties[i];
+            pProp = &m_pPassiveProperties[i];
             if (pProp == 0)
                 continue;
             if (pProp->m_nUpgradeType != CSWItemProperty::UPGRADE_TYPE_NONE && (m_nUpgrades & (1 << pProp->m_nUpgradeType)) == 0)
@@ -2163,7 +2168,7 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
         }
         if (bFound != 0)
         {
-            CSWItemProperty* pProp = &m_pPassiveProperties[nIndex];
+            pProp = &m_pPassiveProperties[nIndex];
             GetPropertyStrings(pProp->m_type, pProp->m_subType, PROPERTY_VALUE_NONE, pProp->m_nParam1Value,
                                s1, s2, s3, s4, 0);
             if (nMin == nMax)
@@ -2190,9 +2195,9 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
                 unsigned short nValue = pProp->m_costTableValue;
                 if (GetExistsHigherValuedProperty(ITEM_PROPERTY_DAMAGE_REDUCTION, nSubType, nValue) == 0)
                 {
-                    GetPropertyStrings(ITEM_PROPERTY_DAMAGE_REDUCTION, nSubType, nValue, PROPERTY_PARAM_NONE, d1, d2, d3, d4, 0);
                     char szName[64];
                     int nAmount;
+                    GetPropertyStrings(ITEM_PROPERTY_DAMAGE_REDUCTION, nSubType, nValue, PROPERTY_PARAM_NONE, d1, d2, d3, d4, 0);
                     static_cast<void>(sscanf(d2.CStr(), "%s +%d", szName, &nAmount));
                     sValue.Format(const_cast<char*>("%d"), nAmount);
                     sOut = sOut + d1 + ": +" + sValue;
@@ -2223,7 +2228,8 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
                                        PROPERTY_PARAM_NONE, t1, t2, t3, t4, 0);
                     if (bFound == 0)
                         sOut = sOut + t1 + ": ";
-                    for (int j = 0; j < m_nPassiveProperties; j++)
+                    int j;
+                    for (j = 0; j < m_nPassiveProperties; j++)
                     {
                         CSWItemProperty* pOther = &m_pPassiveProperties[j];
                         if (pOther == 0)
@@ -2533,8 +2539,8 @@ void CSWSItem::AddAttackModifierProperties(CExoString& sOut)
 void CSWSItem::AddDefenceProperties(CExoString& sOut)
 {
     CExoString sLine;
-    CSWItemProperty* pProp;
     int nValue = GetBaseItem()->m_nBaseAC;
+    CSWItemProperty* pProp;
     if (GetPropertyByTypeExists(ITEM_PROPERTY_AC_BONUS, 0))
     {
         for (int i = 0; i < m_nPassiveProperties; i++)
@@ -2635,6 +2641,9 @@ void CSWSItem::AddMiscellaneousProperties(CExoString& sOut)
     CExoString sLine;
     char szName[32];
     int nAmount;
+    int nChance;
+    int nDuration;
+    int nValue;
     if (GetPropertyByTypeExists(ITEM_PROPERTY_ACTIVATE_ITEM, 0))
     {
         int nCount = 0;
@@ -2856,9 +2865,6 @@ void CSWSItem::AddMiscellaneousProperties(CExoString& sOut)
             if (GetExistsHigherValuedProperty(pProp->m_type, pProp->m_subType,
                                              pProp->m_costTableValue) == 0)
             {
-                int nChance;
-                int nDuration;
-                int nValue;
                 GetPropertyStrings(pProp->m_type, pProp->m_subType, PROPERTY_VALUE_NONE, PROPERTY_PARAM_NONE, s1, s2, s3, s4,
                                    0);
                 GetPropertyChanceDurationDC(pProp->m_costTableValue, pProp->m_nParam1Value, nChance,

@@ -553,18 +553,8 @@ int CSWCMessage::HandleServerToPlayerChat(unsigned char nType)
     {
         // Talk-table token expansion runs twice, for the bubble copy with the gender bit forced on
         // and for the logged copy with it off.
-        // inlined CSWTlkTable::ParseStr(CExoString&, CGameObject*, int, int), twice
-        CSWTlkTable* pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = pTargetObj;
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled |= 1;
-        pTlk->ParseStr(sBubbleText);
-
-        pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = pTargetObj;
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled &= 0xfe;
-        pTlk->ParseStr(sText);
+        g_pSWTlkTable->ParseStr(sBubbleText, pTargetObj, 1, 1);
+        g_pSWTlkTable->ParseStr(sText, pTargetObj, 1, 0);
 
         bHaveName = 1;
         fBubbleScale = 0.75f;

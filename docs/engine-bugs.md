@@ -2996,7 +2996,10 @@ code-identical) unless it says otherwise.
 
 ## K2 `ExecuteCommandGetNearestObject` -- class criterion reads m_classInfo[2] of a two-entry array
 - **Where:** K2 @0x57df74, under `m_numClasses >= 3` (NWN's third class slot).
-- **Impact:** dead (no KOTOR creature has three classes); would read the member after the array.
+- **Impact:** dead (no KOTOR creature has three classes: `ReadStatsFromGff` clamps `m_numClasses` to 2);
+  would read the member after the array (`m_classInfo[2].m_class` is byte +0x143 of the server stats,
+  `m_nCHABase`). The matching (NDK, unfixed) compile reports `-Warray-bounds` on this clause, as it does on
+  the `nwscreaturestats.cpp` third-slot reads below; that warning is this entry, not a transcription error.
 - **Fixed under `K2_FIX_ENGINE_BUGS`:** the clause is dropped.
 
 ## `ExecuteCommandDoTouchAttack` -- feedback with never-set attack bonus and roll

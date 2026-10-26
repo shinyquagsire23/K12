@@ -212,7 +212,6 @@ void CSWGuiNameChargen::OnPanelAdded()
 void CSWGuiNameChargen::HandleDoneButton(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    CSWGuiMessageBox* pBox;
     CExoString sName;
     sName = m_editBox.m_editText.m_sText;
 
@@ -249,19 +248,13 @@ void CSWGuiNameChargen::HandleDoneButton(CSWGuiControl* pControl)
         else if (m_nParentKind == 2)
             static_cast<CSWGuiCustomPanel*>(m_pParentPanel)->NameCreationCompleted();
 
-        // inlined CSWGuiPanel::SetToBeDeleted(0): the call moves one landing pad (LENGTH -4)
-        CSWGuiPanel* pChain = this;
-        do {
-            pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-            pChain = pChain->m_pNextInChain;
-        } while (pChain != 0);
-
+        SetToBeDeleted(0);
         m_pGuiManager->PopModalPanel();
     }
 #endif
     else
     {
-        pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
+        CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
         pBox->SetAllowCancel(0);
         pBox->SetCallback(0, 0, 0);
         pBox->SetMessage(static_cast<uint64_t>(STRREF_MUST_SPECIFY_NAME));

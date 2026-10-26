@@ -772,7 +772,6 @@ void CSWSCreature::HandleHPRegeneration() {
     float fTimePerHP = 0.0f;
     float fConModBonus = 0.0f;
     float fSkillRankBonus = 0.0f;
-    float fNew;
     int nHitPoints;
 
     C2DA* p2DA = g_pRules->m_p2DArrays->m_pRegeneration;
@@ -812,9 +811,10 @@ void CSWSCreature::HandleHPRegeneration() {
     float fGain = fRate * (fSeconds * fPerSecond);
 
     if (fGain != 0.0f) {
+        short nWhole;
         short nCurrent = GetCurrentHitPoints(1);
-        short nWhole = m_pStats->AdjustHPAccumulatorBy(fGain);
-        fNew = static_cast<float>(nWhole + nCurrent);
+        nWhole = m_pStats->AdjustHPAccumulatorBy(fGain);
+        float fNew = static_cast<float>(nWhole + nCurrent);
         if (static_cast<float>(GetMaxHitPoints(1)) < fNew)
             fNew = static_cast<float>(GetMaxHitPoints(1));
         nHitPoints = static_cast<int>(fNew);
@@ -10048,6 +10048,7 @@ havePlayer:
     }
 
     CSWPartyTable* pPartyTable = g_pAppManager->m_pServerExoApp->GetPartyTable();
+    char cInfluence;
     int nNPC = pPartyTable->GetNPCID(m_objectId);
     if (nNPC == -1) {
         if (m_sTag.CompareNoCase("atton"))
@@ -10078,7 +10079,7 @@ havePlayer:
             return;
     }
 
-    char cInfluence = static_cast<char>(pPartyTable->GetInfluence(nNPC));
+    cInfluence = static_cast<char>(pPartyTable->GetInfluence(nNPC));
     if (cInfluence == -1) {
         int nBaseInfluence;
         pInfluence->GetINTEntry(nRow, CExoString("BaseInfluence"), &nBaseInfluence);
@@ -10288,6 +10289,7 @@ int CSWSCreature::GetIsCreatureBumpable(CSWSCreature* pCreature)
     return pCreature->m_pCombatRound->m_bRoundPaused == 0;
 }
 
+// EFFECTIVE: one `sub x23, x29, #0xc8` (&vBumped) is scheduled before the fsubs here, after them in the orig.
 int CSWSCreature::BumpFriends(CSWSCreature* pOther, const Vector& vFrom, const Vector& vTo)
 {
     if (GetIsCreatureBumpable(pOther) == 0)
@@ -10343,23 +10345,24 @@ report:
         SetPosition(vSaved, 1, 1, 0);
         return 1;
     }
-
-    // Plan B -- retreat the blocker to safe ground behind us.
-    Vector vSafe = {};
-    if (static_cast<CSWSArea*>(GetArea())->ComputeSafeLocationInDirection(vTo, m_orientation * -1.0f, 4.0f,
-                                                               pOther->m_pPathfindInfo, 1,
-                                                               &vSafe) == 1) {
-        pOther->SetPosition(vSafe, 1, 1, 0);
-        if (pOther->m_bInParty != 0) {
-            int nIndex = g_pAppManager->m_pClientExoApp->GetSWParty()->GetIndex(
-                g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pOther->m_objectId));
-            g_pAppManager->m_pClientExoApp->GetSWParty()->m_members[nIndex].m_nFollowState = CSWPartyMemberData::FOLLOW_STATE_FIND_PATH;
+    else {
+        // Plan B -- retreat the blocker to safe ground behind us.
+        Vector vSafe = {};
+        if (static_cast<CSWSArea*>(GetArea())->ComputeSafeLocationInDirection(vTo, m_orientation * -1.0f, 4.0f,
+                                                                   pOther->m_pPathfindInfo, 1,
+                                                                   &vSafe) == 1) {
+            pOther->SetPosition(vSafe, 1, 1, 0);
+            if (pOther->m_bInParty != 0) {
+                int nIndex = g_pAppManager->m_pClientExoApp->GetSWParty()->GetIndex(
+                    g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pOther->m_objectId));
+                g_pAppManager->m_pClientExoApp->GetSWParty()->m_members[nIndex].m_nFollowState = CSWPartyMemberData::FOLLOW_STATE_FIND_PATH;
+            }
+            sMessage.Format(const_cast<char*>("Bumped %x ends up at %f,%f\n"), pOther->m_objectId,
+                            vSafe.x, vSafe.y);
+            sMessage.CStr();
+            SetPosition(vSaved, 1, 1, 0);
+            return 1;
         }
-        sMessage.Format(const_cast<char*>("Bumped %x ends up at %f,%f\n"), pOther->m_objectId,
-                        vSafe.x, vSafe.y);
-        sMessage.CStr();
-        SetPosition(vSaved, 1, 1, 0);
-        return 1;
     }
     SetPosition(vSaved, 1, 1, 0);
     return 0;

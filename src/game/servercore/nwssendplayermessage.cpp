@@ -914,6 +914,7 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
     bool bChangedLeft = false;
     bool bChangedRight = false;
     CExoArrayList<unsigned int> aSlots;
+    CSWSItem* pItem;
     if (pApp->m_itemId[0].m_a != pSnap->m_itemId[0].m_a)
         nCount = (pApp->m_itemId[0].m_a == OBJECT_INVALID) ? 1 : 2;
     if (pApp->m_itemId[0].m_b != pSnap->m_itemId[0].m_b)
@@ -949,8 +950,10 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
     else
     {
         nCount += 2;
-        CSWItem* pItem1 = pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD);
-        CSWItem* pItem2 = pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_BODY);
+        CSWItem* pItem1;
+        CSWItem* pItem2;
+        pItem1 = pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD);
+        pItem2 = pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_BODY);
         if (pItem1) nCount++;
         if (pItem2) nCount++;
     }
@@ -1053,14 +1056,14 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
         WriteDWORD(MSG_SLOT_HEAD, 32);
 
 #if KOTOR1
-        CSWSItem* pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD));
+        pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD));
         if (pItem)
             WriteGameObjUpdate_WriteInventorySlotAdd(pCreature, pItem, MSG_SLOT_HEAD);
         pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_BODY));
         if (pItem)
             WriteGameObjUpdate_WriteInventorySlotAdd(pCreature, pItem, MSG_SLOT_BODY);
 #else
-        CSWSItem* pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD));
+        pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD));
         if (pItem)
         {
             WriteCHAR('A', 8);
@@ -1081,9 +1084,10 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
 #endif
     }
 
+    int64_t nOff;
     if (aSlots.m_count > 0)
     {
-        for (int64_t nOff = 0; nOff != static_cast<int64_t>(aSlots.m_count) * 4; nOff += 4)
+        for (nOff = 0; nOff != static_cast<int64_t>(aSlots.m_count) * 4; nOff += 4)
             WriteGameObjUpdate_WriteInventorySlotAdd(
                 pCreature,
                 static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(
@@ -5276,6 +5280,10 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
     CExoString sPlayerName;
 
     CSWSCreature* pCreature;
+    CResGFF* pGff;
+    CRes* pRes;
+    CResGFF* pOutGff;
+    CResStruct* pOutStruct;
 
     if (nMode == 5)
     {
@@ -5293,7 +5301,7 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
         sVaultDir.Format(const_cast<char*>("SERVERVAULT:%s"), sPlayerName.CStr());
         g_pExoResMan->AddResourceDirectory(sVaultDir);
 
-        CResGFF* pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "), cResRef);
+        pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "), cResRef);
         if (pGff->m_nValid == 0)
         {
             delete pGff;
@@ -5319,13 +5327,13 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
     {
         cResRef.CopyToString(sCharIndex);
 
-        CRes* pRes = g_pExoResMan->GetResObject(CResRef("Module"), kResTypeIfo);
+        pRes = g_pExoResMan->GetResObject(CResRef("Module"), kResTypeIfo);
         if (pRes == 0)
             return 0;
 
         pRes->Demand();
 
-        CResGFF* pGff = static_cast<CResGFF*>(pRes);
+        pGff = static_cast<CResGFF*>(pRes);
         pGff->GetTopLevelStruct(&topStruct);
 
         if (pGff->GetList(&playerList, &topStruct, const_cast<char*>("Mod_PlayerList")) == 0)
@@ -5357,7 +5365,7 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
     }
     else if (nMode == 1)
     {
-        CResGFF* pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "), cResRef);
+        pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "), cResRef);
         if (pGff->m_nValid == 0)
         {
             delete pGff;
@@ -5382,8 +5390,8 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
     }
 
     // In the shared tail, write the loaded creature back out and ship the file's bytes.
-    CResGFF* pOutGff = new CResGFF();
-    CResStruct* pOutStruct = new CResStruct();
+    pOutGff = new CResGFF();
+    pOutStruct = new CResStruct();
     if (pOutGff->CreateGFFFile(pOutStruct, CExoString("BIC "), CExoString("V2.0")) == 0)
     {
         delete pOutStruct;
@@ -5394,6 +5402,9 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
     {
         CExoString sTempFile;
         CExoString sUnused;  // Constructed and destroyed, never touched.
+        CExoFile* pFile;
+        unsigned int nFileSize;
+        unsigned char* pFileBytes;
 
         pCreature->m_pStats->SaveStats(pOutGff, pOutStruct);
 
@@ -5401,7 +5412,7 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
         pOutGff->WriteGFFFile(sTempFile, kResTypeBic);
         g_pExoResMan->AddResourceDirectory(CExoString("TEMP:"));
 
-        CExoFile* pFile = new CExoFile(sTempFile, kResTypeBic, CExoString("rb"));
+        pFile = new CExoFile(sTempFile, kResTypeBic, CExoString("rb"));
         if (pFile->FileOpened() == 0)
         {
             delete pFile;
@@ -5410,8 +5421,8 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
             return 0;
         }
 
-        unsigned int nFileSize = pFile->GetSize();
-        unsigned char* pFileBytes = new unsigned char[nFileSize];
+        nFileSize = pFile->GetSize();
+        pFileBytes = new unsigned char[nFileSize];
         pFile->Read(pFileBytes, 1, nFileSize);
         delete pFile;
 
@@ -7761,9 +7772,10 @@ void CSWSMessage::WriteGameObjUpdate_PlayerUpdate(CSWSPlayer* pPlayer,
         // None of the four searches breaks early: each runs the whole inner list accumulating a found flag.
         for (unsigned short i = 0; i < static_cast<unsigned short>(pCreature->m_pStats->m_feats.m_count); i++)
         {
-            unsigned short nFeat = pCreature->m_pStats->GetFeat(i);
-
-            int bFound = 0;
+            unsigned short nFeat;
+            int bFound;
+            nFeat = pCreature->m_pStats->GetFeat(i);
+            bFound = 0;
             for (int j = 0; j < pLast->m_feats.m_count; j++)
                 if (pLast->m_feats.m_pArray[j] == nFeat)
                     bFound = 1;
@@ -7794,9 +7806,10 @@ void CSWSMessage::WriteGameObjUpdate_PlayerUpdate(CSWSPlayer* pPlayer,
         for (unsigned short i = 0;
              i < static_cast<unsigned short>(pCreature->m_pStats->m_bonusFeats.m_count); i++)
         {
-            unsigned short nFeat = pCreature->m_pStats->GetBonusFeat(i);
-
-            int bFound = 0;
+            unsigned short nFeat;
+            int bFound;
+            nFeat = pCreature->m_pStats->GetBonusFeat(i);
+            bFound = 0;
             for (int j = 0; j < pLast->m_bonusFeats.m_count; j++)
                 if (pLast->m_bonusFeats.m_pArray[j] == nFeat)
                     bFound = 1;
@@ -7834,12 +7847,12 @@ void CSWSMessage::WriteGameObjUpdate_PlayerUpdate(CSWSPlayer* pPlayer,
 
         // The remaining-uses table is shipped whole rather than as a delta, and the feat id is re-read from
         // the entry to key the lookup.
-        WriteWORD(static_cast<unsigned short>(pCreature->m_pStats->m_featRemainingUses.m_count), 16);
-        for (int i = 0; i < pCreature->m_pStats->m_featRemainingUses.m_count; i++)
+        CSWSCreatureStats* pStats = pCreature->m_pStats;
+        WriteWORD(static_cast<unsigned short>(pStats->m_featRemainingUses.m_count), 16);
+        for (int i = 0; i < pStats->m_featRemainingUses.m_count; i++)
         {
-            WriteWORD(pCreature->m_pStats->m_featRemainingUses.m_pArray[i]->m_nFeat, 16);
-            WriteBYTE(pCreature->m_pStats->GetFeatRemainingUses(
-                          pCreature->m_pStats->m_featRemainingUses.m_pArray[i]->m_nFeat), 8);
+            WriteWORD(pStats->m_featRemainingUses.m_pArray[i]->m_nFeat, 16);
+            WriteBYTE(pStats->GetFeatRemainingUses(pStats->m_featRemainingUses.m_pArray[i]->m_nFeat), 8);
         }
     }
 
@@ -8438,13 +8451,14 @@ void CSWSMessage::WriteGameObjUpdate_MajorGUIPanels(CSWSPlayer* pPlayer)
 
         for (int i = 0; i < aChangedSlots.m_count; i++)
         {
+            CSWSItem* pItem;
             WriteCHAR('G', 8);
             WriteCHAR('I', 8);
             WriteCHAR('A', 8);
             WriteDWORD(aChangedSlots.m_pArray[i], 32);
 
             // GetItemInSlot is declared to return the CSWItem base; on the server the object is a CSWSItem.
-            CSWSItem* pItem = static_cast<CSWSItem*>(pObject->AsSWSCreature()->m_pInventory
+            pItem = static_cast<CSWSItem*>(pObject->AsSWSCreature()->m_pInventory
                                   ->GetItemInSlot(aChangedSlots.m_pArray[i]));
             WriteOBJECTIDServer(pItem->m_objectId);
             AddItemAppearanceToMessage(pItem);

@@ -2665,7 +2665,8 @@ void CSWSCreature::SignalRangedDamage(unsigned long long oidTarget)
                     int nDamage = pAttack->m_anDamage[14];
                     nDamage = DoDamageResistance(this, nDamage, static_cast<unsigned short>(GetDamageFlags()), 0, 1, 1);
                     nDamage = DoDamageImmunity(this, nDamage, static_cast<unsigned short>(GetDamageFlags()), 0, 1);
-                    pEffect->SetInteger(Log_Base2(GetDamageFlags()), nDamage);
+                    int nDamageIndex = Log_Base2(GetDamageFlags());
+                    pEffect->SetInteger(nDamageIndex, nDamage);
                     pEffect->SetInteger(14, nDamage);
                     pAIMaster->AddEventDeltaTime(0, nTime * 2, oidTarget, m_objectId,
                                                  CServerAIMaster::EVENT_APPLY_EFFECT, pEffect);

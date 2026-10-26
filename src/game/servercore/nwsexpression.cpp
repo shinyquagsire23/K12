@@ -174,6 +174,8 @@ int CSWSExpression::ParseString(CExoString sString)
     int nDepth = 0;
     int nLength = sString.GetLength();
     for (int i = 0; i < nLength; i++) {
+        char chClass;
+        char chNext;
         char ch = sString[i];
         switch (ch) {
         case '(':
@@ -184,19 +186,17 @@ int CSWSExpression::ParseString(CExoString sString)
         case ')': {
             if (nDepth < 1)
                 return -1000;
-            CSWSExpressionList* pOuter = aLists.m_pArray[nDepth - 1];
-            CSWSExpressionList* pInner = aLists.m_pArray[nDepth];
-            if (pOuter->m_pHead == NULL) {
-                pOuter->m_pHead = pInner->m_pHead;
-                pOuter->m_pTail = pInner->m_pTail;
+            if (aLists.m_pArray[nDepth - 1]->m_pHead == NULL) {
+                aLists.m_pArray[nDepth - 1]->m_pHead = aLists.m_pArray[nDepth]->m_pHead;
+                aLists.m_pArray[nDepth - 1]->m_pTail = aLists.m_pArray[nDepth]->m_pTail;
             } else {
-                pInner->m_pTail->m_pNext = pOuter->m_pCursor->m_pNext;
-                if (pOuter->m_pCursor == pOuter->m_pTail)
-                    pOuter->m_pTail = pInner->m_pTail;
-                pOuter->m_pCursor->m_pNext = pInner->m_pHead;
+                aLists.m_pArray[nDepth]->m_pTail->m_pNext = aLists.m_pArray[nDepth - 1]->m_pCursor->m_pNext;
+                if (aLists.m_pArray[nDepth - 1]->m_pCursor == aLists.m_pArray[nDepth - 1]->m_pTail)
+                    aLists.m_pArray[nDepth - 1]->m_pTail = aLists.m_pArray[nDepth]->m_pTail;
+                aLists.m_pArray[nDepth - 1]->m_pCursor->m_pNext = aLists.m_pArray[nDepth]->m_pHead;
             }
-            pOuter->m_pCursor = pInner->m_pTail;
-            delete pInner;
+            aLists.m_pArray[nDepth - 1]->m_pCursor = aLists.m_pArray[nDepth]->m_pTail;
+            delete aLists.m_pArray[nDepth];
             aLists.DelIndex(nDepth);
             nDepth--;
             break;
@@ -206,7 +206,7 @@ int CSWSExpression::ParseString(CExoString sString)
             i++;
             if (i >= nLength)
                 return -1003;
-            char chClass = sString[i];
+            chClass = sString[i];
             switch (chClass) {
             case '*':
                 aLists.m_pArray[nDepth]->AddNode(NewNode(CSWSExpressionNode::NODE_ANY_RUN));
@@ -250,7 +250,7 @@ int CSWSExpression::ParseString(CExoString sString)
             // Keep accumulating while the next character is another literal; otherwise flush the
             // run as one literal node.
             if (i + 1 < sString.GetLength()) {
-                char chNext = sString[i + 1];
+                chNext = sString[i + 1];
                 if (IsAToken(chNext) == 0)
                     break;
             }

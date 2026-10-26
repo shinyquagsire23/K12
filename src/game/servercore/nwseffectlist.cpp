@@ -2871,10 +2871,10 @@ int CSWSEffectListHandler::OnApplyDispelAllMagic(CSWSObject* pObject, CGameEffec
         return 1;
     int nCasterLevel = pCasterObject->AsSWSCreature()->m_pStats->GetLevel(0);
 
+    CExoArrayList<unsigned long long> l_removed;
     CSWCCMessageData* pData = new CSWCCMessageData();
     pData->SetObjectID(0, pObject->m_objectId);
     int nCount = 0;
-    CExoArrayList<unsigned long long> l_removed;
     if (pObject->m_effects.m_count >= 1) {
         for (int64_t i = 0; i < pObject->m_effects.m_count; i++) {
             CGameEffect* pEf = pObject->m_effects.m_pArray[i];
@@ -2888,11 +2888,12 @@ int CSWSEffectListHandler::OnApplyDispelAllMagic(CSWSObject* pObject, CGameEffec
                 continue;
             int nEfLevel = 0;
             CGameObject* pEfCasterObject;
+            unsigned short nRoll;
             if (pObjectArray->GetGameObject(
                     pEf->m_creatorId, &pEfCasterObject) == CGameObjectArray::SUCCESS &&
                 pEfCasterObject->AsSWSCreature() != 0)
                 nEfLevel = pEfCasterObject->AsSWSCreature()->m_pStats->GetLevel(0);
-            unsigned short nRoll = g_pRules->RollDice(1, 20);
+            nRoll = g_pRules->RollDice(1, 20);
             if (nCasterLevel + nRoll > nEfLevel + 11) {
                 g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
                     0, 0, pEffect->m_creatorId, pObject->m_objectId,
@@ -2905,17 +2906,16 @@ int CSWSEffectListHandler::OnApplyDispelAllMagic(CSWSObject* pObject, CGameEffec
     }
     pData->SetInteger(0, nCount);
     if (nCount >= 1) {
-        CSWSPlayer* pTargetPlayer =
+        CSWSPlayer* pPlayer =
             g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(pObject->m_objectId);
-        if (pTargetPlayer != 0)
+        if (pPlayer != 0)
             g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerCCMessage(
-                pTargetPlayer->m_nPlayerId, CC_MESSAGE_DISPEL, pData, 0);
+                pPlayer->m_nPlayerId, CC_MESSAGE_DISPEL, pData, 0);
         if (pCasterObject->m_objectId != pObject->m_objectId) {
-            CSWSPlayer* pCasterPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(
-                pCasterObject->m_objectId);
-            if (pCasterPlayer != 0)
+            pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(pCasterObject->m_objectId);
+            if (pPlayer != 0)
                 g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerCCMessage(
-                    pCasterPlayer->m_nPlayerId, CC_MESSAGE_DISPEL, pData, 0);
+                    pPlayer->m_nPlayerId, CC_MESSAGE_DISPEL, pData, 0);
         }
     }
     delete pData;
@@ -3662,12 +3662,14 @@ int CSWSEffectListHandler::OnRemoveSanctuary(CSWSObject* pObject, CGameEffect* p
         if (pArea != 0) {
             CExoArrayList<unsigned long long> seenIds;
             if (pArea->m_aObjectsByX.m_count >= 1) {
-                for (long long i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
-                    CSWSCreature* pCur = g_pAppManager->m_pServerExoApp
+                for (int64_t i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
+                    CSWSCreature* pCur;
+                    CSWVisibilityNode* pNode;
+                    pCur = g_pAppManager->m_pServerExoApp
                         ->GetCreatureByGameObjectID(pArea->m_aObjectsByX.m_pArray[i]);
                     if (pCur == 0)
                         continue;
-                    CSWVisibilityNode* pNode = pCur->GetVisibleListElement(pCreature->m_objectId);
+                    pNode = pCur->GetVisibleListElement(pCreature->m_objectId);
                     if (pNode == 0)
                         continue;
                     if ((pNode->m_flags >> 2 & 3) == 1) {
@@ -3697,7 +3699,7 @@ int CSWSEffectListHandler::OnRemoveSanctuary(CSWSObject* pObject, CGameEffect* p
                     pModule->m_playerList.Remove(pCreature->m_objectId);
             }
             if (bOtherSanctuary == 0 && seenIds.m_count >= 1) {
-                for (long long i = 0; i < seenIds.m_count; i++) {
+                for (int64_t i = 0; i < seenIds.m_count; i++) {
                     CSWSCreature* pCur = g_pAppManager->m_pServerExoApp
                         ->GetCreatureByGameObjectID(seenIds.m_pArray[i]);
                     if (pCur != 0)
@@ -4716,22 +4718,25 @@ int CSWSEffectListHandler::OnApplyVisualEffect(CSWSObject* pObject, CGameEffect*
     float fX = static_cast<CSWSObject *>(pObject)->m_position.x;
     float fY = static_cast<CSWSObject *>(pObject)->m_position.y;
     float fZ = static_cast<CSWSObject *>(pObject)->m_position.z;
-    if (pObject->GetArea() != 0 &&
-        (CLoopingVisualEffect::GetIsBeam(static_cast<unsigned short>(nVisualEffect)) == 0 ||
-         g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget) != 0)) {
-        CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
-        if (pPlayer != 0) {
-            CSWSObject* pPlayerObject = pPlayer->GetGameObject();
-            float fDX = pPlayerObject->m_position.x - fX;
-            float fDY = pPlayerObject->m_position.y - fY;
-            float fDZ = pPlayerObject->m_position.z - fZ;
-            float fRange = CSWSArea::MAX_OBJECT_VISIBLE_DISTANCE + 2.0f;
-            if (fDX * fDX + fDY * fDY + fDZ * fDZ <= fRange * fRange)
-                g_pAppManager->m_pServerExoApp->GetSWSMessage()
-                    ->SendServerToPlayerGameObjUpdateVisEffect(pPlayer, static_cast<unsigned short>(nVisualEffect), oidSource,
-                                                               oidTarget, oidBeamEnd, static_cast<unsigned char>(nBodyPart), nFlag,
-                                                               vImpact, fDuration);
+    if (pObject->GetArea() != 0) {
+        CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
+        if (CLoopingVisualEffect::GetIsBeam(static_cast<unsigned short>(nVisualEffect)) == 0 ||
+            pServer->GetGameObject(oidTarget) != 0) {
+            CSWSPlayer* pPlayer;
+            unsigned long long oidPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
+            pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(oidPlayer);
+            if (pPlayer != 0) {
+                CSWSObject* pPlayerObject = pPlayer->GetGameObject();
+                float fDX = pPlayerObject->m_position.x - fX;
+                float fDY = pPlayerObject->m_position.y - fY;
+                float fDZ = pPlayerObject->m_position.z - fZ;
+                float fRange = CSWSArea::MAX_OBJECT_VISIBLE_DISTANCE + 2.0f;
+                if (fDX * fDX + fDY * fDY + fDZ * fDZ <= fRange * fRange)
+                    g_pAppManager->m_pServerExoApp->GetSWSMessage()
+                        ->SendServerToPlayerGameObjUpdateVisEffect(pPlayer, static_cast<unsigned short>(nVisualEffect), oidSource,
+                                                                   oidTarget, oidBeamEnd, static_cast<unsigned char>(nBodyPart), nFlag,
+                                                                   vImpact, fDuration);
+            }
         }
     }
     return 1;
@@ -6175,6 +6180,7 @@ int CSWSEffectListHandler::OnApplyEffectIcon(CSWSObject* pObject, CGameEffect* p
             }
 #else
             int nStrRef;
+            int64_t i;
             if (g_pRules->m_p2DArrays->m_pEffectIcon->GetCExoStringEntry(
                     nIcon, CExoString("IconResRef"), &sResRef)
                 != 0) {
@@ -6194,8 +6200,7 @@ int CSWSEffectListHandler::OnApplyEffectIcon(CSWSObject* pObject, CGameEffect* p
                             pIcon->m_nPriority = static_cast<unsigned short>(nPriority);
                             pIcon->m_bGood = nGood != 0;
                             pIcon->m_nNameStrRef = nStrRef;
-                            int64_t i = 0;
-                            for (; i < pCreature->m_effectIcons.m_count; i++)
+                            for (i = 0; i < pCreature->m_effectIcons.m_count; i++)
                                 if (nPriority
                                     < pCreature->m_effectIcons.m_pArray[i]->m_nPriority)
                                     break;

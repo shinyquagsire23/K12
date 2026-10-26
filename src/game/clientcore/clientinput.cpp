@@ -547,10 +547,7 @@ hitcheck_retry:
                         if (pLeash->AsSWCDoor() != 0) {
                             if (pLeash->AsSWCDoor()->m_bStatic != 0)
                                 goto mouseover_scan;
-                            CSWCDoor* pDoor = pLeash->AsSWCDoor();
-                            // inlined CSWCDoor::GetIsOpen()
-                            if (pDoor->GetCurrentAnimation() == SERVER_ANIMATION_DOOR_OPEN1 ||
-                                pDoor->GetCurrentAnimation() == SERVER_ANIMATION_DOOR_OPEN2)
+                            if (pLeash->AsSWCDoor()->GetIsOpen())
                                 goto mouseover_scan;
                         }
                         break;

@@ -223,28 +223,34 @@ int CSWSMessage::HandlePlayerToServerCheatMessage(CSWSPlayer* pPlayer, unsigned 
         case MSG_CHEAT_MOVE_TO_AREA:
         {
             CExoString sAreaName;
+            CSWSObject* pObject;
             CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
-            CSWSObject* pObject = pPlayer->GetGameObject();
+            pObject = pPlayer->GetGameObject();
             if (pObject == 0)
                 return 0;
 
-            CSWSCreature* pCreature = pObject->AsSWSCreature();
+            CSWSCreature* pCreature;
+            float fX;
+            float fY;
+            float fZ;
+            pCreature = pObject->AsSWSCreature();
             if (pCreature == 0)
                 return 0;
 
             sAreaName = ReadCExoString(32);
 
-            float fX = ReadFLOAT(1.0f, 32);
-            float fY = ReadFLOAT(1.0f, 32);
-            float fZ = ReadFLOAT(1.0f, 32);
+            fX = ReadFLOAT(1.0f, 32);
+            fY = ReadFLOAT(1.0f, 32);
+            fZ = ReadFLOAT(1.0f, 32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
+            CSWSArea* pObjArea;
             CSWSArea* pArea = pModule->GetArea();
             if (pArea == 0)
             {
-                CSWSArea* pObjArea = static_cast<CSWSArea*>(pCreature->GetArea());
+                pObjArea = static_cast<CSWSArea*>(pCreature->GetArea());
                 if (pObjArea == 0)
                 {
                     CExoString sError;
@@ -636,24 +642,27 @@ int CSWSMessage::HandlePlayerToServerCheatMessage(CSWSPlayer* pPlayer, unsigned 
             pGoon->m_appearance.m_nGender = 0;
 
             CExoLocString sName;
+            CSWSArea* pArea;
             sName.AddString(0, CExoString("Hostile"), 0);
             pGoon->m_pStats->m_firstName = sName;
             sName.AddString(0, CExoString("Nudist"), 0);
             pGoon->m_pStats->m_lastName = sName;
 
-            CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetModule()->GetArea();
+            pArea = g_pAppManager->m_pServerExoApp->GetModule()->GetArea();
             if (pArea != 0)
             {
+                CSWSObject* pG;
                 CSWSEncounter* pEncounter = new CSWSEncounter(OBJECT_INVALID);
                 pEncounter->AddToArea(pArea, pEncounter->m_position.x, pEncounter->m_position.y,
                                       pEncounter->m_position.z, 1);
 
-                CSWSObject* pG = pPlayer->GetGameObject();
+                pG = pPlayer->GetGameObject();
                 Vector vPos(pG->m_position.x, pG->m_position.y + 15.0f, pG->m_position.z);
 
                 CExoString sMsg;
                 Vector vSpawn(0.0f, 0.0f, 0.0f);
                 float fHeight = 0.0f;
+                CSWSItem* pItem;
                 if (pArea->ComputeNonVisibleLocation(vPos, pGoon->m_pPathfindInfo, 1, &vSpawn,
                                                      30.0f) == 1)
                 {
@@ -691,7 +700,7 @@ int CSWSMessage::HandlePlayerToServerCheatMessage(CSWSPlayer* pPlayer, unsigned 
                 // The item spawns only when the template resource exists.
                 if (g_pExoResMan->Exists(cTemplate, RESTYPE_UTI, static_cast<unsigned int*>(0)) != 0)
                 {
-                    CSWSItem* pItem = new CSWSItem(OBJECT_INVALID);
+                    pItem = new CSWSItem(OBJECT_INVALID);
                     pItem->LoadFromTemplate(cTemplate);
                     static_cast<CSWSObject*>(pItem)->SetPosition(
                         Vector(vSpawn.x, vSpawn.y, fHeight), 1, 1, 0);
@@ -870,8 +879,8 @@ int CSWSMessage::HandlePlayerToServerGameObjectUpdate(CSWSPlayer* pPlayer, unsig
             nResult = 0;
             break;
         }
-        if (pPlayer->GetGameObject() != 0)
-            pPlayer->GetGameObject();
+        if (CSWSObject* pPlayerObject = pPlayer->GetGameObject())
+            pPlayerObject = pPlayer->GetGameObject();
         CGameEffect* pEffect = new CGameEffect(1);
         pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_SUMMON_CREATURE);
         pEffect->m_durationTypeBits =
@@ -971,8 +980,8 @@ int CSWSMessage::HandlePlayerToServerGameObjectUpdate(CSWSPlayer* pPlayer, unsig
             nResult = 0;
             break;
         }
-        if (pPlayer->GetGameObject() != 0)
-            pPlayer->GetGameObject();
+        if (CSWSObject* pPlayerObject = pPlayer->GetGameObject())
+            pPlayerObject = pPlayer->GetGameObject();
         CGameEffect* pEffect = new CGameEffect(1);
         pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_SUMMON_PARTY);
         pEffect->m_durationTypeBits =
@@ -3725,6 +3734,10 @@ int CSWSMessage::HandlePlayerToServerJournalMessage(CSWSPlayer* pPlayer, unsigne
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
 
     int nResult = 1;
+    unsigned int nDay;
+    unsigned int nTime;
+    int nIndex;
+    int bByStrRef;
     switch (nType)
     {
     case MSG_JOURNAL_QUEST_SCREEN_OPEN:
@@ -3737,8 +3750,6 @@ int CSWSMessage::HandlePlayerToServerJournalMessage(CSWSPlayer* pPlayer, unsigne
         break;
     case MSG_JOURNAL_REQUEST_ADD:
     {
-        unsigned int nDay;
-        unsigned int nTime;
         sName = ReadCExoString(32);
         sText = ReadCExoString(32);
         if (MessageReadOverflow(1)) {
@@ -3758,8 +3769,8 @@ int CSWSMessage::HandlePlayerToServerJournalMessage(CSWSPlayer* pPlayer, unsigne
     }
     case MSG_JOURNAL_REQUEST_DELETE:
     {
-        int nIndex = ReadINT(32);
-        int bByStrRef = ReadBOOL();
+        nIndex = ReadINT(32);
+        bByStrRef = ReadBOOL();
         if (MessageReadOverflow(1)) {
             nResult = 0;
             break;

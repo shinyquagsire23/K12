@@ -165,12 +165,13 @@ CSWSObject::CSWSObject(unsigned char objectType, unsigned long long objectId, in
     m_nLastDisturbType = 0;
     m_nImpactSpellId = -1;
 
+    int i;
     m_paDamageImmunity = new signed char[15];
-    for (int i = 0; i < 15; i++)
+    for (i = 0; i < 15; i++)
         m_paDamageImmunity[i] = 0;
 
     m_paLastDamageAmounts = new int[15];
-    for (int i = 0; i < 15; i++)
+    for (i = 0; i < 15; i++)
         m_paLastDamageAmounts[i] = -1;
 
     m_nLastAttackFeatId = 0;
@@ -2647,6 +2648,7 @@ int CSWSObject::RunDialogOneLiner(const CExoString& sResRef, unsigned long long 
     int bLoaded;
     unsigned char nGender = CTlkTable::GENDER_MALE;
     pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
+    CGameObject* pObject;
     pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
     if (sResRef == "")
         rDialog = GetDialogResref();
@@ -2665,7 +2667,6 @@ int CSWSObject::RunDialogOneLiner(const CExoString& sResRef, unsigned long long 
         return 0;
     if (dialog.GetStartEntryOneLiner(this, sText, rSound, rScript) == 0)
         return 0;
-    CGameObject* pObject;
     if (pObjectArray->GetGameObject(targetId, &pObject) == CGameObjectArray::SUCCESS
             && pObject->AsSWSObject() != 0)
         nGender = pObject->AsSWSObject()->GetGender();

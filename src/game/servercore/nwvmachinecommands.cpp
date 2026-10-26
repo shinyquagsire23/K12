@@ -4275,9 +4275,10 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestObject(int nCommand, int 
                 }
                 case CMD_GetNearestCreature:
                 case CMD_GetNearestCreatureToLocation: {
+                    CSWSCreature* pCreature;
                     if (pCandidate->AsSWSCreature() == 0)
                         goto advance;
-                    CSWSCreature* pCreature = pCandidate->AsSWSCreature();
+                    pCreature = pCandidate->AsSWSCreature();
                     if (pCreature == 0)
                         goto advance;
 
@@ -4331,8 +4332,9 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestObject(int nCommand, int 
                                      ;
 #endif
                             break;
-                        case CREATURE_TYPE_REPUTATION:
+                        case CREATURE_TYPE_REPUTATION: {
                             // The reputation criterion is friend, enemy or neutral.
+                            int nReputation;
 #ifdef K2_FIX_ENGINE_BUGS
                             if (!pTarget)
                                 break;
@@ -4344,12 +4346,12 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestObject(int nCommand, int 
                                 bMatch = (pCreature->AsSWSObject()->GetReputation(
                                               pTarget->m_objectId, 0) < REPUTATION_HOSTILE_BELOW);
                             else if (nCriteriaValue == REPUTATION_TYPE_NEUTRAL) {
-                                int nReputation = pCreature->AsSWSObject()->GetReputation(
-                                    pTarget->m_objectId, 0);
+                                nReputation = pCreature->AsSWSObject()->GetReputation(pTarget->m_objectId, 0);
                                 bMatch = (nReputation >= REPUTATION_HOSTILE_BELOW
                                           && nReputation <= REPUTATION_FRIENDLY_ABOVE);
                             }
                             break;
+                        }
                         case CREATURE_TYPE_IS_ALIVE:
                             // No test of its own, the GetDead() and hit-point gate below already
                             // covers it.
@@ -4455,13 +4457,10 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestObject(int nCommand, int 
     }
 
 push:
-    {
-        // Kept for its side effects only; the probe's result is discarded.
-        CSWSCreature* pNearest =
-            g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidResult);
-        if (nCommand != CMD_GetNearestObjectByTag && pNearest != 0 && pNearest->GetDead() == 0)
-            pNearest->GetDeadTemp();
-    }
+    // Kept for its side effects only; the probe's result is discarded.
+    CSWSCreature* pNearest = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidResult);
+    if (nCommand != CMD_GetNearestObjectByTag && pNearest != 0 && pNearest->GetDead() == 0)
+        pNearest->GetDeadTemp();
 
     if (!g_pVirtualMachine->StackPushObject(oidResult))
         return VM_ERROR_PUSH_FAILED;
@@ -9724,18 +9723,15 @@ int CSWVirtualMachineCommands::ExecuteCommandCreateItemOnObject(int nCommand, in
 #if KOTOR1  // K1 CreateItemOnObject has no bSuppressMessage argument
     if (nArgCount > 2 && !g_pVirtualMachine->StackPopInteger(&nStackSize))
         return VM_ERROR_POP_FAILED;
-#else
-    int bSuppressMessage;
-    if (nArgCount > 2) {
-        if (!g_pVirtualMachine->StackPopInteger(&nStackSize))
-            return VM_ERROR_POP_FAILED;
-        bSuppressMessage = 0;
-        if (nArgCount >= 4 && !g_pVirtualMachine->StackPopInteger(&bSuppressMessage))
-            return VM_ERROR_POP_FAILED;
-    } else
-        bSuppressMessage = 0;
-#endif
     unsigned long long oidItem = CGameObjectArray::INVALIDOBJID;
+#else
+    unsigned long long oidItem = CGameObjectArray::INVALIDOBJID;
+    if (nArgCount > 2 && !g_pVirtualMachine->StackPopInteger(&nStackSize))
+        return VM_ERROR_POP_FAILED;
+    int bSuppressMessage = 0;
+    if (nArgCount >= 4 && !g_pVirtualMachine->StackPopInteger(&bSuppressMessage))
+        return VM_ERROR_POP_FAILED;
+#endif
     if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(oidTarget, &pObject)
             == CGameObjectArray::SUCCESS) {
         CResRef resRef(static_cast<char*>(sTemplate.CStr()));
@@ -14421,9 +14417,9 @@ int CSWVirtualMachineCommands::ExecuteCommandBeginConversation(int nCommand, int
         if (pObjectArray->GetGameObject(oidTarget, reinterpret_cast<CGameObject**>(&pTargetObject))
                 == CGameObjectArray::SUCCESS
             && pTargetObject != 0 && pSelfObject != 0) {
+            CSWSPlayer* pPlayer;
             oidPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
-            CSWSPlayer* pPlayer =
-                g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(oidPlayer);
+            pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(oidPlayer);
             pTargetCreature = pTargetObject->AsSWSCreature();
             if (pPlayer != 0 && pTargetCreature != 0) {
                 if (pTargetObject->m_objectId != pPlayer->m_gameObjectId)
@@ -14552,7 +14548,6 @@ int CSWVirtualMachineCommands::ExecuteCommandActionStartConversation(int nComman
         return VM_ERROR_PUSH_FAILED;
     bIgnoreStartRange = 1;
     CExoString sObjectToIgnore;
-    int bUseLeader;
     if (nArgCount >= 6) {
         if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
             return VM_ERROR_PUSH_FAILED;
@@ -14572,14 +14567,10 @@ int CSWVirtualMachineCommands::ExecuteCommandActionStartConversation(int nComman
         if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
             return VM_ERROR_PUSH_FAILED;
         g_pAppManager->m_pClientExoApp->GetInGameGui()->AddToDialogNonDependantList(sObjectToIgnore);
-        bUseLeader = 0;
-        if (nArgCount > 11) {
-            if (!g_pVirtualMachine->StackPopInteger(&bUseLeader))
-                return VM_ERROR_PUSH_FAILED;
-        }
-    } else {
-        bUseLeader = 0;
     }
+    int bUseLeader = 0;
+    if (nArgCount > 11 && !g_pVirtualMachine->StackPopInteger(&bUseLeader))
+        return VM_ERROR_PUSH_FAILED;
 #if KOTOR1
     // K1 has no bark-position or don't-clear arguments, no dead-party check and no resurrection pass;
     // the owner is only raised to AI level 1 when it sits at level 0.
@@ -14643,21 +14634,19 @@ int CSWVirtualMachineCommands::ExecuteCommandActionStartConversation(int nComman
         if (pLeaderObject != 0 && pLeaderObject->AsSWSCreature() != 0)
             pLeaderObject->AsSWSCreature()->ClearAllActions(1);
     }
-    int bNoLivingParty = 0;
-    CSWCCreature* pMember0 = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
-    if (pMember0 != 0) {
-        CSWSCreature* pServer0 = pMember0->GetServerCreature();
-        if (pServer0 == 0 || pServer0->GetCurrentHitPoints(0) <= 0) {
-            CSWCCreature* pMember1 =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
-            CSWSCreature* pServer1 = (pMember1 != 0) ? pMember1->GetServerCreature() : 0;
-            if (pServer1 == 0 || pServer1->GetCurrentHitPoints(0) <= 0) {
-                CSWCCreature* pMember2 =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
-                CSWSCreature* pServer2 = (pMember2 != 0) ? pMember2->GetServerCreature() : 0;
-                if (pServer2 == 0 || pServer2->GetCurrentHitPoints(0) <= 0)
-                    bNoLivingParty = 1;
+    // An empty leader slot means there is no party to check, which counts as living.
+    int bNoLivingParty = 1;
+    for (int i = 0; i < 3; i++) {
+        CSWCCreature* pMember = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
+        if (pMember != 0) {
+            CSWSCreature* pServer = pMember->GetServerCreature();
+            if (pServer != 0 && pServer->GetCurrentHitPoints(0) > 0) {
+                bNoLivingParty = 0;
+                break;
             }
+        } else if (i == 0) {
+            bNoLivingParty = 0;
+            break;
         }
     }
     if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nGlobalDialogState | bNoLivingParty) != 0)
@@ -14682,7 +14671,8 @@ int CSWVirtualMachineCommands::ExecuteCommandActionStartConversation(int nComman
         pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_RESURRECTION);
         pEffect->m_durationTypeBits = (pEffect->m_durationTypeBits & ~SUBTYPE_SUPERNATURAL) | SUBTYPE_MAGICAL;
         pEffect->SetInteger(0, 2);
-        if (g_pAppManager->m_pServerExoApp->GetGameObject(m_oidSelf) != 0)
+        CGameObject* pSelf = g_pAppManager->m_pServerExoApp->GetGameObject(m_oidSelf);
+        if (pSelf != 0)
             pEffect->SetCreator(m_oidSelf);
         pEffect->m_durationTypeBits = pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK;
         pServerDead->AsSWSObject()->ApplyEffect(pEffect, 0, 1);
@@ -18328,18 +18318,22 @@ int CSWVirtualMachineCommands::ExecuteCommandCreateItemOnFloor(int nCommand, int
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopInteger(&bUseAppearAnimation))
         return VM_ERROR_POP_FAILED;
-    unsigned long long oidItem = CGameObjectArray::INVALIDOBJID;
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
+    CSWSArea* pArea;
+    CSWSItem* pItem;
+    unsigned long long oidItem = CGameObjectArray::INVALIDOBJID;
     if (pModule != 0) {
-        CSWSArea* pArea = pModule->GetArea();
+        pArea = pModule->GetArea();
         if (pArea != 0) {
-            CResRef resRef(static_cast<char*>(sTemplate.CStr()));
-            CSWSItem* pItem = new CSWSItem(OBJECT_INVALID);
-            pItem->LoadFromTemplate(resRef);
-            pItem->SetPosition(pLocation->m_vPosition, 1, 1, 0);
-            pItem->SetOrientation(pLocation->m_vOrientation);
-            pItem->AddToArea(pArea, pLocation->m_vPosition.x, pLocation->m_vPosition.y,
-                             pLocation->m_vPosition.z, 1);
+            {
+                CResRef resRef(static_cast<char*>(sTemplate.CStr()));
+                pItem = new CSWSItem(OBJECT_INVALID);
+                pItem->LoadFromTemplate(resRef);
+                pItem->SetPosition(pLocation->m_vPosition, 1, 1, 0);
+                pItem->SetOrientation(pLocation->m_vOrientation);
+                pItem->AddToArea(pArea, pLocation->m_vPosition.x, pLocation->m_vPosition.y,
+                                 pLocation->m_vPosition.z, 1);
+            }
             oidItem = pItem->m_objectId;
             if (pMessage != 0)
                 pMessage->SendServerToPlayerItemScriptAdd(static_cast<unsigned int>(CGameObjectArray::INVALIDOBJID), pArea,

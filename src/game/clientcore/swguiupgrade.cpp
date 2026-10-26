@@ -1662,12 +1662,8 @@ void CSWGuiUpgrade::OnPanelAdded()
     int nLt = sText.Find('<', 0);
     int nLb = sText.Find('{', 0);
     if ((nLt & nLb) != -1) {
-        CSWTlkTable* pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj =
-            g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled = static_cast<unsigned char>(pTlk->m_bSuppressEnabled | 1);
-        pTlk->ParseStr(sText);
+        CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+        g_pSWTlkTable->ParseStr(sText, pPC, 1, 1);
     }
     m_lblTitle.m_text.m_params.SetText(sText);
     m_lblSlotName.m_text.m_params.SetText(CExoString(""));
@@ -3916,18 +3912,14 @@ void CSWGuiCreateItem::OnControlEntered(CSWGuiControl* pControl)
             int nFoundBrace = sDescription.Find('{', 0);
             if (nFoundLt != -1 || nFoundBrace != -2)
             {
-                CSWTlkTable* pTlk = g_pSWTlkTable;
-                pTlk->m_pSpeakerObj =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-                pTlk->m_gender = pTlk->GetObjectGender();
-                pTlk->m_bSuppressEnabled |= 1;
-                pTlk->ParseStr(sDescription);
+                CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+                g_pSWTlkTable->ParseStr(sDescription, pPC, 1, 1);
             }
 
             if (m_lbShopItems.m_tail.bVisible)
             {
-                int nBaseSkill = -1;
                 int nSkill = -1;
+                int nBaseSkill = -1;
                 int nRow = pEntry->m_nCreateRow;
                 if (!pArray->GetINTEntry(nRow, CExoString("base_skill"), &nBaseSkill))
                     return;
@@ -5433,12 +5425,8 @@ void CSWGuiSwoopUpgrade::OnEnterSlot(CSWGuiControl* pControl)
         int nLt = sText.Find('<', 0);
         int nLb = sText.Find('{', 0);
         if ((nLt & nLb) != -1) {
-            CSWTlkTable* pTlk = g_pSWTlkTable;
-            pTlk->m_pSpeakerObj =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            pTlk->m_gender = pTlk->GetObjectGender();
-            pTlk->m_bSuppressEnabled = static_cast<unsigned char>(pTlk->m_bSuppressEnabled | 1);
-            pTlk->ParseStr(sText);
+            CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            g_pSWTlkTable->ParseStr(sText, pPC, 1, 1);
         }
         m_lblSlotName.m_text.m_params.SetText(sText);
         m_lblProperty.m_text.m_params.SetText(sText);

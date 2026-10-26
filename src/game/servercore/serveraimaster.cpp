@@ -134,9 +134,8 @@ CServerAIMaster::CServerAIMaster()
     m_pEffectListHandler = pEffectListHandler;
     pEffectListHandler->InitializeEffects();
 
-    CSWSItemPropertyHandler* pItemPropertyHandler = new CSWSItemPropertyHandler;
-    m_pItemPropertyHandler = pItemPropertyHandler;
-    pItemPropertyHandler->InitializeItemProperties();
+    m_pItemPropertyHandler = new CSWSItemPropertyHandler;
+    m_pItemPropertyHandler->InitializeItemProperties();
 
     // Ascending order, so the four stores merge into one vector store.
     m_pRepAdjustAttack = 0;

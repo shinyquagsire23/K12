@@ -52,9 +52,10 @@ void CSWSMessage::WriteCExoLocStringServer(CExoLocString& s, unsigned char nLang
 
     if (g_pAppManager->m_pServerExoApp != 0)
     {
-        int nPlayerLanguage = g_pAppManager->m_pServerExoApp->GetPlayerLanguage(m_nPlayerId);
-        unsigned char nFlag;
-        int nModuleLanguage = g_pAppManager->m_pServerExoApp->GetModuleLanguage();
+        int nPlayerLanguage;
+        int nModuleLanguage;
+        nPlayerLanguage = g_pAppManager->m_pServerExoApp->GetPlayerLanguage(m_nPlayerId);
+        nModuleLanguage = g_pAppManager->m_pServerExoApp->GetModuleLanguage();
         if (s.GetStringLoc(nPlayerLanguage, &sString, nLang))
         {
             if (static_cast<uint64_t>(m_nWriteMessageSize) +
@@ -83,30 +84,34 @@ void CSWSMessage::WriteCExoLocStringServer(CExoLocString& s, unsigned char nLang
             WriteBOOL(0);
             WriteCExoString(sString, 32);
         }
-        else if (s.GetString(0, &nPlayerLanguage, &sString, &nFlag))
-        {
-            if (static_cast<uint64_t>(m_nWriteMessageSize) +
-                    sString.GetLength() + 4 >
-                m_nWriteMessageBufferSize)
-                ExtendWriteBuffer(sString.GetLength() + 4);
-            WriteBOOL(0);
-            WriteCExoString(sString, 32);
-        }
-        else if (s.m_nStrRef == 0xFFFFFFFF)
-        {
-            if (sString.GetLength() +
-                m_nWriteMessageSize > m_nWriteMessageBufferSize)
-                ExtendWriteBuffer(sString.GetLength());
-            WriteBOOL(0);
-            WriteCExoString(sString, 32);
-        }
         else
         {
-            if (static_cast<uint64_t>(m_nWriteMessageSize) + 9 > m_nWriteMessageBufferSize)
-                ExtendWriteBuffer(9);
-            WriteBOOL(1);
-            WriteBYTE(nLang, 8);
-            WriteDWORD(static_cast<unsigned int>(s.m_nStrRef), 32);
+            unsigned char nFlag;
+            if (s.GetString(0, &nPlayerLanguage, &sString, &nFlag))
+            {
+                if (static_cast<uint64_t>(m_nWriteMessageSize) +
+                        sString.GetLength() + 4 >
+                    m_nWriteMessageBufferSize)
+                    ExtendWriteBuffer(sString.GetLength() + 4);
+                WriteBOOL(0);
+                WriteCExoString(sString, 32);
+            }
+            else if (s.m_nStrRef == 0xFFFFFFFF)
+            {
+                if (sString.GetLength() +
+                    m_nWriteMessageSize > m_nWriteMessageBufferSize)
+                    ExtendWriteBuffer(sString.GetLength());
+                WriteBOOL(0);
+                WriteCExoString(sString, 32);
+            }
+            else
+            {
+                if (static_cast<uint64_t>(m_nWriteMessageSize) + 9 > m_nWriteMessageBufferSize)
+                    ExtendWriteBuffer(9);
+                WriteBOOL(1);
+                WriteBYTE(nLang, 8);
+                WriteDWORD(static_cast<unsigned int>(s.m_nStrRef), 32);
+            }
         }
     }
 }

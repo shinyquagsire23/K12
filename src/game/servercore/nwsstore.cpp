@@ -14,8 +14,7 @@ CSWSStore::CSWSStore(unsigned long long objectId)
     m_nBonusMarkDown = 0;
     m_nBonusMarkUp = 0;
     m_buySellFlag = STORE_BUY_AND_SELL;
-    CServerAIMaster* pAI = g_pAppManager->m_pServerExoApp->GetServerAIMaster();
-    pAI->AddObject(this, 0);
+    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddObject(this, 0);
 }
 
 void CSWSStore::AIUpdate() {
@@ -202,16 +201,20 @@ int CSWSStore::LoadStore(CResGFF* pGFF, CResStruct* pStruct, int flag) {
     if (pGFF->GetList(&itemList, pStruct, const_cast<char*>("ItemList"))) {
         CExoArrayList<CSWSItem*> items;
         CSWSItem* pLastItem K2_UNSET;
+        CResStruct itemStruct;
+        unsigned int objId;
+        CSWSItem* pItem;
+        unsigned char infinite;
+        unsigned int newCost;
+        int insertIndex;
         for (unsigned int i = 0; i < pGFF->GetListCount(&itemList); i++) {
-            CResStruct itemStruct;
             pGFF->GetListElement(&itemStruct, &itemList, i);
-            unsigned int objId = pGFF->ReadFieldDWORD(&itemStruct, const_cast<char*>("ObjectId"), valid, OBJECT_INVALID);
-            void* pExisting = g_pAppManager->m_pServerExoApp->GetGameObject(objId);
-            if (pExisting != 0) {
+            objId = pGFF->ReadFieldDWORD(&itemStruct, const_cast<char*>("ObjectId"), valid, OBJECT_INVALID);
+            if (g_pAppManager->m_pServerExoApp->GetGameObject(objId) != 0) {
                 pLastItem = 0;
                 continue;
             }
-            CSWSItem* pItem = new CSWSItem(objId);
+            pItem = new CSWSItem(objId);
             if (flag != 0) {
                 CResRef templateRef = pGFF->ReadFieldCResRef(&itemStruct, const_cast<char*>("InventoryRes"), valid, CResRef(""));
                 if (valid == 0) goto skipItem;
@@ -221,23 +224,18 @@ int CSWSStore::LoadStore(CResGFF* pGFF, CResStruct* pStruct, int flag) {
             if (pItem->LoadItem(pGFF, &itemStruct) != 0) goto loaded;
             goto skipItem;
         loaded:;
-            {
-                unsigned char infinite = pGFF->ReadFieldBYTE(&itemStruct, const_cast<char*>("Infinite"), valid, 0);
-                pItem->m_flags = static_cast<unsigned short>((pItem->m_flags & ~CSWSItem::FLAG_INFINITE) | ((infinite & 1) << 2));
+            infinite = pGFF->ReadFieldBYTE(&itemStruct, const_cast<char*>("Infinite"), valid, 0);
+            pItem->m_flags = static_cast<unsigned short>((pItem->m_flags & ~CSWSItem::FLAG_INFINITE) | ((infinite & 1) << 2));
+            newCost = pItem->GetCost();
+            insertIndex = -1;
+            for (int j = 0; j < items.m_count && insertIndex == -1; j++) {
+                if (newCost > items.m_pArray[j]->GetCost())
+                    insertIndex = j;
             }
-            {
-                unsigned int newCost = pItem->GetCost();
-                int insertIndex = -1;
-                for (int j = 0; j < items.m_count && insertIndex == -1; j++) {
-                    if (newCost > items.m_pArray[j]->GetCost())
-                        insertIndex = j;
-                }
-                if (insertIndex != -1) {
-                    items.Insert(pItem, insertIndex);
-                } else {
-                    items.Add(pItem);
-                }
-            }
+            if (insertIndex != -1)
+                items.Insert(pItem, insertIndex);
+            else
+                items.Add(pItem);
             pLastItem = pItem;
             continue;
         skipItem:
@@ -258,8 +256,7 @@ int CSWSStore::LoadStore(CResGFF* pGFF, CResStruct* pStruct, int flag) {
             }
         }
     }
-    CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
-    pModule->AddObjectToLookupTable(m_sTag, m_objectId);
+    g_pAppManager->m_pServerExoApp->GetModule()->AddObjectToLookupTable(m_sTag, m_objectId);
     return 1;
 }
 

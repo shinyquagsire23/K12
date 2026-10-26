@@ -1647,11 +1647,11 @@ int CSWSArea::LoadTriggers(CResGFF* pGff, CResStruct* pStruct, int nFlags, int n
         float fX, fY, fZ;   // filled by either load path, read by the shared tail
         if (nUseTemplates)
         {
-            CResRef refDefault("");
-            CResRef refTrigger = pGff->ReadFieldCResRef(&stElem, const_cast<char*>("TemplateResRef"), bSuccess, refDefault);
+            CResRef refTrigger = pGff->ReadFieldCResRef(&stElem, const_cast<char*>("TemplateResRef"), bSuccess, CResRef(""));
             if (bSuccess && pTrigger->LoadFromTemplate(refTrigger))
             {
                 CExoString sLinkedToModule;
+                CResList listGeom;
                 CResRef refMod = pGff->ReadFieldCResRef(&stElem, const_cast<char*>("LinkedToModule"), bSuccess, CResRef(""));
                 refMod.CopyToString(sLinkedToModule);
                 {
@@ -1668,7 +1668,6 @@ int CSWSArea::LoadTriggers(CResGFF* pGff, CResStruct* pStruct, int nFlags, int n
                 fY = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("YPosition"), bSuccess, 0.0f);
                 fZ = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("ZPosition"), bSuccess, 0.0f);
                 pTrigger->SetPosition(Vector(fX, fY, fZ), 1, 1, 0);
-                CResList listGeom;
                 if (pGff->GetList(&listGeom, &stElem, const_cast<char*>("Geometry")))
                     pTrigger->LoadTriggerGeometry(pGff, listGeom);
                 goto DoLoad;
@@ -1823,11 +1822,23 @@ struct CSWSAreaExpansion { CExoLocString m_strName; int m_nId; };
 
 // Reads the .are header: the reserved id block, the expansion list, the script slots, the area
 // fields, the room audio tables and the module map.
+// EFFECTIVE: the orig materializes the 708/354 map scales once per product (4 mov+fmov), ours once.
 int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
 {
     CResList list;
     CResStruct stElem;
     int bSuccess;
+    float fMoonNear;
+    float fMoonFar;
+    float fSunNear;
+    float fSunFar;
+    unsigned int nStealthMax;
+    unsigned int nStealthCur;
+#if !KOTOR1
+    int nFormOne;
+    int nFormTwo;
+    int nFormThree;
+#endif
 
     // The reserved id block holds ID, creator and version.
     m_pHeaderIds->nID = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("ID"), bSuccess, 0);
@@ -1895,18 +1906,18 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
     m_moonAmbientColor = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("MoonAmbientColor"), bSuccess, 0);
     m_moonDiffuseColor = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("MoonDiffuseColor"), bSuccess, 0);
     m_moonFogColor = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("MoonFogColor"), bSuccess, 0);
-    float fMoonNear = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("MoonFogNear"), bSuccess, 10000.0f);
+    fMoonNear = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("MoonFogNear"), bSuccess, 10000.0f);
     m_moonFogNear = fMoonNear < 0.0f ? 0.0f : fMoonNear;
-    float fMoonFar = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("MoonFogFar"), bSuccess, 10000.0f);
+    fMoonFar = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("MoonFogFar"), bSuccess, 10000.0f);
     m_moonFogFar = fMoonFar < 0.0f ? 0.0f : fMoonFar;
     m_moonFogOn = m_pRes->ReadFieldBYTE(pStruct, const_cast<char*>("MoonFogOn"), bSuccess, 0);
     m_moonShadows = m_pRes->ReadFieldBYTE(pStruct, const_cast<char*>("MoonShadows"), bSuccess, 0);
     m_sunAmbientColor = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("SunAmbientColor"), bSuccess, 0);
     m_sunDiffuseColor = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("SunDiffuseColor"), bSuccess, 0);
     m_nFogColor = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("SunFogColor"), bSuccess, 0);
-    float fSunNear = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("SunFogNear"), bSuccess, 10000.0f);
+    fSunNear = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("SunFogNear"), bSuccess, 10000.0f);
     m_sunFogNear = fSunNear < 0.0f ? 0.0f : fSunNear;
-    float fSunFar = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("SunFogFar"), bSuccess, 10000.0f);
+    fSunFar = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("SunFogFar"), bSuccess, 10000.0f);
     m_sunFogFar = fSunFar < 0.0f ? 0.0f : fSunFar;
     m_sunFogOn = m_pRes->ReadFieldBYTE(pStruct, const_cast<char*>("SunFogOn"), bSuccess, 0);
     m_sunShadows = m_pRes->ReadFieldBYTE(pStruct, const_cast<char*>("SunShadows"), bSuccess, 0);
@@ -1962,9 +1973,10 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
                 for (int j = 0; j < nParts; j++)
                 {
                     CResStruct stPart;
+                    int nLoop;
                     m_pRes->GetListElement(&stPart, &partsList, j);
                     m_lstPartSoundRoomNames.Add(m_paRoomNames[i]);
-                    int nLoop = m_pRes->ReadFieldBYTE(&stPart, const_cast<char*>("Looping"), bSuccess, 0);
+                    nLoop = m_pRes->ReadFieldBYTE(&stPart, const_cast<char*>("Looping"), bSuccess, 0);
                     m_lstPartSoundLooping.Add(nLoop);
                     m_lstPartSoundModelParts.Add(m_pRes->ReadFieldCExoString(&stPart, const_cast<char*>("ModelPart"), bSuccess, CExoString("")));
                     m_lstPartSoundOmenEvents.Add(m_pRes->ReadFieldCExoString(&stPart, const_cast<char*>("OmenEvent"), bSuccess, CExoString("")));
@@ -1993,10 +2005,14 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
                 int nMapPt1X, nMapPt1Y, nMapPt2X, nMapPt2Y;
                 if (m_pRes->GetFieldType(&stElem, const_cast<char*>("MapPt1X"), static_cast<unsigned int>(-1)) == 8)
                 {
-                    float f1x = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt1X"), bSuccess, 0.0f);
-                    float f1y = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt1Y"), bSuccess, 0.0f);
-                    float f2x = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt2X"), bSuccess, 0.0f);
-                    float f2y = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt2Y"), bSuccess, 0.0f);
+                    float f1x;
+                    float f1y;
+                    float f2x;
+                    float f2y;
+                    f1x = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt1X"), bSuccess, 0.0f);
+                    f1y = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt1Y"), bSuccess, 0.0f);
+                    f2x = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt2X"), bSuccess, 0.0f);
+                    f2y = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt2Y"), bSuccess, 0.0f);
 #if KOTOR1  // K1's map image is 440 x 256, K2's 708 x 354
                     nMapPt1X = static_cast<int>(__builtin_floorf(f1x * 440.0f + 0.5f));
                     nMapPt1Y = static_cast<int>(__builtin_floorf(f1y * 256.0f + 0.5f));
@@ -2039,11 +2055,11 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
     }
 
     // -- Stealth XP --
-    unsigned int nStealthMax = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("StealthXPMax"), bSuccess, m_maxStealthXP);
+    nStealthMax = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("StealthXPMax"), bSuccess, m_maxStealthXP);
     if (m_currentStealthXP > nStealthMax)
         m_currentStealthXP = nStealthMax;
     m_maxStealthXP = nStealthMax;
-    unsigned int nStealthCur = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("StealthXPCurrent"), bSuccess, nStealthMax);
+    nStealthCur = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("StealthXPCurrent"), bSuccess, nStealthMax);
     m_currentStealthXP = m_maxStealthXP < nStealthCur ? m_maxStealthXP : nStealthCur;
     m_stealthXPDecrement = m_pRes->ReadFieldDWORD(pStruct, const_cast<char*>("StealthXPLoss"), bSuccess, m_stealthXPDecrement);
     m_bStealthXPEnabled = m_pRes->ReadFieldBYTE(pStruct, const_cast<char*>("StealthXPEnabled"), bSuccess, static_cast<unsigned char>(m_bStealthXPEnabled));
@@ -2052,18 +2068,51 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
     // -- per-transition dirty arrays --
     m_dirtyARGB[0] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyARGBOne"), bSuccess, 0);
     m_dirtySize[0] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtySizeOne"), bSuccess, 16);
-    int nFormOne = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFormulaOne"), bSuccess, 1);
-    m_dirtyFormula[0] = nFormOne == 1 ? 0 : (nFormOne == 0 ? 1 : nFormOne);
+    nFormOne = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFormulaOne"), bSuccess, 1);
+    switch (nFormOne)
+    {
+    case 1:
+        m_dirtyFormula[0] = 0;
+        break;
+    case 0:
+        m_dirtyFormula[0] = 1;
+        break;
+    default:
+        m_dirtyFormula[0] = nFormOne;
+        break;
+    }
     m_dirtyFunction[0] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFuncOne"), bSuccess, 0);
     m_dirtyARGB[1] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyARGBTwo"), bSuccess, 0);
     m_dirtySize[1] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtySizeTwo"), bSuccess, 16);
-    int nFormTwo = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFormulaTwo"), bSuccess, 1);
-    m_dirtyFormula[1] = nFormTwo == 1 ? 0 : (nFormTwo == 0 ? 1 : nFormTwo);
+    nFormTwo = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFormulaTwo"), bSuccess, 1);
+    switch (nFormTwo)
+    {
+    case 1:
+        m_dirtyFormula[1] = 0;
+        break;
+    case 0:
+        m_dirtyFormula[1] = 1;
+        break;
+    default:
+        m_dirtyFormula[1] = nFormTwo;
+        break;
+    }
     m_dirtyFunction[1] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFuncTwo"), bSuccess, 0);
     m_dirtyARGB[2] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyARGBThree"), bSuccess, 0);
     m_dirtySize[2] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtySizeThree"), bSuccess, 16);
-    int nFormThree = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFormulaThree"), bSuccess, 1);
-    m_dirtyFormula[2] = nFormThree == 1 ? 0 : (nFormThree == 0 ? 1 : nFormThree);
+    nFormThree = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFormulaThree"), bSuccess, 1);
+    switch (nFormThree)
+    {
+    case 1:
+        m_dirtyFormula[2] = 0;
+        break;
+    case 0:
+        m_dirtyFormula[2] = 1;
+        break;
+    default:
+        m_dirtyFormula[2] = nFormThree;
+        break;
+    }
     m_dirtyFunction[2] = m_pRes->ReadFieldINT(pStruct, const_cast<char*>("DirtyFuncThree"), bSuccess, 0);
 #endif
 
@@ -2395,11 +2444,12 @@ void CSWSArea::SaveGIT(CERFFile* pERF, const CExoString& sFileName, CExoArrayLis
 {
     K2_UNUSED(sFileName);
     CExoString sScratch;
+    CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CExoArrayList<unsigned long long> aCreatures, aItems, aDoors, aTriggers, aEncounters,
                                       aWaypoints, aSounds, aPlaceables, aStores, aAreaEffects;
-    CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
+    CResStruct* pGffRoot;
     CResGFF* pGff = new CResGFF;
-    CResStruct* pGffRoot = new CResStruct();
+    pGffRoot = new CResStruct();
     {
         CExoString sType("GIT ");
         CExoString sVersion("V2.0");

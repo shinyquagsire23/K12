@@ -1349,11 +1349,8 @@ void CSWGuiInGameInventory::OnControlEntered(CSWGuiControl* pControl)
         int nLt = sDesc.Find('<', 0);
         int nLb = sDesc.Find('{', 0);
         if ((nLt & nLb) != -1) {
-            g_pSWTlkTable->m_pSpeakerObj =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            g_pSWTlkTable->m_gender = g_pSWTlkTable->GetObjectGender();
-            g_pSWTlkTable->m_bSuppressEnabled |= 1;
-            g_pSWTlkTable->ParseStr(sDesc);
+            CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            g_pSWTlkTable->ParseStr(sDesc, pPC, 1, 1);
         }
         m_labelDescription.m_text.m_params.SetText(sDesc);
 

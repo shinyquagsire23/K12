@@ -338,10 +338,9 @@ void CSWSEncounter::BuildInitialSpawnList(CEncounterListEntry* pList, int& nCoun
 CSWSEncounter::CSWSEncounter(unsigned long long objectId)
     : CSWSObject(GAME_OBJECT_TYPE_ENCOUNTER, objectId, 0)
 {
+    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddObject(this, 0);
     unsigned int nWorldDay;
     unsigned int nWorldTime;
-
-    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddObject(this, 0);
     g_pAppManager->m_pServerExoApp->GetWorldTimer()->GetWorldTime(&nWorldDay, &nWorldTime);
     m_nLastAIUpdateDay = nWorldDay;
     m_nLastAIUpdateTod = nWorldTime;
@@ -1125,8 +1124,9 @@ int CSWSEncounter::ReadEncounterFromGff(CResGFF* pGFF, CResStruct* pStruct, int 
             ClearSpawnList();
         int nSpawns = pGFF->GetListCount(&spawnList);
         for (int i = 0; i < nSpawns; i++) {
+            CEncounterListEntry* pEntry;
             if (pGFF->GetListElement(&spawnElem, &spawnList, i)) {
-                CEncounterListEntry* pEntry = new CEncounterListEntry();
+                pEntry = new CEncounterListEntry();
                 pEntry->resRef = pGFF->ReadFieldCResRef(&spawnElem, const_cast<char*>("SpawnResRef"), bSuccess,
                                                         CResRef(""));
                 pEntry->m_fCR = pGFF->ReadFieldFLOAT(&spawnElem, const_cast<char*>("SpawnCR"), bSuccess, 0.0f);

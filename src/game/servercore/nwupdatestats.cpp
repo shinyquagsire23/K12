@@ -38,8 +38,9 @@ CSWCreatureStatsUpdate::CSWCreatureStatsUpdate() {
     // empty table leaves m_paSkillRanks at the 0 written above rather than allocating a
     // zero-length block.
     if (g_pRules->m_nNumSkills != 0) {
-        m_paSkillRanks = new unsigned char[g_pRules->m_nNumSkills];
-        __builtin_memset(m_paSkillRanks, 0xec, g_pRules->m_nNumSkills);  // idiom-exempt: runtime length -- the skills.2da row count; the orig emits a real tail `b memset`
+        unsigned char* pRanks = new unsigned char[g_pRules->m_nNumSkills];
+        m_paSkillRanks = pRanks;
+        __builtin_memset(pRanks, 0xec, g_pRules->m_nNumSkills);  // idiom-exempt: runtime length -- the skills.2da row count; the orig emits a real tail `b memset`
     }
 }
 

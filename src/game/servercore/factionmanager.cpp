@@ -266,14 +266,16 @@ int CFactionManager::LoadFactionsFromSaveGame(CResGFF* pGFF, CResList* pList)
     int bSuccess = 1;
     unsigned int isGlobal;
     int count = pGFF->GetListCount(pList);
+    int i;
     if (count > 0)
     {
-        for (int i = 0; i < count && bSuccess; i++)
+        for (i = 0; i < count && bSuccess; i++)
         {
             CResStruct s;
+            int parentId;
             pGFF->GetListElement(&s, pList, i);
             sFactionName = pGFF->ReadFieldCExoString(&s, const_cast<char*>("FactionName"), bSuccess, CExoString(""));
-            int parentId = pGFF->ReadFieldDWORD(&s, const_cast<char*>("FactionParentID"), bSuccess, 0);
+            parentId = pGFF->ReadFieldDWORD(&s, const_cast<char*>("FactionParentID"), bSuccess, 0);
             isGlobal = pGFF->ReadFieldWORD(&s, const_cast<char*>("FactionGlobal"), bSuccess, 0);
             if (bSuccess == 0)
             {

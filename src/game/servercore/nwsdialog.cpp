@@ -1766,12 +1766,16 @@ void CSWSDialog::BarkOneLine(int nEntry)
     }
 }
 #else
+// EFFECTIVE: the g_pTlkTable GOT load before the Fetch is scheduled one instruction earlier.
 void CSWSDialog::BarkOneLine(int nEntry)
 {
     CExoString sText;
     CResRef rSound;
 
     unsigned long long nPlayerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
+    unsigned long long nSpeakerId;
+    unsigned long long nClientId;
+    int nStrRef;
 
     m_paEntries[nEntry].m_sText.GetString(
         g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText, m_nPlayerGender);
@@ -1799,7 +1803,7 @@ void CSWSDialog::BarkOneLine(int nEntry)
 
     rSound = m_paEntries[nEntry].m_rVO_ResRef;
 
-    int nStrRef = static_cast<int>(m_paEntries[nEntry].m_sText.m_nStrRef);
+    nStrRef = static_cast<int>(m_paEntries[nEntry].m_sText.m_nStrRef);
     switch (nStrRef)
     {
     case STRREF_TUTORIAL_LOCKER_KEYCARD:
@@ -1847,20 +1851,19 @@ void CSWSDialog::BarkOneLine(int nEntry)
     if (sText.CompareNoCase(""))
         return;
 
+    // The speaker name is read through the array pointer, so it is the first entry's rather than this
+    // entry's.
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(nPlayerId);
     if (pObject == 0)
         return;
 
-    // The speaker name is read through the array pointer, so it is the first entry's rather than this
-    // entry's.
-    unsigned long long nSpeakerId;
     if (m_paEntries->m_sSpeaker == "")
         nSpeakerId = m_ownerId;
     else
         nSpeakerId = pObject->AsSWSObject()->GetNearestObjectByName(m_paEntries->m_sSpeaker, 0.0f);
 
-    unsigned long long nClientId
-        = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(nSpeakerId);
+    nClientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(nSpeakerId);
+    CGameObject* pOwnerObject;
     g_pAppManager->m_pClientExoApp->BarkString(nClientId, sText, rSound, 0);
 
     if (nPlayerId != OBJECT_INVALID && g_bLogConversations)
@@ -1877,7 +1880,7 @@ void CSWSDialog::BarkOneLine(int nEntry)
         }
     }
 
-    CGameObject* pOwnerObject = g_pAppManager->m_pServerExoApp->GetGameObject(m_ownerId);
+    pOwnerObject = g_pAppManager->m_pServerExoApp->GetGameObject(m_ownerId);
     if (pOwnerObject != 0)
     {
         CSWSObject* pOwner = pOwnerObject->AsSWSObject();
@@ -1978,8 +1981,8 @@ int CSWSDialog::SendDialogEntryNode(unsigned int nEntry, unsigned long long objI
             nResult = 10;
 #if !KOTOR1  // K1 has no "Waiting on listening object" message
             CExoString sMessage(const_cast<char*>("Waiting on listening object to spawn clientside: "));
-            sMessage = sMessage + CExoString(g_pAppManager->m_pServerExoApp->GetGameObject(objIdB)
-                                                 ->AsSWSObject()->m_sTag.CStr());
+            CGameObject* pServerObject = g_pAppManager->m_pServerExoApp->GetGameObject(objIdB);
+            sMessage = sMessage + CExoString(pServerObject->AsSWSObject()->m_sTag.CStr());
 #endif
             return 1;
         }
@@ -2392,18 +2395,10 @@ int CSWSDialog::SendDialogReplies(CSWSObject* pObj, unsigned int nPlayerId)
             }
 
             CGuiInGame* pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
-#if KOTOR1
             CExoString sText = GetExoStringFromLocString(
                 m_paReplies[m_paEntries[m_nCurrentEntry].m_paReplies[m_nHandledReply].m_nIndex]
                     .m_sText,
                 m_nPlayerGender);
-#else
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
-            CExoString sText;
-            m_paReplies[m_paEntries[m_nCurrentEntry].m_paReplies[m_nHandledReply].m_nIndex]
-                .m_sText.GetString(g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText,
-                                   m_nPlayerGender);
-#endif
             pGui->HandleDialogReplyChosen(
                 nPlayerId, m_nHandledReply, m_nCurrentEntry, sText,
                 g_pAppManager->m_pClientExoApp->ServerToClientObjectId(nObjectId), m_nPlayerGender,
@@ -2709,6 +2704,7 @@ located:
         {
             if (pMember->m_nPlayerId != listenerId)
             {
+                CGuiInGame* pGui;
                 CExoString sListener
                     = m_paReplies[m_paEntries[m_nCurrentEntry]
                                       .m_paReplies[m_nHandledReply]
@@ -2719,20 +2715,15 @@ located:
                     if (sListener.CompareNoCase("PLAYER"))
                         g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
                     else
-                        GetSpeaker(pObj, sListener);
+                    {
+                        CSWSObject* pSpeaker = GetSpeaker(pObj, sListener);
+                        K2_UNUSED(pSpeaker);
+                    }
                 }
 
-                CGuiInGame* pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
-#if KOTOR1  // the text in the server's player language
+                pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
                 CExoString sText
                     = GetExoStringFromLocString(m_paReplies[nReply].m_sText, m_nPlayerGender);
-#else
-                // The player lookup result is unused, as in GetExoStringFromLocString.
-                g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
-                CExoString sText;
-                m_paReplies[nReply].m_sText.GetString(
-                    g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText, m_nPlayerGender);
-#endif
                 pGui->HandleDialogReplyChosen(
                     pMember->m_nPlayerId, replyIndex, nEntry, sText,
                     g_pAppManager->m_pClientExoApp->ServerToClientObjectId(m_oidCurrentPlayer),

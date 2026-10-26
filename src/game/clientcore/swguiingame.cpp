@@ -585,12 +585,12 @@ void CSWGuiInGameMenu::Draw(float f)
     }
     else if (nPartySize == 2)
     {
-        CSWCCreature* pMember = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
-        CSWSCreature* pMemberServer = pMember->GetServerCreature();
-        m_lblChar2.m_border.m_params.SetFillImage(pMember->GetPortrait(1), 0);
+        pCreature = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
+        pServer = pCreature->GetServerCreature();
+        m_lblChar2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
         m_lblChar2.m_tail.bVisible = 1;
         m_lblBack2.m_tail.bVisible = 1;
-        if (pMemberServer->m_pStats->CanLevelUp())
+        if (pServer->m_pStats->CanLevelUp())
             m_lblLevelUp2.m_tail.bVisible = 1;
         else
             m_lblLevelUp2.m_tail.bVisible = 0;
@@ -602,22 +602,22 @@ void CSWGuiInGameMenu::Draw(float f)
     }
     else if (nPartySize == 3)
     {
-        CSWCCreature* pMember = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
-        CSWSCreature* pMemberServer = pMember->GetServerCreature();
-        m_lblChar2.m_border.m_params.SetFillImage(pMember->GetPortrait(1), 0);
+        pCreature = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
+        pServer = pCreature->GetServerCreature();
+        m_lblChar2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
         m_lblChar2.m_tail.bVisible = 1;
         m_lblBack2.m_tail.bVisible = 1;
-        if (pMemberServer->m_pStats->CanLevelUp())
+        if (pServer->m_pStats->CanLevelUp())
             m_lblLevelUp2.m_tail.bVisible = 1;
         else
             m_lblLevelUp2.m_tail.bVisible = 0;
         m_btnChange2.m_tail.bVisible = 1;
-        pMember = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
-        pMemberServer = pMember->GetServerCreature();
-        m_lblChar3.m_border.m_params.SetFillImage(pMember->GetPortrait(1), 0);
+        pCreature = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
+        pServer = pCreature->GetServerCreature();
+        m_lblChar3.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
         m_lblChar3.m_tail.bVisible = 1;
         m_lblBack3.m_tail.bVisible = 1;
-        if (pMemberServer->m_pStats->CanLevelUp())
+        if (pServer->m_pStats->CanLevelUp())
             m_lblLevelUp3.m_tail.bVisible = 1;
         else
             m_lblLevelUp3.m_tail.bVisible = 0;
@@ -2958,12 +2958,8 @@ void CSWGuiStatusSummary::OnPanelAdded()
                 int nBrace = sAccum.Find('{', 0);
                 if (nLT != -1 || nBrace != -1)
                 {
-                    CSWTlkTable* pTlk = g_pSWTlkTable;
-                    pTlk->m_pSpeakerObj =
-                        g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-                    pTlk->m_gender = pTlk->GetObjectGender();
-                    pTlk->m_bSuppressEnabled |= 1;
-                    pTlk->ParseStr(sAccum);
+                    CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+                    g_pSWTlkTable->ParseStr(sAccum, pPC, 1, 1);
                 }
             }
             if (sAccum == "")

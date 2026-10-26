@@ -239,30 +239,6 @@ static int GobFindInsertIdx(char* pszName)
     return nLow;
 }
 
-#if !KOTOR1
-static void GobInsertAt(int nIdx, Gob* pGob)
-{
-    // inlined List<Gob*>::Insert(pGob, nIdx)
-    if (gobs.m_count == gobs.m_capacity)
-    {
-        int nNew = gobs.m_capacity ? (gobs.m_capacity << 1) : 16;
-        Gob** pOld = gobs.m_pData;
-        gobs.m_capacity = nNew;
-        gobs.m_pData = new Gob*[nNew];
-        K2_ASSUME(gobs.m_count < nNew);   // the list was full at the old capacity, half of nNew
-        for (int64_t i = 0; i < gobs.m_count; i++)
-            gobs.m_pData[i] = pOld[i];
-        delete[] pOld;
-    }
-    // nIdx is GobFindInsertIndex's answer, 0..m_count, and the list has room for one more.
-    K2_ASSUME(nIdx >= 0 && nIdx <= gobs.m_count && gobs.m_count < gobs.m_capacity);
-    for (int64_t i = gobs.m_count; i > nIdx; i--)
-        gobs.m_pData[i] = gobs.m_pData[i - 1];
-    gobs.m_count++;
-    gobs.m_pData[nIdx] = pGob;
-}
-#endif
-
 Gob::Gob(char* pszName)
 {
     m_bForceAnimated = false;
@@ -380,11 +356,7 @@ Gob::Gob(char* pszName)
 
     m_pLightContainer = new CAurObjectLightContainer();
 
-#if KOTOR1  // K1 uses the out-of-line List<Gob*>::Insert
     gobs.Insert(this, GobFindInsertIdx(m_szName));
-#else
-    GobInsertAt(GobFindInsertIdx(m_szName), this);
-#endif
     m_cHasSkin = 0;
 }
 

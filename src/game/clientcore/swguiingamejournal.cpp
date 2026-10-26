@@ -355,23 +355,18 @@ void CSWGuiInGameJournal::OnControlEntered(CSWGuiControl* pControl)
             CExoString sText;
             pEntry->m_locText.GetString(g_pAppManager->m_pClientExoApp->GetClientLanguage(),
                                         &sText, 0);
-            int nPlanetId = pEntry->m_nPlanetId;
-            if (nPlanetId != -1)
+            if (pEntry->m_nPlanetId != -1)
             {
                 C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlanetary;
                 int nStrRef;
-                p2DA->GetINTEntry(nPlanetId, "Name", &nStrRef);
+                p2DA->GetINTEntry(pEntry->m_nPlanetId, "Name", &nStrRef);
                 sText = g_pTlkTable->GetSimpleString(nStrRef) + CExoString(":\n") + sText;
             }
 #if !KOTOR1  // K1 has no token expansion
             if (sText.Find('<', 0) != -1 || sText.Find('{', 0) != -1)
             {
-                // inlined CSWTlkTable::ParseStr(CExoString&, CGameObject*, int, int)
-                g_pSWTlkTable->m_pSpeakerObj =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-                g_pSWTlkTable->m_gender = g_pSWTlkTable->GetObjectGender();
-                g_pSWTlkTable->m_bSuppressEnabled |= 1;
-                g_pSWTlkTable->ParseStr(sText);
+                CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+                g_pSWTlkTable->ParseStr(sText, pPC, 1, 1);
             }
 #endif
             m_lblDescription.m_text.m_params.SetText(sText);
@@ -380,7 +375,6 @@ void CSWGuiInGameJournal::OnControlEntered(CSWGuiControl* pControl)
 
     // Re-fits the description row to its new text.
     CSWGuiExtent extent = m_lblDescription.m_extent;
-    int nHeight;
     CSWGuiText* pText = &m_lblDescription.m_text;
 #ifdef K2_QOL_IMPROVEMENTS
     K2QolFitText(*pText, 0x7fffffff);   // LBL_ITEM_DESCRIPTION scrolls its one row: no limit
@@ -391,17 +385,16 @@ void CSWGuiInGameJournal::OnControlEntered(CSWGuiControl* pControl)
     if ((pText->m_params.m_sText.m_sString
              ? static_cast<int>(strlen(pText->m_params.m_sText.m_sString)) : 0) >= 1)
 #endif
-        nHeight = pText->GetIdealHeight();
+        extent.h = pText->GetIdealHeight();
     else
-        nHeight = pText->GetFontHeight();
-    extent.h = nHeight;
+        extent.h = pText->GetFontHeight();
 #if !KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 does not text-scale
     extent.h = static_cast<int>(GetResolutionTextScalar() * extent.h);
 #endif
     m_lblDescription.SetExtent(extent);
 
-    CSWGuiControl* pRow = &m_lblDescription;
-    m_lbDescription.AddControls(&pRow, 1, 0, 0, 0);
+    CSWGuiControl* apRows[1] = { &m_lblDescription };
+    m_lbDescription.AddControls(apRows, 1, 0, 0, 0);
     m_lbDescription.SetSelectedControl(&m_lblDescription, 0);
 }
 

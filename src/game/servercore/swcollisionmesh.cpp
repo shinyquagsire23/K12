@@ -211,19 +211,18 @@ int CSWCollisionMesh::ConvertPlaceable(const CResRef& resRef, const CExoString& 
     CExoString sOutName;
     CExoString sResRef;
     CExoString sPath;
+    CSWPlaceableSurfaceMesh* pMesh;
+    int result;
     resRef.CopyToString(sResRef);
     sPath = fileName;
-    if (sPath.Right(1) != "\\") {
-        CExoString sSlash("\\");
-        CExoString sNewPath = sPath + sSlash;
-        sPath = sNewPath;
-    }
-    CSWPlaceableSurfaceMesh* pMesh = new CSWPlaceableSurfaceMesh();
+    if (sPath.Right(1) != "\\")
+        sPath = sPath + CExoString("\\");
+    pMesh = new CSWPlaceableSurfaceMesh();
     pMesh->SetMesh(resRef);
     if (pMesh->LoadMesh(1) < 1)
         return -1;
     sOutName.Format(const_cast<char*>("%s%s.PWK"), sPath.CStr(), sResRef.CStr());
-    int result = (pMesh->SaveBinaryMesh(sOutName) != 0);
+    result = (pMesh->SaveBinaryMesh(sOutName) != 0);
     delete pMesh;
     return result;
 }
@@ -239,25 +238,23 @@ int CSWCollisionMesh::ConvertDoor(const CResRef& resRef, const CExoString& fileN
     CExoString sPath;
     resRef.CopyToString(sResRef);
     sPath = fileName;
-    if (sPath.Right(1) != "\\") {
-        CExoString sSlash("\\");
-        CExoString sNewPath = sPath + sSlash;
-        sPath = sNewPath;
-    }
+    if (sPath.Right(1) != "\\")
+        sPath = sPath + CExoString("\\");
     int result = 1;
+    int doorTypeMin = CSWDoorSurfaceMesh::DOOR_STATE_CLOSED;
     int doorTypeMax = CSWDoorSurfaceMesh::DOOR_STATE_OPEN2;
-    for (int doorType = CSWDoorSurfaceMesh::DOOR_STATE_CLOSED; doorType <= doorTypeMax; doorType++) {
+    for (int doorType = doorTypeMin; doorType <= doorTypeMax; doorType++) {
         CSWDoorSurfaceMesh* pMesh = new CSWDoorSurfaceMesh();
         pMesh->SetDoorType(doorType);
         pMesh->SetMesh(resRef);
-        int loaded = pMesh->LoadMesh(1);
-        if (loaded < 1)
-            result = loaded;
+        int status = pMesh->LoadMesh(1);
+        if (status < 1)
+            result = status;
         pMesh->ComputeMeshNormals();
         sOutName.Format(const_cast<char*>("%s%s%d.DWK"), sPath.CStr(), sResRef.CStr(), doorType);
-        int saved = pMesh->SaveBinaryMesh(sOutName);
+        status = pMesh->SaveBinaryMesh(sOutName);
         delete pMesh;
-        if (saved == 0) {
+        if (status == 0) {
             result = 0;
             break;
         }
@@ -273,24 +270,24 @@ int CSWCollisionMesh::ConvertRooms(const CResRef& resRef, const CExoString& file
     CExoString s1;
     CExoString sPath;
     char areaName[17];
+    int roomCount;
+    CSWSRoom* pRooms;
     resRef.CopyToString(areaName);
     sPath = fileName;
-    if (sPath.Right(1) != "\\") {
+    if (sPath.Right(1) != "\\")
         sPath = sPath + CExoString("\\");
-    }
     CLYT* pLyt = new CLYT();
     if (pLyt->LoadLayout(resRef) == 0) {
         pLyt->UnloadLayout();
         delete pLyt;
         return 0;
     }
-    int roomCount = pLyt->GetRoomCount();
-    CSWSRoom* pRooms = CSWSArea::LoadRooms(pLyt);
+    roomCount = pLyt->GetRoomCount();
+    pRooms = CSWSArea::LoadRooms(pLyt);
     for (int i = 0; i < roomCount; i++) {
         CExoString sOutName;
         CExoString sRoomName;
-        CResRef roomRef = pLyt->GetRoomName(i);
-        roomRef.CopyToString(sRoomName);
+        pLyt->GetRoomName(i).CopyToString(sRoomName);
         sOutName.Format(const_cast<char*>("%s%s.WOK"), sPath.CStr(), sRoomName.CStr());
         if (pRooms[i].m_pSurfaceMesh->SaveBinaryMesh(sOutName) == 0) {
             delete[] pRooms;

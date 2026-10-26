@@ -510,12 +510,7 @@ CSWGuiPazaakGame::CSWGuiPazaakGame(CSWGuiManager* pManager, CSWPazaak* pPazaak,
     if (pOpponent) {
         CExoString strName = pOpponent->m_pStats->GetFullName();
 #if !KOTOR1  // K1: the name is shown as is, with no gender-token parse
-        CSWTlkTable* pTlk  = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = pOpponent;
-        unsigned char nGender = pTlk->GetObjectGender();
-        pTlk->m_gender = nGender;
-        pTlk->m_bSuppressEnabled |= 1;
-        pTlk->ParseStr(strName);
+        g_pSWTlkTable->ParseStr(strName, pOpponent, 1, 1);
 #endif
         m_lbl1.m_text.m_params.SetText(strName);
     }
@@ -3020,7 +3015,6 @@ void CSWGuiPazaakCard::SetCard(CPazaakCard card) {
         if (static_cast<unsigned int>(card.m_nCardType - PAZAAK_CARD_TIEBREAKER) <= 4u) {
             // Types 18..22 are the five special display rules. These captions are not localized.
             CExoString s;
-            int v;
             switch (card.m_nCardType) {
                 case PAZAAK_CARD_TIEBREAKER:  // flips sign
                     if (card.m_bIsNegative)
@@ -3047,9 +3041,7 @@ void CSWGuiPazaakCard::SetCard(CPazaakCard card) {
                         s = "3&6";
                     break;
                 case PAZAAK_CARD_PLUS_MINUS_1_2:  // ±1/±2: ceil(|value|) to at least 1, apply the sign
-                    // inlined CPazaakCard::GetCardValue()
-                    v = card.m_nValue ? card.m_nValue : 1;
-                    s.Format(const_cast<char*>("%d"), card.m_bIsNegative ? -v : v);
+                    s.Format(const_cast<char*>("%d"), card.GetCardValue());
                     break;
             }
             m_label.m_text.m_params.SetText(s);

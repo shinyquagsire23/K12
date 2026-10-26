@@ -4710,14 +4710,13 @@ void CSWCCreature::CreateUsableItemEntry(CExoArrayList<CSWGuiInterfaceAction>& l
             sName.Format(const_cast<char*>("%s "), sName.CStr());
         }
     }
-    if ((sName.Find('<', 0) & sName.Find('{', 0)) != -1) {
-        g_pSWTlkTable->m_pSpeakerObj =
-            static_cast<CGameObject*>(g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter());
-        g_pSWTlkTable->m_gender = g_pSWTlkTable->GetObjectGender();
-        g_pSWTlkTable->m_bSuppressEnabled |= 1;
-        g_pSWTlkTable->ParseStr(sName);
+    int nLt = sName.Find('<', 0);
+    int nLb = sName.Find('{', 0);
+    if ((nLt & nLb) != -1) {
+        CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+        g_pSWTlkTable->ParseStr(sName, pPC, 1, 1);
     }
-    list.SetSize(nOldCount + 1);
+    list.SetSize(list.m_count + 1);
     list.m_pArray[nOldCount].m_sName = sName;
     list.m_pArray[nOldCount].m_nActionId =
         static_cast<unsigned int>(pItem->m_objectId) | CSWGuiInterfaceAction::ACTION_ID_ITEM;
@@ -4726,12 +4725,13 @@ void CSWCCreature::CreateUsableItemEntry(CExoArrayList<CSWGuiInterfaceAction>& l
                      : &CSWCCreature::PartyMenuUseItem;
     list.m_pArray[nOldCount].m_nObjectId = m_objectId;
     list.m_pArray[nOldCount].m_resRef = pItem->GetIcon();
-    pItem->GetBaseItem();
+    CSWBaseItem* pBaseItem = pItem->GetBaseItem();
+    K2_UNUSED(pBaseItem);
     if (nEquipped != 0 && pItem->GetBaseItem()->m_nItemType != ITEM_TYPE_WRIST_LAUNCHER) {
         CSWItemProperty* pProperty;
         pItem->GetPropertyByType(&pProperty, ITEM_PROPERTY_ACTIVATE_ITEM, 0);
         list.m_pArray[nOldCount].m_nFlags =
-            (list.m_pArray[nOldCount].m_nFlags & ~1) | (pProperty->m_bUseable & 1);
+            (pProperty->m_bUseable & 1) | (list.m_pArray[nOldCount].m_nFlags & ~1);
     }
 #endif
 }

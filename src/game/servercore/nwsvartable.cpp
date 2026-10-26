@@ -314,6 +314,7 @@ void CSWSScriptVarTable::LoadVarTable(CResGFF* pGff, CResStruct* pStruct)
     CResStruct row;
     CResStruct sub;
     int bSuccess;
+    unsigned int nType;
 
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("VarTable")))
         return;
@@ -322,7 +323,7 @@ void CSWSScriptVarTable::LoadVarTable(CResGFF* pGff, CResStruct* pStruct)
     {
         pGff->GetListElement(&row, &list, i);
         sVarName = pGff->ReadFieldCExoString(&row, const_cast<char*>("Name"), bSuccess, "");
-        unsigned int nType = pGff->ReadFieldDWORD(&row, const_cast<char*>("Type"), bSuccess, 0);
+        nType = pGff->ReadFieldDWORD(&row, const_cast<char*>("Type"), bSuccess, 0);
 
         switch (nType)
         {

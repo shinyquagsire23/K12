@@ -801,8 +801,12 @@ int CSWSPlayer::PackCreatureIntoMessage()
     {
         CExoString sFileName;
         CExoString sUnused;
+        CSWSCreature* pCreature;
+        unsigned int nSize;
+        unsigned char* pData;
+        CExoFile* pFile;
 
-        CSWSCreature* pCreature = GetGameObject()->AsSWSCreature();
+        pCreature = GetGameObject()->AsSWSCreature();
 
         if (pCreature != 0)
         {
@@ -810,8 +814,8 @@ int CSWSPlayer::PackCreatureIntoMessage()
             {
                 for (int i = 0; i < pCreature->m_effects.m_count; i++)
                 {
-                    if (CSWSEffectListHandler::EFFECT_DISGUISE
-                        == pCreature->m_effects.m_pArray[i]->m_subType)
+                    if (pCreature->m_effects.m_pArray[i]->m_subType
+                        == CSWSEffectListHandler::EFFECT_DISGUISE)
                     {
                         pCreature->m_effects.m_pArray[i]->SetInteger(2, 1);
                         pCreature->RemoveEffectById(pCreature->m_effects.m_pArray[i]->m_effectId);
@@ -832,10 +836,7 @@ int CSWSPlayer::PackCreatureIntoMessage()
 
             g_pExoResMan->AddResourceDirectory(CExoString("TEMP:"));
 
-            unsigned int   nSize;
-            unsigned char* pData;
-
-            CExoFile* pFile = new CExoFile(sFileName, RESTYPE_BIC, CExoString("rb"));
+            pFile = new CExoFile(sFileName, RESTYPE_BIC, CExoString("rb"));
 
             if (pFile->FileOpened())
             {
@@ -1039,13 +1040,18 @@ int CSWSPlayer::SaveServerCharacter()
     CExoString sBaseName;
     CExoString sSuffix;
     CExoArrayList<CExoString> vaultFiles;
+    CSWSCreature* pCreature;
+    int bWritten;
+    CResGFF* pGff;
+    CResStruct* pStruct;
+    int nSuffix;
 
     if (m_state != 3 && m_state != 4)
     {
         return 0;
     }
 
-    CSWSCreature* pCreature = GetGameObject()->AsSWSCreature();
+    pCreature = GetGameObject()->AsSWSCreature();
 
     if (pCreature == 0)
     {
@@ -1056,8 +1062,8 @@ int CSWSPlayer::SaveServerCharacter()
     {
         for (int i = 0; i < pCreature->m_effects.m_count; i++)
         {
-            if (CSWSEffectListHandler::EFFECT_DISGUISE
-                == pCreature->m_effects.m_pArray[i]->m_subType)
+            if (pCreature->m_effects.m_pArray[i]->m_subType
+                == CSWSEffectListHandler::EFFECT_DISGUISE)
             {
                 pCreature->m_effects.m_pArray[i]->SetInteger(2, 1);
                 pCreature->RemoveEffectById(pCreature->m_effects.m_pArray[i]->m_effectId);
@@ -1066,10 +1072,8 @@ int CSWSPlayer::SaveServerCharacter()
         }
     }
 
-    int         bWritten;
-
-    CResGFF*    pGff    = new CResGFF;
-    CResStruct* pStruct = new CResStruct();
+    pGff = new CResGFF;
+    pStruct = new CResStruct();
 
     if (pGff->CreateGFFFile(pStruct, CExoString("BIC "), CExoString("V2.0")) == 0)
     {
@@ -1158,7 +1162,7 @@ int CSWSPlayer::SaveServerCharacter()
         g_pExoBase->GetDirectoryList(&vaultFiles, sVaultDir, RESTYPE_BIC, 0, 0);
 #endif
 
-        int nSuffix = 1;
+        nSuffix = 1;
 
         for (;;)
         {

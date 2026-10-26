@@ -164,10 +164,8 @@ CSWSModule::CSWSModule(const CExoString& sName, int bRequest, int nUnused)
     m_pSaveStruct = 0;
     m_pSaveGFF = 0;
     m_pSavedObjectIds = 0;
-    CResRef cEmpty("");
-    SetResRef(cEmpty, 0);
-    CResRef cIFO("MODULE");
-    SetResRef(cIFO, bRequest);
+    SetResRef(CResRef(""), 0);
+    SetResRef(CResRef("MODULE"), bRequest);
     g_pAppManager->m_pServerExoApp->GetObjectArray()->AddInternalObject(m_objectId, this, 0);
     g_pAppManager->m_pServerExoApp->GetWorldTimer()->GetWorldTime(&m_nLastTimeDay, &m_nLastTimeTod);
     m_sTag = "";
@@ -1237,7 +1235,6 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
     unsigned short nMinute;
     unsigned short nSecond;
     unsigned short nMilli;
-    CResStruct sFactionStruct;
     CExoString sKey;
     CExoString sToken;
 
@@ -1298,6 +1295,9 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
 
     unsigned int nPauseTime;
     unsigned int nPauseDay;
+    unsigned int nCount;
+    unsigned int nAreaListCount;
+    int nToken;
     if (bFromSaveGame)
     {
         m_nLastCalendarYear = m_pRes->ReadFieldDWORD(&sStruct, const_cast<char*>("Mod_StartYear"), bSuccess,
@@ -1363,11 +1363,12 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
     m_nXPScale = m_pRes->ReadFieldBYTE(&sStruct, const_cast<char*>("Mod_XPScale"), bSuccess, 10);
 
     m_pRes->GetList(&sList, &sStruct, const_cast<char*>("Mod_Expan_List"));
-    unsigned int nCount = m_pRes->GetListCount(&sList);
+    nCount = m_pRes->GetListCount(&sList);
     for (unsigned int i = 0; i < nCount; i++)
     {
+        NWModuleExpansion_st* pExpansion;
         m_pRes->GetListElement(&sElement, &sList, i);
-        NWModuleExpansion_st* pExpansion = new NWModuleExpansion_st;
+        pExpansion = new NWModuleExpansion_st;
         pExpansion->m_name = m_pRes->ReadFieldCExoLocString(&sElement, const_cast<char*>("Expansion_Name"), bSuccess,
                                                             CExoLocString());
         pExpansion->m_nID = m_pRes->ReadFieldINT(&sElement, const_cast<char*>("Expansion_ID"), bSuccess, 0);
@@ -1378,8 +1379,9 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
     nCount = m_pRes->GetListCount(&sList);
     for (unsigned int i = 0; i < nCount; i++)
     {
+        NWModuleCutScene_st* pCutScene;
         m_pRes->GetListElement(&sElement, &sList, i);
-        NWModuleCutScene_st* pCutScene = new NWModuleCutScene_st;
+        pCutScene = new NWModuleCutScene_st;
         pCutScene->m_resName = m_pRes->ReadFieldCResRef(&sElement, const_cast<char*>("CutScene_Name"), bSuccess,
                                                         CResRef(""));
         pCutScene->m_nID = m_pRes->ReadFieldDWORD(&sElement, const_cast<char*>("CutScene_ID"), bSuccess, 0);
@@ -1434,12 +1436,15 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
     m_aScript[SCRIPT_EQUIP_ITEM] = sScript;
 
     m_pRes->GetList(&sList, &sStruct, const_cast<char*>("Mod_Area_list"));
-    unsigned int nAreaListCount = m_pRes->GetListCount(&sList);
+    nAreaListCount = m_pRes->GetListCount(&sList);
     m_pRes->GetListElement(&sElement, &sList, 0);
     m_resRef = m_pRes->ReadFieldCResRef(&sElement, const_cast<char*>("Area_Name"), bSuccess, CResRef(""));
 
     if (m_bIsSaveGame)
-        m_oidArea = m_pRes->ReadFieldDWORD(&sElement, const_cast<char*>("ObjectId"), bSuccess, OBJECT_INVALID);
+    {
+        unsigned int oidArea = m_pRes->ReadFieldDWORD(&sElement, const_cast<char*>("ObjectId"), bSuccess, OBJECT_INVALID);
+        m_oidArea = oidArea;
+    }
 
     if (m_bIsSaveGame)
     {
@@ -1471,7 +1476,7 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
         for (unsigned int i = 0; i < m_pRes->GetListCount(&sList); i++)
         {
             m_pRes->GetListElement(&sElement, &sList, i);
-            int nToken = m_pRes->ReadFieldDWORD(&sElement, const_cast<char*>("Mod_TokensNumber"), bSuccess, 0);
+            nToken = m_pRes->ReadFieldDWORD(&sElement, const_cast<char*>("Mod_TokensNumber"), bSuccess, 0);
             sToken = m_pRes->ReadFieldCExoString(&sElement, const_cast<char*>("Mod_TokensValue"), bSuccess,
                                                  CExoString(""));
             g_pTlkTable->SetCustomToken(nToken, sToken);
@@ -1486,19 +1491,21 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
     {
         CFactionManager* pFactionManager =
             g_pAppManager->m_pServerExoApp->m_pInternal->m_pFactionManager;
+        int bNeedLoad = 1;
         g_pAppManager->m_pServerExoApp->GetPartyTable()->AddGameInProgress();
 
-        int bNeedLoad = 1;
         if (g_pExoResMan->Exists(CResRef("REPUTE"), RESTYPE_FAC, KEYTABLE_SOURCE_DIRECTORY))
         {
             CResGFF* pFacGFF = new CResGFF(RESTYPE_FAC, const_cast<char*>("FAC "), CResRef("REPUTE"));
             if (pFacGFF->m_nValid)
             {
+                CResStruct sFactionStruct;
                 pFacGFF->GetTopLevelStruct(&sFactionStruct);
-                if (pFacGFF->GetList(&sList, &sFactionStruct, const_cast<char*>("FactionList"))
-                    && pFactionManager->LoadFactionsFromSaveGame(pFacGFF, &sList))
+                CResList sFactionList;
+                CResList sRepList;
+                if (pFacGFF->GetList(&sFactionList, &sFactionStruct, const_cast<char*>("FactionList"))
+                    && pFactionManager->LoadFactionsFromSaveGame(pFacGFF, &sFactionList))
                 {
-                    CResList sRepList;
                     if (pFacGFF->GetList(&sRepList, &sFactionStruct, const_cast<char*>("RepList")))
                         pFactionManager->LoadReputationsFromSaveGame(pFacGFF, &sRepList);
                     bNeedLoad = 0;
@@ -1510,15 +1517,17 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
 
         if (bNeedLoad)
         {
-            if (pFactionManager->LoadFactions(0))
+            int bFactionsLoaded = pFactionManager->LoadFactions(0);
+            if (bFactionsLoaded)
                 pFactionManager->LoadReputations();
             else
                 pFactionManager->CreateDefaultFactions();
         }
     }
 
+    CLoadGameErrorInfo* pLoadInfo;
     LoadLimboCreatures(m_pRes, &sStruct, 1);
-    CLoadGameErrorInfo* pLoadInfo = g_pAppManager->m_pLoadGameErrorInfo;
+    pLoadInfo = g_pAppManager->m_pLoadGameErrorInfo;
     pLoadInfo->m_loadBar.m_total = 0;
     pLoadInfo->m_loadBar.m_progress = nAreaListCount;
     g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerLoadBar_UpdateStallEvent(
@@ -1761,6 +1770,8 @@ void CSWSModule::AddModuleResources(const CExoString& sModule)
     CExoString sStem;
     unsigned char nStep0 = g_pAppManager->m_pClientExoApp->GetLoadStep(0);
     unsigned char nStep1 = g_pAppManager->m_pClientExoApp->GetLoadStep(1);
+    int nTotal = nStep0 + nStep1;
+    int nTicks = 0;
     g_pExoResMan->FindModuleDownloadedPkg(sModule);
 #if KOTOR1  // K1 mounts the players archive here and advances the bar in sevenths
     g_pExoResMan->AddEncapsulatedResourceFile(CExoString("HD0:players"), 2);
@@ -1797,10 +1808,7 @@ void CSWSModule::AddModuleResources(const CExoString& sModule)
 
 #if KOTOR1  // K1 has no override lips directories
     g_pExoResMan->AddResourceImageFilesAsync(sStem, 1, m_bIsSaveGame);
-    int nTotal = nStep0 + nStep1;
 #else
-    int nTotal = nStep0 + nStep1;
-
     CExoArrayList<CExoString> aAddedPaths;
     for (int i = 0; ; i++)
     {
@@ -1828,22 +1836,21 @@ void CSWSModule::AddModuleResources(const CExoString& sModule)
     g_pExoResMan->AddResourceImageFilesAsync(sStem, 1, m_bIsSaveGame);
 #endif
 
-    int nTicks = 0;
     while (g_pExoResMan->m_nAsyncLoadState == 1)
     {
         Sleep(10);
         if (nProgress < nTotal)
         {
-            if (nTicks < 100)
-            {
-                nTicks++;
-            }
-            else
+            if (nTicks >= 100)
             {
                 nProgress = (nProgress + nIncrement < nTotal) ? nProgress + nIncrement : nTotal;
                 g_pAppManager->m_pClientExoApp->SetLoadBarProgress(nProgress, 1);
                 UpdateScreen(1.0f / 30.0f, 0, 0);
                 nTicks = 0;
+            }
+            else
+            {
+                nTicks++;
             }
         }
     }
@@ -2288,10 +2295,13 @@ int CSWSModule::SaveModuleFAC()
 {
     CExoString sFileName;
     CFactionManager* pFactions = g_pAppManager->m_pServerExoApp->m_pInternal->m_pFactionManager;
-    CResGFF* pGFF = new CResGFF();
-    CResStruct* pStruct = new CResStruct();
+    CResGFF* pGFF;
+    CResStruct* pStruct;
     CResList list;
-    int bSuccess = pGFF->CreateGFFFile(pStruct, CExoString("FAC "), CExoString("V2.0"));
+    int bSuccess;
+    pGFF = new CResGFF();
+    pStruct = new CResStruct();
+    bSuccess = pGFF->CreateGFFFile(pStruct, CExoString("FAC "), CExoString("V2.0"));
     if (bSuccess == 1)
     {
         pGFF->AddList(&list, pStruct, const_cast<char*>("FactionList"));
@@ -2455,42 +2465,39 @@ int CSWSModule::SavePlayers(CResGFF* pGFF, CResStruct* pStruct, const CExoString
                             CExoArrayList<unsigned long long>& aSavedObjectIds)
 {
     K2_UNUSED(sUnused);
-    CExoArrayList<int> aPlayerIndices;
-#if KOTOR1
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
+    CExoArrayList<int> aPlayerIndices;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-#else
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CGameObjectArray* pObjectArray = pServer->GetObjectArray();
-#endif
     CResList list;
     pGFF->AddList(&list, pStruct, const_cast<char*>("Mod_PlayerList"));
     CResStruct sElement;
     CGameObject* pObject;
     CResStruct sTop;
+    CSWSCreature* pCreature;
+    CSWSPlayer* pPlayer;
+    int nIndex;
     for (int64_t i = 0; i < static_cast<int64_t>(aSavedObjectIds.m_count); i++)
     {
         if (pObjectArray->GetGameObject(aSavedObjectIds.m_pArray[i], &pObject)
             != CGameObjectArray::SUCCESS)
             continue;
-        CSWSCreature* pCreature = pObject->AsSWSCreature();
-        CSWSPlayer* pPlayer = pServer->GetClientObjectByObjectId(pCreature->m_objectId);
+        pCreature = pObject->AsSWSCreature();
+        pPlayer = pServer->GetClientObjectByObjectId(pCreature->m_objectId);
         if (pPlayer == 0)
         {
             // No client-side player for this creature: fall back to the party's own first member
             // (client object id -> server object id), and give up if even that does not resolve.
-            CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-            CSWCCreature* pPartyMember = pParty->GetCharacter(0);
-            pPlayer = pServer->GetClientObjectByObjectId(
-                pServer->ClientToServerObjectId(pPartyMember->m_objectId));
-            if (pPlayer == 0)
-            {
-                pCreature->DumpToLog();
-                continue;
-            }
+            CSWCCreature* pPartyMember = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
+            unsigned long long oidMember = pServer->ClientToServerObjectId(pPartyMember->m_objectId);
+            pPlayer = pServer->GetClientObjectByObjectId(oidMember);
+        }
+        if (pPlayer == 0)
+        {
+            pCreature->DumpToLog();
+            continue;
         }
         pPlayer->SaveServerCharacter();
-        int nIndex = GetPlayerIndexInPlayerList(pPlayer);
+        nIndex = GetPlayerIndexInPlayerList(pPlayer);
         if (nIndex != -1)
             aPlayerIndices.Add(nIndex);
         pGFF->AddListElement(&sElement, &list, GFF_STRUCT_ID_PLAYER);

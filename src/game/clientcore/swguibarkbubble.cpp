@@ -128,11 +128,7 @@ void CSWGuiBarkBubble::SetBark(unsigned long long objId, const CExoString& text,
     CGameObject* pSpeaker = g_pAppManager->m_pClientExoApp->GetGameObject(speakerClientId);
 
     CExoString sSpeech(text);
-    CSWTlkTable* pTlk = g_pSWTlkTable;
-    pTlk->m_pSpeakerObj = pSpeaker;
-    pTlk->m_gender = pTlk->GetObjectGender();
-    pTlk->m_bSuppressEnabled &= ~CSWTlkTable::SUPPRESS_ENABLED;
-    pTlk->ParseStr(sSpeech);
+    g_pSWTlkTable->ParseStr(sSpeech, pSpeaker, 1, 0);
 
     m_label.m_text.m_params.SetText(sSpeech.CStr());
     int nBorder = m_label.m_border.m_params.GetBorderDim();
@@ -200,11 +196,7 @@ void CSWGuiBarkBubble::SetBark(unsigned long long objId, const CExoString& text,
 
     // Speak the bark through the talk table, so its tokens are expanded for that object.
     CExoString sSpeech(text);
-    CSWTlkTable* pTlk = g_pSWTlkTable;
-    pTlk->m_pSpeakerObj = pSpeaker;
-    pTlk->m_gender = pTlk->GetObjectGender();
-    pTlk->m_bSuppressEnabled &= ~CSWTlkTable::SUPPRESS_ENABLED;
-    pTlk->ParseStr(sSpeech);
+    g_pSWTlkTable->ParseStr(sSpeech, pSpeaker, 1, 0);
 
     m_label.m_text.m_params.SetText(sSpeech.CStr());
     int nBorder = m_label.m_border.m_params.GetBorderDim();

@@ -2700,14 +2700,8 @@ bool CGuiInGame::HandleDialogReplyChosen(unsigned int a1, unsigned int a2, unsig
         unsigned long long playerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
         CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
         unsigned long long clientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
-        CGameObject* pGameObj;
-        CSWTlkTable* pTlk;
-        pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
-        pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj = pGameObj;
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled &= ~1;
-        pTlk->ParseStr(localText);
+        CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
+        g_pSWTlkTable->ParseStr(localText, pGameObj, 1, 0);
     }
     return true;
 }
@@ -2801,6 +2795,7 @@ bool CGuiInGame::HandleDialogEntry(unsigned int a1, unsigned long long objIdA, u
                                     const Vector& fadePos, float fadeB, float fadeC, int bForceText)
 {
     K2_UNUSED(a1); K2_UNUSED(a6);
+    CSWCModule* pModule;
 #if KOTOR1  // K1: GetInGameGui is re-fetched for each use
     if (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bHoldFadeInForDialog != 0) {
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bHoldFadeInForDialog = 0;
@@ -2828,18 +2823,13 @@ bool CGuiInGame::HandleDialogEntry(unsigned int a1, unsigned long long objIdA, u
     CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerCreatureId);
     unsigned long long clientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
     CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
-    CSWTlkTable* pTlk = g_pSWTlkTable;
-    pTlk->m_pSpeakerObj = pGameObj;
-    pTlk->m_gender = pTlk->GetObjectGender();
-    pTlk->m_bSuppressEnabled &= ~1;
-    pTlk->ParseStr(localText);
+    g_pSWTlkTable->ParseStr(localText, pGameObj, 1, 0);
 
     localText = DialogNodeSpanningTextParse(localText);
     AppendToDialogBuffer(localText, objIdC);
     CleanUpReplyNode();
 
-    CClientOptions* pOpts = g_pAppManager->m_pClientExoApp->GetClientOptions();
-    if (pOpts->m_bFeedback2 == 0) {
+    if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bFeedback2 == 0) {
         if (g_bDisableSound != 0) {
             m_bForceDialogText = 1;
         } else if (m_bAnimatedCut == 0) {
@@ -2897,7 +2887,7 @@ bool CGuiInGame::HandleDialogEntry(unsigned int a1, unsigned long long objIdA, u
     if (m_pActiveDialogPanel == 0 || m_pActiveDialogPanel != m_pDialogCinematicPanel) {
         if (nCameraAngle == 6) {
             if (m_bDialogCameraSet == 0) {
-                CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
+                pModule = g_pAppManager->m_pClientExoApp->GetModule();
                 if (pModule != 0) {
                     pModule->SetDialogCamera(m_bOldHitCheck);
                 }
@@ -2905,15 +2895,15 @@ bool CGuiInGame::HandleDialogEntry(unsigned int a1, unsigned long long objIdA, u
             }
             SetComputerCameraShot(charId, arg, effectFlag);
 #if !KOTOR1  // K1 has no ApplyCameraShot after the computer shot
-            CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
-            CSWBehaviorCameraDialog* pDialog = static_cast<CSWBehaviorCameraDialog*>(pModule->m_pCamera->GetBehavior(BEHAVIOR_CAMERA_DIALOG));
+            CSWBehaviorCameraDialog* pDialog = static_cast<CSWBehaviorCameraDialog*>(
+                g_pAppManager->m_pClientExoApp->GetModule()->m_pCamera->GetBehavior(BEHAVIOR_CAMERA_DIALOG));
             pDialog->ApplyCameraShot();
 #endif
         }
     } else {
         if (!SetAnimatedCamera(cameraId, speed)) {
             if (m_bDialogCameraSet == 0) {
-                CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
+                pModule = g_pAppManager->m_pClientExoApp->GetModule();
                 if (pModule != 0) {
                     pModule->SetDialogCamera(m_bOldHitCheck);
                 }
@@ -4176,14 +4166,8 @@ bool CGuiInGame::HandleDialogReplies(unsigned int a1, unsigned long long a2, uns
                 unsigned long long playerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
                 CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
                 unsigned long long clientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
-                CGameObject* pGameObj;
-                CSWTlkTable* pTlk;
-                pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
-                pTlk = g_pSWTlkTable;
-                pTlk->m_pSpeakerObj = pGameObj;
-                pTlk->m_gender = pTlk->GetObjectGender();
-                pTlk->m_bSuppressEnabled &= ~1;
-                pTlk->ParseStr(text);
+                CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
+                g_pSWTlkTable->ParseStr(text, pGameObj, 1, 0);
 #if !KOTOR1
                 while (text.GetLength() >= 1 && text[0] == ' ')
                     text = text.SubString(1, text.GetLength() - 1);

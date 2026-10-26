@@ -468,9 +468,9 @@ void CSWSCreature::SetFormation(unsigned long long oidLeader, int nFormation, in
     CExoString sAngleColumn;
     sAngleColumn.Format(const_cast<char*>("ANGLE_%d"), nSlot);
     CExoString sDistanceColumn;
-    sDistanceColumn.Format(const_cast<char*>("DISTANCE_%d"), nSlot);
     int nAngle;
     int nDistance;
+    sDistanceColumn.Format(const_cast<char*>("DISTANCE_%d"), nSlot);
     if (g_pRules->m_p2DArrays->m_pFormations->GetINTEntry(nFormation, sAngleColumn, &nAngle) != 0 &&
         g_pRules->m_p2DArrays->m_pFormations->GetINTEntry(nFormation, sDistanceColumn, &nDistance)
             != 0) {
@@ -489,10 +489,9 @@ void CSWSCreature::SetFormation(unsigned long long oidLeader, int nFormation, in
         float fFacingX = vTarget.x + pLeader->m_orientation.x;
         float fFacingY = vTarget.y + pLeader->m_orientation.y;
         float fFacingZ = vTarget.z + pLeader->m_orientation.z;
-        Vector vUp;
         AddMoveToPointAction(ACTION_GROUP_NEW, vTarget, pLeader->m_cachedAreaId, OBJECT_INVALID, 1, 0.0f,
                              0.0f,
-                             0, 0, 0, 0, 0, 0, vUp, 0, 0, 0);
+                             0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         AddAction(AIACTION_CHANGE_FACING_POINT, ACTION_GROUP_PREVIOUS,
                   ACTION_PARAM_FLOAT, &fFacingX, ACTION_PARAM_FLOAT, &fFacingY,
                   ACTION_PARAM_FLOAT, &fFacingZ);
@@ -2884,7 +2883,6 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
     Vector vTarget;
     Vector vDest;
     float fRange K2_UNSET;
-    CSWSItem* pItem;
     CGameObject* pObject;
 
     vTarget.x = 0.0f;
@@ -2905,7 +2903,7 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
     vTarget.y = fY;
     vTarget.z = fZ;
 
-    pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidMine);
+    CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidMine);
     if (pItem == 0)
     {
         StopGuiTimingBar();
@@ -3047,8 +3045,8 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
         nDC = 1;
 
     int nTakeTwenty = 1;
-    char nSkillRank = m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 0);
     int nRoll = 20;
+    char nSkillRank = m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 0);
     if (pObject == 0 && m_bCombatState != 0)
     {
         nRoll = rand_wincompatible() % 20 + 1;
@@ -4314,8 +4312,10 @@ int CSWSCreature::WalkUpdateLocation()
     CExoArrayList<unsigned long long> aCrossed;
 
     int nSavedCursor = m_pPathfindInfo->m_nWayPointCursor;
-    int nResult = WalkUpdateLocationDistance(fStep, &vNew, &vDelta, &aCrossed);
-    float fClimb = vNew.z - m_position.z;
+    int nResult;
+    float fClimb;
+    nResult = WalkUpdateLocationDistance(fStep, &vNew, &vDelta, &aCrossed);
+    fClimb = vNew.z - m_position.z;
     if (fClimb <= -0.001f || fClimb >= 0.001f) {
         Vector vSlope;
         vSlope.x = fStep;
@@ -4332,13 +4332,12 @@ int CSWSCreature::WalkUpdateLocation()
     vDelta.Normalize();
     SetOrientation(vDelta);
     // The party leader feeds its own footsteps to the follow-point solver the followers read.
-    if (m_bInParty != 0 &&
-        g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) != 0 &&
-        m_objectId == g_pAppManager->m_pServerExoApp->ClientToServerObjectId(
-                          g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0)
-                              ->m_objectId))
-        g_pAppManager->m_pClientExoApp->GetSWParty()->m_followData.ProcessPoint(
-            vNew, Yaw(vDelta), 0.5f);
+    if (m_bInParty != 0 && g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) != 0) {
+        CSWCCreature* pLeader = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
+        if (m_objectId == g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pLeader->m_objectId))
+            g_pAppManager->m_pClientExoApp->GetSWParty()->m_followData.ProcessPoint(
+                vNew, Yaw(vDelta), 0.5f);
+    }
 
     unsigned long long oidTarget = m_pPathfindInfo->m_oidGoalObject;
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget);
@@ -4436,19 +4435,19 @@ int CSWSCreature::UpdateSubareasOnJumpPosition(const Vector& vPos, unsigned long
     if (oidArea == CGameObjectArray::INVALIDOBJID) {
         pArea = 0;
         bHadSubareas = m_currentSubareaIds.m_count > 0;
-        bInSubAreas = 0;
     } else {
         CGameObject* pObject;
         pObjectArray->GetGameObject(oidArea, &pObject);
         pArea = pObject->AsSWSArea();
         bHadSubareas = m_currentSubareaIds.m_count > 0;
-        if (pArea != 0)
-            bInSubAreas = pArea->InSubAreas(vPos, &listNew);
-        else
-            bInSubAreas = 0;
     }
+    if (pArea != 0)
+        bInSubAreas = pArea->InSubAreas(vPos, &listNew);
+    else
+        bInSubAreas = 0;
 
-    for (int64_t i = 0; i < m_areaOfEffectIds.m_count; i++) {
+    int64_t i;
+    for (i = 0; i < m_areaOfEffectIds.m_count; i++) {
         CSWSAreaOfEffectObject* pAreaOfEffect =
             g_pAppManager->m_pServerExoApp->GetAreaOfEffectByGameObjectID(
                 m_areaOfEffectIds.m_pArray[i]);
@@ -4462,7 +4461,7 @@ int CSWSCreature::UpdateSubareasOnJumpPosition(const Vector& vPos, unsigned long
     if (bHadSubareas) {
         if (HandleSubAreaStateChanges(&listNew, 0, 0, nRunScripts) == 1) {
             m_currentSubareaIds.m_count = 0;
-            for (int64_t i = 0; i < listNew.m_count; i++)
+            for (i = 0; i < listNew.m_count; i++)
                 m_currentSubareaIds.Add(listNew.m_pArray[i]);
             return 1;
         }

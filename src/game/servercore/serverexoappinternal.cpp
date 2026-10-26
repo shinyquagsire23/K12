@@ -72,6 +72,14 @@ static inline void SystemTimeToFileTime(const SystemTimeWords* pSystemTime, unsi
 {
     SystemTimeToFileTime(reinterpret_cast<const SYSTEMTIME*>(pSystemTime), pFileTime);
 }
+static inline unsigned long long GetLocalFileTime()
+{
+    SystemTimeWords localTime;
+    GetLocalTime(&localTime);
+    unsigned long long fileTime;
+    SystemTimeToFileTime(&localTime, &fileTime);
+    return fileTime;
+}
 
 #if KOTOR1  // K1 builds paths with std::string
 #include <string>
@@ -631,14 +639,15 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
 
     g_pExoResMan->CreateDirectory2("SAVES:");
 
+    unsigned long long freeSpace;
+    int freeSpaceStatus;
+    CLoadGameErrorInfo* pInfo;
     CExoString tempName(name);
     if (tempSave != 0)
         tempName = "tempsave";
 
     saveSlot.Format(const_cast<char*>("SAVES:%06d - %s"), saveNumber, tempName.CStr());
 
-    unsigned long long freeSpace;
-    int freeSpaceStatus;
     freeSpaceStatus = g_pExoResMan->GetFreeDiskSpace("SAVES:", &freeSpace);
     if (freeSpaceStatus == 1)
     {
@@ -663,7 +672,7 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
 
     saveGameName = saveSlot + "\\" + "SAVEGAME";
 
-    CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+    pInfo = g_pAppManager->m_pLoadGameErrorInfo;
     pInfo->m_flag = 1;
     pInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME;
     pInfo->m_bStallFirstFrame = 1;
@@ -679,8 +688,10 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
     if (saveSlot != "")
     {
         // GetModule() and the camera are used without a null check.
-        CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
-        CSWCameraOnAStick* pOnAStick = static_cast<CSWCameraOnAStick*>(pModule->m_pCamera->GetBehavior(BEHAVIOR_CAMERA_ON_A_STICK));
+        CSWCModule* pModule;
+        CSWCameraOnAStick* pOnAStick;
+        pModule = g_pAppManager->m_pClientExoApp->GetModule();
+        pOnAStick = static_cast<CSWCameraOnAStick*>(pModule->m_pCamera->GetBehavior(BEHAVIOR_CAMERA_ON_A_STICK));
         if (pOnAStick != 0)
         {
             pOnAStick->SetCameraForScreenShot();
@@ -780,8 +791,7 @@ bool CServerExoAppInternal::LoadCharacterStart(unsigned char loadType, CSWSPlaye
         {
             CExoString resRefStr;
             resRef.CopyToString(resRefStr);
-            unsigned int characterId = resRefStr.AsINT();
-            pPlayer->LoadCharacterFromIFO(characterId, 0, 1);
+            pPlayer->LoadCharacterFromIFO(resRefStr.AsINT(), 0, 1);
         }
         goto finishLoad;
 
@@ -917,10 +927,14 @@ CExoString CServerExoAppInternal::GetPlayerListString()
     {
         do
         {
-            CSWSClient* elem = static_cast<CSWSClient*>(m_pSysAdminList->GetAtPos(pos));
-            void* pNetLayer = g_pAppManager->m_pServerExoApp->GetNetLayer();
-            unsigned int playerId = elem->m_nPlayerId;
-            CNetLayerPlayerInfo* pInfo = static_cast<CNetLayer*>(pNetLayer)->GetPlayerInfo(playerId);
+            CSWSClient* elem;
+            void* pNetLayer;
+            unsigned int playerId;
+            CNetLayerPlayerInfo* pInfo;
+            elem = static_cast<CSWSClient*>(m_pSysAdminList->GetAtPos(pos));
+            pNetLayer = g_pAppManager->m_pServerExoApp->GetNetLayer();
+            playerId = elem->m_nPlayerId;
+            pInfo = static_cast<CNetLayer*>(pNetLayer)->GetPlayerInfo(playerId);
             name = pInfo->m_sName.CStr();
             result = result + "\n" + name;
             result = result + " [ServerAdmin]";
@@ -936,10 +950,14 @@ CExoString CServerExoAppInternal::GetPlayerListString()
     {
         do
         {
-            CSWSClient* elem = static_cast<CSWSClient*>(m_pPlayerList->GetAtPos(pos));
-            void* pNetLayer = g_pAppManager->m_pServerExoApp->GetNetLayer();
-            unsigned int playerId = elem->m_nPlayerId;
-            CNetLayerPlayerInfo* pInfo = static_cast<CNetLayer*>(pNetLayer)->GetPlayerInfo(playerId);
+            CSWSClient* elem;
+            void* pNetLayer;
+            unsigned int playerId;
+            CNetLayerPlayerInfo* pInfo;
+            elem = static_cast<CSWSClient*>(m_pPlayerList->GetAtPos(pos));
+            pNetLayer = g_pAppManager->m_pServerExoApp->GetNetLayer();
+            playerId = elem->m_nPlayerId;
+            pInfo = static_cast<CNetLayer*>(pNetLayer)->GetPlayerInfo(playerId);
             name = pInfo->m_sName.CStr();
             result = result + "\n" + name;
             result = result + " [Player]";
@@ -948,7 +966,7 @@ CExoString CServerExoAppInternal::GetPlayerListString()
     }
     result = result + "\n";
 
-    result = result + "Total: " + CExoString(static_cast<int>(m_pPlayerList->m_pInternal->m_nCount) + static_cast<int>(m_pSysAdminList->m_pInternal->m_nCount));
+    result = result + "Total: " + CExoString(static_cast<int>(m_pSysAdminList->m_pInternal->m_nCount) + static_cast<int>(m_pPlayerList->m_pInternal->m_nCount));
 
     return result;
 }
@@ -2062,12 +2080,13 @@ void CServerExoAppInternal::InitiateModuleForPlayer(void* pPlayerVoid)
     }
     else
     {
+        Vector startPos;
+        Vector facing;
         CSWSModule* pMod = GetModule();
 
         pArea = pMod->GetArea();
         pCreature->m_currentAreaId = pArea->m_objectId;
 
-        Vector startPos;
         pMod = GetModule();
         startPos.x = pMod->m_pEntryInfo->m_entryX;
 
@@ -2080,7 +2099,6 @@ void CServerExoAppInternal::InitiateModuleForPlayer(void* pPlayerVoid)
         pCreature->m_vDesiredAreaLocation = startPos;
         pCreature->m_bDesiredAreaUpdateComplete = 0;
 
-        Vector facing;
         pMod = GetModule();
         facing.x = pMod->m_pEntryInfo->m_entryDirX;
 
@@ -2096,8 +2114,10 @@ void CServerExoAppInternal::InitiateModuleForPlayer(void* pPlayerVoid)
         CSWSMessage* pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
         if (pMsg != 0)
         {
-            CExoString empty("");
-            pPlayer->SetAreaTransitionBMP(pArea->m_nLoadScreenID, empty);
+            {
+                CExoString empty("");
+                pPlayer->SetAreaTransitionBMP(pArea->m_nLoadScreenID, empty);
+            }
             pMsg->SendServerToPlayerArea_ClientArea(pPlayer, pArea, pCreature->m_vDesiredAreaLocation.x,
                 pCreature->m_vDesiredAreaLocation.y, pCreature->m_vDesiredAreaLocation.z, pCreature->m_orientation, isFirstEntry);
             pMsg->SendServerToPlayerSetCustomTokenList(pPlayer->m_nPlayerId);
@@ -2724,6 +2744,9 @@ void CServerExoAppInternal::DumpServerOptionsToLog()
 void CServerExoAppInternal::StartServices(int a)
 {
     K2_UNUSED(a);
+    CVirtualMachine* pVM;
+    CSWVirtualMachineCommands* pCmdImpl;
+    unsigned long long hiResTimer;
     CExoString timestamp;
     g_pExoBase->m_pDebug->GetCurrentTimestamp(timestamp);
     timestamp.CStr();
@@ -2772,10 +2795,10 @@ void CServerExoAppInternal::StartServices(int a)
         g_pTlkTable->OpenFile(CExoString("HD0:dialog"));
     }
 
-    CVirtualMachine* pVM = new CVirtualMachine();
+    pVM = new CVirtualMachine();
     g_pVirtualMachine = pVM;
 
-    CSWVirtualMachineCommands* pCmdImpl = new CSWVirtualMachineCommands;
+    pCmdImpl = new CSWVirtualMachineCommands;
     m_pVirtualMachineCommands = pCmdImpl;
     pVM->SetCommandImplementer(pCmdImpl);
 
@@ -2795,15 +2818,13 @@ void CServerExoAppInternal::StartServices(int a)
     }
     else
     {
-        CExoString timestamp2;
-        g_pExoBase->m_pDebug->GetCurrentTimestamp(timestamp2);
-        timestamp2.CStr();
+        DumpServerOptionsToLog();
     }
 
     m_logHeartbeatLastTime = 0;
     m_logHeartbeatInterval = 0;
 
-    unsigned long long hiResTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    hiResTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     m_tempDeathReviveAccum = 0;
     m_tempDeathCheckAccum = 0;
     m_tempDeathLastUpdateTime = static_cast<unsigned int>(hiResTimer / 1000);
@@ -2811,16 +2832,17 @@ void CServerExoAppInternal::StartServices(int a)
     m_autoSaveTimerFlag = 0;
 }
 
-// EFFECTIVE: two extra EH trampoline branches into the shared landing pads.
 void CServerExoAppInternal::StopServices()
 {
+    CGameObjectArray* pObjectArray;
+    CServerAIMaster* pServerAIMaster;
     CExoString timestamp;
     g_pExoBase->m_pDebug->GetCurrentTimestamp(timestamp);
     timestamp.CStr();
 
     Shutdown(0, 0);
 
-    CGameObjectArray* pObjectArray = m_pObjectArray;
+    pObjectArray = m_pObjectArray;
     if (pObjectArray != 0)
     {
         pObjectArray->~CGameObjectArray();
@@ -2828,7 +2850,7 @@ void CServerExoAppInternal::StopServices()
         m_pObjectArray = 0;
     }
 
-    CServerAIMaster* pServerAIMaster = m_pServerAIMaster;
+    pServerAIMaster = m_pServerAIMaster;
     if (pServerAIMaster != 0)
     {
         pServerAIMaster->~CServerAIMaster();
@@ -2848,10 +2870,9 @@ void CServerExoAppInternal::StopServices()
         m_pSWSMessage = 0;
     }
 
-    CServerInfo* pServerInfo = m_pServerInfo;
-    if (pServerInfo != 0)
+    if (m_pServerInfo != 0)
     {
-        delete pServerInfo;
+        delete m_pServerInfo;
         m_pServerInfo = 0;
     }
 
@@ -3725,13 +3746,16 @@ void CServerExoAppInternal::PlayerListChange(unsigned int playerId, int changeTy
     else
     {
         CExoString name(m_pNetLayer->GetPlayerInfo(playerId)->m_sName);
+        CExoLinkedListNode* pos;
+        CSWSSysAdmin* pAdmin;
+        int shutdownFlag;
+        CSWSPlayer* pPlayer;
 
         if (m_pNetLayer->GetPlayerInfo(playerId)->m_isAdminPermitted == 1)
         {
-            CExoLinkedListNode* pos = m_pSysAdminList->m_pInternal->m_pHead;
+            pos = m_pSysAdminList->m_pInternal->m_pHead;
             if (pos != 0)
             {
-                CSWSSysAdmin* pAdmin;
                 while (pAdmin = reinterpret_cast<CSWSSysAdmin*>(m_pSysAdminList->GetAtPos(pos)), pAdmin->m_nPlayerId != playerId)
                 {
                     m_pSysAdminList->GetNext(pos);
@@ -3750,15 +3774,13 @@ void CServerExoAppInternal::PlayerListChange(unsigned int playerId, int changeTy
 
         if (m_pNetLayer->GetPlayerInfo(playerId)->m_isPlayerPermitted == 1)
         {
-            int shutdownFlag;
-            CExoLinkedListNode* pos = m_pPlayerList->m_pInternal->m_pHead;
+            pos = m_pPlayerList->m_pInternal->m_pHead;
             if (pos == 0)
             {
                 shutdownFlag = 0;
             }
             else
             {
-                CSWSPlayer* pPlayer;
                 while (pPlayer = reinterpret_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pos)), pPlayer->m_nPlayerId != playerId)
                 {
                     m_pPlayerList->GetNext(pos);
@@ -3805,17 +3827,22 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
 
     CExoString unused1;
     CExoString unused2;
-    int includedInSave = IncludeModuleInSave(moduleName);
+    int includedInSave;
+    bool found;
+    short resType;
+    int exists;
+    bool result;
 
-    bool found = false;
-    short resType = -1;
+    includedInSave = IncludeModuleInSave(moduleName);
+    found = false;
+    resType = -1;
 
     if (includedInSave != 0)
     {
         g_pAppManager->m_pServerExoApp->GetPartyTable()->AddGameInProgress();
 
         resType = RESTYPE_RSV;
-        int exists = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
+        exists = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
         resType = exists ? resType : static_cast<short>(-1);
         if (exists != 0)
         {
@@ -3838,14 +3865,14 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
             CExoString dir("NWMFILES:");
             g_pExoResMan->AddResourceDirectory(dir);
         }
-        int existsNwmfiles = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
-        resType = existsNwmfiles ? resType : static_cast<short>(-1);
+        exists = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
+        resType = exists ? resType : static_cast<short>(-1);
         {
             CExoString dir("NWMFILES:");
             g_pExoResMan->RemoveResourceDirectory(dir);
         }
 
-        if (existsNwmfiles != 0)
+        if (exists != 0)
         {
             found = false;
         }
@@ -3859,8 +3886,8 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
             AddModuleOverrideResourceDirectories();
 #endif
 
-            int existsMod = g_pExoResMan->Exists(CResRef(moduleName), RESTYPE_MOD, static_cast<unsigned int*>(0));
-            if (existsMod != 0)
+            exists = g_pExoResMan->Exists(CResRef(moduleName), RESTYPE_MOD, static_cast<unsigned int*>(0));
+            if (exists != 0)
             {
                 resType = RESTYPE_MOD;
                 found = false;
@@ -3869,8 +3896,8 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
             if (resType == -1)
             {
                 resType = RESTYPE_RIM;
-                int existsRim = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
-                if (existsRim == 0)
+                exists = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
+                if (exists == 0)
                     resType = -1;
                 else
                     found = false;
@@ -3890,18 +3917,13 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
                 for (unsigned int i = 1; i < CTlkTable::NUM_CONTENT_PKGS; i++)
                 {
                     alias.Format(const_cast<char*>("LIVE%d"), i);
-                    const CExoString& path = g_pExoBase->m_pAliasList->GetAliasPath(alias, 0);
-#if KOTOR1  // K1 calls GetLength()
-                    if (path.GetLength() != 0)
-#else
-                    if (path.m_sString != 0 && static_cast<int>(strlen(path.m_sString)) != 0)
-#endif
+                    if (g_pExoBase->m_pAliasList->GetAliasPath(alias, 0).GetLength() != 0)
                     {
                         alias = alias + CExoString(":MODULES");
                         g_pExoResMan->AddResourceDirectory(alias);
 
                         resType = RESTYPE_MOD;
-                        int exists = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
+                        exists = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
                         if (exists == 0)
                         {
                             resType = -1;
@@ -3926,7 +3948,7 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
     }
 
     g_pExoInput->UnpauseRumble();
-    bool result = false;
+    result = false;
     if (resType != -1)
         result = found;
     return result;
@@ -3983,6 +4005,7 @@ int CServerExoAppInternal::MainLoop()
 #else
             int bLoadFromSaveGame = m_loadFromSaveGame != 0;
 #endif
+            unsigned int result;
 
             if (pInfo->m_loadBar.m_progress == 0)
             {
@@ -3990,6 +4013,7 @@ int CServerExoAppInternal::MainLoop()
                 CExoString copySrcPath(pInfo->m_saveGameName);
                 CExoString copyDstPath(pInfo->m_sCopyDstPath);
                 unsigned short moduleTypeFlags = static_cast<unsigned short>(pInfo->m_nResType);
+                CSWSModule* pNewModule;
 
                 if (CopyModuleToCurrentGame(copySrcPath, copyDstPath, moduleTypeFlags) == 0)
                 {
@@ -4000,7 +4024,7 @@ int CServerExoAppInternal::MainLoop()
 #if !KOTOR1
                     g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bFadeUntilScript = 0;
 #endif
-                    CSWSModule* pNewModule = new CSWSModule(startModuleName, 0,
+                    pNewModule = new CSWSModule(startModuleName, 0,
                         moduleTypeFlags == RESTYPE_SAV || moduleTypeFlags == RESTYPE_RSV);
                     m_moduleObjectId = pNewModule->m_objectId;
                     if (moduleTypeFlags == RESTYPE_RSV)
@@ -4008,18 +4032,18 @@ int CServerExoAppInternal::MainLoop()
                         pNewModule->m_bIsNWMFile = 1;
                         pNewModule->m_sNWMResName = startModuleName;
                     }
-                    unsigned int startResult = pNewModule->LoadModuleStart(startModuleName, bLoadFromSaveGame);
-                    if (startResult != 0)
-                        DealWithLoadGameError(startResult);
+                    result = pNewModule->LoadModuleStart(startModuleName, bLoadFromSaveGame);
+                    if (result != 0)
+                        DealWithLoadGameError(result);
                 }
             }
             else if (pInfo->m_loadBar.m_progress == pInfo->m_loadBar.m_total)
             {
                 if (pInfo->m_bStallFinished != 1)
                 {
-                    unsigned int finishResult = pModule->LoadModuleFinish();
-                    if (finishResult != 0)
-                        DealWithLoadGameError(finishResult);
+                    result = pModule->LoadModuleFinish();
+                    if (result != 0)
+                        DealWithLoadGameError(result);
 
                     pInfo->m_bStallFinished = 1;
                     if (g_nClientServerMode == 2)
@@ -4053,9 +4077,9 @@ int CServerExoAppInternal::MainLoop()
 #if !KOTOR1
                 m_partyTable.ClearPuppets();
 #endif
-                unsigned int inProgressResult = pModule->LoadModuleInProgress(pInfo->m_loadBar.m_total, pInfo->m_loadBar.m_progress);
-                if (inProgressResult != 0)
-                    DealWithLoadGameError(inProgressResult);
+                result = pModule->LoadModuleInProgress(pInfo->m_loadBar.m_total, pInfo->m_loadBar.m_progress);
+                if (result != 0)
+                    DealWithLoadGameError(result);
             }
             break;
         }
@@ -4275,7 +4299,9 @@ void CServerExoAppInternal::StallEventSaveGame()
     g_pAppManager->m_pClientExoApp->GetSWGuiManager()->Draw(0.033333335f);
     UpdateScreen(0.033333335f, 0, 0);
 
-    g_pExoBase->m_pTimers->GetLowResolutionTimer();
+    // The start and end stamps fed a timing log line the shipping build compiles out.
+    unsigned int nStartTime = g_pExoBase->m_pTimers->GetLowResolutionTimer();
+    K2_UNUSED(nStartTime);
     CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
     CExoString saveDir;
     CExoString saveFilePath;
@@ -4298,35 +4324,28 @@ void CServerExoAppInternal::StallEventSaveGame()
     CSWSPlayer* pClientObj = GetClientObjectByObjectId(pPlayerCreature->m_objectId);
 
     if (g_bSavePlayerBIC != 0)
-    {
-        CSWSModule* pModule2 = GetModule();
-        pModule2->SavePrimaryPlayerInfo(pPlayerCreature, saveDir);
-    }
+        GetModule()->SavePrimaryPlayerInfo(pPlayerCreature, saveDir);
 
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(20, 0);
     UpdateScreen(0.033333335f, 0, 0);
 
-    {
 #if KOTOR1
-        CExoString backslash("/");
+    saveGameName = saveDir + CExoString("/") + CExoString("savenfo");
 #else
-        CExoString backslash("\\");
+    saveGameName = saveDir + CExoString("\\") + CExoString("savenfo");
 #endif
-        CExoString withSlash = saveDir + backslash;
-        CExoString savenfo("savenfo");
-        CExoString full = withSlash + savenfo;
-        saveGameName = full;
-    }
 
-    CResGFF* pGff = new CResGFF();
+    CResGFF* pGff;
     CResStruct topStruct;
+    CSWSArea* pArea;
+    pGff = new CResGFF();
     {
         CExoString nfoType("NFO ");
         CExoString nfoVer("V2.0");
         pGff->CreateGFFFile(&topStruct, nfoType, nfoVer);
     }
 
-    CSWSArea* pArea = static_cast<CSWSArea*>(pPlayerCreature->GetArea());
+    pArea = static_cast<CSWSArea*>(pPlayerCreature->GetArea());
     pArea->m_areaName.GetString(pClientObj->m_nLanguage, &saveSlot, 0);
     pGff->WriteFieldCExoString(&topStruct, saveSlot, const_cast<char*>("AREANAME"));
     pGff->WriteFieldCExoString(&topStruct, moduleTag, const_cast<char*>("LASTMODULE"));
@@ -4366,13 +4385,7 @@ void CServerExoAppInternal::StallEventSaveGame()
 #endif
 
 #if !KOTOR1
-    {
-        SystemTimeWords localTime;
-        GetLocalTime(&localTime);
-        unsigned long long fileTime;
-        SystemTimeToFileTime(&localTime, &fileTime);
-        pGff->WriteFieldDWORD64(&topStruct, fileTime, const_cast<char*>("TIMESTAMP"));
-    }
+    pGff->WriteFieldDWORD64(&topStruct, GetLocalFileTime(), const_cast<char*>("TIMESTAMP"));
 
     {
         CExoString pcName(m_partyTable.m_saveTableName);
@@ -4382,32 +4395,21 @@ void CServerExoAppInternal::StallEventSaveGame()
     pGff->WriteFieldDWORD(&topStruct, m_partyTable.m_saveNumber, const_cast<char*>("SAVENUMBER"));
 #endif
 
-    unsigned char gamePlayHint = g_pAppManager->m_pClientExoApp->GetGamePlayHint();
-    pGff->WriteFieldBYTE(&topStruct, gamePlayHint, const_cast<char*>("GAMEPLAYHINT"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetGamePlayHint(), const_cast<char*>("GAMEPLAYHINT"));
 #if KOTOR1
     unsigned char storyHint = g_pAppManager->m_pClientExoApp->GetStoryHint();
     pGff->WriteFieldBYTE(&topStruct, storyHint, const_cast<char*>("STORYHINT"));
 #else
-    unsigned char storyHint0 = g_pAppManager->m_pClientExoApp->GetStoryHint(0);
-    pGff->WriteFieldBYTE(&topStruct, storyHint0, const_cast<char*>("STORYHINT0"));
-    unsigned char storyHint1 = g_pAppManager->m_pClientExoApp->GetStoryHint(1);
-    pGff->WriteFieldBYTE(&topStruct, storyHint1, const_cast<char*>("STORYHINT1"));
-    unsigned char storyHint2 = g_pAppManager->m_pClientExoApp->GetStoryHint(2);
-    pGff->WriteFieldBYTE(&topStruct, storyHint2, const_cast<char*>("STORYHINT2"));
-    unsigned char storyHint3 = g_pAppManager->m_pClientExoApp->GetStoryHint(3);
-    pGff->WriteFieldBYTE(&topStruct, storyHint3, const_cast<char*>("STORYHINT3"));
-    unsigned char storyHint4 = g_pAppManager->m_pClientExoApp->GetStoryHint(4);
-    pGff->WriteFieldBYTE(&topStruct, storyHint4, const_cast<char*>("STORYHINT4"));
-    unsigned char storyHint5 = g_pAppManager->m_pClientExoApp->GetStoryHint(5);
-    pGff->WriteFieldBYTE(&topStruct, storyHint5, const_cast<char*>("STORYHINT5"));
-    unsigned char storyHint6 = g_pAppManager->m_pClientExoApp->GetStoryHint(6);
-    pGff->WriteFieldBYTE(&topStruct, storyHint6, const_cast<char*>("STORYHINT6"));
-    unsigned char storyHint7 = g_pAppManager->m_pClientExoApp->GetStoryHint(7);
-    pGff->WriteFieldBYTE(&topStruct, storyHint7, const_cast<char*>("STORYHINT7"));
-    unsigned char storyHint8 = g_pAppManager->m_pClientExoApp->GetStoryHint(8);
-    pGff->WriteFieldBYTE(&topStruct, storyHint8, const_cast<char*>("STORYHINT8"));
-    unsigned char storyHint9 = g_pAppManager->m_pClientExoApp->GetStoryHint(9);
-    pGff->WriteFieldBYTE(&topStruct, storyHint9, const_cast<char*>("STORYHINT9"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(0), const_cast<char*>("STORYHINT0"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(1), const_cast<char*>("STORYHINT1"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(2), const_cast<char*>("STORYHINT2"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(3), const_cast<char*>("STORYHINT3"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(4), const_cast<char*>("STORYHINT4"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(5), const_cast<char*>("STORYHINT5"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(6), const_cast<char*>("STORYHINT6"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(7), const_cast<char*>("STORYHINT7"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(8), const_cast<char*>("STORYHINT8"));
+    pGff->WriteFieldBYTE(&topStruct, g_pAppManager->m_pClientExoApp->GetStoryHint(9), const_cast<char*>("STORYHINT9"));
 #endif
 
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
@@ -4415,15 +4417,10 @@ void CServerExoAppInternal::StallEventSaveGame()
     unsigned int liveFlags = 0;
     for (unsigned int i = 1; i < CTlkTable::NUM_CONTENT_PKGS; i++)
     {
-        liveLabel.Format(const_cast<char*>("LIVE%d"), static_cast<uint64_t>(i));
-        const CExoString& liveName = g_pAppManager->m_pClientExoApp->GetLiveContentName(static_cast<int>(i));
-        pGff->WriteFieldCExoString(&topStruct, liveName, static_cast<char*>(liveLabel.CStr()));
-        const CExoString& aliasPath = g_pExoBase->m_pAliasList->GetAliasPath(liveLabel, 0);
-#if KOTOR1
-        if (aliasPath.GetLength() > 0)
-#else
-        if (aliasPath.m_sString != 0 && static_cast<int>(strlen(aliasPath.m_sString)) > 0)
-#endif
+        liveLabel.Format(const_cast<char*>("LIVE%d"), i);
+        pGff->WriteFieldCExoString(&topStruct, g_pAppManager->m_pClientExoApp->GetLiveContentName(static_cast<int>(i)),
+                                   static_cast<char*>(liveLabel.CStr()));
+        if (g_pExoBase->m_pAliasList->GetAliasPath(liveLabel, 0).GetLength() > 0)
             liveFlags |= 1 << (i - 1);
     }
     pGff->WriteFieldBYTE(&topStruct, static_cast<unsigned char>(liveFlags), const_cast<char*>("LIVECONTENT"));
@@ -4432,13 +4429,17 @@ void CServerExoAppInternal::StallEventSaveGame()
     {
         for (int i = 0; i < pParty->m_nCharacterCount; i++)
         {
-            CSWCCreature* pClientCreature = pParty->GetCharacter(i);
-            CSWSObject* pServerObj = pClientCreature->GetServerCreature();
+            CSWCCreature* pClientCreature;
+            CSWSObject* pServerObj;
+            CSWSCreature* pServerCreature;
+            CSWCCreature* pClientCr;
+            pClientCreature = pParty->GetCharacter(i);
+            pServerObj = pClientCreature->GetServerCreature();
             if (pServerObj != 0)
             {
-                CSWSCreature* pServerCreature = static_cast<CSWSCreature*>(pServerObj);
+                pServerCreature = static_cast<CSWSCreature*>(pServerObj);
                 portraitLabel.Format(const_cast<char*>("%s%d"), "PORTRAIT", i);
-                CSWCCreature* pClientCr = pServerCreature->GetClientCreature();
+                pClientCr = pServerCreature->GetClientCreature();
                 if (pClientCr == 0)
                 {
                     CResRef portraitRef = pServerCreature->GetPortrait();
@@ -4479,7 +4480,12 @@ void CServerExoAppInternal::StallEventSaveGame()
     pErf->~CERFFile();
     operator delete(pErf);
 
-    g_pExoBase->m_pTimers->GetLowResolutionTimer();
+    CGuiInGame* pGui;
+    CSWCModule* pClientModule;
+    CSWCArea* pClientArea;
+    CSWSMessage* pMsg;
+    unsigned int nEndTime = g_pExoBase->m_pTimers->GetLowResolutionTimer();
+    K2_UNUSED(nEndTime);
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(100, 0);
     UpdateScreen(0.033333335f, 0, 0);
 
@@ -4491,7 +4497,7 @@ void CServerExoAppInternal::StallEventSaveGame()
     g_pAppManager->m_pClientExoApp->HideLoadScreen(0, 1, 0);
 #endif
 
-    CGuiInGame* pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
+    pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
     if (pGui->m_bInGameMenuShown == 0)
     {
         pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
@@ -4513,8 +4519,8 @@ void CServerExoAppInternal::StallEventSaveGame()
 
     pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
     pGui->SetGlobalUnpauseableState(0);
-    CSWCModule* pClientModule = g_pAppManager->m_pClientExoApp->GetModule();
-    CSWCArea* pClientArea = pClientModule->m_pArea;
+    pClientModule = g_pAppManager->m_pClientExoApp->GetModule();
+    pClientArea = pClientModule->m_pArea;
     pClientArea->StartSounds();
 
     if (pInfo->m_bStallFinished != 1)
@@ -4526,7 +4532,7 @@ void CServerExoAppInternal::StallEventSaveGame()
             pInfo->m_flag = 0;
             pInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
         }
-        CSWSMessage* pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
+        pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
         pMsg->SendServerToPlayerModule_SaveGameStatus(1);
         pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
         pMsg->SendServerToPlayerLoadBar_EndStallEvent(2, 0);
