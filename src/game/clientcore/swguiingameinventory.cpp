@@ -472,9 +472,10 @@ void CSWGuiInGameInventory::PopulateItemListBox()
         CreateItemEntry(pPlayer, nIndex, aControls, pItem, 0, 0);
     }
 
+    int nLast;
     m_lbItems.AddControls(aControls, 0, 1, 0);
 
-    int nLast = aControls.m_count - 1;
+    nLast = aControls.m_count - 1;
     if (nLast < 0) {
 
         m_btnUseItem.m_text.m_params.SetColor(CGuiInGame::DISABLED_TEXT);
@@ -782,8 +783,7 @@ void CSWGuiInGameInventory::OnPanelRemoved()
         delete m_lists.m_aItemEntry.m_pArray[i];
         m_lists.m_aItemEntry.m_pArray[i] = 0;
     }
-    m_lists.m_aItemEntry.m_count = 0;
-    m_lists.m_aItemEntry.Clear();
+    m_lists.m_aItemEntry.RemoveAll(1);
     g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems()->ClearNewItems(
         m_lists.m_aUsedOid);
 }
@@ -804,7 +804,7 @@ void CSWGuiInGameInventory::CreateItemEntry(CSWCCreature* pCreature, int& nIndex
         pEntry = new CSWGuiInGameItemEntry();
         m_lists.m_aItemEntry.Add(pEntry);
 
-        CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbItems.m_pProtoItem->AsButton());
+        CSWGuiButton* pProto = m_lbItems.m_pProtoItem->AsButton();
         pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                            m_lbItems.m_innerExtent.w - m_lbItems.m_nPadding * 2, 1);
 #ifndef K2_UI_TOUCH
@@ -897,7 +897,7 @@ void CSWGuiInGameInventory::CreateItemEntry(CSWCCreature* pCreature, int& nIndex
         pEntry = new CSWGuiInGameItemEntry();
         m_lists.m_aItemEntry.Add(pEntry);
 
-        CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbItems.m_pProtoItem->AsButton());
+        CSWGuiButton* pProto = m_lbItems.m_pProtoItem->AsButton();
         pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                            m_lbItems.m_innerExtent.w - m_lbItems.m_nPadding * 2, 1);
         pEntry->AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
@@ -995,7 +995,7 @@ void CSWGuiInGameInventory::OnControlSelected(CSWGuiControl* pControl)
         return;
 
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = pServer->GetPlayerCreature();
     if (pCreature->m_bCombatState != 0 && pCreature->m_nCombatType == 1 &&
         pCreature->m_nItemUseCooldown != 0) {
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
@@ -1423,7 +1423,7 @@ void CSWGuiInGameInventory::SetNextFilter(CSWGuiControl* pControl)
     m_btnMisc.m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_NEW_TEXT);
     m_btnQuests.m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_NEW_TEXT);
 
-    static_cast<CSWGuiButton*>(pControl->AsButton())->m_text.m_params.SetDefaultColor(
+    pControl->AsButton()->m_text.m_params.SetDefaultColor(
         CGuiInGame::COLOR_NEW_HIGHLIGHT);
     m_bRebuildItemList = 1;
 }

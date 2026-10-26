@@ -3,6 +3,7 @@
 
 #include "k2stdint.h"
 #include "exosoundinternal.h"
+#include "CExoArrayListImpl.h"
 #include "exosoundsourceinternal.h"
 #include "exostreamingsoundsourceinternal.h"
 #include "exosound.h"
@@ -215,8 +216,7 @@ CExoSoundInternal::~CExoSoundInternal()
         m_paGroups = 0;
     }
 
-    m_aProviders.m_count = 0;
-    m_aProviders.Clear();
+    m_aProviders.RemoveAll(1);
 }
 
 // Shuts down in four passes: stop the streaming sources, reap the playing list, hand both voice
@@ -230,10 +230,10 @@ void CExoSoundInternal::ShutDown()
 
     while (pNode != 0)
     {
-        m_lStreaming.m_pInternal->GetNext(pNode);
+        m_lStreaming.GetNext(pNode);
         pStream->Stop(0);
         if (pNode != 0)
-            pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.m_pInternal->GetAtPos(pNode));
+            pStream = m_lStreaming.GetAtPos(pNode);
     }
 
     while (m_lPlaying.m_pInternal->m_pHead != 0)
@@ -326,7 +326,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
                 pStream->m_nStreamHandle = 0;
             }
 
-            pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetNext(pNode));
+            pStream = m_lStreaming.GetNext(pNode);
         }
 
         if (m_lPlaying.m_pInternal->m_pHead != 0)
@@ -346,7 +346,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
                 }
                 else if (pSource->m_bOneShot)
                 {
-                    if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+                    if (!m_lStoppingOneShots.Contains(pSource))
                         delete pSource;
                 }
                 else
@@ -357,7 +357,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
                 if (pNext == 0)
                     break;
 
-                pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.GetAtPos(pNext));
+                pSource = m_lPlaying.GetAtPos(pNext);
             }
         }
 
@@ -489,7 +489,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
     {
         pStream->InitializeSource();
         pStream->Resume();
-        pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetNext(pNode));
+        pStream = m_lStreaming.GetNext(pNode);
     }
 
     return true;
@@ -505,6 +505,10 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
     // The reaped playing sources park here while the backend restarts.
     CExoLinkedList<CExoSoundSourceInternal> lReaped;
+    unsigned char n3D;
+    unsigned char n2D;
+    C3DVoice* pa3DVoices;
+    C2DVoice* pa2DVoices;
 
     if (m_audioSystem.m_bInitialized)
     {
@@ -527,7 +531,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
                 pStream->m_nStreamHandle = 0;
             }
 
-            pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetNext(pNode));
+            pStream = m_lStreaming.GetNext(pNode);
         }
 
         if (m_lPlaying.m_pInternal->m_pHead != 0)
@@ -547,7 +551,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
                 }
                 else if (pSource->m_bOneShot)
                 {
-                    if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+                    if (!m_lStoppingOneShots.Contains(pSource))
                         delete pSource;
                 }
                 else
@@ -558,7 +562,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
                 if (pNext == 0)
                     break;
 
-                pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.GetAtPos(pNext));
+                pSource = m_lPlaying.GetAtPos(pNext);
             }
         }
 
@@ -616,7 +620,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
         return false;
     }
 
-    unsigned char n3D = n3DVoices;
+    n3D = n3DVoices;
     if (n3D > MAX_VOICES)
         n3D = MAX_VOICES;
     if (n3D < MIN_3D_VOICES)
@@ -627,18 +631,18 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
     {
         // Allocated uninitialised and filled field by field; value-initialising the array would zero
         // it in one call instead.
-        C3DVoice* paVoices = new C3DVoice[MAX_VOICES];
+        pa3DVoices = new C3DVoice[MAX_VOICES];
         for (uint64_t i = 0; i < MAX_VOICES; i++)
         {
-            paVoices[i].m_pSource = 0;
-            paVoices[i].m_nChannel = 0;
-            paVoices[i].m_bInUse = 0;
-            paVoices[i].m_nReserved1 = 0;
+            pa3DVoices[i].m_pSource = 0;
+            pa3DVoices[i].m_nChannel = 0;
+            pa3DVoices[i].m_bInUse = 0;
+            pa3DVoices[i].m_nReserved1 = 0;
         }
-        m_pa3DVoices = paVoices;
+        m_pa3DVoices = pa3DVoices;
     }
 
-    unsigned char n2D = n2DVoices;
+    n2D = n2DVoices;
     if (n2D > MAX_VOICES)
         n2D = MAX_VOICES;
     if (n2D < MIN_2D_VOICES)
@@ -647,15 +651,15 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
     if (m_pa2DVoices == 0)
     {
-        C2DVoice* paVoices = new C2DVoice[MAX_VOICES];
+        pa2DVoices = new C2DVoice[MAX_VOICES];
         for (uint64_t i = 0; i < MAX_VOICES; i++)
         {
-            paVoices[i].m_pSource = 0;
-            paVoices[i].m_nChannel = 0;
-            paVoices[i].m_bInUse = 0;
-            paVoices[i].m_nReserved1 = 0;
+            pa2DVoices[i].m_pSource = 0;
+            pa2DVoices[i].m_nChannel = 0;
+            pa2DVoices[i].m_bInUse = 0;
+            pa2DVoices[i].m_nReserved1 = 0;
         }
-        m_pa2DVoices = paVoices;
+        m_pa2DVoices = pa2DVoices;
     }
 
     // One walk over the longer of the two counts resets both tables' live prefix.
@@ -699,7 +703,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
     {
         pStream->InitializeSource();
         pStream->Resume();
-        pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetNext(pNode));
+        pStream = m_lStreaming.GetNext(pNode);
     }
 
     return true;
@@ -708,10 +712,10 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
 void CExoSoundInternal::AddToDelayedOneShotList(CExoSoundSourceInternal* pSource)
 {
-    if (!m_lDelayedOneShots.m_pInternal->Contains(pSource))
+    if (!m_lDelayedOneShots.Contains(pSource))
     {
         pSource->m_nListState = 3;
-        pSource->m_pListNode = m_lDelayedOneShots.m_pInternal->AddHead(pSource);
+        pSource->m_pListNode = m_lDelayedOneShots.AddHead(pSource);
     }
 }
 
@@ -737,10 +741,10 @@ CExoLinkedListNode* CExoSoundInternal::RemoveFromNonPlayingLoopingList(CExoSound
 
 void CExoSoundInternal::AddToNonPlayingLoopingList(CExoSoundSourceInternal* pSource)
 {
-    if (!m_lNonPlayingLooping.m_pInternal->Contains(pSource))
+    if (!m_lNonPlayingLooping.Contains(pSource))
     {
         pSource->m_nListState = 2;
-        pSource->m_pListNode = m_lNonPlayingLooping.m_pInternal->AddHead(pSource);
+        pSource->m_pListNode = m_lNonPlayingLooping.AddHead(pSource);
     }
 }
 
@@ -795,7 +799,7 @@ void CExoSoundInternal::UnMuteSound()
 // Parks the stopped streaming source for a later re-start.
 void CExoSoundInternal::AddToNonPlayingStreamingLoopingList(CExoStreamingSoundSourceInternal* pSource)
 {
-    m_lNonPlayingStreamingLooping.m_pInternal->AddHead(pSource);
+    m_lNonPlayingStreamingLooping.AddHead(pSource);
 }
 
 void CExoSoundInternal::SetEnvironment(unsigned char env)
@@ -851,7 +855,7 @@ void CExoSoundInternal::Render()
                 RemoveFromStreamingList(pStream);
                 break;
             }
-            pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetNext(pNode));
+            pStream = m_lStreaming.GetNext(pNode);
         }
     }
 
@@ -886,7 +890,7 @@ void CExoSoundInternal::Render()
                     pStream->Update3DStream();
                 }
             }
-            pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetNext(pNode));
+            pStream = m_lStreaming.GetNext(pNode);
         }
     }
 
@@ -1007,7 +1011,7 @@ void CExoSoundInternal::Render()
                 : nLowRes - pSource->m_nOneShotDelayTimer;
             if (nDiff == 0 || nDiff < pSource->m_nOneShotDelay)
             {
-                pSource = static_cast<CExoSoundSourceInternal*>(m_lDelayedOneShots.GetNext(pNode));
+                pSource = m_lDelayedOneShots.GetNext(pNode);
                 continue;
             }
 
@@ -1018,7 +1022,7 @@ void CExoSoundInternal::Render()
             if (pNode == 0)
                 break;
             // The walk advances through m_lPlaying rather than the list just removed from.
-            pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.GetAtPos(pNode));
+            pSource = m_lPlaying.GetAtPos(pNode);
         }
     }
 
@@ -1062,7 +1066,7 @@ void CExoSoundInternal::Render()
                     }
                 }
             }
-            pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetNext(pNode));
+            pStream = m_lStreaming.GetNext(pNode);
         }
     }
 
@@ -1081,7 +1085,7 @@ void CExoSoundInternal::Render()
                 {
                     if (m_fAmbientScale != m_fAmbientScaleRampStart)
                         pSource->SetVolume(pSource->m_nVolume, 0, m_fAmbientScale);
-                    pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.GetNext(pNode));
+                    pSource = m_lPlaying.GetNext(pNode);
                     continue;
                 }
 
@@ -1090,7 +1094,7 @@ void CExoSoundInternal::Render()
                 if (pSource->m_bOneShot)
                 {
                     bool bPlaying = pSource->IsPlaying() != 0;
-                    bool bInList = m_lStoppingOneShots.m_pInternal->Contains(pSource) != 0;
+                    bool bInList = m_lStoppingOneShots.Contains(pSource) != 0;
                     if (bPlaying)
                     {
                         if (!bInList)
@@ -1113,7 +1117,7 @@ void CExoSoundInternal::Render()
                 pNode = RemoveFromPlayingList(pSource);
                 if (pSource->m_bOneShot)
                 {
-                    if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+                    if (!m_lStoppingOneShots.Contains(pSource))
                         delete pSource;
                 }
                 else if (!pSource->IsPaused())
@@ -1124,7 +1128,7 @@ void CExoSoundInternal::Render()
 
             if (pNode == 0)
                 break;
-            pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.GetAtPos(pNode));
+            pSource = m_lPlaying.GetAtPos(pNode);
         }
     }
 
@@ -1141,7 +1145,7 @@ void CExoSoundInternal::Render()
             pSource->Play(1, 0);
             if (pNode == 0)
                 break;
-            pSource = static_cast<CExoSoundSourceInternal*>(m_lNonPlayingLooping.GetAtPos(pNode));
+            pSource = m_lNonPlayingLooping.GetAtPos(pNode);
         }
     }
 
@@ -1263,10 +1267,10 @@ void CExoSoundInternal::SetMusicVolume(float fVolume, int a, int b)
 
 void CExoSoundInternal::AddToPlayingList(CExoSoundSourceInternal* pSource)
 {
-    if (!m_lPlaying.m_pInternal->Contains(pSource))
+    if (!m_lPlaying.Contains(pSource))
     {
         pSource->m_nListState = 1;
-        pSource->m_pListNode = m_lPlaying.m_pInternal->AddHead(pSource);
+        pSource->m_pListNode = m_lPlaying.AddHead(pSource);
 
         CPriorityGroup* pGroup = GetPriorityGroup(pSource->m_nPriorityGroup);
 #if KOTOR1  // K1 has no null test on the group
@@ -1296,7 +1300,7 @@ int CExoSoundInternal::AddToStreamingList(CExoStreamingSoundSourceInternal* pSou
             pObj = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.m_pInternal->m_pHead->m_pData);
 
         for (; pNode != 0;
-             pObj = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetNext(pNode)))
+             pObj = m_lStreaming.GetNext(pNode))
         {
             if (pObj->m_bLooping)
             {
@@ -1500,7 +1504,7 @@ void CExoSoundInternal::OcclusionRender(unsigned int nMaxTime)
                 m_nOcclusionIdleFrames = 0;
 
                 CExoStreamingSoundSourceInternal* pStream =
-                    static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetAtPos(pNode));
+                    m_lStreaming.GetAtPos(pNode);
 
                 if (pStream != 0 && pStream->IsPlaying() && pStream->m_b3D)
                 {
@@ -1611,7 +1615,7 @@ int CExoSoundInternal::GetClosestRecentSound(const Vector& vSourcePos, Vector& v
     while (pNode)
     {
         CExoSoundSourceInternal* pSource =
-            static_cast<CExoSoundSourceInternal*>(m_lPlaying.GetAtPos(pNode));
+            m_lPlaying.GetAtPos(pNode);
 
         if (pSource && pSource->m_b3D)
         {
@@ -1636,7 +1640,7 @@ int CExoSoundInternal::GetClosestRecentSound(const Vector& vSourcePos, Vector& v
     while (pNode)
     {
         CExoStreamingSoundSourceInternal* pSource =
-            static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.GetAtPos(pNode));
+            m_lStreaming.GetAtPos(pNode);
 
         if (pSource && pSource->m_b3D)
         {
@@ -1825,7 +1829,7 @@ void CExoSoundInternal::ResumeAllStreamingMusicForMovie()
     {
         if (pStream->m_bStreamingMusicForMovie)
             pStream->Resume();
-        pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.m_pInternal->GetNext(pNode));
+        pStream = m_lStreaming.GetNext(pNode);
     }
 }
 #endif
@@ -1846,7 +1850,7 @@ void CExoSoundInternal::InterruptPlayingStream(unsigned char nGroup)
                 AddToNonPlayingStreamingLoopingList(pStream);
             break;
         }
-        pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.m_pInternal->GetNext(pNode));
+        pStream = m_lStreaming.GetNext(pNode);
     }
 }
 
@@ -1862,7 +1866,7 @@ int CExoSoundInternal::ResumeAllSounds()
     while (pNode != 0)
     {
         pStream->Resume();
-        pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.m_pInternal->GetNext(pNode));
+        pStream = m_lStreaming.GetNext(pNode);
     }
 
     CExoSoundSourceInternal* pSource = 0;
@@ -1873,7 +1877,7 @@ int CExoSoundInternal::ResumeAllSounds()
     while (pNode != 0)
     {
         pSource->Resume();
-        pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.m_pInternal->GetNext(pNode));
+        pSource = m_lPlaying.GetNext(pNode);
     }
 
     return 1;
@@ -1890,7 +1894,7 @@ void CExoSoundInternal::ApplyNewVolume(int a)
     {
         if (pStream != 0)
             pStream->SetVolume(pStream->m_nVolume, a, 1.0f);
-        pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.m_pInternal->GetNext(pNode));
+        pStream = m_lStreaming.GetNext(pNode);
     }
 
     CExoSoundSourceInternal* pSource = 0;
@@ -1902,7 +1906,7 @@ void CExoSoundInternal::ApplyNewVolume(int a)
     {
         if (pSource != 0)
             pSource->SetVolume(pSource->m_nVolume, a, 1.0f);
-        pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.m_pInternal->GetNext(pNode));
+        pSource = m_lPlaying.GetNext(pNode);
     }
 }
 
@@ -2024,7 +2028,7 @@ void CExoSoundInternal::PauseAllButStreamingMusicForMovie()
     {
         if (GetPauseable(pStream) && !pStream->m_bStreamingMusicForMovie)
             pStream->Pause();
-        pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.m_pInternal->GetNext(pNode));
+        pStream = m_lStreaming.GetNext(pNode);
     }
 
     CExoSoundSourceInternal* pSource = 0;
@@ -2036,7 +2040,7 @@ void CExoSoundInternal::PauseAllButStreamingMusicForMovie()
     {
         if (!pSource->IsPaused() && GetPauseable(pSource))
             pSource->Pause();
-        pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.m_pInternal->GetNext(pNode));
+        pSource = m_lPlaying.GetNext(pNode);
     }
 }
 #endif
@@ -2056,7 +2060,7 @@ int CExoSoundInternal::PauseAllSounds(int bPause)
             pStream->Pause();
         else if (GetPauseable(pStream))
             pStream->Pause();
-        pStream = static_cast<CExoStreamingSoundSourceInternal*>(m_lStreaming.m_pInternal->GetNext(pNode));
+        pStream = m_lStreaming.GetNext(pNode);
     }
 
     CExoSoundSourceInternal* pSource = 0;
@@ -2068,7 +2072,7 @@ int CExoSoundInternal::PauseAllSounds(int bPause)
     {
         if (!pSource->IsPaused() && GetPauseable(pSource))
             pSource->Pause();
-        pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.m_pInternal->GetNext(pNode));
+        pSource = m_lPlaying.GetNext(pNode);
     }
 
     return 1;
@@ -2118,10 +2122,10 @@ C3DVoice* CExoSoundInternal::GetFree3DVoice(unsigned char nGroup)
     {
         if (pSource->IsPlaying())
         {
-            if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+            if (!m_lStoppingOneShots.Contains(pSource))
                 m_lStoppingOneShots.AddHead(pSource);
         }
-        else if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+        else if (!m_lStoppingOneShots.Contains(pSource))
         {
             delete pSource;
         }
@@ -2179,10 +2183,10 @@ C2DVoice* CExoSoundInternal::GetFree2DVoice(unsigned char nGroup)
     {
         if (pSource->IsPlaying())
         {
-            if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+            if (!m_lStoppingOneShots.Contains(pSource))
                 m_lStoppingOneShots.AddHead(pSource);
         }
-        else if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+        else if (!m_lStoppingOneShots.Contains(pSource))
         {
             delete pSource;
         }
@@ -2225,7 +2229,7 @@ CExoLinkedListNode* CExoSoundInternal::RemoveFromPlayingList(CExoSoundSourceInte
             }
             break;
         }
-        pObj = static_cast<CExoSoundSourceInternal*>(m_lPlaying.GetNext(pNode));
+        pObj = m_lPlaying.GetNext(pNode);
     }
 
     pNode = pSource->m_pListNode;
@@ -2324,10 +2328,10 @@ int CExoSoundInternal::RemoveAllSounds()
             static_cast<CExoSoundSourceInternal*>(m_lPlaying.m_pInternal->m_pHead->m_pData);
         if (pSource->IsPlaying())
         {
-            if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
-                m_lStoppingOneShots.m_pInternal->AddHead(pSource);
+            if (!m_lStoppingOneShots.Contains(pSource))
+                m_lStoppingOneShots.AddHead(pSource);
         }
-        else if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+        else if (!m_lStoppingOneShots.Contains(pSource))
         {
             delete pSource;
         }
@@ -2351,23 +2355,23 @@ void CExoSoundInternal::StopAllOneShots()
         }
         else if (!pObj->m_bOneShot)
         {
-            pObj = static_cast<CExoSoundSourceInternal*>(m_lPlaying.m_pInternal->GetNext(pNode));
+            pObj = m_lPlaying.GetNext(pNode);
         }
         else
         {
             pNode = RemoveFromPlayingList(pObj);
             if (pObj->IsPlaying())
             {
-                if (!m_lStoppingOneShots.m_pInternal->Contains(pObj))
-                    m_lStoppingOneShots.m_pInternal->AddHead(pObj);
+                if (!m_lStoppingOneShots.Contains(pObj))
+                    m_lStoppingOneShots.AddHead(pObj);
             }
-            else if (!m_lStoppingOneShots.m_pInternal->Contains(pObj))
+            else if (!m_lStoppingOneShots.Contains(pObj))
             {
                 delete pObj;
             }
 
             if (pNode != 0)
-                pObj = static_cast<CExoSoundSourceInternal*>(m_lPlaying.m_pInternal->GetAtPos(pNode));
+                pObj = m_lPlaying.GetAtPos(pNode);
         }
     }
 }
@@ -2488,10 +2492,10 @@ void CExoSoundInternal::InterruptPlayingSound(unsigned char nGroup)
             {
                 if (pSource->IsPlaying())
                 {
-                    if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
-                        m_lStoppingOneShots.m_pInternal->AddHead(pSource);
+                    if (!m_lStoppingOneShots.Contains(pSource))
+                        m_lStoppingOneShots.AddHead(pSource);
                 }
-                else if (!m_lStoppingOneShots.m_pInternal->Contains(pSource))
+                else if (!m_lStoppingOneShots.Contains(pSource))
                 {
                     delete pSource;
                 }
@@ -2506,6 +2510,6 @@ void CExoSoundInternal::InterruptPlayingSound(unsigned char nGroup)
             break;
         }
 
-        pSource = static_cast<CExoSoundSourceInternal*>(m_lPlaying.m_pInternal->GetNext(pNode));
+        pSource = m_lPlaying.GetNext(pNode);
     }
 }

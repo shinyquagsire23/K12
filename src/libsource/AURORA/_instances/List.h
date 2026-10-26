@@ -46,7 +46,7 @@ public:
     }
 
     // Index of the first match, or -1.
-    template <class U = T> int GetIndex(U item) const
+    template <class U = T> int IndexOf(U item) const
     {
         for (int i = 0; i < m_count; i++)
             if (m_pData[i] == item)
@@ -101,6 +101,10 @@ void List<T>::Remove(U item) {
     int i = m_count - 1;
     while (i >= 0 && m_pData[i] != item)
         i--;
+#ifdef K2_FIX_ENGINE_BUGS
+    if (i < 0)
+        return;
+#endif
     DelIndex(i);
 }
 

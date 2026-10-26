@@ -215,6 +215,13 @@ struct CSWGuiMainInterfaceAction {  // idiom-exempt: canonical (no other definit
     void SetIcon(const CResRef& resRef, const CExoString& str, int a, unsigned char b);
     void Pulse(int bPulse);
     void Update(float fDelta);
+    // Whether any of the widget's four controls is active.
+    int GetActive()
+    {
+        if (m_icon.m_tail.bActive || m_btnUp.m_tail.bActive || m_btnDown.m_tail.bActive)
+            return 1;
+        return m_button.m_tail.bActive;
+    }
 
     CSWGuiButton  m_button;
     CSWGuiButton  m_icon;
@@ -551,7 +558,8 @@ public:
     CSWGuiLabel   m_lblMoulding1;
     CSWGuiLabel   m_lblMoulding2;
     CSWGuiLabel   m_lblMoulding3;
-    CSWGuiMainInterfaceChar m_aCharacters[4];
+    CSWGuiMainInterfaceChar m_aCharacters[3];
+    CSWGuiMainInterfaceChar m_charOffscreen;  // the portrait the party rotation slides in
     float         m_fRotationTimer;
     char          _pad73c4[4];
     CSWGuiLabel   m_lblTargetIndicator;
@@ -637,7 +645,8 @@ public:
     float         m_scaleY;
     CSWGuiLabel   m_lblMoulding1;
     CSWGuiLabel   m_lblMoulding3;
-    CSWGuiMainInterfaceChar m_aCharacters[4];
+    CSWGuiMainInterfaceChar m_aCharacters[3];
+    CSWGuiMainInterfaceChar m_charOffscreen;  // the portrait the party rotation slides in
     float         m_fRotationTimer;
     char          _pad73c4[4];
     CSWGuiLabel   m_lblTargetIndicator;

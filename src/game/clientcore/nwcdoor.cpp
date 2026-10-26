@@ -549,8 +549,7 @@ void CSWCDoor::MenuActionBash(unsigned int a, CSWCCreature* pCreature)
 void CSWCDoor::MenuActionSetDoorMine(unsigned int itemId, CSWCCreature* pCreature)
 {
     CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pPlayer =
-        pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = pServerApp->GetPlayerCreature();
     if (pPlayer == 0 || pPlayer->GetArea() == 0 ||
         static_cast<CSWSArea*>(pPlayer->GetArea())->GetPlayerCanSetMines() != 0) {
         itemId &= CSWGuiInterfaceAction::ACTION_ID_ITEM_CLEAR;

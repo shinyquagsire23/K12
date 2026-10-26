@@ -2352,32 +2352,10 @@ int CGuiInGame::CloseDialog()
     void* pActiveCam = m_pActiveDialogPanel;
     if (pActiveCam == m_pDialogComputerPanel) {
         CSWGuiPanel* pPanel = static_cast<CSWGuiPanel*>(pActiveCam);
-#if KOTOR1  // K1: no panel chain, one stamp
-        if (g_bCreateAllGUIs == 0) {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_MASK) | PANEL_REMOVE_AND_DELETE | PANEL_REMOVE_DEFERRED;
-        } else {
-            unsigned short flags = pPanel->m_stateFlags;
-            unsigned short newFlags = flags | PANEL_REMOVE_DEFERRED;
-            if ((flags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE) {
-                newFlags = (newFlags & ~PANEL_REMOVE_AND_DELETE) | PANEL_REMOVE;
-            }
-            pPanel->m_stateFlags = newFlags;
-        }
-#else
-        if (g_bCreateAllGUIs == 0) {
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_MASK) | PANEL_REMOVE_AND_DELETE | PANEL_REMOVE_DEFERRED;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel != 0);
-        } else {
-            unsigned short flags = pPanel->m_stateFlags;
-            unsigned short newFlags = flags | PANEL_REMOVE_DEFERRED;
-            if ((flags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE) {
-                newFlags = (newFlags & ~PANEL_REMOVE_AND_DELETE) | PANEL_REMOVE;
-            }
-            pPanel->m_stateFlags = newFlags;
-        }
-#endif
+        if (g_bCreateAllGUIs == 0)
+            pPanel->SetToBeDeleted(1);
+        else
+            pPanel->SetToBeRemoved(1);
         m_pDialogComputerPanel = 0;
     } else {
         m_pGuiManager->RemovePanel(static_cast<CSWGuiPanel*>(pActiveCam));
@@ -3365,11 +3343,7 @@ void CGuiInGame::RemoveDeathMessage(bool removePanel)
     if (removePanel && m_pGuiManager->PanelExists(static_cast<CSWGuiPanel*>(m_pDeathMessagePanel)) != 0) {
         m_pGuiManager->RemovePanel(static_cast<CSWGuiPanel*>(m_pDeathMessagePanel));
     }
-    CSWGuiPanel* p = static_cast<CSWGuiPanel*>(m_pDeathMessagePanel);
-    do {
-        p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-        p = p->m_pNextInChain;
-    } while (p != 0);
+    m_pDeathMessagePanel->SetToBeDeleted(0);
     m_pDeathMessagePanel = 0;
 }
 #endif // !KOTOR1
@@ -3733,15 +3707,7 @@ void CGuiInGame::HideUpgradeScreen()
 #else
         g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
 #endif
-        CSWGuiPanel* p = m_pUpgradeScreenPanel;
-#if KOTOR1  // K1: no panel chain, one stamp
-        p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-#else
-        do {
-            p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-            p = p->m_pNextInChain;
-        } while (p != 0);
-#endif
+        m_pUpgradeScreenPanel->SetToBeDeleted(0);
         m_pUpgradeScreenPanel = 0;
     }
 }
@@ -3759,11 +3725,7 @@ void CGuiInGame::HideChemicalUpgradeScreen()
 #else
         g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
 #endif
-        CSWGuiPanel* p = static_cast<CSWGuiPanel*>(m_pChemicalUpgradeScreenPanel);
-        do {
-            p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-            p = p->m_pNextInChain;
-        } while (p != 0);
+        m_pChemicalUpgradeScreenPanel->SetToBeDeleted(0);
         m_pChemicalUpgradeScreenPanel = 0;
     }
 }
@@ -3782,11 +3744,7 @@ void CGuiInGame::HideSwoopUpgradeScreen()
 #else
         g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
 #endif
-        CSWGuiPanel* p = static_cast<CSWGuiPanel*>(m_pSwoopUpgradeScreenPanel);
-        do {
-            p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-            p = p->m_pNextInChain;
-        } while (p != 0);
+        m_pSwoopUpgradeScreenPanel->SetToBeDeleted(0);
         m_pSwoopUpgradeScreenPanel = 0;
     }
 }
@@ -3828,11 +3786,7 @@ void CGuiInGame::HideDemoScreen()
 #else
         g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
 #endif
-        CSWGuiPanel* p = m_pDemoScreenPanel;
-        do {
-            p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-            p = p->m_pNextInChain;
-        } while (p != 0);
+        m_pDemoScreenPanel->SetToBeDeleted(0);
         m_pDemoScreenPanel = 0;
     }
 }
@@ -3927,7 +3881,7 @@ int CGuiInGame::IsAnimationPlayingInDialog()
 #if KOTOR1  // K1: true when any participant plays a dialog animation
     for (unsigned int i = 0; i < m_dialogAnimCount; i++) {
         CSWCObject* pSWC = static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(m_paDialogAnimData[i])->AsSWCCreature());
-        if (pSWC != 0 && pSWC->AnimationDialog(pSWC->m_currentAnimation) != 0) return true;
+        if (pSWC != 0 && pSWC->IsDoingDialogAnimation() != 0) return true;
     }
     return false;
 #else
@@ -3944,7 +3898,7 @@ int CGuiInGame::IsAnimationPlayingInDialog()
             CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_paDialogAnimData[i]);
             CSWCObject* pSWC = static_cast<CSWCObject*>(pObj->AsSWCCreature());
             if (pSWC != 0) {
-                int result = pSWC->AnimationDialog(pSWC->m_currentAnimation);
+                int result = pSWC->IsDoingDialogAnimation();
                 if (result == 0) return false;
                 found = result;
             }
@@ -4222,8 +4176,10 @@ bool CGuiInGame::HandleDialogReplies(unsigned int a1, unsigned long long a2, uns
                 unsigned long long playerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
                 CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
                 unsigned long long clientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
-                CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
-                CSWTlkTable* pTlk = g_pSWTlkTable;
+                CGameObject* pGameObj;
+                CSWTlkTable* pTlk;
+                pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
+                pTlk = g_pSWTlkTable;
                 pTlk->m_pSpeakerObj = pGameObj;
                 pTlk->m_gender = pTlk->GetObjectGender();
                 pTlk->m_bSuppressEnabled &= ~1;
@@ -4301,15 +4257,7 @@ void CGuiInGame::HideStoreGui()
         SetSWGuiStatus(SWGUI_UNCOVER, 1);
         g_pAppManager->m_pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
         if (g_bCreateAllGUIs == 0) {
-            CSWGuiPanel* p = m_pStorePanel;
-#if KOTOR1  // K1: no panel chain, one stamp
-            p->m_stateFlags = (p->m_stateFlags & ~PANEL_REMOVE_MASK) | PANEL_REMOVE_AND_DELETE | PANEL_REMOVE_DEFERRED;
-#else
-            do {
-                p->m_stateFlags = (p->m_stateFlags & ~PANEL_REMOVE_MASK) | PANEL_REMOVE_AND_DELETE | PANEL_REMOVE_DEFERRED;
-                p = p->m_pNextInChain;
-            } while (p != 0);
-#endif
+            m_pStorePanel->SetToBeDeleted(1);
             m_pStorePanel = 0;
         } else {
             m_pGuiManager->RemovePanel(m_pStorePanel);
@@ -5515,13 +5463,13 @@ void CGuiInGame::ShowPartySelection(const CExoString& text, int a, int forceNpc1
     if (pServerExoApp->GetPartyTable()->m_nControlledNPC != -1) {
         return;
     }
-    if (pServerExoApp->GetCreatureByGameObjectID(pServerExoApp->GetPlayerCreatureId()) == 0) {
+    if (pServerExoApp->GetPlayerCreature() == 0) {
         return;
     }
-    if (pServerExoApp->GetCreatureByGameObjectID(pServerExoApp->GetPlayerCreatureId())->GetArea() == 0) {
+    if (pServerExoApp->GetPlayerCreature()->GetArea() == 0) {
         return;
     }
-    CSWArea* pArea = pServerExoApp->GetCreatureByGameObjectID(pServerExoApp->GetPlayerCreatureId())->GetArea();
+    CSWArea* pArea = pServerExoApp->GetPlayerCreature()->GetArea();
     if (__builtin_expect(a == 0, 1) && static_cast<CSWSArea*>(pArea)->m_nUnescapable != 0) {
         return;
     }
@@ -5576,13 +5524,13 @@ void CGuiInGame::ShowPartySelection(const CExoString& text, int a, int forceNpc1
     if (pServerExoApp->GetPartyTable()->m_nControlledNPC != -1) {
         return;
     }
-    if (pServerExoApp->GetCreatureByGameObjectID(pServerExoApp->GetPlayerCreatureId()) == 0) {
+    if (pServerExoApp->GetPlayerCreature() == 0) {
         return;
     }
-    if (pServerExoApp->GetCreatureByGameObjectID(pServerExoApp->GetPlayerCreatureId())->GetArea() == 0) {
+    if (pServerExoApp->GetPlayerCreature()->GetArea() == 0) {
         return;
     }
-    CSWArea* pArea = pServerExoApp->GetCreatureByGameObjectID(pServerExoApp->GetPlayerCreatureId())->GetArea();
+    CSWArea* pArea = pServerExoApp->GetPlayerCreature()->GetArea();
     if (__builtin_expect(a == 0, 1) && static_cast<CSWSArea*>(pArea)->m_nUnescapable != 0) {
         return;
     }

@@ -80,6 +80,7 @@ static __forceinline long long __builtin_expect(long long x, long long expected)
 #define __builtin_va_end(ap) __crt_va_end(ap)
 #define __builtin_return_address(level) _ReturnAddress()
 #define __builtin_trap() __debugbreak()
+#define __builtin_unreachable() __assume(0)
 #define __builtin_debugtrap() __debugbreak()
 // "Unknown" (type 0 and 1), which reduces the fortified calls below to the plain ones.
 #define __builtin_object_size(p, type) SIZE_MAX
@@ -112,6 +113,7 @@ static __forceinline long long __builtin_expect(long long x, long long expected)
 // The fortified builtins become the plain call (cl checks no object size).
 #define __builtin___strcpy_chk(d, s, size) strcpy(d, s)
 #define __builtin___strcat_chk(d, s, size) strcat(d, s)
+#define __builtin___strncpy_chk(d, s, n, size) strncpy(d, s, n)
 #define __builtin___memset_chk(d, c, n, size) memset(d, c, n)
 #define __builtin___sprintf_chk(d, flag, size, ...) sprintf(d, __VA_ARGS__)
 #define __builtin___vsprintf_chk(d, flag, size, fmt, ap) vsprintf(d, fmt, ap)

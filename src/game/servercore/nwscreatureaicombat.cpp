@@ -763,7 +763,7 @@ void CSWSCreature::ResolveAttack(unsigned long long oidTarget, int a2, int a3, i
         ActivityManager(4);
         CSWSItem* pItem = static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
         if (pItem != 0 &&
-            g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0) {
+            g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0) {
             ResolveRangedAttack(pTarget, a2, a3, a4, a5, a6, a7);
         } else {
             ResolveMeleeAttack(pTarget, a2, a3, a4, a5, a6, a7);

@@ -1529,7 +1529,7 @@ int CSWCCreature::GetRelativeWeaponSize(CSWCItem* pItem) {
     g_pRules->m_p2DArrays->m_pAppearance->GetINTEntry(
         m_pCreatureAppearance->m_nAppearanceId,
         CTwoDimArrays::COL2DA_APPEARANCETABLE_SIZECATEGORY, &nSizeCategory);
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
     return pBaseItem->m_nWeaponSize - nSizeCategory;
 }
 
@@ -2707,7 +2707,7 @@ void CSWCCreature::CreateNewSpellLikeAbilityList() {
 
 void CSWCCreature::DeleteSpellLikeAbilityList() {
     if (m_pSpellLikeAbilityList) {
-        m_pSpellLikeAbilityList->Clear();
+        m_pSpellLikeAbilityList->SetSize(0);
         delete m_pSpellLikeAbilityList;
         m_pSpellLikeAbilityList = 0;
     }
@@ -3217,7 +3217,7 @@ parry:
                 CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(
                     pAttacker->m_aEquippedItemIds[4]);
                 if (pItem != 0)
-                    g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+                    g_pRules->GetBaseItem(pItem->m_baseItem);
                 if (pItem == 0 || pItem->m_bVisualEffectLoaded != 1)
                     pAttacker->m_blurWeapon = 0;
             }
@@ -3359,7 +3359,7 @@ int CSWCCreature::GetSoundSetStrres(unsigned short nIdx, STR_RES& out) {
 // Caches the server-sent orientation as a normalized vector, then rotates to it.
 void CSWCCreature::ClientServerSyncHandler_Orientation(const Vector& v) {
     SetDesiredStationaryOrientation(v);
-    m_vMovingOrientation = normalize(v);
+    SetDesiredWalkOrientation(v);
     CSWCObject* pBase = static_cast<CSWCObject*>(this);  // idiom-exempt: cast-this-to-base — flat header (no
     if (pBase->CSWCObject::AnimationStationary(pBase->CSWCObject::GetCurrentAnimation()))
         RotateCreatureToOrientation(m_vStationaryOrientation);
@@ -3382,7 +3382,7 @@ void CSWCCreature::BlurWeapon(int blur) {
             g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_aEquippedItemIds[4]);
         if (pItem) {
             int nBaseItem = pItem->m_baseItem;
-            g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+            g_pRules->GetBaseItem(nBaseItem);
             if (pItem->m_bVisualEffectLoaded == 1)
                 return;
         }
@@ -4096,8 +4096,7 @@ void CSWCCreature::SetDesiredOrientationForLock() {
 // of queueing the item use.
 void CSWCCreature::ActionMenuSetMine(unsigned int itemId, CSWCCreature* pTarget) {
     K2_UNUSED(pTarget);
-    CSWSCreature* pServerCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pServerCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pServerCreature == 0 || pServerCreature->GetArea() == 0 ||
         static_cast<CSWSArea*>(pServerCreature->GetArea())->GetPlayerCanSetMines() != 0) {
         itemId &= CSWGuiInterfaceAction::ACTION_ID_ITEM_CLEAR;
@@ -4369,7 +4368,7 @@ void CSWCCreature::UpdateWeaponClass() {
             bLightsaber = 0;
 #endif
         } else {
-            CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+            CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
 #if !KOTOR1
             CSWSItem* pServerItem = pItem->GetServerItem();
             if (pServerItem == 0) {
@@ -4395,8 +4394,7 @@ void CSWCCreature::UpdateWeaponClass() {
                 if (pOffHand == 0) {
                     nWeaponClass = 0;
                 } else {
-                    CSWBaseItem* pOffBase =
-                        g_pRules->m_pBaseItemArray->GetBaseItem(pOffHand->m_baseItem);
+                    CSWBaseItem* pOffBase = g_pRules->GetBaseItem(pOffHand->m_baseItem);
 #if !KOTOR1
                     if (bLightsaber) {
                         CSWSItem* pOffServer = pOffHand->GetServerItem();
@@ -4831,8 +4829,7 @@ int CSWCCreature::PlayHitSound(CSWCCombatAttackData* pData, int a) {
                                                 : CGameObjectArray::INVALIDOBJID;
             CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nItemId);
             if (pItem != 0)
-                nSoundType =
-                    g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bIsPC;
+                nSoundType = g_pRules->GetBaseItem(pItem->m_baseItem)->m_bIsPC;
         }
         if ((pData->m_nAttackResult == 8 || pData->m_nAttackResult == 4) &&
             pTarget->AnimationParry(pTarget->GetCurrentAnimation()) != 0) {
@@ -4920,6 +4917,10 @@ int CSWCCreature::SpawnHitVisuals(unsigned char a, CSWCCombatAttackData* pData, 
         sRow, CExoString("imp_impact_node"), &sNode);
     for (int i = 0; i < 12; i++) {
         Gob* pGob = m_aHitVisualGobs[i];
+        float fDot;
+        float fAngle;
+        unsigned long long nItemId;
+        CSWCItem* pItem;
         if (pGob != 0) {
             float fTime = 0.0f;
             pGob->GetAnimation(const_cast<char*>("impact"), &fTime, 0);
@@ -4934,13 +4935,10 @@ int CSWCCreature::SpawnHitVisuals(unsigned char a, CSWCCombatAttackData* pData, 
         if (sImpact == "")
             sImpact = "impact";
         pGob->AttachToObject(static_cast<CAurObject*>(GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1)), static_cast<char*>(sImpact.CStr()), 3);
-        Vector vNorm = normalize(v);
-        float fDot = vNorm.x * m_orientation.x + vNorm.y * m_orientation.y +
-                     vNorm.z * m_orientation.z;
+        fDot = dot(normalize(v), m_orientation);
         if (fDot > 1.0f)
             fDot = 1.0f;
-        float fAngle = acosf(fDot);
-        unsigned long long nItemId;
+        fAngle = acosf(fDot);
         switch (pData->m_nWeaponAttackType) {
         case CSWSCombatRound::WEAPON_ATTACK_TYPE_ONHAND:
         case CSWSCombatRound::WEAPON_ATTACK_TYPE_EXTRA:
@@ -4962,11 +4960,10 @@ int CSWCCreature::SpawnHitVisuals(unsigned char a, CSWCCombatAttackData* pData, 
             nItemId = OBJECT_INVALID;
             break;
         }
-        CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nItemId);
+        pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nItemId);
         if (pItem != 0)
-            g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
-        Vector oNorm = normalize(m_orientation);
-        if (oNorm.y * v.x - oNorm.x * v.y >= 0.0f)
+            g_pRules->GetBaseItem(pItem->m_baseItem);
+        if (cross(v, normalize(m_orientation)).z >= 0.0f)
             pGob->SetOrientation(Quaternion(Vector{0.0f, 0.0f, 1.0f}, -fAngle) *
                                  Quaternion(Vector{1.0f, 0.0f, 0.0f}, 1.0f));
         else
@@ -5159,6 +5156,7 @@ void CSWCCreature::DoFootstepVisual(unsigned char nType, int bForce) {
     if (m_pArea == 0)
         return;
     Vector vPos = {0.0f, 0.0f, 0.0f};
+    Gob* pModel;
     switch (m_currentAnimation) {
     case SERVER_ANIMATION_WALK:
     case SERVER_ANIMATION_WALK_BACKWARD:
@@ -5169,7 +5167,7 @@ void CSWCCreature::DoFootstepVisual(unsigned char nType, int bForce) {
     case SERVER_ANIMATION_WALK_STRAFE_RIGHT:
     case SERVER_ANIMATION_RUN_STRAFE_LEFT:
     case SERVER_ANIMATION_RUN_STRAFE_RIGHT: {
-        Gob* pModel = GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+        pModel = GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
         if (pModel != 0) {
             if (nType == 0) {
                 if (m_currentAnimation == SERVER_ANIMATION_WALK_BACKWARD)
@@ -5188,12 +5186,14 @@ void CSWCCreature::DoFootstepVisual(unsigned char nType, int bForce) {
                 vStart.z += 1.0f;
                 CHitInfo hitInfo(0, CHitInfo::kMaterialAllButTrigger, 0);
                 Vector vHit = {0.0f, 0.0f, 0.0f};
+                int nOldTrimeshParts;
+                int nHit;
                 hitInfo.m_bSkipObjects = 1;
                 g_pAppManager->m_pClientExoApp->AddObjectModelDirectlyToIgnoreList(
                     m_objectId, &hitInfo.m_ignoreList);
-                int nOldTrimeshParts = hitcheck_static_trimesh_parts;
+                nOldTrimeshParts = hitcheck_static_trimesh_parts;
                 hitcheck_static_trimesh_parts = 1;
-                int nHit = m_pArea->m_pScene->HitCheck(
+                nHit = m_pArea->m_pScene->HitCheck(
                     vStart, m_position,
                     &vHit, &hitInfo);
                 if (nHit != 0)
@@ -6305,6 +6305,8 @@ void CSWCCreature::CGPauseCycle(float f, int b) {
     CExoString sAnim2;
     float fUnused = 0.0f;
     float fAnimLen = 0.0f;
+    Gob* pPart;
+    Gob* pPart2;
     if (b != 0) {
         int r = rand_wincompatible() % 2;
         if (r == 1)
@@ -6312,14 +6314,13 @@ void CSWCCreature::CGPauseCycle(float f, int b) {
         else if (r == 0)
             sAnim1 = "pause1";
         m_nAmbientPauseDelay = 10000 + (rand_wincompatible() % 201) * 100;
-        int r2 = rand_wincompatible();
-        Gob* pPart = m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_BODY);
-        float fRand = static_cast<float>(r2 % 100);
+        float fRand = static_cast<float>(rand_wincompatible() % 100);
+        pPart = m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_BODY);
         if (pPart) {
             pPart->GetAnimation(static_cast<char*>(sAnim1.CStr()), &fUnused, &fAnimLen);
             pPart->PlayAnimation(static_cast<char*>(sAnim1.CStr()), 1.0f, 2, fAnimLen * 0.01f * fRand);
         }
-        Gob* pPart2 = m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD);
+        pPart2 = m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD);
         if (pPart2)
             pPart2->PlayAnimation(static_cast<char*>(sAnim1.CStr()), 1.0f, 2, fAnimLen * 0.01f * fRand);
         return;
@@ -6340,7 +6341,7 @@ void CSWCCreature::CGPauseCycle(float f, int b) {
     case 4: sAnim2 = "pausesh"; break;
     case 5: sAnim2 = "pause3"; break;
     }
-    Gob* pPart = m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_BODY);
+    pPart = m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_BODY);
     if (pPart) {
         pPart->GetAnimation(static_cast<char*>(sAnim2.CStr()), &fUnused, &fAnimLen);
         pPart->AddAnimationFlag(1);
@@ -6348,7 +6349,7 @@ void CSWCCreature::CGPauseCycle(float f, int b) {
         m_nAmbientPauseDelay += static_cast<int>(fAnimLen * 1000.0f);
         pPart->PlayAnimation(static_cast<char*>(sAnim1.CStr()), 1.0f, AnimRun::kAnimQueue | AnimRun::kAnimNoReuse, 0.0f);
     }
-    Gob* pPart2 = m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD);
+    pPart2 = m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD);
     if (pPart2) {
         pPart2->AddAnimationFlag(1);
         pPart2->PlayAnimation(static_cast<char*>(sAnim2.CStr()), 1.0f, AnimRun::kAnimOnce | AnimRun::kAnimQueue, 0.0f);
@@ -6830,7 +6831,7 @@ void CSWCCreature::SetEquippedItemID(unsigned int nSlot, unsigned long long item
 }
 
 int CSWCCreature::CanDualWield(CSWCItem* pItem) {
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
     if (pBaseItem == 0)
         return 0;
     if (pItem->GetBaseItem()->m_nItemType == ITEM_TYPE_LIGHT_SOURCE)
@@ -7326,8 +7327,8 @@ void CSWCCreature::GetCombatFeatsSkills(CExoArrayList<CSWGuiInterfaceAction>& li
         CGameObject* pObject =
             g_pAppManager->m_pClientExoApp->GetGameObject(m_aEquippedItemIds[4]);
         if (pObject != 0 && pObject->AsSWCItem() != 0) {
-            CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(
-                static_cast<CSWCItem*>(pObject->AsSWCItem())->m_baseItem);
+            CSWBaseItem* pBaseItem =
+                g_pRules->GetBaseItem(static_cast<CSWCItem*>(pObject->AsSWCItem())->m_baseItem);
             if (pBaseItem != 0 && pBaseItem->m_bRangedWeapon != 0) {
                 EnableFeatForMenu(CheckFeat(FEAT_MASTER_POWER_BLAST, FEAT_IMPROVED_POWER_BLAST, FEAT_POWER_BLAST), list,
                                   reinterpret_cast<void (CSWCObject::*)(unsigned int, CSWCCreature*)>(

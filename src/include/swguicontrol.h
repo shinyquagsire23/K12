@@ -8,6 +8,18 @@
 
 class CSWGuiControl;
 class CSWGuiPanel;
+class CSWGuiNavigable;
+class CSWGuiLabel;
+class CSWGuiLabelHilight;
+class CSWGuiButton;
+class CSWGuiButtonToggle;
+class CSWGuiRadioButton;
+class CSWGuiSlider;
+class CSWGuiProgressBar;
+class CSWGuiScrollBar;
+class CSWGuiListBox;
+class CSWGuiSkillFlow;
+class CSWGuiEditbox;
 
 class CResGFF;
 struct CResStruct;
@@ -122,18 +134,18 @@ public:
     virtual void HandleInputEvent(int type, int val);
     virtual void SetActive(int flag);
     virtual CSWGuiControl* HitCheckMouse(int x, int y);
-    virtual CSWGuiControl* AsNavigable();
-    virtual CSWGuiControl* AsLabel();
-    virtual CSWGuiControl* AsLabelHilight();
-    virtual CSWGuiControl* AsButton();
-    virtual CSWGuiControl* AsButtonToggle();
-    virtual CSWGuiControl* AsRadioButton();
-    virtual CSWGuiControl* AsSlider();
-    virtual CSWGuiControl* AsProgressBar();
-    virtual CSWGuiControl* AsScrollBar();
-    virtual CSWGuiControl* AsListBox();
-    virtual CSWGuiControl* AsSkillFlow();
-    virtual CSWGuiControl* AsEditBox();
+    virtual CSWGuiNavigable* AsNavigable();
+    virtual CSWGuiLabel* AsLabel();
+    virtual CSWGuiLabelHilight* AsLabelHilight();
+    virtual CSWGuiButton* AsButton();
+    virtual CSWGuiButtonToggle* AsButtonToggle();
+    virtual CSWGuiRadioButton* AsRadioButton();
+    virtual CSWGuiSlider* AsSlider();
+    virtual CSWGuiProgressBar* AsProgressBar();
+    virtual CSWGuiScrollBar* AsScrollBar();
+    virtual CSWGuiListBox* AsListBox();
+    virtual CSWGuiSkillFlow* AsSkillFlow();
+    virtual CSWGuiEditbox* AsEditBox();
     virtual void HandleFocusChange(int bGaining);
     virtual int GetIsSelectable();
     virtual void HandleRMouseDown();
@@ -225,7 +237,7 @@ public:
     CSWGuiNavigable();
     virtual void HandleMouseOver(int bMouseIsOver);
     virtual void HandleInputEvent(int type, int val);
-    virtual CSWGuiControl* AsNavigable() { return this; }
+    virtual CSWGuiNavigable* AsNavigable() { return this; }
     virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
     void           SetMoveToControl(int nDir, CSWGuiControl* pControl);
     CSWGuiControl* GetMoveToControl(int nDir);
@@ -262,7 +274,7 @@ public:
     virtual void Draw(float f);
     virtual void HandleInputEvent(int type, int val);
     virtual void SetActive(int flag);
-    virtual CSWGuiControl* AsButton() { return this; }
+    virtual CSWGuiButton* AsButton() { return this; }
     virtual void SetEnabled(int flag);
     virtual void ReSetFont();
     virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
@@ -300,7 +312,7 @@ public:
 #if KOTOR1  // K1 has an out-of-line weak destructor, called from its owners
     virtual ~CSWGuiButtonToggle() __attribute__((noinline));
 #endif
-    virtual CSWGuiControl* AsButtonToggle() { return this; }
+    virtual CSWGuiButtonToggle* AsButtonToggle() { return this; }
     virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
     virtual void Initialize(CSWGuiExtent const&, CSWGuiTextParams const&, CSWGuiBorderParams const&, CSWGuiBorderParams const&, CSWGuiBorderParams const&, CSWGuiBorderParams const&);
     virtual void Initialize(CSWGuiExtent const&, CSWGuiButtonToggle*);
@@ -336,7 +348,7 @@ public:
     virtual void HandleLMouseDown();
     virtual void HandleLMouseUp();
     virtual void Draw(float f);
-    virtual CSWGuiControl* AsEditBox();
+    virtual CSWGuiEditbox* AsEditBox();
     virtual void HandleFocusChange(int bGaining);
     virtual int GetIsSelectable();
     virtual void SetEnabled(int flag);
@@ -380,7 +392,7 @@ public:
     __attribute__((always_inline)) virtual ~CSWGuiLabel();
 #endif
     virtual void Draw(float f);
-    virtual CSWGuiControl* AsLabel() { return this; }
+    virtual CSWGuiLabel* AsLabel() { return this; }
     virtual void SetEnabled(int flag);
     virtual void ReSetFont();
     virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
@@ -423,7 +435,7 @@ public:
 #if !KOTOR1  // K1 does not override SetActive
     virtual void SetActive(int flag);
 #endif
-    virtual CSWGuiControl* AsLabelHilight() { return this; }
+    virtual CSWGuiLabelHilight* AsLabelHilight() { return this; }
     virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
     virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiTextParams& textParams,
                             const CSWGuiBorderParams& borderParams,
@@ -466,7 +478,7 @@ public:
     virtual ~CSWGuiScrollBar() __attribute__((noinline));
 #endif
     virtual void Draw(float fAlpha);
-    virtual CSWGuiControl* AsScrollBar() { return this; }
+    virtual CSWGuiScrollBar* AsScrollBar() { return this; }
     virtual void Load(CResGFF* pGFF, CResStruct& rStruct);
     virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiBorderParams& borderParams,
                             const CResRef& resRefDir, const CResRef& resRefThumb);
@@ -544,7 +556,7 @@ public:
     virtual void Draw(float f);
     virtual void HandleInputEvent(int type, int val);
     virtual void SetActive(int flag);
-    virtual CSWGuiControl* AsListBox() { return this; }
+    virtual CSWGuiListBox* AsListBox() { return this; }
     virtual int GetIsSelectable();
     virtual void ReSetFont();
     virtual int DisplayToolTip();
@@ -670,7 +682,7 @@ public:
     CSWGuiProgressBar();
     virtual void SetExtent(const CSWGuiExtent& extent);
     virtual void Draw(float fDelta);
-    virtual CSWGuiControl* AsProgressBar() { return this; }
+    virtual CSWGuiProgressBar* AsProgressBar() { return this; }
     virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
     virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiBorderParams& borderParams,
                             const CSWGuiBorderParams& borderParamsProgress);
@@ -721,7 +733,7 @@ public:
     virtual void HandleMouseOver(int bMouseIsOver);
     virtual void HandleLMouseDown();
     virtual void HandleLMouseUp();
-    virtual CSWGuiControl* AsRadioButton() { return this; }
+    virtual CSWGuiRadioButton* AsRadioButton() { return this; }
 };
 
 K2_LAYOUT_ASSERT(sizeof(CSWGuiRadioButton) == sizeof(CSWGuiButton), "CSWGuiRadioButton adds no data");
@@ -749,7 +761,7 @@ public:
     virtual void HandleLMouseDown();
     virtual void Draw(float f);
     virtual void HandleInputEvent(int type, int val);
-    virtual CSWGuiControl* AsSlider() { return this; }
+    virtual CSWGuiSlider* AsSlider() { return this; }
     virtual void Load(CResGFF* pGFF, CResStruct& resStruct);
     virtual void Initialize(const CSWGuiExtent& extent, const CSWGuiBorderParams& borderParams,
                             const CSWGuiBorderParams& borderParamsHilight,

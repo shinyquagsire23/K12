@@ -442,8 +442,7 @@ void CSWGuiQuickPanel::PortraitCreationCompleted()
 // row.
 void CSWGuiQuickPanel::NameCreationCompleted()
 {
-    CSWGuiMainCharGen* pCharGen = static_cast<CSWGuiMainCharGen*>(m_pParentPanel);
-    pCharGen->SetNameString(pCharGen->m_pCreature->GetName());
+    static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->NameChanged();
     SetState(2);
 }
 

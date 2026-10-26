@@ -162,24 +162,25 @@ void CSWSSoundObject::PackIntoMessage(CSWSMessage* pMsg) {
 
 // Moves the object and broadcasts the new position to nearby players.
 void CSWSSoundObject::ChangePosition(Vector newPos) {
-    if (equal(newPos, m_position)) return;
-    SetPosition(newPos, 1, 1, 0);
-    CAppManager** const ppMgr = &g_pAppManager;
-    CSWSMessage* pMsg = (*ppMgr)->m_pServerExoApp->GetSWSMessage();
-    CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
-    if (pMsg != 0 && pList != 0) {
-        CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-        if (pNode != 0) {
-            do {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->m_pInternal->GetAtPos(pNode));
-                if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
-                    CGameObject* pGameObj = pPlayer->GetGameObject();
-                    if (pGameObj->AsSWSCreature() != 0) {
-                        pMsg->SendServerToPlayerSoundObject_ChangePosition(pPlayer, m_objectId, newPos);
+    if (newPos != m_position) {
+        SetPosition(newPos, 1, 1, 0);
+        CAppManager** const ppMgr = &g_pAppManager;
+        CSWSMessage* pMsg = (*ppMgr)->m_pServerExoApp->GetSWSMessage();
+        CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
+        if (pMsg != 0 && pList != 0) {
+            CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
+            if (pNode != 0) {
+                do {
+                    CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->m_pInternal->GetAtPos(pNode));
+                    if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
+                        CGameObject* pGameObj = pPlayer->GetGameObject();
+                        if (pGameObj->AsSWSCreature() != 0) {
+                            pMsg->SendServerToPlayerSoundObject_ChangePosition(pPlayer, m_objectId, newPos);
+                        }
                     }
-                }
-                pList->m_pInternal->GetNext(pNode);
-            } while (pNode != 0);
+                    pList->m_pInternal->GetNext(pNode);
+                } while (pNode != 0);
+            }
         }
     }
 }
@@ -275,7 +276,7 @@ int CSWSSoundObject::Load(CResGFF* pGFF, CResStruct* pStruct) {
     int bSuccess;
     CResRef rr;
 
-    m_sTag = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, m_sTag).LowerCase();
+    SetTag(pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, m_sTag));
     m_active         = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Active"), bSuccess, static_cast<unsigned char>(m_active));
     m_positional     = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Positional"), bSuccess, static_cast<unsigned char>(m_positional));
     m_looping        = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Looping"), bSuccess, static_cast<unsigned char>(m_looping));

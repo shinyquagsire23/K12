@@ -95,7 +95,7 @@ void CSWSAreaOfEffectObject::AddToArea(CSWSArea* pArea, float x, float y, float 
             m_paCorners[i] = m_paCorners[i] * 0.5f + GetPosition();
     }
     static_cast<CSWSArea*>(GetArea())->AddObjectToArea(m_objectId, a);
-    static_cast<CSWSArea*>(GetArea())->m_objects.Add(m_objectId);
+    static_cast<CSWSArea*>(GetArea())->AddSubArea(this);
     SetAnimation(1);
     UpdateSubAreas(0);
 }
@@ -303,7 +303,7 @@ void CSWSAreaOfEffectObject::RemoveFromArea()
     if (GetArea() != 0) {
         RemoveFromSubAreas(1);
         static_cast<CSWSArea*>(GetArea())->RemoveObjectFromArea(m_objectId);
-        static_cast<CSWSArea*>(GetArea())->m_objects.Remove(m_objectId);
+        static_cast<CSWSArea*>(GetArea())->RemoveSubArea(this);
     }
     SetArea(0);
     Vector vOrigin;
@@ -529,8 +529,7 @@ void CSWSAreaOfEffectObject::LoadAreaEffect(int nRow)
 int CSWSAreaOfEffectObject::LoadEffect(CResGFF* pGff, CResStruct* pStruct)
 {
     int bSuccess;
-    m_sTag = pGff->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, CExoString(""))
-                 .LowerCase();
+    SetTag(pGff->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), bSuccess, CExoString("")));
     m_nAreaEffectId = pGff->ReadFieldINT(pStruct, const_cast<char*>("AreaEffectId"), bSuccess, 0);
     m_effectSpellId = pGff->ReadFieldDWORD(pStruct, const_cast<char*>("SpellId"), bSuccess, 0);
     unsigned char nShape = pGff->ReadFieldBYTE(pStruct, const_cast<char*>("Shape"), bSuccess, 0);

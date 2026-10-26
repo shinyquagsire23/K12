@@ -27,7 +27,7 @@ CExoString::CExoString(const char* str)
 {
     if (str != NULL && strlen(str) != 0) {
         m_nBufferLength = static_cast<unsigned int>(strlen(str) + 1);
-        m_sString = new char[m_nBufferLength];
+        AllocString();
         strcpy(m_sString, str);
     } else {
         m_sString = NULL;
@@ -39,7 +39,7 @@ CExoString::CExoString(const char* str, int length)
 {
     if (length >= 1) {
         m_nBufferLength = length + 1;
-        m_sString = new char[m_nBufferLength];
+        AllocString();
         strncpy(m_sString, str, length);
         m_sString[length] = '\0';
     } else {
@@ -216,7 +216,7 @@ CExoString::CExoString(const CExoString& other)
 {
     if (other.m_sString != NULL && strlen(other.m_sString) != 0) {
         m_nBufferLength = static_cast<unsigned int>(strlen(other.m_sString) + 1);
-        m_sString = new char[m_nBufferLength];
+        AllocString();
         strcpy(m_sString, other.m_sString);
     } else {
         m_sString = NULL;
@@ -230,10 +230,10 @@ CExoString::~CExoString()
         m_nBufferLength = 0;
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 frees the buffer with scalar delete
         delete m_sString;
-#else
-        delete[] m_sString;
-#endif
         m_sString = NULL;
+#else
+        DeallocString();
+#endif
     }
 }
 
@@ -245,26 +245,26 @@ CExoString& CExoString::operator=(const CExoString& other)
                 m_nBufferLength = 0;
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 frees the buffer with scalar delete
                 delete m_sString;
-#else
-                delete[] m_sString;
-#endif
                 m_sString = NULL;
+#else
+                DeallocString();
+#endif
             }
         }
         int length;
         if (other.m_sString != NULL && (length = static_cast<int>(strlen(other.m_sString))) >= 1) {
             if (m_sString == NULL) {
                 m_nBufferLength = length + 1;
-                m_sString = new char[m_nBufferLength];
+                AllocString();
             }
             strcpy(m_sString, other.m_sString);
         } else if (m_sString != NULL) {
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 frees the buffer with scalar delete
             delete m_sString;
-#else
-            delete[] m_sString;
-#endif
             m_sString = NULL;
+#else
+            DeallocString();
+#endif
             m_nBufferLength = 0;
         }
     }
@@ -278,25 +278,25 @@ CExoString& CExoString::operator=(const char* str)
             m_nBufferLength = 0;
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 frees the buffer with scalar delete
             delete m_sString;
-#else
-            delete[] m_sString;
-#endif
             m_sString = NULL;
+#else
+            DeallocString();
+#endif
         }
     }
     if (str != NULL && static_cast<int>(strlen(str)) >= 1) {
         if (m_sString == NULL) {
             m_nBufferLength = static_cast<unsigned int>(strlen(str) + 1);
-            m_sString = new char[m_nBufferLength];
+            AllocString();
         }
         strcpy(m_sString, str);
     } else if (m_sString != NULL) {
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 frees the buffer with scalar delete
         delete m_sString;
-#else
-        delete[] m_sString;
-#endif
         m_sString = NULL;
+#else
+        DeallocString();
+#endif
         m_nBufferLength = 0;
     }
     return *this;
@@ -440,8 +440,10 @@ CExoString CExoString::Left(int nCount) const
         if (nCount >= 0 && length != 0) {
             if (static_cast<unsigned>(length) < static_cast<unsigned>(nCount))
                 nCount = length;
+            if (result.m_sString != NULL)
+                result.DeallocString();
             result.m_nBufferLength = nCount + 1;
-            result.m_sString = new char[result.m_nBufferLength];
+            result.AllocString();
             strncpy(result.m_sString, m_sString, nCount)[nCount] = '\0';
         }
     }
@@ -456,8 +458,10 @@ CExoString CExoString::Right(int nCount) const
         if (nCount >= 0 && length != 0) {
             if (static_cast<unsigned>(length) < static_cast<unsigned>(nCount))
                 nCount = length;
+            if (result.m_sString != NULL)
+                result.DeallocString();
             result.m_nBufferLength = nCount + 1;
-            result.m_sString = new char[result.m_nBufferLength];
+            result.AllocString();
             strncpy(result.m_sString, m_sString + static_cast<unsigned>(length - nCount), nCount)[nCount] = '\0';
         }
     }
@@ -472,8 +476,10 @@ CExoString CExoString::SubString(int nStart, int nCount) const
         if (nStart >= 0 && nCount != 0 && static_cast<unsigned>(length) > static_cast<unsigned>(nStart)) {
             if (nCount < 0)
                 nCount = length - nStart;
+            if (result.m_sString != NULL)
+                result.DeallocString();
             result.m_nBufferLength = nCount + 1;
-            result.m_sString = new char[result.m_nBufferLength];
+            result.AllocString();
             strncpy(result.m_sString, m_sString + nStart, nCount)[nCount] = '\0';
         }
     }
@@ -718,7 +724,7 @@ CExoString::CExoString(int value)
     char buf[33];
     sprintf(buf, "%i", value);
     m_nBufferLength = static_cast<unsigned int>(__strlen_chk(buf, sizeof(buf)) + 1);
-    m_sString = new char[m_nBufferLength];
+    AllocString();
     strcpy(m_sString, buf);
 }
 

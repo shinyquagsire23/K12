@@ -451,9 +451,9 @@ void CExoInput::SetMousePos(int a, int b, bool c)
 }
 #endif
 
-int CExoInput::GetNumberJoysticks()
+char CExoInput::GetNumberJoysticks()
 {
-    return m_pInternal->m_pMainDevice->m_nNumJoysticks;
+    return static_cast<char>(m_pInternal->m_pMainDevice->m_nNumJoysticks);
 }
 
 int CExoInput::IsJoystickActive()

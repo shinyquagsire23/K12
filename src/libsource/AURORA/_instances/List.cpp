@@ -9,7 +9,7 @@
 #include "Plane.h"
 #include "aurgrass.h"
 
-namespace Aurora { enum AuroraBlendModes { }; }
+#include "aurblendmodes.h"
 
 // Pointer elements need only a forward declaration.
 struct AnimRun;

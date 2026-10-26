@@ -66,7 +66,7 @@ CSWGuiTitleMovies::CSWGuiTitleMovies(CSWGuiManager* pGuiManager)
     StopLoadFromLayout();
     ScaleExtentForResolution();
 
-    CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem->AsButton());
+    CSWGuiButton* pTemplate = m_listBox.m_pProtoItem->AsButton();
     if (pTemplate != 0)
     {
         pTemplate->m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
@@ -107,7 +107,7 @@ CSWGuiTitleMovies::CSWGuiTitleMovies(CSWGuiManager* pGuiManager)
     m_labelUnlocked.m_tail.bVisible = 1;
     m_labelUnlockedValue.m_tail.bVisible = 1;
 
-    CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem->AsButton());
+    CSWGuiButton* pTemplate = m_listBox.m_pProtoItem->AsButton();
     if (pTemplate != 0)
     {
         pTemplate->m_border.m_params.m_color =
@@ -357,7 +357,7 @@ void CSWGuiTitleMovies::OnMoviePicked(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg != 0)
     {
-        CSWGuiButton* pRow = static_cast<CSWGuiButton*>(pControl->AsButton());
+        CSWGuiButton* pRow = pControl->AsButton();
         CExoString* pMovieName = reinterpret_cast<CExoString*>(pRow->m_tail.m_nUserData);
 
         if (pMovieName == 0)
@@ -390,23 +390,12 @@ void CSWGuiTitleMovies::HandleInputEvent(int type, int val)
         {
             g_pAppManager->m_pClientExoApp->SetStartMenuMusicOnMovieEnd(1);
             g_pAppManager->m_pClientExoApp->StartMenuMusic(1, 127, 2);
-#if KOTOR1
-            // K1 has no main-menu idle timer and no panel chain: state 4 is stamped once.
-            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            m_pGuiManager->PopModalPanel();
-
-            m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-#else
+#if !KOTOR1  // K1 has no main-menu idle timer
             g_pAppManager->m_pClientExoApp->EnableMainMenuIdleTimer();
+#endif
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-
-            CSWGuiPanel* pChain = this;
-            do {
-                pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-                pChain = pChain->m_pNextInChain;
-            } while (pChain != 0);
-#endif
+            SetToBeDeleted(0);
         }
     }
 

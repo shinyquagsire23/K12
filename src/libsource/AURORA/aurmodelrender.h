@@ -16,6 +16,7 @@ public:
     virtual void* AsPartDummy() { return 0; }
 
     virtual void Init();
+    void SetupVertexArrays();
 
     ~PartProjection();
 

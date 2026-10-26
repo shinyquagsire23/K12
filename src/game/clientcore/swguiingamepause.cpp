@@ -223,14 +223,18 @@ void CSWGuiInGamePause::SetPauseReason(unsigned char reason)
     {
         m_label2.m_tail.bVisible = 1;
 
+        CSWGuiText* pText2;
+        int nPrevY;
+        int nPrevH;
+        int nIdealPress;
         CExoString sPressText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_PRESS_PAUSE_TO_CONTINUE));
         g_pTlkTable->ParseStr(sPressText);
         m_label2.m_text.m_params.SetText(sPressText);
 
-        CSWGuiText* pText2 = &m_label2.m_text;
-        int nPrevY = extent.y;
-        int nPrevH = extent.h;
-        int nIdealPress = pText2->GetIdealHeight();
+        pText2 = &m_label2.m_text;
+        nPrevY = extent.y;
+        nPrevH = extent.h;
+        nIdealPress = pText2->GetIdealHeight();
         extent.x = m_label2.m_extent.x;
         extent.w = m_label2.m_extent.w;
         extent.h = nIdealPress;

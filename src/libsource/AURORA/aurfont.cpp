@@ -160,16 +160,10 @@ void SetConsoleFont(char* pszFont)
 #endif
 }
 
+#if !KOTOR1
 // Compiles one display list per printable ASCII glyph out of the raster table.
-void AurInitFont()
+inline void GLRender::SetUpTextFormat()
 {
-#if KOTOR1  // K1: the console font is the texture font "fnt_console"; no bitmap display lists
-    s_bUseBitmapFont = false;
-    textureFont = new StringGob(1);
-    consoleFont = textureFont->SetFont(const_cast<char*>("fnt_console"));
-    initialized = 1;
-}
-#else
     ASLgl::glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     fontOffset = ASLgl::glGenLists(128);
 
@@ -178,27 +172,17 @@ void AurInitFont()
         ASLgl::glBitmap(8, 13, 0.0f, 2.0f, 10.0f, 0.0f, rasters[i]);
         ASLgl::glEndList();
     }
-
-    initialized = 1;
 }
 #endif
 
-void AurFreeFont()
+inline void GLRender::FreeTextFont()
 {
-    if (initialized) {
-        initialized = 0;
-        ASLgl::glDeleteLists(fontOffset, 128);
-        delete textureFont;
-        textureFont = 0;
-    }
+    ASLgl::glDeleteLists(fontOffset, 128);
 }
 
 // Draw one line with the bitmap font in a 0..1 screen-space ortho projection.
-void PrintStringScreenPos(char* pszText, float fX, float fY)
+inline void GLRender::PrintStringAtScreenPos(char* pszText, float fX, float fY)
 {
-    if (pszText == 0 || *pszText == 0)
-        return;
-
     ASLgl::glPushAttrib(GL_TEXTURE_BIT | GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glDisable(GL_LIGHTING);
@@ -213,6 +197,35 @@ void PrintStringScreenPos(char* pszText, float fX, float fY)
     ASLgl::glPopMatrix();
     ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopAttrib();
+}
+
+void AurInitFont()
+{
+#if KOTOR1  // K1: the console font is the texture font "fnt_console"; no bitmap display lists
+    s_bUseBitmapFont = false;
+    textureFont = new StringGob(1);
+    consoleFont = textureFont->SetFont(const_cast<char*>("fnt_console"));
+#else
+    GLRender::SetUpTextFormat();
+#endif
+    initialized = 1;
+}
+
+void AurFreeFont()
+{
+    if (initialized) {
+        initialized = 0;
+        GLRender::FreeTextFont();
+        delete textureFont;
+        textureFont = 0;
+    }
+}
+
+void PrintStringScreenPos(char* pszText, float fX, float fY)
+{
+    if (pszText == 0 || *pszText == 0)
+        return;
+    GLRender::PrintStringAtScreenPos(pszText, fX, fY);
 }
 
 // Draws the same line with the current texture font, in a centred hundredth-of-a-pixel ortho box.

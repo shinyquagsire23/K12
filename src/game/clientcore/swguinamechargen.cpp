@@ -27,6 +27,7 @@ extern unsigned int pressedGamepadButtons;
 #include "port/libcstring.h"
 #include "exoinput.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // The longest name the edit box and the virtual keyboard take.
 enum { NAME_MAX_LENGTH = 18 };
@@ -141,18 +142,11 @@ void CSWGuiNameChargen::HandleCancelButton()
         m_pGuiManager->PopModalPanel();
         m_pParentPanel->SetVisible(1);
 
-        CSWGuiPanel* pChain = this;
+        SetToBeDeleted(0);
 #if KOTOR1
-        // K1 has no panel chain: each panel gets one state-4 stamp.
-        pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
         // K1 also closes the on-screen keyboard.
         if (SDL_IsChromebook())
             SDL_StopTextInput();
-#else
-        do {
-            pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-            pChain = pChain->m_pNextInChain;
-        } while (pChain != 0);
 #endif
 
         if (m_nParentKind == 1)
@@ -205,11 +199,7 @@ void CSWGuiNameChargen::OnPanelAdded()
     else if (m_nParentKind == 2)
         sName = static_cast<CSWGuiCustomPanel*>(m_pParentPanel)->GetCurrentName();
 
-#if KOTOR1
     if (sName.GetLength() != 0)
-#else
-    if (sName.m_sString != 0 && static_cast<int>(strlen(sName.m_sString)) != 0)
-#endif
         m_editBox.m_editText.SetText(sName);
     else
         HandleRandomName();
@@ -237,7 +227,7 @@ void CSWGuiNameChargen::HandleDoneButton(CSWGuiControl* pControl)
 
         m_pGuiManager->PopModalPanel();
         m_pParentPanel->SetVisible(1);
-        m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
+        SetToBeDeleted(0);
         if (SDL_IsChromebook())
             SDL_StopTextInput();
 
@@ -247,10 +237,10 @@ void CSWGuiNameChargen::HandleDoneButton(CSWGuiControl* pControl)
             static_cast<CSWGuiCustomPanel*>(m_pParentPanel)->NameCreationCompleted();
     }
 #else
-    if (sName.m_sString != 0 && static_cast<int>(strlen(sName.m_sString)) != 0)
+    if (sName.GetLength() != 0)
     {
-        while (sName[(sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0) - 1] == ' ')
-            sName = sName.Left((sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0) - 1);
+        while (sName[sName.GetLength() - 1] == ' ')
+            sName = sName.Left(sName.GetLength() - 1);
 
         m_pCreature->SetName(sName, CExoString(""));
 
@@ -259,6 +249,7 @@ void CSWGuiNameChargen::HandleDoneButton(CSWGuiControl* pControl)
         else if (m_nParentKind == 2)
             static_cast<CSWGuiCustomPanel*>(m_pParentPanel)->NameCreationCompleted();
 
+        // inlined CSWGuiPanel::SetToBeDeleted(0): the call moves one landing pad (LENGTH -4)
         CSWGuiPanel* pChain = this;
         do {
             pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
@@ -280,8 +271,6 @@ void CSWGuiNameChargen::HandleDoneButton(CSWGuiControl* pControl)
 
 void CSWGuiNameChargen::HandleInputEvent(int nType, int nArg)
 {
-#if KOTOR1
-    // K1: B goes through HandleCancelButton, and the keyboard key clears the pad latch first.
     if (nArg != 0)
     {
         switch (nType)
@@ -292,9 +281,12 @@ void CSWGuiNameChargen::HandleInputEvent(int nType, int nArg)
             HandleCancelButton();
             break;
         case INPUTEVENT_GUI_X:
+#if KOTOR1
+            // K1: the keyboard key clears the pad latch first.
             pressedGamepadButtons = 0;
             if (SDL_IsChromebook())
                 m_editBox.m_editText.SetText(CExoString(""));
+#endif
             ASLPlat_ShowVirtualKeyboard(m_editBox.m_editText.m_sText.CStr(), NAME_MAX_LENGTH);
             break;
         case INPUTEVENT_GUI_Y:
@@ -306,51 +298,6 @@ void CSWGuiNameChargen::HandleInputEvent(int nType, int nArg)
             break;
         }
     }
-#else
-    if (nArg != 0)
-    {
-        switch (nType)
-        {
-        case INPUTEVENT_GUI_B:
-        case INPUTEVENT_GUI_BACK:
-            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-
-            if (m_pParentPanel != 0)
-            {
-                m_pGuiManager->PopModalPanel();
-                m_pParentPanel->SetVisible(1);
-
-                CSWGuiPanel* pChain = this;
-#if KOTOR1
-                // K1 has no panel chain: each panel gets one state-4 stamp.
-                pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-#else
-                do {
-                    pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-                    pChain = pChain->m_pNextInChain;
-                } while (pChain != 0);
-#endif
-
-                if (m_nParentKind == 1)
-                    static_cast<CSWGuiQuickPanel*>(m_pParentPanel)->CancelledByChild();
-                else if (m_nParentKind == 2)
-                    static_cast<CSWGuiCustomPanel*>(m_pParentPanel)->CancelledByChild();
-            }
-            break;
-        case INPUTEVENT_GUI_X:
-            ASLPlat_ShowVirtualKeyboard(m_editBox.m_editText.m_sText.CStr(), NAME_MAX_LENGTH);
-            break;
-        case INPUTEVENT_GUI_Y:
-            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            HandleRandomName();
-            break;
-        case INPUTEVENT_GUI_START:
-            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            break;
-        }
-    }
-
-#endif
 
     CSWGuiPanel::HandleInputEvent(nType, nArg);
 }

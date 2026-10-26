@@ -245,20 +245,12 @@ void Parse(char* pszLine, MaxFace& value)
 
 MdlNode* FindMdlNode(MdlNode* pNode, char* pszName);
 
-static inline char* ListStringAt(List<char*>* pList, int nIndex)
-{
-    return pList->m_pData[nIndex];
-}
-
 MdlNode* FindMdlNode(MdlNode* pNode, char* pszName)
 {
     if (!pNode)
         return 0;
 
-    if (!_stricmp(pszName, ListStringAt(
-            &(pNode->m_pTree->AsModel() ? pNode->m_pTree->AsModel()
-                                        : pNode->m_pTree->AsAnimation()->m_pModel)->m_listStrings,
-            pNode->m_nNameIndex)))
+    if (!_stricmp(pszName, pNode->TranslateNodeName()))
         return pNode;
 
     int nCount = pNode->m_listChildren.m_count;
@@ -409,8 +401,7 @@ void Parse(char* pszLine, List<T>& list)
                 if (list.m_count == nCount)
                     list.Add(list.m_pData[list.m_count - 1]);
             } else {
-                list.allocate(1);
-                list.m_count = 1;
+                list.SetSize(1);
             }
             // The local copy is required; it keeps the boundary read ahead of the data load.
             int n = nCount;
@@ -2077,11 +2068,8 @@ void MdlNode::InternalParseField(char* pszLine)
             m_pParent = 0;
             m_pTree->m_pMdlNode = this;      // "no parent" means this node is the tree's root
         }
-        else if (m_pTree == 0) {
-            m_pParent = 0;
-        }
         else {
-            MdlNode* pParent = FindMdlNode(m_pTree->m_pMdlNode, szName);
+            MdlNode* pParent = FindMdlNode(m_pTree, szName);
             m_pParent = reinterpret_cast<unsigned long long>(pParent);
             if (pParent)
                 pParent->m_listChildren.Add(this);
@@ -2442,8 +2430,7 @@ void MdlNodeTriMesh::InternalParseField(char* pszLine)
                       pPost->m_faces);
         }
         if (pPost->m_faces.m_count >= 1) {
-            m_faces.allocate(pPost->m_faces.m_count);
-            m_faces.m_count = pPost->m_faces.m_count;
+            m_faces.SetSize(pPost->m_faces.m_count);
             for (int64_t i = 0; i < pPost->m_faces.m_count; i++)
                 m_faces.m_pData[i].m_nSurfaceMaterial = pPost->m_faces.m_pData[i].m_nMaterial;
         }

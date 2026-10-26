@@ -138,17 +138,7 @@ public:
         if (val)
         {
             g_pAppManager->m_pClientExoApp->GetInGameGui()->HideDebugMenu();
-#if KOTOR1
-            // K1 has no panel chain: one state-4 stamp.
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-            CSWGuiPanel* pPanel = this;
-            do
-            {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel != 0);
-#endif
+            SetToBeDeleted(0);
         }
     }
 

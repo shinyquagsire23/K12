@@ -1163,23 +1163,8 @@ bool Gob::Amputate(char* pszName)
 
         if (m_listParts.Contains(pNode) != 0)
         {
-            int nIdx = 0;
-            while (m_listParts.m_pData[nIdx] != pNode)
-            {
-                if (++nIdx == m_listParts.m_count)
-                {
-                    nIdx = -1;
-                    break;
-                }
-            }
-
-            if (!removedelref)
-            {
-                Model* pModel = m_listModels.m_pData[nIdx];
-                if (--pModel->m_nRefCount == 0)
-                    pModel->foobar(pModel);
-            }
-
+            int nIdx = m_listParts.IndexOf(pNode);
+            m_listModels.m_pData[nIdx]->DelRef(this);
             m_listParts.DelIndex(nIdx);
             m_listModels.DelIndex(nIdx);
         }
@@ -1521,8 +1506,8 @@ bool TreeHasSingleLightProperties(Part* pPart)
             MdlNodeTriMesh* pFirstNode = pFirst->m_pNode->AsMdlNodeTriMesh();
 // Reads the diffuse colour first, then the ambient; the two field names are swapped relative to
 // the data they carry.
-            if (!equal(pNode->m_vDiffuse, pFirstNode->m_vDiffuse) ||
-                !equal(pNode->m_vAmbient, pFirstNode->m_vAmbient))
+            if (pNode->m_vDiffuse != pFirstNode->m_vDiffuse ||
+                pNode->m_vAmbient != pFirstNode->m_vAmbient)
                 return false;
         }
     }
@@ -1615,10 +1600,8 @@ void GetAllNamedTextures(Part* pPart, List<CAurTexture*>& out, char* pszName)
     if (pMesh != 0)
     {
         CAurTexture* pTexture = pMesh->m_pMaterial->Textures(0).m_pObject->GetReferencedTexture();
-        if (pTexture->AsCAurTextureBasic() != 0 &&
-            _stricmp(pTexture->GetName(), pszName) == 0 &&
-            out.Contains(pTexture) == 0)
-            out.Add(pTexture);
+        if (pTexture->AsCAurTextureBasic() != 0 && _stricmp(pTexture->GetName(), pszName) == 0)
+            out.AddUnique(pTexture);
     }
 
     for (int i = 0; i < pPart->m_nChildren; i++)
@@ -1666,13 +1649,7 @@ void Gob::ReattachReference(CAurObject* a, char* b)
 
             Quaternion q = m_qOrientation;
             Vector v = ref->m_pObject->GetPosition();
-            // inlined Quaternion::zdir()
-            Vector vDir = Vector{
-                2.0f * (q.x * q.z + q.w * q.y),
-                2.0f * (q.z * q.y - q.x * q.w),
-                1.0f - 2.0f * (q.x * q.x + q.y * q.y)
-            };
-            m_qOrientation = RotationArc(vDir, v - m_vPosition) * q;
+            m_qOrientation = RotationArc(q.zdir(), v - m_vPosition) * q;
         }
 
         parts.DelIndex(0);
@@ -1859,6 +1836,7 @@ static void snprintff(char* buf, uint64_t n, const char* fmt, ...) {
 // for an animation tree the table belongs to the animation's model.
 static char* GetPartNodeName(Part* pPart)
 {
+    // inlined MdlNode::TranslateNodeName()
     MdlNode* pNode = pPart->m_pNode;
     MaxTree* pTree = pNode->m_pTree;
     int nKind = pTree->m_cType & MaxTree::kTreeTypeMask;
@@ -1981,6 +1959,7 @@ int Gob::ReplaceTexture(char* pszPublicName, char* pszTexName, int n, unsigned s
     {
         PartTriMesh* pMesh = parts.m_pData[i];
         MdlNode* pNode = pMesh->m_pNode;
+        // inlined MdlNode::TranslateNodeName()
         MaxTree* pTree = pNode->m_pTree;
         int nKind = pTree->m_cType & MaxTree::kTreeTypeMask;
         Animation* pAnim = nKind == MaxTree::kTreeAnimation ? static_cast<Animation*>(pTree) : static_cast<Animation*>(0);
@@ -2403,14 +2382,16 @@ void Gob::EnableRenderBumpedOut(char* pszTexture, float fBumpDist)
     int nSize = 0;
     char szBlending[32];
     szBlending[0] = 0;
-    int nBlendMode50 = 0;
-    int nBlendMode60 = 1;
-
     CAurTexture* pTexture = AurTextureGetReference(pszTexture, 0);
+    Aurora::AuroraBlendModes eBlendSrc = Aurora::kBlendSrcAlpha;
+    Aurora::AuroraBlendModes eBlendDst = Aurora::kBlendInvSrcAlpha;
+
     if (pTexture->IsTxiLoaded())
     {
-        unsigned char* pTxi = pTexture->GetTxiData();
-        int nLength = pTexture->GetTxiSize();
+        unsigned char* pTxi;
+        int nLength;
+        pTxi = pTexture->GetTxiData();
+        nLength = pTexture->GetTxiSize();
         if (pTxi != 0 && nLength >= 1)
         {
             char szLine[8192];
@@ -2434,11 +2415,11 @@ void Gob::EnableRenderBumpedOut(char* pszTexture, float fBumpDist)
                     Parse(pszLine + __strlen_chk("blending", sizeof("blending")), szBlending);
                 if (szBlending[0] != 0) {
                     if (memcmp(szBlending, "additive", sizeof("additive")) == 0) {
-                        nBlendMode50 = 0;
-                        nBlendMode60 = 2;
+                        eBlendSrc = Aurora::kBlendSrcAlpha;
+                        eBlendDst = Aurora::kBlendOne;
                     } else if (memcmp(szBlending, "punchthrough", sizeof("punchthrough")) == 0) {
-                        nBlendMode50 = 2;
-                        nBlendMode60 = 3;
+                        eBlendSrc = Aurora::kBlendOne;
+                        eBlendDst = Aurora::kBlendZero;
                     }
                 }
             } while (nRemaining > 0);
@@ -2446,13 +2427,15 @@ void Gob::EnableRenderBumpedOut(char* pszTexture, float fBumpDist)
     }
     else
     {
-        void* pRes = AurResGet(pszTexture, const_cast<char*>(".txi"), &nSize, true);
+        void* pRes;
+        int nCount;
+        pRes = AurResGet(pszTexture, const_cast<char*>(".txi"), &nSize, true);
         if (pRes == 0)
         {
             pTexture->SetTxiLoaded(true);
             return;
         }
-        int nCount = (nSize < 0) ? ~nSize : nSize;
+        nCount = (nSize < 0) ? ~nSize : nSize;
         if (nCount > 0)
         {
             pTexture->SetTxiData(AurResGetDataBytes(0, pRes), nCount);
@@ -2465,11 +2448,11 @@ void Gob::EnableRenderBumpedOut(char* pszTexture, float fBumpDist)
                     Parse(pszLine + __strlen_chk("blending", sizeof("blending")), szBlending);
                 if (szBlending[0] != 0) {
                     if (memcmp(szBlending, "additive", sizeof("additive")) == 0) {
-                        nBlendMode50 = 0;
-                        nBlendMode60 = 2;
+                        eBlendSrc = Aurora::kBlendSrcAlpha;
+                        eBlendDst = Aurora::kBlendOne;
                     } else if (memcmp(szBlending, "punchthrough", sizeof("punchthrough")) == 0) {
-                        nBlendMode50 = 2;
-                        nBlendMode60 = 3;
+                        eBlendSrc = Aurora::kBlendOne;
+                        eBlendDst = Aurora::kBlendZero;
                     }
                 }
             }
@@ -2490,8 +2473,8 @@ void Gob::EnableRenderBumpedOut(char* pszTexture, float fBumpDist)
         nSize = 0;
         listParts[i]->m_pMaterial->m_lstSrcBlend.SetSize(2);
         listParts[i]->m_pMaterial->m_lstDstBlend.SetSize(2);
-        listParts[i]->m_pMaterial->m_lstSrcBlend.m_pData[1] = Aurora::AuroraBlendModes(nBlendMode50);
-        listParts[i]->m_pMaterial->m_lstDstBlend.m_pData[1] = Aurora::AuroraBlendModes(nBlendMode60);
+        listParts[i]->m_pMaterial->m_lstSrcBlend.m_pData[1] = eBlendSrc;
+        listParts[i]->m_pMaterial->m_lstDstBlend.m_pData[1] = eBlendDst;
     }
 
     m_fBumpOutDistance = fBumpDist;
@@ -2936,7 +2919,11 @@ Part* MdlNode::InternalCreateInstance(Gob* pGob)
 
 MdlNode* MdlNode::InternalConJoin()
 {
-    return new MdlNode(0);
+#if KOTOR1  // K1 builds the copy unnamed
+    return new MdlNode(nullptr);
+#else
+    return new MdlNode(TranslateNodeName());
+#endif
 }
 
 MdlNode::MdlNode(char*)
@@ -3485,7 +3472,11 @@ MdlNodeReference::MdlNodeReference(char* pszName) : MdlNode(pszName)
 
 MdlNodeReference* MdlNodeReference::InternalConJoin()
 {
+#if KOTOR1  // K1 builds the copy unnamed
     return new MdlNodeReference(nullptr);
+#else
+    return new MdlNodeReference(TranslateNodeName());
+#endif
 }
 
 MdlNodeCamera::MdlNodeCamera(char* pszName) : MdlNode(pszName)
@@ -3495,7 +3486,11 @@ MdlNodeCamera::MdlNodeCamera(char* pszName) : MdlNode(pszName)
 
 MdlNodeCamera* MdlNodeCamera::InternalConJoin()
 {
+#if KOTOR1  // K1 builds the copy unnamed
     return new MdlNodeCamera(nullptr);
+#else
+    return new MdlNodeCamera(TranslateNodeName());
+#endif
 }
 
 MdlNode* MdlNodeCameraConJoinTwinMysLexia(void* pv)
@@ -3518,7 +3513,11 @@ MdlNodeLight::MdlNodeLight(char* pszName) : MdlNode(pszName)
 
 MdlNodeLight* MdlNodeLight::InternalConJoin()
 {
+#if KOTOR1  // K1 builds the copy unnamed
     return new MdlNodeLight(nullptr);
+#else
+    return new MdlNodeLight(TranslateNodeName());
+#endif
 }
 
 Vector defaultdiffuse(0.8f, 0.8f, 0.8f);  // the engine default material colours
@@ -3604,7 +3603,11 @@ MdlNodeTriMesh::MdlNodeTriMesh(char* pszName) : MdlNode(pszName)
 
 MdlNodeTriMesh* MdlNodeTriMesh::InternalConJoin()
 {
+#if KOTOR1  // K1 builds the copy unnamed
     return new MdlNodeTriMesh(nullptr);
+#else
+    return new MdlNodeTriMesh(TranslateNodeName());
+#endif
 }
 
 MdlNodeSkin::MdlNodeSkin(char* pszName) : MdlNodeTriMesh(pszName)
@@ -3622,7 +3625,11 @@ MdlNodeSkin::MdlNodeSkin(char* pszName) : MdlNodeTriMesh(pszName)
 
 MdlNodeSkin* MdlNodeSkin::InternalConJoin()
 {
+#if KOTOR1  // K1 builds the copy unnamed
     return new MdlNodeSkin(nullptr);
+#else
+    return new MdlNodeSkin(TranslateNodeName());
+#endif
 }
 
 MdlNodeAnimMesh::MdlNodeAnimMesh(char* pszName) : MdlNodeTriMesh(pszName)
@@ -3639,7 +3646,11 @@ MdlNodeAnimMesh::MdlNodeAnimMesh(char* pszName) : MdlNodeTriMesh(pszName)
 
 MdlNodeAnimMesh* MdlNodeAnimMesh::InternalConJoin()
 {
+#if KOTOR1  // K1 builds the copy unnamed
     return new MdlNodeAnimMesh(nullptr);
+#else
+    return new MdlNodeAnimMesh(TranslateNodeName());
+#endif
 }
 
 MdlNodeDanglyMesh::MdlNodeDanglyMesh(char* pszName) : MdlNodeTriMesh(pszName)
@@ -3700,7 +3711,11 @@ MdlNodeEmitter::MdlNodeEmitter(char* pszName) throw() : MdlNode(pszName)
 
 MdlNodeEmitter* MdlNodeEmitter::InternalConJoin()
 {
+#if KOTOR1  // K1 builds the copy unnamed
     return new MdlNodeEmitter(nullptr);
+#else
+    return new MdlNodeEmitter(TranslateNodeName());
+#endif
 }
 
 #if KOTOR1  // K1's ConJoin twin factory
@@ -4401,6 +4416,8 @@ Part* FindPart(Part* pPart, char* pszName)
     if (!pPart || !pszName)
         return 0;
 
+#if KOTOR1  // K1: the call form measures worse here and in Gob::ReplaceTextureSubtree
+    // inlined MdlNode::TranslateNodeName()
     MaxTree* pTree = pPart->m_pNode->m_pTree;
     int nTag = pTree->m_cType & MaxTree::kTreeTypeMask;
     K2_ASSUME(pTree != 0 && (nTag == MaxTree::kTreeModel || nTag == MaxTree::kTreeAnimation));   // a node's tree is the model or animation that loaded it
@@ -4409,6 +4426,10 @@ Part* FindPart(Part* pPart, char* pszName)
 
     if (!_stricmp(ListStringAt(&pModel->m_listStrings, pPart->m_pNode->m_nNameIndex), pszName))
         return pPart;
+#else
+    if (!_stricmp(pPart->m_pNode->TranslateNodeName(), pszName))
+        return pPart;
+#endif
 
     for (int64_t i = 0; i < pPart->m_nChildren; i++) {
         Part* pFound = FindPart(pPart->m_paChildren[i], pszName);
@@ -5091,7 +5112,7 @@ PartLight::~PartLight()
         if (!pLight)
             continue;
         if (pLight->m_lights.Contains(this)) {
-            int idx = pLight->m_lights.GetIndex(this);
+            int idx = pLight->m_lights.IndexOf(this);
             if (idx >= 0) {
                 pLight->m_lights.DelIndex(idx);
                 pLight->m_lightWeights.DelIndex(idx);

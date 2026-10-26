@@ -43,9 +43,9 @@ Gob* CSWCRoom::SpawnRoom(CAurScene* pScene, const CResRef& resRoom, Vector& vPos
         return 0;
 
     if (resRoom.IsValid())
-        m_resRoom = resRoom;
+        SetRoomName(resRoom);
 
-    if (vPosition.x != 0.0f || vPosition.y != 0.0f || vPosition.z != 0.0f)
+    if (!vPosition.IsZero())
         m_vPosition = vPosition;
 
     m_pRoomModel = pScene->SpawnRoom(m_resRoom.GetResRefStr(), m_vPosition, m_qOrientation);

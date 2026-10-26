@@ -291,10 +291,7 @@ void PartTrigger::Draw(bool)
     GLRender::Disable(Aurora::kCapTexture2D);
     GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glColor4fv(afColor);
-    GLRender::BeginImmediatePrimitive(Aurora::kPrimLineLoop);
-    for (int i = 0; i < m_listOutline.m_count; i++)
-        ASLgl::glVertex3fv(reinterpret_cast<const float*>(&m_listOutline.m_pData[i]));
-    ASLgl::glEnd();
+    GLRender::DrawFromVerts(Aurora::kPrimLineLoop, m_listOutline);
     GLRender::Enable(Aurora::kCapBlend);
 
     if (m_bAdditive)
@@ -302,10 +299,7 @@ void PartTrigger::Draw(bool)
     else
         GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
-    GLRender::BeginImmediatePrimitive(Aurora::kPrimTriangles);
-    for (int i = 0; i < m_listFillTriangles.m_count; i++)
-        ASLgl::glVertex3fv(reinterpret_cast<const float*>(&m_listFillTriangles.m_pData[i]));
-    ASLgl::glEnd();
+    GLRender::DrawFromVerts(Aurora::kPrimTriangles, m_listFillTriangles);
     ASLgl::glPopAttrib();
 }
 
@@ -465,23 +459,11 @@ Part* MdlNodeTriggerCreateInstance(void* pv, Gob* pGob)
     return static_cast<MdlNodeTrigger*>(pv)->InternalCreateInstance(pGob);
 }
 
-// Builds the node named by the owning model's string table. A node's names live in its model's
-// string list, indexed by m_nNameIndex; for an animation tree the table belongs to the animation's
-// model, so the tree's tag word selects the path.
-//
-// The AsModel and AsAnimation calls are deliberate rather than a tag test, since both are virtual
-// and the tree pointer is re-read on each.
-static inline char* ListStringAt(List<char*>* pList, int nIndex)
-{
-    return pList->m_pData[nIndex];
-}
-
+// Builds a copy of this node under the same name (TranslateNodeName reads it from the owning
+// model's string table).
 __attribute__((noinline)) MdlNode* MdlNodeTrigger::InternalConJoin()
 {
-    return new MdlNodeTrigger(ListStringAt(
-        &(m_pTree->AsModel() ? m_pTree->AsModel() : m_pTree->AsAnimation()->m_pModel)
-             ->m_listStrings,
-        m_nNameIndex));
+    return new MdlNodeTrigger(TranslateNodeName());
 }
 
 // This kind builds no render part; the Gob pointer is the tree builder's and every

@@ -24,6 +24,7 @@
 #include "exotlktable.h"
 #include "swgui.h"
 #include "exoresman.h"
+#include "CExoArrayListImpl.h"
 #include "exostring.h"
 #include "nwseffect.h"
 #include "nwseffectlist.h"
@@ -100,9 +101,7 @@ CSWGuiDebugMenu::CSWGuiDebugMenu(CSWGuiManager* pGuiManager)
 
     CExoArrayList<CSWGuiControl*> list;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
-    list.m_capacity = 38;
-    list.m_pArray = new CSWGuiControl*[38];
-    list.m_count = 38;
+    list.SetSize(38);
 
     list.m_pArray[0] = CreateOption(CExoString("Heal"),
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDebugMenu::Heal), pTemplate);
@@ -202,9 +201,7 @@ CSWGuiDebugMenu::CSWGuiDebugMenu(CSWGuiManager* pGuiManager, int bHideQaOptions)
 
     CExoArrayList<CSWGuiControl*> list;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
-    list.m_capacity = 71;
-    list.m_pArray = new CSWGuiControl*[71];
-    list.m_count = 71;
+    list.SetSize(71);
 
     list.m_pArray[0] = CreateOption(CExoString("Turbo + Kill all + Open Doors"),
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDebugMenu::TurboOpenKillAll), pTemplate, 0);
@@ -446,8 +443,7 @@ void CSWGuiDebugMenu::KillAllEnemies(CSWGuiControl* pControl)
 void CSWGuiDebugMenu::SpawnCheatBot(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pPlayer) {
         Vector vPos = pPlayer->m_position + pPlayer->m_orientation * 1.5f;
         CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetModule()->GetArea();
@@ -474,8 +470,7 @@ void CSWGuiDebugMenu::SpawnCheatBot(CSWGuiControl* pControl)
 void CSWGuiDebugMenu::IncreaseInfluence(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pCreature) {
         CSWPartyTable* pPartyTable = g_pAppManager->m_pServerExoApp->GetPartyTable();
         if (pPartyTable) {
@@ -515,8 +510,7 @@ void CSWGuiDebugMenu::IncreaseInfluence(CSWGuiControl* pControl)
 void CSWGuiDebugMenu::DecreaseInfluence(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pCreature) {
         CSWPartyTable* pPartyTable = g_pAppManager->m_pServerExoApp->GetPartyTable();
         if (pPartyTable) {
@@ -652,7 +646,7 @@ void CSWGuiDebugMenu::TestFunction(CSWGuiControl* pControl)
 #if KOTOR1  // K1: leave combat, drop the player's queue and restore the camera first
     g_pAppManager->m_pClientExoApp->SetCombatMode(0);
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId())->ClearAllActions(1);
+    pServer->GetPlayerCreature()->ClearAllActions(1);
     g_pAppManager->m_pClientExoApp->GetModule()->RestoreCamera();
 #endif
     g_pAppManager->m_pClientExoApp->GetInGameGui()->HideDebugMenu();
@@ -951,40 +945,32 @@ void CSWGuiDebugMenu::HandleInputEvent(int type, int val)
 void CSWGuiDebugMenu::IncreaseStrength(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nSTRBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetSTRBase(nScore + 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nSTRBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetSTRBase(nScore + 1);
     }
 }
 
 void CSWGuiDebugMenu::DecreaseStrength(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nSTRBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetSTRBase(nScore - 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nSTRBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetSTRBase(nScore - 1);
     }
 }
 
 void CSWGuiDebugMenu::IncreaseDexterity(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nDEXBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetDEXBase(nScore + 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nDEXBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetDEXBase(nScore + 1);
     }
 }
 
 void CSWGuiDebugMenu::DecreaseDexterity(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nDEXBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetDEXBase(nScore - 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nDEXBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetDEXBase(nScore - 1);
     }
 }
 
@@ -992,80 +978,64 @@ void CSWGuiDebugMenu::DecreaseDexterity(CSWGuiControl* pControl)
 void CSWGuiDebugMenu::IncreaseConstitution(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nCONBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetCONBase(nScore + 1, 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nCONBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetCONBase(nScore + 1, 1);
     }
 }
 
 void CSWGuiDebugMenu::DecreaseConstitution(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nCONBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetCONBase(nScore - 1, 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nCONBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetCONBase(nScore - 1, 1);
     }
 }
 
 void CSWGuiDebugMenu::IncreaseIntelligence(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nINTBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetINTBase(nScore + 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nINTBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetINTBase(nScore + 1);
     }
 }
 
 void CSWGuiDebugMenu::DecreaseIntelligence(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nINTBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetINTBase(nScore - 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nINTBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetINTBase(nScore - 1);
     }
 }
 
 void CSWGuiDebugMenu::IncreaseWisdom(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nWISBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetWISBase(nScore + 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nWISBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetWISBase(nScore + 1);
     }
 }
 
 void CSWGuiDebugMenu::DecreaseWisdom(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nWISBase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetWISBase(nScore - 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nWISBase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetWISBase(nScore - 1);
     }
 }
 
 void CSWGuiDebugMenu::IncreaseCharisma(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nCHABase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetCHABase(nScore + 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nCHABase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetCHABase(nScore + 1);
     }
 }
 
 void CSWGuiDebugMenu::DecreaseCharisma(CSWGuiControl* pControl)
 {
     if (pControl->m_tail.nCurrentEventArg) {
-        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->m_nCHABase;
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->SetCHABase(nScore - 1);
+        unsigned char nScore = g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->m_nCHABase;
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->SetCHABase(nScore - 1);
     }
 }
 #endif  // !KOTOR1
@@ -1077,8 +1047,7 @@ void CSWGuiDebugMenu::DecreaseCharisma(CSWGuiControl* pControl)
 void CSWGuiDebugMenu::IncreaseAlignment(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pCreature)
         pCreature->m_pStats->ModifyAlignment(5, 0);
     g_pAppManager->m_pClientExoApp->GetInGameGui()->HideDebugMenu();
@@ -1087,8 +1056,7 @@ void CSWGuiDebugMenu::IncreaseAlignment(CSWGuiControl* pControl)
 void CSWGuiDebugMenu::DecreaseAlignment(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pCreature)
         pCreature->m_pStats->ModifyAlignment(-5, 0);
     g_pAppManager->m_pClientExoApp->GetInGameGui()->HideDebugMenu();

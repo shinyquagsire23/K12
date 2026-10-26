@@ -604,8 +604,8 @@ CExoSoundSource::~CExoSoundSource()
 
 int CExoSoundSource::CancelRequest()
 {
-    if (m_pInternal && m_pInternal->m_pRes)
-        return m_pInternal->m_pRes->CancelRequest();
+    if (m_pInternal)
+        return m_pInternal->CancelRequest();
     return 0;
 }
 
@@ -644,8 +644,8 @@ int CExoSoundSource::Play()
 
 int CExoSoundSource::Request()
 {
-    if (m_pInternal && m_pInternal->m_pRes)
-        return m_pInternal->m_pRes->Request();
+    if (m_pInternal)
+        return m_pInternal->Request();
     return 0;
 }
 

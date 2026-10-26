@@ -19,6 +19,9 @@
 # Every output lands in the binary dir.
 cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0141 NEW)   # MSVC: CMAKE_MSVC_DEBUG_INFORMATION_FORMAT (/Zi or /Z7)
+if(POLICY CMP0135)   # FetchContent: a URL's files take the extraction time, so a new archive rebuilds
+  cmake_policy(SET CMP0135 NEW)
+endif()
 project(kotor2_platforms LANGUAGES C CXX ASM)
 
 set(K2_REPO "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -90,13 +93,22 @@ set(K2_HOST_FLAGS
 # for every class, since the GUI and action-menu handler tables cast between classes' member
 # pointers.
 if(MSVC)
-  set(K2_HOST_FLAGS /w /EHs-c- /vmg "/FI${K2P_DIR}/compat/k2host_prelude.h")
+  set(K2_HOST_FLAGS /w /vmg "/FI${K2P_DIR}/compat/k2host_prelude.h")
   if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     list(APPEND K2_HOST_FLAGS /clang:-ffp-contract=off)
   else()
     # cl.exe: no contraction under /fp:precise without /fp:contract; /bigobj for the largest TUs.
     list(APPEND K2_HOST_FLAGS /fp:precise /bigobj)
   endif()
+  # The exception model, one /EH per command line. A target with K2_NO_EXCEPTIONS (the engine, and
+  # k2_platform, compiled in its dialect) is -fno-exceptions' counterpart: /EHs-c-, and
+  # _HAS_EXCEPTIONS=0, which tells the MSVC STL the same (its error paths raise without try blocks,
+  # where libc++ under -fno-exceptions aborts). Every other C++ target keeps the toolset's /EHsc.
+  # CMake's own /EHsc leaves CMAKE_CXX_FLAGS: put before a target's /EHs-c-, cl overrode it (D9025)
+  # on every engine TU.
+  string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:$<IF:$<BOOL:$<TARGET_PROPERTY:K2_NO_EXCEPTIONS>>,/EHs-c-,/EHsc>>")
+  add_compile_definitions("$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<BOOL:$<TARGET_PROPERTY:K2_NO_EXCEPTIONS>>>:_HAS_EXCEPTIONS=0>")
 endif()
 
 # Instrumented after the base flags, so the coverage flags are the last word on the command line.
@@ -322,7 +334,8 @@ if(K2P_GAME STREQUAL "k1" AND K2P_UI STREQUAL "xbox")
 endif()
 
 add_library(k2_engine STATIC ${K2_SOURCES})
-set_target_properties(k2_engine PROPERTIES CXX_STANDARD ${K2P_ENGINE_STD} CXX_EXTENSIONS ON)
+set_target_properties(k2_engine PROPERTIES CXX_STANDARD ${K2P_ENGINE_STD} CXX_EXTENSIONS ON
+                                           K2_NO_EXCEPTIONS ON)   # the MSVC toolset's spelling, above
 target_include_directories(k2_engine PRIVATE "${K2P_DIR}/compat/include" ${K2_INCLUDE_DIRS})
 target_compile_options(k2_engine PRIVATE ${K2_HOST_FLAGS})
 # Android NDK r26+: its libc++ tags placement new / delete with abi_tag too (r25's does not), and the
@@ -391,9 +404,10 @@ if(WIN32 AND MSVC)
   # _ACRTIMP empty: the UCRT's functions are called by their plain names, not through __imp_, so the
   # shim's own fopen / remove / _strnicmp ... (the engine's view of the CRT) are the definitions the
   # link takes, as on mingw; an __imp_ reference would pull the import library's thunk and its
-  # second definition.
+  # second definition. _DCRTIMP is the same for the UCRT's desktop-only names (<direct.h>'s chdir).
   # (C and C++ only: llvm-rc reads an empty definition's "" as a second input file.)
   add_compile_definitions($<$<COMPILE_LANGUAGE:C,CXX>:_CONST_RETURN=> $<$<COMPILE_LANGUAGE:C,CXX>:_ACRTIMP=>
+                          $<$<COMPILE_LANGUAGE:C,CXX>:_DCRTIMP=>
                           _CRT_SECURE_NO_WARNINGS
                           _CRT_NONSTDC_NO_WARNINGS
                           __PRFCHWINTRIN_H)   # SDL_endian.h's _m_prefetch stand-in is a builtin now
@@ -467,10 +481,14 @@ if(IOS)
                -include "${K2P_DIR}/ios/ios_nosystem.h")
 endif()
 # K1's model parser rejects an orphan node with `throw NULL` (nothing catches it: a terminate, as on
-# the device). The only throw in the K1 engine, so only its TU needs exceptions on.
+# the device). The only throw in the K1 engine, so only its TU needs exceptions on: clang (clang-cl
+# too) refuses a throw without them. cl.exe compiles it under the engine's /EHs-c- to the same
+# uncaught exception, and a second /EH on the line would only override the first (D9025).
 if(K2P_GAME STREQUAL "k1")
-  set_property(SOURCE "${K2_REPO}/src/libsource/AURORA/aurmodelparse.cpp" APPEND PROPERTY COMPILE_OPTIONS
-               $<IF:$<BOOL:${MSVC}>,/EHsc,-fexceptions>)
+  if(NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set_property(SOURCE "${K2_REPO}/src/libsource/AURORA/aurmodelparse.cpp" APPEND PROPERTY COMPILE_OPTIONS
+                 $<IF:$<BOOL:${MSVC}>,/EHsc,-fexceptions>)
+  endif()
   # With exceptions on, glibc's noexcept strcasecmp may not follow the TU's own plain prototype;
   # seen first, a system header's spec is one a later plain redeclaration may leave out.
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT ANDROID)

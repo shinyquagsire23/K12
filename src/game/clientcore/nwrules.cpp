@@ -541,6 +541,7 @@ void CSWRules::LoadClassInfo()
 //
 // A row is accepted when its first column reads back; a rejected row keeps whatever
 // CSWFeat::CSWFeat seeded, with only its present bit cleared.
+// EFFECTIVE: length-exact, landing pads exact; register tie-breaks in the prereq-flag bitfield stores.
 void CSWRules::LoadFeatInfo()
 {
     C2DA* p2DA = new C2DA(CResRef("Feat"), 0);
@@ -553,6 +554,7 @@ void CSWRules::LoadFeatInfo()
 
     for (int i = 0; i < m_nFeats; i++) {
         int nValue;
+        int nField;
         CExoString sValue;
         CExoString sColumn("Name");
         if (p2DA->GetColumnIndex(sColumn) == -1)
@@ -568,7 +570,6 @@ void CSWRules::LoadFeatInfo()
             p2DA->GetINTEntry(i, CExoString("Description"), &nValue);
             m_paFeats[i].m_nDescriptionStrRef = nValue;
 
-            int nField;
             if (p2DA->GetCExoStringEntry(i, CExoString("Icon"), &sValue))
                 m_paFeats[i].SetIcon(CResRef(sValue.CStr()));
 
@@ -1027,8 +1028,8 @@ CCombatInformation& CCombatInformation::operator=(CCombatInformation& other)
     m_offHandWeaponId = other.m_offHandWeaponId;
     m_onHandWeaponId = other.m_onHandWeaponId;
 
-    m_attackBonusMods.Clear();
-    m_damageBonusMods.Clear();
+    m_attackBonusMods.SetSize(0);
+    m_damageBonusMods.SetSize(0);
 
     for (int i = 0; i < other.m_attackBonusMods.m_count; i++)
     {

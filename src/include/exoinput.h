@@ -470,7 +470,7 @@ struct CExoInput {
 #else
     void SetMousePos(int a, int b, bool c);
 #endif
-    int GetNumberJoysticks();
+    char GetNumberJoysticks();
     int IsJoystickActive();
     void GetJoystickRStick(float* a, float* b);
     int EventExists(unsigned int n);

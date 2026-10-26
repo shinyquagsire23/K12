@@ -1,5 +1,6 @@
 #include "k2stdint.h"
 #include "nwsdoor.h"
+#include "CExoArrayListImpl.h"
 #include "nwcdoor.h"
 #include "worldtimer.h"
 #include "exobase.h"
@@ -288,7 +289,7 @@ void CSWSDoor::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                 int nCheck = pPicker->m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 0) / 2 +
                              pEvent->GetInteger(3) + 20;
                 int bOpened = 0;
-                if (nCheck >= static_cast<int>(static_cast<unsigned char>(GetOpenLockDC()))) {
+                if (nCheck >= GetOpenLockDC()) {
                     CScriptEvent* pOpenEvent = new CScriptEvent();
                     pOpenEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_MINE_TRIGGERED;
                     pOpenEvent->SetInteger(4, 1);
@@ -311,7 +312,7 @@ void CSWSDoor::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                 g_pTlkTable->SetCustomToken(3, CExoString("20"));
                 g_pTlkTable->SetCustomToken(4, CExoString(pPicker->m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 0)));
                 g_pTlkTable->SetCustomToken(5, CExoString(pEvent->GetInteger(3)));
-                g_pTlkTable->SetCustomToken(6, CExoString(static_cast<int>(static_cast<unsigned char>(GetOpenLockDC()))));
+                g_pTlkTable->SetCustomToken(6, CExoString(static_cast<int>(GetOpenLockDC())));
                 CExoString sFeedback = g_pSWTlkTable->Fetch(STRREF_BLAST_LOCK_ATTEMPT, 0, 0, 0);
                 g_pAppManager->m_pClientExoApp->GetInGameGui()->AppendToMsgBuffer(sFeedback, kMessageTypeFeedback, 0);
                 m_oidEnteringObject = nCallerId;
@@ -408,12 +409,7 @@ void CSWSDoor::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                 if (pClicker != 0 &&
                     g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nGlobalDialogState == 0) {
                     if (pArea == 0) break;
-#if KOTOR1  // K1: the out-of-line GetLength
                     if (m_linkedToModule.GetLength() < 1) break;
-#else
-                    if (m_linkedToModule.m_sString == 0) break;
-                    if (static_cast<int>(strlen(m_linkedToModule.m_sString)) <= 0) break;
-#endif
                     if (pArea->m_bTransitionPending != 0) {
                         // A transition is already armed: only the event carrying its own id wins.
                         if (pEvent->GetInteger(0) != pArea->m_activeTransitionID) break;
@@ -608,26 +604,25 @@ Vector CSWSDoor::GetActionPoint(int state, unsigned char pointIndex) {
 }
 
 #if !KOTOR1  // K1 has no difficulty-scaled GetOpenLockDC
-unsigned int CSWSDoor::GetOpenLockDC() {
-    unsigned char state2 = m_openLockDiff;
-    unsigned int result;
-    if (state2 == 4) {
+// The lock DC by formula. Formula 4 shifts the base DC by -5/0/+5 for difficulty 0/1/2 and floors it
+// at zero; any other formula starts from m_openLockDiffMod plus 21 (16 + 5 x difficulty below 3), and
+// formula 3 also adds the PC's level at spawn plus 7.
+// EFFECTIVE: one commutative add takes its operands in the other order (m_openLockDiffMod + adj in
+// the orig, adj + m_openLockDiffMod here), which reschedules the non-4 arm. Structure and calls match.
+unsigned char CSWSDoor::GetOpenLockDC() {
+    unsigned char formula = m_openLockDiff;
+    int result;
+    if (formula == 4) {
         unsigned char diff = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
-        // Written positively, so difficulty 3 and up keep the plain value.
-        int adj = 0;
-        if (diff < 3) {
-            adj = diff * 5 + -5;
-        }
-        int val = adj + m_openLockDC;
-        result = val & ~(val >> 31);
+        int val = (diff < 3) ? diff * 5 - 5 : 0;
+        val += m_openLockDC;
+        result = val < 0 ? 0 : val;
     } else {
+        int bLevelScaled = formula == 3;
         unsigned char diff = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
-        int adj = 21;
-        if (diff < 3) {
-            adj = diff + diff * 4 + 16;
-        }
+        int adj = (diff < 3) ? diff * 5 + 16 : 21;
         int extra = m_nPCLevelAtSpawn + 7;
-        if (state2 != 3) {
+        if (!bLevelScaled) {
             extra = 0;
         }
         // Read unsigned even though the declared field is a signed char.
@@ -756,13 +751,8 @@ void CSWSDoor::SetOrientation(Quaternion q) {
     m_orientation.x = q.x;
     m_orientation.y = q.y;
     m_orientation.z = q.z;
-    // The rotated Y axis, the door's facing direction, is column 1 of the rotation matrix. Only the Y
-    // and X components are needed.
-    float ax = 2.0f * (q.x * q.y - q.w * q.z);
-    float ay = 1.0f - 2.0f * (q.x * q.x + q.z * q.z);
-    Vector axis;
-    axis.x = ax;
-    axis.y = ay;
+    // The rotated Y axis, the door's facing direction, flattened onto the ground plane.
+    Vector axis = q.ydir();
     axis.z = 0.0f;
     if (axis.x * axis.x + axis.y * axis.y + axis.z * axis.z > 0.0001f) {
         axis = normalize(axis);
@@ -1377,22 +1367,7 @@ void CSWSDoor::AddToArea(CSWSArea* pArea, float x, float y, float z, int n) {
     vPos.z = z;
     SetPosition(vPos, 0, 1, 0);
     pArea->AddObjectToArea(m_objectId, n);
-    int count = pArea->m_objects.m_count;
-    unsigned long long objId = m_objectId;
-    if (count == pArea->m_objects.m_capacity) {
-        int newCap = (count == 0) ? 16 : count * 2;
-        pArea->m_objects.m_capacity = newCap;
-        unsigned long long* pOld = pArea->m_objects.m_pArray;
-        unsigned long long* pNew = new unsigned long long[newCap];
-        K2_ASSUME(count < newCap);
-        pArea->m_objects.m_pArray = pNew;
-        for (int64_t i = 0; i < count; i++)
-            pNew[i] = pOld[i];
-        delete[] pOld;
-        count = pArea->m_objects.m_count;
-    }
-    pArea->m_objects.m_count = count + 1;
-    pArea->m_objects.m_pArray[count] = objId;
+    pArea->AddSubArea(this);
     if (GetMeshBoundingBox(m_position, m_position, m_budgeVecA, m_budgeVecB) != 0) {
         // CSWArea, not CSWSArea, because both bounding-box members live on the shared area base.
         static_cast<CSWArea*>(pArea)->AddStaticBoundingBox(m_objectId, m_budgeVecA, m_budgeVecB);

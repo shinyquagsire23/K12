@@ -366,13 +366,5 @@ CSWItem::~CSWItem()
 
 CSWBaseItem* CSWItem::GetBaseItem()
 {
-    // m_baseItem is signed and is loaded before the global chain.
-    if (m_baseItem < 0)
-        return 0;
-    CSWBaseItemArray* pBaseItems = g_pRules->m_pBaseItemArray;
-    if (pBaseItems->m_pItems == 0)
-        return 0;
-    if (pBaseItems->m_count <= m_baseItem)
-        return 0;
-    return &pBaseItems->m_pItems[m_baseItem];
+    return g_pRules->GetBaseItem(m_baseItem);
 }

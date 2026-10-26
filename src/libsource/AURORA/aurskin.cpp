@@ -333,11 +333,7 @@ void ExecuteSkinTransforms(MdlNodeSkin* node, List<Vector>& inPositions, List<Ma
             // NV2x vertex-program shell pass.
             GLRender::SetActiveTexture(1);
             GLRender::Enable(Aurora::kCapTexture2D);
-            ASLgl::glBindTexture(enableTranslationTable[4], 0);
-#if !KOTOR1  // K1 sets no anisotropy here
-            ASLgl::glTexParameteri(enableTranslationTable[4], GL_TEXTURE_MAX_ANISOTROPY_EXT, GLRender::cm_nAnisotropy);
-#endif
-            GLRender::cm_nGLCurrentTID[GLRender::cm_uiCurrentStage] = 0;
+            GLRender::BindTexture(Aurora::kCapTexture2D, 0);
             GLRender::SetActiveTexture(0);
         }
 #if KOTOR1
@@ -721,6 +717,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         Vector vBone = RotateVector(RotateVector(node->m_lTBoneRefInv.m_pData[i], qb.m_pData[i]), qAcc);
         Quaternion q = qAcc * qb.m_pData[i] * node->m_lQBoneRefInv.m_pData[i];
         if (usearbvertexprograms) {
+            // inlined Quaternion::getmatrix(): the bone constants are its three columns
             float w = q.w, x = q.x, y = q.y, z = q.z;
             int nIdx = nBone * 3;
             ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nIdx + 18,
@@ -746,10 +743,9 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyTextures, part->m_pMaterial->Textures(0).m_pObject, 0, 0,
                                           part->m_pMaterial->Textures(5).m_pObject);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShiny, 0, 0, 0, 0);
-        unsigned int nBlendOne = blendTranslationTable[2];
-        ASLgl::glBlendFunc(nBlendOne, blendTranslationTable[3]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         RenderFlat(vertices);
-        ASLgl::glBlendFunc(nBlendOne, blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendInvSrcAlpha);
     } else if (part->m_pMaterial->HasBumpMap() && AurBumpMapCardValidate() && pNode12->HasTangentBases() &&
                AurNV2xLevelShadersAvailable() && enablebumpmap && usenewbumpyskin) {
         GLRender::Disable(Aurora::kCapAlphaTest);
@@ -777,8 +773,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         part->GetWorld(vWS, lq);
         Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, -lq);
         GLRender::Enable(Aurora::kCapVertexProgram);
-        unsigned int nBlendOne = blendTranslationTable[2];
-        ASLgl::glBlendFunc(nBlendOne, blendTranslationTable[3]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         currentscene->m_pLightManager->DisableBumpMapLights();
         for (int64_t k = 0; k < bumpLights.m_count; k++) {
             newSkinBumpyVP->Enable(part, true);
@@ -822,7 +817,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         GLRender::DisableClientState(Aurora::kClientStateAttrib12);
         GLRender::DisableClientState(Aurora::kClientStateAttrib13);
         GLRender::DisableClientState(Aurora::kClientStateAttrib14);
-        ASLgl::glBlendFunc(nBlendOne, nBlendOne);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
         GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 1.0f);
@@ -859,8 +854,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         part->GetWorld(vWS, lq);
         Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, -lq);
         GLRender::Enable(Aurora::kCapVertexProgram);
-        unsigned int nBlendOne = blendTranslationTable[2];
-        ASLgl::glBlendFunc(nBlendOne, blendTranslationTable[3]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         currentscene->m_pLightManager->DisableBumpMapLights();
         for (int64_t k = 0; k < bumpLights.m_count; k++) {
             wsNewSkinBumpyVP->Enable(part, false);
@@ -905,7 +899,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         GLRender::DisableClientState(Aurora::kClientStateTexCoord);
         GLRender::ActivateTextureStage(0);
         currentscene->DoFog();
-        ASLgl::glBlendFunc(nBlendOne, nBlendOne);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
         GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 1.0f);
@@ -947,10 +941,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         part->GetWorld(vWS, lq);
         Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, -lq);
         GLRender::Enable(Aurora::kCapVertexProgram);
-        // The blend pair is re-used by the closing glBlendFunc.
-        unsigned int nBlendSrc = blendTranslationTable[0];
-        unsigned int nBlendDst = blendTranslationTable[1];
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         for (int64_t k = 0; k < bumpLights.m_count; k++) {
             currentscene->m_pLightManager->DisableBumpMapLights();
             skinBumpyVP->Enable(part, true);
@@ -996,7 +987,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         GLRender::DisableClientState(Aurora::kClientStateAttrib13);
         GLRender::DisableClientState(Aurora::kClientStateAttrib14);
         currentscene->DoFog();
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
     } else if ((part->m_pGob != 0 && part->m_pGob->m_texWatch.m_pObject != 0) ||
@@ -1243,30 +1234,12 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                 ry = ny;
             }
         lbl_env:
-            if (usearbvertexprograms) {
-                float qx2 = q.x, qy2 = q.y, qz2 = q.z;
-                Quaternion bq = node->m_lQBoneRefInv.m_pData[i];
-                float pw = fW * q.w - fX * qx2 - fY * qy2 - fZ * qz2;      // acc * bonesQuat (acc w negated)
-                float pwx = fX * q.w + fW * qx2 + fY * q.z - fZ * qy2;
-                float pwy = fZ * qx2 + (fY * q.w + (fW * qy2 - fX * q.z));
-                float pwz = fZ * q.w + ((fX * qy2 + fW * q.z) - fY * qx2);
-                float c0 = ((pw * bq.w - pwx * bq.x) - pwy * bq.y) - pwz * bq.z;  // boneQuat * acc * bonesQuat
-                float c1 = (bq.w * pwx + pw * bq.x + pwy * bq.z) - bq.y * pwz;
-                float c2 = bq.x * pwz + (bq.w * pwy + (pw * bq.y - pwx * bq.z));
-                float c3 = bq.w * pwz + ((pwx * bq.y + pw * bq.z) - bq.x * pwy);
+            {
+                Matrix m = (Quaternion(fW, fX, fY, fZ) * q * node->m_lQBoneRefInv.m_pData[i]).getmatrix();
                 int nIdx = nBone * 3;
-                ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nIdx + 18,
-                    1.0f - ((c2 * c2 + c3 * c3) + (c2 * c2 + c3 * c3)),
-                    (c1 * c2 - c0 * c3) + (c1 * c2 - c0 * c3),
-                    (c1 * c3 + c0 * c2) + (c1 * c3 + c0 * c2),
-                    px + olxr + rx);
-                GLRender::SetVertexShaderConstant(nIdx + 19, (c1 * c2 + c0 * c3) + (c1 * c2 + c0 * c3),
-                                                  1.0f - ((c1 * c1 + c3 * c3) + (c1 * c1 + c3 * c3)),
-                                                  (c2 * c3 - c0 * c1) + (c2 * c3 - c0 * c1), py + oly + ry);
-                GLRender::SetVertexShaderConstant(nIdx + 20, (c1 * c3 - c0 * c2) + (c1 * c3 - c0 * c2),
-                                                  (c0 * c1 + c2 * c3) + (c0 * c1 + c2 * c3),
-                                                  1.0f - ((c1 * c1 + c2 * c2) + (c1 * c1 + c2 * c2)),
-                                                  pz + olz + rz);
+                GLRender::SetVertexShaderConstant(nIdx + 18, m.m_f[0], m.m_f[3], m.m_f[6], px + olxr + rx);
+                GLRender::SetVertexShaderConstant(nIdx + 19, m.m_f[1], m.m_f[4], m.m_f[7], py + oly + ry);
+                GLRender::SetVertexShaderConstant(nIdx + 20, m.m_f[2], m.m_f[5], m.m_f[8], pz + olz + rz);
             }
         }
     }
@@ -1697,10 +1670,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                 }
             }
             GLRender::Enable(Aurora::kCapVertexProgram);
-            // The blend pair is re-used by the closing glBlendFunc.
-            unsigned int nBlendSrc = blendTranslationTable[0];
-            unsigned int nBlendDst = blendTranslationTable[1];
-            ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
             if (bumpLights.m_count > 0) {
                 for (int64_t k = 0; k < bumpLights.m_count; k++) {
                     currentscene->m_pLightManager->DisableBumpMapLights();
@@ -1777,7 +1747,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                 ASLgl::glDisableVertexAttribArrayARB(14);
             }
             currentscene->DoFog();
-            ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
             GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
             GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
             goto lbl_free;
@@ -2108,13 +2078,7 @@ RenderInterface::SetDepthMask(0);
         Vector vCam = RotateVector(CurrentCamera->m_vPosition - vWorldPos, qWorldInv);
         float vx = vCam.x, vy = vCam.y, vz = vCam.z;
 
-        float b0 = pGob->m_qOrientation.w, b1 = pGob->m_qOrientation.x,
-              b2 = pGob->m_qOrientation.y, b3 = pGob->m_qOrientation.z;
-        float g1 = (b1 * b3 + b0 * b2) + (b1 * b3 + b0 * b2);
-        float g2 = (b3 * b2 - b1 * b0) + (b3 * b2 - b1 * b0);
-        float nu = 1.0f - ((b1 * b1 + b2 * b2) + (b1 * b1 + b2 * b2));
-        Vector vSide(vBlur.y * nu - vBlur.z * g2, vBlur.z * g1 - vBlur.x * nu,
-                     g2 * vBlur.x - vBlur.y * g1);
+        Vector vSide = cross(vBlur, pGob->m_qOrientation.zdir());
         qWorldInv = -qWorld;
         vBlur = RotateVector(vBlur, qWorldInv);
         qWorldInv = -qWorld;
@@ -2154,13 +2118,7 @@ RenderInterface::SetDepthMask(0);
 
         // 2) The blur vector in the world frame, with the motion-blur side axis (its cross product
         //    with the orientation's third basis column) uploaded as a constant.
-        float b0 = pGob->m_qOrientation.w, b1 = pGob->m_qOrientation.x,
-              b2 = pGob->m_qOrientation.y, b3 = pGob->m_qOrientation.z;
-        float g1 = (b1 * b3 + b0 * b2) + (b1 * b3 + b0 * b2);      // 2(b1 b3 + b0 b2)
-        float g2 = (b3 * b2 - b1 * b0) + (b3 * b2 - b1 * b0);      // 2(b2 b3 - b0 b1)
-        float nu = 1.0f - ((b1 * b1 + b2 * b2) + (b1 * b1 + b2 * b2));  // 1 - 2*(b1*b1 + b2*b2)
-        Vector vSide(vBlur.y * nu - vBlur.z * g2, vBlur.z * g1 - vBlur.x * nu,
-                     g2 * vBlur.x - vBlur.y * g1);
+        Vector vSide = cross(vBlur, pGob->m_qOrientation.zdir());
         {
             float qw = qWorld.w, qx = qWorld.x, qy = qWorld.y, qz = qWorld.z;
             float nw = -qw;
@@ -2392,11 +2350,7 @@ int FindNodeIndexDFS(MdlNode* pNode, char* szName)
     MakeInlineNodeList(pNode, listNodes);
 
     for (int64_t i = 0; i < listNodes.m_count; i++) {
-            MdlNode* pCur = listNodes.m_pData[i];
-// The tree is either a model or an animation whose model owns the name table.
-            Model* pModel = pCur->m_pTree->AsModel() ? pCur->m_pTree->AsModel()
-                                                     : pCur->m_pTree->AsAnimation()->m_pModel;
-            if (!_stricmp(pModel->m_listStrings.m_pData[pCur->m_nNameIndex], szName)) {
+            if (!_stricmp(listNodes.m_pData[i]->TranslateNodeName(), szName)) {
                 nRet = static_cast<int>(i);
                 break;
             }
@@ -2469,19 +2423,9 @@ void PartSkin::DrawBumpedOutShellVP()
 
     GLRender::Enable(Aurora::kCapVertexProgram);
 
-    if (usearbvertexprograms != 0) {
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 16, 0.0f, 2.0f, 3.0f, 1.0f);
-        if (usearbvertexprograms != 0) {
-            float fShade = 0.0f;
-            if (currentscene->m_bFogEnabled != 0)
-                fShade = 1.0f;
-            ASLgl::glProgramEnvParameter4fARB(
-                GL_VERTEX_PROGRAM_ARB, 17,
-                currentscene->m_fFogStart,
-                currentscene->m_fFogEnd,
-                fShade, 0.5f);
-        }
-    }
+    GLRender::SetVertexShaderConstant(16, 0.0f, 2.0f, 3.0f, 1.0f);
+    GLRender::SetVertexShaderConstant(17, currentscene->m_fFogStart, currentscene->m_fFogEnd,
+                                      currentscene->m_bFogEnabled != 0 ? 1.0f : 0.0f, 0.5f);
 
     // Gather the world frame: the part's own frame, then up the parent chain.
     Part* pTop = part;
@@ -2630,31 +2574,12 @@ void PartSkin::DrawBumpedOutShellVP()
                 sv.z = rz + sv.z;
                 Quaternion* pAccQuat = &s_quats.m_pData[i];
                 *pAccQuat = *pAccQuat * node->m_lQBoneRefInv.m_pData[i];
-                if (usearbvertexprograms != 0) {
-                    float av = pAccQuat->w, bx = pAccQuat->x, by = pAccQuat->y, bz = pAccQuat->z;
-                    const Vector& vr = s_vectors.m_pData[i];
-                    int ib = bone * 3;
-                    float m11 = by * by + bz * bz;
-                    float m12 = by * bx - bz * av;
-                    float m13 = bz * bx + by * av;
-                    ASLgl::glProgramEnvParameter4fARB(
-                        GL_VERTEX_PROGRAM_ARB, ib + 18, 1.0f - (m11 + m11), m12 + m12, m13 + m13, vr.x);
-                    if (usearbvertexprograms != 0) {
-                        float m21 = by * bx + bz * av;
-                        float m22 = bz * bz + bx * bx;
-                        float m23 = by * bz - bx * av;
-                        ASLgl::glProgramEnvParameter4fARB(
-                            GL_VERTEX_PROGRAM_ARB, ib + 19, m21 + m21, 1.0f - (m22 + m22), m23 + m23, vr.y);
-                        if (usearbvertexprograms != 0) {
-                            float m31 = bz * bx - by * av;
-                            float m32 = by * bz + bx * av;
-                            float m33 = by * by + bx * bx;
-                            ASLgl::glProgramEnvParameter4fARB(
-                                GL_VERTEX_PROGRAM_ARB, ib + 20, m31 + m31, m32 + m32,
-                                1.0f - (m33 + m33), vr.z);
-                        }
-                    }
-                }
+                Matrix m = pAccQuat->getmatrix();
+                const Vector& vr = s_vectors.m_pData[i];
+                int ib = bone * 3;
+                GLRender::SetVertexShaderConstant(ib + 18, m.m_f[0], m.m_f[3], m.m_f[6], vr.x);
+                GLRender::SetVertexShaderConstant(ib + 19, m.m_f[1], m.m_f[4], m.m_f[7], vr.y);
+                GLRender::SetVertexShaderConstant(ib + 20, m.m_f[2], m.m_f[5], m.m_f[8], vr.z);
             }
             i++;
         } while (i < node->m_nBoneCount);
@@ -2695,27 +2620,17 @@ void PartSkin::DrawBumpedOutShellVP()
     if (g_ForceSight != 0) {
         (*GLRender::pfuncEnablePixelShaders)(GLRender::kPSDesatOff, 0, 0, 0, 0);
         GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
-        if (g_useDistortionOutput != 0)
-            goto ShellCommon;
-        ASLgl::glDepthMask(1);
-        if (usearbvertexprograms != 0)
-            goto ShellAttribs;
-        goto ShellClientStates;
+        RenderInterface::SetDepthMask(1);
     }
-ShellCommon:
-    if (usearbvertexprograms == 0)
-        goto ShellClientStates;
-ShellAttribs:
-    ASLgl::glDisableVertexAttribArrayARB(1);
-    ASLgl::glDisableVertexAttribArrayARB(4);
-    goto ShellAfter;
-ShellClientStates:
-    GLRender::DisableClientState(Aurora::kClientStateAttrib1);
-    GLRender::DisableClientState(Aurora::kClientStateAttrib4);
-ShellAfter:
+    if (usearbvertexprograms != 0) {
+        ASLgl::glDisableVertexAttribArrayARB(1);
+        ASLgl::glDisableVertexAttribArrayARB(4);
+    } else {
+        GLRender::DisableClientState(Aurora::kClientStateAttrib1);
+        GLRender::DisableClientState(Aurora::kClientStateAttrib4);
+    }
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
-    if (g_useDistortionOutput == 0)
-        ASLgl::glDepthMask(1);
+    RenderInterface::SetDepthMask(1);
     SetBumpedOutShellIos(0.0f);
     GLRender::Disable(Aurora::kCapVertexProgram);
     }
@@ -3177,10 +3092,10 @@ void MdlNodeSkin::InternalGenVertices()
                 ? &PostProcess()->m_tverts3.m_pData[PostProcess()->m_faces.m_pData[i].m_paTVertIndices[j + 9]] : 0;
             Vector* pNormal =
                 &PostProcess()->m_normals.m_pData[PostProcess()->m_faces.m_pData[i].m_paNormalIndices[j]];
-            NodeVertex* pVertex = new NodeVertex(&PostProcess()->m_verts.m_pData[nVert],
-                                               pTex0, pTex1, pTex2, pTex3, pNormal, 0);
             int64_t index;
             int bFound = 0;
+            NodeVertex* pVertex = new NodeVertex(&PostProcess()->m_verts.m_pData[nVert],
+                                               pTex0, pTex1, pTex2, pTex3, pNormal, 0);
             for (index = 0; index < static_cast<int64_t>(PostProcess()->m_vertices.m_count); index++) {
                 if (*reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[index]) == *pVertex) {
                     bFound = 1;

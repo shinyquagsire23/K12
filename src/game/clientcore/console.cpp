@@ -80,8 +80,7 @@ void CheatSetSkill(int nSkill, char* sArgs) {
             } else if (nRank >= 100) {
                 nRank = 99;
             }
-            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
             if (pCreature) {
                 pCreature->m_pStats->SetSkillRank(static_cast<unsigned char>(nSkill), static_cast<char>(nRank));
             }
@@ -109,8 +108,7 @@ void CheatSetAbility(int nAbility, char* sArgs) {
             } else if (nScore >= 100) {
                 nScore = 99;
             }
-            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
             if (pCreature && pCreature->m_pStats) {
                 CSWSCreatureStats* pStats = pCreature->m_pStats;
                 switch (nAbility) {
@@ -191,8 +189,7 @@ void bright() {
 void addlightside(int nAmount) {
     if (GetCheatsTurnedOn()) {
         if (g_pAppManager->m_pServerExoApp->GetPartyTable()) {
-            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
             if (pCreature) {
                 CSWSCreatureStats* pStats = pCreature->m_pStats;
                 int nValue = nAmount;
@@ -211,8 +208,7 @@ void addlightside(int nAmount) {
 void adddarkside(int nAmount) {
     if (GetCheatsTurnedOn()) {
         if (g_pAppManager->m_pServerExoApp->GetPartyTable()) {
-            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+            CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
             if (pCreature) {
                 CSWSCreatureStats* pStats = pCreature->m_pStats;
                 int nValue = -nAmount;
@@ -242,8 +238,7 @@ void givecredits(char* sArgs) {
     if (GetCheatsTurnedOn()) {
         if (nCredits >= 1) {
             CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-            CSWSCreature* pCreature =
-                pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+            CSWSCreature* pCreature = pServer->GetPlayerCreature();
             if (pCreature) {
                 pCreature->SetGold(pCreature->GetGold() +
                                    (nCredits < 99 ? 99 : nCredits));
@@ -374,8 +369,7 @@ void infiniteuses() {
 void whereami() {
     if (GetCheatsTurnedOn()) {
         CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-        CSWSCreature* pCreature =
-            pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+        CSWSCreature* pCreature = pServer->GetPlayerCreature();
         if (pCreature) {
             CExoString sMsg;
             if (g_pAppManager->m_pClientExoApp->GetModule()) {

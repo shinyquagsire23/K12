@@ -177,25 +177,8 @@ ProgramType::ProgramType(int nType, bool bA, bool bB, bool bC, bool bD)
         m_nFlags |= SHADER_DISTORTION_INPUT;
 }
 
-KotorProgram::KotorProgram(ProgramType type)
+KotorProgram::KotorProgram(ProgramType type) : m_nCameraSerial(0), m_nFogSerial(0), m_uProgram(0)
 {
-    m_nCameraSerial = 0;
-    m_nFogSerial = 0;
-
-    for (int i = 0; i < LIGHT_DATA_VEC4S * 4; i++)
-        m_afLightData[i] = -1.0f;
-    for (int i = 0; i < 3; i++)
-        m_afFogColour[i] = -1.0f;
-    for (int i = 0; i < 4; i++)
-        m_afFogData[i] = -1.0f;
-    for (int i = 0; i < 16; i++)
-        m_lightMaterialCache.m_afValues[i] = -1.0f;
-    for (int i = 0; i < 12; i++)
-        m_fragmentCache.m_afValues[i] = -1.0f;
-    for (int i = 0; i < 4; i++)
-        m_afVertexShaderParams[i] = -1.0f;
-
-    m_uProgram = 0;
     m_nFlags = type.m_nFlags;
     Use();
 }
@@ -500,38 +483,21 @@ void KotorProgram::SetLightData(float* pfData)
     if (m_nLightDataUniform < 0)
         return;
 
-    for (int i = 0; i < LIGHT_DATA_VEC4S * 4; i++) {
-        if (m_afLightData[i] != pfData[i]) {
-            for (int j = 0; j < LIGHT_DATA_VEC4S * 4; j++)
-                m_afLightData[j] = pfData[j];
-            // The upload sends the incoming array, not the copy just made.
-            ASLgl::glUniform4fv(m_nLightDataUniform, LIGHT_DATA_VEC4S, pfData);
-            return;
-        }
-    }
+    // The upload sends the incoming array, not the cached copy.
+    if (m_lightDataCache.IsDifferentAndCache(pfData))
+        ASLgl::glUniform4fv(m_nLightDataUniform, LIGHT_DATA_VEC4S, pfData);
 }
 
 void KotorProgram::SetFogData(float* pfData, float* pfColour)
 {
     if (m_nFogColourUniform >= 0) {
-        if (m_afFogColour[0] != pfColour[0] || m_afFogColour[1] != pfColour[1] ||
-            m_afFogColour[2] != pfColour[2]) {
-            m_afFogColour[0] = pfColour[0];
-            m_afFogColour[1] = pfColour[1];
-            m_afFogColour[2] = pfColour[2];
+        if (m_fogColourCache.IsDifferentAndCache(pfColour))
             ASLgl::glUniform3fv(m_nFogColourUniform, 1, pfColour);
-        }
     }
 
     if (m_nFogDataUniform >= 0) {
-        if (m_afFogData[0] != pfData[0] || m_afFogData[1] != pfData[1] ||
-            m_afFogData[2] != pfData[2] || m_afFogData[3] != pfData[3]) {
-            m_afFogData[0] = pfData[0];
-            m_afFogData[1] = pfData[1];
-            m_afFogData[2] = pfData[2];
-            m_afFogData[3] = pfData[3];
+        if (m_fogDataCache.IsDifferentAndCache(pfData))
             ASLgl::glUniform4fv(m_nFogDataUniform, 1, pfData);
-        }
     }
 }
 
@@ -564,12 +530,6 @@ void KotorProgram::SetVertexShaderParams(float* pfParams)
     if (m_nVertexShaderUniform < 0)
         return;
 
-    for (int i = 0; i < 4; i++) {
-        if (m_afVertexShaderParams[i] != pfParams[i]) {
-            for (int j = 0; j < 4; j++)
-                m_afVertexShaderParams[j] = pfParams[j];
-            ASLgl::glUniform4fv(m_nVertexShaderUniform, 1, pfParams);
-            return;
-        }
-    }
+    if (m_vertexShaderCache.IsDifferentAndCache(pfParams))
+        ASLgl::glUniform4fv(m_nVertexShaderUniform, 1, pfParams);
 }

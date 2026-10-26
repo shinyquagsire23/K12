@@ -489,7 +489,8 @@ void SceneBSPAddGob(Scene* pScene, Gob* pGob)
         return;
 
     nodedata* pNodeData = BSPFitSphere(pScene->m_pBSPRoot, pGob->m_vPosition, pGob->m_pModel->m_fRadius)->m_pNodeData;
-    pNodeData->m_gobs.AddUnique(pGob);
+    if (pNodeData->m_gobs.Contains(pGob) == 0)
+        pNodeData->m_gobs.Add(pGob);
 }
 
 // Un-file a Gob, searching for the leaf that holds it.

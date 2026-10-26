@@ -1384,7 +1384,7 @@ void CSWSCreature::BroadcastSpellCast(unsigned int nSpell, int a2, unsigned char
     CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
     if (pArea != 0) {
-        m_aSpellCastBroadcastList.Clear();
+        m_aSpellCastBroadcastList.SetSize(0);
         CSWCCMessageData* pData = new CSWCCMessageData;
         pData->SetObjectID(0, m_objectId);
         pData->SetObjectID(1, OBJECT_INVALID);
@@ -1614,8 +1614,7 @@ void CSWSCreature::ApplyDeathExperience()
     if (pKiller != 0) {
         pData = new CSWCCMessageData;
     } else {
-        pKiller = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        pKiller = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pKiller != 0)
             pData = new CSWCCMessageData;
     }
@@ -1699,7 +1698,7 @@ int CSWSCreature::TransferGold(unsigned long long oidTarget, const Vector& vPosi
                 return 1;
             }
         } else if (pObject->AsSWSItem() != 0
-                   && g_pRules->m_pBaseItemArray->GetBaseItem(
+                   && g_pRules->GetBaseItem(
                           pObject->AsSWSItem()->m_baseItem)->m_bContainer != 0) {
             AddGiveItemActions(pItem->m_objectId, oidTarget, -1, 0);
             return 1;
@@ -1734,7 +1733,7 @@ int CSWSCreature::EquipMostDamagingMeleeWeapon(unsigned long long oidTarget, int
     }
     CSWSItem* pWeapon = static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(nSlot));
     if (pWeapon != 0
-        && g_pRules->m_pBaseItemArray->GetBaseItem(pWeapon->m_baseItem)->m_bRangedWeapon != 0) {
+        && g_pRules->GetBaseItem(pWeapon->m_baseItem)->m_bRangedWeapon != 0) {
         UnequipItem(pWeapon);
         GetItemRepository(1)->AddItem(&pWeapon, 0, 0, 1);
         pWeapon = 0;
@@ -1754,7 +1753,7 @@ int CSWSCreature::EquipMostDamagingMeleeWeapon(unsigned long long oidTarget, int
         CSWSItem* pFists =
                 static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
         if (pFists != 0
-            && g_pRules->m_pBaseItemArray->GetBaseItem(pFists->m_baseItem)->m_weaponWieldType
+            && g_pRules->GetBaseItem(pFists->m_baseItem)->m_weaponWieldType
                    == 3) {
             pWeapon = pFists;
             nSlot = CSWInventory::SLOT_RIGHTWEAPON;
@@ -1772,14 +1771,14 @@ int CSWSCreature::EquipMostDamagingMeleeWeapon(unsigned long long oidTarget, int
         CSWSItem* pItem = GetItemRepository(1)->ItemListGetItem(i);
         if (pItem == 0)
             continue;
-        CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
         if (pBaseItem == 0 || pBaseItem->m_nWeaponType == 0)
             continue;
         unsigned int nTrySlot = nSlot;
         // Per GetRelativeWeaponSize, out of the [-2, 1] band the candidate is unwieldable and the
         // difference collapses to the -10 sentinel that the strict test below rejects.
         int nCreatureSize = m_nCreatureSize;
-        int nSizeDiff = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nWeaponSize
+        int nSizeDiff = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nWeaponSize
                         - nCreatureSize;
         if (nSizeDiff < -2 || nSizeDiff > 1)
             nSizeDiff = -10;
@@ -1841,7 +1840,7 @@ int CSWSCreature::EquipMostDamagingRangedWeapon(unsigned long long oidTarget)
     if (pWeapon != 0) {
         int nBaseItem = pWeapon->m_baseItem;
 
-        CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(nBaseItem);
         if (pBaseItem != 0 && pBaseItem->m_bRangedWeapon != 0) {
             nBestModifier = m_pStats->GetAttackModifierVersus(pTarget);
             pBest = pWeapon;
@@ -1862,7 +1861,7 @@ int CSWSCreature::EquipMostDamagingRangedWeapon(unsigned long long oidTarget)
             continue;
         int nBaseItem = pItem->m_baseItem;
 
-        CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(nBaseItem);
         if (pBaseItem == 0 || pBaseItem->m_nWeaponType == 0)
             continue;
         unsigned int nSlot = CSWInventory::SLOT_RIGHTWEAPON;
@@ -2143,7 +2142,7 @@ int CSWSCreature::EquipMostEffectiveArmor()
     CSWSItem* pBest = 0;
     unsigned int nBestArmorClass = 0;
     if (pEquipped != 0
-            && g_pRules->m_pBaseItemArray->GetBaseItem(pEquipped->m_baseItem) != 0) {
+            && g_pRules->GetBaseItem(pEquipped->m_baseItem) != 0) {
         nBestArmorClass = pEquipped->m_nBaseArmorClass;
         for (int nProperty = 0; nProperty < pEquipped->m_nPassiveProperties; nProperty++) {
             CSWItemProperty* pProperty = pEquipped->GetPassiveProperty(nProperty);
@@ -2167,7 +2166,7 @@ int CSWSCreature::EquipMostEffectiveArmor()
             continue;
         if (CanEquipItem(pItem, &nSlot, 0, 0, 1) == CAN_EQUIP_NO)
             continue;
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem) == 0)
+        if (g_pRules->GetBaseItem(pItem->m_baseItem) == 0)
             continue;
         unsigned int nArmorClass = pItem->m_nBaseArmorClass;
         for (int nProperty = 0; nProperty < pItem->m_nPassiveProperties; nProperty++) {
@@ -2365,7 +2364,7 @@ int CSWSCreature::UseItem(unsigned long long oidItem, unsigned char nProperty, u
                 if (pNode != 0 && (pNode->m_flags & VISIBILITY_PACIFY_STATE_MASK) == VISIBILITY_PACIFIED)
                     return CSWSObject::ACTION_COMPLETE;
             }
-            g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+            g_pRules->GetBaseItem(pItem->m_baseItem);
             Vector vPos = vTarget;
             int bNoTarget = oidTarget == OBJECT_INVALID;
             int bRoundPending = 0;
@@ -2911,7 +2910,7 @@ CSWCCreature* CSWSCreature::GetClientCreature()
 int CSWSCreature::GetRelativeWeaponSize(CSWSItem* pItem)
 {
     int nSize = m_nCreatureSize;
-    int nDiff = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nWeaponSize - nSize;
+    int nDiff = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nWeaponSize - nSize;
     if (static_cast<unsigned int>(nDiff + 2) > 3)
         return -10;
     return nDiff;
@@ -3103,7 +3102,7 @@ int CSWSCreature::RangeWeaponEquipped()
     CSWSItem* pItem = static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
     if (pItem != 0) {
         int nBaseItem = pItem->m_baseItem;
-        return g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_bRangedWeapon != 0;
+        return g_pRules->GetBaseItem(nBaseItem)->m_bRangedWeapon != 0;
     }
     return 0;
 }
@@ -3756,106 +3755,14 @@ static inline int WoundedSaveBonusBand(float fPercent)
     return 0;
 }
 
-static inline __attribute__((always_inline)) void StackEffectValue(CGameEffect* pEffect, int nSlot,
-                                                                   unsigned long long* paItem,
-                                                                   int* paValue, int* paSpell)
-{
-    CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
-    int bFound = 0;
-    if (pItem != 0) {
-        for (int j = 0; j < 108; j++) {
-            if (paItem[j] == pItem->m_objectId) {
-                bFound = 1;
-                if (paValue[j] < pEffect->GetInteger(nSlot)) {
-                    paValue[j] = pEffect->GetInteger(nSlot);
-                    return;
-                }
-            }
-        }
-        if (bFound == 0) {
-            for (int j = 0; j < 108; j++) {
-                if (paValue[j] == -1) {
-                    paItem[j] = pItem->m_objectId;
-                    paValue[j] = pEffect->GetInteger(nSlot);
-                    return;
-                }
-            }
-        }
-        return;
-    }
-    if (pEffect->m_spellId != -1) {
-        for (int j = 0; j < 108; j++) {
-            if (paSpell[j] == pEffect->m_spellId) {
-                bFound = 1;
-                if (paValue[j] < pEffect->GetInteger(nSlot)) {
-                    paValue[j] = pEffect->GetInteger(nSlot);
-                    return;
-                }
-            }
-        }
-    }
-    if (bFound == 0) {
-        for (int j = 0; j < 108; j++) {
-            if (paValue[j] == -1) {
-                paSpell[j] = pEffect->m_spellId;
-                paValue[j] = pEffect->GetInteger(nSlot);
-                return;
-            }
-        }
-    }
-}
-
-static inline __attribute__((always_inline)) void StackEffectValueSum(CGameEffect* pEffect, int nSlot,
-                                                                      unsigned long long* paItem,
-                                                                      int* paValue, int* paSpell)
-{
-    CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
-    int bFound = 0;
-    if (pItem != 0) {
-        for (int j = 0; j < 108; j++) {
-            if (paItem[j] == pItem->m_objectId) {
-                bFound = 1;
-                paValue[j] += pEffect->GetInteger(nSlot);
-            }
-        }
-        if (bFound == 0) {
-            for (int j = 0; j < 108; j++) {
-                if (paValue[j] == -1) {
-                    paItem[j] = pItem->m_objectId;
-                    paValue[j] = pEffect->GetInteger(nSlot);
-                    return;
-                }
-            }
-        }
-        return;
-    }
-    if (pEffect->m_spellId != -1) {
-        for (int j = 0; j < 108; j++) {
-            if (paSpell[j] == pEffect->m_spellId) {
-                bFound = 1;
-                paValue[j] += pEffect->GetInteger(nSlot);
-            }
-        }
-    }
-    if (bFound == 0) {
-        for (int j = 0; j < 108; j++) {
-            if (paValue[j] == -1) {
-                paSpell[j] = pEffect->m_spellId;
-                paValue[j] = pEffect->GetInteger(nSlot);
-                return;
-            }
-        }
-    }
-}
-
 // Sums every active effect of one kind: nEffectType selects one of five families off a jump table,
 // and each family walks m_effects from the per-family first index CSWSCreatureStats caches, stopping
 // when m_subType steps past that family's decrease id (the list is sorted by subtype).
 //
 // Stacking rules, which is why the class carries six 108-entry scratch arrays:
 // - "misc" bonuses do not accumulate. Two that share a key overwrite, so the same stim drunk twice
-//   does not double its effect. Ability-score penalties are the exception and do add, see
-//   StackEffectValueSum.
+//   does not double its effect. Ability-score penalties are the exception: a decrease that
+//   shares a key adds to the stored one.
 // - The key is the spell id for attack and damage, and the creator item's object id for
 //   ability/skill/saving throw, so an item's bonus stacks with a spell's but not with itself.
 // - A -1 spell id means "not from a spell" and skips the search, since the key arrays are seeded
@@ -4289,13 +4196,98 @@ int CSWSCreature::GetTotalEffectBonus(unsigned char nEffectType, CSWSObject* pVe
                     (nRace == g_pRules->m_nNumRaces || nRace == nTargetRace) &&
                     (nAlign == ALIGNMENT_ALL || nAlign == nAlignmentGroup)) {
                     if (pEffect->m_subType == nSaveIncrease) {
-                        StackEffectValue(pEffect, 0, m_aStackIncItem, m_aStackIncValue,
-                                         m_aStackIncSpell);
+                        CSWSItem* pItem =
+                            g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
+                        int bFound = 0;
+                        if (pItem != 0) {
+                            for (int j = 0; j < 108; j++) {
+                                if (m_aStackIncItem[j] == pItem->m_objectId) {
+                                    bFound = 1;
+                                    if (m_aStackIncValue[j] < pEffect->GetInteger(0)) {
+                                        m_aStackIncValue[j] = pEffect->GetInteger(0);
+                                        goto nextSaveEffect;
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncValue[j] == -1) {
+                                        m_aStackIncItem[j] = pItem->m_objectId;
+                                        m_aStackIncValue[j] = pEffect->GetInteger(0);
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            if (pEffect->m_spellId != -1) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncSpell[j] == pEffect->m_spellId) {
+                                        bFound = 1;
+                                        if (m_aStackIncValue[j] < pEffect->GetInteger(0)) {
+                                            m_aStackIncValue[j] = pEffect->GetInteger(0);
+                                            goto nextSaveEffect;
+                                        }
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncValue[j] == -1) {
+                                        m_aStackIncSpell[j] = pEffect->m_spellId;
+                                        m_aStackIncValue[j] = pEffect->GetInteger(0);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     } else if (pEffect->m_subType == nSaveDecrease) {
-                        StackEffectValue(pEffect, 0, m_aStackDecItem, m_aStackDecValue,
-                                         m_aStackDecSpell);
+                        CSWSItem* pItem =
+                            g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
+                        int bFound = 0;
+                        if (pItem != 0) {
+                            for (int j = 0; j < 108; j++) {
+                                if (m_aStackDecItem[j] == pItem->m_objectId) {
+                                    bFound = 1;
+                                    if (m_aStackDecValue[j] < pEffect->GetInteger(0)) {
+                                        m_aStackDecValue[j] = pEffect->GetInteger(0);
+                                        goto nextSaveEffect;
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecValue[j] == -1) {
+                                        m_aStackDecItem[j] = pItem->m_objectId;
+                                        m_aStackDecValue[j] = pEffect->GetInteger(0);
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            if (pEffect->m_spellId != -1) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecSpell[j] == pEffect->m_spellId) {
+                                        bFound = 1;
+                                        if (m_aStackDecValue[j] < pEffect->GetInteger(0)) {
+                                            m_aStackDecValue[j] = pEffect->GetInteger(0);
+                                            goto nextSaveEffect;
+                                        }
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecValue[j] == -1) {
+                                        m_aStackDecSpell[j] = pEffect->m_spellId;
+                                        m_aStackDecValue[j] = pEffect->GetInteger(0);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+            nextSaveEffect:;
             }
         }
         int nSumInc = 0;
@@ -4334,13 +4326,92 @@ int CSWSCreature::GetTotalEffectBonus(unsigned char nEffectType, CSWSObject* pVe
                 pEffect->GetInteger(1);
                 if (nWhich == nWantAbility) {
                     if (pEffect->m_subType == nAbilityIncrease) {
-                        StackEffectValue(pEffect, 1, m_aStackIncItem, m_aStackIncValue,
-                                         m_aStackIncSpell);
+                        CSWSItem* pItem =
+                            g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
+                        int bFound = 0;
+                        if (pItem != 0) {
+                            for (int j = 0; j < 108; j++) {
+                                if (m_aStackIncItem[j] == pItem->m_objectId) {
+                                    bFound = 1;
+                                    if (m_aStackIncValue[j] < pEffect->GetInteger(1)) {
+                                        m_aStackIncValue[j] = pEffect->GetInteger(1);
+                                        goto nextAbilityEffect;
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncValue[j] == -1) {
+                                        m_aStackIncItem[j] = pItem->m_objectId;
+                                        m_aStackIncValue[j] = pEffect->GetInteger(1);
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            if (pEffect->m_spellId != -1) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncSpell[j] == pEffect->m_spellId) {
+                                        bFound = 1;
+                                        if (m_aStackIncValue[j] < pEffect->GetInteger(1)) {
+                                            m_aStackIncValue[j] = pEffect->GetInteger(1);
+                                            goto nextAbilityEffect;
+                                        }
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncValue[j] == -1) {
+                                        m_aStackIncSpell[j] = pEffect->m_spellId;
+                                        m_aStackIncValue[j] = pEffect->GetInteger(1);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     } else if (pEffect->m_subType == nAbilityDecrease) {
-                        StackEffectValueSum(pEffect, 1, m_aStackDecItem, m_aStackDecValue,
-                                            m_aStackDecSpell);
+                        CSWSItem* pItem =
+                            g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
+                        int bFound = 0;
+                        if (pItem != 0) {
+                            for (int j = 0; j < 108; j++) {
+                                if (m_aStackDecItem[j] == pItem->m_objectId) {
+                                    bFound = 1;
+                                    m_aStackDecValue[j] += pEffect->GetInteger(1);
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecValue[j] == -1) {
+                                        m_aStackDecItem[j] = pItem->m_objectId;
+                                        m_aStackDecValue[j] = pEffect->GetInteger(1);
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            if (pEffect->m_spellId != -1) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecSpell[j] == pEffect->m_spellId) {
+                                        bFound = 1;
+                                        m_aStackDecValue[j] += pEffect->GetInteger(1);
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecValue[j] == -1) {
+                                        m_aStackDecSpell[j] = pEffect->m_spellId;
+                                        m_aStackDecValue[j] = pEffect->GetInteger(1);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+            nextAbilityEffect:;
             }
         }
         int nSumInc = 0;
@@ -4375,13 +4446,98 @@ int CSWSCreature::GetTotalEffectBonus(unsigned char nEffectType, CSWSObject* pVe
                     (nRace == g_pRules->m_nNumRaces || nRace == nTargetRace) &&
                     (nAlign == ALIGNMENT_ALL || nAlign == nAlignmentGroup)) {
                     if (pEffect->m_subType == nSkillIncrease) {
-                        StackEffectValue(pEffect, 1, m_aStackIncItem, m_aStackIncValue,
-                                         m_aStackIncSpell);
+                        CSWSItem* pItem =
+                            g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
+                        int bFound = 0;
+                        if (pItem != 0) {
+                            for (int j = 0; j < 108; j++) {
+                                if (m_aStackIncItem[j] == pItem->m_objectId) {
+                                    bFound = 1;
+                                    if (m_aStackIncValue[j] < pEffect->GetInteger(1)) {
+                                        m_aStackIncValue[j] = pEffect->GetInteger(1);
+                                        goto nextSkillEffect;
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncValue[j] == -1) {
+                                        m_aStackIncItem[j] = pItem->m_objectId;
+                                        m_aStackIncValue[j] = pEffect->GetInteger(1);
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            if (pEffect->m_spellId != -1) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncSpell[j] == pEffect->m_spellId) {
+                                        bFound = 1;
+                                        if (m_aStackIncValue[j] < pEffect->GetInteger(1)) {
+                                            m_aStackIncValue[j] = pEffect->GetInteger(1);
+                                            goto nextSkillEffect;
+                                        }
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackIncValue[j] == -1) {
+                                        m_aStackIncSpell[j] = pEffect->m_spellId;
+                                        m_aStackIncValue[j] = pEffect->GetInteger(1);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     } else if (pEffect->m_subType == nSkillDecrease) {
-                        StackEffectValue(pEffect, 1, m_aStackDecItem, m_aStackDecValue,
-                                         m_aStackDecSpell);
+                        CSWSItem* pItem =
+                            g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
+                        int bFound = 0;
+                        if (pItem != 0) {
+                            for (int j = 0; j < 108; j++) {
+                                if (m_aStackDecItem[j] == pItem->m_objectId) {
+                                    bFound = 1;
+                                    if (m_aStackDecValue[j] < pEffect->GetInteger(1)) {
+                                        m_aStackDecValue[j] = pEffect->GetInteger(1);
+                                        goto nextSkillEffect;
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecValue[j] == -1) {
+                                        m_aStackDecItem[j] = pItem->m_objectId;
+                                        m_aStackDecValue[j] = pEffect->GetInteger(1);
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            if (pEffect->m_spellId != -1) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecSpell[j] == pEffect->m_spellId) {
+                                        bFound = 1;
+                                        if (m_aStackDecValue[j] < pEffect->GetInteger(1)) {
+                                            m_aStackDecValue[j] = pEffect->GetInteger(1);
+                                            goto nextSkillEffect;
+                                        }
+                                    }
+                                }
+                            }
+                            if (bFound == 0) {
+                                for (int j = 0; j < 108; j++) {
+                                    if (m_aStackDecValue[j] == -1) {
+                                        m_aStackDecSpell[j] = pEffect->m_spellId;
+                                        m_aStackDecValue[j] = pEffect->GetInteger(1);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+            nextSkillEffect:;
             }
         }
         int nSumInc = 0;
@@ -5538,7 +5694,7 @@ int CSWSCreature::RunEquip(unsigned long long objectId, unsigned int nSlot, int 
         pSwap = static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(nSlot));
         if (pSwap == 0)
             goto refuse;
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nStacking >= 2
+        if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_nStacking >= 2
             && pSwap->CompareItem(pItem) != 0)
             goto refuse;
         UnequipItem(pSwap);
@@ -5643,14 +5799,14 @@ equipped:
             nMode == CREATURE_COMBAT_MODE_IMPROVED_POWER_ATTACK)
         {
             if (pRight != 0
-                && g_pRules->m_pBaseItemArray->GetBaseItem(pRight->m_baseItem)->m_bRangedWeapon
+                && g_pRules->GetBaseItem(pRight->m_baseItem)->m_bRangedWeapon
                        != 0)
                 SetCombatMode(CREATURE_COMBAT_MODE_NONE, 1);
         }
         else if (nMode == CREATURE_COMBAT_MODE_RAPID_SHOT)
         {
             if (pRight == 0
-                || g_pRules->m_pBaseItemArray->GetBaseItem(pRight->m_baseItem)->m_bRangedWeapon
+                || g_pRules->GetBaseItem(pRight->m_baseItem)->m_bRangedWeapon
                        == 0)
                 SetCombatMode(CREATURE_COMBAT_MODE_NONE, 1);
         }
@@ -5662,7 +5818,7 @@ equipped:
         else if (nMode == CREATURE_COMBAT_MODE_PARRY)
         {
             if (pRight != 0
-                && g_pRules->m_pBaseItemArray->GetBaseItem(pRight->m_baseItem)->m_bRangedWeapon
+                && g_pRules->GetBaseItem(pRight->m_baseItem)->m_bRangedWeapon
                        != 0)
                 SetCombatMode(CREATURE_COMBAT_MODE_NONE, 1);
         }
@@ -7305,7 +7461,7 @@ int CSWSCreature::AddDriveAction(unsigned short nGroupId, const Vector& vPositio
 
 void CSWSCreature::MergeItem(CSWSItem* pItem, CSWSItem* pMergeItem)
 {
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nStacking >= 2) {
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_nStacking >= 2) {
         if (pItem->MergeItem(pMergeItem) != 0) {
             RemoveItem(pMergeItem, 0, 0, 0);
             if (pMergeItem != 0)
@@ -7886,8 +8042,7 @@ float CSWSCreature::GetSpotCheckDistance()
 {
     float fDistance = m_fPerceptionPrimaryRange;
     if (m_bCombatState != 0) {
-        CServerExoApp* pServerExoApp = g_pAppManager->m_pServerExoApp;
-        if (pServerExoApp->GetCreatureByGameObjectID(pServerExoApp->GetPlayerCreatureId()) != this) {
+        if (g_pAppManager->m_pServerExoApp->GetPlayerCreature() != this) {
             C2DA* pRanges = g_pRules->m_p2DArrays->m_pRanges;
             CExoString col("PrimaryRange");
             pRanges->GetFLOATEntry(RANGES_ROW_PARTY_COMBAT, col, &fDistance);
@@ -7900,8 +8055,7 @@ float CSWSCreature::GetListenCheckDistance()
 {
     float fDistance = m_fPerceptionSecondaryRange;
     if (m_bCombatState != 0) {
-        CServerExoApp* pServerExoApp = g_pAppManager->m_pServerExoApp;
-        if (pServerExoApp->GetCreatureByGameObjectID(pServerExoApp->GetPlayerCreatureId()) != this) {
+        if (g_pAppManager->m_pServerExoApp->GetPlayerCreature() != this) {
             C2DA* pRanges = g_pRules->m_p2DArrays->m_pRanges;
             CExoString col("SecondaryRange");
             pRanges->GetFLOATEntry(RANGES_ROW_PARTY_COMBAT, col, &fDistance);
@@ -9967,12 +10121,12 @@ havePlayer:
 void CSWSCreature::UpdatePureGoodEvilPowers()
 {
     if (m_pStats != 0) {
-        if (m_pStats->m_nAlignment == 100) {
-            RemovePureEvilPowers();
-            AddPureGoodPowers();
-        } else if (m_pStats->m_nAlignment == 0) {
+        if (m_pStats->m_nAlignment == 0) {
             RemovePureGoodPowers();
             AddPureEvilPowers();
+        } else if (m_pStats->m_nAlignment == 100) {
+            RemovePureEvilPowers();
+            AddPureGoodPowers();
         } else {
             RemovePureGoodPowers();
             RemovePureEvilPowers();
@@ -12078,15 +12232,13 @@ void CSWSCreature::UpdateAttributesOnEffect(CGameEffect* pEffect)
     {
         case ABILITY_STRENGTH:
         {
-            CSWSCreatureStats* pStats = m_pStats;
-            pStats->m_nSTRMod = static_cast<unsigned char>(pStats->CalcStatModifier(pStats->GetSTRStat()));
+            m_pStats->UpdateSTRModifier();
             m_bUpdateCombatInformation = 1;
             break;
         }
         case ABILITY_DEXTERITY:
         {
-            CSWSCreatureStats* pStats = m_pStats;
-            pStats->m_nDEXMod = static_cast<signed char>(pStats->CalcStatModifier(pStats->GetDEXStat()));
+            m_pStats->UpdateDEXModifier();
             m_bUpdateCombatInformation = 1;
             break;
         }
@@ -12102,8 +12254,7 @@ void CSWSCreature::UpdateAttributesOnEffect(CGameEffect* pEffect)
 #endif
 
             short nOldMaxHitPoints = GetMaxHitPoints(1);
-            CSWSCreatureStats* pStats = m_pStats;
-            pStats->m_nCONMod = static_cast<signed char>(pStats->CalcStatModifier(pStats->GetCONStat()));
+            m_pStats->UpdateCONModifier();
             SetCurrentHitPoints(GetCurrentHitPoints(1) + (GetMaxHitPoints(1) - nOldMaxHitPoints));
 
             // Either the CON loss just killed it outright, or it was already down and the
@@ -12126,16 +12277,14 @@ void CSWSCreature::UpdateAttributesOnEffect(CGameEffect* pEffect)
         }
         case ABILITY_INTELLIGENCE:
         {
-            CSWSCreatureStats* pStats = m_pStats;
-            pStats->m_nINTMod = static_cast<unsigned char>(pStats->CalcStatModifier(pStats->GetINTStat()));
+            m_pStats->UpdateINTModifier();
             m_pStats->AdjustSpellUsesPerDay();
             break;
         }
         case ABILITY_WISDOM:
         {
             short nOldMaxForcePoints = GetMaxForcePoints();
-            CSWSCreatureStats* pStats = m_pStats;
-            pStats->m_nWISMod = static_cast<signed char>(pStats->CalcStatModifier(pStats->GetWISStat()));
+            m_pStats->UpdateWISModifier();
 
             CSWSCreatureStats* pStats2 = m_pStats;
             pStats2->m_nCurrentForcePoints =
@@ -12146,8 +12295,7 @@ void CSWSCreature::UpdateAttributesOnEffect(CGameEffect* pEffect)
         case ABILITY_CHARISMA:
         {
             short nOldMaxForcePoints = GetMaxForcePoints();
-            CSWSCreatureStats* pStats = m_pStats;
-            pStats->m_nCHAMod = static_cast<unsigned char>(pStats->CalcStatModifier(pStats->GetCHAStat()));
+            m_pStats->UpdateCHAModifier();
 
             CSWSCreatureStats* pStats2 = m_pStats;
             pStats2->m_nCurrentForcePoints =

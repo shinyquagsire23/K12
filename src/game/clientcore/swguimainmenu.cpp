@@ -51,6 +51,7 @@
 #include "restype.h"
 #include "serverexoappinternal.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // Rows of the port's override/custom.txt (GetLocalizedCustomString).
 enum {
@@ -372,12 +373,14 @@ CSWGuiMainMenu::CSWGuiMainMenu(CSWGuiManager* pGuiManager)
 
             // CSWCCreature declares its own GetAnimationBase, so upcast through CSWCObject to
             // reach the real one.
-            if (CAurObject* pDummy = static_cast<CAurObject*>(static_cast<CSWCObject*>(m_pPCCreature)
-                                                       ->GetAnimationBase()->GetModel(CSWCAnimBase::ANIM_MODEL_BODY)))
-                pDummy->PlayAnimation(const_cast<char*>("evil"), 1.0f, 2, 0.0f);
-            if (CAurObject* pDummy = static_cast<CAurObject*>(static_cast<CSWCObject*>(m_pPCCreature)
-                                                       ->GetAnimationBase()->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD)))
-                pDummy->PlayAnimation(const_cast<char*>("evil"), 1.0f, 2, 0.0f);
+            CAurObject* pPart = static_cast<CAurObject*>(static_cast<CSWCObject*>(m_pPCCreature)
+                                    ->GetAnimationBase()->GetModel(CSWCAnimBase::ANIM_MODEL_BODY));
+            if (pPart != 0)
+                pPart->PlayAnimation(const_cast<char*>("evil"), 1.0f, 2, 0.0f);
+            pPart = static_cast<CAurObject*>(static_cast<CSWCObject*>(m_pPCCreature)
+                        ->GetAnimationBase()->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD));
+            if (pPart != 0)
+                pPart->PlayAnimation(const_cast<char*>("evil"), 1.0f, 2, 0.0f);
         }
         else
         {
@@ -881,7 +884,7 @@ void CSWGuiMainMenu::OnLoadSaveGame(CSWGuiControl* pControl)
     if ((pPanel->m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE)
         return;
 
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+    SetToBeDeleted(0);
 #else
     if ((m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE)
         return;
@@ -904,12 +907,7 @@ void CSWGuiMainMenu::OnLoadSaveGame(CSWGuiControl* pControl)
     if ((pPanel->m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE)
         return;
 
-    CSWGuiPanel* pChain = this;
-    do {
-        pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-
+    SetToBeDeleted(0);
     g_pAppManager->m_pClientExoApp->ClearMainMenuPointer();
 #endif
 }
@@ -1053,7 +1051,7 @@ void CSWGuiMainMenu::OnNewGamePicked(CSWGuiControl* pControl)
 
     g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC);
 
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+    SetToBeDeleted(0);
 #ifdef K2_FIX_ENGINE_BUGS
     if (CGuiInGame* pInGame = g_pAppManager->m_pClientExoApp->GetInGameGui())
         __builtin_memset(pInGame->m_tutorialWindowShown, 0, sizeof(pInGame->m_tutorialWindowShown));
@@ -1073,7 +1071,6 @@ void CSWGuiMainMenu::OnNewGamePicked(CSWGuiControl* pControl)
         CExoIni ini;
         CExoString sValue;
         CExoString sModule = "001ebo";
-        CSWGuiPanel* pChain = this;
 
         g_pExoResMan->CacheResource(CExoString("HD0:effects"), 0x270d);
         g_pExoResMan->AddResourceDirectory(CExoString("MODULES:"));
@@ -1094,11 +1091,7 @@ void CSWGuiMainMenu::OnNewGamePicked(CSWGuiControl* pControl)
 
         g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
 
-        do {
-            pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pChain = pChain->m_pNextInChain;
-        } while (pChain != 0);
-
+        SetToBeDeleted(0);
         g_pAppManager->m_pClientExoApp->ClearMainMenuPointer();
     }
 
@@ -1645,7 +1638,7 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
         sLayout = "mainmenu8x6_p";
 #endif
 #endif
-    if (sLayout.m_sString != 0 && static_cast<int>(strlen(sLayout.m_sString)) >= 1)
+    if (sLayout.GetLength() >= 1)
     {
         StartLoadFromLayout(CResRef(sLayout), 1, 1, 0);
         m_stateFlags |= 1;
@@ -2099,13 +2092,8 @@ void CSWGuiMainMenu::PopulateModules()
             sB = CExoString("zzzzzzzz.zzz");
         }
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         sA = sA.SubString(0, sA.GetLength() - 4);
         sB = sB.SubString(0, sB.GetLength() - 4);
-#else
-        sA = sA.SubString(0, (sA.m_sString ? static_cast<int>(strlen(sA.m_sString)) : 0) - 4);
-        sB = sB.SubString(0, (sB.m_sString ? static_cast<int>(strlen(sB.m_sString)) : 0) - 4);
-#endif
 
         bool bAdvance = true;
         if (sA.LowerCase() <= sB.LowerCase())
@@ -2146,10 +2134,6 @@ void CSWGuiMainMenu::OnModulePicked(CSWGuiControl* pControl)
 
     CExoString sMsg;
 
-#if !KOTOR1
-    CSWGuiPanel* pChain = this;
-#endif
-
     CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
 
     CSWPartyTable::ResetCurrentSessionStartTime();
@@ -2179,15 +2163,9 @@ void CSWGuiMainMenu::OnModulePicked(CSWGuiControl* pControl)
     sMsg.Format(const_cast<char*>("%c%s.%s %s"), 's', "Module", "Load",
                 m_aModuleNames[m_lbModules.m_nSelectedIndex].CStr());
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     pApp->GetNetLayer()->SendMessageToPlayer(CNetLayer::PLAYERID_SERVER,
                                              reinterpret_cast<unsigned char*>(sMsg.CStr()),
                                              sMsg.GetLength(), 0);
-#else
-    pApp->GetNetLayer()->SendMessageToPlayer(CNetLayer::PLAYERID_SERVER,
-                                             reinterpret_cast<unsigned char*>(sMsg.CStr()),
-                                             sMsg.m_sString ? static_cast<int>(strlen(sMsg.m_sString)) : 0, 0);
-#endif
 
     pApp->SetPlayerCharacterName(CExoString("test"));
     pApp->SetInputClass(INPUTCLASS_GAME, 1);
@@ -2207,15 +2185,8 @@ void CSWGuiMainMenu::OnModulePicked(CSWGuiControl* pControl)
     DeleteModuleList();
     m_lbModules.ClearItems();
 
-#if KOTOR1
-    // K1: stamps state 4 on this panel only, and does not clear the main-menu pointer.
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do {
-        pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-
+    SetToBeDeleted(0);
+#if !KOTOR1  // K1 does not clear the main-menu pointer
     g_pAppManager->m_pClientExoApp->ClearMainMenuPointer();
 #endif
     g_pAppManager->m_pClientExoApp->GetInGameGui()->SetGlobalUnpauseableState(1);
@@ -2224,26 +2195,9 @@ void CSWGuiMainMenu::OnModulePicked(CSWGuiControl* pControl)
 void CSWGuiMainMenu::DeleteModuleList()
 {
     while (m_aModuleNames.m_count > 0)
-    {
-        // inlined CExoArrayList<CExoString>::DelIndex(0)
-        m_aModuleNames.m_count--;
-        if (m_aModuleNames.m_count > 0)
-        {
-            for (int i = 0; i < m_aModuleNames.m_count; i++)
-            {
-                m_aModuleNames.m_pArray[i] = m_aModuleNames.m_pArray[i + 1];
-            }
-        }
-    }
+        m_aModuleNames.DelIndex(0);
 
-    // inlined CExoArrayList<CExoString>::Clear()
-    if (m_aModuleNames.m_pArray)
-    {
-        delete[] m_aModuleNames.m_pArray;
-        m_aModuleNames.m_pArray = 0;
-        m_aModuleNames.m_capacity = 0;
-    }
-    m_aModuleNames.m_count = 0;
+    m_aModuleNames.SetSize(0);
 }
 
 #if !KOTOR1  // K2-only: K1 has no Facebook button

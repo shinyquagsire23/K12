@@ -19,13 +19,9 @@ public:
     unsigned short     m_nSoundSetFile;
     unsigned int       m_objectId;
 
-    float              m_fPositionX;
-    float              m_fPositionY;
-    float              m_fPositionZ;
+    Vector             m_position;
     unsigned long long m_oidArea;
-    float              m_fOrientationX;
-    float              m_fOrientationY;
-    float              m_fOrientationZ;
+    Vector             m_orientation;
     int                m_nAnimation;
     float              m_fAnimationSpeed;
     // The x and y of the last path point sent, plus a z.
@@ -295,9 +291,7 @@ public:
     unsigned long long m_oidArea;
     // The writer refreshes x and y only, so z is compared against the origin rather than against the last
     // value sent.
-    float              m_fPositionX;
-    float              m_fPositionY;
-    float              m_fPositionZ;
+    Vector             m_position;
 
     int                m_bPlayerCharacter;
     int                m_bAIStateControllable;

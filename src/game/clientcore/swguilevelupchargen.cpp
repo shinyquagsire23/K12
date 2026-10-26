@@ -100,19 +100,17 @@ CSWGuiLevelUpCharGen::CSWGuiLevelUpCharGen(CSWGuiManager* pGuiManager, unsigned 
 
     m_lblMainTitle.m_text.m_params.SetStrRef(STRREF_LEVEL_UP);
 
-    CSWGuiLevelUpPanel* pLevelUpPanel = new CSWGuiLevelUpPanel(m_pGuiManager, m_oid);
-    m_pLevelUpPanel = pLevelUpPanel;
-    pLevelUpPanel->m_pCharGenPanel = this;
+    m_pLevelUpPanel = new CSWGuiLevelUpPanel(m_pGuiManager, m_oid);
+    m_pLevelUpPanel->m_pCharGenPanel = this;
 
     SetNameString(m_pCreature->GetName());
     AbilitiesChanged();
 
     m_lblPortrait.m_border.m_params.SetFillImage(pOriginal->GetPortrait(1), 0);
 
+    CAurScene* pScene = m_view3DChar.m_scene.m_pScene;
+    CAurCamera* pCamera = m_view3DChar.m_scene.m_pCamera;
     if (g_bDo3DGUIs) {
-        CAurScene* pScene = m_view3DChar.m_scene.m_pScene;
-        CAurCamera* pCamera = m_view3DChar.m_scene.m_pCamera;
-
         pScene->SpawnRoom(const_cast<char*>("gui3D_room"), Vector(0, 0, 0), Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
         m_view3DChar.m_scene.AddModel(CExoString("charrec_light"), -1);
         pCreature->Setup3DScene(m_view3DChar, pOriginal, 0, 1);
@@ -186,7 +184,7 @@ bool CSWGuiLevelUpCharGen::CopyCreatureStats(CSWCCreature* pSrc, CSWCCreature* p
     pDstStats->m_nCurrentHitPoints = pSrcStats->m_nCurrentHitPoints;
     pDstStats->m_nMaxHitPoints = pSrcStats->GetMaxHitPoints();
     pDstStats->m_nForcePoints = pSrcStats->m_nForcePoints;
-    pDstStats->m_nCurrentForcePoints = static_cast<unsigned short>(pSrcStats->m_nTemporaryForcePoints + pSrcStats->m_nCurrentForcePoints);
+    pDstStats->m_nCurrentForcePoints = static_cast<unsigned short>(pSrcStats->m_nCurrentForcePoints + pSrcStats->m_nTemporaryForcePoints);
     pDstStats->m_nMaxForcePoints = pSrcStats->m_nMaxForcePoints;
 
     for (unsigned char i = 0; i < pSrcStats->m_nNumClasses; i++) {
@@ -210,20 +208,20 @@ bool CSWGuiLevelUpCharGen::CopyCreatureStats(CSWCCreature* pSrc, CSWCCreature* p
         pDstStats->m_nBaseAttackBonus = pSrcStats->GetBaseAttackBonus();
 
     // The two clamps run again here.
-    int nAlignment2 = pSrcStats->m_alignmentGoodEvil;
-    if (nAlignment2 < 0)
-        nAlignment2 = 0;
-    if (nAlignment2 > 100)
-        nAlignment2 = 100;
-    pDstStats->m_alignmentGoodEvil = static_cast<short>(nAlignment2);
+    nAlignment = pSrcStats->m_alignmentGoodEvil;
+    if (nAlignment < 0)
+        nAlignment = 0;
+    if (nAlignment > 100)
+        nAlignment = 100;
+    pDstStats->m_alignmentGoodEvil = static_cast<short>(nAlignment);
 
 #if !KOTOR1
-    int nNPCAlignment2 = pSrcStats->m_baseCNPCAlignment;
-    if (nNPCAlignment2 < 0)
-        nNPCAlignment2 = -1;
-    if (nNPCAlignment2 > 100)
-        nNPCAlignment2 = 100;
-    pDstStats->m_baseCNPCAlignment = static_cast<short>(nNPCAlignment2);
+    nNPCAlignment = pSrcStats->m_baseCNPCAlignment;
+    if (nNPCAlignment < 0)
+        nNPCAlignment = -1;
+    if (nNPCAlignment > 100)
+        nNPCAlignment = 100;
+    pDstStats->m_baseCNPCAlignment = static_cast<short>(nNPCAlignment);
 #endif
 
     pDstStats->ClearSkills();
@@ -325,11 +323,11 @@ void CSWGuiLevelUpCharGen::AbilitiesChanged()
     unsigned char nClass = pCreature->m_pStats->GetClass(
         static_cast<unsigned char>(pCreature->m_pStats->m_nNumClasses - 1));
 
-    char nCONGain = static_cast<char>(pCreature->m_pStats->CalcStatModifier(pCreature->m_pStats->m_abScores[2])
+    char nCONGain = static_cast<char>(pCreature->m_pStats->GetCONMod()
                            - static_cast<unsigned char>(pCreature->GetServerCreature()->m_pStats->m_nCONMod));
-    char nWISGain = static_cast<char>(pCreature->m_pStats->CalcStatModifier(pCreature->m_pStats->m_abScores[4])
+    char nWISGain = static_cast<char>(pCreature->m_pStats->GetWISMod()
                            - static_cast<unsigned char>(pCreature->GetServerCreature()->m_pStats->m_nWISMod));
-    char nCHAGain = static_cast<char>(pCreature->m_pStats->CalcStatModifier(pCreature->m_pStats->m_abScores[5])
+    char nCHAGain = static_cast<char>(pCreature->m_pStats->GetCHAMod()
                            - pCreature->GetServerCreature()->m_pStats->m_nCHAMod);  // unused
     (void)nCHAGain;
 
@@ -337,7 +335,7 @@ void CSWGuiLevelUpCharGen::AbilitiesChanged()
     char nClassGain = static_cast<char>(pClass->m_nHitDie);
 
     char nHPGain = static_cast<char>(nClassGain
-                          + pCreature->m_pStats->CalcStatModifier(pCreature->m_pStats->m_abScores[2])
+                          + pCreature->m_pStats->GetCONMod()
                           + m_pCreature->m_pStats->GetLevel() * nCONGain);
     if (nHPGain < 2)
         nHPGain = 1;
@@ -356,12 +354,12 @@ void CSWGuiLevelUpCharGen::AbilitiesChanged()
 #if KOTOR1
         // K1: the force-point gain counts the charisma modifier and gain as well as wisdom.
         char nFPGain = static_cast<char>(nForceGain
-                              + pCreature->m_pStats->CalcStatModifier(pCreature->m_pStats->m_abScores[4])
-                              + pCreature->m_pStats->CalcStatModifier(pCreature->m_pStats->m_abScores[5])
+                              + pCreature->m_pStats->GetWISMod()
+                              + pCreature->m_pStats->GetCHAMod()
                               + (nWISGain + nCHAGain) * m_pCreature->m_pStats->GetLevel());
 #else
         char nFPGain = static_cast<char>(nForceGain
-                              + pCreature->m_pStats->CalcStatModifier(pCreature->m_pStats->m_abScores[4])
+                              + pCreature->m_pStats->GetWISMod()
                               + m_pCreature->m_pStats->GetLevel() * nWISGain);
 #endif
         if (nFPGain < 2)
@@ -409,95 +407,23 @@ void CSWGuiLevelUpCharGen::HandleInputEvent(int type, int val)
     if (val != 0 && (type == INPUTEVENT_GUI_BACK || type == INPUTEVENT_GUI_B))
     {
         m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-        m_pGuiManager->PopModalPanel();
-
-        CSWGuiPanel* pPanel = static_cast<CSWGuiPanel*>(m_pLevelUpPanel);
-#if KOTOR1
-        // K1: no panel chain; one state-4 stamp per panel.
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        do
-        {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel != 0);
-#endif
-
-        CSWGuiPanel* pChain = this;
-#if KOTOR1
-        pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        do
-        {
-            pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pChain = pChain->m_pNextInChain;
-        } while (pChain != 0);
-#endif
-
-        m_pInGameChar->AttachModel();
+        HandleCancelButton();
     }
 
     CSWGuiPanel::HandleInputEvent(type, val);
 }
 
-// The walks and the re-attach, without the sound or the input-class re-send.
 void CSWGuiLevelUpCharGen::HandleCancelButton()
 {
-    m_pGuiManager->PopModalPanel();
-
-    CSWGuiPanel* pPanel = static_cast<CSWGuiPanel*>(m_pLevelUpPanel);
-#if KOTOR1
-    // K1: no panel chain; one state-4 stamp per panel.
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
-
-    CSWGuiPanel* pChain = this;
-#if KOTOR1
-    pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-#endif
-
+    RemoveSubPanels();
     m_pInGameChar->AttachModel();
 }
 
-// The same two walks as HandleCancelButton, with nothing to re-attach.
 void CSWGuiLevelUpCharGen::RemoveSubPanels()
 {
     m_pGuiManager->PopModalPanel();
-
-    CSWGuiPanel* pPanel = static_cast<CSWGuiPanel*>(m_pLevelUpPanel);
-#if KOTOR1
-    // K1: no panel chain; one state-4 stamp per panel.
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
-
-    CSWGuiPanel* pChain = this;
-#if KOTOR1
-    pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-#endif
+    m_pLevelUpPanel->SetToBeDeleted(0);
+    SetToBeDeleted(0);
 }
 
 // Writes the seven new ability values into the real creature's stats block, in the given order
@@ -614,23 +540,12 @@ void CSWGuiLevelUpCharGen::ClearPowers()
 #endif
 }
 
-// Commits the level-up and hands control back to the in-game screen, walking four chained panels.
-// They do not all start at the same panel; the first starts at the level-up panel, the second at
-// this screen, the third and fourth at the in-game char-gen panel.
+// Commits the level-up and hands control back to the in-game screen, deleting the level-up panel,
+// this screen and, unless every GUI is kept alive, the in-game character panel.
 void CSWGuiLevelUpCharGen::BeginPlayGame()
 {
     m_pGuiManager->PopModalPanel();
-
-    CSWGuiPanel* pPanel = static_cast<CSWGuiPanel*>(m_pLevelUpPanel);
-#if KOTOR1
-    // K1: no panel chain; one state-4 stamp per panel.
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    m_pLevelUpPanel->SetToBeDeleted(0);
 
     CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_oid);
     // The result is discarded.
@@ -640,33 +555,14 @@ void CSWGuiLevelUpCharGen::BeginPlayGame()
     pCreature->m_nStateFlags |= 2;
 
     m_pGuiManager->PopModalPanel();
-
-    CSWGuiPanel* pChain = this;
-#if KOTOR1
-    pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do {
-        pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-#endif
-
+    SetToBeDeleted(0);
     m_pInGameChar->AttachModel();
 
     if (m_nInputClass == 0 && g_pAppManager->m_pClientExoApp->GetPausedByCombat() != 0)
         g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 0, 0);
 
     if (g_bCreateAllGUIs == 0 && m_nInputClass != 2) {
-        CSWGuiPanel* pScreen = m_pInGameChar;
-#if KOTOR1
-        pScreen->m_stateFlags = (pScreen->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        do {
-            pScreen->m_stateFlags = (pScreen->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pScreen = pScreen->m_pNextInChain;
-        } while (pScreen != 0);
-#endif
-
+        m_pInGameChar->SetToBeDeleted(0);
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_apScreenPanels[2] = 0;
 #if KOTOR1
         g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC);  // K1: 1-arg form
@@ -691,44 +587,13 @@ void CSWGuiLevelUpCharGen::CancelLevelUp()
     m_pGuiManager->PopModalPanel();
     m_pGuiManager->PopModalPanel();
 
-    CSWGuiPanel* pPanel = static_cast<CSWGuiPanel*>(m_pLevelUpPanel);
-#if KOTOR1
-    // K1: no panel chain; one state-4 stamp per panel.
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
-
-    CSWGuiPanel* pChain = this;
-#if KOTOR1
-    pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pChain->m_stateFlags = (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-#endif
-
+    m_pLevelUpPanel->SetToBeDeleted(0);
+    SetToBeDeleted(0);
     m_pInGameChar->AttachModel();
 
     if (g_bCreateAllGUIs == 0 && m_nInputClass != 2)
     {
-        CSWGuiPanel* pScreen = m_pInGameChar;
-#if KOTOR1
-        pScreen->m_stateFlags = (pScreen->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        do
-        {
-            pScreen->m_stateFlags = (pScreen->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pScreen = pScreen->m_pNextInChain;
-        } while (pScreen != 0);
-#endif
-
+        m_pInGameChar->SetToBeDeleted(0);
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_apScreenPanels[2] = 0;
     }
 

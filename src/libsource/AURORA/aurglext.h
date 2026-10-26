@@ -7,7 +7,7 @@ extern int existingextensions;
 
 extern int renderlevel;
 
-extern int queryTranslationTable[2];
+extern const int queryTranslationTable[2];
 
 extern int useatifragmentshaders;
 extern int usearbvertexprograms;

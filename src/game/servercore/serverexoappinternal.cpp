@@ -2517,7 +2517,7 @@ int CServerExoAppInternal::UpdateShutdownTimer(unsigned long long now)
 void CServerExoAppInternal::Shutdown(int a, int b)
 {
     unsigned int flag = m_pServerInfo->m_bWarnPlayersOnShutdown;
-    m_aShutdownPlayerIds.Clear();
+    m_aShutdownPlayerIds.SetSize(0);
 
     CExoLinkedListNode* pos = m_pPlayerList->GetHeadPos();
     bool graceful = flag != 0 && a != 0;

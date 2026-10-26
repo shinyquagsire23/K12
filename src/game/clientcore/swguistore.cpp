@@ -546,7 +546,7 @@ int CSWGuiStore::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiControl*>& aCo
 
         if (bInventory)
         {
-            CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbInvItems.m_pProtoItem->AsButton());
+            CSWGuiButton* pProto = m_lbInvItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbInvItems.m_innerExtent.w - 2 * m_lbInvItems.m_nPadding);
             pEntry->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiStore::OnControlInvAButton));
@@ -554,7 +554,7 @@ int CSWGuiStore::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiControl*>& aCo
         }
         else
         {
-            CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbShopItems.m_pProtoItem->AsButton());
+            CSWGuiButton* pProto = m_lbShopItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbShopItems.m_innerExtent.w - 2 * m_lbShopItems.m_nPadding);
             pEntry->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiStore::OnControlStoreAButton));
@@ -593,14 +593,14 @@ int CSWGuiStore::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiControl*>& aCo
 
         if (bInventory)
         {
-            CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbInvItems.m_pProtoItem->AsButton());
+            CSWGuiButton* pProto = m_lbInvItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbInvItems.m_innerExtent.w - 2 * m_lbInvItems.m_nPadding);
             pEntry->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiStore::OnControlInvAButton));
         }
         else
         {
-            CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbShopItems.m_pProtoItem->AsButton());
+            CSWGuiButton* pProto = m_lbShopItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbShopItems.m_innerExtent.w - 2 * m_lbShopItems.m_nPadding);
             pEntry->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiStore::OnControlStoreAButton));
@@ -1021,16 +1021,16 @@ void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
     if (pControl->m_tail.nCurrentEventArg == 0)
         return;
 
+    int bSelling = m_lbInvItems.m_tail.bVisible;
     CSWGuiStoreItemEntry* pEntry = static_cast<CSWGuiStoreItemEntry*>(pControl);
     CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
         g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pEntry->m_oidItem));
     if (!pItem)
         return;
 
-    if (m_lbInvItems.m_tail.bVisible)
+    if (bSelling)
     {
-        int nCost = GetItemSellValue(pItem);
-        m_lblCostValue.m_text.m_params.SetText(CExoString(nCost));
+        m_lblCostValue.m_text.m_params.SetText(CExoString(GetItemSellValue(pItem)));
 
         int nStock = pStoreRepo->GetMatchingItemCount(pItem);
         if (nStock == -1)
@@ -1062,8 +1062,7 @@ void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
     }
     else
     {
-        int nCost = GetItemBuyValue(pItem);
-        m_lblCostValue.m_text.m_params.SetText(CExoString(nCost));
+        m_lblCostValue.m_text.m_params.SetText(CExoString(GetItemBuyValue(pItem)));
 
         if ((pItem->m_nFlagsLow & 4) != 0)
             m_lblStockValue.m_text.m_params.SetStrRef(STRREF_INFINITE);
@@ -1092,10 +1091,8 @@ void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
         CExoString sDescription = pItem->GetPropertyDescription();
         if (sDescription.Find('<', 0) != -1 || sDescription.Find('{', 0) != -1)
         {
-            g_pSWTlkTable->m_pSpeakerObj = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            g_pSWTlkTable->m_gender = g_pSWTlkTable->GetObjectGender();
-            g_pSWTlkTable->m_bSuppressEnabled |= 1;
-            g_pSWTlkTable->ParseStr(sDescription);
+            CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            g_pSWTlkTable->ParseStr(sDescription, pPC, 1, 1);
         }
         SetDescription(sDescription);
     }
@@ -1260,8 +1257,7 @@ int CSWGuiStore::GetItemSellValue(CSWSItem* pItem)
 // SellItemCallback sets it when it changed an equipped slot, and the rebuild here is skipped.
 void CSWGuiStore::SellItem(CSWSItem* pItem)
 {
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     CSWSStore* pStore = g_pAppManager->m_pServerExoApp->GetStoreByGameObjectID(m_oidStore);
 
     if (pItem == NULL || pCreature == NULL || pStore == NULL)
@@ -1308,22 +1304,17 @@ void CSWGuiStore::SellItem(CSWSItem* pItem)
         PopulateInventoryItemListBox();
 #endif
 
-#if KOTOR1
     int nControls = m_lbInvItems.m_aControls.m_count;
     int nSelect = nControls > nSelected ? nSelected : nControls - 1;
+#if KOTOR1  // K1 spells the clamp out (SetTopVisible measures worse there)
     int nMaxTop = nControls - m_lbInvItems.m_nVisibleRows;
     if (nMaxTop < 0)
         nMaxTop = 0;
     m_lbInvItems.m_nTopRow = static_cast<short>(nMaxTop > nTopRow ? nTopRow : nMaxTop);
-    m_lbInvItems.SetSelectedControl(nSelect, 0);
 #else
-    int nControls = m_lbInvItems.m_aControls.m_count;
-    int nSelect = nControls > nSelected ? nSelected : nControls - 1;
-    int nVisible = m_lbInvItems.m_nVisibleRows;
-    int nMaxTop = nControls < nVisible ? 0 : nControls - nVisible;
-    m_lbInvItems.m_nTopRow = static_cast<short>(nMaxTop > nTopRow ? nTopRow : nMaxTop);
-    m_lbInvItems.SetSelectedControl(nSelect, 0);
+    m_lbInvItems.SetTopVisible(nTopRow);
 #endif
+    m_lbInvItems.SetSelectedControl(nSelect, 0);
 
     m_lblCreditsValue.m_text.m_params.SetText(CExoString(m_nGold));
 }
@@ -1353,8 +1344,7 @@ void CSWGuiStore::BuyItemCallback(CSWGuiControl* pControl)
 
 void CSWGuiStore::BuyItem(CSWSItem* pItem)
 {
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     CSWSStore* pStore = g_pAppManager->m_pServerExoApp->GetStoreByGameObjectID(m_oidStore);
 
     if (pCreature == NULL || pStore == NULL)
@@ -1391,11 +1381,7 @@ void CSWGuiStore::BuyItem(CSWSItem* pItem)
 #else
     short nTopRow = m_lbShopItems.m_nTopRow;
     PopulateStoreItemListBox();
-
-    int nControls = m_lbShopItems.m_aControls.m_count;
-    int nVisible = m_lbShopItems.m_nVisibleRows;
-    int nMaxTop = nControls < nVisible ? 0 : nControls - nVisible;
-    m_lbShopItems.m_nTopRow = static_cast<short>(nMaxTop > nTopRow ? nTopRow : nMaxTop);
+    m_lbShopItems.SetTopVisible(nTopRow);
 #endif
 
     m_lblCreditsValue.m_text.m_params.SetText(CExoString(m_nGold));
@@ -1445,11 +1431,8 @@ void CSWGuiStore::SetDescription(const CExoString& sDescription)
     m_lbDescription.AddControls(&pRow, 1, 0, 0, 0);
     m_lbDescription.SetSelectedControl(&m_lblDescription, 0);
 
-    // The row grows the box only when it is taller than it, and never over a box with unequal rows.
-    m_lblDescriptionScroll.m_tail.bVisible =
-        m_lbDescription.m_nRowHeight + m_lbDescription.m_nPadding > m_lbDescription.m_innerExtent.h
-        && m_lbDescription.m_aControls.m_count > 0
-        && !m_lbDescription.bUnequalRows;
+    // The scroll glyph shows while the description box is oversized.
+    m_lblDescriptionScroll.m_tail.bVisible = m_lbDescription.IsOversized();
 }
 
 #if !KOTOR1  // K1 does not override this slot

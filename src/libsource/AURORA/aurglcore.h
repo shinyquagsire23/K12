@@ -7,6 +7,10 @@
 #include "k2stdint.h"
 #include "port/aslglapi.h"
 #include "Vector.h"
+#include "aurblendmodes.h"
+#include "List.h"
+#include "aurtexman.h"
+#include "aurtexcontrol.h"
 
 namespace Aurora { enum AuroraBufferRequestType { }; }
 
@@ -50,17 +54,6 @@ enum AuroraClientStates {       // clientStateTranslationTable
     kClientStateAttrib13 = 9,
     kClientStateAttrib14 = 10,
     kClientStateAttrib15 = 11,
-};
-// blendTranslationTable. The values are Aurora::AuroraBlendModes, which aurmaterial.h declares.
-enum {
-    kBlendSrcAlpha = 0,
-    kBlendInvSrcAlpha = 1,
-    kBlendOne = 2,
-    kBlendZero = 3,
-    kBlendSrcColor = 4,
-    kBlendDstColor = 5,
-    kBlendInvDstAlpha = 6,
-    kBlendDstAlpha = 7,
 };
 enum AuroraTransStates {        // transformTranslationTable
     kMatrixProjection = 0,
@@ -119,9 +112,47 @@ enum AuroraColorTrackingModes { // colorTrackingTranslationTable
     kColorTrackingSpecular = 3,
     kColorTrackingAmbientAndDiffuse = 4,
 };
+enum AuroraLightProperties {    // lightTranslationTable
+    kLightAmbient = 0,
+    kLightDiffuse = 1,
+    kLightSpecular = 2,
+    kLightPosition = 3,
+    kLightQuadraticAttenuation = 4,
+};
 enum AuroraQueryEnums {         // queryTranslationTable
     kQueryFog = 0,
     kQueryUnmapped = 1,         // both images' table holds 0 here, which no glGet accepts
+};
+enum AuroraTexParamTargets {    // texParamTargetTranslationTable
+    kTexTarget2D = 0,
+    kTexTargetCubeMap = 1,
+    kTexTargetCubeMapPosX = 2,  // 2-7: the six cube faces, +X -X +Y -Y +Z -Z
+    kTexTargetCubeMapNegX = 3,
+    kTexTargetCubeMapPosY = 4,
+    kTexTargetCubeMapNegY = 5,
+    kTexTargetCubeMapPosZ = 6,
+    kTexTargetCubeMapNegZ = 7,
+};
+enum AuroraTexParamModes {      // texParamTranslationTable
+    kTexParamWrapS = 0,
+    kTexParamWrapT = 1,
+    kTexParamMagFilter = 2,
+    kTexParamMinFilter = 3,
+};
+enum AuroraTexCoordMappingModes {   // GLRender::SetTextureCoordGenerationState
+    kTexCoordGenReflectionMap = 0,  // S, T and R from the reflection vector (cube maps)
+    kTexCoordGenSphereMap = 1,      // S and T sphere-mapped
+};
+enum AuroraTextureFormats : int {  // textureFormatTranslationTable (9 and 10 have no entry)
+    kTexFormatRGBA = 0,
+    kTexFormatRGB = 1,
+    kTexFormatLuminanceAlpha = 2,
+    kTexFormatLuminance = 3,
+    kTexFormatBGRA = 4,
+    kTexFormatCompressedLuminance = 5,
+    kTexFormatCompressedLuminanceAlpha = 6,
+    kTexFormatDXT1 = 7,
+    kTexFormatDXT5 = 8,
 };
 enum AuroraPrimitiveTypes {     // primTypeTranslationTable
     kPrimPoints = 0,
@@ -139,7 +170,6 @@ enum AuroraPrimitiveTypes {     // primTypeTranslationTable
 
 extern unsigned int enableTranslationTable[];
 extern const unsigned int clientStateTranslationTable[];
-extern unsigned int blendTranslationTable[];
 extern const int transformTranslationTable[4];
 extern const int facingTranslationTable[3];
 extern const int fillTranslationTable[3];
@@ -149,8 +179,12 @@ extern const unsigned int cmpTranslationTable[];
 extern const unsigned int fogModeTranslationTable[];
 extern const unsigned int materialTranslationTable[];
 extern const unsigned int colorTrackingTranslationTable[];
-extern int queryTranslationTable[2];
+extern const unsigned int lightTranslationTable[];
+extern const int queryTranslationTable[2];
 extern const unsigned int primTypeTranslationTable[];
+extern const unsigned int texParamTargetTranslationTable[];
+extern const unsigned int texParamTranslationTable[];
+extern const unsigned int textureFormatTranslationTable[];
 
 int AurMultiTextureAvailable();
 extern int usearbvertexprograms;
@@ -235,8 +269,7 @@ public:
     {
         ASLgl::glDisableClientState(clientStateTranslationTable[eState]);
     }
-    // eSrc/eDst are Aurora::AuroraBlendModes (the Aurora::kBlend* values).
-    static void SetBlendFunc(unsigned int eSrc, unsigned int eDst)
+    static void SetBlendFunc(Aurora::AuroraBlendModes eSrc, Aurora::AuroraBlendModes eDst)
     {
         ASLgl::glBlendFunc(blendTranslationTable[eSrc], blendTranslationTable[eDst]);
     }
@@ -244,11 +277,29 @@ public:
     static void DisableColorMaterial() { ASLgl::glDisable(GL_COLOR_MATERIAL); }
     static void EnableLight(int nLight) { ASLgl::glEnable(GL_LIGHT0 + nLight); }
     static void DisableLight(int nLight) { ASLgl::glDisable(GL_LIGHT0 + nLight); }
+    static void SetLightProperties(unsigned int nLight, Aurora::AuroraLightProperties eProperty, float* pfValue)
+    {
+        ASLgl::glLightfv(GL_LIGHT0 + nLight, lightTranslationTable[eProperty], pfValue);
+    }
+    static void GetClearColor(float* pfColor) { ASLgl::glGetFloatv(GL_COLOR_CLEAR_VALUE, pfColor); }
+    static void GetStencilBits(int* pnBits) { ASLgl::glGetIntegerv(GL_STENCIL_BITS, pnBits); }
+    // The bitmap console font (aurfont.cpp): the 128 display lists and one string drawn in
+    // screen-normalised coordinates.
+    static void SetUpTextFormat();
+    static void FreeTextFont();
+    static void PrintStringAtScreenPos(char* pszText, float fX, float fY);
     static void SetMatrixMode(Aurora::AuroraTransStates eMode)
     {
         ASLgl::glMatrixMode(transformTranslationTable[eMode]);
     }
     static void GetViewPort(int* pnViewport) { ASLgl::glGetIntegerv(GL_VIEWPORT, pnViewport); }
+    // Reads back GL_UNSIGNED_BYTE texels in the given format.
+    static void ReadPixelsFromBuffer(int nX, int nY, int nWidth, int nHeight, Aurora::AuroraTextureFormats eFormat,
+                                     void* pData)
+    {
+        ASLgl::glReadPixels(nX, nY, nWidth, nHeight, textureFormatTranslationTable[eFormat], GL_UNSIGNED_BYTE,
+                            pData);
+    }
     static void QueryIntegerv(Aurora::AuroraQueryEnums eQuery, int* pnOut)
     {
         ASLgl::glGetIntegerv(queryTranslationTable[eQuery], pnOut);
@@ -329,6 +380,111 @@ public:
         ASLgl::glTexParameteri(enableTranslationTable[eTarget], GL_TEXTURE_MAX_ANISOTROPY_EXT, cm_nAnisotropy);
 #endif
         cm_nGLCurrentTID[cm_uiCurrentStage] = nTID;
+    }
+    // nValue: 1 clamp-to-edge, 2 clamp, 3 repeat, 4 nearest, 5 linear, 6 linear-mipmap-linear,
+    // 7 nearest-mipmap-nearest; anything else clamps.
+    static void SetTextureParameteri(Aurora::AuroraTexParamTargets eTarget, Aurora::AuroraTexParamModes eMode,
+                                     int nValue)
+    {
+        int nGLValue;
+        switch (nValue)
+        {
+        case 1: nGLValue = GL_CLAMP_TO_EDGE; break;
+        case 2: nGLValue = GL_CLAMP; break;
+        case 3: nGLValue = GL_REPEAT; break;
+        case 4: nGLValue = GL_NEAREST; break;
+        case 5: nGLValue = GL_LINEAR; break;
+        case 6: nGLValue = GL_LINEAR_MIPMAP_LINEAR; break;
+        case 7: nGLValue = GL_NEAREST_MIPMAP_NEAREST; break;
+        default: nGLValue = GL_CLAMP; break;
+        }
+        ASLgl::glTexParameteri(texParamTargetTranslationTable[eTarget], texParamTranslationTable[eMode], nGLValue);
+    }
+    // Uploads one level as GL_UNSIGNED_BYTE texels and re-applies the anisotropy.
+    static void CreateTextureImageRaw(Aurora::AuroraTexParamTargets eTarget, int nLevel, int nInternalFormat,
+                                      int nWidth, int nHeight, int nBorder, Aurora::AuroraTextureFormats eFormat,
+                                      const void* pData)
+    {
+        ASLgl::glTexImage2D(texParamTargetTranslationTable[eTarget], nLevel, nInternalFormat, nWidth, nHeight,
+                            nBorder, textureFormatTranslationTable[eFormat], GL_UNSIGNED_BYTE, pData);
+        ASLgl::glTexParameteri(texParamTargetTranslationTable[eTarget], GL_TEXTURE_MAX_ANISOTROPY_EXT,
+                               cm_nAnisotropy);
+    }
+    // Replaces a whole level from its origin.
+    static void CreateTexSubImage(Aurora::AuroraTexParamTargets eTarget, int nLevel, int nWidth, int nHeight,
+                                  Aurora::AuroraTextureFormats eFormat, const void* pData)
+    {
+        ASLgl::glTexSubImage2D(texParamTargetTranslationTable[eTarget], nLevel, 0, 0, nWidth, nHeight,
+                               textureFormatTranslationTable[eFormat], GL_UNSIGNED_BYTE, pData);
+    }
+    static void SetTextureCoordGenerationState(Aurora::AuroraTexCoordMappingModes eMode)
+    {
+        if (eMode == Aurora::kTexCoordGenReflectionMap)
+        {
+            ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+            ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+            ASLgl::glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+        }
+        else
+        {
+            ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+            ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+        }
+    }
+    static void DrawFromVerts(Aurora::AuroraPrimitiveTypes eType, List<Vector>& verts)
+    {
+        ASLgl::glBegin(primTypeTranslationTable[eType]);
+        for (int i = 0; i < verts.m_count; i++)
+            ASLgl::glVertex3fv(&verts.m_pData[i].x);
+        ASLgl::glEnd();
+    }
+#if !KOTOR1  // K1 has no texture controllers on CAurTexture
+    // The dirt texture's noise formula, 0 while it has no controller.
+    static int GetNoiseFormula(int nIndex)
+    {
+        TextureController* pController = m_pDirtyTexture[nIndex]->GetReferencedTexture()->GetController();
+        if (pController)
+            return static_cast<DirtyTextureController*>(pController)->m_nFormula;
+        return 0;
+    }
+#endif
+
+    // The ARB vertex-program wrappers keep their NV names; each is a no-op without ARB vertex programs.
+    static unsigned char IsProgramNV(unsigned int nProgram)
+    {
+        if (usearbvertexprograms)
+            return ASLgl::glIsProgramARB(nProgram);
+        return 0;
+    }
+    static void GenProgramsNV(unsigned int nCount, unsigned int* pnPrograms)
+    {
+        if (usearbvertexprograms)
+            ASLgl::glGenProgramsARB(nCount, pnPrograms);
+    }
+    static void BindVertexProgram(int nProgram)
+    {
+        if (usearbvertexprograms)
+            ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, nProgram);
+    }
+    static void DeleteProgramsNV(unsigned int nCount, unsigned int* pnPrograms)
+    {
+        if (usearbvertexprograms)
+            ASLgl::glDeleteProgramsARB(static_cast<int>(nCount), pnPrograms);
+    }
+    // A non-normalised vertex-attribute array.
+    static void SetVertexProgramAttrib(unsigned int nIndex, unsigned int nSize, unsigned int nType,
+                                       unsigned int nStride, const void* pData)
+    {
+        if (usearbvertexprograms)
+            ASLgl::glVertexAttribPointerARB(nIndex, static_cast<int>(nSize), nType, 0, static_cast<int>(nStride), pData);
+    }
+    // The program id and the declaration (a Win32 DWORD array, `unsigned long const*` in the armv7
+    // mangling) are unused: the text loads into the bound program.
+    static void LoadProgramNV(unsigned int nProgram, int nLength, const unsigned char* pProgram,
+                              const unsigned int* pDeclaration)
+    {
+        if (usearbvertexprograms)
+            ASLgl::glProgramStringARB(GL_VERTEX_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB, nLength, pProgram);
     }
 
     // Vertex-pool family. RequestPool's fifth argument is an out-pointer written with the pool

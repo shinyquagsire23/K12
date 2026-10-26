@@ -28,6 +28,7 @@
 #if !KOTOR1
 
 #include "port/libcbase.h"
+#include "exostringinline.h"
 
 extern CExoSound* g_pExoSound;
 
@@ -42,6 +43,9 @@ CSWGuiTitleMusic::CSWGuiTitleMusic(CSWGuiManager* pGuiManager)
     : CSWGuiPanel(pGuiManager)
 {
     m_pSelectedRow = 0;
+    CSWGuiControl* pVolumeControl = &m_sliderVolume;
+    int nMax;
+    int nCur;
 
     StartLoadFromLayout(CResRef("titlemusic_p"), 1, 1, 1);
 
@@ -104,9 +108,8 @@ CSWGuiTitleMusic::CSWGuiTitleMusic(CSWGuiManager* pGuiManager)
     m_sliderVolume.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiTitleMusic::OnMoveVolumeSlider));
 
     m_sliderVolume.SetCurValue(m_nMusicVolume);
-    CSWGuiControl* pVolumeControl = &m_sliderVolume;
-    int nMax = static_cast<CSWGuiSlider*>(pVolumeControl->AsSlider())->m_nMaxValue;
-    int nCur = static_cast<CSWGuiSlider*>(pVolumeControl->AsSlider())->m_nCurValue;
+    nMax = pVolumeControl->AsSlider()->m_nMaxValue;
+    nCur = pVolumeControl->AsSlider()->m_nCurValue;
     g_pExoSound->SetMusicVolume(static_cast<float>(nCur) / static_cast<float>(nMax) + 0.0f, 0);
     g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nMusicVolume = static_cast<unsigned char>(nCur);
 
@@ -117,7 +120,6 @@ CSWGuiTitleMusic::CSWGuiTitleMusic(CSWGuiManager* pGuiManager)
     ini.ReadIniEntry(sUnlockedSongs, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                      CExoString("UnlockedPlanetSongs"));
     int nBits = sUnlockedSongs.AsINT();
-    m_aUnlockedPlanets[0] = 1;
     m_aUnlockedPlanets[1] = nBits & (1 << 1);
     m_aUnlockedPlanets[2] = nBits & (1 << 2);
     m_aUnlockedPlanets[3] = nBits & (1 << 3);
@@ -128,6 +130,7 @@ CSWGuiTitleMusic::CSWGuiTitleMusic(CSWGuiManager* pGuiManager)
     m_aUnlockedPlanets[8] = nBits & (1 << 8);
     m_aUnlockedPlanets[9] = nBits & (1 << 9);
     m_aUnlockedPlanets[10] = nBits & (1 << 10);
+    m_aUnlockedPlanets[0] = 1;
 
     PopulateSongList();
     m_nNumSongs = m_listBox.m_aControls.m_count;
@@ -284,20 +287,20 @@ void CSWGuiTitleMusic::OnNextPicked(CSWGuiControl* pControl)
 
 void CSWGuiTitleMusic::OnEnterSlider(CSWGuiControl* pControl)
 {
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 1;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 1;
 }
 
 void CSWGuiTitleMusic::OnExitSlider(CSWGuiControl* pControl)
 {
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 0;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 0;
 }
 
 // Applies the slider's value as the live music volume. Both AsSlider() calls are real: a virtual
 // call cannot be commoned, and the "+ 0.0f" term is in the bytes.
 void CSWGuiTitleMusic::OnMoveVolumeSlider(CSWGuiControl* pControl)
 {
-    int nMax = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nMaxValue;
-    int nCur = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nCurValue;
+    int nMax = pControl->AsSlider()->m_nMaxValue;
+    int nCur = pControl->AsSlider()->m_nCurValue;
     g_pExoSound->SetMusicVolume(static_cast<float>(nCur) / static_cast<float>(nMax) + 0.0f, 0);
     g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nMusicVolume = static_cast<unsigned char>(nCur);
 }
@@ -409,8 +412,7 @@ CSWGuiTitleMusic::~CSWGuiTitleMusic()
     if (m_pMusic != 0)
         delete m_pMusic;
 
-    m_aSongs.m_count = 0;
-    m_aSongs.Clear();
+    m_aSongs.RemoveAll(1);
 
     g_pExoSound->SetMusicVolume(static_cast<float>(m_nMusicVolume) / static_cast<float>(m_sliderVolume.m_nMaxValue) + 0.0f, 0);
     CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();

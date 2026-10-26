@@ -291,7 +291,7 @@ void CSWGuiUpgrade::UpdateItems()
         CSWSItem* pItem = m_apaItems[i];
         if (pItem)
         {
-            g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);  // result unused
+            g_pRules->GetBaseItem(pItem->m_baseItem);  // result unused
             rIcon = m_apaItems[i]->GetIcon();
         }
         else
@@ -337,7 +337,7 @@ void CSWGuiUpgrade::UpdateItems()
         CSWSItem* pItem = m_apaItems[i];
         if (pItem)
         {
-            g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);  // result unused
+            g_pRules->GetBaseItem(pItem->m_baseItem);  // result unused
             rIcon = pItem->GetIcon();
             pLabel->m_border.m_params.m_fAlpha = 1.0f;
         }
@@ -949,6 +949,7 @@ void CSWGuiUpgrade::OnSlotSelected(CSWGuiControl* pControl)
         if (n == 1)
         {
             CExoString sVal;
+            unsigned long long oid;
             list.Add(CreateItemEntry(m_apaItems[n]->m_objectId, -1, 0));
             for (int r = 0; r < m_pUpgradeC2DA2->m_nRows; r++)
             {
@@ -956,7 +957,7 @@ void CSWGuiUpgrade::OnSlotSelected(CSWGuiControl* pControl)
                 sVal = sVal.LowerCase();
                 if (sVal != m_apaItems[n]->m_sTag)
                 {
-                    unsigned long long oid = pRepo->FindItemWithTag(sVal);
+                    oid = pRepo->FindItemWithTag(sVal);
                     if (oid != OBJECT_INVALID)
                         list.Add(CreateItemEntry(oid, r, 0));
                 }
@@ -1926,12 +1927,8 @@ void CSWGuiUpgrade::OnControlEntered(CSWGuiControl* pControl)
         int nBrace = s.Find('{', 0);
         if ((nAngle & nBrace) != -1)
         {
-            g_pSWTlkTable->m_pSpeakerObj =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            CSWTlkTable* pTlk = g_pSWTlkTable;
-            pTlk->m_gender = pTlk->GetObjectGender();
-            pTlk->m_bSuppressEnabled = static_cast<unsigned char>(pTlk->m_bSuppressEnabled | 1);
-            pTlk->ParseStr(s);
+            CSWCCreature* pSpeaker = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            g_pSWTlkTable->ParseStr(s, pSpeaker, 1, 1);
         }
         if (s != "")
         {
@@ -2371,8 +2368,8 @@ CSWGuiUpgrade::CSWGuiUpgrade(CSWGuiManager* pGuiManager)
     m_lblSlotName.m_border.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_UPGRADE_BORDER);
     m_lblProperty.m_border.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_UPGRADE_BORDER);
     m_lbItems.m_border.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_UPGRADE_BORDER);
-    m_lblDescription.Initialize(m_lbDesc.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_lbDesc.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDesc.m_pProtoItem);
+    m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
     CSWGuiButton* pBtn = static_cast<CSWGuiButton*>(m_lbItems.m_pProtoItem);
     pBtn->m_border.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
     pBtn->m_borderHilight.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
@@ -2763,7 +2760,6 @@ extern CTlkTable* g_pTlkTable;
 CSWGuiCreateItem::CSWGuiCreateItem(CSWGuiManager* pGuiManager, unsigned long long oidOwner)
     : CSWGuiPanel(pGuiManager)
 {
-    CSWGuiLabel* pProto;
     m_nReserved2 = 0;
 
     StartLoadFromLayout(CResRef("component_p"), 1, 1, 0);
@@ -2807,10 +2803,8 @@ CSWGuiCreateItem::CSWGuiCreateItem(CSWGuiManager* pGuiManager, unsigned long lon
     m_lbShopItems.bSelectOnLeftClick = 1;
     m_lbInvItems.bSelectOnLeftClick = 1;
 
-    {
-        pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
-        m_lblDescriptionText.Initialize(pProto->m_extent, pProto, 1.0f);
-    }
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
+    m_lblDescriptionText.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_lbShopItems.bShowScrollBar = 1;
     m_lbInvItems.bShowScrollBar = 1;
@@ -2825,10 +2819,10 @@ CSWGuiCreateItem::CSWGuiCreateItem(CSWGuiManager* pGuiManager, unsigned long lon
 
     CServerExoApp* pServerExoApp = g_pAppManager->m_pServerExoApp;
     CSWSCreature* pCreature;
+    CSWSPlayer* pPlayer;
     if (oidOwner == OBJECT_INVALID)
     {
-        CSWSPlayer* pPlayer =
-            static_cast<CSWSClient*>(pServerExoApp->GetPlayerList()->m_pInternal->m_pHead->m_pData)->AsSWSPlayer();
+        pPlayer = static_cast<CSWSClient*>(pServerExoApp->GetPlayerList()->m_pInternal->m_pHead->m_pData)->AsSWSPlayer();
         pCreature = pServerExoApp->GetCreatureByGameObjectID(pPlayer->m_gameObjectId);
     }
     else
@@ -2842,7 +2836,8 @@ CSWGuiCreateItem::CSWGuiCreateItem(CSWGuiManager* pGuiManager, unsigned long lon
     m_bViewSwitched = 0;
     m_nFullScreenBGIndex = 1;
 
-    for (int i = 0; i < 5; i++)
+    int i;
+    for (i = 0; i < 5; i++)
     {
         m_aCreateButtons[i].AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItem::OnCreateFilterPicked));
         m_aCreateButtons[i].AddEvent(INPUTEVENT_GUI_START, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItem::OnCreateFilterPicked));
@@ -2850,7 +2845,7 @@ CSWGuiCreateItem::CSWGuiCreateItem(CSWGuiManager* pGuiManager, unsigned long lon
         m_aCreateButtons[i].m_tail.m_nUserData = i;
     }
     UpdateCreateFilters();
-    for (int i = 0; i < 5; i++)
+    for (i = 0; i < 5; i++)
     {
         m_aBreakButtons[i].AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItem::OnBreakdownFilterPicked));
         m_aBreakButtons[i].AddEvent(INPUTEVENT_GUI_START, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItem::OnBreakdownFilterPicked));
@@ -3197,7 +3192,7 @@ void CSWGuiCreateItem::SetDescription(const CExoString& sDescription)
     CSWGuiControl* pRow;
 
     CSWGuiExtent extent = m_lblDescriptionText.m_extent;
-    if (sDescription.m_sString && static_cast<int>(strlen(sDescription.m_sString)) >= 1)
+    if (sDescription.GetLength() >= 1)
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -3208,9 +3203,7 @@ void CSWGuiCreateItem::SetDescription(const CExoString& sDescription)
     pListBox->SetSelectedControl(&m_lblDescriptionText, 0);
 
     m_lblRandAnalog.m_tail.bVisible =
-        pListBox->m_nRowHeight + pListBox->m_nPadding > pListBox->m_innerExtent.h
-        && pListBox->m_aControls.m_count > 0
-        && !pListBox->bUnequalRows;
+        pListBox->IsOversized();
 }
 
 // Fills the shop list from the workbench's temporary store.
@@ -3287,9 +3280,9 @@ void CSWGuiCreateItem::PopulateInventoryItemListBox()
 
     for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
     {
+        int nMatch = 0;
         CSWSItem* pItem = pRepo->ItemListGetItem(i);
 
-        int nMatch = 0;
         for (int j = 0; j < pArray->m_nRows; j++)
         {
             pArray->GetCExoStringEntry(j, CExoString("label"), &sValue);
@@ -3379,8 +3372,7 @@ int CSWGuiCreateItem::CheckBreakdownFilter(CSWSItem* pItem, CSWSCreature* pCreat
 
 void CSWGuiCreateItem::SellItem(CSWSItem* pItem)
 {
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     if (pItem == NULL || pCreature == NULL)
         return;
@@ -3415,8 +3407,7 @@ void CSWGuiCreateItem::SellItem(CSWSItem* pItem)
 
 void CSWGuiCreateItem::BuyItem(CSWSItem* pItem)
 {
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     if (pCreature == NULL)
         return;
@@ -3627,8 +3618,7 @@ void CSWGuiCreateItem::OnControlInvAButton(CSWGuiControl* pControl)
 void CSWGuiCreateItem::SetItemList()
 {
     CItemRepository* pRepo = m_pStore->m_pItemRepository;
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     C2DA* pArray;
     if (m_sOverride2DA.m_sString != NULL && m_sOverride2DA.m_sString[0] != 0)
@@ -3725,14 +3715,14 @@ int CSWGuiCreateItem::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiControl*>
 
         if (bInventory)
         {
-            CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbInvItems.m_pProtoItem->AsButton());
+            CSWGuiButton* pProto = m_lbInvItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbInvItems.m_innerExtent.w - 2 * m_lbInvItems.m_nPadding);
             pEntry->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItem::OnControlInvAButton));
         }
         else
         {
-            CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbShopItems.m_pProtoItem->AsButton());
+            CSWGuiButton* pProto = m_lbShopItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbShopItems.m_innerExtent.w - 2 * m_lbShopItems.m_nPadding);
             pEntry->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItem::OnControlStoreAButton));
@@ -4061,10 +4051,8 @@ CSWGuiCreateMedicalItem::CSWGuiCreateMedicalItem(CSWGuiManager* pGuiManager, uns
 
     StopLoadFromLayout();
 
-    {
-        CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
-        m_lblDescriptionText.Initialize(pProto->m_extent, pProto, 1.0f);
-    }
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
+    m_lblDescriptionText.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_lbShopItems.bSelectOnLeftClick = 1;
     m_lbShopItems.bShowScrollBar = 1;
@@ -4083,10 +4071,10 @@ CSWGuiCreateMedicalItem::CSWGuiCreateMedicalItem(CSWGuiManager* pGuiManager, uns
 
     CServerExoApp* pServerExoApp = g_pAppManager->m_pServerExoApp;
     CSWSCreature* pCreature;
+    CSWSPlayer* pPlayer;
     if (oidOwner == OBJECT_INVALID)
     {
-        CSWSPlayer* pPlayer =
-            static_cast<CSWSClient*>(pServerExoApp->GetPlayerList()->m_pInternal->m_pHead->m_pData)->AsSWSPlayer();
+        pPlayer = static_cast<CSWSClient*>(pServerExoApp->GetPlayerList()->m_pInternal->m_pHead->m_pData)->AsSWSPlayer();
         pCreature = pServerExoApp->GetCreatureByGameObjectID(pPlayer->m_gameObjectId);
     }
     else
@@ -4099,7 +4087,8 @@ CSWGuiCreateMedicalItem::CSWGuiCreateMedicalItem(CSWGuiManager* pGuiManager, uns
     m_fBreakdownYield = fYield > 1.0f ? 1.0f : fYield;
     m_bViewSwitched = 0;
 
-    for (int i = 0; i < 4; i++)
+    int i;
+    for (i = 0; i < 4; i++)
     {
         m_aCreateButtons[i].AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnCreateFilterPicked));
         m_aCreateButtons[i].AddEvent(INPUTEVENT_GUI_START, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnCreateFilterPicked));
@@ -4387,7 +4376,7 @@ void CSWGuiCreateMedicalItem::SetDescription(const CExoString& sDescription)
     CSWGuiControl* pRow;
 
     CSWGuiExtent extent = m_lblDescriptionText.m_extent;
-    if (sDescription.m_sString && static_cast<int>(strlen(sDescription.m_sString)) >= 1)
+    if (sDescription.GetLength() >= 1)
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -4398,9 +4387,7 @@ void CSWGuiCreateMedicalItem::SetDescription(const CExoString& sDescription)
     pListBox->SetSelectedControl(&m_lblDescriptionText, 0);
 
     m_lblRandAnalog.m_tail.bVisible =
-        m_lbDescription.m_nRowHeight + m_lbDescription.m_nPadding > m_lbDescription.m_innerExtent.h
-        && m_lbDescription.m_aControls.m_count > 0
-        && !m_lbDescription.bUnequalRows;
+        m_lbDescription.IsOversized();
 }
 
 // Builds the buy side of the sheet; ShowSellGUI is its mirror image.
@@ -4471,8 +4458,7 @@ void CSWGuiCreateMedicalItem::ShowSellGUI()
 
 void CSWGuiCreateMedicalItem::SellItem(CSWSItem* pItem)
 {
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     if (pItem == NULL || pCreature == NULL)
         return;
@@ -4507,8 +4493,7 @@ void CSWGuiCreateMedicalItem::SellItem(CSWSItem* pItem)
 
 void CSWGuiCreateMedicalItem::BuyItem(CSWSItem* pItem)
 {
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     if (pCreature == NULL)
         return;
@@ -4588,8 +4573,7 @@ void CSWGuiCreateMedicalItem::PopulateStoreItemListBox()
 void CSWGuiCreateMedicalItem::SetItemList()
 {
     CItemRepository* pRepo = m_pStore->m_pItemRepository;
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     C2DA* pArray = g_pRules->m_p2DArrays->m_pChemicalCreate;
 
     for (int i = 0; i < static_cast<int>(pRepo->ItemListGetCount()); i++)
@@ -4675,9 +4659,10 @@ void CSWGuiCreateMedicalItem::PopulateInventoryItemListBox()
             int nNext = nGroup;
             for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
             {
+                int nMatch = 0;
+                int nSize;
                 CSWSItem* pItem = pRepo->ItemListGetItem(i);
 
-                int nMatch = 0;
                 for (int j = 0; j < pArray->m_nRows; j++)
                 {
                     pArray->GetCExoStringEntry(j, CExoString("label"), &sValue);
@@ -4698,7 +4683,7 @@ void CSWGuiCreateMedicalItem::PopulateInventoryItemListBox()
                 if (pItem->m_bPlot)
                     continue;
 
-                int nSize = pItem->GetBaseItem()->m_nStorePanelSort;
+                nSize = pItem->GetBaseItem()->m_nStorePanelSort;
                 if (nSize == nGroup)
                 {
                     if (nMatch && pItem->GetCost() != 0)
@@ -4864,14 +4849,14 @@ int CSWGuiCreateMedicalItem::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiCo
 
         if (bInventory)
         {
-            CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbInvItems.m_pProtoItem->AsButton());
+            CSWGuiButton* pProto = m_lbInvItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbInvItems.m_innerExtent.w - 2 * m_lbInvItems.m_nPadding);
             pfnHandler = static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlInvAButton);
         }
         else
         {
-            CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_lbShopItems.m_pProtoItem->AsButton());
+            CSWGuiButton* pProto = m_lbShopItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbShopItems.m_innerExtent.w - 2 * m_lbShopItems.m_nPadding);
             pfnHandler = static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlStoreAButton);
@@ -4942,8 +4927,7 @@ void CSWGuiCreateMedicalItem::OnControlEntered(CSWGuiControl* pControl)
 
     CItemRepository* pRepo = NULL;
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
     if (pCreature != NULL)
         pRepo = pCreature->GetItemRepository(1);
@@ -4968,8 +4952,7 @@ void CSWGuiCreateMedicalItem::OnControlEntered(CSWGuiControl* pControl)
 
                 int nRank = -1;
 
-                CSWSCreature* pChar = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                    g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+                CSWSCreature* pChar = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
                 if (pChar != NULL)
                     nRank = pChar->m_pStats->GetSkillRank(static_cast<unsigned char>(nBaseSkill), NULL, 0);
 
@@ -5299,6 +5282,7 @@ void CSWGuiSwoopUpgrade::OnSlotSelected(CSWGuiControl* pControl)
         if (n == 1)
         {
             CExoString sVal;
+            unsigned long long oid;
             list.Add(CreateItemEntry(m_apaItems[1]->m_objectId, -1));
             for (int r = 0; r < m_pUpgradeC2DA2->m_nRows; r++)
             {
@@ -5306,7 +5290,7 @@ void CSWGuiSwoopUpgrade::OnSlotSelected(CSWGuiControl* pControl)
                 sVal = sVal.LowerCase();
                 if (sVal != m_apaItems[1]->m_sTag)
                 {
-                    unsigned long long oid = pRepo->FindItemWithTag(sVal);
+                    oid = pRepo->FindItemWithTag(sVal);
                     if (oid != OBJECT_INVALID)
                         list.Add(CreateItemEntry(oid, r));
                 }
@@ -5599,7 +5583,7 @@ void CSWGuiSwoopUpgrade::UpdateItems()
         CSWGuiLabel* pLabel = &m_apRows[i];
         if (m_apaItems[i])
         {
-            g_pRules->m_pBaseItemArray->GetBaseItem(m_apaItems[i]->m_baseItem);  // result unused
+            g_pRules->GetBaseItem(m_apaItems[i]->m_baseItem);  // result unused
             rIcon = m_apaItems[i]->GetIcon();
         }
         else
@@ -5752,7 +5736,7 @@ void CSWGuiSwoopUpgrade::SetDescription(const CExoString& s)
     CSWGuiControl* pCaption;
     CSWGuiText* pText = &m_lblDescription.m_text;
     CSWGuiExtent ext = m_lblDescription.m_extent;
-    if (s.m_sString && static_cast<int>(strlen(s.m_sString)) >= 1)
+    if (s.GetLength() >= 1)
         ext.h = pText->GetIdealHeight();
     else
         ext.h = pText->GetFontHeight();
@@ -5760,8 +5744,7 @@ void CSWGuiSwoopUpgrade::SetDescription(const CExoString& s)
     pCaption = &m_lblDescription;
     pList->AddControls(&pCaption, 1, 0, 0, 0);
     pList->SetSelectedControl(&m_lblDescription, 0);
-    pArrow->m_tail.bVisible = (pList->m_nRowHeight + pList->m_nPadding > pList->m_innerExtent.h) &&
-                              (pList->m_aControls.m_count >= 1) && !pList->bUnequalRows;
+    pArrow->m_tail.bVisible = pList->IsOversized();
 }
 
 void CSWGuiSwoopUpgrade::Draw(float f)
@@ -6622,7 +6605,7 @@ void CSWGuiUpgradeSelection::SetDescription(CExoString sDescription)
     CSWGuiText* pText = &m_lblDescription.m_text;
 
     CSWGuiExtent extent = m_lblDescription.m_extent;
-    if (sDescription.m_sString && static_cast<int>(strlen(sDescription.m_sString)) >= 1)
+    if (sDescription.GetLength() >= 1)
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

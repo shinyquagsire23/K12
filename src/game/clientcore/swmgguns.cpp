@@ -263,27 +263,16 @@ void GunDie(CAurObject* pObject, char* pszEvent, void* pData)
     }
 }
 
-static int FindGunIndex(CAurObject** paGuns, int64_t nCount, CAurObject* pGun)
-{
-    for (int i = 0; i < nCount; i++)
-        if (paGuns[i] == pGun)
-            return i;
-    return -1;
-}
-
 CAurObject* CSWMGGunBank::RemoveGun(CAurObject* pGun)
 {
-    int nIndex = FindGunIndex(m_aGuns.m_pArray, m_aGuns.m_count, pGun);
+    int nIndex = m_aGuns.IndexOf(pGun);
 
     if (nIndex == -1)
         return NULL;
 
     pGun->AttachToObject(NULL, NULL, 0);
 
-    // inlined CExoArrayList<CAurObject*>::DelIndex(nIndex)
-    m_aGuns.m_count--;
-    for (int i = nIndex; i < m_aGuns.m_count; i++)
-        m_aGuns.m_pArray[i] = m_aGuns.m_pArray[i + 1];
+    m_aGuns.DelIndex(nIndex);
 
     return pGun;
 }
@@ -298,6 +287,8 @@ int CSWMGGunBank::ClearGuns()
         delete m_aGuns.m_pArray[i];
     }
 
+    // inlined CExoArrayList<CAurObject*>::SetSize(0): the call swaps two callee-saved registers
+    // (K2 DIFF) and costs K1 ClearGuns and GunDie
     if (m_aGuns.m_pArray != NULL)
     {
         delete[] m_aGuns.m_pArray;
@@ -502,7 +493,7 @@ CAurObject* CSWMGGunBank::AddGun(CAurObject* pObject, CAurPart* pPart)
 
     CSWMGBehaviorFire* pBehavior = new CSWMGBehaviorFire(pNewGun, pObject, pPart);
     pBehavior->SetRateOfFire(m_bullet.m_fRateOfFire);
-    pBehavior->m_resFireSound = m_resFireSound;
+    pBehavior->SetFireSound(m_resFireSound);
 
     pNewGun->SetBehavior(pBehavior);
     pNewGun->RegisterCallBack(FireGunCallback, const_cast<char*>("*"), this, 9999.0f, false);
@@ -530,7 +521,7 @@ CAurObject* CSWMGTargettingGunBank::AddGun(CAurObject* pObject, CAurPart* pPart)
     pBehavior->SetRateOfFire(m_bullet.m_fRateOfFire);
     pBehavior->m_targetting = m_targetting;
     pBehavior->m_fSpreadRadius = m_pTarget->m_sphereRadius;
-    pBehavior->m_resFireSound = m_resFireSound;
+    pBehavior->SetFireSound(m_resFireSound);
 
     if (m_pTarget->AsPlayer() != NULL)
         pBehavior->m_vTargetOffset = static_cast<CSWMiniPlayer*>(m_pTarget->AsPlayer())->m_vTargetOffset;

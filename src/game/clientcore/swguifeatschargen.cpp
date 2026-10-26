@@ -34,29 +34,7 @@ float GetResolutionTextScalar();
 #include "nwscreaturestats.h"
 #include "exoinput.h"
 #include "strref.h"
-
-// The index of nFeat in aList, or -1.
-static int FindFeatIndex(CExoArrayList<unsigned short>& aList, unsigned short nFeat)
-{
-    int nIndex = -1;
-    for (int64_t i = 0; i < aList.m_count; i++)
-    {
-        if (aList.m_pArray[i] == nFeat)
-        {
-            nIndex = static_cast<int>(i);
-            break;
-        }
-    }
-    return nIndex;
-}
-
-// The feat id the chart's cursor is on, or -1 when the chart is empty.
-static int GetChartFeatId(CSWGuiSkillFlowChart& chart)
-{
-    if (chart.m_aFlows.m_count < 1)
-        return -1;
-    return chart.m_aFlows.m_pArray[chart.m_nSelectedFlow]->m_aSlots[chart.m_nSelectedSlot].m_nId;
-}
+#include "exostringinline.h"
 
 // Binds the feats layout, builds the row captions out of the TLK, then hands the rest to
 // InitiateFeats.
@@ -246,7 +224,7 @@ void CSWGuiFeatsCharGen::OnFeatSelectionChanged(CSWGuiControl* pControl)
 void CSWGuiFeatsCharGen::OnDoubleClick(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    int nChartId = GetChartFeatId(m_featChart);
+    int nChartId = m_featChart.GetSelected();
 
 #if KOTOR1
     CSWGuiSkillFlow* pFlow = static_cast<CSWGuiSkillFlow*>(m_listBoxFeats.GetSelectedControl());
@@ -356,13 +334,13 @@ void CSWGuiFeatsCharGen::BuildAvailableList()
         {
             unsigned short nFeat = static_cast<unsigned short>(g_pRules->m_paFeatIndices[i]);
 
-            if (FindFeatIndex(m_aOwnedFeats, nFeat) != -1)
+            if (m_aOwnedFeats.IndexOf(nFeat) != -1)
                 continue;
-            if (FindFeatIndex(m_aNewFeats, nFeat) != -1)
+            if (m_aNewFeats.IndexOf(nFeat) != -1)
                 continue;
-            if (FindFeatIndex(m_aChosenFeats, nFeat) != -1)
+            if (m_aChosenFeats.IndexOf(nFeat) != -1)
                 continue;
-            if (FindFeatIndex(m_aAvailableFeats, nFeat) != -1)
+            if (m_aAvailableFeats.IndexOf(nFeat) != -1)
                 continue;
 
             if (pStats->CanChooseFeat(nFeat, m_nNormalLeft, m_nBonusLeft, &m_aChosenFeats) != 0)
@@ -427,12 +405,7 @@ void CSWGuiFeatsCharGen::HandleInputEvent(int nEvent, int nArg)
         case INPUTEVENT_GUI_START:  // K1: Start commits the focused row, it does not accept
 #endif
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            OnFeatPicked(m_featChart.m_aFlows.m_count < 1
-                             ? 0xffff
-                             : static_cast<unsigned short>(m_featChart.m_aFlows
-                                   .m_pArray[m_featChart.m_nSelectedFlow]
-                                   ->m_aSlots[m_featChart.m_nSelectedSlot]
-                                   .m_nId));
+            OnFeatPicked(static_cast<unsigned short>(m_featChart.GetSelected()));
             break;
 
         case INPUTEVENT_GUI_Y:
@@ -476,7 +449,7 @@ void CSWGuiFeatsCharGen::HandleCancelButton()
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
 
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+    SetToBeDeleted(0);
 #else
     if (m_pCreature != 0 && m_pCreature->m_pStats != 0 && (m_bFlags & FEATS_FLAG_LEVEL_UP) == 0)
         m_pCreature->m_pStats->ClearFeats();
@@ -487,12 +460,7 @@ void CSWGuiFeatsCharGen::HandleCancelButton()
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
 
-    CSWGuiPanel* pPanel = this;
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
+    SetToBeDeleted(0);
 #endif
 
     if ((m_bFlags & FEATS_FLAG_LEVEL_UP) == 0)
@@ -525,6 +493,8 @@ void CSWGuiFeatsCharGen::OnAcceptButton()
             CSWCCreatureStats* pStats = m_pCreature->m_pStats;
             unsigned short nFeat = m_aChosenFeats.m_pArray[i];
             CExoArrayList<unsigned short>& aFeats = pStats->m_lstFeats;
+            // inlined CExoArrayList<unsigned short>::AddUnique(nFeat): our build keeps the call out
+            // of line (LENGTH 464/884)
             if (aFeats.Contains(nFeat) == 0)
                 aFeats.Add(nFeat);
         }
@@ -532,17 +502,7 @@ void CSWGuiFeatsCharGen::OnAcceptButton()
         m_pGuiManager->PopModalPanel();
         m_pParentPanel->SetVisible(1);
 
-        CSWGuiPanel* pPanel = this;
-#if KOTOR1
-        // K1: no panel chain; one state stamp per panel.
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        do
-        {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel != 0);
-#endif
+        SetToBeDeleted(0);
 
         m_listBoxFeats.ClearItems();
         m_featChart.ClearChart();
@@ -575,7 +535,7 @@ void CSWGuiFeatsCharGen::OnFeatPicked(unsigned short nFeat)
 {
     uint64_t nStrRef;
 
-    if (FindFeatIndex(m_aAvailableFeats, nFeat) != -1)
+    if (m_aAvailableFeats.IndexOf(nFeat) != -1)
     {
         if (m_nSelectionsLeft != 0)
         {
@@ -585,17 +545,17 @@ void CSWGuiFeatsCharGen::OnFeatPicked(unsigned short nFeat)
         }
         nStrRef = STRREF_ALL_FEATS_SELECTED;
     }
-    else if (FindFeatIndex(m_aChosenFeats, nFeat) != -1)
+    else if (m_aChosenFeats.IndexOf(nFeat) != -1)
     {
         RemoveChosenFeat(nFeat);
         BuildButtons();
         return;
     }
-    else if (FindFeatIndex(m_aOwnedFeats, nFeat) != -1)
+    else if (m_aOwnedFeats.IndexOf(nFeat) != -1)
     {
         nStrRef = STRREF_CANNOT_DESELECT_OWNED_FEAT;
     }
-    else if (FindFeatIndex(m_aNewFeats, nFeat) != -1)
+    else if (m_aNewFeats.IndexOf(nFeat) != -1)
     {
         nStrRef = STRREF_FEAT_GRANTED_AT_LEVEL;
     }
@@ -618,13 +578,13 @@ void CSWGuiFeatsCharGen::OnFeatPicked(unsigned short nFeat)
 void CSWGuiFeatsCharGen::OnEnterFeat(unsigned short nFeat)
 {
     unsigned char nStatus;
-    if (FindFeatIndex(m_aAvailableFeats, nFeat) != -1)
+    if (m_aAvailableFeats.IndexOf(nFeat) != -1)
         nStatus = DRAW_STATE_AVAILABLE;
-    else if (FindFeatIndex(m_aChosenFeats, nFeat) != -1)
+    else if (m_aChosenFeats.IndexOf(nFeat) != -1)
         nStatus = DRAW_STATE_CHOSEN;
-    else if (FindFeatIndex(m_aOwnedFeats, nFeat) != -1)
+    else if (m_aOwnedFeats.IndexOf(nFeat) != -1)
         nStatus = DRAW_STATE_OWNED;
-    else if (FindFeatIndex(m_aNewFeats, nFeat) != -1)
+    else if (m_aNewFeats.IndexOf(nFeat) != -1)
         nStatus = DRAW_STATE_GRANTED;
     else
         nStatus = DRAW_STATE_UNAVAILABLE;
@@ -847,22 +807,22 @@ void CSWGuiFeatsCharGen::AddChosenFeat(unsigned short nFeat)
 // Which of the four lists holds this feat: the status byte is the list's own index, 4 meaning none.
 void CSWGuiFeatsCharGen::DetermineFeat(unsigned short nFeat, unsigned char& nStatus)
 {
-    if (FindFeatIndex(m_aAvailableFeats, nFeat) != -1)
+    if (m_aAvailableFeats.IndexOf(nFeat) != -1)
     {
         nStatus = 0;
         return;
     }
-    if (FindFeatIndex(m_aChosenFeats, nFeat) != -1)
+    if (m_aChosenFeats.IndexOf(nFeat) != -1)
     {
         nStatus = 1;
         return;
     }
-    if (FindFeatIndex(m_aOwnedFeats, nFeat) != -1)
+    if (m_aOwnedFeats.IndexOf(nFeat) != -1)
     {
         nStatus = 3;
         return;
     }
-    if (FindFeatIndex(m_aNewFeats, nFeat) != -1)
+    if (m_aNewFeats.IndexOf(nFeat) != -1)
     {
         nStatus = 2;
         return;
@@ -891,7 +851,7 @@ void CSWGuiFeatsCharGen::SetDescription(unsigned int nStrRef)
     else
         extent.h = pText->GetFontHeight();
 #else
-    if (res.text.m_sString && static_cast<int>(strlen(res.text.m_sString)) >= 1)
+    if (res.text.GetLength() >= 1)
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

@@ -2,8 +2,7 @@
 
 // Per-mesh texture and blend-state record; a Part keeps one at m_pMaterial.
 
-// Deliberate stub: the enumerator values are not observable.
-namespace Aurora { enum AuroraBlendModes { }; }
+#include "aurblendmodes.h"
 
 class CAurTexture;
 class Part;

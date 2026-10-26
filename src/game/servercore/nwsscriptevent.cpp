@@ -78,10 +78,10 @@ void CScriptEvent::SetString(int index, const CExoString& sValue)
 
 CScriptEvent::~CScriptEvent()
 {
-    m_params.m_aIntegers.Clear();
-    m_params.m_aFloats.Clear();
-    m_params.m_aObjects.Clear();
-    m_params.m_aStrings.Clear();
+    m_params.m_aIntegers.SetSize(0);
+    m_params.m_aFloats.SetSize(0);
+    m_params.m_aObjects.SetSize(0);
+    m_params.m_aStrings.SetSize(0);
 }
 
 // Compares the integer, float, object and string parameter lists; the event type is ignored.

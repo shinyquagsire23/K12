@@ -7,6 +7,7 @@
 #include "swgui.h"
 #include "swguicontrol.h"
 #include "exoresman.h"
+#include "strref.h"
 
 class CSWGuiManager;
 
@@ -22,6 +23,8 @@ public:
 
     CSWGuiLoadScreen(CSWGuiManager* pGuiManager);
     void SetImage(const CResRef& resRef);
+    // The caption reads "Saving" or "Loading".
+    void SetSaving(int bSaving) { m_lblLoading.m_text.m_params.SetStrRef(bSaving ? STRREF_SAVING : STRREF_LOADING); }
     void SetHint(uint64_t nStrRef);
     void AddHintToMessageBuffer();
 

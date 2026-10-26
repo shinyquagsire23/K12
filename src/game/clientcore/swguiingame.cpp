@@ -540,10 +540,7 @@ void CSWGuiInGameMenu::Draw(float f)
     int nToken = sName.Find('{', 0);
     if (nTag != -1 || nToken != -1)
     {
-        g_pSWTlkTable->m_pSpeakerObj = pCreature;
-        g_pSWTlkTable->m_gender = g_pSWTlkTable->GetObjectGender();
-        g_pSWTlkTable->m_bSuppressEnabled |= 1;
-        g_pSWTlkTable->ParseStr(sName);
+        g_pSWTlkTable->ParseStr(sName, pCreature, 1, 1);
     }
     m_lblCharName.m_text.m_params.SetText(sName);
 
@@ -1882,44 +1879,48 @@ CSWGuiInGameMessages::CSWGuiInGameMessages(CSWGuiManager* pGuiManager)
     InitControl(m_btnCombat, CExoString("BTN_COMBAT"), 1, 1, 0, 0, 0);
     InitControl(m_btnEffects, CExoString("BTN_EFFECTS"), 1, 1, 0, 0, 0);
     InitControl(m_lblFilter, CExoString("LBL_FILTER"), 1, 1, 0, 0, 0);
-    StopLoadFromLayout();
+    {
+        CSWGuiLabelHilight* pProto;
 
-    // Each page's 64 row widgets are cloned from that page's list box prototype row, after the
-    // prototype is re-tinted to the "new text" highlight and set pulsing.
-    CSWGuiLabelHilight* pProto = static_cast<CSWGuiLabelHilight*>(m_lbFeedback.m_pProtoItem);
-    pProto->m_hilightBorder.m_params.m_color =
-        reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_NEW_HIGHLIGHT);
-    pProto->m_hilightBorder.m_params.SetPulsingAlpha(1, 1, 0);
-    m_paFeedbackRows = new CSWGuiLabelHilight[64];
-    for (int i = 0; i < 64; i++)
-        m_paFeedbackRows[i].Initialize(extent, pProto);
+        StopLoadFromLayout();
 
-    pProto = static_cast<CSWGuiLabelHilight*>(m_lbDialog.m_pProtoItem);
-    pProto->m_hilightBorder.m_params.m_color =
-        reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_NEW_HIGHLIGHT);
-    pProto->m_hilightBorder.m_params.SetPulsingAlpha(1, 1, 0);
-    m_paDialogRows = new CSWGuiLabelHilight[64];
-    for (int i = 0; i < 64; i++)
-        m_paDialogRows[i].Initialize(extent, pProto);
+        // Each page's 64 row widgets are cloned from that page's list box prototype row, after the
+        // prototype is re-tinted to the "new text" highlight and set pulsing.
+        pProto = static_cast<CSWGuiLabelHilight*>(m_lbFeedback.m_pProtoItem);
+        pProto->m_hilightBorder.m_params.m_color =
+            reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_NEW_HIGHLIGHT);
+        pProto->m_hilightBorder.m_params.SetPulsingAlpha(1, 1, 0);
+        m_paFeedbackRows = new CSWGuiLabelHilight[64];
+        for (int i = 0; i < 64; i++)
+            m_paFeedbackRows[i].Initialize(extent, pProto);
 
-    // The combat rows reuse the dialog page's prototype; m_lbCombat.m_pProtoItem is not read
-    // here. // sic
-    pProto->m_hilightBorder.m_params.m_color =
-        reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_NEW_HIGHLIGHT);
-    pProto->m_hilightBorder.m_params.SetPulsingAlpha(1, 1, 0);
-    m_paCombatRows = new CSWGuiLabelHilight[64];
-    for (int i = 0; i < 64; i++)
-        m_paCombatRows[i].Initialize(extent, pProto);
+        pProto = static_cast<CSWGuiLabelHilight*>(m_lbDialog.m_pProtoItem);
+        pProto->m_hilightBorder.m_params.m_color =
+            reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_NEW_HIGHLIGHT);
+        pProto->m_hilightBorder.m_params.SetPulsingAlpha(1, 1, 0);
+        m_paDialogRows = new CSWGuiLabelHilight[64];
+        for (int i = 0; i < 64; i++)
+            m_paDialogRows[i].Initialize(extent, pProto);
 
-    m_btnExit.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
-                                       &CSWGuiPanel::OnBButtonPressed));
-    m_btnExit.m_tail.bFocusOnHover = 0;
-    // One handler serves all four filter buttons; each carries its page index in the control's
-    // user-data word, which is what ChangeMessageDisplay switches on.
-    m_btnDialog.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
-                                         &CSWGuiInGameMessages::ChangeMessageDisplay));
-    m_btnDialog.m_tail.m_nUserData = MESSAGE_PAGE_DIALOG;
-    m_btnDialog.m_tail.bFocusOnHover = 0;
+        // The combat rows reuse the dialog page's prototype; m_lbCombat.m_pProtoItem is not read
+        // here. // sic
+        pProto->m_hilightBorder.m_params.m_color =
+            reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_NEW_HIGHLIGHT);
+        pProto->m_hilightBorder.m_params.SetPulsingAlpha(1, 1, 0);
+        m_paCombatRows = new CSWGuiLabelHilight[64];
+        for (int i = 0; i < 64; i++)
+            m_paCombatRows[i].Initialize(extent, pProto);
+
+        m_btnExit.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
+                                           &CSWGuiPanel::OnBButtonPressed));
+        m_btnExit.m_tail.bFocusOnHover = 0;
+        // One handler serves all four filter buttons; each carries its page index in the control's
+        // user-data word, which is what ChangeMessageDisplay switches on.
+        m_btnDialog.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
+                                             &CSWGuiInGameMessages::ChangeMessageDisplay));
+        m_btnDialog.m_tail.m_nUserData = MESSAGE_PAGE_DIALOG;
+        m_btnDialog.m_tail.bFocusOnHover = 0;
+    }
     m_btnFeedback.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
                                            &CSWGuiInGameMessages::ChangeMessageDisplay));
     m_btnFeedback.m_tail.m_nUserData = MESSAGE_PAGE_FEEDBACK;
@@ -2004,18 +2005,14 @@ void CSWGuiInGameMessages::AddMessages(CGuiInGameMessage* pMessages, unsigned in
         int nToken = sText.Find('{', 0);
         if (nTag != -1 || nToken != -1)
         {
-            CSWTlkTable* pTlk;
-            (pTlk = g_pSWTlkTable)->m_pSpeakerObj =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            pTlk->m_gender = pTlk->GetObjectGender();
-            pTlk->m_bSuppressEnabled |= 1;
-            pTlk->ParseStr(sText);
+            CGameObject* pSpeaker = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            g_pSWTlkTable->ParseStr(sText, pSpeaker, 1, 1);
             // Trim trailing blanks the token expansion left behind.
-            int nLen = sText.m_sString ? static_cast<int>(strlen(sText.m_sString)) : 0;
+            int nLen = sText.GetLength();
             while (sText[nLen - 1] == ' ')
             {
-                sText = sText.SubString(0, (sText.m_sString ? static_cast<int>(strlen(sText.m_sString)) : 0) - 1);
-                nLen = sText.m_sString ? static_cast<int>(strlen(sText.m_sString)) : 0;
+                sText = sText.SubString(0, sText.GetLength() - 1);
+                nLen = sText.GetLength();
                 if (nLen < 1)
                     break;
             }
@@ -2076,23 +2073,19 @@ void CSWGuiInGameMessages::AddDialogMessages(CGuiInGameDialogMessage* pMessages,
         int nToken = sSpeaker.Find('{', 0);
         if (nTag != -1 || nToken != -1)
         {
-            CSWTlkTable* pTlk;
-            (pTlk = g_pSWTlkTable)->m_pSpeakerObj =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            pTlk->m_gender = pTlk->GetObjectGender();
-            pTlk->m_bSuppressEnabled |= 1;
-            pTlk->ParseStr(sSpeaker);
-            int nLen = sSpeaker.m_sString ? static_cast<int>(strlen(sSpeaker.m_sString)) : 0;
+            CGameObject* pSpeaker = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            g_pSWTlkTable->ParseStr(sSpeaker, pSpeaker, 1, 1);
+            int nLen = sSpeaker.GetLength();
             while (sSpeaker[nLen - 1] == ' ')
             {
-                sSpeaker = sSpeaker.SubString(0, (sSpeaker.m_sString ? static_cast<int>(strlen(sSpeaker.m_sString)) : 0) - 1);
-                nLen = sSpeaker.m_sString ? static_cast<int>(strlen(sSpeaker.m_sString)) : 0;
+                sSpeaker = sSpeaker.SubString(0, sSpeaker.GetLength() - 1);
+                nLen = sSpeaker.GetLength();
                 if (nLen < 1)
                     break;
             }
         }
 
-        if ((sSpeaker.m_sString ? static_cast<int>(strlen(sSpeaker.m_sString)) : 0) >= 1)
+        if (sSpeaker.GetLength() >= 1)
 #endif
             m_paDialogRows[i].m_text.m_params.SetText(sSpeaker + ": " + pMessages[i].m_text);
         else
@@ -2130,17 +2123,13 @@ void CSWGuiInGameMessages::AddCombatMessages(CGuiInGameMessage* pMessages, unsig
         int nToken = sText.Find('{', 0);
         if (nTag != -1 || nToken != -1)
         {
-            CSWTlkTable* pTlk;
-            (pTlk = g_pSWTlkTable)->m_pSpeakerObj =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            pTlk->m_gender = pTlk->GetObjectGender();
-            pTlk->m_bSuppressEnabled |= 1;
-            pTlk->ParseStr(sText);
-            int nLen = sText.m_sString ? static_cast<int>(strlen(sText.m_sString)) : 0;
+            CGameObject* pSpeaker = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            g_pSWTlkTable->ParseStr(sText, pSpeaker, 1, 1);
+            int nLen = sText.GetLength();
             while (sText[nLen - 1] == ' ')
             {
-                sText = sText.SubString(0, (sText.m_sString ? static_cast<int>(strlen(sText.m_sString)) : 0) - 1);
-                nLen = sText.m_sString ? static_cast<int>(strlen(sText.m_sString)) : 0;
+                sText = sText.SubString(0, sText.GetLength() - 1);
+                nLen = sText.GetLength();
                 if (nLen < 1)
                     break;
             }
@@ -3009,117 +2998,44 @@ void CSWGuiStatusSummary::OnPanelAdded()
                 if (nMask & (1 << j))
                 {
                     CExoString sMember;
-                    // inlined CSWTlkTable::Fetch(unsigned long, CGameObject*, int, int)
                     switch (j)
                     {
                     case NPC_ATTON:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_ATTON);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_ATTON, 0, 0, 0);
                         break;
-                    }
                     case NPC_BAO_DUR:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_BAO_DUR);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_BAO_DUR, 0, 0, 0);
                         break;
-                    }
                     case NPC_CANDEROUS:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_MANDALORE);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_MANDALORE, 0, 0, 0);
                         break;
-                    }
                     case NPC_G0T0:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_G0_T0);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_G0_T0, 0, 0, 0);
                         break;
-                    }
                     case NPC_HANDMAIDEN:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_HANDMAIDEN);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_HANDMAIDEN, 0, 0, 0);
                         break;
-                    }
                     case NPC_HK_47:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_HK_47);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_HK_47, 0, 0, 0);
                         break;
-                    }
                     case NPC_KREIA:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_KREIA);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_KREIA, 0, 0, 0);
                         break;
-                    }
                     case NPC_MIRA:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_MIRA);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_MIRA, 0, 0, 0);
                         break;
-                    }
                     case NPC_T3_M4:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_T3_M4);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_T3_M4, 0, 0, 0);
                         break;
-                    }
                     case NPC_VISAS:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_VISAS);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_VISAS, 0, 0, 0);
                         break;
-                    }
                     case NPC_HANHARR:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_HANHARR);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_HANHARR, 0, 0, 0);
                         break;
-                    }
                     case NPC_DISCIPLE:
-                    {
-                        CSWTlkTable* pTlk = g_pSWTlkTable;
-                        pTlk->m_pSpeakerObj = 0;
-                        pTlk->m_gender = pTlk->GetObjectGender();
-                        pTlk->m_bSuppressEnabled &= ~1;
-                        sMember = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_DISCIPLE);
+                        sMember = g_pSWTlkTable->Fetch(STRREF_DISCIPLE, 0, 0, 0);
                         break;
-                    }
                     }
                     if (sAccum == "")
                         sAccum = sMember;

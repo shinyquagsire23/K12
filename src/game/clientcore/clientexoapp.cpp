@@ -811,13 +811,7 @@ int CClientExoApp::GetApplicationId()
 
 void CClientExoApp::ResetCharacterFile()
 {
-    CClientExoAppInternal* p = m_pInternal;
-    if (p->m_pCharacterFileBuffer) {
-        delete[] p->m_pCharacterFileBuffer;
-        p->m_pCharacterFileBuffer = 0;
-    }
-    p->m_characterFileSize = 0;
-    p->m_characterFileSubDir = 0;
+    m_pInternal->ResetCharacterFile();
 }
 
 void* CClientExoApp::GetWalkToRingVFX()
@@ -1733,16 +1727,7 @@ void CClientExoApp::AddFeedbackMessage(unsigned short nMsg, CSWCCMessageData* pD
 
 void CClientExoApp::AddCDKey(const CExoString& sKey)
 {
-    CClientExoAppInternal* pInternal = m_pInternal;
-    CExoString sUpper = sKey.UpperCase();
-    // inlined CExoArrayList<CExoString>::Add(sUpper)
-    int idx = pInternal->m_sCDKeys.m_count;
-    if (idx == pInternal->m_sCDKeys.m_capacity) {
-        pInternal->m_sCDKeys.Allocate(idx != 0 ? idx * 2 : 16);
-        idx = pInternal->m_sCDKeys.m_count;
-    }
-    pInternal->m_sCDKeys.m_count = idx + 1;
-    pInternal->m_sCDKeys.m_pArray[idx] = sUpper;
+    m_pInternal->m_sCDKeys.Add(sKey.UpperCase());
 }
 
 // Free function OnGameComplete fires only for the post-game "malmov12"/"malmov14" end-roll.
@@ -1779,21 +1764,12 @@ void CClientExoApp::ClearAllCDKeys()
 
 CGameObject* CClientExoApp::GetGameObject(unsigned long long id)
 {
-#if KOTOR1
     return m_pInternal->GetGameObject(id);
-#else
-    CClientExoAppInternal* pInternal = m_pInternal;
-    CGameObject* pObj = 0;
-    pInternal->m_pGameObjectArray->GetGameObject(id, &pObj);
-    return pObj;
-#endif
 }
 
 CResRef CClientExoApp::GetItemDropSound(unsigned char nSound)
 {
-    if (m_pInternal->m_pItemDropSounds)
-        return m_pInternal->m_pItemDropSounds[nSound];
-    return CResRef("");
+    return m_pInternal->GetItemDropSound(nSound);
 }
 
 void CClientExoApp::CreatureAcquireItem(unsigned long long id, const CResRef& r)
@@ -1875,9 +1851,14 @@ extern int g_bUseJoystick;
 
 // True when a gamepad is attached and the player has asked for one: the gate the input code reads
 // before showing any gamepad hint.
+inline bool CClientExoAppInternal::GetIsJoystickConnected()
+{
+    return (g_pExoInput->GetNumberJoysticks() != 0) & (g_bUseJoystick != 0);
+}
+
 bool IsJoystickConnected()
 {
-    return (static_cast<char>(g_pExoInput->GetNumberJoysticks()) != 0) & (g_bUseJoystick != 0);
+    return g_pAppManager->m_pClientExoApp->m_pInternal->GetIsJoystickConnected();
 }
 
 CClientExoApp::CClientExoApp()

@@ -241,7 +241,7 @@ CSWSObject::~CSWSObject()
         if (pEffect)
             delete pEffect;
     }
-    // inlined CExoArrayList<CGameEffect*>::Clear()
+    // inlined CExoArrayList<CGameEffect*>::SetSize(0): the call loses a `mov x0, x8` before delete[]
     if (m_effects.m_pArray) {
         delete[] m_effects.m_pArray;
         m_effects.m_pArray = 0;
@@ -1053,19 +1053,7 @@ void CSWSObject::RemoveEffect(CGameEffect* pEffect) {
     if (g_pAppManager->m_pServerExoApp->GetServerAIMaster()->OnEffectRemoved(this, pEffect)
         != CSWSEffectListHandler::DELETE_EFFECT)
         return;
-    int nIndex = -1;
-    if (m_effects.m_count >= 1) {
-        for (int64_t i = 0; i < m_effects.m_count; i++) {
-            if (m_effects.m_pArray[i] == pEffect) {
-                nIndex = static_cast<int>(i);
-                break;
-            }
-        }
-    }
-    // inlined CExoArrayList<CGameEffect*>::DelIndex(nIndex)
-    m_effects.m_count--;
-    for (int j = nIndex; m_effects.m_count > j; j++)
-        m_effects.m_pArray[j] = m_effects.m_pArray[j + 1];
+    m_effects.DelIndex(m_effects.IndexOf(pEffect));
     CGameObject* pCreator = g_pAppManager->m_pServerExoApp->GetGameObject(pEffect->m_creatorId);
     if (pCreator != 0 && pCreator->AsSWSObject() != 0)
         pCreator->AsSWSObject()->RemoveEffectTarget(m_objectId);
@@ -2005,7 +1993,7 @@ void CSWSObject::ClearMatchedExpressionStrings() {
             m_matchedExpressionStrings.m_pArray[i] = 0;
         }
     }
-    m_matchedExpressionStrings.Clear();
+    m_matchedExpressionStrings.SetSize(0);
 }
 
 void CSWSObject::AddMatchedExpressionString(const CExoString& sString) {

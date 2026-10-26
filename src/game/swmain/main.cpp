@@ -137,10 +137,6 @@ bool IsGameModded()
 #include "port/crtapi.h"
 #include "exostringinline.h"
 
-// GL enum translation tables, mapping the engine's ordinals onto the API's values.
-extern unsigned int enableTranslationTable[];
-extern unsigned int blendTranslationTable[];
-
 struct HWND__;
 extern "C" int SystemParametersInfoA(unsigned int uiAction, unsigned int uiParam, void* pvParam,
                                      unsigned int fWinIni);
@@ -513,28 +509,16 @@ char* tc(char* pTag)
     return s_szStats;
 }
 
-// Indices into the GL capability and blend-factor translation tables above.
-enum {
-    kCapBlend     = 0,
-    kCapAlphaTest = 1,
-    kCapCullFace  = 3,
-    kCapTexture2D = 4,
-    kCapLighting  = 5,
-    kCapDepthTest = 11,
-};
-enum { kBlendSrcAlpha = 0, kBlendInvSrcAlpha = 1 };
-
 void SetupOpenGL()
 {
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    ASLgl::glEnable(enableTranslationTable[kCapCullFace]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
-    ASLgl::glEnable(enableTranslationTable[kCapTexture2D]);
-    ASLgl::glEnable(enableTranslationTable[kCapBlend]);
-    ASLgl::glBlendFunc(blendTranslationTable[kBlendSrcAlpha],
-                       blendTranslationTable[kBlendInvSrcAlpha]);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
+    GLRender::Enable(Aurora::kCapCullFace);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapLighting);
+    GLRender::Enable(Aurora::kCapTexture2D);
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+    GLRender::Enable(Aurora::kCapAlphaTest);
 }
 
 
@@ -1525,6 +1509,8 @@ int g_bMouseCameraRotateToggle;
 // "Reverse Mouse Buttons" check the other five run.
 int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wParam, int64_t lParam)
 {
+    unsigned int nMessage = msg;
+    MSG event;
     switch (msg) {
     case WM_SIZE: {
         if (g_hRenderWnd == hWnd) {
@@ -1533,13 +1519,13 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
                 return 0;
             }
         }
-        return DefWindowProcA(hWnd, WM_SIZE, wParam, lParam);
+        break;
     }
 
     case WM_SETFOCUS: {
         if (g_bKillFocusWorked == 1)
             g_pAppManager->m_pClientExoApp->SetInputActive(1, 0);
-        return DefWindowProcA(hWnd, WM_SETFOCUS, wParam, lParam);
+        break;
     }
 
     case WM_KILLFOCUS: {
@@ -1549,7 +1535,7 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
         } else {
             g_bKillFocusWorked = 0;
         }
-        return DefWindowProcA(hWnd, WM_KILLFOCUS, wParam, lParam);
+        break;
     }
 
     case WM_CLOSE: {
@@ -1607,13 +1593,13 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
                 StoreScreenSaverState();
             }
         }
-        return DefWindowProcA(hWnd, WM_ACTIVATEAPP, wParam, lParam);
+        break;
     }
 
     case WM_CANCELMODE: {
         if (g_bMouseCameraRotateToggle != 0)
             EnableMouseCameraRotateToggle(false);
-        return DefWindowProcA(hWnd, WM_CANCELMODE, wParam, lParam);
+        break;
     }
 
     case WM_SETCURSOR: {
@@ -1621,7 +1607,7 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
             g_pExoInput->RefreshMouseCursor(0);
             return 1;
         }
-        return DefWindowProcA(hWnd, WM_SETCURSOR, wParam, lParam);
+        break;
     }
 
     case WM_WINDOWPOSCHANGING: {
@@ -1633,7 +1619,7 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
             pPos->flags = 0;
             PostMessageA(g_hMovieWnd, MOVIEMSG_WINDOWPOSCHANGING, wParam, reinterpret_cast<int64_t>(pPos));
         }
-        return DefWindowProcA(hWnd, WM_WINDOWPOSCHANGING, wParam, lParam);
+        break;
     }
 
     case WM_WINDOWPOSCHANGED: {
@@ -1645,7 +1631,7 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
             pPos->flags = 0;
             PostMessageA(g_hMovieWnd, MOVIEMSG_WINDOWPOSCHANGED, wParam, reinterpret_cast<int64_t>(pPos));
         }
-        return DefWindowProcA(hWnd, WM_WINDOWPOSCHANGED, wParam, lParam);
+        break;
     }
 
     case WM_KEYDOWN: {
@@ -1656,14 +1642,14 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
         if (g_pAppManager->m_pClientExoApp->GetCaptureEventPlayBack() == 0 &&
             HandleWMKeyDownMessage(hWnd, wParam, lParam) == 1)
             return 0;
-        return DefWindowProcA(hWnd, WM_KEYDOWN, wParam, lParam);
+        break;
     }
 
     case WM_CHAR: {
         if (g_pAppManager->m_pClientExoApp->GetCaptureEventPlayBack() == 0 &&
             HandleWMCharMessage(static_cast<unsigned short>(wParam)) == 1)
             return 0;
-        return DefWindowProcA(hWnd, WM_CHAR, wParam, lParam);
+        break;
     }
 
     case WM_SYSKEYDOWN: {
@@ -1684,13 +1670,13 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
                 SendMessageA(hWnd, WM_CLOSE, VK_F4, lParam);
             }
         }
-        return DefWindowProcA(hWnd, WM_SYSKEYDOWN, wParam, lParam);
+        break;
     }
 
     case WM_SYSCHAR: {
         if (wParam == VK_RETURN && (static_cast<int>(lParam) & KEYDATA_ALTDOWN))
             return 0;
-        return DefWindowProcA(hWnd, WM_SYSCHAR, wParam, lParam);
+        break;
     }
 
     case WM_SYSCOMMAND: {
@@ -1698,125 +1684,121 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
             return 0;
         if ((wParam & 0xffff) == SC_SCREENSAVE || (wParam & 0xffff) == SC_MONITORPOWER)
             return 0;
-        return DefWindowProcA(hWnd, WM_SYSCOMMAND, wParam, lParam);
+        break;
     }
 
     case WM_MOUSEMOVE: {
-        unsigned int nMessage = WM_MOUSEMOVE;
         if (g_pExoInput != 0 && g_pExoInput->GetActive() != 0) {
-            MSG event;
             event.message = nMessage;
             event.wParam = wParam;
             event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
                                ((g_nScreenHeight + ~static_cast<int>(lParam >> 16)) << 16));
             g_pExoInput->BufferEvent(&event);
         }
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_LBUTTONDOWN: {
         if (g_pExoInput == 0 || g_pExoInput->GetActive() == 0)
             return 0;
-        unsigned int nMessage = WM_LBUTTONDOWN;
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0)
-            nMessage = WM_RBUTTONDOWN;
-        MSG event;
         event.message = nMessage;
+        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
+            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0) {
+            nMessage = WM_RBUTTONDOWN;
+            event.message = nMessage;
+        }
         event.wParam = wParam;
         event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
                            ((g_nScreenHeight + ~static_cast<int>(lParam >> 16)) << 16));
         g_pExoInput->BufferEvent(&event);
         SetCapture(hWnd);
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_LBUTTONUP: {
         if (g_pExoInput == 0 || g_pExoInput->GetActive() == 0)
             return 0;
-        unsigned int nMessage = WM_LBUTTONUP;
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0)
-            nMessage = WM_RBUTTONUP;
-        MSG event;
         event.message = nMessage;
+        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
+            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0) {
+            nMessage = WM_RBUTTONUP;
+            event.message = nMessage;
+        }
         event.wParam = wParam;
         event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
                            ((g_nScreenHeight + ~static_cast<int>(lParam >> 16)) << 16));
         g_pExoInput->BufferEvent(&event);
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_LBUTTONDBLCLK: {
         if (g_pExoInput == 0 || g_pExoInput->GetActive() == 0)
             return 0;
-        unsigned int nMessage = WM_LBUTTONDBLCLK;
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0)
-            nMessage = WM_RBUTTONDBLCLK;
-        MSG event;
         event.message = nMessage;
+        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
+            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0) {
+            nMessage = WM_RBUTTONDBLCLK;
+            event.message = nMessage;
+        }
         event.wParam = wParam;
         event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
                            ((g_nScreenHeight + ~static_cast<int>(lParam >> 16)) << 16));
         g_pExoInput->BufferEvent(&event);
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_RBUTTONDOWN: {
         if (g_pExoInput == 0 || g_pExoInput->GetActive() == 0)
-            return DefWindowProcA(hWnd, WM_RBUTTONDOWN, wParam, lParam);
-        unsigned int nMessage = WM_RBUTTONDOWN;
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0)
-            nMessage = WM_LBUTTONDOWN;
-        MSG event;
+            break;
         event.message = nMessage;
+        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
+            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0) {
+            nMessage = WM_LBUTTONDOWN;
+            event.message = nMessage;
+        }
         event.wParam = wParam;
         event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
                            ((g_nScreenHeight + ~static_cast<int>(lParam >> 16)) << 16));
         g_pExoInput->BufferEvent(&event);
         SetCapture(hWnd);
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_RBUTTONUP: {
         if (g_pExoInput == 0 || g_pExoInput->GetActive() == 0)
-            return DefWindowProcA(hWnd, WM_RBUTTONUP, wParam, lParam);
-        unsigned int nMessage = WM_RBUTTONUP;
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0)
-            nMessage = WM_LBUTTONUP;
-        MSG event;
+            break;
         event.message = nMessage;
+        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
+            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0) {
+            nMessage = WM_LBUTTONUP;
+            event.message = nMessage;
+        }
         event.wParam = wParam;
         event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
                            ((g_nScreenHeight + ~static_cast<int>(lParam >> 16)) << 16));
         g_pExoInput->BufferEvent(&event);
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_RBUTTONDBLCLK: {
         if (g_pExoInput == 0 || g_pExoInput->GetActive() == 0)
             return 0;
-        unsigned int nMessage = WM_RBUTTONDBLCLK;
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0)
-            nMessage = WM_LBUTTONDBLCLK;
-        MSG event;
         event.message = nMessage;
+        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
+            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bReverseMouseButtons != 0) {
+            nMessage = WM_LBUTTONDBLCLK;
+            event.message = nMessage;
+        }
         event.wParam = wParam;
         event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
                            ((g_nScreenHeight + ~static_cast<int>(lParam >> 16)) << 16));
         g_pExoInput->BufferEvent(&event);
         SetCapture(hWnd);
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_MBUTTONDOWN: {
-        unsigned int nMessage = WM_MBUTTONDOWN;
         if (g_pExoInput != 0 && g_pExoInput->GetActive() != 0) {
-            MSG event;
             event.message = nMessage;
             event.wParam = wParam;
             event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
@@ -1824,40 +1806,36 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
             g_pExoInput->BufferEvent(&event);
             SetCapture(hWnd);
         }
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_MBUTTONUP: {
-        unsigned int nMessage = WM_MBUTTONUP;
         if (g_pExoInput != 0 && g_pExoInput->GetActive() != 0) {
-            MSG event;
             event.message = nMessage;
             event.wParam = wParam;
             event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(lParam) |
                                ((g_nScreenHeight + ~static_cast<int>(lParam >> 16)) << 16));
             g_pExoInput->BufferEvent(&event);
         }
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
 
     case WM_MOUSEWHEEL: {
-        unsigned int nMessage = WM_MOUSEWHEEL;
         if (g_pExoInput != 0 && g_pExoInput->GetActive() != 0) {
             POINT pt;
             pt.x = static_cast<int>(lParam & 0xffff);
             pt.y = static_cast<int>((lParam >> 16) & 0xffff);
             ScreenToClient(hWnd, &pt);
-            MSG event;
             event.message = nMessage;
             event.wParam = wParam;
             event.lParam = static_cast<unsigned int>(static_cast<unsigned short>(pt.x) | ((g_nScreenHeight + ~pt.y) << 16));
             g_pExoInput->BufferEvent(&event);
         }
-        return DefWindowProcA(hWnd, nMessage, wParam, lParam);
+        break;
     }
     }
 
-    return DefWindowProcA(hWnd, msg, wParam, lParam);
+    return DefWindowProcA(hWnd, nMessage, wParam, lParam);
 }
 
 // The black-screen overlay window's message handler, a stub that swallows everything.

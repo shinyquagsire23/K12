@@ -61,6 +61,8 @@ public:
 
     CExoSoundSourceInternal(CExoSoundInternal* pSound);
 
+    int  GetSize() { return m_pRes->GetSize(); }
+
     // Stops the live channel and releases the backend sound before chaining to CRes::Release;
     // returns whether the resource was actually freed.
     int  Release();

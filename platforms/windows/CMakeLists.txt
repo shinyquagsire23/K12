@@ -54,7 +54,7 @@ add_library(k2_platform STATIC
   ${_k2_shim_sources}
   ${K2P_DIR}/null/bink_null.cpp
   ${K2P_DIR}/compat/bionic_compat.c
-  ${K2P_DIR}/compat/placement_new.cpp
+  $<$<NOT:$<BOOL:${MSVC}>>:${K2P_DIR}/compat/placement_new.cpp>   # libc++ only: the MSVC STL's <new> defines them inline
   ${K2P_DIR}/compat/engine_gaps.cpp
   ${K2P_DIR}/compat/engine_fix_log.cpp
   ${K2P_DIR}/compat/k2cov.cpp
@@ -71,7 +71,9 @@ target_compile_options(k2_platform PRIVATE ${K2P_MINGW_ISYSTEM})   # the engine'
 target_include_directories(k2_platform PRIVATE "${K2P_DIR}/compat/include" ${K2_INCLUDE_DIRS})
 # The shim includes engine headers (WinThreadsMP.h, ...): same host dialect as k2_engine.
 if(MSVC)
-  set_source_files_properties(${_k2_shim_sources} ${K2P_QOL_SOURCE} PROPERTIES COMPILE_OPTIONS "/EHs-c-")
+  # The exception model of the whole target (the root CMakeLists' K2_NO_EXCEPTIONS): cl takes one /EH
+  # per command line, and nothing in the platform layer throws or catches.
+  set_target_properties(k2_platform PROPERTIES K2_NO_EXCEPTIONS ON)
   # shim_crt.cpp / k1shimc.cpp define the CRT names the engine declares itself (src/port/crtapi.h).
   set_property(SOURCE ${K2P_DIR}/shim/shim_crt.cpp ${K2P_DIR}/k1/k1shimc.cpp APPEND PROPERTY
                COMPILE_DEFINITIONS K2_ENGINE_CRT=1)

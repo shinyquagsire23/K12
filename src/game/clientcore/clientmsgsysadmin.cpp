@@ -236,6 +236,8 @@ int CClientMsgSysAdmin::HandleServerToSysAdminMessage(unsigned char* pMessage, u
         return 0;
 
     int nResult = 0;
+    unsigned int nNext;
+    unsigned int nPos;
     for (;;) {
         int nIndex = g_pAppManager->m_pClientExoApp->GetServerInfo()->FindOptionIndex(sToken1, sToken2);
         if (nIndex == 0)
@@ -247,10 +249,10 @@ int CClientMsgSysAdmin::HandleServerToSysAdminMessage(unsigned char* pMessage, u
         else if (pInfo->m_Options[nIndex].m_nType == 1)
             *pInfo->m_Options[nIndex].m_pValue = sToken3[0] == '1';
 
-        unsigned int nNext = 1;
+        nNext = 1;
         while (sToken3[nNext - 1] != 0 && sToken3[nNext - 1] != '\n')
             nNext++;
-        unsigned int nPos = nNext - 1;
+        nPos = nNext - 1;
 
         nResult = 1;
         if (sToken3[nPos] != '\n')

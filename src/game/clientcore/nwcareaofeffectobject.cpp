@@ -443,10 +443,13 @@ void CSWCAreaOfEffectObject::SetPosition(const Vector& v)
     if (m_pModel && m_nInstances > 0) {
         Vector vDelta(v.x - m_position.x, v.y - m_position.y, v.z - m_position.z);
         for (int i = 0; i < m_nInstances; i++) {
-            CAurObject* pObject = static_cast<CAurObject*>(m_pModel[i].GetModel(ANIM_MODEL_BODY));
+            CAurObject* pObject;
+            Vector vPos;
+            Vector vNew;
+            pObject = static_cast<CAurObject*>(m_pModel[i].GetModel(ANIM_MODEL_BODY));
             if (pObject) {
-                Vector vPos = pObject->GetPosition();
-                Vector vNew(vPos.x + vDelta.x, vPos.y + vDelta.y, vPos.z + vDelta.z);
+                vPos = pObject->GetPosition();
+                vNew = Vector(vPos.x + vDelta.x, vPos.y + vDelta.y, vPos.z + vDelta.z);
                 pObject->SetPosition(vNew);
                 if (pScene && m_bOrientWithGround) {
                     hitInfo.Reset(0, ~CHitInfo::kMaterialTrigger, 0);

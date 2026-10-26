@@ -60,7 +60,7 @@ CSWDemoScreen::CSWDemoScreen(CSWGuiManager* pGuiManager, unsigned int a, unsigne
     }
 }
 
-// Past the deadline the whole panel chain is stamped to state 4 and the screen fades out and hides.
+// Past the deadline the panel is deleted and the screen fades out and hides.
 void CSWDemoScreen::Update(float fDeltaTime)
 {
     K2_UNUSED(fDeltaTime);
@@ -69,12 +69,7 @@ void CSWDemoScreen::Update(float fDeltaTime)
 
     m_bSuppressGlobalFade = 0;
 
-    CSWGuiPanel* p = this;
-    do
-    {
-        p->m_stateFlags = (p->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        p = p->m_pNextInChain;
-    } while (p != 0);
+    SetToBeDeleted(0);
 
     g_pAppManager->m_pClientExoApp->GetInGameGui()->StartGlobalFade(
         1, 0.0f, 1.0f, Vector(0.0f, 0.0f, 0.0f));

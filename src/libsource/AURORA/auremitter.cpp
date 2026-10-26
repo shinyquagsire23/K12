@@ -1306,10 +1306,7 @@ void LightningEmitter::UpdateControlPoints()
             if (i == 0)
             {
                 m_lNextPoints.m_pData[0] = m_lControlPoints.m_pData[0];
-                // inlined Quaternion::zdir()
-                Matrix matStart = m_qWorldOrientation.getmatrix();
-                m_lNextTangents.m_pData[0] = Vector(matStart.m_f[6], matStart.m_f[7], matStart.m_f[8])
-                                       * m_fTangentLength;
+                m_lNextTangents.m_pData[0] = m_qWorldOrientation.zdir() * m_fTangentLength;
             }
             else if (i == m_lControlPoints.m_count - 1)
             {
@@ -2051,6 +2048,7 @@ void ConstrainBirthrateSingle(PartEmitter* pEmitter)
     if (pEmitter->m_fBirthRate > fLimit)
         pEmitter->m_fBirthRate = fLimit;
 #else
+    // inlined ConstrainValue(float&, float&)
     if (pEmitter->m_fBirthRate > fLimit)
     {
         fHalf = pEmitter->m_fBirthRate * 0.5f;
@@ -2077,6 +2075,7 @@ void ConstrainBirthrateLightning(PartEmitter* pEmitter)
     if (pEmitter->m_fBirthRate > fLimit)
         pEmitter->m_fBirthRate = fLimit;
 #else
+    // inlined ConstrainValue(float&, float&)
     if (pEmitter->m_fBirthRate > fLimit)
     {
         fHalf = pEmitter->m_fBirthRate * 0.5f;

@@ -10,6 +10,7 @@
 #include "Quaternion.h"
 #include "Plane.h"
 #include "Matrix.h"
+#include "math3d.h"
 #include "AURORA/aurmodel.h"
 #include "aurmaterial.h"
 #include "aurscene.h"
@@ -309,7 +310,7 @@ Vector projectioncolor(1.0f, 1.0f, 1.0f);
 float projectionalpha = 0.200000003f;
 int stenciloff = 1;
 extern int enabletransform;
-const float* Homogenize(const Vector& v, const float& w);
+float* Homogenize(const Vector& v, const float& w);
 
 // Picks the render pass id from the part's material maps, lightmap flag and env-map watcher.
 int PartTriMesh::GetRenderPath()
@@ -380,8 +381,6 @@ extern int countfaces;
 extern int enabletransform;
 
 
-unsigned int polyhit(const Vector* verts, int vertCount, const Vector& node,
-                     const float& f, const Vector& a, const Vector& b, Vector* hit);
 static const Vector walkMeshColors[32] = {
     {0.8f, 0.8f, 0.8f},
     {0.580392f, 0.486275f, 0.313726f},
@@ -721,21 +720,26 @@ void RenderBumpmapFallback(VertexPrimitive* vertices)
     }
 }
 
+// The opacity, the two cull switches and an empty mesh.
+inline bool IsPartRenderable(PartTriMesh* pPart)
+{
+    if (pPart->m_fOpacity <= 0.001f)
+        return false;
+    MdlNodeTriMesh* pNode = static_cast<MdlNodeTriMesh*>(pPart->m_pNode);
+    if (cullnonrenderable != 0 && pNode->m_bRender == 0)
+        return false;
+    if (culltransparent != 0 && pNode->m_nTransparencyHint != 0)
+        return false;
+    return pNode->m_nVertexCount != 0;
+}
+
 void PartTriMesh::Draw(bool)
 {
 #if KOTOR1  // K1: path cached, no hologram, force sight, illumination or noise
     if (rendertrimesh == 0 && AsPartDanglyMesh() == 0 && m_pGob != 0)
         return;
 
-    if (m_fOpacity <= 0.001f)
-        return;
-
-    MdlNodeTriMesh* pNode = static_cast<MdlNodeTriMesh*>(m_pNode);
-    if (cullnonrenderable != 0 && pNode->m_bRender == 0)
-        return;
-    if (culltransparent != 0 && pNode->m_nTransparencyHint != 0)
-        return;
-    if (pNode->m_nVertexCount == 0)
+    if (!IsPartRenderable(this))
         return;
 
     MdlNodeTriMesh* pMesh = m_pNode->AsMdlNodeTriMesh();
@@ -840,15 +844,7 @@ void PartTriMesh::Draw(bool)
     if (rendertrimesh == 0 && AsPartDanglyMesh() == 0 && m_pGob != 0)
         return;
 
-    if (m_fOpacity <= 0.001f)
-        return;
-
-    MdlNodeTriMesh* pNode = static_cast<MdlNodeTriMesh*>(m_pNode);
-    if (cullnonrenderable != 0 && pNode->m_bRender == 0)
-        return;
-    if (culltransparent != 0 && pNode->m_nTransparencyHint != 0)
-        return;
-    if (pNode->m_nVertexCount == 0)
+    if (!IsPartRenderable(this))
         return;
 
     MdlNodeTriMesh* pMesh = m_pNode->AsMdlNodeTriMesh();
@@ -977,18 +973,12 @@ void PartTriMesh::Draw(bool)
                                    pDrawMesh->m_nGeomBase,
                                    pDrawMesh->m_nLeftOverPool);
 
-        unsigned int nBlendSrc, nBlendDst;
         if (g_ForceSight) {
             GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
-            nBlendSrc = blendTranslationTable[0];
-            nBlendDst = blendTranslationTable[1];
-            ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
             RenderInterface::SetDepthMask(1);
-        } else {
-            nBlendSrc = blendTranslationTable[0];
-            nBlendDst = blendTranslationTable[1];
         }
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         RenderInterface::SetDepthMask(1);
         GLRender::Disable(Aurora::kCapVertexProgram);
     }
@@ -1158,6 +1148,12 @@ void PartProjection::Init()
     }
 }
 
+inline void PartProjection::SetupVertexArrays()
+{
+    if (m_nVertexCount != 0)
+        GLRender::SetVertexBuffer(12, m_nVertexPool, 0, m_nVertexCount);
+}
+
 static float ShadowPlaneCornerDist(float x, float y, float z, const Plane& plane)
 {
     return plane.d + (plane.a * x + plane.b * y + plane.c * z);
@@ -1191,8 +1187,7 @@ void PartShadow::Draw(bool)
             bVisible = true;
     }
 
-    if (m_nVertexCount != 0)
-        GLRender::SetVertexBuffer(12, m_nVertexPool, 0, m_nVertexCount);
+    SetupVertexArrays();
 
     if (m_nIndexPool == -1)
         return;
@@ -1231,8 +1226,7 @@ void PartBeam::Draw(bool)
     if (m_nQuadCount == 0)
         Init();
 
-    if (m_nVertexCount != 0)
-        GLRender::SetVertexBuffer(12, m_nVertexPool, 0, m_nVertexCount);
+    SetupVertexArrays();
 
     if (m_nQuadCount != 0)
         GLRender::DrawElements(static_cast<Aurora::AuroraPrimitiveTypes>(4), m_nQuadCount * 6, 0, m_nIndexPool);
@@ -1403,18 +1397,14 @@ void PartLightsaber::Draw(bool)
     GLRender::Disable(Aurora::kCapCullFace);
     if (enablelightsaberbluradd != 0) {
         GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
-#if KOTOR1  // K1: no distortion pass owns the depth mask
-        ASLgl::glDepthMask(0);
-#else
         RenderInterface::SetDepthMask(0);
-#endif
         ASLgl::glStencilMask(0);
     }
     if (lightsaberlighting == 0)
         GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glPolygonMode(facingTranslationTable[2],
-                         fillTranslationTable[lightsaberwireframe != 0 ? 1 : 2]);
+    GLRender::SetPolygonRenderMode(Aurora::kFacingFrontAndBack,
+                                   lightsaberwireframe != 0 ? Aurora::kFillLine : Aurora::kFillSolid);
 
     Vector3* paPositions = node->m_paPositions;
     Vector2* aTexCoords = node->m_aTexCoords;
@@ -1456,10 +1446,7 @@ void PartLightsaber::Draw(bool)
                     fAge += lightsabersegmentinterval;
                     if (!(fAge > lightsabersegmentlife)) {
                         do {
-                            float fInv = 1.0f - fRatio;
-                            Vector vNew(fInv * m_avSegmentPos[nPrev].x + fRatio * m_avSegmentPos[nCur].x,
-                                        fInv * m_avSegmentPos[nPrev].y + fRatio * m_avSegmentPos[nCur].y,
-                                        fInv * m_avSegmentPos[nPrev].z + fRatio * m_avSegmentPos[nCur].z);
+                            Vector vNew = Interpolate(m_avSegmentPos[nPrev], m_avSegmentPos[nCur], fRatio);
                             Quaternion qNew = slerp(m_aqSegmentOrient[nPrev], m_aqSegmentOrient[nCur],
                                                     fRatio);
                             lightsabertotalsegments = lightsabertotalsegments + 1;
@@ -1521,10 +1508,7 @@ void PartLightsaber::Draw(bool)
             float fMag = magnitude(avPiece[i]);
             if (fMag != 0.0f) {
                 if (!(fMag < fFudge * lightsaberfudgefactor)) {
-                    float fScale = 1.0f / fMag;
-                    avPiece[i].x = fFudge * (avPiece[i].x * fScale);
-                    avPiece[i].y = fFudge * (avPiece[i].y * fScale);
-                    avPiece[i].z = fFudge * (avPiece[i].z * fScale);
+                    avPiece[i] = fFudge * (avPiece[i] / fMag);
                 } else {
                     avPiece[i] = vPiece;
                 }
@@ -1711,10 +1695,7 @@ void PartLightsaber::Draw(bool)
                 float fMag = magnitude(avPiece[j]);
                 if (fMag != 0.0f) {
                     if (!(fMag < fFudge * lightsaberfudgefactor)) {
-                        float fScale = 1.0f / fMag;
-                        avPiece[j].x = avPiece[j].x * fScale * -fFudge;
-                        avPiece[j].y = avPiece[j].y * fScale * -fFudge;
-                        avPiece[j].z = avPiece[j].z * fScale * -fFudge;
+                        avPiece[j] = (avPiece[j] / fMag) * -fFudge;
                     } else {
                         avPiece[j].x = -vPiece.x;
                         avPiece[j].y = -vPiece.y;
@@ -1799,11 +1780,7 @@ void PartLightsaber::Draw(bool)
         GLRender::Enable(Aurora::kCapLighting);
     }
 
-#if KOTOR1
-    ASLgl::glDepthMask(1);
-#else
     RenderInterface::SetDepthMask(1);
-#endif
     ASLgl::glStencilMask(0xff);
 }
 
@@ -1934,8 +1911,48 @@ CAurMaterialContainer::CAurMaterialContainer() : m_abData() {}
 #if KOTOR1
 bool IosAntiAliasOn();
 #endif
+// A static part needs the material pass unless it is a plain white, opaque, unlit, undecaled
+// mesh; a tiled part always does, and reports it through bTiled.
+static bool StaticPartNeedsMat(PartTriMesh* part, MdlNodeTriMesh* pNode, bool& bTileMode, bool& bTiled)
+{
+    if (!part->m_bHasColorPool)
+    {
+        if (part->m_pTileData != 0)
+            bTileMode = (part->m_pTileData->m_nMode != 0);
+        if (bTileMode)
+        {
+            bTiled = true;
+            return true;
+        }
+    }
+    if (!equal(pNode->m_vDiffuse, g_vOne))
+        return true;
+    if (part->m_fOpacity != 1.0f)
+        return true;
+    if (!equal(part->m_vSelfIllumColor, g_vZero))
+        return true;
+    return part->m_pMaterial->m_bDecal;
+}
+
+// The gob's colour shift, fade and illumination applied to a dynamic part's material.
+static void DynamicPartCalculateMaterial(Gob* pGob, Vector& vDiffuse, Vector& vEnv, float& fAlpha)
+{
+    if (pGob->m_nColorShifting != 0)
+    {
+        fAlpha = fAlpha * pGob->m_fColorShiftAmount;
+        vDiffuse = Vector(vDiffuse.x * pGob->m_vColorShift.x,
+                          vDiffuse.y * pGob->m_vColorShift.y,
+                          vDiffuse.z * pGob->m_vColorShift.z);
+    }
+    if ((pGob->m_pModel->m_nFlags & 8) != 0)
+        fAlpha = fAlpha * pGob->m_fFadeAlpha;
+    if (pGob->m_nIllumination != 0)
+        vEnv = vEnv + pGob->m_vIllumination;
+}
+
 void PartTriMesh::Mat()
 {
+    MdlNodeTriMesh* pNode = static_cast<MdlNodeTriMesh*>(m_pNode);
 #if !KOTOR1  // K1: compares against the current colour cache, no previous-colour copies
     static Vector s_vPrevDiffuse(-1.0f, -1.0f, -1.0f);
     static Vector s_vPrevAmbient(-1.0f, -1.0f, -1.0f);
@@ -1944,7 +1961,8 @@ void PartTriMesh::Mat()
     static float  s_fPrevAlpha = -1.0f;
     static bool   s_bPrevTextured = true;
 
-    MdlNodeTriMesh* pNode = static_cast<MdlNodeTriMesh*>(m_pNode);
+    bool bTileMode = false;
+    bool bTiled = false;
     unsigned int nAlpha = *reinterpret_cast<const unsigned int*>(&m_fOpacity);
     float& fAlpha = *reinterpret_cast<float*>(&nAlpha);
 
@@ -1980,17 +1998,9 @@ void PartTriMesh::Mat()
         }
         bTextured = true;
     }
-    else if (m_bHasColorPool != 0 || m_pTileData == 0 || m_pTileData->m_nMode == 0)
-    {
-        if (equal(pNode->m_vDiffuse, g_vOne) && m_fOpacity == 1.0f &&
-            equal(m_vSelfIllumColor, g_vZero))
-            bTextured = (m_pMaterial->m_bDecal != 0);
-        else
-            bTextured = true;
-    }
     else
     {
-        bTextured = true;
+        bTextured = StaticPartNeedsMat(this, pNode, bTileMode, bTiled);
     }
 
     if (ignoremat != 0)
@@ -2020,19 +2030,7 @@ void PartTriMesh::Mat()
         s_vNewEnv = (m_pMaterial->m_bDecal == 0) ? m_vSelfIllumColor : g_vOne;
 
         if (m_pGob != 0)
-        {
-            if (m_pGob->m_nColorShifting != 0)
-            {
-                fAlpha = fAlpha * m_pGob->m_fColorShiftAmount;
-                s_vCurDiffuse = Vector(s_vCurDiffuse.x * m_pGob->m_vColorShift.x,
-                                       s_vCurDiffuse.y * m_pGob->m_vColorShift.y,
-                                       s_vCurDiffuse.z * m_pGob->m_vColorShift.z);
-            }
-            if ((m_pGob->m_pModel->m_nFlags & 8) != 0)
-                fAlpha = fAlpha * m_pGob->m_fFadeAlpha;
-            if (m_pGob->m_nIllumination != 0)
-                s_vNewEnv = s_vNewEnv + m_pGob->m_vIllumination;
-        }
+            DynamicPartCalculateMaterial(m_pGob, s_vCurDiffuse, s_vNewEnv, fAlpha);
 
         if (!equal(s_vCurDiffuse, s_vNewDiffuse))
         {
@@ -2050,19 +2048,7 @@ void PartTriMesh::Mat()
         s_vCurEnv = (m_pMaterial->m_bDecal == 0) ? m_vSelfIllumColor : g_vOne;
 
         if (m_pGob != 0)
-        {
-            if (m_pGob->m_nColorShifting != 0)
-            {
-                fAlpha = fAlpha * m_pGob->m_fColorShiftAmount;
-                s_vCurDiffuse = Vector(s_vCurDiffuse.x * m_pGob->m_vColorShift.x,
-                                       s_vCurDiffuse.y * m_pGob->m_vColorShift.y,
-                                       s_vCurDiffuse.z * m_pGob->m_vColorShift.z);
-            }
-            if ((m_pGob->m_pModel->m_nFlags & 8) != 0)
-                fAlpha = fAlpha * m_pGob->m_fFadeAlpha;
-            if (m_pGob->m_nIllumination != 0)
-                s_vCurEnv = s_vCurEnv + m_pGob->m_vIllumination;
-        }
+            DynamicPartCalculateMaterial(m_pGob, s_vCurDiffuse, s_vCurEnv, fAlpha);
 #endif
 
         bUnchanged = true;
@@ -2126,8 +2112,8 @@ void PartTriMesh::Mat()
         GLRender::SetVertexShaderConstant(95, s_vCurAmbient.x, s_vCurAmbient.y, s_vCurAmbient.z, 1.0f);
     }
 
-    m_bMaterialHasChanged = false;
 #if KOTOR1
+    m_bMaterialHasChanged = false;
     s_bValid = true;
     s_fPrevAlpha = fAlpha;
     s_bPrevTextured = bTextured;
@@ -2137,6 +2123,7 @@ void PartTriMesh::Mat()
     s_vPrevDiffuse = s_vCurDiffuse;
     s_vPrevAmbient = s_vCurAmbient;
     s_vPrevEnv = s_vCurEnv;
+    m_bMaterialHasChanged = false;
 #endif
 }
 
@@ -2180,17 +2167,50 @@ extern Vector planelineintersection(const Vector& vNormal, float fDist, const Ve
 // Pushes a shadow-volume point back onto the projection plane.
 void ClipProjection(Vector& v, const Vector& vOrigin, const Plane& plane)
 {
-    if (v.x * plane.a + v.y * plane.b + v.z * plane.c + plane.d > 0.0f)
-        v = planelineintersection(*reinterpret_cast<const Vector*>(&plane), plane.d, vOrigin, v);
+    const Vector& vNormal = *reinterpret_cast<const Vector*>(&plane);
+    if (dot(v, vNormal) + plane.d > 0.0f)
+        v = planelineintersection(vNormal, plane.d, vOrigin, v);
 }
 
-struct ShadowFaceRec
+struct ShadowInfo
 {
     float m_fDist;
     short m_anNeighbors[3];
     unsigned short m_anVertIndices[3];
 };
-static ShadowFaceRec g_aShadowFaces[2048];
+static ShadowInfo g_aShadowFaces[2048];
+
+// Pulls the shadow volume's near cap and far sink back onto the receiver plane's front side.
+// False when the sink is behind a plane that faces away from the origin: nothing to cast.
+static inline bool ClipProjectionCaps(Vector& vCap, Vector& vSink, const Plane& plane)
+{
+    const Vector& vNormal = *reinterpret_cast<const Vector*>(&plane);
+    if (dot(vSink, vNormal) + plane.d > 0.0f)
+    {
+        if (plane.d > 0.0f)
+            return false;
+        vSink = planelineintersection(vNormal, plane.d, vCap, vSink);
+    }
+    if (dot(vCap, vNormal) + plane.d > 0.0f)
+        vCap = planelineintersection(vNormal, plane.d, vCap, vSink);
+    return true;
+}
+
+// Each face's signed distance to the light, with its neighbour and vertex indices.
+static void ProcessFaces(const Vector& light, ShadowInfo* pInfo, MdlNodeTriMesh* node)
+{
+    for (int i = 0; i < node->m_faces.m_count; i++)
+    {
+        MaxFace& face = node->m_faces.m_pData[i];
+        pInfo[i].m_fDist = dot(face.Normal(), light) + face.m_fPlaneDist;
+        pInfo[i].m_anNeighbors[0] = face.m_anNeighbors[0];
+        pInfo[i].m_anNeighbors[1] = face.m_anNeighbors[1];
+        pInfo[i].m_anNeighbors[2] = face.m_anNeighbors[2];
+        pInfo[i].m_anVertIndices[0] = face.m_anVertIndices[0];
+        pInfo[i].m_anVertIndices[1] = face.m_anVertIndices[1];
+        pInfo[i].m_anVertIndices[2] = face.m_anVertIndices[2];
+    }
+}
 
 extern int systemmemoryshadows;
 extern int useshadowmethod;
@@ -2222,21 +2242,8 @@ void PartTriMesh::Project(const Vector& light, float fDist, const Plane& plane, 
         cap = vDir * epsilon;
         sink = light + vDir * fDist;
 
-        if (beaming == 0)
-        {
-            float fSink = plane.a * sink.x + plane.b * sink.y + plane.c * sink.z + plane.d;
-            if (fSink > 0.0f)
-            {
-                if (plane.d > 0.0f)
-                    return;
-                sink = planelineintersection(*reinterpret_cast<const Vector*>(&plane), plane.d,
-                                             cap, sink);
-            }
-            float fCap = plane.a * cap.x + plane.b * cap.y + plane.c * cap.z + plane.d;
-            if (fCap > 0.0f)
-                cap = planelineintersection(*reinterpret_cast<const Vector*>(&plane), plane.d,
-                                            cap, sink);
-        }
+        if (beaming == 0 && !ClipProjectionCaps(cap, sink, plane))
+            return;
 
         if (systemmemoryshadows == 0)
         {
@@ -2244,24 +2251,12 @@ void PartTriMesh::Project(const Vector& light, float fDist, const Plane& plane, 
                                    static_cast<short>(node->m_nVertexCount) * sizeof(unsigned short),
                                    __builtin_object_size(GLRender::m_UsedVertices, 0));
 
-            for (int i = 0; i < node->m_faces.m_count; i++)
-            {
-                MaxFace& face = node->m_faces.m_pData[i];
-                Vector& n = face.Normal();
-                g_aShadowFaces[i].m_fDist =
-                    n.x * light.x + n.y * light.y + n.z * light.z + face.m_fPlaneDist;
-                g_aShadowFaces[i].m_anNeighbors[0] = face.m_anNeighbors[0];
-                g_aShadowFaces[i].m_anNeighbors[1] = face.m_anNeighbors[1];
-                g_aShadowFaces[i].m_anNeighbors[2] = face.m_anNeighbors[2];
-                g_aShadowFaces[i].m_anVertIndices[0] = face.m_anVertIndices[0];
-                g_aShadowFaces[i].m_anVertIndices[1] = face.m_anVertIndices[1];
-                g_aShadowFaces[i].m_anVertIndices[2] = face.m_anVertIndices[2];
-            }
+            ProcessFaces(light, g_aShadowFaces, node);
 
             unsigned short* pOut = PartTriMesh::m_VertexIndices;
             for (int i = 0; i < node->m_faces.m_count; i++)
             {
-                ShadowFaceRec& rec = g_aShadowFaces[i];
+                ShadowInfo& rec = g_aShadowFaces[i];
                 float fFaceDist = rec.m_fDist;
                 if (fFaceDist < 0.0f)
                     continue;
@@ -2359,19 +2354,8 @@ void PartSkin::Project(const Vector& light, float fDist, const Plane& plane, CAu
     cap = invVp * epsilon;
     sink = light + invVp * fDist;
 
-    if (beaming == 0) {
-        float fSink = plane.a * sink.x + plane.b * sink.y + plane.c * sink.z + plane.d;
-        if (fSink > 0.0f) {
-            if (plane.d > 0.0f)
-                return;
-            sink = planelineintersection(*reinterpret_cast<const Vector*>(&plane), plane.d,
-                                         cap, sink);
-        }
-        float fCap = plane.a * cap.x + plane.b * cap.y + plane.c * cap.z + plane.d;
-        if (fCap > 0.0f)
-            cap = planelineintersection(*reinterpret_cast<const Vector*>(&plane), plane.d,
-                                        cap, sink);
-    }
+    if (beaming == 0 && !ClipProjectionCaps(cap, sink, plane))
+        return;
 
     if (useshadowmethod == 0 || usevertexprograms == 0 || AurVertexProgramsAvailable() == 0)
         return;
@@ -2546,6 +2530,7 @@ void PartSkin::Project(const Vector& light, float fDist, const Plane& plane, CAu
                 tv.z = rz + tv.z;
                 Quaternion* pAccQuat = &qbones.m_pData[i];
                 *pAccQuat = *pAccQuat * pNode->m_lQBoneRefInv.m_pData[i];
+                // inlined Quaternion::getmatrix() const
                 if (usearbvertexprograms != 0) {
                     float av = pAccQuat->w, bx = pAccQuat->x, by = pAccQuat->y, bz = pAccQuat->z;
                     const Vector& vr = tbones.m_pData[i];
@@ -2967,12 +2952,7 @@ void RenderMotionBlurred(VertexPrimitiveFlat* vertices)
             new VertexProgram(cMotionBlurredVP, cMotionBlurredVPDeclaration);
 
         GLRender::Enable(Aurora::kCapVertexProgram);
-#if KOTOR1  // K1: no distortion pass owns the depth mask
-        ASLgl::glDepthMask(0);
-#else
-        if (g_useDistortionOutput == 0)
-            ASLgl::glDepthMask(0);
-#endif
+        RenderInterface::SetDepthMask(0);
 
         part->GetWorld(vLocalPosition, qLocalOrientation);
 
@@ -3344,8 +3324,7 @@ void RenderNV1xEMLM(VertexPrimitiveFlat* vertices)
     GLRender::Disable(Aurora::kCapAlphaTest);
     GLRender::Disable(Aurora::kCapVertexProgram);
 
-    unsigned int nSrcBlend = blendTranslationTable[2];
-    ASLgl::glBlendFunc(nSrcBlend, blendTranslationTable[3]);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     GLRender::ActivateTextureStage(1);
     GLRender::EnableClientState(Aurora::kClientStateTexCoord);
     GLRender::ActivateTextureStage(0);
@@ -3359,7 +3338,7 @@ void RenderNV1xEMLM(VertexPrimitiveFlat* vertices)
     GLRender::ActivateTextureStage(1);
     GLRender::DisableClientState(Aurora::kClientStateTexCoord);
     GLRender::ActivateTextureStage(0);
-    ASLgl::glBlendFunc(nSrcBlend, nSrcBlend);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendOne);
 
     CAurTexture* pTexB = part->m_pMaterial->Textures(0).m_pObject;
     CAurTexture* pEnvTex = part->m_pMaterial->Textures(5).m_pObject;
@@ -3406,9 +3385,7 @@ void RenderLightMappedNoShaders(VertexPrimitiveFlat* vertices)
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     GLRender::Disable(Aurora::kCapLighting);
 
-    unsigned int nBlendSrc = blendTranslationTable[0];
-    unsigned int nBlendDst = blendTranslationTable[1];
-    ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
     GLRender::SetActiveTexture(0);
     GLRender::Enable(Aurora::kCapTexture2D);
@@ -3438,8 +3415,7 @@ void RenderLightMappedNoShaders(VertexPrimitiveFlat* vertices)
 
     GLRender::ActivateTextureStage(1);
     GLRender::DisableClientState(Aurora::kClientStateTexCoord);
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
+    GLRender::ActivateTextureStage(0);
 
     GLRender::SetActiveTexture(1);
     ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -3449,7 +3425,7 @@ void RenderLightMappedNoShaders(VertexPrimitiveFlat* vertices)
     ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     part->m_pMaterial->BindTexture0();
-    ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     ASLgl::glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
     GLRender::Enable(Aurora::kCapLighting);
 
@@ -3475,9 +3451,7 @@ void RenderLightMapped(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    unsigned int nBlendSrc = blendTranslationTable[0];
-    unsigned int nBlendDst = blendTranslationTable[1];
-    ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::ActivateTextureStage(1);
     GLRender::EnableClientState(Aurora::kClientStateTexCoord);
     GLRender::ActivateTextureStage(0);
@@ -3488,7 +3462,7 @@ void RenderLightMapped(VertexPrimitiveFlat* vertices)
         SetupForceSightShader(part->m_pGob, GLRender::kPSFGlowLM, GLRender::kPSDesatLM, part->m_pMaterial->Textures(0).m_pObject,
                               part->m_pMaterial->Textures(1).m_pObject, 0, 0, false);
         RenderFlat(vertices);
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
     }
     else
@@ -3596,13 +3570,9 @@ void RenderBumpyShiny(VertexPrimitiveFlat* vertices)
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
     GLRender::Enable(Aurora::kCapBlend);
 
-    unsigned int nSaveBlendSrc = blendTranslationTable[0];
-    unsigned int nSaveBlendDst = blendTranslationTable[1];
-    ASLgl::glBlendFunc(nSaveBlendSrc, nSaveBlendDst);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Disable(Aurora::kCapAlphaTest);
-    unsigned int nShinyBlendSrc = blendTranslationTable[2];
-    unsigned int nShinyBlendDst = blendTranslationTable[3];
-    ASLgl::glBlendFunc(nShinyBlendSrc, nShinyBlendDst);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 
     GLRender::EnableClientState(Aurora::kClientStateAttrib12);
     GLRender::EnableClientState(Aurora::kClientStateAttrib13);
@@ -3637,17 +3607,19 @@ void RenderBumpyShiny(VertexPrimitiveFlat* vertices)
     {
         part->m_pMaterial->BindTexture0();
         GLRender::Enable(Aurora::kCapBlend);
-        ASLgl::glBlendFunc(enableold == 0 ? nShinyBlendSrc : nSaveBlendSrc, nSaveBlendDst);
+        if (enableold == 0)
+            GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendInvSrcAlpha);
+        else
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         standardvp->Enable(part, true);
         GLRender::Enable(Aurora::kCapVertexProgram);
         GLRender::SetVertexShaderConstant(15, 0.0f, 1.0f, 0.0f, shinyalpha);
         RenderFlat(vertices);
-        if (usearbvertexprograms != 0)
-            ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, 0);
+        GLRender::BindVertexProgram(0);
         GLRender::Disable(Aurora::kCapVertexProgram);
     }
 
-    ASLgl::glBlendFunc(nShinyBlendDst, blendTranslationTable[4]);
+    GLRender::SetBlendFunc(Aurora::kBlendZero, Aurora::kBlendSrcColor);
     standardvp->Enable(part, true);
     GLRender::Enable(Aurora::kCapVertexProgram);
 
@@ -3701,9 +3673,7 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         nLightmapped = (pLightmap != 0) ? (AurTextureGetTID(pLightmap) != 0) : 1;
     }
 
-    unsigned int nBlendSrc = blendTranslationTable[2];
-    unsigned int nBlendDst = blendTranslationTable[3];
-    ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 
     if (part->m_pMaterial->m_fWaterAlpha == 1.0f)
     {
@@ -3764,10 +3734,10 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         }
         else
         {
-            ASLgl::glBlendFunc(blendTranslationTable[6], nBlendSrc);
+            GLRender::SetBlendFunc(Aurora::kBlendInvDstAlpha, Aurora::kBlendOne);
         }
         if (overridestuff != 0)
-            ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+            GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 
         RenderFlat(vertices);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
@@ -3824,9 +3794,7 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         bPass2 = 1;
     }
 
-    unsigned int nBlendSrc = blendTranslationTable[2];
-    unsigned int nBlendDst = blendTranslationTable[3];
-    ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 
     if (part->m_pMaterial->m_fWaterAlpha == 1.0f)
     {
@@ -3892,8 +3860,7 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
             {
                 GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
                 GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
-                if (g_useDistortionOutput == 0)
-                    ASLgl::glDepthMask(1);
+                RenderInterface::SetDepthMask(1);
             }
             else if (pGob != 0 && pGob->IsIlluminationEnable())
             {
@@ -3950,10 +3917,10 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
         }
         else
         {
-            ASLgl::glBlendFunc(blendTranslationTable[6], nBlendSrc);
+            GLRender::SetBlendFunc(Aurora::kBlendInvDstAlpha, Aurora::kBlendOne);
         }
         if (overridestuff != 0)
-            ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+            GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 
         RenderFlat(vertices);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
@@ -4023,11 +3990,7 @@ void RenderNoiseMapped(VertexPrimitiveFlat* vertices, int nDirtTexture, int nDir
     PartTriMesh* part = vertices->m_pPart->AsPartTriMesh();
     Gob* pGob = part->m_pGob;
 
-    CAurTexture* pDirtyTexture = GLRender::m_pDirtyTexture[nDirtTexture];
-    int nFormula = 0;
-    TextureController* pController = pDirtyTexture->GetReferencedTexture()->GetController();
-    if (pController != 0)
-        nFormula = static_cast<DirtyTextureController*>(pController)->m_nFormula;
+    int nFormula = GLRender::GetNoiseFormula(nDirtTexture);
 
     if ((pGob != 0 && pGob->m_texWatch.m_pObject != 0) || part->m_pMaterial->HasEnvMap())
     {
@@ -4330,11 +4293,9 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
 
     if (environmentmapdest != 0)
     {
-        unsigned int nBlendSrc = blendTranslationTable[2];
-        unsigned int nBlendDst = blendTranslationTable[3];
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         RenderFlat(vertices);
-        ASLgl::glBlendFunc(blendTranslationTable[6], nBlendSrc);
+        GLRender::SetBlendFunc(Aurora::kBlendInvDstAlpha, Aurora::kBlendOne);
         DoEnvMapTransform(pEnvMap, 0);
         pEnvMap->Bind();
 
@@ -4346,8 +4307,7 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
         }
         else
         {
-            ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-            ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+            GLRender::SetTextureCoordGenerationState(Aurora::kTexCoordGenSphereMap);
             GLRender::Enable(Aurora::kCapTexGenS);
             GLRender::Enable(Aurora::kCapTexGenT);
         }
@@ -4359,9 +4319,7 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
     }
     else
     {
-        unsigned int nBlendSrc = blendTranslationTable[0];
-        unsigned int nBlendDst = blendTranslationTable[1];
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         DoEnvMapTransform(pEnvMap, 0);
         pEnvMap->Bind();
 
@@ -4373,8 +4331,7 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
         }
         else
         {
-            ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-            ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+            GLRender::SetTextureCoordGenerationState(Aurora::kTexCoordGenSphereMap);
             GLRender::Enable(Aurora::kCapTexGenS);
             GLRender::Enable(Aurora::kCapTexGenT);
         }
@@ -4384,16 +4341,13 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
         GLRender::Disable(Aurora::kCapTexGenS);
         GLRender::Disable(Aurora::kCapTexGenT);
         GLRender::Disable(Aurora::kCapTexGenR);
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         part->m_pMaterial->BindTexture0();
         RenderFlat(vertices);
     }
 
     if (AurCubeMapAvailable())
-    {
-        ASLgl::glBindTexture(enableTranslationTable[12], 0);
-        GLRender::cm_nGLCurrentTID[GLRender::cm_uiCurrentStage] = 0;
-    }
+        GLRender::BindTexture(Aurora::kCapTextureCubeMap, 0);
 
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapAlphaTest);
@@ -4499,26 +4453,21 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
 
     if (environmentmapdest != 0)
     {
-        unsigned int nBlendSrc = blendTranslationTable[2];
-        unsigned int nBlendDst = blendTranslationTable[3];
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         RenderFlat(vertices);
-        ASLgl::glBlendFunc(blendTranslationTable[6], nBlendSrc);
+        GLRender::SetBlendFunc(Aurora::kBlendInvDstAlpha, Aurora::kBlendOne);
         pEnvMap->Bind();
 
         if (pEnvMap->IsCubeMap())
         {
-            ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-            ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-            ASLgl::glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+            GLRender::SetTextureCoordGenerationState(Aurora::kTexCoordGenReflectionMap);
             GLRender::Enable(Aurora::kCapTexGenS);
             GLRender::Enable(Aurora::kCapTexGenT);
             GLRender::Enable(Aurora::kCapTexGenR);
         }
         else
         {
-            ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-            ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+            GLRender::SetTextureCoordGenerationState(Aurora::kTexCoordGenSphereMap);
             GLRender::Enable(Aurora::kCapTexGenS);
             GLRender::Enable(Aurora::kCapTexGenT);
         }
@@ -4529,24 +4478,19 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
     }
     else
     {
-        unsigned int nBlendSrc = blendTranslationTable[0];
-        unsigned int nBlendDst = blendTranslationTable[1];
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         pEnvMap->Bind();
 
         if (pEnvMap->IsCubeMap())
         {
-            ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-            ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-            ASLgl::glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
+            GLRender::SetTextureCoordGenerationState(Aurora::kTexCoordGenReflectionMap);
             GLRender::Enable(Aurora::kCapTexGenS);
             GLRender::Enable(Aurora::kCapTexGenT);
             GLRender::Enable(Aurora::kCapTexGenR);
         }
         else
         {
-            ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-            ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+            GLRender::SetTextureCoordGenerationState(Aurora::kTexCoordGenSphereMap);
             GLRender::Enable(Aurora::kCapTexGenS);
             GLRender::Enable(Aurora::kCapTexGenT);
         }
@@ -4555,17 +4499,13 @@ void RenderEnvironmentMapped(VertexPrimitiveFlat* vertices, bool bParam2, bool b
         GLRender::Disable(Aurora::kCapTexGenS);
         GLRender::Disable(Aurora::kCapTexGenT);
         GLRender::Disable(Aurora::kCapTexGenR);
-        ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         part->m_pMaterial->BindTexture0();
         RenderFlat(vertices);
     }
 
     if (AurCubeMapAvailable())
-    {
-        ASLgl::glBindTexture(enableTranslationTable[12], 0);
-        ASLgl::glTexParameteri(enableTranslationTable[12], GL_TEXTURE_MAX_ANISOTROPY_EXT, GLRender::cm_nAnisotropy);
-        GLRender::cm_nGLCurrentTID[GLRender::cm_uiCurrentStage] = 0;
-    }
+        GLRender::BindTexture(Aurora::kCapTextureCubeMap, 0);
 
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapAlphaTest);
@@ -5113,7 +5053,7 @@ void RenderDiffuseBumpMappedPass(VertexPrimitiveFlat* vertices)
                       vScaled.z * pLight->m_vLightColour.z);
         GLRender::pfuncSetBumpLightColor(vColor, 1.0f);
 
-        ASLgl::glBlendFunc(blendTranslationTable[2], blendTranslationTable[k == 0 ? 3 : 2]);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, k == 0 ? Aurora::kBlendZero : Aurora::kBlendOne);
         RenderFlat(vertices);
     }
 
@@ -5167,8 +5107,7 @@ void RenderSpecularBumpMappedPass(VertexPrimitiveFlat* vertices)
     GLRender::Enable(Aurora::kCapVertexProgram);
     GLRender::SetVertexShaderConstant(17, 1.0f, -1.0f, 0.0f, 0.0f);
 
-    unsigned int nBlendSrc = blendTranslationTable[0];
-    ASLgl::glBlendFunc(nBlendSrc, blendTranslationTable[2]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
 
     GLRender::Enable(Aurora::kCapFog);
     GLRender::SetFogMode(Aurora::kFogLinear);
@@ -5226,7 +5165,7 @@ void RenderSpecularBumpMappedPass(VertexPrimitiveFlat* vertices)
     ASLgl::glPopClientAttrib();
 
     currentscene->DoFog();
-    ASLgl::glBlendFunc(nBlendSrc, blendTranslationTable[1]);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
     GLRender::Disable(Aurora::kCapVertexProgram);
 }
@@ -5241,9 +5180,7 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
         return;
     }
 
-    unsigned int nBlendSrc = blendTranslationTable[0];
-    unsigned int nBlendDst = blendTranslationTable[1];
-    ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
     if (enablerenderbumpmap == 0)
         return;
@@ -5305,7 +5242,7 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
                                   part->m_pMaterial->Textures(0).m_pObject, false);
             RenderFlat(vertices);
             GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
-            ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         }
         else
 #endif
@@ -5537,7 +5474,7 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
                                               currentscene->m_vFogColor.z, 1.0f);
             GLRender::SetVertexShaderConstant(22, 1.0f, 0.0f, 0.0f, 0.0f);
 
-            ASLgl::glBlendFunc(nBlendSrc, nBlendDst);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
             RenderFlatNonTextured(vertices);
             GLRender::Disable(Aurora::kCapVertexProgram);
         }
@@ -5742,26 +5679,15 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
             GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
 
 // The texture-coord client array is bound on unit 1, per light.
-            // inlined GLRender::ActivateTextureStage(unsigned int)
-            unsigned int nTexCoordCap = clientStateTranslationTable[0];
-            if (AurMultiTextureAvailable() != 0)
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glEnableClientState(nTexCoordCap);
-            if (AurMultiTextureAvailable() != 0)
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::ActivateTextureStage(1);
+            GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
 
             RenderFlat(vertices);
 
-            // inlined GLRender::ActivateTextureStage(unsigned int)
-            if (AurMultiTextureAvailable() != 0)
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE1);
-            GLRender::cm_uiCurrentStage = 1;
-            ASLgl::glDisableClientState(nTexCoordCap);
-            if (AurMultiTextureAvailable() != 0)
-                ASLgl::glClientActiveTextureARB(GL_TEXTURE0);
-            GLRender::cm_uiCurrentStage = 0;
+            GLRender::ActivateTextureStage(1);
+            GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+            GLRender::ActivateTextureStage(0);
 
             if (bWasAlphaTest != 0)
                 GLRender::Enable(Aurora::kCapAlphaTest);
@@ -5999,22 +5925,19 @@ void RenderHologramEffect(int nRenderPath, VertexPrimitiveFlat* vertices)
     {
         pVP->Enable(part, false);
 
-        unsigned int nBlendSrc;
         if (g_ForceSight != 0)
         {
             GLRender::pfuncEnablePixelShaders(GLRender::kPSHoloDesat, 0, 0, 0, 0);
-            nBlendSrc = blendTranslationTable[0];
-            ASLgl::glBlendFunc(nBlendSrc, blendTranslationTable[2]);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
         }
         else
         {
             GLRender::pfuncEnablePixelShaders(GLRender::kPSHolo, 0, 0, 0, 0);
-            nBlendSrc = blendTranslationTable[0];
-            ASLgl::glBlendFunc(blendTranslationTable[2], nBlendSrc);
+            GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendSrcAlpha);
         }
         RenderFlat(vertices);
         GLRender::pfuncEnablePixelShaders(GLRender::kPSHoloOff, 0, 0, 0, 0);
-        ASLgl::glBlendFunc(nBlendSrc, blendTranslationTable[1]);
+        GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     }
 
     GLRender::Disable(Aurora::kCapVertexProgram);

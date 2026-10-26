@@ -1082,7 +1082,7 @@ void CSWCObject::SetObjectVisibilityOnSetArea(CSWCArea* pArea)
     vPosition = m_position;
     Vector vZero = {0.0f, 0.0f, 0.0f};
     unsigned char bVisible;
-    if (equal(m_position, vZero) == 0 && pArea->GetObjectsAtPositionVisible(vPosition) != 0)
+    if (m_position != vZero && pArea->GetObjectsAtPositionVisible(vPosition) != 0)
     {
         SetFadeState(1);
         bVisible = 1;

@@ -661,7 +661,7 @@ int64_t CSWSPlayer::LoadCreatureData(CResRef resRef, CSWSCreature* pCreature)
 
     if (pGff->m_nValid != 0)
     {
-        m_resRef = resRef;
+        SetFileName(resRef);
         pGff->GetTopLevelStruct(&topStruct);
 
         int64_t nResult =
@@ -910,7 +910,7 @@ int CSWSPlayer::LoadCharacterFromIFO(unsigned int playerIndex, int bRestorePosit
         {
             pGff = new CResGFF;
             g_pExoResMan->SetResObject(CResRef("pifo"), RESTYPE_IFO, pGff);
-            __strncpy_chk2(pGff->m_sFileType, "IFO ", 4, 4, 5);
+            pGff->SetFileType("IFO ");
 
             bNewGff = 1;
         }
@@ -1162,26 +1162,8 @@ int CSWSPlayer::SaveServerCharacter()
 
         for (;;)
         {
-            // inlined CExoArrayList<CExoString>::Contains(CExoString)
-            int nMatches = 0;
-
-            {
-                CExoString sExtension(".bic");
-                CExoString sCandidate = sFileName + sExtension;
-
-                for (int i = 0; i < vaultFiles.m_count; i++)
-                {
-                    if (vaultFiles.m_pArray[i] == sCandidate)
-                    {
-                        nMatches++;
-                    }
-                }
-            }
-
-            if (nMatches == 0)
-            {
+            if (vaultFiles.Contains(sFileName + ".bic") == 0)
                 break;
-            }
 
             sSuffix = CExoString(nSuffix);
             sBaseName = sBaseName.SubString(

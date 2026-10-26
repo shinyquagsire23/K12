@@ -378,7 +378,7 @@ int AurGetAvailableStencilBits()
 {
     static int stencilbits = -1;
     if (stencilbits == -1)
-        ASLgl::glGetIntegerv(GL_STENCIL_BITS /* GL_STENCIL_BITS */, &stencilbits);
+        GLRender::GetStencilBits(&stencilbits);
     return stencilbits;
 }
 

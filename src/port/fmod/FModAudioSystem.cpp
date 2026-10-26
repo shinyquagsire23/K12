@@ -458,9 +458,7 @@ int FModAudioSystem::SetChannel3DPosition(FModId nChannel, float x, float y, flo
         operator delete(pPosition);
         return 0;
     }
-    if (pInfo->m_pVec3DPosition != 0 && pInfo->m_pVec3DPosition != pPosition)
-        delete pInfo->m_pVec3DPosition;
-    pInfo->m_pVec3DPosition = pPosition;
+    pInfo->SetPosition(pPosition);
     return 1;
 }
 
@@ -473,9 +471,7 @@ int FModAudioSystem::SetChannel3DPosition(FModAudioSystemChannelInfo* pInfo, FMO
     m_nLastResult = pInfo->m_pChannel->set3DAttributes(pPosition, 0);
     if (m_nLastResult != FMOD_OK)
         return 0;
-    if (pInfo->m_pVec3DPosition != 0 && pInfo->m_pVec3DPosition != pPosition)
-        delete pInfo->m_pVec3DPosition;
-    pInfo->m_pVec3DPosition = pPosition;
+    pInfo->SetPosition(pPosition);
     return 1;
 }
 
@@ -1038,9 +1034,7 @@ void FModAudioSystem::HandleChannelEnd(FModAudioSystemChannelInfo* pInfo)
         m_nLastResult = pInfo->m_pChannel->set3DAttributes(pPosition, 0);
         if (m_nLastResult == FMOD_OK)
         {
-            if (pInfo->m_pVec3DPosition != 0 && pInfo->m_pVec3DPosition != pPosition)
-                operator delete(pInfo->m_pVec3DPosition);
-            pInfo->m_pVec3DPosition = pPosition;
+            pInfo->SetPosition(pPosition);
         }
     }
 
@@ -1152,9 +1146,7 @@ int FModAudioSystem::RebootStream(FModAudioSystemChannelInfo* pInfo)
         m_nLastResult = pInfo->m_pChannel->set3DAttributes(pPosition, 0);
         if (m_nLastResult == FMOD_OK)
         {
-            if (pInfo->m_pVec3DPosition != 0 && pInfo->m_pVec3DPosition != pPosition)
-                operator delete(pInfo->m_pVec3DPosition);
-            pInfo->m_pVec3DPosition = pPosition;
+            pInfo->SetPosition(pPosition);
         }
     }
     return 1;

@@ -100,6 +100,7 @@ extern CTlkTable* g_pTlkTable;
 #if KOTOR1
 #include "serverinfo.h"
 #endif
+#include "exostringinline.h"
 
 // Resource types (CExoResMan, CExoFile and the directory lister).
 enum {
@@ -552,6 +553,7 @@ int CSWCMessage::HandleServerToPlayerChat(unsigned char nType)
     {
         // Talk-table token expansion runs twice, for the bubble copy with the gender bit forced on
         // and for the logged copy with it off.
+        // inlined CSWTlkTable::ParseStr(CExoString&, CGameObject*, int, int), twice
         CSWTlkTable* pTlk = g_pSWTlkTable;
         pTlk->m_pSpeakerObj = pTargetObj;
         pTlk->m_gender = pTlk->GetObjectGender();
@@ -924,7 +926,7 @@ CSWCItem* CSWCMessage::CreateItem(unsigned int nBaseItem,
 {
     CSWCItem* pItem = new CSWCItem(nBaseItem);
 
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(nBaseItem);
     if (!pBaseItem)
         return 0;
 
@@ -948,7 +950,7 @@ CSWCItem* CSWCMessage::CreateItem(unsigned int nBaseItem,
                             sWanted.CStr(), sDefault.CStr());
         }
     }
-    pItem->m_iconResRef = resRef;
+    pItem->SetIcon(resRef);
 
     pItem->m_nModelVariation = nModelVariation;
     pItem->m_nTextureVariation = nTextureVariation;
@@ -969,7 +971,7 @@ CSWCItem* CSWCMessage::CreateItem(unsigned int nBaseItem,
                             sWanted.CStr(), sDefault.CStr());
         }
     }
-    pItem->m_modelResRef = resRef;
+    pItem->SetModelResRef(resRef);
 
     return pItem;
 }
@@ -1153,7 +1155,7 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_Add()
             pCreature->SetPosition(vPosition);
             pCreature->SetOrientation(vOrientation);
 
-            pCreature->m_vMovingOrientation = normalize(vOrientation);
+            pCreature->SetDesiredWalkOrientation(vOrientation);
             pCreature->SetDesiredStationaryOrientation(vOrientation);
             pCreature->m_desiredPosition = vPosition;
 
@@ -2400,7 +2402,7 @@ int CSWCMessage::HandleServerToPlayerItemAppearance(unsigned int* pnBaseItem,
 
     *pnAppearance = ReadBYTE(8);
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(*pnBaseItem)->m_nModelType == 1)
+    if (g_pRules->GetBaseItem(*pnBaseItem)->m_nModelType == 1)
     {
         *pnBodyVariation = ReadBYTE(8);
         *pnTextureVariation = ReadBYTE(8);
@@ -2968,13 +2970,13 @@ int CSWCMessage::HandleServerToPlayerJournalMessage_Updated()
     g_pAppManager->m_pClientExoApp->GetWorldJournal();
 
     CExoString sText;
+    int bQuest;
+    int bWorld;
 
     if (MessageReadOverflow(1))
         return 0;
 
     sText = ReadCExoLocStringClient();
-    int bQuest;
-    int bWorld;
     bQuest = ReadBOOL();
     bWorld = ReadBOOL();
 
@@ -4129,15 +4131,9 @@ int CSWCMessage::HandleServerToPlayerServerStatus(unsigned char nType)
 
         sCommand.Format(const_cast<char*>("%c%s.%s"), 's', "Module", "Run");
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         g_pAppManager->m_pClientExoApp->GetNetLayer()->SendMessageToPlayer(
             CNetLayer::PLAYERID_SERVER, reinterpret_cast<unsigned char*>(sCommand.CStr()),
             sCommand.GetLength(), 0);
-#else
-        g_pAppManager->m_pClientExoApp->GetNetLayer()->SendMessageToPlayer(
-            CNetLayer::PLAYERID_SERVER, reinterpret_cast<unsigned char*>(sCommand.CStr()),
-            static_cast<unsigned int>(sCommand.m_sString ? strlen(sCommand.m_sString) : 0), 0);
-#endif
     }
     else
     {
@@ -4455,7 +4451,7 @@ int CSWCMessage::HandleServerToPlayerItemUpdate_Add(int nMode, CSWCItem** ppItem
     {
         nModelVariation = ReadBYTE(8);
 
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_nModelType == 1)
+        if (g_pRules->GetBaseItem(nBaseItem)->m_nModelType == 1)
         {
             ReadBYTE(8);
             ReadBYTE(8);
@@ -4473,7 +4469,7 @@ int CSWCMessage::HandleServerToPlayerItemUpdate_Add(int nMode, CSWCItem** ppItem
         pItem = static_cast<CSWCItem*>(pObject->AsSWCItem());
         pItem->m_bInContainer = 0;
 
-        CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
         if (pBaseItem != 0 && pBaseItem->m_nModelType == 1)
             g_pAppManager->m_pClientExoApp->GetPlayerCreature();
     }
@@ -4602,7 +4598,7 @@ int CSWCMessage::HandleServerToPlayerItemScript_Add()
     {
         nModelVariation = ReadBYTE(8);
 
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_nModelType == 1)
+        if (g_pRules->GetBaseItem(nBaseItem)->m_nModelType == 1)
         {
             ReadBYTE(8);
             ReadBYTE(8);
@@ -4645,7 +4641,7 @@ int CSWCMessage::HandleServerToPlayerItemScript_Add()
     if (!pItem->LoadModel(pItem->m_modelResRef, CSWCAnimBase::ANIM_MODEL_BODY, 0))
         return 0;
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bHasEnvMap)
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_bHasEnvMap)
         pItem->SetEnvMap(CSWCAnimBase::ANIM_MODEL_BODY, 1, CResRef("default"));
 
     return 1;
@@ -4755,15 +4751,9 @@ int CSWCMessage::HandleServerToPlayerCharacterDownload(unsigned char nType)
 
         bOverwrite = ReadBOOL();
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         g_pAppManager->m_pClientExoApp->SetCharacterFile(
             sFileName.GetLength(),
             reinterpret_cast<unsigned char*>(sFileName.CStr()), bOverwrite);
-#else
-        g_pAppManager->m_pClientExoApp->SetCharacterFile(
-            static_cast<unsigned int>(sFileName.m_sString ? strlen(sFileName.m_sString) : 0),
-            reinterpret_cast<unsigned char*>(sFileName.CStr()), bOverwrite);
-#endif
     }
     else
     {
@@ -6136,11 +6126,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
                         {
                             sOut.Format(const_cast<char*>("%s *%s*"), sSkill.CStr(), sVerb.CStr());
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                             if (sOut.GetLength() > kFeedbackInfoMaxLength)
-#else
-                            if (sOut.m_sString != 0 && strlen(sOut.m_sString) > kFeedbackInfoMaxLength)
-#endif
                                 sOut.Format(const_cast<char*>("*%s*"), sVerb.CStr());
 
                             pTarget->SetFeedbackInfo(sOut);
@@ -6152,11 +6138,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
                         {
                             sOut.Format(const_cast<char*>("%s *%s*"), sSkill.CStr(), sVerb.CStr());
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                             if (sOut.GetLength() > kFeedbackInfoMaxLength)
-#else
-                            if (sOut.m_sString != 0 && strlen(sOut.m_sString) > kFeedbackInfoMaxLength)
-#endif
                                 sOut.Format(const_cast<char*>("*%s*"), sVerb.CStr());
 
                             pTarget->SetFeedbackInfo(sOut);
@@ -6171,11 +6153,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
                             sOut.Format(const_cast<char*>("%s *%s*"), sSkill.CStr(), sAlt.CStr());
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                             if (sOut.GetLength() > kFeedbackInfoMaxLength)
-#else
-                            if (sOut.m_sString != 0 && strlen(sOut.m_sString) > kFeedbackInfoMaxLength)
-#endif
                                 sOut.Format(const_cast<char*>("*%s*"), sAlt.CStr());
 
                             pTarget->SetFeedbackInfo(sOut);
@@ -6190,11 +6168,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
                             sOut.Format(const_cast<char*>("%s *%s*"), sSkill.CStr(), sAlt.CStr());
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                             if (sOut.GetLength() > kFeedbackInfoMaxLength)
-#else
-                            if (sOut.m_sString != 0 && strlen(sOut.m_sString) > kFeedbackInfoMaxLength)
-#endif
                                 sOut.Format(const_cast<char*>("*%s*"), sAlt.CStr());
 
                             pTarget->SetFeedbackInfo(sOut);
@@ -6555,7 +6529,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
                 return 0;
 
             if (!bLocString)
-                sName = g_pRules->m_pBaseItemArray->GetBaseItem(nItem)->GetNameText();
+                sName = g_pRules->GetBaseItem(nItem)->GetNameText();
 
             CSWCCMessageData* pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
@@ -6664,7 +6638,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
                 return 0;
 
             if (!bLocString)
-                sName = g_pRules->m_pBaseItemArray->GetBaseItem(nItem)->GetNameText();
+                sName = g_pRules->GetBaseItem(nItem)->GetNameText();
 
             CSWCCMessageData* pData = new CSWCCMessageData;
             pData->SetString(0, sName);
@@ -9239,7 +9213,7 @@ int CSWCMessage::HandleServerToPlayerDebugInfo_Item(unsigned long long objId)
 
     pGui->AppendToMsgBuffer(CExoString("******************"), kMessageTypeDebug, 0);
 
-    sBaseName = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->GetNameText();
+    sBaseName = g_pRules->GetBaseItem(pItem->m_baseItem)->GetNameText();
 
     sLine = "Name: ";
     sLine = sLine + pItem->GetName(0);
@@ -10037,7 +10011,8 @@ int CSWCMessage::HandleServerToPlayerSafeProjectileProjectile()
 
                 if (pModule && pModule->m_pArea)
                 {
-                    pProjectile->AttachToScene(pModule->m_pArea->m_pScene);
+                    CAurScene* pScene = pModule->m_pArea->m_pScene;
+                    pProjectile->AttachToScene(pScene);
                     pAmmo->GetCExoStringEntry(nAmmoRow, CExoString("MuzzleFlash"), &sMuzzleFlash);
                     pProjectile->CreateMuzzleFlash(sMuzzleFlash, static_cast<CAurObject*>(pMuzzleModel), sMuzzlePart);
                 }
@@ -10315,6 +10290,7 @@ int CSWCMessage::HandleServerToPlayerUpdate_CharacterSheet()
             if (MessageReadOverflow(1))
                 return 0;
 
+            // inlined CExoArrayList<unsigned short>::AddUnique(unsigned short)
             if (pStats->m_lstFeats.Contains(nFeat) != 0)
                 continue;
             pStats->m_lstFeats.Add(nFeat);
@@ -10329,6 +10305,7 @@ int CSWCMessage::HandleServerToPlayerUpdate_CharacterSheet()
             if (MessageReadOverflow(1))
                 return 0;
 
+            // inlined CExoArrayList<unsigned short>::AddUnique(unsigned short)
             if (pStats->m_lstBonusFeats.Contains(nFeat) != 0)
                 continue;
             pStats->m_lstBonusFeats.Add(nFeat);
@@ -10551,15 +10528,14 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_Appearance()
                         CGameObjectArray::SUCCESS)
                         continue;
                 }
-                else if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem) == NULL)
+                else if (g_pRules->GetBaseItem(pItem->m_baseItem) == NULL)
                 {
                     continue;
                 }
 
                 HandleServerToPlayerActiveItemProperties(oidObject);
 
-                CSWBaseItem* pBaseItem =
-                    g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+                CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
                 if (pBaseItem->m_nModelType == 1)
                 {
                     appearance.core.m_bTypeVariant = nBodyVariation;
@@ -11271,20 +11247,7 @@ int CSWCMessage::HandleServerToPlayerUpdate_PlayerInfo()
                     pNode->m_flags = (pNode->m_flags & ~kVisibleHeard) | ((bB & 1) << 1);
                 pNode->m_flags = (pNode->m_flags & ~kVisibleInactive) | ((bC & 1) << 4);
 
-                // inlined CExoArrayList<CSWVisibilityNode*>::Add(pNode)
-                int idx = pCreature->m_visibilityList.m_count;
-                if (idx == pCreature->m_visibilityList.m_capacity) {
-                    int newcap = idx != 0 ? idx * 2 : 16;
-                    CSWVisibilityNode** pOld = pCreature->m_visibilityList.m_pArray;
-                    pCreature->m_visibilityList.m_capacity = newcap;
-                    pCreature->m_visibilityList.m_pArray = new CSWVisibilityNode*[newcap];
-                    for (int64_t k = 0; k < idx; k++)
-                        pCreature->m_visibilityList.m_pArray[k] = pOld[k];
-                    delete[] pOld;
-                    idx = pCreature->m_visibilityList.m_count;
-                }
-                pCreature->m_visibilityList.m_count = idx + 1;
-                pCreature->m_visibilityList.m_pArray[idx] = pNode;
+                pCreature->m_visibilityList.Add(pNode);
             } else {
                 if (bA == 1)
                     pNode->m_flags |= kVisibleSeen | kVisibleHeard;
@@ -11856,7 +11819,9 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_Update(unsigned long long ob
             }
             else
             {
-                pCreature->GetWayPoints(&nWayPointCount, &pWayPoints, &nWayPointIndex);
+                unsigned short nCurrentCount;
+                pCreature->GetWayPoints(&nCurrentCount, &pWayPoints, &nWayPointIndex);
+                nWayPointCount = nCurrentCount;
             }
             if (MessageReadOverflow(1))
                 return 0;

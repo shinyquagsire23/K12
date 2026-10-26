@@ -3,8 +3,7 @@
 
 // idiom-exempt: canonical
 #include "Quaternion.h"
-
-struct Vector;
+#include "Vector.h"
 
 // The engine's 3x3 rotation matrix, nine floats, row-major.
 class Matrix {
@@ -16,6 +15,13 @@ public:
         m_f[0] = 1.0f; m_f[1] = 0.0f; m_f[2] = 0.0f;
         m_f[3] = 0.0f; m_f[4] = 1.0f; m_f[5] = 0.0f;
         m_f[6] = 0.0f; m_f[7] = 0.0f; m_f[8] = 1.0f;
+    }
+
+    Matrix(Vector a, Vector b, Vector c)
+    {
+        m_f[0] = a.x; m_f[1] = a.y; m_f[2] = a.z;
+        m_f[3] = b.x; m_f[4] = b.y; m_f[5] = b.z;
+        m_f[6] = c.x; m_f[7] = c.y; m_f[8] = c.z;
     }
 
     Vector* Rows() { return reinterpret_cast<Vector*>(m_f); }  // raw-offset: the nine floats as three Vector rows
@@ -35,19 +41,6 @@ inline Matrix operator+(const Matrix& a, const Matrix& b) {
 Matrix Transpose(const Matrix& m);
 
 // Quaternion to rotation matrix, row-vector convention.
-inline Matrix Quaternion::getmatrix() const
-{
-    Matrix mat;
-    mat.m_f[0] = 1.0f - 2.0f * (y * y + z * z);
-    mat.m_f[1] = 2.0f * (x * y + z * w);
-    mat.m_f[2] = 2.0f * (x * z - y * w);
-    mat.m_f[3] = 2.0f * (x * y - z * w);
-    mat.m_f[4] = 1.0f - 2.0f * (z * z + x * x);
-    mat.m_f[5] = 2.0f * (y * z + x * w);
-    mat.m_f[6] = 2.0f * (x * z + y * w);
-    mat.m_f[7] = 2.0f * (y * z - x * w);
-    mat.m_f[8] = 1.0f - 2.0f * (x * x + y * y);
-    return mat;
-}
+inline Matrix Quaternion::getmatrix() const { return Matrix(xdir(), ydir(), zdir()); }
 
 #endif

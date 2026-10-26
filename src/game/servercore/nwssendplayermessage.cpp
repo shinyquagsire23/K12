@@ -282,7 +282,7 @@ int CSWSMessage::CompareVisualEffectLists(CExoArrayList<CLoopingVisualEffect*>* 
 void CSWSMessage::AssignCreatureLists(CExoArrayList<unsigned long long>* pSrc,
                                       CExoArrayList<unsigned long long>* pDst)
 {
-    pDst->Clear();
+    pDst->SetSize(0);
 
     for (int i = 0; i < pSrc->m_count; i++)
         pDst->Add(pSrc->m_pArray[i]);
@@ -411,9 +411,7 @@ int CSWSMessage::ComputeUpdateRequired(CSWSPlayer* pPlayer, CSWSObject* pObject,
             }
             if (pCreature->m_bDriving == 1)
             {
-                float fFacing = pLast->m_fOrientationX * pCreature->m_orientation.x +
-                                pLast->m_fOrientationY * pCreature->m_orientation.y +
-                                pLast->m_fOrientationZ * pCreature->m_orientation.z;
+                float fFacing = dot(pLast->m_orientation, pCreature->m_orientation);
                 if (fFacing < 0.95f)
                     nFlags |= MSG_OBJECT_UPDATE_POSITION | MSG_OBJECT_UPDATE_ORIENTATION;
             }
@@ -426,9 +424,9 @@ int CSWSMessage::ComputeUpdateRequired(CSWSPlayer* pPlayer, CSWSObject* pObject,
             }
             else
             {
-                float fDx = pLast->m_fPositionX - pCreature->m_position.x;
-                float fDy = pLast->m_fPositionY - pCreature->m_position.y;
-                float fDz = pLast->m_fPositionZ - pCreature->m_position.z;
+                float fDx = pLast->m_position.x - pCreature->m_position.x;
+                float fDy = pLast->m_position.y - pCreature->m_position.y;
+                float fDz = pLast->m_position.z - pCreature->m_position.z;
                 if (fDx * fDx + fDy * fDy + fDz * fDz >= 0.01f)
                     nFlags |= MSG_OBJECT_UPDATE_POSITION | MSG_OBJECT_UPDATE_ORIENTATION;
                 else if (pCreature->GetArea() &&
@@ -436,9 +434,7 @@ int CSWSMessage::ComputeUpdateRequired(CSWSPlayer* pPlayer, CSWSObject* pObject,
                     nFlags |= MSG_OBJECT_UPDATE_POSITION | MSG_OBJECT_UPDATE_ORIENTATION;
                 else
                 {
-                    float fFacing = pLast->m_fOrientationX * pCreature->m_orientation.x +
-                                    pLast->m_fOrientationY * pCreature->m_orientation.y +
-                                    pLast->m_fOrientationZ * pCreature->m_orientation.z;
+                    float fFacing = dot(pLast->m_orientation, pCreature->m_orientation);
                     if (fFacing < 0.95f)
                         nFlags |= MSG_OBJECT_UPDATE_POSITION | MSG_OBJECT_UPDATE_ORIENTATION;
                 }
@@ -559,15 +555,13 @@ int CSWSMessage::ComputeUpdateRequired(CSWSPlayer* pPlayer, CSWSObject* pObject,
             pLast->m_nAnimation != pObject->m_nAnimation)
             nFlags |= MSG_OBJECT_UPDATE_ANIMATION;
 
-        float fDx = pLast->m_fPositionX - pObject->m_position.x;
-        float fDy = pLast->m_fPositionY - pObject->m_position.y;
-        float fDz = pLast->m_fPositionZ - pObject->m_position.z;
+        float fDx = pLast->m_position.x - pObject->m_position.x;
+        float fDy = pLast->m_position.y - pObject->m_position.y;
+        float fDz = pLast->m_position.z - pObject->m_position.z;
         if (fDx * fDx + fDy * fDy + fDz * fDz >= 0.01f)
             nFlags |= MSG_OBJECT_UPDATE_POSITION;
 
-        float fFacing = pLast->m_fOrientationX * pObject->m_orientation.x +
-                        pLast->m_fOrientationY * pObject->m_orientation.y +
-                        pLast->m_fOrientationZ * pObject->m_orientation.z;
+        float fFacing = dot(pLast->m_orientation, pObject->m_orientation);
         if (fFacing < 0.95f)
             nFlags |= MSG_OBJECT_UPDATE_ORIENTATION;
 
@@ -696,7 +690,7 @@ void CSWSMessage::AddItemAppearanceToMessage(CSWSItem* pItem)
     int nBaseItem = pItem->m_baseItem;
     WriteDWORD(nBaseItem, 32);
 
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(nBaseItem);
     if (pBaseItem == 0)
         return;
 
@@ -2002,9 +1996,7 @@ void CSWSMessage::UpdateLastUpdateObject(CSWSPlayer* pPlayer, CSWSObject* pObjec
 
     if (a & MSG_OBJECT_UPDATE_POSITION)
     {
-        pLast->m_fPositionX = pObject->m_position.x;
-        pLast->m_fPositionY = pObject->m_position.y;
-        pLast->m_fPositionZ = pObject->m_position.z;
+        pLast->m_position = pObject->m_position;
         if (pObject->GetArea())
             pLast->m_oidArea = static_cast<CSWSArea*>(pObject->GetArea())->m_objectId;
         else
@@ -2013,9 +2005,7 @@ void CSWSMessage::UpdateLastUpdateObject(CSWSPlayer* pPlayer, CSWSObject* pObjec
 
     if (a & MSG_OBJECT_UPDATE_ORIENTATION)
     {
-        pLast->m_fOrientationX = pObject->m_orientation.x;
-        pLast->m_fOrientationY = pObject->m_orientation.y;
-        pLast->m_fOrientationZ = pObject->m_orientation.z;
+        pLast->m_orientation = pObject->m_orientation;
         if (pObject->m_objectType == CGameObject::OBJECT_TYPE_CREATURE)
             pLast->m_oidLockOrientationTo = pObject->AsSWSCreature()->GetLockOrientationToObject();
         if (pObject->m_nAnimation == SERVER_ANIMATION_ATTACK_2 || pObject->m_nAnimation == SERVER_ANIMATION_ATTACK)
@@ -5941,7 +5931,8 @@ int CSWSMessage::TestObjectVisible(CSWSObject* pObject, CSWSObject* pViewer)
                     return 1;
             }
 
-            pObject->AsSWSTrigger();
+            if (pObject->AsSWSTrigger()->m_objectsInTrigger.Contains(pViewer->m_objectId))
+                return 1;
         }
     }
     else
@@ -6224,7 +6215,7 @@ int CSWSMessage::ComputeLastUpdate_ActionQueue(CSWSCreature* pCreature,
             return 1;
         if (pCreature->m_actionQueue[i].m_targetId != pLast->m_actionQueue[i].m_targetId)
             return 1;
-        if (!equal(pCreature->m_actionQueue[i].m_vTarget, pLast->m_actionQueue[i].m_vTarget))
+        if (pCreature->m_actionQueue[i].m_vTarget != pLast->m_actionQueue[i].m_vTarget)
             return 1;
     }
 
@@ -7086,9 +7077,9 @@ void CSWSMessage::TestPartyObjectUpdateDifferences(CSWSPlayer* pPlayer, CSWSCrea
             if (pCreature->m_cachedAreaId == pViewerCreature->m_cachedAreaId)
 #endif
             {
-                float dx = (*ppLast)->m_fPositionX - pCreature->m_position.x;
-                float dy = (*ppLast)->m_fPositionY - pCreature->m_position.y;
-                float dz = (*ppLast)->m_fPositionZ - pCreature->m_position.z;
+                float dx = (*ppLast)->m_position.x - pCreature->m_position.x;
+                float dy = (*ppLast)->m_position.y - pCreature->m_position.y;
+                float dz = (*ppLast)->m_position.z - pCreature->m_position.z;
                 if (dx * dx + dy * dy + dz * dz >= 4.0f)
                     *pnMask |= MSG_OBJECT_UPDATE_COARSE_POSITION;
             }
@@ -7126,9 +7117,6 @@ void CSWSMessage::TestPartyObjectUpdateDifferences(CSWSPlayer* pPlayer, CSWSCrea
 
     // Never seen before, so allocate the record, seed it, and push it on the party list.
     CLastUpdatePartyObject* pNew = new CLastUpdatePartyObject;
-    pNew->m_fPositionX = 0.0f;
-    pNew->m_fPositionY = 0.0f;
-    pNew->m_fPositionZ = 0.0f;
     *ppLast = pNew;
     pNew->m_bTouchedThisFrame = 1;
     pNew->m_objectId = pCreature->m_objectId;
@@ -7163,8 +7151,8 @@ void CSWSMessage::StoreValuesInLastUpdatePartyObject(CSWSCreature* pViewerCreatu
 
     if (nMask & MSG_OBJECT_UPDATE_COARSE_POSITION)
     {
-        pLast->m_fPositionX = pCreature->m_position.x;
-        pLast->m_fPositionY = pCreature->m_position.y;
+        pLast->m_position.x = pCreature->m_position.x;
+        pLast->m_position.y = pCreature->m_position.y;
     }
 
     if (nMask & MSG_OBJECT_UPDATE_HIT_POINTS)
@@ -7970,18 +7958,11 @@ void CSWSMessage::WriteGameObjUpdate_PlayerUpdate(CSWSPlayer* pPlayer,
                     WriteFLOAT(pCreature->m_actionQueue[nSlot].m_vTarget.z, 1.0f, 32);
                 }
 
-                // Two action types carry a spell id; without the second term the second of them
-                // never ships it.
-#if KOTOR1
+                // Two action types carry a spell id.
                 if (pCreature->m_actionQueue[nSlot].m_nActionId == AQACTION_ITEM_CAST_SPELL)
                     WriteDWORD(pCreature->m_actionQueue[nSlot].m_nSpellId, 32);
                 else if (pCreature->m_actionQueue[nSlot].m_nActionId == AQACTION_CAST_SPELL)
                     WriteDWORD(pCreature->m_actionQueue[nSlot].m_nSpellId, 32);
-#else
-                if (pCreature->m_actionQueue[nSlot].m_nActionId == AQACTION_CAST_SPELL
-                    || pCreature->m_actionQueue[nSlot].m_nActionId == AQACTION_ITEM_CAST_SPELL)
-                    WriteDWORD(pCreature->m_actionQueue[nSlot].m_nSpellId, 32);
-#endif
             }
         }
     }

@@ -308,14 +308,16 @@ int CResTGA::ReadUnmappedRLETGA()
 int CResTGA::Write(const CExoString& path)
 {
     CExoFile file(path, 3, CExoString("wb"));
+    unsigned char* pBuffer;
+    TGAHeader* h;
     if (m_nTGASize == 0 || !file.FileOpened())
         return 0;
 
-    unsigned char* pBuffer = new unsigned char[m_nTGASize];
+    pBuffer = new unsigned char[m_nTGASize];
     if (m_bLoaded)
         memcpy(pBuffer, m_pTGAData, m_nTGASize);  // idiom-exempt: runtime length
 
-    TGAHeader* h = static_cast<TGAHeader*>(m_pTGAHeader);
+    h = static_cast<TGAHeader*>(m_pTGAHeader);
     if (h->m_imageType != 3) {
         unsigned int nPixels = h->m_width * h->m_height;
         if (nPixels != 0) {

@@ -1,86 +1,24 @@
-// GLU's 2D mipmap builder, a copy of SGI's `mipmap.c` (the sample implementation Mesa's libGLU
-// ships), as far as the engine's own entry point needs it. KOTOR 1 has no GLU of its own: it calls
-// `gluBuild2DMipmaps` directly.
+// SGI FREE SOFTWARE LICENSE B (Version 2.0, Sept. 18, 2008)
+// Copyright (C) 1991-2000 Silicon Graphics, Inc. All Rights Reserved.
+// See http://oss.sgi.com/projects/FreeB/ for the full license text.
+//
+// GLU's image scaler and mipmap builders: the libutil `mipmap.c` of the SGI OpenGL Sample
+// Implementation (GLU 1.3), the copy Mesa's libGLU carried before its 2005 scale clamp and its
+// 2006/2009 padding and leak fixes. The game's GL ES port cut it down:
+//   * the 2D path only, with the seven plain pixel types plus GL_BITMAP and no BGR/BGRA formats
+//     or packed-pixel types;
+//   * no pixel-store state: `retrieveStoreModes` answers the initial modes instead of querying
+//     the GL, and no GL_UNPACK_* state is set or restored;
+//   * `closestFit` has no proxy-texture probe: each side is the nearest power of two clamped to
+//     GL_MAX_TEXTURE_SIZE;
+//   * `gluBuild2DMipmaps` maps the internal format through `ASLglGetInternalFormat` first.
+// KOTOR 1 has no GLU of its own: it calls `gluBuild2DMipmaps` from outside.
 #include "k2stdint.h"
 #include "port/aslglapi.h"
 #include <limits.h>
 
 #if !KOTOR1
 
-// The tail callee is internal to this file and defined at its end. It takes the size pair twice (the
-// raw width/height and again as the power-of-two pair) before format and type, and computes its own
-// logs from the second pair, which is why this caller passes the pair twice. It stays out of line so
-// the builder and the core remain separate functions.
-namespace {
-    __attribute__((noinline)) int
-    gluBuild2DMipmapLevelsCore(unsigned int nTarget, int nInternalFormat, int nWidth, int nHeight,
-                               int nWidthPow2, int nHeightPow2, unsigned int nFormat,
-                               unsigned int nType, int nUserLevel, int nBaseLevel, int nMaxLevel,
-                               const void* pData);
-}
-
-// GLU's two error codes. The format and type guards return INVALID_ENUM, every size and level guard
-// returns INVALID_VALUE. The shared return block re-materialises whichever one is live.
-enum {
-    GLU_INVALID_ENUM  = 0x18a24,
-    GLU_INVALID_VALUE = 0x18a25,
-};
-
-// A power-of-two log2 answering -1 for anything that is not a power of two. The loop is written
-// test-first, and both halves must stay as they are.
-namespace {
-    int gluMipmapLog2(unsigned int n)
-    {
-        if (n == 0)
-            return -1;
-        int nLog = 0;
-        while ((n & 1) == 0) {
-            n >>= 1;
-            nLog++;
-        }
-        return n == 1 ? nLog : -1;
-    }
-}
-
-int gluBuild2DMipmapLevels(unsigned int nTarget, int nInternalFormat, int nWidth, int nHeight,
-                           unsigned int nFormat, unsigned int nType, int nUserLevel, int nBaseLevel,
-                           int nMaxLevel, const void* pData)
-{
-    if (nFormat - GL_COLOR_INDEX > GL_LUMINANCE_ALPHA - GL_COLOR_INDEX)
-        return GLU_INVALID_ENUM;
-    // The two guards share one format test: the type half is a negated range test short-circuited
-    // with the second type value, and only then is the format re-tested. Seven types are accepted,
-    // not eight: the eighth constant is rejected like any other unknown type.
-    if (static_cast<unsigned int>(nType - GL_BYTE) >= 7) {
-        if (nType != GL_BITMAP)
-            return GLU_INVALID_ENUM;
-    }
-    if (nFormat == GL_STENCIL_INDEX)
-        return GLU_INVALID_ENUM;
-    if (nWidth < 1 || nHeight < 1)
-        return GLU_INVALID_VALUE;
-    int nWidthLog = gluMipmapLog2(static_cast<unsigned int>(nWidth));
-    int nHeightLog = gluMipmapLog2(static_cast<unsigned int>(nHeight));
-    // The larger of the two logs bounds the level count.
-    int nMaxLog = nHeightLog > nWidthLog ? nHeightLog : nWidthLog;
-    if (nBaseLevel < 0)
-        return GLU_INVALID_VALUE;
-    if (nBaseLevel < nUserLevel)
-        return GLU_INVALID_VALUE;
-    if (nMaxLevel < nBaseLevel)
-        return GLU_INVALID_VALUE;
-    if (nMaxLog + nUserLevel < nMaxLevel)
-        return GLU_INVALID_VALUE;
-    return gluBuild2DMipmapLevelsCore(nTarget, nInternalFormat, nWidth, nHeight, nWidth, nHeight,
-                                      nFormat, nType, nUserLevel, nBaseLevel, nMaxLevel, pData);
-}
-
-// GLU mipmap builder behind the two entry points, SGI's `mipmap.c` (the sample implementation
-// Mesa's libGLU ships), cut down to the seven plain pixel types and four colour formats. It never
-// reads the GL's pixel-store state: `retrieveStoreModes` answers the tightest unpack modes, so rows
-// are never padded, skipped or byte-swapped, and no GL_UNPACK_* state is set or restored.
-// `gluScaleImage` and `gluBuild2DMipmaps` come from the same source; the platforms layer supplies
-// its own `gluBuild2DMipmaps`.
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
 #include "port/libcmath.h"
@@ -97,22 +35,61 @@ typedef float GLfloat;
 typedef double GLdouble;
 typedef unsigned char GLboolean;
 
+#ifndef GL_DEPTH_COMPONENT
+#define GL_DEPTH_COMPONENT 0x1902
+#define GL_RED 0x1903
+#define GL_GREEN 0x1904
+#define GL_BLUE 0x1905
+#define GL_ALPHA 0x1906
+#endif
+#ifndef GL_RGB5
+#define GL_RGB5 0x8050
+#endif
+#ifndef GL_TRUE
+#define GL_TRUE 1
+#define GL_FALSE 0
+#endif
+
 namespace {
+    // GLU error codes
     enum {
-        GLU_OUT_OF_MEMORY = 0x18a26,
+        GLU_INVALID_ENUM = 100900,
+        GLU_INVALID_VALUE = 100901,
+        GLU_OUT_OF_MEMORY = 100902,
     };
 
+    // Pixel storage modes
     struct PixelStorageModes {
+        GLint pack_alignment;
+        GLint pack_row_length;
+        GLint pack_skip_rows;
+        GLint pack_skip_pixels;
+        GLint pack_lsb_first;
+        GLint pack_swap_bytes;
+        GLint pack_skip_images;
+        GLint pack_image_height;
+
         GLint unpack_alignment;
         GLint unpack_row_length;
         GLint unpack_skip_rows;
         GLint unpack_skip_pixels;
         GLint unpack_lsb_first;
         GLint unpack_swap_bytes;
+        GLint unpack_skip_images;
+        GLint unpack_image_height;
     };
 
+    // The GL's pixel-store state is never queried: every mode reads as its initial value, so rows
+    // are tightly packed, never skipped and never byte-swapped.
     void retrieveStoreModes(PixelStorageModes* psm)
     {
+        psm->pack_alignment = 1;
+        psm->pack_row_length = 0;
+        psm->pack_skip_rows = 0;
+        psm->pack_skip_pixels = 0;
+        psm->pack_lsb_first = 0;
+        psm->pack_swap_bytes = 0;
+
         psm->unpack_alignment = 1;
         psm->unpack_row_length = 0;
         psm->unpack_skip_rows = 0;
@@ -178,6 +155,26 @@ namespace {
         return bytes_per_row * height * components;
     }
 
+    int computeLog(GLuint value)
+    {
+        int i;
+
+        i = 0;
+
+        if (value == 0)
+            return -1;
+
+        for (;;) {
+            if (value & 1) {
+                if (value != 1)
+                    return -1;
+                return i;
+            }
+            value = value >> 1;
+            i++;
+        }
+    }
+
     // The power of two nearest `value` (a 3 rounds up to 4); -1 for zero.
     int nearestPower(GLuint value)
     {
@@ -197,6 +194,65 @@ namespace {
             value = value >> 1;
             i *= 2;
         }
+    }
+
+    GLboolean legalFormat(GLenum format)
+    {
+        switch (format) {
+        case GL_COLOR_INDEX:
+        case GL_STENCIL_INDEX:
+        case GL_DEPTH_COMPONENT:
+        case GL_RED:
+        case GL_GREEN:
+        case GL_BLUE:
+        case GL_ALPHA:
+        case GL_RGB:
+        case GL_RGBA:
+        case GL_LUMINANCE:
+        case GL_LUMINANCE_ALPHA:
+            return GL_TRUE;
+        default:
+            return GL_FALSE;
+        }
+    }
+
+    GLboolean legalType(GLenum type)
+    {
+        switch (type) {
+        case GL_BITMAP:
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+        case GL_FLOAT:
+            return GL_TRUE;
+        default:
+            return GL_FALSE;
+        }
+    }
+
+    int checkMipmapArgs(GLenum internalFormat, GLenum format, GLenum type)
+    {
+        K2_UNUSED(internalFormat);
+        if (!legalFormat(format) || !legalType(type)) {
+            return GLU_INVALID_ENUM;
+        }
+        if (format == GL_STENCIL_INDEX) {
+            return GLU_INVALID_ENUM;
+        }
+
+        return 0;
+    }
+
+    GLboolean isLegalLevels(GLint userLevel, GLint baseLevel, GLint maxLevel, GLint totalLevels)
+    {
+        if (baseLevel < 0 || baseLevel < userLevel || maxLevel < baseLevel ||
+            totalLevels < maxLevel)
+            return GL_FALSE;
+        else
+            return GL_TRUE;
     }
 
 // Byte-swapped reads, each a 2- or 4-byte value assembled from its bytes, low byte first.
@@ -968,7 +1024,7 @@ namespace {
             }
     }
 
-    __attribute__((noinline)) void scale_internal(GLint components, GLint widthin, GLint heightin,
+    void scale_internal(GLint components, GLint widthin, GLint heightin,
                                                   const GLushort* datain, GLint widthout,
                                                   GLint heightout, GLushort* dataout)
     {
@@ -1101,6 +1157,8 @@ namespace {
         lowy_int = 0;
         lowy_float = 0;
         highy_int = convy_int - 1;
+        if (highy_int < 0)
+            highy_int = 0;
         highy_float = convy_float;
 
         for (i = 0; i < heightout; i++) {
@@ -2847,73 +2905,429 @@ namespace {
         }
     }
 
-    // `fill_image`'s GL_BITMAP arm: one unsigned short per bit, 1 for an index format and 65535
-    // otherwise.
-    void fill_image_bitmap(const PixelStorageModes* psm, GLint width, GLint height, GLenum format,
-                           GLboolean index_format, const void* userdata, GLushort* newimage)
+    // The largest power-of-two size the GL accepts: each side rounded to its nearest power of two
+    // and clamped to GL_MAX_TEXTURE_SIZE. There are no proxy textures to probe.
+    void closestFit(GLenum target, GLint width, GLint height, GLint internalFormat, GLenum format,
+                    GLenum type, GLint* newWidth, GLint* newHeight)
     {
-        GLint components = elements_per_group(format);
-        GLint groups_per_line;
-        if (psm->unpack_row_length > 0)
-            groups_per_line = psm->unpack_row_length;
-        else
-            groups_per_line = width;
+        GLint maxsize;
+        ASLgl::glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxsize);
+        *newWidth = nearestPower(width);
+        if (*newWidth > maxsize)
+            *newWidth = maxsize;
+        *newHeight = nearestPower(height);
+        if (*newHeight > maxsize)
+            *newHeight = maxsize;
+    }
 
-        GLint rowsize = (groups_per_line * components + 7) / 8;
-        GLint padding = rowsize % psm->unpack_alignment;
-        if (padding)
-            rowsize += psm->unpack_alignment - padding;
-        const GLubyte* start = static_cast<const GLubyte*>(userdata) + psm->unpack_skip_rows * rowsize +
-                               (psm->unpack_skip_pixels * components / 8);
-        GLint elements_per_line = width * components;
-        GLushort* iter2 = newimage;
-        for (GLint i = 0; i < height; i++) {
-            const GLubyte* iter = start;
-            GLint bit_offset = (psm->unpack_skip_pixels * components) % 8;
-            for (GLint j = 0; j < elements_per_line; j++) {
-                GLint current_bit;
-                if (psm->unpack_lsb_first)
-                    current_bit = iter[0] & (1 << bit_offset);
-                else
-                    current_bit = iter[0] & (1 << (7 - bit_offset));
-                if (current_bit) {
-                    if (index_format)
-                        *iter2 = 1;
-                    else
-                        *iter2 = 65535;
-                } else {
-                    *iter2 = 0;
-                }
-                bit_offset++;
-                if (bit_offset == 8) {
-                    bit_offset = 0;
-                    iter++;
-                }
-                iter2++;
+    union Type_Widget {
+        unsigned char ub[4];
+        unsigned short us[2];
+        unsigned int ui;
+        char b[4];
+        short s[2];
+        int i;
+        float f;
+    };
+
+    // Extract an array from the user's data, applying the pixel store modes. The internal format is
+    // an array of unsigned shorts.
+    void fill_image(const PixelStorageModes* psm, GLint width, GLint height, GLenum format,
+                    GLenum type, GLboolean index_format, const void* userdata, GLushort* newimage)
+    {
+        GLint components;
+        GLint element_size;
+        GLint rowsize;
+        GLint padding;
+        GLint groups_per_line;
+        GLint group_size;
+        GLint elements_per_line;
+        const GLubyte* start;
+        const GLubyte* iter;
+        GLushort* iter2;
+        GLint i, j;
+        GLint myswap_bytes;
+
+        myswap_bytes = psm->unpack_swap_bytes;
+        components = elements_per_group(format);
+        if (psm->unpack_row_length > 0) {
+            groups_per_line = psm->unpack_row_length;
+        } else {
+            groups_per_line = width;
+        }
+
+        // All formats except GL_BITMAP fall out trivially
+        if (type == GL_BITMAP) {
+            GLint bit_offset;
+            GLint current_bit;
+
+            rowsize = (groups_per_line * components + 7) / 8;
+            padding = (rowsize % psm->unpack_alignment);
+            if (padding) {
+                rowsize += psm->unpack_alignment - padding;
             }
-            start += rowsize;
+            start = static_cast<const GLubyte*>(userdata) + psm->unpack_skip_rows * rowsize +
+                    (psm->unpack_skip_pixels * components / 8);
+            elements_per_line = width * components;
+            iter2 = newimage;
+            for (i = 0; i < height; i++) {
+                iter = start;
+                bit_offset = (psm->unpack_skip_pixels * components) % 8;
+                for (j = 0; j < elements_per_line; j++) {
+                    // Retrieve bit
+                    if (psm->unpack_lsb_first) {
+                        current_bit = iter[0] & (1 << bit_offset);
+                    } else {
+                        current_bit = iter[0] & (1 << (7 - bit_offset));
+                    }
+                    if (current_bit) {
+                        if (index_format) {
+                            *iter2 = 1;
+                        } else {
+                            *iter2 = 65535;
+                        }
+                    } else {
+                        *iter2 = 0;
+                    }
+                    bit_offset++;
+                    if (bit_offset == 8) {
+                        bit_offset = 0;
+                        iter++;
+                    }
+                    iter2++;
+                }
+                start += rowsize;
+            }
+        } else {
+            element_size = static_cast<GLint>(bytes_per_element(type));
+            group_size = element_size * components;
+            if (element_size == 1)
+                myswap_bytes = 0;
+
+            rowsize = groups_per_line * group_size;
+            padding = (rowsize % psm->unpack_alignment);
+            if (padding) {
+                rowsize += psm->unpack_alignment - padding;
+            }
+            start = static_cast<const GLubyte*>(userdata) + psm->unpack_skip_rows * rowsize +
+                    psm->unpack_skip_pixels * group_size;
+            elements_per_line = width * components;
+
+            iter2 = newimage;
+            for (i = 0; i < height; i++) {
+                iter = start;
+                for (j = 0; j < elements_per_line; j++) {
+                    Type_Widget widget;
+
+                    switch (type) {
+                    case GL_UNSIGNED_BYTE:
+                        if (index_format) {
+                            *iter2++ = *iter;
+                        } else {
+                            *iter2++ = static_cast<GLushort>((*iter) * 257);
+                        }
+                        break;
+                    case GL_BYTE:
+                        if (index_format) {
+                            *iter2++ = static_cast<GLushort>(*reinterpret_cast<const GLbyte*>(iter));
+                        } else {
+                            // rough approx
+                            *iter2++ = static_cast<GLushort>((*reinterpret_cast<const GLbyte*>(iter)) * 516);
+                        }
+                        break;
+                    case GL_UNSIGNED_SHORT:
+                    case GL_SHORT:
+                        if (myswap_bytes) {
+                            widget.ub[0] = iter[1];
+                            widget.ub[1] = iter[0];
+                        } else {
+                            widget.ub[0] = iter[0];
+                            widget.ub[1] = iter[1];
+                        }
+                        if (type == GL_SHORT) {
+                            if (index_format) {
+                                *iter2++ = static_cast<GLushort>(widget.s[0]);
+                            } else {
+                                // rough approx
+                                *iter2++ = static_cast<GLushort>(widget.s[0] * 2);
+                            }
+                        } else {
+                            *iter2++ = widget.us[0];
+                        }
+                        break;
+                    case GL_INT:
+                    case GL_UNSIGNED_INT:
+                    case GL_FLOAT:
+                        if (myswap_bytes) {
+                            widget.ub[0] = iter[3];
+                            widget.ub[1] = iter[2];
+                            widget.ub[2] = iter[1];
+                            widget.ub[3] = iter[0];
+                        } else {
+                            widget.ub[0] = iter[0];
+                            widget.ub[1] = iter[1];
+                            widget.ub[2] = iter[2];
+                            widget.ub[3] = iter[3];
+                        }
+                        if (type == GL_FLOAT) {
+                            if (index_format) {
+                                *iter2++ = static_cast<GLushort>(widget.f);
+                            } else {
+                                *iter2++ = static_cast<GLushort>(65535 * widget.f);
+                            }
+                        } else if (type == GL_UNSIGNED_INT) {
+                            if (index_format) {
+                                *iter2++ = static_cast<GLushort>(widget.ui);
+                            } else {
+                                *iter2++ = static_cast<GLushort>(widget.ui >> 16);
+                            }
+                        } else {
+                            if (index_format) {
+                                *iter2++ = static_cast<GLushort>(widget.i);
+                            } else {
+                                *iter2++ = static_cast<GLushort>(widget.i >> 15);
+                            }
+                        }
+                        break;
+                    }
+                    iter += element_size;
+                }
+                start += rowsize;
+            }
         }
     }
 
+    // Insert an array into the user's data, applying the pixel store modes. The internal format is
+    // an array of unsigned shorts. empty_image() because it is the opposite of fill_image().
+    void empty_image(const PixelStorageModes* psm, GLint width, GLint height, GLenum format,
+                     GLenum type, GLboolean index_format, const GLushort* oldimage, void* userdata)
+    {
+        GLint components;
+        GLint element_size;
+        GLint rowsize;
+        GLint padding;
+        GLint groups_per_line;
+        GLint group_size;
+        GLint elements_per_line;
+        GLubyte* start;
+        GLubyte* iter;
+        const GLushort* iter2;
+        GLint i, j;
+        GLint myswap_bytes;
+
+        myswap_bytes = psm->pack_swap_bytes;
+        components = elements_per_group(format);
+        if (psm->pack_row_length > 0) {
+            groups_per_line = psm->pack_row_length;
+        } else {
+            groups_per_line = width;
+        }
+
+        // All formats except GL_BITMAP fall out trivially
+        if (type == GL_BITMAP) {
+            GLint bit_offset;
+            GLint current_bit;
+
+            rowsize = (groups_per_line * components + 7) / 8;
+            padding = (rowsize % psm->pack_alignment);
+            if (padding) {
+                rowsize += psm->pack_alignment - padding;
+            }
+            start = static_cast<GLubyte*>(userdata) + psm->pack_skip_rows * rowsize +
+                    (psm->pack_skip_pixels * components / 8);
+            elements_per_line = width * components;
+            iter2 = oldimage;
+            for (i = 0; i < height; i++) {
+                iter = start;
+                bit_offset = (psm->pack_skip_pixels * components) % 8;
+                for (j = 0; j < elements_per_line; j++) {
+                    if (index_format) {
+                        current_bit = iter2[0] & 1;
+                    } else {
+                        if (iter2[0] > 32767) {
+                            current_bit = 1;
+                        } else {
+                            current_bit = 0;
+                        }
+                    }
+
+                    if (current_bit) {
+                        if (psm->pack_lsb_first) {
+                            *iter |= (1 << bit_offset);
+                        } else {
+                            *iter |= (1 << (7 - bit_offset));
+                        }
+                    } else {
+                        if (psm->pack_lsb_first) {
+                            *iter &= ~(1 << bit_offset);
+                        } else {
+                            *iter &= ~(1 << (7 - bit_offset));
+                        }
+                    }
+
+                    bit_offset++;
+                    if (bit_offset == 8) {
+                        bit_offset = 0;
+                        iter++;
+                    }
+                    iter2++;
+                }
+                start += rowsize;
+            }
+        } else {
+            element_size = static_cast<GLint>(bytes_per_element(type));
+            group_size = element_size * components;
+            if (element_size == 1)
+                myswap_bytes = 0;
+
+            rowsize = groups_per_line * group_size;
+            padding = (rowsize % psm->pack_alignment);
+            if (padding) {
+                rowsize += psm->pack_alignment - padding;
+            }
+            start = static_cast<GLubyte*>(userdata) + psm->pack_skip_rows * rowsize +
+                    psm->pack_skip_pixels * group_size;
+            elements_per_line = width * components;
+
+            iter2 = oldimage;
+            for (i = 0; i < height; i++) {
+                iter = start;
+                for (j = 0; j < elements_per_line; j++) {
+                    Type_Widget widget;
+
+                    switch (type) {
+                    case GL_UNSIGNED_BYTE:
+                        if (index_format) {
+                            *iter = static_cast<GLubyte>(*iter2++);
+                        } else {
+                            *iter = static_cast<GLubyte>(*iter2++ >> 8);
+                        }
+                        break;
+                    case GL_BYTE:
+                        if (index_format) {
+                            *reinterpret_cast<GLbyte*>(iter) = static_cast<GLbyte>(*iter2++);
+                        } else {
+                            *reinterpret_cast<GLbyte*>(iter) = static_cast<GLbyte>(*iter2++ >> 9);
+                        }
+                        break;
+                    case GL_UNSIGNED_SHORT:
+                    case GL_SHORT:
+                        if (type == GL_SHORT) {
+                            if (index_format) {
+                                widget.s[0] = static_cast<short>(*iter2++);
+                            } else {
+                                widget.s[0] = static_cast<short>(*iter2++ >> 1);
+                            }
+                        } else {
+                            widget.us[0] = *iter2++;
+                        }
+                        if (myswap_bytes) {
+                            iter[0] = widget.ub[1];
+                            iter[1] = widget.ub[0];
+                        } else {
+                            iter[0] = widget.ub[0];
+                            iter[1] = widget.ub[1];
+                        }
+                        break;
+                    case GL_INT:
+                    case GL_UNSIGNED_INT:
+                    case GL_FLOAT:
+                        if (type == GL_FLOAT) {
+                            if (index_format) {
+                                widget.f = *iter2++;
+                            } else {
+                                widget.f = *iter2++ / static_cast<float>(65535.0);
+                            }
+                        } else if (type == GL_UNSIGNED_INT) {
+                            if (index_format) {
+                                widget.ui = *iter2++;
+                            } else {
+                                widget.ui = static_cast<unsigned int>(*iter2++) * 65537;
+                            }
+                        } else {
+                            if (index_format) {
+                                widget.i = *iter2++;
+                            } else {
+                                widget.i = static_cast<int>((static_cast<unsigned int>(*iter2++) * 65537) / 2);
+                            }
+                        }
+                        if (myswap_bytes) {
+                            iter[3] = widget.ub[0];
+                            iter[2] = widget.ub[1];
+                            iter[1] = widget.ub[2];
+                            iter[0] = widget.ub[3];
+                        } else {
+                            iter[0] = widget.ub[0];
+                            iter[1] = widget.ub[1];
+                            iter[2] = widget.ub[2];
+                            iter[3] = widget.ub[3];
+                        }
+                        break;
+                    }
+                    iter += element_size;
+                }
+                start += rowsize;
+            }
+        }
+    }
+} // namespace
+
+extern "C" GLint gluScaleImage(GLenum format, GLsizei widthin, GLsizei heightin, GLenum typein,
+                               const void* datain, GLsizei widthout, GLsizei heightout,
+                               GLenum typeout, void* dataout);
+
+GLint gluScaleImage(GLenum format, GLsizei widthin, GLsizei heightin, GLenum typein,
+                    const void* datain, GLsizei widthout, GLsizei heightout, GLenum typeout,
+                    void* dataout)
+{
+    int components;
+    GLushort* beforeImage;
+    GLushort* afterImage;
+    PixelStorageModes psm;
+
+    if (widthin == 0 || heightin == 0 || widthout == 0 || heightout == 0) {
+        return 0;
+    }
+    if (widthin < 0 || heightin < 0 || widthout < 0 || heightout < 0) {
+        return GLU_INVALID_VALUE;
+    }
+    if (!legalFormat(format) || !legalType(typein) || !legalType(typeout)) {
+        return GLU_INVALID_ENUM;
+    }
+    beforeImage =
+        static_cast<GLushort*>(malloc(image_size(widthin, heightin, format, GL_UNSIGNED_SHORT)));
+    afterImage =
+        static_cast<GLushort*>(malloc(image_size(widthout, heightout, format, GL_UNSIGNED_SHORT)));
+    if (beforeImage == 0 || afterImage == 0) {
+        return GLU_OUT_OF_MEMORY;
+    }
+
+    retrieveStoreModes(&psm);
+    fill_image(&psm, widthin, heightin, format, typein, static_cast<GLboolean>(is_index(format)),
+               datain, beforeImage);
+    components = elements_per_group(format);
+    scale_internal(components, widthin, heightin, beforeImage, widthout, heightout, afterImage);
+    empty_image(&psm, widthout, heightout, format, typeout, static_cast<GLboolean>(is_index(format)),
+                afterImage, dataout);
+    free(beforeImage);
+    free(afterImage);
+
+    return 0;
+}
+
+namespace {
     // GL_BITMAP data is expanded to unsigned shorts and box-filtered at the nearest power of two
     // the texture size limit allows; no size-1 tail is padded.
     int bitmapBuild2DMipmaps(GLenum target, GLint internalFormat, GLint width, GLint height,
                              GLenum format, GLenum type, const void* data)
     {
-        K2_UNUSED(type);
         PixelStorageModes psm;
         retrieveStoreModes(&psm);
 
-        GLint maxsize;
-        ASLgl::glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxsize);
-        GLint newwidth = nearestPower(width);
-        if (newwidth > maxsize)
-            newwidth = maxsize;
-        GLint newheight = nearestPower(height);
-        if (newheight > maxsize)
-            newheight = maxsize;
-        GLint levels = gluMipmapLog2(newwidth);
-        GLint level = gluMipmapLog2(newheight);
+        GLint newwidth, newheight;
+        closestFit(target, width, height, internalFormat, format, type, &newwidth, &newheight);
+        GLint levels = computeLog(newwidth);
+        GLint level = computeLog(newheight);
         if (level > levels)
             levels = level;
 
@@ -2925,7 +3339,7 @@ namespace {
         if (newImage == 0)
             return GLU_OUT_OF_MEMORY;
 
-        fill_image_bitmap(&psm, width, height, format, static_cast<GLboolean>(is_index(format)), data, newImage);
+        fill_image(&psm, width, height, format, type, static_cast<GLboolean>(is_index(format)), data, newImage);
 
         GLint cmpts = elements_per_group(format);
         for (level = 0; level <= levels; level++) {
@@ -2977,8 +3391,8 @@ namespace {
 
         GLint newwidth = widthPowerOf2;
         GLint newheight = heightPowerOf2;
-        GLint levels = gluMipmapLog2(newwidth);
-        GLint level = gluMipmapLog2(newheight);
+        GLint levels = computeLog(newwidth);
+        GLint level = computeLog(newheight);
         if (level > levels)
             levels = level;
         levels += userLevel;
@@ -3027,13 +3441,25 @@ namespace {
 
             switch (type) {
             case GL_UNSIGNED_BYTE:
+                dstImage = static_cast<GLubyte*>(malloc(memreq));
+                break;
             case GL_BYTE:
+                dstImage = static_cast<GLbyte*>(malloc(memreq));
+                break;
             case GL_UNSIGNED_SHORT:
+                dstImage = static_cast<GLushort*>(malloc(memreq));
+                break;
             case GL_SHORT:
+                dstImage = static_cast<GLshort*>(malloc(memreq));
+                break;
             case GL_UNSIGNED_INT:
+                dstImage = static_cast<GLuint*>(malloc(memreq));
+                break;
             case GL_INT:
+                dstImage = static_cast<GLint*>(malloc(memreq));
+                break;
             case GL_FLOAT:
-                dstImage = malloc(memreq);
+                dstImage = static_cast<GLfloat*>(malloc(memreq));
                 break;
             default:
                 return GLU_INVALID_ENUM;
@@ -3072,6 +3498,8 @@ namespace {
                                  static_cast<GLfloat*>(dstImage), element_size, rowsize, group_size,
                                  myswap_bytes);
                 break;
+            default:
+                break;
             }
             newwidth = width / 2;
             newheight = height / 2;
@@ -3088,13 +3516,25 @@ namespace {
             dstImage = tmpImage;
             switch (type) {
             case GL_UNSIGNED_BYTE:
+                dstImage = static_cast<GLubyte*>(malloc(memreq));
+                break;
             case GL_BYTE:
+                dstImage = static_cast<GLbyte*>(malloc(memreq));
+                break;
             case GL_UNSIGNED_SHORT:
+                dstImage = static_cast<GLushort*>(malloc(memreq));
+                break;
             case GL_SHORT:
+                dstImage = static_cast<GLshort*>(malloc(memreq));
+                break;
             case GL_UNSIGNED_INT:
+                dstImage = static_cast<GLuint*>(malloc(memreq));
+                break;
             case GL_INT:
+                dstImage = static_cast<GLint*>(malloc(memreq));
+                break;
             case GL_FLOAT:
-                dstImage = malloc(memreq);
+                dstImage = static_cast<GLfloat*>(malloc(memreq));
                 break;
             default:
                 return GLU_INVALID_ENUM;
@@ -3108,13 +3548,25 @@ namespace {
             memreq = image_size(newwidth, newheight, format, type);
             switch (type) {
             case GL_UNSIGNED_BYTE:
+                dstImage = static_cast<GLubyte*>(malloc(memreq));
+                break;
             case GL_BYTE:
+                dstImage = static_cast<GLbyte*>(malloc(memreq));
+                break;
             case GL_UNSIGNED_SHORT:
+                dstImage = static_cast<GLushort*>(malloc(memreq));
+                break;
             case GL_SHORT:
+                dstImage = static_cast<GLshort*>(malloc(memreq));
+                break;
             case GL_UNSIGNED_INT:
+                dstImage = static_cast<GLuint*>(malloc(memreq));
+                break;
             case GL_INT:
+                dstImage = static_cast<GLint*>(malloc(memreq));
+                break;
             case GL_FLOAT:
-                dstImage = malloc(memreq);
+                dstImage = static_cast<GLfloat*>(malloc(memreq));
                 break;
             default:
                 return GLU_INVALID_ENUM;
@@ -3158,6 +3610,8 @@ namespace {
                                      newheight, static_cast<GLfloat*>(dstImage), element_size, rowsize,
                                      group_size, myswap_bytes);
                 break;
+            default:
+                break;
             }
             myswap_bytes = 0;
             rowsize = newwidth * group_size;
@@ -3177,13 +3631,25 @@ namespace {
                 }
                 switch (type) {
                 case GL_UNSIGNED_BYTE:
+                    dstImage = static_cast<GLubyte*>(malloc(memreq));
+                    break;
                 case GL_BYTE:
+                    dstImage = static_cast<GLbyte*>(malloc(memreq));
+                    break;
                 case GL_UNSIGNED_SHORT:
+                    dstImage = static_cast<GLushort*>(malloc(memreq));
+                    break;
                 case GL_SHORT:
+                    dstImage = static_cast<GLshort*>(malloc(memreq));
+                    break;
                 case GL_UNSIGNED_INT:
+                    dstImage = static_cast<GLuint*>(malloc(memreq));
+                    break;
                 case GL_INT:
+                    dstImage = static_cast<GLint*>(malloc(memreq));
+                    break;
                 case GL_FLOAT:
-                    dstImage = malloc(memreq);
+                    dstImage = static_cast<GLfloat*>(malloc(memreq));
                     break;
                 default:
                     return GLU_INVALID_ENUM;
@@ -3232,6 +3698,8 @@ namespace {
                 halveImage_float(cmpts, newwidth, newheight, static_cast<GLfloat*>(srcImage), static_cast<GLfloat*>(dstImage),
                                  element_size, rowsize, group_size, myswap_bytes);
                 break;
+            default:
+                break;
             }
 
             tmpImage = srcImage;
@@ -3278,4 +3746,88 @@ namespace {
         return 0;
     }
 } // namespace
+
+GLint gluBuild2DMipmapLevels(GLenum target, GLint internalFormat, GLsizei width, GLsizei height,
+                             GLenum format, GLenum type, GLint userLevel, GLint baseLevel,
+                             GLint maxLevel, const void* data)
+{
+    int level, levels;
+
+    int rc = checkMipmapArgs(internalFormat, format, type);
+    if (rc != 0)
+        return rc;
+
+    if (width < 1 || height < 1) {
+        return GLU_INVALID_VALUE;
+    }
+
+    levels = computeLog(width);
+    level = computeLog(height);
+    if (level > levels)
+        levels = level;
+
+    levels += userLevel;
+    if (!isLegalLevels(userLevel, baseLevel, maxLevel, levels))
+        return GLU_INVALID_VALUE;
+
+    return gluBuild2DMipmapLevelsCore(target, internalFormat, width, height, width, height,
+                                      format, type, userLevel, baseLevel, maxLevel, data);
+}
+
+// Aspyr's GL ES adjustment ahead of a texture upload: a component count or a sized internal format
+// becomes the unsized format the ES upload accepts.
+void ASLglGetInternalFormat(GLenum& format, GLint& internalFormat)
+{
+    GLenum fmt = format;
+    switch (internalFormat) {
+    case 3:
+    case GL_RGB5:
+        internalFormat = GL_RGB;
+        break;
+    case 4:
+    case GL_RGBA8:
+        internalFormat = GL_RGBA;
+        break;
+    default:
+        if (internalFormat == GL_RGB8 && fmt == GL_RGBA)
+            internalFormat = GL_RGBA;
+        break;
+    }
+}
+
+// The platforms layer brings its own `gluBuild2DMipmaps` (the system GLU on the desktop,
+// `android/glu_es.cpp` on Android), so this one is the matching build's only.
+#ifndef K2_HOST_BUILD
+extern "C" GLint gluBuild2DMipmaps(GLenum target, GLint internalFormat, GLsizei width,
+                                   GLsizei height, GLenum format, GLenum type, const void* data);
+
+GLint gluBuild2DMipmaps(GLenum target, GLint internalFormat, GLsizei width, GLsizei height,
+                        GLenum format, GLenum type, const void* data)
+{
+    GLint widthPowerOf2, heightPowerOf2;
+    int level, levels;
+
+    ASLglGetInternalFormat(format, internalFormat);
+
+    int rc = checkMipmapArgs(internalFormat, format, type);
+    if (rc != 0)
+        return rc;
+
+    if (width < 1 || height < 1) {
+        return GLU_INVALID_VALUE;
+    }
+
+    closestFit(target, width, height, internalFormat, format, type, &widthPowerOf2,
+               &heightPowerOf2);
+
+    levels = computeLog(widthPowerOf2);
+    level = computeLog(heightPowerOf2);
+    if (level > levels)
+        levels = level;
+
+    return gluBuild2DMipmapLevelsCore(target, internalFormat, width, height, widthPowerOf2,
+                                      heightPowerOf2, format, type, 0, 0, levels, data);
+}
+#endif
+
 #endif

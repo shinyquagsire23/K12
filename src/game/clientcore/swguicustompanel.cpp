@@ -524,9 +524,7 @@ void CSWGuiCustomPanel::CancelledByChild()
 // row.
 void CSWGuiCustomPanel::NameCreationCompleted()
 {
-    static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->SetNameString(
-        static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->m_pCreature->GetName());
-
+    static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->NameChanged();
     SetState(5);
 }
 

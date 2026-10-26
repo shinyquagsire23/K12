@@ -101,7 +101,7 @@ Matrix operator*(const Matrix& a, const Matrix& b);
 float* Augment(const Matrix& m);
 
 // A scratch array of the vector's three floats followed by the scalar; the return is its address.
-const float* Homogenize(const Vector& v, const float& f);
+float* Homogenize(const Vector& v, const float& f);
 
 // Closest approach of two infinite lines given as point plus direction, and, when out1/out2 are
 // non-null, the closest point on each line.

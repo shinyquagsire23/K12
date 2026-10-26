@@ -38,6 +38,7 @@ enum : unsigned int {
 #include "exobase.h"
 #include "nwsobject.h"
 #include "gameobjectarray.h"
+#include "CExoArrayListImpl.h"
 #include "nwscreature.h"
 #include "serveraimaster.h"
 #include "appmanager.h"
@@ -1538,15 +1539,7 @@ int CSWSArea::SmoothSelectionRestartable(int nCount, float* pFloats, int* pOutCo
     {
         int nRet = SmoothSelectNodesRestartable(nCount, pFloats, &nParkA, &pParkA,
                                                 1, 0, 5.0f);
-        pPathInfo = m_pActivePathfindInfo;
-        float* pOld = pPathInfo->m_paSmoothingFirstWayPoints;
-        if (pOld != 0 && pOld != pParkA)
-        {
-            pPathInfo->m_nSmoothingFirstFloats = 0;
-            delete[] pOld;
-            pPathInfo->m_paSmoothingFirstWayPoints = 0;
-        }
-        pPathInfo->m_paSmoothingFirstWayPoints = pParkA;
+        m_pActivePathfindInfo->SetSmoothingFirstWayPoints(pParkA);
         pPathInfo = m_pActivePathfindInfo;
         pPathInfo->m_nSmoothingFirstFloats = nParkA;
         if (nRet == 1)
@@ -1560,15 +1553,7 @@ int CSWSArea::SmoothSelectionRestartable(int nCount, float* pFloats, int* pOutCo
     {
         int nRet = SmoothSelectNodesRestartable(nParkA, pParkA, &nParkB, &pParkB,
                                                 1, 1, 1.1f);
-        pPathInfo = m_pActivePathfindInfo;
-        float* pOld = pPathInfo->m_paSmoothingSecondWayPoints;
-        if (pOld != 0 && pOld != pParkB)
-        {
-            pPathInfo->m_nSmoothingSecondFloats = 0;
-            delete[] pOld;
-            pPathInfo->m_paSmoothingSecondWayPoints = 0;
-        }
-        pPathInfo->m_paSmoothingSecondWayPoints = pParkB;
+        m_pActivePathfindInfo->SetSmoothingSecondWayPoints(pParkB);
         pPathInfo = m_pActivePathfindInfo;
         pPathInfo->m_nSmoothingSecondFloats = nParkB;
         if (nRet == 1)
@@ -1586,22 +1571,8 @@ int CSWSArea::SmoothSelectionRestartable(int nCount, float* pFloats, int* pOutCo
             return 1;
     }
 
-    pPathInfo = m_pActivePathfindInfo;
-    if (pPathInfo->m_paSmoothingFirstWayPoints)
-    {
-        pPathInfo->m_nSmoothingFirstFloats = 0;
-        delete[] pPathInfo->m_paSmoothingFirstWayPoints;
-        pPathInfo->m_paSmoothingFirstWayPoints = 0;
-    }
-    pPathInfo->m_paSmoothingFirstWayPoints = 0;
-    pPathInfo = m_pActivePathfindInfo;
-    if (pPathInfo->m_paSmoothingSecondWayPoints)
-    {
-        pPathInfo->m_nSmoothingSecondFloats = 0;
-        delete[] pPathInfo->m_paSmoothingSecondWayPoints;
-        pPathInfo->m_paSmoothingSecondWayPoints = 0;
-    }
-    pPathInfo->m_paSmoothingSecondWayPoints = 0;
+    m_pActivePathfindInfo->SetSmoothingFirstWayPoints(0);
+    m_pActivePathfindInfo->SetSmoothingSecondWayPoints(0);
     return 0;
 }
 
@@ -1759,7 +1730,7 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, unsigned long l
             {
                 Vector vFromBackup = vFrom;
                 ComputeSafeLocation(vFrom, 2.0f, pPathInfo, 1, &vFrom);
-                if (equal(vFrom, vFromBackup) == 0)
+                if (vFrom != vFromBackup)
                 {
                     CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->
                         GetCreatureByGameObjectID(pPathInfo->m_oidCreature);
@@ -2959,24 +2930,24 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
                                       CExoArrayList<unsigned long long>* pOut)
 {
     int nFound = 0;
-    if (m_objects.m_count < 1)
+    if (m_subAreas.m_count < 1)
         return 0;
 
-    for (int i = 0; i < m_objects.m_count; i++)
+    for (int i = 0; i < m_subAreas.m_count; i++)
     {
         CGameObject* pObj =
-            g_pAppManager->m_pServerExoApp->GetGameObject(m_objects.m_pArray[i]);
+            g_pAppManager->m_pServerExoApp->GetGameObject(m_subAreas.m_pArray[i]);
         if (pObj == 0)
             continue;
 
-        if (pOut->Contains(m_objects.m_pArray[i]) != 0)
+        if (pOut->Contains(m_subAreas.m_pArray[i]) != 0)
             continue;
 
         if (pObj->AsSWSTrigger() != 0)
         {
             if (pObj->AsSWSTrigger()->LineSegmentIntersectTrigger(from, to) != 0)
             {
-                unsigned long long id = m_objects.m_pArray[i];
+                unsigned long long id = m_subAreas.m_pArray[i];
                 pOut->Add(id);
                 nFound = 1;
             }
@@ -2985,7 +2956,7 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
         {
             if (pObj->AsSWSAreaOfEffectObject()->LineSegmentIntersectAreaOfEffect(from, to) != 0)
             {
-                unsigned long long id = m_objects.m_pArray[i];
+                unsigned long long id = m_subAreas.m_pArray[i];
                 pOut->Add(id);
                 nFound = 1;
             }
@@ -2994,7 +2965,7 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
         {
             if (pObj->AsSWSEncounter()->LineSegmentIntersectActivateArea(from, to) != 0)
             {
-                unsigned long long id = m_objects.m_pArray[i];
+                unsigned long long id = m_subAreas.m_pArray[i];
                 pOut->Add(id);
                 nFound = 1;
             }
@@ -3009,20 +2980,20 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
 int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* pOut)
 {
     int nFound = 0;
-    if (m_objects.m_count < 1)
+    if (m_subAreas.m_count < 1)
         return 0;
 
     unsigned long long nStrayId = OBJECT_INVALID;
-    for (int i = 0; i < m_objects.m_count; i++)
+    for (int i = 0; i < m_subAreas.m_count; i++)
     {
-        if (pOut->Contains(m_objects.m_pArray[i]) != 0)
+        if (pOut->Contains(m_subAreas.m_pArray[i]) != 0)
             continue;
 
         CGameObject* pObj =
-            g_pAppManager->m_pServerExoApp->GetGameObject(m_objects.m_pArray[i]);
+            g_pAppManager->m_pServerExoApp->GetGameObject(m_subAreas.m_pArray[i]);
         if (pObj == 0)
         {
-            nStrayId = m_objects.m_pArray[i];
+            nStrayId = m_subAreas.m_pArray[i];
             continue;
         }
 
@@ -3030,7 +3001,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
         {
             if (pObj->AsSWSTrigger()->InTrigger(pos) != 0)
             {
-                unsigned long long id = m_objects.m_pArray[i];
+                unsigned long long id = m_subAreas.m_pArray[i];
                 pOut->Add(id);
                 nFound = 1;
             }
@@ -3039,7 +3010,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
         {
             if (pObj->AsSWSAreaOfEffectObject()->InAreaOfEffect(pos) != 0)
             {
-                unsigned long long id = m_objects.m_pArray[i];
+                unsigned long long id = m_subAreas.m_pArray[i];
                 pOut->Add(id);
                 nFound = 1;
             }
@@ -3048,7 +3019,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
         {
             if (pObj->AsSWSEncounter()->GetInActivateArea(pos) != 0)
             {
-                unsigned long long id = m_objects.m_pArray[i];
+                unsigned long long id = m_subAreas.m_pArray[i];
                 pOut->Add(id);
                 nFound = 1;
             }
@@ -3058,7 +3029,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
         {
             if (pObj->AsSWSDoor()->InDoor(pos) != 0)
             {
-                unsigned long long id = m_objects.m_pArray[i];
+                unsigned long long id = m_subAreas.m_pArray[i];
                 pOut->Add(id);
                 nFound = 1;
             }
@@ -3066,7 +3037,7 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
     }
 
     if (nStrayId != OBJECT_INVALID)
-        m_objects.Remove(nStrayId);
+        m_subAreas.Remove(nStrayId);
     return nFound;
 }
 
@@ -3108,24 +3079,7 @@ int CSWSArea::ShrinkLineByCreatures(const Vector& from, const Vector& to, Vector
         float fSpace = pCreature->m_pPathfindInfo->m_fPersonalSpace;
         if (!(fDx * fDx + fDy * fDy > fSpace * fSpace))
             continue;
-        // inlined CExoArrayList<CSWSCreature*>::Add(CSWSCreature*)
-        {
-            int count = creatures.m_count;
-            if (count == creatures.m_capacity)
-            {
-                int newCap = (count == 0) ? 16 : count * 2;
-                creatures.m_capacity = newCap;
-                CSWSCreature** pOld = creatures.m_pArray;
-                CSWSCreature** pNew = new CSWSCreature*[newCap];
-                creatures.m_pArray = pNew;
-                for (int64_t k = 0; k < count; k++)
-                    pNew[k] = pOld[k];
-                delete[] pOld;
-                count = creatures.m_count;
-            }
-            creatures.m_count = count + 1;
-            creatures.m_pArray[count] = pCreature;
-        }
+        creatures.Add(pCreature);
     }
 
     out = to;

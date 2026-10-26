@@ -1712,8 +1712,7 @@ int CSWSObject::AIActionUnlockObject(CSWSObjectActionNode* pNode) {
             if (AsSWSCreature() != 0 && rand_wincompatible() % 100 <= 19)
                 AsSWSCreature()->BroadcastVoiceChat(CSWSCreature::VOICE_CHAT_UNLOCK_SUCCESS);
             if (AsSWSCreature() != 0 && AsSWSCreature()->m_bInParty != 0) {
-                CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                    g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+                CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
                 int nThreshold = pPlayer->m_pStats->GetLevel(0) + 20;
                 int nLevel = pPlayer->m_pStats->GetLevel(0);
                 int nXP = (nDC < nThreshold ? 5 : 10) * nLevel;
@@ -1906,7 +1905,7 @@ int CSWSObject::AIActionGiveItem(CSWSObjectActionNode* pNode) {
         } else if (pTarget->m_objectType == GAME_OBJECT_TYPE_ITEM) {  // a container item
             CSWRules* pRules = g_pRules;
             int nBaseItem = pTarget->AsSWSItem()->m_baseItem;
-            if (pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_bContainer == 1)
+            if (pRules->GetBaseItem(nBaseItem)->m_bContainer == 1)
                 pTarget->AsSWSItem()->AcquireItem(&pItem, pItem->m_possessorId, bNotGold);
         } else if (pTarget->m_objectType == GAME_OBJECT_TYPE_PLACEABLE) {
             pTarget->AsSWSPlaceable()->AcquireItem(&pItem, pItem->m_possessorId, bNotGold);
@@ -2361,7 +2360,7 @@ int CSWSObject::AIActionUseObject(CSWSObjectActionNode* pNode) {
             // A container item (baseitems.2da's container flag). Using it toggles: if the player already
             // has this item open it shuts, otherwise it opens.
             CSWSItem* pItem = pTarget->AsSWSItem();
-            if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bContainer != 0) {
+            if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_bContainer != 0) {
                 CSWSPlayer* pPlayer =
                     g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(m_objectId);
                 if (pPlayer != 0) {

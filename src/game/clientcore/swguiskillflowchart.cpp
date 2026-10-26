@@ -114,12 +114,9 @@ void CSWGuiSkillFlowChart::BuildSortedPowerList(CExoArrayList<unsigned>& list)
 unsigned char CSWGuiSkillFlowChart::GetSkillStatus(unsigned int nId) {
     for (int64_t i = 0; i < m_aFlows.m_count; i++) {
         CSWGuiSkillFlow* pFlow = m_aFlows.m_pArray[i];
-        int nSlot = 1;
-        if (pFlow->m_aSlots[0].m_nId == static_cast<int>(nId)) nSlot = 0;
-        else if (pFlow->m_aSlots[1].m_nId == static_cast<int>(nId)) nSlot = 1;
-        else if (pFlow->m_aSlots[2].m_nId == static_cast<int>(nId)) nSlot = 2;
-        else continue;
-        return pFlow->m_aSlots[nSlot].m_bStatus;
+        int nSlot = pFlow->GetSkillIDIndex(nId);
+        if (nSlot != -1)
+            return pFlow->m_aSlots[nSlot].m_bStatus;
     }
     return 0xff;
 }
@@ -127,9 +124,11 @@ unsigned char CSWGuiSkillFlowChart::GetSkillStatus(unsigned int nId) {
 void CSWGuiSkillFlowChart::SetSkillStatus(unsigned int nId, unsigned char bStatus) {
     for (int64_t i = 0; i < m_aFlows.m_count; i++) {
         CSWGuiSkillFlow* pFlow = m_aFlows.m_pArray[i];
-        if (pFlow->m_aSlots[0].m_nId == static_cast<int>(nId)) { pFlow->SetSkillStatus(0, bStatus); return; }
-        if (pFlow->m_aSlots[1].m_nId == static_cast<int>(nId)) { pFlow->SetSkillStatus(1, bStatus); return; }
-        if (pFlow->m_aSlots[2].m_nId == static_cast<int>(nId)) { pFlow->SetSkillStatus(2, bStatus); return; }
+        int nSlot = pFlow->GetSkillIDIndex(nId);
+        if (nSlot != -1) {
+            pFlow->SetSkillStatus(static_cast<unsigned char>(nSlot), bStatus);
+            return;
+        }
     }
 }
 
@@ -143,12 +142,9 @@ void CSWGuiSkillFlowChart::SetSkillStatusAll(unsigned char bStatus) {
 
 void CSWGuiSkillFlowChart::SetSelectedSkill(unsigned int nId) {
     for (int i = 0; i < m_aFlows.m_count; i++) {
-        CSWGuiSkillFlow* pFlow = m_aFlows.m_pArray[i];
-        int nSlot;
-        if (pFlow->m_aSlots[0].m_nId == static_cast<int>(nId)) nSlot = 0;
-        else if (pFlow->m_aSlots[1].m_nId == static_cast<int>(nId)) nSlot = 1;
-        else if (pFlow->m_aSlots[2].m_nId == static_cast<int>(nId)) nSlot = 2;
-        else continue;
+        int nSlot = m_aFlows.m_pArray[i]->GetSkillIDIndex(nId);
+        if (nSlot == -1)
+            continue;
 
         if (nSlot != m_nSelectedSlot || i != m_nSelectedFlow) {
             m_aFlows.m_pArray[m_nSelectedFlow]->SetSkillSelected(m_nSelectedSlot, 0);
@@ -266,24 +262,21 @@ void CSWGuiSkillFlowChart::AddFeatSet(unsigned int nFeatA, unsigned int nFeatB, 
         resRef = pFeat->m_icon;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[0].m_nId = nFeatA;
-    pFlow->m_aSlots[0].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(0, nFeatA, resRef);
 
     pFeat = g_pRules->GetFeat(static_cast<unsigned short>(nFeatB));
     if (pFeat)
         resRef = pFeat->m_icon;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[1].m_nId = nFeatB;
-    pFlow->m_aSlots[1].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(1, nFeatB, resRef);
 
     pFeat = g_pRules->GetFeat(static_cast<unsigned short>(nFeatC));
     if (pFeat)
         resRef = pFeat->m_icon;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[2].m_nId = nFeatC;
-    pFlow->m_aSlots[2].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(2, nFeatC, resRef);
 
 #if KOTOR1 && !defined(K2_UI_TOUCH)
     pFlow->SetExtent(CSWGuiExtent(0, 0, 242, K1FlowRowHeight()));
@@ -311,8 +304,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
         resRef = pSpell->m_iconResRef;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[0].m_nId = nPowerA;
-    pFlow->m_aSlots[0].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(0, nPowerA, resRef);
 
     pSpell = g_pRules->GetSpell(nPowerB);
     if (nSecret)
@@ -321,8 +313,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
         resRef = pSpell->m_iconResRef;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[1].m_nId = nPowerB;
-    pFlow->m_aSlots[1].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(1, nPowerB, resRef);
 
     pSpell = g_pRules->GetSpell(nPowerC);
     if (nSecret)
@@ -331,8 +322,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
         resRef = pSpell->m_iconResRef;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[2].m_nId = nPowerC;
-    pFlow->m_aSlots[2].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(2, nPowerC, resRef);
 
     CSWGuiExtent extent;
     extent.x = 0;
@@ -356,24 +346,21 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
         resRef = pSpell->m_iconResRef;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[0].m_nId = nPowerA;
-    pFlow->m_aSlots[0].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(0, nPowerA, resRef);
 
     pSpell = g_pRules->GetSpell(nPowerB);
     if (pSpell)
         resRef = pSpell->m_iconResRef;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[1].m_nId = nPowerB;
-    pFlow->m_aSlots[1].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(1, nPowerB, resRef);
 
     pSpell = g_pRules->GetSpell(nPowerC);
     if (pSpell)
         resRef = pSpell->m_iconResRef;
     else
         resRef = const_cast<char*>("");
-    pFlow->m_aSlots[2].m_nId = nPowerC;
-    pFlow->m_aSlots[2].m_imageIcon.m_params.SetImage(resRef, 0);
+    pFlow->SetSkillInfo(2, nPowerC, resRef);
 
     CSWGuiExtent extent;
     extent.x = 0;
@@ -780,7 +767,7 @@ CSWGuiSkillInfoBox::CSWGuiSkillInfoBox(CSWGuiManager* pGuiManager)
     // Build the twenty entry rows from LB_SKILLS' prototype row. nWidth is computed once, off
     // the list box's usable width.
     CSWGuiLabelHilight* pProtoRow =
-        static_cast<CSWGuiLabelHilight*>(m_listBox.m_pProtoItem->AsLabelHilight());
+        m_listBox.m_pProtoItem->AsLabelHilight();
     int nWidth = m_listBox.m_innerExtent.w - m_listBox.m_nPadding * 2;
 #if KOTOR1
     for (int i = 0; i < 10; i++)
@@ -1244,6 +1231,6 @@ int CSWGuiSkillFlow::SkillHitCheckMouse(int nX, int nY) {
     return m_aSlots[nSlot].m_nId;
 }
 
-CSWGuiControl* CSWGuiSkillFlow::AsSkillFlow() {
+CSWGuiSkillFlow* CSWGuiSkillFlow::AsSkillFlow() {
     return this;
 }

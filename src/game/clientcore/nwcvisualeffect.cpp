@@ -278,6 +278,7 @@ int CSWCVisualEffect::LoadEffect(unsigned int nEffect) {
     float fShakeDelay;
     int nOrient;
     int nShakeType;
+    bool bFound;
 
     if (!g_pRules->m_p2DArrays->m_pVisualEffect->GetINTEntry(
             szRow, CTwoDimArrays::COL2DA_VISUALEFFECT_ORIENTWITHGROUND, &nOrient))
@@ -286,7 +287,7 @@ int CSWCVisualEffect::LoadEffect(unsigned int nEffect) {
 
     // Unless the client options ask for full quality, the low-quality resource is tried first; the
     // impact node columns follow.
-    bool bFound =
+    bFound =
         ((g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bFlags0Hi & 1) == 0
              && g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
                     szRow, CTwoDimArrays::COL2DA_VISUALEFFECT_LOWQUALITY, &szResRef))

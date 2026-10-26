@@ -23,6 +23,7 @@ public:
     T* Remove(CExoLinkedListNode* pos) { return static_cast<T*>(m_pInternal->Remove(pos)); }
     T* RemoveHead() { return static_cast<T*>(m_pInternal->RemoveHead()); }
     T* RemoveTail() { return static_cast<T*>(m_pInternal->RemoveTail()); }
+    int Contains(T* pData) const { return m_pInternal->Contains(pData); }
     unsigned int Count() const { return m_pInternal->m_nCount; }
 
     CExoLinkedListInternal* m_pInternal;

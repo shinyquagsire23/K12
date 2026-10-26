@@ -75,29 +75,29 @@ void CSWGuiControl::DrawDragDrop(int a, int b) { K2_UNUSED(a); K2_UNUSED(b); }
 
 void CSWGuiControl::ReSetFont() {}
 
-CSWGuiControl* CSWGuiControl::AsNavigable() { return 0; }
+CSWGuiNavigable* CSWGuiControl::AsNavigable() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsLabel() { return 0; }
+CSWGuiLabel* CSWGuiControl::AsLabel() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsLabelHilight() { return 0; }
+CSWGuiLabelHilight* CSWGuiControl::AsLabelHilight() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsButton() { return 0; }
+CSWGuiButton* CSWGuiControl::AsButton() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsButtonToggle() { return 0; }
+CSWGuiButtonToggle* CSWGuiControl::AsButtonToggle() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsRadioButton() { return 0; }
+CSWGuiRadioButton* CSWGuiControl::AsRadioButton() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsSlider() { return 0; }
+CSWGuiSlider* CSWGuiControl::AsSlider() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsProgressBar() { return 0; }
+CSWGuiProgressBar* CSWGuiControl::AsProgressBar() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsScrollBar() { return 0; }
+CSWGuiScrollBar* CSWGuiControl::AsScrollBar() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsListBox() { return 0; }
+CSWGuiListBox* CSWGuiControl::AsListBox() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsSkillFlow() { return 0; }
+CSWGuiSkillFlow* CSWGuiControl::AsSkillFlow() { return 0; }
 
-CSWGuiControl* CSWGuiControl::AsEditBox() { return 0; }
+CSWGuiEditbox* CSWGuiControl::AsEditBox() { return 0; }
 
 void CSWGuiControl::SetActive(int flag)
 {
@@ -332,7 +332,7 @@ void CSWGuiNavigable::HandleInputEvent(int type, int val)
         while (pCur) {
             if (!pCur->AsNavigable())
                 break;
-            CSWGuiNavigable* pNav = static_cast<CSWGuiNavigable*>(pCur->AsNavigable());
+            CSWGuiNavigable* pNav = pCur->AsNavigable();
             switch (type) {
             case INPUTEVENT_GUI_DPAD_LEFT: case INPUTEVENT_GUI_KEY_LEFT:
                 pCur = pNav->m_moveToControls[1];
@@ -489,8 +489,8 @@ void CSWGuiControl::Load(CSWGuiObject* pContainer, CResGFF* pGFF, CResList& resL
     CExoString sTag;
     for (int i = 0; i < nCount; i++) {
         CResStruct elemStruct;
-        pGFF->GetListElement(&elemStruct, &resList, i);
         int bSuccess;
+        pGFF->GetListElement(&elemStruct, &resList, i);
         sTag = pGFF->ReadFieldCExoString(&elemStruct, const_cast<char*>("TAG"), bSuccess, CExoString(""));
         if (sTag == name) {
             Load(pGFF, elemStruct);
@@ -508,10 +508,11 @@ int CSWGuiControl::DisplayToolTip()
     }
 
     CExoString sText;
+    void* pEvent;
     sText = (m_nToolTipStrRef != 0) ? g_pTlkTable->GetSimpleString(m_nToolTipStrRef) : m_sToolTipText;
 
     if (m_nBoundInputEventId != 0) {
-        void* pEvent = g_pExoInput->GetEvent(m_nBoundInputEventId, g_pAppManager->m_pClientExoApp->GetInputClass());
+        pEvent = g_pExoInput->GetEvent(m_nBoundInputEventId, g_pAppManager->m_pClientExoApp->GetInputClass());
         if (pEvent) {
             int nKeyNameStrRef;
             // Gate on the lookup's return value, since on a miss nKeyNameStrRef is left unset.
@@ -1374,7 +1375,7 @@ void CSWGuiPanel::ScaleExtentForResolution(float fScale)
 #if !defined(K2_UI_TOUCH)
         // pc / xbox: the bar column keeps its layout width, so scale it too.
         if (pControl && pControl->AsListBox()) {
-            CSWGuiListBox* pList = static_cast<CSWGuiListBox*>(pControl->AsListBox());
+            CSWGuiListBox* pList = pControl->AsListBox();
             pList->m_scrollBar.m_extent.w = static_cast<int>(ceilf(pList->m_scrollBar.m_extent.w * fScale));
         }
 #endif
@@ -1383,7 +1384,7 @@ void CSWGuiPanel::ScaleExtentForResolution(float fScale)
         // the list, or the rows stay at layout size while their text grows with the screen and is
         // dropped (the journal's quests, the feedback and resolution lists, AI script select).
         if (pControl && pControl->AsListBox()) {
-            CSWGuiListBox* pList = static_cast<CSWGuiListBox*>(pControl->AsListBox());
+            CSWGuiListBox* pList = pControl->AsListBox();
             if (pList->m_pProtoItem)
                 pList->m_pProtoItem->ScaleExtentForResolution(fScale);
         }
@@ -2032,40 +2033,12 @@ CSWGuiControl* CSWGuiListBox::GetSelectedControl()
 
 void CSWGuiListBox::SetActiveControl(CSWGuiControl* pControl, int flag)
 {
-    int nIndex = -1;
-    int nCount = m_aControls.m_count;
-    if (nCount > 0)
-    {
-        int64_t i = 0;
-        do
-        {
-            if (m_aControls.m_pArray[i] == pControl)
-            {
-                nIndex = static_cast<int>(i);
-                break;
-            }
-        } while (++i != nCount);
-    }
-    SetSelectedControl(nIndex, flag);
+    SetSelectedControl(pControl, flag);
 }
 
 void CSWGuiListBox::SetSelectedControl(CSWGuiControl* pControl, int flag)
 {
-    int nIndex = -1;
-    int nCount = m_aControls.m_count;
-    if (nCount > 0)
-    {
-        int64_t i = 0;
-        do
-        {
-            if (m_aControls.m_pArray[i] == pControl)
-            {
-                nIndex = static_cast<int>(i);
-                break;
-            }
-        } while (++i != nCount);
-    }
-    SetSelectedControl(nIndex, flag);
+    SetSelectedControl(m_aControls.IndexOf(pControl), flag);
 }
 
 void CSWGuiListBox::SetSelectedControl(int nIndex, int bPlaySound)
@@ -3261,6 +3234,8 @@ void CSWGuiListBox::OrganizeUnequal()
 
     int nAnchor;
     int y;
+    int nAbove;
+    int nHidden;
     if (bAnchorTop)
     {
         nAnchor = m_nTopRow;
@@ -3276,7 +3251,7 @@ void CSWGuiListBox::OrganizeUnequal()
     extent.y = y;
     m_aControls.m_pArray[nAnchor]->SetExtent(extent);
 
-    int nAbove = nAnchor;
+    nAbove = nAnchor;
     while (--nAbove >= 0)
     {
         extent.h = m_aControls.m_pArray[nAbove]->m_extent.h;
@@ -3341,7 +3316,7 @@ void CSWGuiListBox::OrganizeUnequal()
 
     m_nVisibleRows = m_nBottomRow - m_nTopRow + 1;
 
-    int nHidden = nCount - m_nVisibleRows;
+    nHidden = nCount - m_nVisibleRows;
     m_scrollBar.SetMaxValue(nHidden > 0 ? nHidden + 1 : 1, bNoSelection);
     m_scrollBar.SetVisibleValue(m_nBottomRow - m_nTopRow + 1);
     m_scrollBar.SetCurValue(m_nTopRow);

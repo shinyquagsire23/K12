@@ -251,11 +251,7 @@ void CSWSDialog::InitializePsuedoRandomCameraAngles(CResGFF* pGff)
     resRef.CopyToString(sResRef);
 
     unsigned int nHash = 0;
-#if KOTOR1  // CExoString::GetLength is out of line
     for (int i = 0; i < sResRef.GetLength(); i++)
-#else
-    for (int i = 0; i < static_cast<int>(sResRef.m_sString ? strlen(sResRef.m_sString) : 0); i++)
-#endif
     {
         int nChar = static_cast<signed char>(sResRef[i]);
 #if KOTOR1  // the exponent is converted straight to double
@@ -281,7 +277,7 @@ void CSWSDialog::InitializePseudoRandomAlienVOVariation(CResGFF* pGff)
     resRef.CopyToString(sResRef);
 
     unsigned int nHash = 0;
-    for (int i = 0; i < static_cast<int>(sResRef.m_sString ? strlen(sResRef.m_sString) : 0); i++)
+    for (int i = 0; i < sResRef.GetLength(); i++)
     {
         int nChar = static_cast<signed char>(sResRef[i]);
         int nPow = static_cast<int>(__builtin_pow(10.0, static_cast<float>(i)));

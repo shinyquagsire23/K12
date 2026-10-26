@@ -13,6 +13,7 @@
 #include "twodimarray.h"
 #include "exostring.h"
 #include "exoinput.h"
+#include "CExoArrayListImpl.h"
 
 extern CExoString g_sBuildNumber;
 
@@ -41,18 +42,14 @@ CSWGuiCreateItemMenu::CSWGuiCreateItemMenu(CSWGuiManager* pGuiManager)
     int nCount = g_pRules->m_pBaseItemArray->m_count;
     int nSize = nCount + 1;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
-    if (nSize != 0) {
-        list.m_capacity = nSize;
-        list.m_pArray = new CSWGuiControl*[nSize];
-    }
-    list.m_count = nSize;
+    list.SetSize(nSize);
 
     list.m_pArray[0] = CreateOption(CExoString("Back"),
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItemMenu::Back), pTemplate);
 
     for (int i = 1; i < nSize; i++) {
         CExoString sName;
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(static_cast<int>(i - 1))->m_nNameStrRef == 0) {
+        if (g_pRules->GetBaseItem(static_cast<int>(i - 1))->m_nNameStrRef == 0) {
             // Rows with no TLK strref fall back to the 2DA's own Label column, so an unmapped row is
             // still identifiable. The table is re-opened per row.
             C2DA* p2DA = new C2DA(CResRef("BASEITEMS"), 0);
@@ -64,7 +61,7 @@ CSWGuiCreateItemMenu::CSWGuiCreateItemMenu(CSWGuiManager* pGuiManager)
         }
         else {
             // Re-derived rather than cached from the test above.
-            sName = g_pRules->m_pBaseItemArray->GetBaseItem(static_cast<int>(i - 1))->GetNameText();
+            sName = g_pRules->GetBaseItem(static_cast<int>(i - 1))->GetNameText();
         }
         list.m_pArray[i] = CreateOption(sName,
             static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateItemMenu::ItemSubTypeMenu), pTemplate);

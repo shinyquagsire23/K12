@@ -2548,7 +2548,7 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
             {
                 if (pGameObj->AsSWSItem() != 0)
                 {
-                    CSWBaseItem* pBase = g_pRules->m_pBaseItemArray->GetBaseItem(pGameObj->AsSWSItem()->m_baseItem);
+                    CSWBaseItem* pBase = g_pRules->GetBaseItem(pGameObj->AsSWSItem()->m_baseItem);
                     if ((pBase->m_nEquipableSlots & nEqFlags2) != 0)
                     {
                         pObject->ClearAllActions(1);
@@ -2719,7 +2719,7 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
             bool bSrcInInventory = false;
             if (pSrcItem != 0 && pInventory->GetItemInInventory(pSrcItem))
             {
-                CSWBaseItem* pSrcBase = g_pRules->m_pBaseItemArray->GetBaseItem(pSrcItem->m_baseItem);
+                CSWBaseItem* pSrcBase = g_pRules->GetBaseItem(pSrcItem->m_baseItem);
                 if (pSrcBase != 0)
                 {
 #if KOTOR1  // K1 has 14 equipment slots
@@ -2744,7 +2744,7 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
             int bDstInInventory = (nTargetId == CGameObjectArray::INVALIDOBJID) ? 1 : 0;
             if (!bDstInInventory && pInventory->GetItemInInventory(pDstItem))
             {
-                CSWBaseItem* pDstBase = g_pRules->m_pBaseItemArray->GetBaseItem(pDstItem->m_baseItem);
+                CSWBaseItem* pDstBase = g_pRules->GetBaseItem(pDstItem->m_baseItem);
                 if (pDstBase != 0)
                 {
 #if KOTOR1  // K1: the target counts when it sits in one of its own slots
@@ -2792,14 +2792,14 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
                 && (pCreature->GetItemRepository(1)->GetItemInRepository(pDstItem, 1)
                     || pInventory->GetItemInInventory(pDstItem)))
             {
-                if (g_pRules->m_pBaseItemArray->GetBaseItem(pDstItem->m_baseItem)->m_nWeaponType)
+                if (g_pRules->GetBaseItem(pDstItem->m_baseItem)->m_nWeaponType)
                 {
                     pCreature->AddEquipItemActions(pDstItem, MSG_SLOT_LEFT_WEAPON, 1, 0, 0, 1, 0,
                                                    0);
                 }
                 else
                 {
-                    CSWBaseItem* pDstBase2 = g_pRules->m_pBaseItemArray->GetBaseItem(pDstItem->m_baseItem);
+                    CSWBaseItem* pDstBase2 = g_pRules->GetBaseItem(pDstItem->m_baseItem);
                     if (pDstBase2 == 0)
                         return 0;
                     unsigned int nEquip = pDstBase2->m_nEquipableSlots;
@@ -2834,12 +2834,12 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
             if (pCreature->GetItemRepository(1)->GetItemInRepository(pSrcItem, 1)
                 || pInventory->GetItemInInventory(pSrcItem))
             {
-                CSWBaseItem* pSrcBase1 = g_pRules->m_pBaseItemArray->GetBaseItem(pSrcItem->m_baseItem);
+                CSWBaseItem* pSrcBase1 = g_pRules->GetBaseItem(pSrcItem->m_baseItem);
                 if (pSrcBase1 == 0)
                     return 0;
                 unsigned int nEquip2 = pSrcBase1->m_nEquipableSlots;
                 unsigned int nEquipSlot = 0;
-                if (g_pRules->m_pBaseItemArray->GetBaseItem(pSrcItem->m_baseItem)->m_nWeaponType
+                if (g_pRules->GetBaseItem(pSrcItem->m_baseItem)->m_nWeaponType
                     && (nEquip2 & MSG_SLOT_RIGHT_WEAPON) != 0)
                     nEquipSlot = MSG_SLOT_RIGHT_WEAPON;
                 else if ((nEquip2 & 1) != 0) nEquipSlot = 1;

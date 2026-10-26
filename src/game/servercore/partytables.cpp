@@ -80,6 +80,7 @@ extern int g_nJournalSortType;
 #include <math.h>
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 extern CAppManager* g_pAppManager;
 CSWRules* g_pRules;
@@ -815,9 +816,7 @@ CSWSCreature* CSWPartyTable::GetPUPOwner(int pupIndex)
             return pCreature;
     }
 
-    CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    unsigned long long playerCreatureId = pServerApp->GetPlayerCreatureId();
-    pCreature = pServerApp->GetCreatureByGameObjectID(playerCreatureId);
+    pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pCreature != 0 && pCreature->m_nAssignedPup == pupIndex)
         return pCreature;
 
@@ -940,7 +939,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         for (int i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
-            pGff->WriteFieldFLOAT(&struct1, g_pRules->m_pBaseItemArray->GetBaseItem(i)->m_costMultiplier, const_cast<char*>("PT_COST_MULT_VALUE"));
+            pGff->WriteFieldFLOAT(&struct1, g_pRules->GetBaseItem(i)->m_costMultiplier, const_cast<char*>("PT_COST_MULT_VALUE"));
         }
 
         SaveJournal(pGff, &topStruct);
@@ -1105,7 +1104,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         for (int i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
-            pGff->WriteFieldFLOAT(&struct1, g_pRules->m_pBaseItemArray->GetBaseItem(i)->m_costMultiplier, const_cast<char*>("PT_COST_MULT_VALUE"));
+            pGff->WriteFieldFLOAT(&struct1, g_pRules->GetBaseItem(i)->m_costMultiplier, const_cast<char*>("PT_COST_MULT_VALUE"));
         }
 
         pGff->WriteFieldINT(&struct1, m_disableMap, const_cast<char*>("PT_DISABLEMAP"));
@@ -1250,7 +1249,7 @@ int CSWPartyTable::LoadTableInfo()
     for (int i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
     {
         pGff->GetListElement(&struct1, &list1, i);
-        CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(i);
+        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(i);
         pBaseItem->m_costMultiplier =
             pGff->ReadFieldFLOAT(&struct1, const_cast<char*>("PT_COST_MULT_VALUE"), bSuccess, 1.0f);
     }
@@ -1437,7 +1436,7 @@ int CSWPartyTable::LoadTableInfo()
     for (int i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
     {
         pGff->GetListElement(&struct1, &list1, i);
-        CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(i);
+        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(i);
         pBaseItem->m_costMultiplier =
             pGff->ReadFieldFLOAT(&struct1, const_cast<char*>("PT_COST_MULT_VALUE"), bSuccess, 1.0f);
     }
@@ -1721,7 +1720,7 @@ void CSWPartyTable::UpdateMembers(int value)
 CExoString CSWPartyTable::GetPCFirstName()
 {
     CExoString result(m_saveTableName);
-    if (m_saveTableName.m_sString != 0 && static_cast<int>(strlen(m_saveTableName.m_sString)) >= 1)
+    if (m_saveTableName.GetLength() >= 1)
     {
         int spaceIndex = m_saveTableName.Find(' ', 0);
         if (spaceIndex != -1)
@@ -1738,7 +1737,7 @@ CExoString CSWPartyTable::GetPCFirstName()
 CExoString CSWPartyTable::GetPCLastName()
 {
     CExoString lastName(m_saveTableName);
-    if (m_saveTableName.m_sString != 0 && static_cast<int>(strlen(m_saveTableName.m_sString)) >= 1)
+    if (m_saveTableName.GetLength() >= 1)
     {
         int spaceIndex = m_saveTableName.Find(' ', 0);
         if (spaceIndex != -1)
@@ -1747,7 +1746,7 @@ CExoString CSWPartyTable::GetPCLastName()
             lastName = tmp;
         }
     }
-    if (lastName.m_sString == 0 || static_cast<int>(strlen(lastName.m_sString)) <= 0)
+    if (lastName.GetLength() <= 0)
     {
         return m_saveTableName;
     }
@@ -2555,7 +2554,7 @@ unsigned long long CSWPartyTable::SpawnNPC(int index, int usePos, const Vector& 
     if (pCreature != 0)
     {
 #if !KOTOR1
-        CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pPlayer != 0 && pPlayer->GetFaction() != 0)
             pPlayer->GetFaction()->AddMember(pCreature->m_objectId, 0);
 #endif
@@ -2625,7 +2624,7 @@ void CSWPartyTable::PositionParty()
 {
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
     CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pPlayer = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = pServerApp->GetPlayerCreature();
     Vector orient = pPlayer->m_orientation;
     pParty->ResetAllFollowData(pPlayer->m_position, Yaw(orient), 0);
     if (m_bKeepSavedPositions == 0)
@@ -2898,7 +2897,7 @@ void CSWPartyTable::CreateParty()
     }
     delete pGff;
     RemoveGameInProgress();
-    CSWSCreature* pPlayer = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = pServerApp->GetPlayerCreature();
     if (pPlayer != 0)
         TransferInventory(pPlayer);
     for (int i = 0; i < 9; i++)
@@ -2907,7 +2906,7 @@ void CSWPartyTable::CreateParty()
         if (pMember != 0)
             TransferInventory(pMember);
     }
-    CSWSCreature* pPC = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+    CSWSCreature* pPC = pServerApp->GetPlayerCreature();
     if (pPC != 0)
         pPC->ForceEquipClothing();
     for (int i = 0; i < 9; i++)
@@ -2978,7 +2977,7 @@ void CSWPartyTable::CreateParty()
     }
     delete pGff;
     RemoveGameInProgress();
-    CSWSCreature* pPlayer = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = pServerApp->GetPlayerCreature();
     if (pPlayer != 0)
     {
         TransferInventory(pPlayer);
@@ -2989,7 +2988,7 @@ void CSWPartyTable::CreateParty()
             CExoString fullName;
             pPlayer->GetFirstName().GetString(0, &firstName, 0);
             pPlayer->GetLastName().GetString(0, &lastName, 0);
-            if (lastName.m_sString != 0 && static_cast<int>(strlen(lastName.m_sString)) >= 1)
+            if (lastName.GetLength() >= 1)
                 fullName = firstName + " " + lastName;
             else
                 fullName = firstName;
@@ -3002,7 +3001,7 @@ void CSWPartyTable::CreateParty()
         if (pMember != 0)
             TransferInventory(pMember);
     }
-    CSWSCreature* pPC = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+    CSWSCreature* pPC = pServerApp->GetPlayerCreature();
     if (pPC != 0)
         pPC->ForceEquipClothing();
     for (int i = 0; i < 12; i++)

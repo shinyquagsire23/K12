@@ -23,14 +23,14 @@ CSWLevelStats::~CSWLevelStats()
         delete[] m_paSkillRankChanges;
         m_paSkillRankChanges = 0;
     }
-    m_featsGained.Clear();
-    m_spellsGained.Clear();
-    m_spellsLost.Clear();
+    ClearFeats();
+    m_spellsGained.SetSize(0);
+    m_spellsLost.SetSize(0);
 }
 
 void CSWLevelStats::ClearFeats()
 {
-    m_featsGained.Clear();
+    m_featsGained.SetSize(0);
 }
 
 unsigned char CSWLevelStats::GetSkillRankChange(unsigned short nSkill)
@@ -42,7 +42,8 @@ unsigned char CSWLevelStats::GetSkillRankChange(unsigned short nSkill)
 
 void CSWLevelStats::AddFeat(unsigned short nFeat)
 {
-    m_featsGained.AddUnique(nFeat);
+    if (!m_featsGained.Contains(nFeat))
+        m_featsGained.Add(nFeat);
 }
 
 void CSWLevelStats::SetSkillRankChange(unsigned short nSkill, char nRank)

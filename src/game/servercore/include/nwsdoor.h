@@ -52,11 +52,11 @@ public:
 #if KOTOR1  // K1 returns the base value; K2 scales it by difficulty
     unsigned char  GetDisarmDC() { return m_baseDisarmDC; }
     unsigned char  GetDetectDC() { return m_baseDetectDC; }
-    unsigned int   GetOpenLockDC() { return m_openLockDC; }
+    unsigned char  GetOpenLockDC() { return m_openLockDC; }
 #else
     unsigned char  GetDisarmDC();
     unsigned char  GetDetectDC();
-    unsigned int   GetOpenLockDC();
+    unsigned char  GetOpenLockDC();
 #endif
     CSWSObject*    GetLinkedObject();
     void           SetOrientation(Quaternion q);

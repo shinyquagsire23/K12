@@ -75,6 +75,7 @@ Gob* CSWCAnimBaseHead::GetModel(unsigned char which)
     return 0;
 }
 
+// EFFECTIVE: the head-less exit gets its own copy of the `return 1` block (tail duplication, 8 B).
 int CSWCAnimBaseHead::LoadModel(CResRef const& cResRef, unsigned char which)
 {
     if (which == ANIM_MODEL_BODY)
@@ -254,6 +255,7 @@ int CSWCAnimBaseHead::SetEnvMap(int nIndex, int bCache, CResRef const& cResRef)
     return CSWCAnimBaseTW::SetEnvMap(nIndex, bCache, cResRef);
 }
 
+// EFFECTIVE: the orig keeps a second `return 1` block for the bCache arm (tail duplication, 8 B).
 int CSWCAnimBaseHead::SetEnvMap(unsigned char which, int nIndex, int bCache, CResRef const& cResRef)
 {
     if (which != ANIM_MODEL_HEAD)

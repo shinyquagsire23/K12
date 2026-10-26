@@ -82,7 +82,7 @@ int CSWCAnimBaseProjectile::SetOrientation(const Vector& v)
     if (!m_pModel)
         return 0;
 
-    if (v.x * v.x + v.y * v.y + v.z * v.z <= 1e-5f)
+    if (dot(v, v) <= 1e-5f)
         return 0;
 
     Vector vNorm = normalize(v);

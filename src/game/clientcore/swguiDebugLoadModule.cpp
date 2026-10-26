@@ -54,9 +54,9 @@ CSWGuiLoadModuleDebugMenu::CSWGuiLoadModuleDebugMenu(CSWGuiManager* pGuiManager)
 #if !KOTOR1  // K1 has no override-folder module lists
     int nOverride = 0;
     const char* pszOverride;
+    char szPath[200];
     while ((pszOverride = GetOverridePath(nOverride, false)) != 0)
     {
-        char szPath[200];
         sprintf(szPath, "%s\\modules", pszOverride);
         g_pExoBase->GetDirectoryList(&aFiles, CExoString(szPath), RESTYPE_MOD, 0, 1);
         g_pExoBase->GetDirectoryList(&aDirs, CExoString(szPath), RESTYPE_RIM, 0, 1);
@@ -70,12 +70,15 @@ CSWGuiLoadModuleDebugMenu::CSWGuiLoadModuleDebugMenu(CSWGuiManager* pGuiManager)
     CExoString sLive;
     for (int nPkg = 1; nPkg < CTlkTable::NUM_CONTENT_PKGS; nPkg++)
     {
+#if !KOTOR1
+        const char* pszAliasPath;
+#endif
         sLive.Format(const_cast<char*>("live%d"), nPkg);
 
 #if KOTOR1  // K1: CExoString::GetLength is out of line
         if (g_pExoBase->m_pAliasList->GetAliasPath(sLive, 0).GetLength() < 1)
 #else
-        const char* pszAliasPath = g_pExoBase->m_pAliasList->GetAliasPath(sLive, 0).m_sString;
+        pszAliasPath = g_pExoBase->m_pAliasList->GetAliasPath(sLive, 0).m_sString;
         if (pszAliasPath == 0 || static_cast<int>(strlen(pszAliasPath)) < 1)
 #endif
         {

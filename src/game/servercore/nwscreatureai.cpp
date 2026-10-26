@@ -418,7 +418,7 @@ int CSWSCreature::GetIsInInvitationsIgnored(unsigned long long objectId)
 
 void CSWSCreature::SetVisibilityList(CExoArrayList<CSWVisibilityNode*>* pList)
 {
-    m_visibilityList.Clear();
+    m_visibilityList.SetSize(0);
     if (pList != 0 && pList->m_count > 0) {
         for (int i = 0; i < pList->m_count; i++)
             m_visibilityList.Add(pList->m_pArray[i]);
@@ -679,7 +679,7 @@ void CSWSCreature::SetCombatMode(unsigned char nMode, int bForce)
             CSWSItem* pItem =
                     static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
             if (pItem != 0
-                    && g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0) {
+                    && g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0) {
                 SendFeedbackMessage(FEEDBACK_COMBAT_MODE_WRONG_WEAPON, 0);
                 return;
             }
@@ -687,7 +687,7 @@ void CSWSCreature::SetCombatMode(unsigned char nMode, int bForce)
             CSWSItem* pItem =
                     static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
             if (pItem == 0
-                    || g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon == 0) {
+                    || g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon == 0) {
                 SendFeedbackMessage(FEEDBACK_COMBAT_MODE_WRONG_WEAPON, 0);
                 return;
             }
@@ -709,7 +709,7 @@ void CSWSCreature::SetCombatMode(unsigned char nMode, int bForce)
             CSWSItem* pItem =
                     static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
             if (pItem == 0
-                    || g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon == 0) {
+                    || g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon == 0) {
                 SendFeedbackMessage(FEEDBACK_COMBAT_MODE_WRONG_WEAPON, 0);
                 return;
             }
@@ -1167,14 +1167,14 @@ int CSWSCreature::CanUseItem(CSWSItem* pItem, int a, int bSilent)
         }
         if (bOk == 0)
             return 0;
-        CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
         int bUsable;
         if (pBaseItem == 0 || pBaseItem->m_weaponWieldType == 8 ||
             pBaseItem->m_nWeaponType == 0) {
             bUsable = 1;
         } else {
             bUsable = 0;
-            CSWBaseItem* pBaseItem2 = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+            CSWBaseItem* pBaseItem2 = g_pRules->GetBaseItem(pItem->m_baseItem);
             if (static_cast<int>(pBaseItem2->m_nWeaponSize - m_nCreatureSize) < 2)
                 bUsable = bOk;
         }
@@ -1238,9 +1238,7 @@ void CSWSCreature::TerminateClientSidePath(int a)
     if (pPlayer != 0) {
         CLastUpdateObject* pLastObject = pPlayer->GetLastUpdateObject(m_objectId);
         if (pLastObject != 0) {
-            pLastObject->m_fOrientationX = 0;
-            pLastObject->m_fOrientationY = 0;
-            pLastObject->m_fOrientationZ = 0;
+            pLastObject->m_orientation = Vector();
             pLastObject->m_nAnimation = 0xffff;
             pLastObject->m_nClientPathId = static_cast<unsigned char>(a - 1);
         }
@@ -3329,12 +3327,12 @@ unsigned char CSWSCreature::CanEquipWeapon(CSWSItem* pItem, unsigned int* pnSlot
     CSWItem* pLeft = m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON);
     CSWBaseItem* pBaseRight = 0;
     if (pRight != 0)
-        pBaseRight = g_pRules->m_pBaseItemArray->GetBaseItem(pRight->m_baseItem);
+        pBaseRight = g_pRules->GetBaseItem(pRight->m_baseItem);
     if (pLeft != 0)
-        g_pRules->m_pBaseItemArray->GetBaseItem(pLeft->m_baseItem);  // result discarded
+        g_pRules->GetBaseItem(pLeft->m_baseItem);  // result discarded
     if (pItem == 0)
         return CAN_EQUIP_NO;
-    CSWBaseItem* pBaseNew = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    CSWBaseItem* pBaseNew = g_pRules->GetBaseItem(pItem->m_baseItem);
     if (pRight == 0 && pLeft == 0) {
         if (*pnSlot == CSWInventory::SLOT_LEFTWEAPON)
             *pnSlot = CSWInventory::SLOT_RIGHTWEAPON;
@@ -3377,12 +3375,12 @@ unsigned char CSWSCreature::CanEquipWeapon2(CSWSItem* pItem, unsigned int* pnSlo
     CSWItem* pLeft = m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON2);
     CSWBaseItem* pBaseRight = 0;
     if (pRight != 0)
-        pBaseRight = g_pRules->m_pBaseItemArray->GetBaseItem(pRight->m_baseItem);
+        pBaseRight = g_pRules->GetBaseItem(pRight->m_baseItem);
     if (pLeft != 0)
-        g_pRules->m_pBaseItemArray->GetBaseItem(pLeft->m_baseItem);  // result discarded
+        g_pRules->GetBaseItem(pLeft->m_baseItem);  // result discarded
     if (pItem == 0)
         return CAN_EQUIP_NO;
-    CSWBaseItem* pBaseNew = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    CSWBaseItem* pBaseNew = g_pRules->GetBaseItem(pItem->m_baseItem);
     if (pRight == 0 && pLeft == 0) {
         if (*pnSlot == CSWInventory::SLOT_LEFTWEAPON2)
             *pnSlot = CSWInventory::SLOT_RIGHTWEAPON2;
@@ -3512,7 +3510,7 @@ unsigned char CSWSCreature::CanEquipItem(CSWSItem* pItem, unsigned int* pnSlot, 
     }
 
 #if KOTOR1
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
     if (pBaseItem == 0)
         return CAN_EQUIP_NO;
     return ((*pnSlot & pBaseItem->m_nEquipableSlots) != 0) ? bResult : CAN_EQUIP_NO;
@@ -3522,7 +3520,7 @@ unsigned char CSWSCreature::CanEquipItem(CSWSItem* pItem, unsigned int* pnSlot, 
         *pnSlot = (CSWInventory::SLOT_RIGHTWEAPON2 | CSWInventory::SLOT_RIGHTWEAPON);
     else if (nSlot == CSWInventory::SLOT_LEFTWEAPON2)
         *pnSlot = (CSWInventory::SLOT_LEFTWEAPON2 | CSWInventory::SLOT_LEFTWEAPON);
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
     if (pBaseItem == 0) {
         *pnSlot = nSlot;
         return CAN_EQUIP_NO;
@@ -4732,7 +4730,7 @@ unsigned char CSWSCreature::CanUnEquipWeapon(CSWSItem* pItem)
     unsigned char nResult = 1;
     if (pRightWeapon != 0 && pRightWeapon->m_objectId == pItem->m_objectId &&
         pLeftWeapon != 0 &&
-        g_pRules->m_pBaseItemArray->GetBaseItem(pLeftWeapon->m_baseItem)->m_nWeaponType != 0) {
+        g_pRules->GetBaseItem(pLeftWeapon->m_baseItem)->m_nWeaponType != 0) {
         CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(m_objectId);
         nResult = 2;
         if (pPlayer != 0) {
@@ -4752,7 +4750,7 @@ unsigned char CSWSCreature::CanUnEquipWeapon2(CSWSItem* pItem)
     unsigned char nResult = 1;
     if (pRightWeapon != 0 && pRightWeapon->m_objectId == pItem->m_objectId &&
         pLeftWeapon != 0 &&
-        g_pRules->m_pBaseItemArray->GetBaseItem(pLeftWeapon->m_baseItem)->m_nWeaponType != 0) {
+        g_pRules->GetBaseItem(pLeftWeapon->m_baseItem)->m_nWeaponType != 0) {
         CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(m_objectId);
         nResult = 3;
         if (pPlayer != 0) {
@@ -4766,19 +4764,19 @@ unsigned char CSWSCreature::CanUnEquipWeapon2(CSWSItem* pItem)
 int CSWSCreature::CheckProficiencies(CSWSItem* pItem, unsigned int nSlot)
 {
     K2_UNUSED(nSlot);
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nEquipableSlots == 0)
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_nEquipableSlots == 0)
         return 0;
     if (m_pStats->HasFeat(FEAT_PROFICIENCY_ALL) != 0)
         return 1;
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nRequiredFeats == 0)
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_nRequiredFeats == 0)
         return 1;
     int i = 0;
     do {
-        CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
         unsigned short nFeat = pBaseItem->GetRequiredFeat(static_cast<unsigned char>(i++));
         if (m_pStats->HasFeat(nFeat) == 0)
             return 0;
-    } while (i < g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nRequiredFeats);
+    } while (i < g_pRules->GetBaseItem(pItem->m_baseItem)->m_nRequiredFeats);
     return 1;
 }
 
@@ -4918,6 +4916,7 @@ int CSWSCreature::AIActionStanceMeditative(CSWSObjectActionNode* pNode)
 {
     K2_UNUSED(pNode);
     // inlined CSWSCreature::GetDeadTemp()
+    // inlined CSWSCreature::GetDeadTemp(): the call merges both tests into one orr (LENGTH +4)
     int bAlive = 1;
     if (m_bInParty != 0)
         bAlive = GetCurrentHitPoints(0) > 0;
@@ -7467,8 +7466,8 @@ int CSWSCreature::AcquireItem(CSWSItem** ppItem, unsigned long long nPossessorId
             pGameObject->AsSWSPlaceable()->RemoveItem(*ppItem);
         }
     } else if (pOldItem != NULL) {
-        if (g_pRules->m_pBaseItemArray->GetBaseItem((*ppItem)->m_baseItem)->m_bContainer != 0 &&
-            g_pRules->m_pBaseItemArray->GetBaseItem(pOldItem->m_baseItem)->m_bContainer != 0)
+        if (g_pRules->GetBaseItem((*ppItem)->m_baseItem)->m_bContainer != 0 &&
+            g_pRules->GetBaseItem(pOldItem->m_baseItem)->m_bContainer != 0)
             return 0;
     }
 

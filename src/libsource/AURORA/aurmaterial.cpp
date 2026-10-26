@@ -26,7 +26,7 @@ int AurTextureReplaceSingleReference(CAurTexture* pTexture, char* pszName, char*
 void AurTextureSetLayered(CAurTexture* pTexture, char* pszName, int* pnOffset, int nType);
 
 // The GL surface the three blend-state rows program, plus the tables they translate through.
-const float* Homogenize(const Vector& v, const float& w);
+float* Homogenize(const Vector& v, const float& w);
 extern float g_fGlobalAlpha;
 int usenewalpha = 1;
 float materialalpha = 0.349999994f;
@@ -322,25 +322,23 @@ bool Material::HasBumpMap() {
 void Material::SetBlendingMode(int nMode) {
 #if KOTOR1  // K1 has no distortion pass; it flags the alpha-test shader for a lit alpha cut
     s_useAlphaTestShader = false;
-    ASLgl::glBlendFunc(blendTranslationTable[m_lstSrcBlend.m_pData[nMode]],
-                       blendTranslationTable[m_lstDstBlend.m_pData[nMode]]);
-    if (static_cast<int>(m_lstSrcBlend.m_pData[nMode]) == 0 && static_cast<int>(m_lstDstBlend.m_pData[nMode]) == 2)
-        ASLgl::glDepthMask(0);
+    GLRender::SetBlendFunc(m_lstSrcBlend.m_pData[nMode], m_lstDstBlend.m_pData[nMode]);
+    if (m_lstSrcBlend.m_pData[nMode] == Aurora::kBlendSrcAlpha && m_lstDstBlend.m_pData[nMode] == Aurora::kBlendOne)
+        RenderInterface::SetDepthMask(0);
     else
-        ASLgl::glDepthMask(1);
+        RenderInterface::SetDepthMask(1);
     if (!usenewalpha)
         return;
     float fAlpha = 0.0f;
-    if (static_cast<int>(m_lstSrcBlend.m_pData[nMode]) == 2 && static_cast<int>(m_lstDstBlend.m_pData[nMode]) == 3) {
+    if (m_lstSrcBlend.m_pData[nMode] == Aurora::kBlendOne && m_lstDstBlend.m_pData[nMode] == Aurora::kBlendZero) {
         fAlpha = materialalpha;
         if (fAlpha > 0.0f)
             s_useAlphaTestShader = true;
     }
     GLRender::SetAlphaFunc(Aurora::kCmpGreater, fAlpha);
 #else
-    ASLgl::glBlendFunc(blendTranslationTable[m_lstSrcBlend.m_pData[nMode]],
-                       blendTranslationTable[m_lstDstBlend.m_pData[nMode]]);
-    if (static_cast<int>(m_lstSrcBlend.m_pData[nMode]) == 0 && static_cast<int>(m_lstDstBlend.m_pData[nMode]) == 2) {
+    GLRender::SetBlendFunc(m_lstSrcBlend.m_pData[nMode], m_lstDstBlend.m_pData[nMode]);
+    if (m_lstSrcBlend.m_pData[nMode] == Aurora::kBlendSrcAlpha && m_lstDstBlend.m_pData[nMode] == Aurora::kBlendOne) {
         RenderInterface::SetDepthMask(0);
     } else {
         RenderInterface::SetDepthMask(1);
@@ -348,21 +346,20 @@ void Material::SetBlendingMode(int nMode) {
     if (!usenewalpha)
         return;
     float fAlpha = 0.0f;
-    if (static_cast<int>(m_lstSrcBlend.m_pData[nMode]) == 2)
-        fAlpha = static_cast<int>(m_lstDstBlend.m_pData[nMode]) == 3 ? materialalpha : 0.0f;
+    if (m_lstSrcBlend.m_pData[nMode] == Aurora::kBlendOne)
+        fAlpha = m_lstDstBlend.m_pData[nMode] == Aurora::kBlendZero ? materialalpha : 0.0f;
     GLRender::SetAlphaFunc(Aurora::kCmpGreater, fAlpha);
 #endif
 }
 
 // The GUI-batch twin of the above over list slot 0; the GUI batch owns the depth mask itself.
 void Material::SetGUIBlendingMode() {
-    ASLgl::glBlendFunc(blendTranslationTable[m_lstSrcBlend.m_pData[0]],
-                       blendTranslationTable[m_lstDstBlend.m_pData[0]]);
+    GLRender::SetBlendFunc(m_lstSrcBlend.m_pData[0], m_lstDstBlend.m_pData[0]);
     if (!usenewalpha)
         return;
     float fAlpha = 0.0f;
-    if (static_cast<int>(m_lstSrcBlend.m_pData[0]) == 2)
-        fAlpha = static_cast<int>(m_lstDstBlend.m_pData[0]) == 3 ? materialalpha : 0.0f;
+    if (m_lstSrcBlend.m_pData[0] == Aurora::kBlendOne)
+        fAlpha = m_lstDstBlend.m_pData[0] == Aurora::kBlendZero ? materialalpha : 0.0f;
     GLRender::SetAlphaFunc(Aurora::kCmpGreater, fAlpha);
 }
 
@@ -385,8 +382,8 @@ Material::Material()
 {
     m_lstSrcBlend.allocate(2);
     m_lstDstBlend.allocate(2);
-    m_lstSrcBlend.Add(Aurora::AuroraBlendModes(0));
-    m_lstDstBlend.Add(Aurora::AuroraBlendModes(1));
+    m_lstSrcBlend.Add(Aurora::kBlendSrcAlpha);
+    m_lstDstBlend.Add(Aurora::kBlendInvSrcAlpha);
     m_bDecal = 0;
     m_nRenderBMLMType = 1;
     materials.Add(this);
@@ -446,14 +443,14 @@ void Material::ClearTextures()
 void Material::Init(char* pszName)
 {
     int nSize = 0;
-#if KOTOR1  // K1 forces two named meshes to src-alpha / one-minus-src-alpha
+#if KOTOR1  // K1 forces two named meshes to an opaque blend (one, zero)
     if (strstr(pszName, "M36_Shrub")) {
-        m_lstSrcBlend.m_pData[0] = static_cast<Aurora::AuroraBlendModes>(2);
-        m_lstDstBlend.m_pData[0] = static_cast<Aurora::AuroraBlendModes>(3);
+        m_lstSrcBlend.m_pData[0] = Aurora::kBlendOne;
+        m_lstDstBlend.m_pData[0] = Aurora::kBlendZero;
     }
     if (strstr(pszName, "LMA_blas01")) {
-        m_lstSrcBlend.m_pData[0] = static_cast<Aurora::AuroraBlendModes>(2);
-        m_lstDstBlend.m_pData[0] = static_cast<Aurora::AuroraBlendModes>(3);
+        m_lstSrcBlend.m_pData[0] = Aurora::kBlendOne;
+        m_lstDstBlend.m_pData[0] = Aurora::kBlendZero;
     }
 #endif
 
@@ -546,11 +543,11 @@ void Material::ParseField(char* pszLine)
     }
     if (szBlending[0] != 0) {
         if (strcmp(szBlending, "additive") == 0) {
-            m_lstSrcBlend.m_pData[0] = Aurora::AuroraBlendModes(0);
-            m_lstDstBlend.m_pData[0] = Aurora::AuroraBlendModes(2);
+            m_lstSrcBlend.m_pData[0] = Aurora::kBlendSrcAlpha;
+            m_lstDstBlend.m_pData[0] = Aurora::kBlendOne;
         } else if (strcmp(szBlending, "punchthrough") == 0) {
-            m_lstSrcBlend.m_pData[0] = Aurora::AuroraBlendModes(2);
-            m_lstDstBlend.m_pData[0] = Aurora::AuroraBlendModes(3);
+            m_lstSrcBlend.m_pData[0] = Aurora::kBlendOne;
+            m_lstDstBlend.m_pData[0] = Aurora::kBlendZero;
         }
     }
 }

@@ -153,17 +153,6 @@ void AurEnableHeadLight();
 
 
 
-extern const unsigned int lightTranslationTable[];
-enum {
-    kLightAmbient       = 0,
-    kLightDiffuse       = 1,
-    kLightSpecular      = 2,
-    kLightPosition      = 3,
-    // Entry 4 is the quadratic attenuation; 9.0f / (r*r + r*r) through it is the D3D-style
-    // falloff, not a direction.
-    kLightSpotDirection = 4,
-    kLightQuadraticAttenuation = 4,
-};
 
 Vector headlightambient(0.2f, 0.2f, 0.2f);
 Vector headlightdiffuse(0.8f, 0.8f, 0.8f);
@@ -181,7 +170,7 @@ float lightshadowfadespeed = 3.0f;
 
 extern Camera* CurrentCamera;
 
-const float* Homogenize(const Vector& v, const float& w);
+float* Homogenize(const Vector& v, const float& w);
 
 int equal(const Vector& a, const Vector& b);
 
@@ -237,34 +226,28 @@ List<PartLight*>& LightManager::GetPhongLights()
 void SetLightGL(int nSlot, const Vector& vPosition, const Vector& vColour,
                 const float& fRadius, const int& nMode)
 {
+    unsigned int nLight = nSlot + 1;
     if (nMode != 0)
     {
-        const float* pAmbient = Homogenize(vColour, 1.0f);
-        ASLgl::glLightfv(nSlot + GL_LIGHT1, lightTranslationTable[kLightAmbient], pAmbient);
-        const float* pDiffuse = Homogenize(Vector(0.0f, 0.0f, 0.0f), 1.0f);
-        ASLgl::glLightfv(nSlot + GL_LIGHT1, lightTranslationTable[kLightDiffuse], pDiffuse);
-        const float* pSpecular = Homogenize(Vector(0.0f, 0.0f, 0.0f), 1.0f);
-        ASLgl::glLightfv(nSlot + GL_LIGHT1, lightTranslationTable[kLightSpecular], pSpecular);
+        GLRender::SetLightProperties(nLight, Aurora::kLightAmbient, Homogenize(vColour, 1.0f));
+        GLRender::SetLightProperties(nLight, Aurora::kLightDiffuse, Homogenize(Vector(0.0f, 0.0f, 0.0f), 1.0f));
+        GLRender::SetLightProperties(nLight, Aurora::kLightSpecular, Homogenize(Vector(0.0f, 0.0f, 0.0f), 1.0f));
     }
     else
     {
-        const float* pAmbient2 = Homogenize(Vector(0.0f, 0.0f, 0.0f), 1.0f);
-        ASLgl::glLightfv(nSlot + GL_LIGHT1, lightTranslationTable[kLightAmbient], pAmbient2);
-        const float* pDiffuse2 = Homogenize(vColour, 1.0f);
-        ASLgl::glLightfv(nSlot + GL_LIGHT1, lightTranslationTable[kLightDiffuse], pDiffuse2);
-        const float* pSpecular2 = Homogenize(vColour, 1.0f);
-        ASLgl::glLightfv(nSlot + GL_LIGHT1, lightTranslationTable[kLightSpecular], pSpecular2);
+        GLRender::SetLightProperties(nLight, Aurora::kLightAmbient, Homogenize(Vector(0.0f, 0.0f, 0.0f), 1.0f));
+        GLRender::SetLightProperties(nLight, Aurora::kLightDiffuse, Homogenize(vColour, 1.0f));
+        GLRender::SetLightProperties(nLight, Aurora::kLightSpecular, Homogenize(vColour, 1.0f));
     }
 
-    const float* pPosition = Homogenize(vPosition, 1.0f);
-    ASLgl::glLightfv(nSlot + GL_LIGHT1, lightTranslationTable[kLightPosition], pPosition);
+    GLRender::SetLightProperties(nLight, Aurora::kLightPosition, Homogenize(vPosition, 1.0f));
 
+    // 9.0f / (r*r + r*r) through the quadratic attenuation is the D3D-style falloff.
     float fAttenuation = fRadius;
     if (fAttenuation <= 0.1f)
         fAttenuation = 0.1f;
     float fQuadratic = 9.0f / (fAttenuation * fAttenuation + fAttenuation * fAttenuation);
-    ASLgl::glLightfv(nSlot + GL_LIGHT1, lightTranslationTable[kLightQuadraticAttenuation],
-                     &fQuadratic);
+    GLRender::SetLightProperties(nLight, Aurora::kLightQuadraticAttenuation, &fQuadratic);
 }
 
 // Initialises the two raw pointers and the dirty flag.
@@ -423,7 +406,7 @@ void LightManager::EnableHighestPriorityLights(int nMaxLights)
     {
         int nSlot = i++;
 
-        ASLgl::glEnable(GL_LIGHT1 + nSlot);
+        GLRender::EnableLight(nSlot + 1);
 
         PartLight* pLight = m_renderLights.m_pData[nSlot];
         Vector vColour = pLight->m_vLightColour * pLight->m_fLightScale;
@@ -436,7 +419,7 @@ void LightManager::EnableHighestPriorityLights(int nMaxLights)
     while (i < 3)
     {
         int nSlot = i++;
-        ASLgl::glDisable(GL_LIGHT1 + nSlot);
+        GLRender::DisableLight(nSlot + 1);
     }
 }
 
@@ -632,8 +615,7 @@ void LightManager::EnableHighestPriorityLightsFade(int nMaxLights, CAurObjectLig
             PartLight* pLight = lights.m_pData[i];
             pLight->m_fEmitterScale = weights.m_pData[i];
 
-            // inlined GLRender::EnableLight(int)
-            ASLgl::glEnable(static_cast<unsigned int>(GL_LIGHT1 + i));
+            GLRender::EnableLight(static_cast<int>(i) + 1);
 
             Vector vColour = pLight->m_vLightColour * pLight->m_fEmitterScale;
 
@@ -641,9 +623,8 @@ void LightManager::EnableHighestPriorityLightsFade(int nMaxLights, CAurObjectLig
                        pLight->m_fLightRadius, pLight->m_nAmbientOnly);
         }
 
-        // inlined GLRender::DisableLight(int)
         for (int j = lights.m_count; j < 3; j++)
-            ASLgl::glDisable(GL_LIGHT1 + j);
+            GLRender::DisableLight(j + 1);
     }
 
     m_renderLights = lights;
@@ -694,14 +675,9 @@ void LightManager::EnableBumpMapLights()
 // pinned to the camera, so the head light sits exactly where the viewer is.
 void LightManager::EnableHeadLight()
 {
-    const float* pAmbient = Homogenize(headlightambient, 1.0f);
-    ASLgl::glLightfv(GL_LIGHT0, lightTranslationTable[kLightAmbient], pAmbient);
-
-    const float* pDiffuse = Homogenize(headlightdiffuse, 1.0f);
-    ASLgl::glLightfv(GL_LIGHT0, lightTranslationTable[kLightDiffuse], pDiffuse);
-
-    const float* pPosition = Homogenize(CurrentCamera->m_vPosition, 1.0f);
-    ASLgl::glLightfv(GL_LIGHT0, lightTranslationTable[kLightPosition], pPosition);
+    GLRender::SetLightProperties(0, Aurora::kLightAmbient, Homogenize(headlightambient, 1.0f));
+    GLRender::SetLightProperties(0, Aurora::kLightDiffuse, Homogenize(headlightdiffuse, 1.0f));
+    GLRender::SetLightProperties(0, Aurora::kLightPosition, Homogenize(CurrentCamera->m_vPosition, 1.0f));
 
     AurEnableHeadLight();
 }
@@ -803,7 +779,7 @@ int LightManager::GetNearestLights(Scene* pScene, Vector vPosition, float fRadiu
 
         int nSlot = nLights++;
 
-        ASLgl::glEnable(GL_LIGHT1 + nSlot);
+        GLRender::EnableLight(nSlot + 1);
 
         Vector vColour = pLight->m_vLightColour * pLight->m_fLightScale;
 
@@ -815,7 +791,7 @@ int LightManager::GetNearestLights(Scene* pScene, Vector vPosition, float fRadiu
     while (i < 3)
     {
         int nSlot = i++;
-        ASLgl::glDisable(GL_LIGHT1 + nSlot);
+        GLRender::DisableLight(nSlot + 1);
     }
 
     return nLights;
@@ -838,7 +814,7 @@ void LightManager::PrioritizeLights(const Vector& vPosition, bool bIgnoreIllumin
         vDelta.y = pLight->m_vWorldPosition.y - vPosition.y;
         vDelta.z = 0.0f;
 
-        if (!equal(pLight->m_vLightColour, vZero) && pLight->m_fLightRadius > 0.0f)
+        if (pLight->m_vLightColour != vZero && pLight->m_fLightRadius > 0.0f)
             pLight->m_fDistanceRatio = magnitude(vDelta) / pLight->m_fLightRadius;
         else
             pLight->m_fDistanceRatio = 100000.0f;
@@ -865,10 +841,8 @@ void LightManager::PrioritizeIllumination(bool bIgnoreIllumination)
         if (pLight->m_fLightRadius == 0.0f)
             continue;
 
-        if (equal(pLight->m_vLightColour, vZero))
-            continue;
-
-        m_renderLights.Add(m_enabledLights.m_pData[i]);
+        if (pLight->m_vLightColour != vZero)
+            m_renderLights.Add(m_enabledLights.m_pData[i]);
     }
 
     qsort(m_renderLights.m_pData, m_renderLights.m_count, sizeof(PartLight*), lightcmp);
@@ -1032,17 +1006,8 @@ int LightManager::DisableThisLight(PartLight* pLight)
     if (lights.Contains(pLight) == 0)
         return 0;
 
-    int nLight = GL_LIGHT0;
-    for (int64_t i = 0; i < lights.m_count; i++)
-    {
-        if (lights.m_pData[i] == pLight)
-        {
-            nLight = static_cast<int>(GL_LIGHT1 + i);
-            break;
-        }
-    }
-
-    ASLgl::glDisable(nLight);
+    int nIndex = lights.IndexOf(pLight);
+    GLRender::DisableLight(nIndex + 1);
     return 1;
 }
 
@@ -1059,17 +1024,8 @@ int LightManager::EnableThisLight(PartLight* pLight)
     if (lights.Contains(pLight) == 0)
         return 0;
 
-    int nLight = GL_LIGHT0;
-    for (int64_t i = 0; i < lights.m_count; i++)
-    {
-        if (lights.m_pData[i] == pLight)
-        {
-            nLight = static_cast<int>(GL_LIGHT1 + i);
-            break;
-        }
-    }
-
-    ASLgl::glEnable(nLight);
+    int nIndex = lights.IndexOf(pLight);
+    GLRender::EnableLight(nIndex + 1);
     return 1;
 }
 
@@ -1180,7 +1136,7 @@ void LightManager::ControlLightsFade(List<PartLight*>& fading, List<PartLight*>&
         float* pfWeight = bAlternateSet != 0 ? &pLight->m_fFadeWeightAlt : &pLight->m_fEmitterScale;
 
         if (wanted.Contains(pLight)) {
-            if (wanted.GetIndex(pLight) < nMax) {
+            if (wanted.IndexOf(pLight) < nMax) {
                 if (*pfWeight < 1.0f)
                     *pfWeight = min(1.0f, *pfWeight + DeltaT);
             } else {
@@ -1221,7 +1177,7 @@ void LightManager::ControlLightsFade(List<PartLight*>& fading, List<PartLight*>&
             PartLight* pLight = fading.m_pData[j - 1];
             if (!wanted.Contains(pLight))
                 break;
-            if (wanted.GetIndex(pLight) > nMax)
+            if (wanted.IndexOf(pLight) > nMax)
                 break;
         }
         if (j <= 0)
@@ -1262,22 +1218,17 @@ void LightManager::ControlLightsFade(List<PartLight*>& fading, List<PartLight*>&
         PartLight* pLight = fading.m_pData[nSlot];
         float fWeight = bAlternateSet != 0 ? pLight->m_fFadeWeightAlt : pLight->m_fEmitterScale;
 
-        Vector vColour;
-        vColour.x = fWeight * pLight->m_vLightColour.x * pLight->m_fLightScale;
-        vColour.y = fWeight * pLight->m_vLightColour.y * pLight->m_fLightScale;
-        vColour.z = fWeight * pLight->m_vLightColour.z * pLight->m_fLightScale;
+        Vector vColour = pLight->m_vLightColour * fWeight * pLight->m_fLightScale;
         if (vColour.x < 0.0f)
             containsnegative = 1;
 
-        // inlined GLRender::EnableLight(int)
-        ASLgl::glEnable(static_cast<unsigned int>(GL_LIGHT1 + nSlot));
+        GLRender::EnableLight(static_cast<int>(nSlot) + 1);
         SetLightGL(static_cast<int>(nSlot), fading.m_pData[nSlot]->m_vWorldPosition, vColour,
                    fading.m_pData[nSlot]->m_fLightRadius, fading.m_pData[nSlot]->m_nAmbientOnly);
     }
 
-    // inlined GLRender::DisableLight(int)
     for (unsigned int nOff = static_cast<unsigned int>(nSlot); nOff < 3; nOff++)
-        ASLgl::glDisable(GL_LIGHT1 + nOff);
+        GLRender::DisableLight(static_cast<int>(nOff) + 1);
 
     previous = wanted;
 }

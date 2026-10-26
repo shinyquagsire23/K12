@@ -1636,9 +1636,8 @@ void CSWCProjectile::AIUpdate()
                                     g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(
                                         pTargetObject->AsSWCCreature()->GetEquippedItemID(CSWInventory::SLOT_LEFTWEAPON));
                                 if (pItem != 0 &&
-                                    g_pRules->m_pBaseItemArray
-                                            ->GetBaseItem(pItem->m_baseItem)
-                                            ->m_weaponWieldType == CSWBaseItem::WEAPON_WIELD_NONE) {
+                                    g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType
+                                        == CSWBaseItem::WEAPON_WIELD_NONE) {
                                     if (pTargetObject->m_bNoProjectileAttach == 0)
                                         pOtherModel = static_cast<CAurObject*>(pItem->GetModel(ANIM_MODEL_BODY, 1));
                                     else

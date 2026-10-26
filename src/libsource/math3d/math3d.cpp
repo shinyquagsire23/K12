@@ -250,7 +250,7 @@ void Vector::Normalize()
 
 bool isnormalized(const Vector& v)
 {
-    float fLen2 = v.x * v.x + v.y * v.y + v.z * v.z;
+    float fLen2 = dot(v, v);
     return fLen2 >= 0.99 && fLen2 <= 1.01;
 }
 
@@ -261,12 +261,11 @@ Vector planelineintersection(const Vector& vNormal, float fDist, const Vector& v
     static Vector dif;
     dif = vLineEnd - vLineStart;
 
-    float fDenom = vNormal.x * dif.x + vNormal.y * dif.y + vNormal.z * dif.z;
+    float fDenom = dot(vNormal, dif);
     float fT = 0.0f;
     if (fDenom != 0.0f)
     {
-        fT = -(vNormal.x * vLineStart.x + vNormal.y * vLineStart.y + vNormal.z * vLineStart.z
-               + fDist) / fDenom;
+        fT = -(dot(vNormal, vLineStart) + fDist) / fDenom;
     }
     return vLineStart + dif * fT;
 }
@@ -301,7 +300,7 @@ float PlaneHeightAtPoint(const Vector& vNormal, float fDist, const Vector& vPoin
 
 Vector planeproject(const Vector& vNormal, float fDist, const Vector& vPoint)
 {
-    float fDot = vPoint.x * vNormal.x + vPoint.y * vNormal.y + vPoint.z * vNormal.z + fDist;
+    float fDot = dot(vPoint, vNormal) + fDist;
     return vPoint - vNormal * fDot;
 }
 
@@ -706,9 +705,7 @@ Quaternion YawPitchRoll(float yaw, float pitch, float roll)
 float Yaw(const Quaternion& q)
 {
     static Vector v;
-    v.x = 2.0f * (q.x * q.y - q.w * q.z);
-    v.y = 1.0f - 2.0f * (q.x * q.x + q.z * q.z);
-    v.z = 2.0f * (q.x * q.w + q.y * q.z);
+    v = q.ydir();
     if (v.x == 0.0f && v.y == 0.0f)
         return 0.0f;
     return atan2f(-v.x, v.y) * 57.295776f;
@@ -717,9 +714,7 @@ float Yaw(const Quaternion& q)
 float Pitch(const Quaternion& q)
 {
     static Vector v;
-    v.x = 2.0f * (q.x * q.y - q.w * q.z);
-    v.y = 1.0f - 2.0f * (q.x * q.x + q.z * q.z);
-    v.z = 2.0f * (q.x * q.w + q.y * q.z);
+    v = q.ydir();
     return atan2f(v.z, sqrtf(v.x * v.x + v.y * v.y)) * 57.295776f;
 }
 
@@ -893,6 +888,24 @@ enum : unsigned int {
     BOX_START_INSIDE = 0xffffffff,
 };
 
+// The point's outcode against the box: one bit per slab face it lies beyond.
+inline void SetOpCode(const Vector& vPoint, const Vector& vMin, const Vector& vMax, unsigned char& nCode)
+{
+    nCode = 0;
+    if (vPoint.x < vMin.x)
+        nCode |= OUTCODE_MIN_X;
+    else if (vPoint.x > vMax.x)
+        nCode |= OUTCODE_MAX_X;
+    if (vPoint.y < vMin.y)
+        nCode |= OUTCODE_MIN_Y;
+    else if (vPoint.y > vMax.y)
+        nCode |= OUTCODE_MAX_Y;
+    if (vPoint.z < vMin.z)
+        nCode |= OUTCODE_MIN_Z;
+    else if (vPoint.z > vMax.z)
+        nCode |= OUTCODE_MAX_Z;
+}
+
 bool BoxInside(const Vector& vPoint, const Vector& vMin, const Vector& vMax)
 {
     // Ordered >=/<= chain so a NaN coordinate fails every test.
@@ -904,36 +917,13 @@ bool BoxInside(const Vector& vPoint, const Vector& vMin, const Vector& vMax)
 unsigned int BoxIntersect(const Vector& a, const Vector& b, const Vector& vMin,
                           const Vector& vMax, Vector* pOut)
 {
-    int nOutA = 0;
-    if (a.x < vMin.x)
-        nOutA |= OUTCODE_MIN_X;
-    else if (a.x > vMax.x)
-        nOutA |= OUTCODE_MAX_X;
-    if (a.y < vMin.y)
-        nOutA |= OUTCODE_MIN_Y;
-    else if (a.y > vMax.y)
-        nOutA |= OUTCODE_MAX_Y;
-    if (a.z < vMin.z)
-        nOutA |= OUTCODE_MIN_Z;
-    else if (a.z > vMax.z)
-        nOutA |= OUTCODE_MAX_Z;
-
+    unsigned char nOutA;
+    SetOpCode(a, vMin, vMax, nOutA);
     if (nOutA == 0)
         return BOX_START_INSIDE;
 
-    int nOutB = 0;
-    if (b.x < vMin.x)
-        nOutB |= OUTCODE_MIN_X;
-    else if (b.x > vMax.x)
-        nOutB |= OUTCODE_MAX_X;
-    if (b.y < vMin.y)
-        nOutB |= OUTCODE_MIN_Y;
-    else if (b.y > vMax.y)
-        nOutB |= OUTCODE_MAX_Y;
-    if (b.z < vMin.z)
-        nOutB |= OUTCODE_MIN_Z;
-    else if (b.z > vMax.z)
-        nOutB |= OUTCODE_MAX_Z;
+    unsigned char nOutB;
+    SetOpCode(b, vMin, vMax, nOutB);
 
     if ((nOutA & nOutB) != 0)
         return 0;
@@ -1011,24 +1001,13 @@ unsigned int BoxIntersect(const Vector& a, const Vector& b, const Vector& vMin,
 
 unsigned int BoxIntersect(const Vector& a, const Vector& b, const Vector& vMin, const Vector& vMax)
 {
-    int nOutA = 0;
-    if (a.x < vMin.x) nOutA |= OUTCODE_MIN_X;
-    else if (a.x > vMax.x) nOutA |= OUTCODE_MAX_X;
-    if (a.y < vMin.y) nOutA |= OUTCODE_MIN_Y;
-    else if (a.y > vMax.y) nOutA |= OUTCODE_MAX_Y;
-    if (a.z < vMin.z) nOutA |= OUTCODE_MIN_Z;
-    else if (a.z > vMax.z) nOutA |= OUTCODE_MAX_Z;
-
+    unsigned char nOutA;
+    SetOpCode(a, vMin, vMax, nOutA);
     if (nOutA == 0)
         return BOX_START_INSIDE;
 
-    int nOutB = 0;
-    if (b.x < vMin.x) nOutB |= OUTCODE_MIN_X;
-    else if (b.x > vMax.x) nOutB |= OUTCODE_MAX_X;
-    if (b.y < vMin.y) nOutB |= OUTCODE_MIN_Y;
-    else if (b.y > vMax.y) nOutB |= OUTCODE_MAX_Y;
-    if (b.z < vMin.z) nOutB |= OUTCODE_MIN_Z;
-    else if (b.z > vMax.z) nOutB |= OUTCODE_MAX_Z;
+    unsigned char nOutB;
+    SetOpCode(b, vMin, vMax, nOutB);
 
     if ((nOutA & nOutB) != 0)
         return 0;
@@ -1112,8 +1091,8 @@ float DistanceBetweenLines(const Vector& p1, const Vector& d1, const Vector& p2,
     cp = cross(d1, d2);
     cp.Normalize();
 
-    float fDot1 = cp.x * p1.x + cp.y * p1.y + cp.z * p1.z;
-    float fDot2 = cp.x * p2.x + cp.y * p2.y + cp.z * p2.z;
+    float fDot1 = dot(cp, p1);
+    float fDot2 = dot(cp, p2);
     float fDist = fDot2 - fDot1;
     if (fDist < 0.0f)
         fDist = -fDist;
@@ -1293,7 +1272,7 @@ void MakeMatrix4x4Transpose(float* pOut, const Vector& vPos, const Quaternion& q
     pOut[12] = vPos.x;   pOut[13] = vPos.y;   pOut[14] = vPos.z;   pOut[15] = 1.0f;
 }
 
-const float* Homogenize(const Vector& v, const float& f)
+float* Homogenize(const Vector& v, const float& f)
 {
     static float a[4];
     *reinterpret_cast<Vector*>(a) = v;

@@ -111,7 +111,7 @@ int CExoSoundSourceInternal::Demand()
         m_resRef.CopyToString(sName);
 
         m_pAudioSystem->CreateSound(sName.CStr(), static_cast<int>(m_pRes->GetID()), m_pRes->GetData(),
-                                    m_pRes->GetSize(), m_b3D, m_bLooping);
+                                    GetSize(), m_b3D, m_bLooping);
     }
 
     return m_bLoaded;

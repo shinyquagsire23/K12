@@ -130,25 +130,25 @@ void CSWGuiDialog::SetReplyActive(CSWGuiControl* pControl)
 #ifndef K2_UI_TOUCH
 #ifdef K2_UI_XBOX
     if (ASLPlat_IsControllerPlugged()) {
-        static_cast<CSWGuiLabel*>(pControl->AsLabel())->m_text.m_params.SetColor(CGuiInGame::COLOR_YELLOW);
+        pControl->AsLabel()->m_text.m_params.SetColor(CGuiInGame::COLOR_YELLOW);
         return;
     }
 #endif
 #if KOTOR1  // K1 caches no highlight colour and uses the selection yellow
-    static_cast<CSWGuiLabel*>(pControl->AsLabel())->m_text.m_params.SetColor(CGuiInGame::COLOR_YELLOW);
+    pControl->AsLabel()->m_text.m_params.SetColor(CGuiInGame::COLOR_YELLOW);
 #else
-    static_cast<CSWGuiLabel*>(pControl->AsLabel())->m_text.m_params.SetColor(m_vColorNewHighlight);
+    pControl->AsLabel()->m_text.m_params.SetColor(m_vColorNewHighlight);
 #endif
 #else
     if (ASLPlat_IsControllerPlugged())
-        static_cast<CSWGuiLabel*>(pControl->AsLabel())->m_text.m_params.SetColor(CGuiInGame::COLOR_YELLOW);
+        pControl->AsLabel()->m_text.m_params.SetColor(CGuiInGame::COLOR_YELLOW);
 #endif
 }
 
 // Restores the reply's resting text colour.
 void CSWGuiDialog::SetReplyInactive(CSWGuiControl* pControl)
 {
-    static_cast<CSWGuiLabel*>(pControl->AsLabel())->m_text.m_params.SetColor(m_vColorNewText);
+    pControl->AsLabel()->m_text.m_params.SetColor(m_vColorNewText);
 }
 
 #if !KOTOR1  // K2 only
@@ -353,8 +353,7 @@ void CSWGuiDialog::SetReplies(int n, CExoString* pa, unsigned int* pb, int c, in
     }
 
     m_nMessageFlags &= ~DIALOGMSG_SHOWING_LINE;
-    m_pGuiManager->HandleMouseMove(m_pGuiManager->m_currentMousePos.x,
-                                   m_pGuiManager->m_currentMousePos.y);
+    m_pGuiManager->UpdateMouseMove();
 }
 
 // The reply list's rectangle in the 1024x768 iPad design grid.
@@ -565,6 +564,7 @@ CSWGuiDialogComputer::CSWGuiDialogComputer(CSWGuiManager* pGuiManager)
     InitControl(m_aBarLabels[9], CExoString("LBL_BAR10"), 1, 1, 0, 0, 0);
     StopLoadFromLayout();
 
+    int i;
     m_aInfo[0].m_labelCaption.m_text.m_params.SetStrRef(
         g_pRules->m_paSkills[0].m_nNameStrRef);
     m_aInfo[1].m_labelCaption.m_text.m_params.SetStrRef(
@@ -574,13 +574,13 @@ CSWGuiDialogComputer::CSWGuiDialogComputer(CSWGuiManager* pGuiManager)
     // cloned off that list box's prototype row. Event 0 fires when a reply becomes active, 1 when
     // it goes inactive.
     CSWGuiLabel* pProtoLabel = static_cast<CSWGuiLabel*>(CSWGuiDialog::m_listBox.m_pProtoItem);
-    for (int i = 0; i < 30; i++)
+    for (i = 0; i < 30; i++)
     {
-        CSWGuiExtent replyExtent(0, 0,
-                                 CSWGuiDialog::m_listBox.m_innerExtent.w
-                                     - CSWGuiDialog::m_listBox.m_nPadding * 2,
-                                 20);
-        m_replyLabels[i].Initialize(replyExtent, pProtoLabel, 1.0f);
+        m_replyLabels[i].Initialize(CSWGuiExtent(0, 0,
+                                                 CSWGuiDialog::m_listBox.m_innerExtent.w
+                                                     - CSWGuiDialog::m_listBox.m_nPadding * 2,
+                                                 20),
+                                    pProtoLabel, 1.0f);
         m_replyLabels[i].AddEvent(SWGUIEVENT_FOCUS, this,
                                   static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDialog::SetReplyActive));
         m_replyLabels[i].AddEvent(SWGUIEVENT_UNFOCUS, this,
@@ -598,7 +598,7 @@ CSWGuiDialogComputer::CSWGuiDialogComputer(CSWGuiManager* pGuiManager)
 #ifdef K2_UI_TOUCH
     // The sixteen touch reply buttons, one 60x60 tile per reply.
     CSWGuiExtent extent(m_extent);
-    for (int i = 0; i < 16; i++)
+    for (i = 0; i < 16; i++)
     {
         char szName[256];
         sprintf(szName, "ios_reply_%d", i + 1);
@@ -1532,6 +1532,9 @@ CSWGuiDialogCinematic::CSWGuiDialogCinematic(CSWGuiManager* pGuiManager)
 #ifdef K2_QOL_IMPROVEMENTS
     K2QolDialogText qolText;
 #endif
+    int nMarginX;
+    int nMarginY;
+
     m_vColorNewText = CGuiInGame::COLOR_NEW_TEXT;
     m_vColorNewHighlight = CGuiInGame::COLOR_NEW_HIGHLIGHT;
 
@@ -1584,8 +1587,6 @@ CSWGuiDialogCinematic::CSWGuiDialogCinematic(CSWGuiManager* pGuiManager)
     g_nGUIHeight = nSavedGUIHeight;
 #endif
 
-    int nMarginX;
-    int nMarginY;
     m_pGuiManager->GetSafeMargin(nMarginX, nMarginY);
 
     // On a sub-1024-wide screen the reply list keeps the port's 100-pixel height.
@@ -1602,11 +1603,12 @@ CSWGuiDialogCinematic::CSWGuiDialogCinematic(CSWGuiManager* pGuiManager)
     // The reply list occupies a centred band, full width minus the two safe margins, with its top
     // at the midpoint of the letterboxed area (2.333333f is the port's 21:9 letterbox divisor,
     // shared with CSWGuiDialogTop).
-    CSWGuiExtent extent(nMarginX,
-                        (static_cast<int>(static_cast<float>(m_pGuiManager->m_nScreenWidth) / 2.333333f)
-                         + m_pGuiManager->m_nScreenHeight) / 2,
-                        m_pGuiManager->m_nScreenWidth - nMarginX * 2,
-                        100);
+    CSWGuiExtent extent;
+    extent.x = nMarginX;
+    extent.y = (static_cast<int>(static_cast<float>(m_pGuiManager->m_nScreenWidth) / 2.333333f)
+                + m_pGuiManager->m_nScreenHeight) / 2;
+    extent.w = m_pGuiManager->m_nScreenWidth - nMarginX * 2;
+    extent.h = 100;
 
     float fScale = GetResolutionTextScalar();
     float fMaxY = static_cast<float>(m_pGuiManager->m_nScreenHeight) - fScale * 100.0f;
@@ -1630,12 +1632,12 @@ CSWGuiDialogCinematic::CSWGuiDialogCinematic(CSWGuiManager* pGuiManager)
     // The reply labels are as wide as the list's inner rectangle and twenty scaled pixels tall,
     // cloned off the list's prototype row. Event 0 fires when a reply becomes active, 1 when it
     // goes inactive.
+    CSWGuiLabel* pProtoLabel = static_cast<CSWGuiLabel*>(m_listBox.m_pProtoItem);
     for (int i = 0; i < 30; i++)
     {
-        CSWGuiExtent replyExtent(0, 0,
-                                 m_listBox.m_innerExtent.w - m_listBox.m_nPadding * 2,
-                                 static_cast<int>(GetResolutionTextScalar() * 20.0f));
-        m_replyLabels[i].Initialize(replyExtent, static_cast<CSWGuiLabel*>(m_listBox.m_pProtoItem), 1.0f);
+        int nHeight = static_cast<int>(GetResolutionTextScalar() * 20.0f);
+        m_replyLabels[i].Initialize(CSWGuiExtent(0, 0, m_listBox.m_innerExtent.w - m_listBox.m_nPadding * 2, nHeight),
+                                    pProtoLabel, 1.0f);
         m_replyLabels[i].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDialog::SetReplyActive));
         m_replyLabels[i].AddEvent(SWGUIEVENT_UNFOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDialog::SetReplyInactive));
     }
@@ -2167,10 +2169,10 @@ CSWGuiDialogTop::CSWGuiDialogTop(CSWGuiManager* pGuiManager, const CResRef& resR
     for (int i = 0; i < 16; i++)
     {
         char sImage[256];
+        CSWGuiExtent extent(940, 160 + i * 63, g_nReplyButtonWidth, g_nReplyButtonHeight);
         sprintf(sImage, "ios_reply_%d", i + 1);
 
-        m_replyButtons[i].SetExtent(CSWGuiExtent(940, 160 + i * 63,
-                                                 g_nReplyButtonWidth, g_nReplyButtonHeight));
+        m_replyButtons[i].SetExtent(extent);
         m_replyButtons[i].m_text.m_params.SetText(CExoString(""));
         m_replyButtons[i].m_tail.m_nUserData = i;
         m_replyButtons[i].m_border.m_params.SetFillImage(CResRef(sImage), 0);

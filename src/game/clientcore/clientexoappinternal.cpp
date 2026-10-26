@@ -1628,18 +1628,7 @@ void CClientExoAppInternal::DisplayMainMenu(int n)
     {
         if (m_pSWGuiManager->PanelExists(static_cast<CSWGuiPanel*>(m_pStartScreen)))
         {
-            CSWGuiPanel* pStart = static_cast<CSWGuiPanel*>(m_pStartScreen);
-#if KOTOR1  // no panel chain, one stamp (state bits one higher)
-            pStart->m_stateFlags = static_cast<unsigned short>(
-                (pStart->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-#else
-            do
-            {
-                pStart->m_stateFlags = static_cast<unsigned short>(
-                    (pStart->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-                pStart = pStart->m_pNextInChain;
-            } while (pStart != 0);
-#endif
+            static_cast<CSWGuiPanel*>(m_pStartScreen)->SetToBeDeleted(0);
         }
         else
         {
@@ -1661,12 +1650,7 @@ void CClientExoAppInternal::DisplayMainMenu(int n)
         }
 
         CSWGuiPanel* pChain = *reinterpret_cast<CSWGuiPanel* volatile*>(&m_pMainMenuPanel);
-        do
-        {
-            pChain->m_stateFlags = static_cast<unsigned short>(
-                (pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-            pChain = pChain->m_pNextInChain;
-        } while (pChain != 0);
+        pChain->SetToBeDeleted(0);
         m_pMainMenuPanel = 0;
     }
 #endif
@@ -1873,7 +1857,7 @@ void CClientExoAppInternal::SetHitcheckIgnoreList(List<CAurObject*>* pList)
                                 pCreature->GetEquippedItemID(EQUIP_SLOT_RIGHT_WEAPON));
                             if (pWeapon) {
                                 int nBaseItem = pWeapon->m_baseItem;
-                                g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+                                g_pRules->GetBaseItem(nBaseItem);
                                 if (pWeapon->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1))
                                     pList->Add(static_cast<CAurObject*>(pWeapon->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1)));
                             }
@@ -2033,18 +2017,6 @@ CGameObject* CClientExoAppInternal::GetGameObject(unsigned long long id)
 }
 #endif
 
-static inline CGameObject* LookupGameObject(CClientExoAppInternal* pApp, unsigned long long id)
-{
-    CGameObject* pObject = 0;
-#if KOTOR1  // the object counts only when the lookup returns SUCCESS
-    if (pApp->m_pGameObjectArray->GetGameObject(id, &pObject) != CGameObjectArray::SUCCESS)
-        return 0;
-#else
-    pApp->m_pGameObjectArray->GetGameObject(id, &pObject);
-#endif
-    return pObject;
-}
-
 int CClientExoAppInternal::GetObjectName(unsigned long long objectId, CExoString& outName)
 {
     CExoLinkedListNode* pNode;
@@ -2052,7 +2024,7 @@ int CClientExoAppInternal::GetObjectName(unsigned long long objectId, CExoString
     CGameObject* pGameObject;
     CSWCPlayer* pPlayer;
     STR_RES sReply;
-    pGameObject = LookupGameObject(this, objectId);
+    pGameObject = GetGameObject(objectId);
 
     if (!pGameObject) {
         pNode = m_playerList.m_pInternal->m_pHead;
@@ -2389,8 +2361,8 @@ void CClientExoAppInternal::UpdateCamera(float fFrameTime)
         float fB = pCamera->GetPitch();
         float fC = pCamera->GetYaw();
         CExoString sCapture;
-        CWorldTimer* pWorldTimer = g_pAppManager->m_pClientExoApp->GetWorldTimer();
-        unsigned long long uTime = static_cast<unsigned long long>(pWorldTimer->GetSnapshotTime());
+        unsigned long long uTime = static_cast<unsigned long long>(
+            g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime());
         sCapture.Format(const_cast<char*>("%d %c %f %f %f\n"), uTime / 1000, 'V', fA, fB, fC);
         static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())->Write(sCapture);
         m_pModule->m_bCameraMoved = 0;
@@ -2565,8 +2537,8 @@ done_zoom:
         float fB = pCamera->GetPitch();
         float fC = pCamera->GetYaw();
         CExoString sCapture;
-        CWorldTimer* pWorldTimer = g_pAppManager->m_pClientExoApp->GetWorldTimer();
-        unsigned long long uTime = static_cast<unsigned long long>(pWorldTimer->GetSnapshotTime());
+        unsigned long long uTime = static_cast<unsigned long long>(
+            g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime());
         sCapture.Format(const_cast<char*>("%d %c %f %f %f\n"), uTime / 1000, 'V', fA, fB, fC);
         static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())->Write(sCapture);
         m_pModule->m_bCameraMoved = 0;
@@ -2804,12 +2776,7 @@ int CClientExoAppInternal::AddMovieToExoArrayList(const CExoString& sMovie,
             delete pFile;
             pFile = 0;
             sAlias.Format(const_cast<char*>("LIVE%d"), i);
-            const CExoString& path = g_pExoBase->m_pAliasList->GetAliasPath(sAlias, 0);
-#if KOTOR1
-            if (path.GetLength() != 0) {
-#else
-            if (path.m_sString != 0 && static_cast<unsigned int>(strlen(path.m_sString)) != 0) {
-#endif
+            if (g_pExoBase->m_pAliasList->GetAliasPath(sAlias, 0).GetLength() != 0) {
                 sResolved.Format(const_cast<char*>("LIVE%d:movies\\%s"), i, sMovie.CStr());
                 pFile = new CExoFile(sResolved, RESTYPE_BIK, "rb");
                 if (pFile->FileOpened())
@@ -3399,9 +3366,10 @@ void CClientExoAppInternal::InitializeClientOptions()
                           CExoString("EnableHardwareMouse"));
     }
 #else
+    int nConsent;
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                          CExoString("PrivacyConsent"))) {
-        int nConsent = sValue.AsINT();
+        nConsent = sValue.AsINT();
         g_PrivacyChecked = 1;
         g_PrivacyConsentGiven = nConsent != 0;
         // The SDKs get the flag re-read from memory.
@@ -4227,7 +4195,7 @@ void CClientExoAppInternal::SetEventDescriptions()
         // The .ini override wins first.
         int key = 0;
         if (ini.ReadIniEntry(value, CExoString(".\\swkotor2.ini"), CExoString("Keymapping"), row)) {
-            key = value.m_sString ? atoi(value.m_sString) & 0xff : 0;
+            key = value.AsINT() & 0xff;
             if (key != 0 && used[key])
                 continue;
 
@@ -4302,7 +4270,7 @@ void CClientExoAppInternal::SetEventDescriptions()
         int keyB = -1;
 
         if (ini.ReadIniEntry(value, CExoString(".\\swkotor2.ini"), CExoString("Keymapping"), row)) {
-            keyA = value.m_sString ? atoi(value.m_sString) & 0xff : 0;
+            keyA = value.AsINT() & 0xff;
         } else {
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
             if (pkm) {
@@ -4316,7 +4284,7 @@ void CClientExoAppInternal::SetEventDescriptions()
 
         row = (CExoString("Action") + CExoString(i)) + CExoString("B");
         if (ini.ReadIniEntry(value, CExoString(".\\swkotor2.ini"), CExoString("Keymapping"), row)) {
-            keyB = value.m_sString ? atoi(value.m_sString) & 0xff : 0;
+            keyB = value.AsINT() & 0xff;
         } else {
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
             if (pkm) {
@@ -4457,9 +4425,7 @@ void CClientExoAppInternal::ShowLoadScreen(int bFade, int bMusic, int bPauseMusi
             g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_PAUSE_ALL_BUT_MUSIC, 0);
     }
 
-    if (m_bLoadScreenNameSet != 0 &&
-        m_loadScreenName.m_sString != 0 &&
-        static_cast<unsigned int>(strlen(m_loadScreenName.m_sString)) != 0)
+    if (m_bLoadScreenNameSet != 0 && m_loadScreenName.GetLength() != 0)
     {
         CSWGuiLoadScreen* pLoadScreen = m_pLoadScreenObj;
         if (pLoadScreen == 0)
@@ -4470,7 +4436,7 @@ void CClientExoAppInternal::ShowLoadScreen(int bFade, int bMusic, int bPauseMusi
 
         pLoadScreen->SetImage(CResRef(m_loadScreenName));
 
-        m_pLoadScreenObj->m_lblLoading.m_text.m_params.SetStrRef(bPauseMusic != 0 ? STRREF_SAVING : STRREF_LOADING);
+        m_pLoadScreenObj->SetSaving(bPauseMusic);
         {
             CSWGuiControlTail* pFlags = &m_pLoadScreenObj->m_lblLoading.m_tail;
             pFlags->bVisible = static_cast<unsigned char>(bShow);
@@ -4517,7 +4483,7 @@ void CClientExoAppInternal::ShowLoadScreen(int bFade, int bMusic, int bPauseMusi
             m_pLoadScreenObj = pLoadScreen;
         }
         pLoadScreen->SetImage(CResRef(m_loadScreenName));
-        m_pLoadScreenObj->m_lblLoading.m_text.m_params.SetStrRef(bPauseMusic != 0 ? STRREF_SAVING : STRREF_LOADING);
+        m_pLoadScreenObj->SetSaving(bPauseMusic);
 
         if (m_pSWGuiManager)
         {
@@ -5317,7 +5283,7 @@ void CClientExoAppInternal::InitializeSoundOptions()
     int nInit = 0;
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                          CExoString("Sound Init")))
-        nInit = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        nInit = sValue.AsINT();
     sValue.Format(const_cast<char *>("%d"), 1);
     ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                       CExoString("Sound Init"));
@@ -5330,13 +5296,13 @@ void CClientExoAppInternal::InitializeSoundOptions()
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                          CExoString("Number 2D Voices")))
-        n2DVoices = sValue.m_sString ? static_cast<unsigned char>(atoi(sValue.m_sString)) : 0;
+        n2DVoices = static_cast<unsigned char>(sValue.AsINT());
     else
         n2DVoices = 64;
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                          CExoString("Number 3D Voices")))
-        n3DVoices = sValue.m_sString ? static_cast<unsigned char>(atoi(sValue.m_sString)) : 0;
+        n3DVoices = static_cast<unsigned char>(sValue.AsINT());
     else
         n3DVoices = 64;
 
@@ -5346,7 +5312,7 @@ void CClientExoAppInternal::InitializeSoundOptions()
     } else {
         if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"),
                              CExoString("Sound Options"), CExoString("EAX")))
-            nEAXLevel = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+            nEAXLevel = sValue.AsINT();
         else
             nEAXLevel = 3;
         nForceSoftware = 0;
@@ -5358,16 +5324,16 @@ void CClientExoAppInternal::InitializeSoundOptions()
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                          CExoString("Environment Effects Nonstreaming")))
         g_pExoSound->EnableNonStreamingEnvironmentEffects(
-            sValue.m_sString ? atoi(sValue.m_sString) : 0);
+            sValue.AsINT());
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                          CExoString("Environment Effects Streaming")))
         g_pExoSound->EnableStreamingEnvironmentEffects(
-            sValue.m_sString ? atoi(sValue.m_sString) : 0);
+            sValue.AsINT());
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                          CExoString("2D3D Bias")))
-        g_pExoSound->Set2D3DBias(sValue.m_sString ? static_cast<float>(atof(sValue.m_sString)) : 0.0f);
+        g_pExoSound->Set2D3DBias(sValue.AsFLOAT());
 
     sValue.Format(const_cast<char *>("%d"), g_pExoSound->GetEAX());
     ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
@@ -5905,11 +5871,7 @@ int CClientExoAppInternal::GetClientRangedAnimation(unsigned long long nObjId, i
 void CClientExoAppInternal::SetLoadScreenByModuleName(const CExoString& a)
 {
     CExoString sLoading;
-#if KOTOR1
     if (a.GetLength())
-#else
-    if (a.m_sString && static_cast<unsigned int>(strlen(a.m_sString)))
-#endif
     {
         if (g_pRules->m_p2DArrays->m_pAreaTransition->GetCExoStringEntry(a, CExoString("BMPResRef"), &sLoading) == 0)
         {
@@ -5939,11 +5901,7 @@ CExoString CClientExoAppInternal::GetLoadMusicByModuleName(const CExoString& a)
 {
     CExoString sRet;
     C2DA* pLoadscreens;
-#if KOTOR1
     if (a.GetLength())
-#else
-    if (a.m_sString && static_cast<unsigned int>(strlen(a.m_sString)))
-#endif
     {
         pLoadscreens = g_pRules->m_p2DArrays->m_pAreaTransition;
         if (pLoadscreens->GetCExoStringEntry(a, CExoString("MusicResRef"), &sRet) == 0)
@@ -6000,9 +5958,7 @@ void CClientExoAppInternal::UpdateLoadingScreenHint()
             goto lblDefault;
         {
             CExoString sModule = g_pAppManager->m_pServerExoApp->GetModuleName();
-            if (sModule.m_sString == 0)
-                goto lblDefault;
-            if (static_cast<int>(strlen(sModule.m_sString)) < 1)
+            if (sModule.GetLength() < 1)
                 goto lblDefault;
         }
         {
@@ -6761,11 +6717,7 @@ void CClientExoAppInternal::AddDownloadedResources()
         sLIVE.Format(const_cast<char*>("LIVE%d"), i);
 
         pPath = &g_pExoBase->m_pAliasList->GetAliasPath(sLIVE, 0);
-#if KOTOR1
         if (pPath->GetLength() != 0) {
-#else
-        if (pPath->m_sString != 0 && static_cast<unsigned int>(strlen(pPath->m_sString)) != 0) {
-#endif
             if (g_pExoResMan->Exists(CResRef(sLive), 2018, static_cast<unsigned int*>(0)) != 0) {
                 sLIVE.Format(const_cast<char*>("LIVE%d:live%d"), i, i);
                 g_pTlkTable->AddFile(sLIVE, i);
@@ -7714,13 +7666,7 @@ void CClientExoAppInternal::StopServices()
 
     DestroyQuestJournal();
 
-    if (m_pCharacterFileBuffer) {
-        delete[] m_pCharacterFileBuffer;
-        m_pCharacterFileBuffer = 0;
-    }
-
-    m_characterFileSize = 0;
-    m_characterFileSubDir = 0;
+    ResetCharacterFile();
 }
 
 
@@ -7968,28 +7914,20 @@ update_phase:
             m_fQueuedAnimDelay = 0.0f;
             if (m_queuedAnims.m_pInternal->m_pHead) {
                 CExoString sName;
-                CQueuedAnim* pAnim = m_queuedAnims.RemoveHead();
+                CQueuedAnim* pAnim;
+                float fB, fA;
+                Gob* pModel;
+                pAnim = m_queuedAnims.RemoveHead();
                 if (pAnim) {
-                    float fB, fA;
-#if KOTOR1
                     if (pAnim->m_sName.GetLength() >= 1) {
-#else
-                    const char* pName = pAnim->m_sName.m_sString;
-                    if (pName != 0 && static_cast<int>(strlen(pName)) >= 1) {
-#endif
                         pPlayer = GetPlayerCreature();
-                        Gob* pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+                        pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
                         pModel->GetAnimation(static_cast<char*>(pAnim->m_sName.CStr()), &fB, &fA);
                     } else {
                         // An entry with an empty name is named by its animation index.
+                        sName = GetPlayerCreature()->GetAnimationBase()->GetAnimationName(pAnim->m_nAnimation);
                         pPlayer = GetPlayerCreature();
-                        CSWCAnimBase* pAnimBase = pPlayer->GetAnimationBase();
-                        {
-                            CExoString sTmp(pAnimBase->GetAnimationName(pAnim->m_nAnimation));
-                            sName = sTmp;
-                        }
-                        pPlayer = GetPlayerCreature();
-                        Gob* pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+                        pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
                         pModel->GetAnimation(static_cast<char*>(sName.CStr()), &fB, &fA);
                     }
                     if (m_queuedAnims.m_pInternal->m_pHead && fA == -1.0f) {
@@ -7997,7 +7935,7 @@ update_phase:
                             pAnim = m_queuedAnims.RemoveHead();
                             if (pAnim) {
                                 pPlayer = GetPlayerCreature();
-                                Gob* pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+                                pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
                                 pModel->GetAnimation(static_cast<char*>(pAnim->m_sName.CStr()), &fB, &fA);
                             }
                         } while (m_queuedAnims.m_pInternal->m_pHead && fA == -1.0f);
@@ -8012,16 +7950,14 @@ update_phase:
 #else
                         {
                             CExoString sMsg;
-                            if (pAnim->m_sName.m_sString
-                                && static_cast<int>(strlen(pAnim->m_sName.m_sString)) >= 1)
+                            if (pAnim->m_sName.GetLength() >= 1)
                                 sMsg.Format(const_cast<char*>("Playing next anim in queue: %s"),
                                             pAnim->m_sName.CStr());
                             else
                                 sMsg.Format(const_cast<char*>("Playing next anim in queue: %s"), sName.CStr());
                             AurPostString(static_cast<char*>(sMsg.CStr()), 0, (g_nAnimMsgPos++ % 5) + 3, 3.0f);
                         }
-                        if (pAnim->m_sName.m_sString
-                            && static_cast<int>(strlen(pAnim->m_sName.m_sString)) > 0) {
+                        if (pAnim->m_sName.GetLength() > 0) {
 #endif
                             if (fA > 0.0f) {
                                 if (pAnim->m_nParam) {
@@ -8405,6 +8341,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
     CGuiInGame* pInGameGui = m_pInGameGui;
     CSWCCreature* pPlayer = GetPlayerCreature();
     int bCombat = 0;
+    unsigned long long oid;
 
     switch (nMsg) {
     case FEEDBACK_CANNOT_USE_SKILL:
@@ -8423,28 +8360,35 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = GetGUIString(0);
         break;
     case 4: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(1, pData->GetString(0));
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case 5: {
-        unsigned long long oid = pData->GetObjectID(0);
-        int nInt0 = pData->GetInteger(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        int nInt0;
+        oid = pData->GetObjectID(0);
+        nInt0 = pData->GetInteger(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(1, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(1, sObjectName);
+            g_pTlkTable->SetCustomToken(1, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(0, CExoString(nInt0));
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
@@ -8471,11 +8415,13 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
     {
         // locked door / placeable: play its "Locked" sound at the object, stamp the object's
         // feedback text, then post the generic "locked" line.
-        unsigned long long oid = pData->GetObjectID(0);
+        oid = pData->GetObjectID(0);
         CExoString sSound;
-        CSWCDoor* pDoor = g_pAppManager->m_pClientExoApp->GetDoorByGameObjectID(oid);
-        CSWCPlaceable* pPlaceable = g_pAppManager->m_pClientExoApp->GetPlaceableByGameObjectID(oid);
+        CSWCDoor* pDoor;
+        CSWCPlaceable* pPlaceable;
         int nSoundAppType;
+        pDoor = g_pAppManager->m_pClientExoApp->GetDoorByGameObjectID(oid);
+        pPlaceable = g_pAppManager->m_pClientExoApp->GetPlaceableByGameObjectID(oid);
         if (pDoor != 0) {
             if (pDoor->m_nAppearance != 0)
                 g_pRules->m_p2DArrays->m_pDoorTypes->GetINTEntry(
@@ -8485,11 +8431,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
                     pDoor->m_nGenericType, CTwoDimArrays::COL2DA_GENERICDOORS_SOUNDAPPTYPE, &nSoundAppType);
             g_pRules->m_p2DArrays->m_pPlaceableSounds->GetCExoStringEntry(
                 nSoundAppType, CTwoDimArrays::COL2DA_PLACEABLESOUNDS_LOCKED, &sSound);
-#if KOTOR1
             if (sSound.GetLength() > 0)
-#else
-            if (sSound.m_sString != 0 && static_cast<int>(strlen(sSound.m_sString)) > 0)
-#endif
                 g_pExoSound->Play3DOneShotSound(CResRef(sSound), pDoor->m_position, 1.5f,
                                                 PRIORITY_GROUP_SINGLE_SHOT_POSITIONAL, 0, 0, 0.0f, 0.0f);
             pDoor->SetFeedbackInfo(GetGUIString(STRREF_LOCKED));
@@ -8498,11 +8440,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
                 pPlaceable->m_nAppearanceType, CTwoDimArrays::COL2DA_PLACEABLES_SOUNDAPPTYPE, &nSoundAppType);
             g_pRules->m_p2DArrays->m_pPlaceableSounds->GetCExoStringEntry(
                 nSoundAppType, CTwoDimArrays::COL2DA_PLACEABLESOUNDS_LOCKED, &sSound);
-#if KOTOR1
             if (sSound.GetLength() > 0)
-#else
-            if (sSound.m_sString != 0 && static_cast<int>(strlen(sSound.m_sString)) > 0)
-#endif
                 g_pExoSound->Play3DOneShotSound(CResRef(sSound), pPlaceable->m_position, 0.0f,
                                                 PRIORITY_GROUP_SINGLE_SHOT_POSITIONAL,
                                                 0, 0, 0.0f, 0.0f);
@@ -8542,26 +8480,32 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = GetGUIString(STRREF_CANNOT_USE_ITEM);
         break;
     case FEEDBACK_PARTY_NEW_LEADER: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_NOW_PARTY_LEADER, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_MEMBER_KICKED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
@@ -8569,7 +8513,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = GetGUIString(0);
         break;
     case FEEDBACK_PARTY_INVITATION_PENDING: {
-        unsigned long long oid = pData->GetObjectID(0);
+        oid = pData->GetObjectID(0);
         if (GetObjectName(oid, sObjectName) != 0)
             g_pTlkTable->SetCustomToken(0, sObjectName);
         else
@@ -8582,122 +8526,152 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         break;
     }
     case FEEDBACK_PARTY_INVITEE_INVITING: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_SENT_INVITATION: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_RECEIVED_INVITATION: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_JOINED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_JOINED_PARTY, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_INVITATION_IGNORED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_YOU_IGNORED_INVITATION: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_INVITATION_REJECTED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_YOU_REJECTED_INVITATION: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_INVITATION_EXPIRED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case FEEDBACK_PARTY_MEMBER_LEFT: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_LEFT_PARTY, 0, 0, 0);
         break;
     }
@@ -8705,39 +8679,48 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = GetGUIString(0);
         break;
     case 46: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case 47: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(1, pData->GetString(0));
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case 48: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
@@ -8781,9 +8764,10 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         // damage-immunity feedback: the flag word's lowest set damage-type bit picks the type
         // name (token 1); the creature's name is token 0. Combat log.
         CExoString sDamageType;
-        unsigned long long oid = pData->GetObjectID(0);
+        int nFlags;
+        oid = pData->GetObjectID(0);
         pData->GetInteger(0);  // result discarded
-        int nFlags = pData->GetInteger(1);
+        nFlags = pData->GetInteger(1);
         if (nFlags & (DAMAGE_TYPE_BLUDGEONING | DAMAGE_TYPE_PIERCING | DAMAGE_TYPE_SLASHING)) {
             g_pTlkTable->SetCustomToken(0, CExoString(""));
             sDamageType = g_pSWTlkTable->Fetch(STRREF_DAMAGE_AMOUNT_PHYSICAL, 0, 0, 0);
@@ -8821,42 +8805,53 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
             g_pTlkTable->SetCustomToken(0, CExoString(""));
             sDamageType = g_pSWTlkTable->Fetch(STRREF_DAMAGE_AMOUNT_POISON, 0, 0, 0);
         }
-        if (GetObjectName(oid, sObjectName) == 0)
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(1, sDamageType);
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_DAMAGE_RESISTED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        int nInt0 = pData->GetInteger(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        int nInt0;
+        oid = pData->GetObjectID(0);
+        nInt0 = pData->GetInteger(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(1, CExoString(nInt0));
         sMessage = g_pSWTlkTable->Fetch(STRREF_RESISTS_DAMAGE, 0, 0, 0);
         break;
     }
     case FEEDBACK_DAMAGE_REDUCED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        int nInt0 = pData->GetInteger(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        int nInt0;
+        oid = pData->GetObjectID(0);
+        nInt0 = pData->GetInteger(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(1, CExoString(nInt0));
         sMessage = g_pSWTlkTable->Fetch(STRREF_DAMAGE_AMOUNT_REDUCTION_ABSORBS, 0, 0, 0);
         break;
@@ -8865,32 +8860,42 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = GetGUIString(0);
         break;
     case FEEDBACK_DAMAGE_RESISTED_REMAINING: {
-        unsigned long long oid = pData->GetObjectID(0);
-        int nInt0 = pData->GetInteger(0);
-        int nInt1 = pData->GetInteger(1);
-        if (GetObjectName(oid, sObjectName) == 0)
+        int nInt0;
+        int nInt1;
+        oid = pData->GetObjectID(0);
+        nInt0 = pData->GetInteger(0);
+        nInt1 = pData->GetInteger(1);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(1, CExoString(nInt0));
         g_pTlkTable->SetCustomToken(2, CExoString(nInt1));
         sMessage = g_pSWTlkTable->Fetch(STRREF_DAMAGE_AMOUNT_RESISTANCE_ABSORBS_REMAINING, 0, 0, 0);
         break;
     }
     case FEEDBACK_DAMAGE_REDUCED_REMAINING: {
-        unsigned long long oid = pData->GetObjectID(0);
-        int nInt0 = pData->GetInteger(0);
-        int nInt1 = pData->GetInteger(1);
-        if (GetObjectName(oid, sObjectName) == 0)
+        int nInt0;
+        int nInt1;
+        oid = pData->GetObjectID(0);
+        nInt0 = pData->GetInteger(0);
+        nInt1 = pData->GetInteger(1);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(1, CExoString(nInt0));
         g_pTlkTable->SetCustomToken(2, CExoString(nInt1));
         sMessage = g_pSWTlkTable->Fetch(STRREF_DAMAGE_AMOUNT_REDUCTION_ABSORBS_REMAINING, 0, 0, 0);
@@ -8898,53 +8903,69 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
     }
     case FEEDBACK_SPELL_IMMUNITY:
     {
-        unsigned long long oid = pData->GetObjectID(0);
-        CSWSpell* pSpell = g_pRules->GetSpell(pData->GetInteger(0));
-        if (GetObjectName(oid, sObjectName) == 0)
+        int nSpell;
+        oid = pData->GetObjectID(0);
+        nSpell = pData->GetInteger(0);
+        CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pTlkTable->SetCustomToken(1, pSpell->GetSpellNameText());
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case 69: {
-        unsigned long long oid = pData->GetObjectID(0);
-        int nInt0 = pData->GetInteger(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        int nInt0;
+        oid = pData->GetObjectID(0);
+        nInt0 = pData->GetInteger(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pSWTlkTable->SetCustomToken(1, CExoString(nInt0));
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case 70: {
-        unsigned long long oid = pData->GetObjectID(0);
-        int nInt0 = pData->GetInteger(0);
-        int nInt1 = pData->GetInteger(1);
-        if (GetObjectName(oid, sObjectName) == 0)
+        int nInt0;
+        int nInt1;
+        oid = pData->GetObjectID(0);
+        nInt0 = pData->GetInteger(0);
+        nInt1 = pData->GetInteger(1);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         g_pSWTlkTable->SetCustomToken(1, CExoString(nInt0));
         g_pSWTlkTable->SetCustomToken(2, CExoString(nInt1));
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
     case 71: {
-        int nInt0 = pData->GetInteger(0);
-        int nInt1 = pData->GetInteger(1);
+        int nInt0;
+        int nInt1;
+        nInt0 = pData->GetInteger(0);
+        nInt1 = pData->GetInteger(1);
         g_pTlkTable->SetCustomToken(0, CExoString(nInt1));
         g_pTlkTable->SetCustomToken(1, CExoString(nInt0));
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
@@ -9074,239 +9095,293 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = GetGUIString(0);
         break;
     case FEEDBACK_IMMUNE_DISEASE: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_DISEASE, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_CRITICAL_HITS: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_CRITICAL_HITS, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_DEATH: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_FEAR: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_FEAR, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_KNOCKDOWN: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_KNOCKDOWN, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_PARALYSIS: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_PARALYSIS, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_NEGATIVE_LEVELS: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_NEGATIVE_LEVELS, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_MIND_EFFECTS: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_MIND_EFFECTS, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_POISON: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_POISON, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_SNEAK_ATTACKS: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_SNEAK_ATTACKS, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_SLEEP: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_SLEEP, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_DAZE: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_CONFUSION: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_CONFUSION, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_STUN: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_STUN, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_BLINDNESS: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_DEAFNESS: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_CURSE: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_ATTRIBUTE_REDUCED:
     {
-        unsigned long long oid = pData->GetObjectID(0);
+        oid = pData->GetObjectID(0);
         int nType = pData->GetInteger(0);
         int nAmount = pData->GetInteger(1);
         float fValue = pData->GetFloat(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         uint64_t nTypeStrRef = 0;
         switch (nType) {
             case ABILITY_STRENGTH: nTypeStrRef = STRREF_STRENGTH; break;
@@ -9324,46 +9399,54 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         break;
     }
     case FEEDBACK_EXPERIENCE_RECEIVED: {
-        int nInt0 = pData->GetInteger(0);
-        g_pTlkTable->SetCustomToken(0, CExoString(nInt0));
+        g_pTlkTable->SetCustomToken(0, CExoString(pData->GetInteger(0)));
         sMessage = g_pSWTlkTable->Fetch(STRREF_XP_RECEIVED, 0, 0, 0);
         break;
     }
     case FEEDBACK_IMMUNE_ENTANGLE: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_ENTANGLE, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_SILENCE: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_IMMUNE_SLOW: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_SLOW, 0, 0, 0);
         bCombat = 1;
         break;
@@ -9387,16 +9470,18 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = GetGUIString(0);
         break;
     case FEEDBACK_HEALED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
-        int nInt0 = pData->GetInteger(0);
-        g_pTlkTable->SetCustomToken(1, CExoString(nInt0));
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
+        g_pTlkTable->SetCustomToken(1, CExoString(pData->GetInteger(0)));
         sMessage = g_pSWTlkTable->Fetch(STRREF_HEALED_HIT_POINTS, 0, 0, 0);
         break;
     }
@@ -9407,10 +9492,12 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
     {
         CExoString sToken1;
         CExoString sTag;
-        unsigned long long oid = pData->GetObjectID(0);
+        int nLabel;
+        oid = pData->GetObjectID(0);
         sToken1 = pData->GetString(0);
         sTag = pData->GetString(1);
-        CExoString sLabel = GetGUIString(pData->GetInteger(0));
+        nLabel = pData->GetInteger(0);
+        CExoString sLabel = GetGUIString(nLabel);
         CExoString sDebug;
         sDebug.Format(const_cast<char*>("OID: %08x, Tag: %s, %s"), oid, sTag.CStr(), sLabel.CStr());
         g_pTlkTable->SetCustomToken(0, sDebug);
@@ -9422,10 +9509,12 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
     {
         CExoString sUnused;  // constructed and destroyed, never read
         CExoString sTag;
-        unsigned long long oid = pData->GetObjectID(0);
+        int nFrom;
+        int nTo;
+        oid = pData->GetObjectID(0);
         sTag = pData->GetString(1);
-        int nFrom = pData->GetInteger(0);
-        int nTo = pData->GetInteger(1);
+        nFrom = pData->GetInteger(0);
+        nTo = pData->GetInteger(1);
         CExoString sDebug;
         sDebug.Format(const_cast<char*>("(%d > %d) OID: %08x, Tag: %s"), nFrom, nTo, oid, sTag.CStr());
         g_pTlkTable->SetCustomToken(0, sDebug);
@@ -9442,10 +9531,12 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
     {
         CExoString sUnused;
         CExoString sTag;
-        unsigned long long oid = pData->GetObjectID(0);
+        int nFrom;
+        int nTo;
+        oid = pData->GetObjectID(0);
         sTag = pData->GetString(1);
-        int nFrom = pData->GetInteger(0);
-        int nTo = pData->GetInteger(1);
+        nFrom = pData->GetInteger(0);
+        nTo = pData->GetInteger(1);
         CExoString sDebug;
         sDebug.Format(const_cast<char*>("(%d > %d) OID: %08x, Tag: %s"), nFrom, nTo, oid, sTag.CStr());
         g_pTlkTable->SetCustomToken(0, sDebug);
@@ -9468,13 +9559,17 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         CExoString sUnused;
         CExoString sTag;
         CExoString sScripts;
-        unsigned long long oid = pData->GetObjectID(0);
+        int nFrom;
+        int nTo;
+        int nAction;
+        int nFlags;
+        oid = pData->GetObjectID(0);
         sTag = pData->GetString(1);
         sScripts = pData->GetString(2);
-        int nFrom = pData->GetInteger(0);
-        int nTo = pData->GetInteger(1);
-        int nAction = pData->GetInteger(2);
-        int nFlags = pData->GetInteger(3);
+        nFrom = pData->GetInteger(0);
+        nTo = pData->GetInteger(1);
+        nAction = pData->GetInteger(2);
+        nFlags = pData->GetInteger(3);
         CExoString sDebug;
         sDebug.Format(const_cast<char*>("(%d > %d) Scripts: (%s), Action: %d [Flags: %02x], OID: %08x, Tag: %s"),
                       nFrom, nTo, sScripts.CStr(), nAction, nFlags, oid, sTag.CStr());
@@ -9550,14 +9645,17 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     case FEEDBACK_PARTY_INVITEE_IN_OTHER_PARTY: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     }
@@ -9639,29 +9737,34 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sMessage = g_pSWTlkTable->Fetch(0, 0, 0, 0);
         break;
     case FEEDBACK_IMMUNE_FEAR_FEAT: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
         sMessage = g_pSWTlkTable->Fetch(STRREF_IMMUNE_TO_FEAR_EFFECT, 0, 0, 0);
         bCombat = 1;
         break;
     }
     case FEEDBACK_FORCE_POINTS_REGAINED: {
-        unsigned long long oid = pData->GetObjectID(0);
-        if (GetObjectName(oid, sObjectName) == 0)
+        oid = pData->GetObjectID(0);
+        if (GetObjectName(oid, sObjectName) != 0) {
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        } else {
 #if KOTOR1
             sObjectName = GetGUIString(0);
 #else
             sObjectName = GetGUIString(STRREF_OTHER);
 #endif
-        g_pTlkTable->SetCustomToken(0, sObjectName);
-        int nInt0 = pData->GetInteger(0);
-        g_pTlkTable->SetCustomToken(1, CExoString(nInt0));
+            g_pTlkTable->SetCustomToken(0, sObjectName);
+        }
+        g_pTlkTable->SetCustomToken(1, CExoString(pData->GetInteger(0)));
         sMessage = g_pSWTlkTable->Fetch(STRREF_REGAINS_FORCE_POINTS, 0, 0, 0);
         bCombat = 1;
         break;
@@ -9891,10 +9994,10 @@ hilited:;
         if (pServer) {
             pServer->m_sTag.CStr();
             CExoString sName;
-            CResRef cResRef = pServer->GetDialogResref();
-            cResRef.CopyToString(sName);
+            pServer->GetDialogResref().CopyToString(sName);
             sName.CStr();
-            if (pServer->AsSWSCreature()) {
+            CSWSCreature* pCreature = pServer->AsSWSCreature();
+            if (pCreature) {
                 pServer->AsSWSCreature();
                 pServer->AsSWSCreature()->m_varTable.GetLocalBoolean(62);
                 pServer->AsSWSCreature()->GetUserActionsPending();
@@ -9911,14 +10014,8 @@ hilited:;
                         if (g_pRules->GetFeat(static_cast<unsigned short>(i)))
                             g_pRules->GetFeat(static_cast<unsigned short>(i))->GetNameText().CStr();
                 }
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(0, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(1, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(2, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(3, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(4, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(5, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(6, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(7, 0, 0);
+                for (int i = 0; i < 8; i++)
+                    pServer->AsSWSCreature()->m_pStats->GetSkillRank(static_cast<unsigned char>(i), 0, 0);
             }
             if (pServer->AsSWSDoor())
                 pServer->AsSWSDoor();
@@ -9965,11 +10062,7 @@ void CClientExoAppInternal::DoPassiveSelection(float fDelta)
 
         {
             for (int i = 0; i < nCount; i++) {
-                // inlined CExoArrayList<unsigned long>::Contains(unsigned long) const
-                int nParity = 0;
-                for (int j = 0; j < listNear.m_count; j++)
-                    if (listNear.m_pArray[j] == listAround.m_pArray[i])
-                        nParity++;
+                int nParity = listNear.Contains(listAround.m_pArray[i]);
                 m_visibleTable.m_pArray[i].m_flags = static_cast<unsigned char>
                     ((m_visibleTable.m_pArray[i].m_flags & ~1) | (nParity & 1));
                 if (listAround.m_pArray[i] != nInvalid)
@@ -10015,15 +10108,8 @@ void CClientExoAppInternal::DoPassiveSelection(float fDelta)
                 bPicked = 1;
                 goto commit_picked;
             }
-#if KOTOR1  // K1 uses GetDeadTemp()
             if (pSrvC->GetDeadTemp() == 0)
                 goto clear_timer;
-#else
-            if (pSrvC->m_bInParty == 0)
-                goto clear_timer;
-            if (pSrvC->GetCurrentHitPoints(0) > 0)
-                goto clear_timer;
-#endif
             bPicked = 1;
             goto commit_picked;
         }
@@ -10205,14 +10291,8 @@ loop2:
             pObj = GetGameObject(m_lastTarget);
             if (pObj == 0)
                 goto final_gate;
-            int nIndex = -1;
-            for (int k = 0; k < listAround.m_count; k++) {
-                if (listAround.m_pArray[k] == m_lastTarget) {
-                    nIndex = k;
-                    break;
-                }
-            }
-            if (nIndex >= 0) {
+            int nIndex = listAround.IndexOf(m_lastTarget);
+            if (nIndex != -1) {
                 if (m_visibleTable.m_pArray[nIndex].m_canSee == static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN))
                     m_visibleTable.m_pArray[nIndex].m_canSee =
                         static_cast<unsigned char>(pPlayer->CanSee(pObj->AsSWCObject()));
@@ -10257,13 +10337,7 @@ loop2:
                 pObj = GetGameObject(nMasked);
                 if (pObj && pObj->AsSWCObject() != 0) {
                     if (pObj->AsSWCObject()->IsHostile() != 0) {
-                        int k = -1;
-                        for (int j = 0; j < listAround.m_count; j++) {
-                            if (listAround.m_pArray[j] == nMasked) {
-                                k = j;
-                                break;
-                            }
-                        }
+                        int k = listAround.IndexOf(nMasked);
                         unsigned char c = m_visibleTable.m_pArray[k].m_canSee;
                         if (c == static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN))
                             m_visibleTable.m_pArray[k].m_canSee =

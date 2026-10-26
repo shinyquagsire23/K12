@@ -17,6 +17,7 @@
 #include "port/libcstring.h"
 #include "exoinput.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 void AspyrAddButtonIcon(CSWGuiButton* pButton, char nIcon);
 #if KOTOR1
@@ -308,11 +309,7 @@ void CSWGuiInGameOptions::SetDescription(uint64_t nDescription)
     CSWGuiText* pText = &m_lblDesc.m_text;
 
     CSWGuiExtent extent = m_lblDesc.m_extent;
-#if KOTOR1
     if (sText.GetLength() >= 1)
-#else
-    if (sText.m_sString && static_cast<int>(strlen(sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -322,9 +319,6 @@ void CSWGuiInGameOptions::SetDescription(uint64_t nDescription)
     m_listBoxDesc.AddControls(apRows, 1, 0, 0, 0);
     m_listBoxDesc.SetSelectedControl(&m_lblDesc, 0);
 
-    // The right-stick glyph shows while the box is scrolling and the rows are equal-height.
-    m_lblRandAnalog.m_tail.bVisible =
-        m_listBoxDesc.m_nRowHeight + m_listBoxDesc.m_nPadding > m_listBoxDesc.m_innerExtent.h
-        && m_listBoxDesc.m_aControls.m_count > 0
-        && !m_listBoxDesc.bUnequalRows;
+    // The scroll glyph shows while the description box is oversized.
+    m_lblRandAnalog.m_tail.bVisible = m_listBoxDesc.IsOversized();
 }

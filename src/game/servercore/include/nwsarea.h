@@ -167,7 +167,10 @@ public:
     CExoArrayList<unsigned long long> m_aObjectsByX;
     int                    m_nObjectsByXIndex;
     char                   _pad234[0x238-0x234];
-    CExoArrayList<unsigned long long> m_objects;
+    // The objects with a volume in the area (triggers, encounters, doors, areas of effect).
+    CExoArrayList<unsigned long long> m_subAreas;
+    void AddSubArea(CGameObject* pObject) { m_subAreas.Add(pObject->m_objectId); }
+    void RemoveSubArea(CGameObject* pObject) { m_subAreas.Remove(pObject->m_objectId); }
     CPathfindInformation*  m_pActivePathfindInfo;
     // Appends an inter-tile exit record.
     int    RemoveInterTileExit(int nExitA1, int nExitA2, int nExitB1,

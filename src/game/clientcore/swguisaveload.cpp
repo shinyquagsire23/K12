@@ -130,7 +130,7 @@ CSWGuiSaveLoad::CSWGuiSaveLoad(CSWGuiManager* pGuiManager, int nSaveMode, int nE
         m_btnSaveLoad.AddEvent(INPUTEVENT_GUI_A, this,
             static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::VerifyLoadGame));
 
-    CSWGuiButton* pProtoRow = static_cast<CSWGuiButton*>(m_saveList.m_pProtoItem->AsButton());
+    CSWGuiButton* pProtoRow = m_saveList.m_pProtoItem->AsButton();
     pProtoRow->m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
     pProtoRow->m_borderHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
     pProtoRow->m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
@@ -254,7 +254,7 @@ CSWGuiSaveLoad::CSWGuiSaveLoad(CSWGuiManager* pGuiManager, int nSaveMode, int nE
     AspyrAddButtonIcon(&m_btnFilter, 'd');
 
     // Every rebuilt list row is cloned from the list box's prototype.
-    CSWGuiButton* pProtoRow = static_cast<CSWGuiButton*>(m_saveList.m_pProtoItem->AsButton());
+    CSWGuiButton* pProtoRow = m_saveList.m_pProtoItem->AsButton();
     pProtoRow->m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
 
     // Bit 0 selects the save/load flavour, bit 1 records nExitMode.
@@ -420,30 +420,21 @@ void CSWGuiSaveLoad::PopulateGameList()
         }
 #endif
         pEntry->m_text.m_params.SetStrRef(STRREF_NEW_SLOT);
-        int nSlot = static_cast<int>(nMaxSlot) + 1;
-        pEntry->m_nSaveSlot = nSlot <= 2 ? 2 : nSlot;
+        pEntry->m_nSaveSlot = static_cast<int>(nMaxSlot) + 1 <= 2 ? 2 : static_cast<int>(nMaxSlot) + 1;
         pEntry->m_bNewSlot = 1;
         pEntry->m_bEmptySlot = 1;
         pEntry->AddEvent(INPUTEVENT_GUI_A, this,
             static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::HandleSaveButton));
         pEntry->AddEvent(SWGUIEVENT_FOCUS, this,
             static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::ShowGame));
-        int64_t i = aEntries.m_count;
-        aEntries.Add(pEntry);
-        if (static_cast<int>(i) > 0) {
-            do {
-                aEntries.m_pArray[i] = aEntries.m_pArray[i - 1];
-                i--;
-            } while (i > 0);
-        }
-        aEntries.m_pArray[0] = pEntry;
+        aEntries.Insert(pEntry, 0);
     }
     else
     {
         if (aEntries.m_count == 0)
         {
             // Nothing to load: close the panel with the "no saves" box.
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+            SetToBeDeleted(0);
             if ((m_nModeFlags & SAVELOAD_MODE_EXIT_MODULE) != 0)
                 g_pAppManager->m_pClientExoApp->DisplayMainMenu(0);
             else
@@ -597,8 +588,7 @@ void CSWGuiSaveLoad::PopulateGameList()
         CSWGuiSaveLoadEntry* pEntry = new CSWGuiSaveLoadEntry();
         pEntry->Initialize(extent, pTemplate);
         pEntry->m_text.m_params.SetStrRef(STRREF_NEW_SLOT);
-        unsigned int nSlot = nMaxSlot + 1;
-        pEntry->m_nSaveSlot = nSlot < 2 ? 2 : nSlot;
+        pEntry->m_nSaveSlot = nMaxSlot + 1 < 2 ? 2 : nMaxSlot + 1;
         pEntry->m_bNewSlot = 1;
         pEntry->m_bEmptySlot = 1;
         pEntry->AddEvent(INPUTEVENT_GUI_A, this,
@@ -949,7 +939,7 @@ void CSWGuiSaveLoad::LoadPCAutoSave(const CExoString& sModule)
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(50, 1);
     UpdateScreen(0.033333335f, 0, 0);
 
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+    SetToBeDeleted(0);
 
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(10, 1);
     g_pAppManager->m_pClientExoApp->SetLoadStep(0, 10);
@@ -1688,14 +1678,8 @@ void CSWGuiSaveNamePanel::HandleCancelButton(CSWGuiControl* pControl)
 #if KOTOR1
     if (SDL_IsChromebook())
         SDL_StopTextInput();
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    CSWGuiPanel* pPanel = this;
-    do {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
 #endif
+    SetToBeDeleted(0);
 
     m_pGuiManager->PopModalPanel();
 }
@@ -1709,14 +1693,8 @@ void CSWGuiSaveNamePanel::HandleOkButton(CSWGuiControl* pControl)
 #if KOTOR1
     if (SDL_IsChromebook())
         SDL_StopTextInput();
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    CSWGuiPanel* pPanel = this;
-    do {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
 #endif
+    SetToBeDeleted(0);
 
     m_pGuiManager->PopModalPanel();
 }
@@ -1813,23 +1791,14 @@ void CSWGuiSaveGameEditBox::HandleKeyPress(int nKey)
     }
 }
 
-CSWGuiControl* CSWGuiEditbox::AsEditBox()
+CSWGuiEditbox* CSWGuiEditbox::AsEditBox()
 {
     return this;
 }
 
 void CSWGuiSaveLoad::ExitPanel()
 {
-#if KOTOR1
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    CSWGuiPanel* pPanel = this;
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     if ((m_nModeFlags & SAVELOAD_MODE_EXIT_MODULE) != 0)
         g_pAppManager->m_pClientExoApp->DisplayMainMenu(0);
@@ -1882,12 +1851,7 @@ void CSWGuiSaveLoad::HandleInputEvent(int nType, int nValue)
             if (m_bEndGameMode != 0)
             {
                 g_pAppManager->m_pClientExoApp->SetEndGamePending(1, 0.0f, 1);
-                CSWGuiPanel* pPanel = this;
-                do
-                {
-                    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                    pPanel = pPanel->m_pNextInChain;
-                } while (pPanel != 0);
+                SetToBeDeleted(0);
                 return;
             }
             ExitPanel();
@@ -2305,16 +2269,7 @@ void CSWGuiSaveLoad::LoadGame(CSWGuiControl* pControl)
         LoadPCAutoSave(pEntry->m_moduleName, pEntry->m_bCloudSave != 0);
 #endif
 
-#if KOTOR1
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        CSWGuiPanel* pPanel = this;
-        do
-        {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel != 0);
-#endif
+        SetToBeDeleted(0);
     }
     else if ((m_nModeFlags & SAVELOAD_MODE_EXIT_MODULE) != 0)
     {
@@ -2353,12 +2308,7 @@ void CSWGuiSaveLoad::LoadGame(CSWGuiControl* pControl)
         CExoString sModule(pEntry->m_moduleName);
         UnpackGame(pEntry->m_nSaveSlot, pEntry->m_saveName, pControl);
 
-#if KOTOR1
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        for (CSWGuiPanel* pPanel = this; pPanel != 0; pPanel = pPanel->m_pNextInChain)
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#endif
+        SetToBeDeleted(0);
 
         g_pAppManager->CreateServer(0);
         g_pAppManager->m_pClientExoApp->GetWorldTimer()->PauseWorldTimer();
@@ -2411,16 +2361,7 @@ void CSWGuiSaveLoad::LoadGame(CSWGuiControl* pControl)
 
         UnpackGame(pEntry->m_nSaveSlot, pEntry->m_saveName, pControl);
 
-#if KOTOR1
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        CSWGuiPanel* pPanel = this;
-        do
-        {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel != 0);
-#endif
+        SetToBeDeleted(0);
 
         while (m_pGuiManager->m_modalPanels.m_count != 0)
             m_pGuiManager->PopModalPanel();
@@ -2578,9 +2519,9 @@ void CSWGuiSaveLoad::ShowGame(CSWGuiControl* pControl)
             else
                 sPlanet = sName.Left(nPos);
             if (sName[nPos + 1] == ' ')
-                sRest = sName.Right((sName.m_sString != 0 ? static_cast<int>(strlen(sName.m_sString)) : 0) - nPos - 2);
+                sRest = sName.Right(sName.GetLength() - nPos - 2);
             else
-                sRest = sName.Right((sName.m_sString != 0 ? static_cast<int>(strlen(sName.m_sString)) : 0) - nPos - 1);
+                sRest = sName.Right(sName.GetLength() - nPos - 1);
             m_lblPlanetName.m_text.m_params.SetText(sPlanet);
             m_lblAreaName.m_text.m_params.SetText(sRest);
 #endif
@@ -2779,7 +2720,7 @@ void CSWGuiSaveLoadEntry::LoadData(const CExoString& fileName)
 
     {
         CExoString sSlot = fileName.Left(nSep);
-        m_nSaveSlot = (sSlot.m_sString != 0) ? atoi(sSlot.m_sString) : 0;
+        m_nSaveSlot = sSlot.AsINT();
     }
 
     m_saveName = fileName.Right(
@@ -2819,7 +2760,7 @@ void CSWGuiSaveLoadEntry::LoadData(const CExoString& fileName)
 
     if (m_bCloudSave != 0)
     {
-        if (m_saveGameName.m_sString != 0 && static_cast<int>(strlen(m_saveGameName.m_sString)) != 0)
+        if (m_saveGameName.GetLength() != 0)
             m_saveGameName = m_saveGameName + CExoString(" (cloud save") + CExoString(")");
         else
             m_saveGameName = CExoString("Cloud Save");

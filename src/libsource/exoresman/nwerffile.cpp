@@ -93,6 +93,9 @@ int CERFFile::AddResource(CExoString& filePath)
     CERFKey* pKey;
     CERFRes* pRes;
     CExoFile* pFile;
+    int nColon;
+    int nDot;
+    unsigned short nResType;
     pKey = new CERFKey();
     pRes = new CERFRes();
     pFile = new CExoFile(filePath, RESTYPE_INVALID, CExoString("rb"));
@@ -101,15 +104,15 @@ int CERFFile::AddResource(CExoString& filePath)
         return 0;
     }
 
-    int nColon = filePath.Find(CExoString(":"), 0);
+    nColon = filePath.Find(CExoString(":"), 0);
     sName = filePath.Right(
         filePath.GetLength() - nColon - 1);
-    int nDot = sName.Find(CExoString("."), 0);
+    nDot = sName.Find(CExoString("."), 0);
     sExt = sName.Right(
         sName.GetLength() - nDot - 1);
     sName = sName.Left(nDot);
 
-    unsigned short nResType = g_pExoBase->GetResTypeFromExtension(sExt);
+    nResType = g_pExoBase->GetResTypeFromExtension(sExt);
 #ifdef K2_FIX_ENGINE_BUGS
     pKey->SetName(sName);
 #elif KOTOR1  // K1: CExoString::GetLength is out of line
@@ -615,11 +618,12 @@ void CERFFile::ExportFiles(const CExoString& dir, void* fileTypeMask,
         // Declared first and assigned after so the pair shares one cleanup scope.
         CERFKey* pKey;
         CERFRes* pRes;
+        CExoFile* pFile;
         pKey = m_lstKeys.GetAtPos(pKeyNode);
         pRes = m_lstRes.GetAtPos(pResNode);
 
         sPath = dir + CExoString(pKey->m_sName);
-        CExoFile* pFile = new CExoFile(sPath, pKey->m_nType, CExoString("wb"));
+        pFile = new CExoFile(sPath, pKey->m_nType, CExoString("wb"));
         pFile->Write(pRes->m_pData, pRes->m_nSize, 1);
         pFile->Flush();
         if (progressCallback != 0) {
@@ -650,11 +654,12 @@ void CERFFile::ExportFilesFromERF(const CExoString& path, const CExoString& alia
             // Declared first and assigned after so the pair shares one cleanup scope.
             CERFKey* pKey;
             CERFRes* pRes;
+            CExoFile* pOut;
             pKey = m_lstKeys.GetAtPos(pKeyNode);
             pRes = m_lstRes.GetAtPos(pResNode);
 
             sOutPath = aliasPrefix + CExoString(pKey->m_sName);
-            CExoFile* pOut = new CExoFile(sOutPath, pKey->m_nType, CExoString("wb"));
+            pOut = new CExoFile(sOutPath, pKey->m_nType, CExoString("wb"));
             pRes->CopyToFile(&file, pOut, 0);
             pOut->Flush();
             if (progressCallback != 0) {

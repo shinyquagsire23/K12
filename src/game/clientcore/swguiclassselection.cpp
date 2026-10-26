@@ -131,13 +131,23 @@ CSWGuiClassSelection::CSWGuiClassSelection(CSWGuiManager* pGuiManager, const CEx
         }
     }
 
+    int nProgress = 4;
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(18, 1);
     UpdateScreen(0.033333335f, 0, 0);
 
-    int nProgress = 4;
     for (int i = 0; i < 6; i++)
     {
         ClassOption& option = m_aOptions[i];
+        CAurScene* pScene;
+        CAurCamera* pCamera;
+        CAurObject* pModel;
+        CSWCCreature* pCreature;
+        CSWCCreatureStats* pStats;
+        CCAppearanceInfo appearance;
+        int nPortraitId K2_UNSET;
+        int nIndex;
+        int nAppearance;
+        unsigned char nClass;
 
         sTemp.Format(const_cast<char*>("BTN_SEL%d"), i + 1);
         InitControl(option.m_button, sTemp, 1, 1, 0, 0, 0);
@@ -161,12 +171,12 @@ CSWGuiClassSelection::CSWGuiClassSelection(CSWGuiManager* pGuiManager, const CEx
 
         option.m_nSlideState = 0;
 
-        CAurScene* pScene = option.m_sceneView.m_scene.m_pScene;
+        pScene = option.m_sceneView.m_scene.m_pScene;
         if (g_bDo3DGUIs)
         {
-            CAurCamera* pCamera = option.m_sceneView.m_scene.m_pCamera;
+            pCamera = option.m_sceneView.m_scene.m_pCamera;
             pScene->SpawnRoom(const_cast<char*>("gui3D_room"), vPos, qRot);
-            CAurObject* pModel = option.m_sceneView.m_scene.AddModel(CExoString("cgbody_light"), -1);
+            pModel = option.m_sceneView.m_scene.AddModel(CExoString("cgbody_light"), -1);
             if (pModel != 0)
             {
                 pCamera->AttachToObject(pModel, const_cast<char*>("camerahook"), 0);
@@ -178,32 +188,29 @@ CSWGuiClassSelection::CSWGuiClassSelection(CSWGuiManager* pGuiManager, const CEx
             static_cast<int>(static_cast<float>(nProgress) * 0.0625f * 100.0f), 1);
         UpdateScreen(0.033333335f, 0, 0);
 
-        CSWCCreature* pCreature = new CSWCCreature();
-        CSWCCreatureStats* pStats = pCreature->m_pStats;
+        pCreature = new CSWCCreature();
+        pStats = pCreature->m_pStats;
         pStats->m_nGender = CHAR_TYPES[i].m_nGender;
         pStats->SetClass(0, CHAR_TYPES[i].m_nClass);
         pCreature->SetSoundSet(CHAR_TYPES[i].m_nSoundSet);
 
-        CCAppearanceInfo appearance;
         appearance.core = *reinterpret_cast<CCAppearanceCore*>(pCreature->m_pCreatureAppearance);
         appearance.core.m_nGender = pStats->m_nGender;
 
-        int nPortraitId K2_UNSET;
         if (pStats->m_nGender == GENDER_FEMALE)
         {
-            int nIndex = rand_wincompatible() % aPortraitsFemale.m_count;
+            nIndex = rand_wincompatible() % aPortraitsFemale.m_count;
             nPortraitId = aPortraitsFemale[nIndex];
             aPortraitsFemale.DelIndex(nIndex);
         }
         else if (pStats->m_nGender == GENDER_MALE)
         {
-            int nIndex = rand_wincompatible() % aPortraitsMale.m_count;
+            nIndex = rand_wincompatible() % aPortraitsMale.m_count;
             nPortraitId = aPortraitsMale[nIndex];
             aPortraitsMale.DelIndex(nIndex);
         }
 
-        int nAppearance;
-        unsigned char nClass = CHAR_TYPES[i].m_nClass;
+        nClass = CHAR_TYPES[i].m_nClass;
 #if KOTOR1
         if (nClass == CLASS_TYPE_SOLDIER)
             pPortraits->GetINTEntry(nPortraitId, CExoString("Appearance_L"), &nAppearance);
@@ -777,17 +784,10 @@ void CSWGuiClassSelection::BeginPlayGame()
 
 void CSWGuiClassSelection::HandleCancelButton()
 {
+    SetToBeDeleted(0);
 #if KOTOR1
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
     g_pAppManager->m_pClientExoApp->DisplayMainMenu(0);
 #else
-    CSWGuiPanel* pPanel = this;
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-
     g_pAppManager->m_pClientExoApp->StopLoadMusic();
     g_pAppManager->m_pClientExoApp->SetStartMenuMusicOnMovieEnd(1);
     g_pAppManager->m_pClientExoApp->DisplayMainMenu(0);
@@ -806,26 +806,7 @@ void CSWGuiClassSelection::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_BACK:
         {
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-
-            CSWGuiPanel* pPanel = this;
-#if KOTOR1
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-            do
-            {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel != 0);
-#endif
-
-#if KOTOR1
-            g_pAppManager->m_pClientExoApp->DisplayMainMenu(0);
-#else
-            g_pAppManager->m_pClientExoApp->StopLoadMusic();
-            g_pAppManager->m_pClientExoApp->SetStartMenuMusicOnMovieEnd(1);
-            g_pAppManager->m_pClientExoApp->DisplayMainMenu(0);
-            g_pAppManager->DestroyServer();
-#endif
+            HandleCancelButton();
             break;
         }
         case INPUTEVENT_GUI_LEFT_SHOULDER:

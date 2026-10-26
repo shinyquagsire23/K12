@@ -2,18 +2,14 @@
 #include "port/aslglapi.h"
 
 
-extern unsigned int enableTranslationTable[];
 extern int g_nScreenWidth;
 extern int g_nScreenHeight;
 
-// Indices into enableTranslationTable.
-enum { kCapAlphaTest = 1, kCapLighting = 5, kCapDepthTest = 11 };
-
 RenderModificationQuadSetup::RenderModificationQuadSetup()
 {
-    ASLgl::glDisable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glDisable(enableTranslationTable[kCapLighting]);
+    GLRender::Disable(Aurora::kCapAlphaTest);
+    GLRender::Disable(Aurora::kCapDepthTest);
+    GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
     ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
@@ -26,10 +22,11 @@ RenderModificationQuadSetup::RenderModificationQuadSetup()
 
 RenderModificationQuadSetup::~RenderModificationQuadSetup()
 {
+    // inlined GLRender::SetBlendFunc(): blendTranslationTable is not visible here (the call loads it, LENGTH +4)
     ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    ASLgl::glEnable(enableTranslationTable[kCapAlphaTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapDepthTest]);
-    ASLgl::glEnable(enableTranslationTable[kCapLighting]);
+    GLRender::Enable(Aurora::kCapAlphaTest);
+    GLRender::Enable(Aurora::kCapDepthTest);
+    GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
     ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();

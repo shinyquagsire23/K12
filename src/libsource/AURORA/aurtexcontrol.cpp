@@ -30,6 +30,24 @@ template <class T> void Parse(char* pszLine, List<T>& list);
 float cosineLUT(float fAngle);
 float sineLUT(float fAngle);
 
+// Bilinear sample of an nWidth x nHeight grid that wraps at both far edges. The cell is picked
+// from the coordinate less a half, but the weights are measured from the unbiased coordinate.
+inline float FloatInterpolate(float* pfGrid, float fX, float fY, int nWidth, int nHeight)
+{
+    int nX0 = static_cast<int>(fX - 0.5f);
+    int nY0 = static_cast<int>(fY - 0.5f);
+    int nX1 = (nX0 + 1) % nWidth;
+    int nY1 = (nY0 + 1) % nHeight;
+    float fWX1 = fX - static_cast<float>(nX0);
+    float fWX0 = 1.0f - fWX1;
+    float fWY1 = fY - static_cast<float>(nY0);
+    float fWY0 = 1.0f - fWY1;
+    int nRow0 = nWidth * nY0;
+    int nRow1 = nWidth * nY1;
+    return fWY0 * (fWX0 * pfGrid[nRow0 + nX0] + fWX1 * pfGrid[nRow0 + nX1])
+         + fWY1 * (fWX0 * pfGrid[nRow1 + nX0] + fWX1 * pfGrid[nRow1 + nX1]);
+}
+
 TextureController::TextureController(CAurTexture* pTexture)
     : m_pTexture(pTexture)
 {
@@ -1208,22 +1226,9 @@ void WaterTextureController::Control()
             for (int y = 0; y < m_pTexture->GetHeight(); y++) {
                 float fFY = fStepY * static_cast<float>(y);
                 if (nImageWidth >= 1) {
-                    int nY0 = static_cast<int>(fFY - 0.5f);
-                    float fWY1 = fFY - static_cast<float>(nY0);
-                    float fWY0 = 1.0f - fWY1;
                     for (int x = 0; x < nImageWidth; x++) {
                         float fFX = fStepX * static_cast<float>(x);
-                        int nX0 = static_cast<int>(fFX - 0.5f);
-                        int nX1 = (nX0 + 1) % m_nWaterWidth;
-                        int nY1 = (nY0 + 1) % m_nWaterHeight;
-                        float fWX1 = fFX - static_cast<float>(nX0);
-                        float fWX0 = 1.0f - fWX1;
-                        int nRow0 = m_nWaterWidth * nY0;
-                        int nRow1 = m_nWaterWidth * nY1;
-                        float fValue = fWY0 * (fWX0 * m_pfHeights[nRow0 + nX0]
-                                             + fWX1 * m_pfHeights[nRow0 + nX1])
-                                     + fWY1 * (fWX0 * m_pfHeights[nRow1 + nX0]
-                                             + fWX1 * m_pfHeights[nRow1 + nX1]);
+                        float fValue = FloatInterpolate(m_pfHeights, fFX, fFY, m_nWaterWidth, m_nWaterHeight);
                         unsigned char* pDest = (lowqualityblur == 0) ? m_pImage : m_pBlurImage;
                         pDest[nOffset + x] = static_cast<unsigned char>(static_cast<int>(fValue));
                     }
@@ -1309,22 +1314,10 @@ void ArturoTextureController::Control()
             float fFY = fStepY * static_cast<float>(nYStart);
             for (int64_t nY = nYStart; nY < nYEnd; nY++) {
                 if (nWidth >= 1) {
-                    int nY0 = static_cast<int>(fFY - 0.5f);
-                    float fWY1 = fFY - static_cast<float>(nY0);
-                    float fWY0 = 1.0f - fWY1;
                     float fFX = 0.0f;
                     for (int x = 0; x < nWidth; x++) {
-                        int nX0 = static_cast<int>(fFX - 0.5f);
-                        int nX1 = (nX0 + 1) % m_nArturoWidth;
-                        int nY1 = (nY0 + 1) % m_nArturoHeight;
-                        float fWX1 = fFX - static_cast<float>(nX0);
-                        float fWX0 = 1.0f - fWX1;
-                        int nRow0 = m_nArturoWidth * nY0;
-                        int nRow1 = m_nArturoWidth * nY1;
-                        float f68 = fWY0 * (fWX0 * m_pfPrevHeights[nRow0 + nX0] + fWX1 * m_pfPrevHeights[nRow0 + nX1])
-                                  + fWY1 * (fWX0 * m_pfPrevHeights[nRow1 + nX0] + fWX1 * m_pfPrevHeights[nRow1 + nX1]);
-                        float f60 = fWY0 * (fWX0 * m_pfHeights[nRow0 + nX0] + fWX1 * m_pfHeights[nRow0 + nX1])
-                                  + fWY1 * (fWX0 * m_pfHeights[nRow1 + nX0] + fWX1 * m_pfHeights[nRow1 + nX1]);
+                        float f68 = FloatInterpolate(m_pfPrevHeights, fFX, fFY, m_nArturoWidth, m_nArturoHeight);
+                        float f60 = FloatInterpolate(m_pfHeights, fFX, fFY, m_nArturoWidth, m_nArturoHeight);
                         m_pImage[nIndex + x] = static_cast<unsigned char>(static_cast<int>(
                             (1.0f - m_fBlend) * f68 + m_fBlend * f60 + 127.0f));
                         fFX += fStepX;

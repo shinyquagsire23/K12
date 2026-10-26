@@ -11,6 +11,7 @@
 #include "aurlightmanager.h"
 #include "aurinternal.h"
 #include "aurscene.h"
+#include "aurglcore.h"
 
 
 char cBumpyShinyVP[] = "!!VP1.0 # This is the vertex program for doing the bumpy-shiny stuff.\nDP4   o[HPOS].x, c[0], v[OPOS];DP4   o[HPOS].y, c[1], v[OPOS];DP4   o[HPOS].z, c[2], v[OPOS];DP4   o[HPOS].w, c[3], v[OPOS];DP3   R1.x, c[8], v[TEX4]; DP3   R2.x, c[8], v[TEX5]; DP3   R3.x, c[8], v[TEX6]; DP3   R1.y, c[9], v[TEX4]; DP3   R2.y, c[9], v[TEX5]; DP3   R3.y, c[9], v[TEX6]; DP3   R1.z, c[10], v[TEX4]; DP3   R2.z, c[10], v[TEX5]; DP3   R3.z, c[10], v[TEX6]; DP3   o[TEX1].x, c[92], R1; DP3   o[TEX1].y, c[92], R2; DP3   o[TEX1].z, c[92], R3; DP3   o[TEX2].x, c[91], R1; DP3   o[TEX2].y, c[91], R2; DP3   o[TEX2].z, c[91], R3; DP3   o[TEX3].x, c[90], R1; DP3   o[TEX3].y, c[90], R2; DP3   o[TEX3].z, c[90], R3; DP4   R4.x, v[OPOS], c[8] ;DP4   R4.y, v[OPOS], c[9] ;DP4   R4.z, v[OPOS], c[10] ;DP4   R4.w, v[OPOS], c[11] ;DP3   R1.w, R4, R4;RSQ   R1.w, R1.w;RCP   R1.w, R1.w;MOV o[FOGC], R1.w;RCP   R4.w, R4.w           ;MUL   R4.xyz, R4, -R4.w    ;MOV   o[TEX0], v[TEX0];DP3   o[TEX1].w, R4, c[92];DP3   o[TEX2].w, R4, c[91];DP3   o[TEX3].w, R4, c[90];MOV   o[COL0], c[15].x;";
@@ -78,8 +79,7 @@ List<VertexProgram*> VertexProgramManager::cm_listExistentVertexPrograms;
 
 void TrackMatrices()
 {
-    if (usearbvertexprograms)
-        ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, 0);
+    GLRender::BindVertexProgram(0);
 }
 
 void VertexProgramManager::AddVertexProgram(VertexProgram* vp)
@@ -131,14 +131,10 @@ VertexProgram::VertexProgram(char* program, unsigned int* declaration)
 VertexProgram::~VertexProgram()
 {
 #if KOTOR1  // K1 deletes the program without a glIsProgram test
-    if (usearbvertexprograms != 0)
-        ASLgl::glDeleteProgramsARB(1, &m_uProgramARB);
+    GLRender::DeleteProgramsNV(1, &m_uProgramARB);
 #else
-    unsigned int* pProgramARB = &m_uProgramARB;
-    if (usearbvertexprograms != 0 && (ASLgl::glIsProgramARB(*pProgramARB) & 0xff) != 0) {
-        if (usearbvertexprograms != 0)
-            ASLgl::glDeleteProgramsARB(1, pProgramARB);
-    }
+    if (GLRender::IsProgramNV(m_uProgramARB))
+        GLRender::DeleteProgramsNV(1, &m_uProgramARB);
 #endif
     VertexProgramManager::RemoveVertexProgram(this);
 }
@@ -206,17 +202,12 @@ void VertexProgram::Enable(Part* part, bool flag)
         if ((flag & 1) == 0)
             goto BIND;
 #else
-        if (usearbvertexprograms != 0
-            && (ASLgl::glIsProgramARB(*pProgramARB) & 0xff) != 0
-            && (flag & 1) == 0)
+        if (GLRender::IsProgramNV(*pProgramARB) && (flag & 1) == 0)
             goto BIND;
 #endif
 
-        if (m_bProgramLoaded != 0 && CAurInternal::m_nHeadLightEnabled == 0) {
-            if (usearbvertexprograms != 0)
-                goto BIND;
-            return;
-        }
+        if (m_bProgramLoaded != 0 && CAurInternal::m_nHeadLightEnabled == 0)
+            goto BIND;
 
         m_nInstalledStamp = currentframe;
         __strcpy_chk(m_szProgram, m_pProgramText, 8192);
@@ -234,17 +225,13 @@ void VertexProgram::Enable(Part* part, bool flag)
 
         __strcat_chk(m_szProgram, "END", 8192);
 
-        if (*pProgramARB == 0 && usearbvertexprograms != 0)
-            ASLgl::glGenProgramsARB(1, pProgramARB);
+        if (*pProgramARB == 0)
+            GLRender::GenProgramsNV(1, pProgramARB);
+        GLRender::BindVertexProgram(static_cast<int>(*pProgramARB));
+        GLRender::LoadProgramNV(*pProgramARB, static_cast<int>(strlen(m_szProgram)),
+                                reinterpret_cast<const unsigned char*>(m_szProgram), m_pDeclaration);
         if (usearbvertexprograms != 0)
-            ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, *pProgramARB);
-
-        int nLen = static_cast<int>(strlen(m_szProgram));
-        if (usearbvertexprograms != 0) {
-            ASLgl::glProgramStringARB(GL_VERTEX_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB, nLen, m_szProgram);
-            if (usearbvertexprograms != 0)
-                AurGetVertexProgramARBError(m_szProgram);
-        }
+            AurGetVertexProgramARBError(m_szProgram);
 
         if (part != 0 && currentscene != 0 && (flag & 1))
             currentscene->m_pLightManager->SetUpVertexProgramLightShaderConstants(m_nAllowedLights,
@@ -255,8 +242,7 @@ void VertexProgram::Enable(Part* part, bool flag)
     }
 
 BIND:
-    if (usearbvertexprograms != 0)
-        ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, *pProgramARB);
+    GLRender::BindVertexProgram(static_cast<int>(*pProgramARB));
 }
 
 void AurVertexProgramMakeCurrent()

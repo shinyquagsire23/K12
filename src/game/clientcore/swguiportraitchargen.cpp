@@ -193,12 +193,14 @@ void CSWGuiPortraitCharGen::GetPortraitsList(int nSex)
         int nRowSex = -1;
         int nAppearance = -1;
         int nForPC;
+        unsigned char nClass;
+        int nCount;
 
         pTable->GetINTEntry(i, "Sex", &nRowSex);
         if (nRowSex == nSex) {
             pTable->GetINTEntry(i, "ForPC", &nForPC);
             if (nForPC == 1) {
-                unsigned char nClass = m_pCreature->m_pStats->GetClass(0);
+                nClass = m_pCreature->m_pStats->GetClass(0);
                 switch (nClass) {
 #if KOTOR1
                 case CLASS_TYPE_SOLDIER: pTable->GetINTEntry(i, "Appearance_L", &nAppearance); break;
@@ -214,7 +216,7 @@ void CSWGuiPortraitCharGen::GetPortraitsList(int nSex)
 
                 pTable->GetCExoStringEntry(i, "BaseResRef", &sBaseResRef);
 
-                int nCount = m_paPortraitIds.m_count;
+                nCount = m_paPortraitIds.m_count;
                 if (i == m_pCreature->m_pStats->m_portraitId)
                     m_nCurrentPortrait = nCount;
 
@@ -382,16 +384,7 @@ void CSWGuiPortraitCharGen::OnSelectDisplayButton()
 
     m_pGuiManager->PopModalPanel();
 
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1
-    // K1 stamps the state flags on this panel only.
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     if (m_nParentKind == 1)
         static_cast<CSWGuiQuickPanel*>(m_pParentPanel)->PortraitCreationCompleted();
@@ -404,31 +397,12 @@ void CSWGuiPortraitCharGen::HandleCancelButton() {
     if (m_pParentPanel == 0)
         return;
 
-    int nIndex = -1;
-    int nId = m_nCurrentPortraitId;
-    if (m_paPortraitIds.m_count > 0) {
-        for (int64_t i = 0; i < m_paPortraitIds.m_count; i++) {
-            if (m_paPortraitIds.m_pArray[i] == nId) {
-                nIndex = static_cast<int>(i);
-                break;
-            }
-        }
-    }
-    m_nCurrentPortrait = nIndex;
+    m_nCurrentPortrait = m_paPortraitIds.IndexOf(m_nCurrentPortraitId);
 
     UpdatePortraitButton();
     m_pGuiManager->PopModalPanel();
 
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1
-    // K1 stamps the state flags on this panel only.
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     if (m_nParentKind == 1)
         static_cast<CSWGuiQuickPanel*>(m_pParentPanel)->CancelledByChild();

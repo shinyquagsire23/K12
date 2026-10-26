@@ -33,6 +33,7 @@ bool HasTouchScreen();
 #include "port/k2qolapi.h"
 #include "exoinput.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // Loads "optgameplay_p", binds the 19 widgets the layout carries, wires every handler, and hands
 // the difficulty and every checkbox over to SetUpOptions().
@@ -480,8 +481,8 @@ void CSWGuiInGameGameplay::SetUpOptions()
 // first AsSlider() result is dead.
 void CSWGuiInGameGameplay::OnMoveMouseSenSlider(CSWGuiControl* pControl)
 {
-    CSWGuiSlider* pSlider = static_cast<CSWGuiSlider*>(pControl->AsSlider());
-    int nCurValue = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nCurValue;
+    CSWGuiSlider* pSlider = pControl->AsSlider();
+    int nCurValue = pControl->AsSlider()->m_nCurValue;
     CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
     pOptions->m_nMouseSensitivity = static_cast<unsigned char>(nCurValue);
     (void)pSlider;
@@ -491,12 +492,12 @@ void CSWGuiInGameGameplay::OnEnterSlider(CSWGuiControl* pControl)
 {
     if (&m_sliderMouseSen == pControl)
         SetDescription(STRREF_DESC_MOUSE_SENSITIVITY);
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 1;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 1;
 }
 
 void CSWGuiInGameGameplay::OnExitSlider(CSWGuiControl* pControl)
 {
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 0;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 0;
 }
 
 // Sets the description listbox: retargets the shared label, measures it and hands it to the listbox
@@ -513,16 +514,13 @@ void CSWGuiInGameGameplay::SetDescription(uint64_t nDescription)
     CSWGuiText* pText = &m_labelDesc.m_text;
     CSWGuiExtent extent = m_labelDesc.m_extent;
     // Reads m_sString directly rather than going through CStr().
-#if KOTOR1
     if (sText.GetLength() >= 1)
-#else
-    if (sText.m_sString && static_cast<int>(strlen(sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
 #if !KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 does not scale the height by the resolution text scalar
-    extent.h = static_cast<int>(GetResolutionTextScalar() * static_cast<float>(extent.h));
+    float fScale = GetResolutionTextScalar();
+    extent.h = static_cast<int>(fScale * static_cast<float>(extent.h));
 #endif
     m_labelDesc.SetExtent(extent);
 
@@ -542,16 +540,7 @@ void CSWGuiInGameGameplay::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_BACK: {
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-#if KOTOR1
-            // K1: no panel chain; one remove-and-delete stamp.
-            m_stateFlags = (m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-#else
-            CSWGuiPanel* pPanel = this;
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
-#endif
+            SetToBeDeleted(0);
             break;
         }
 #if !KOTOR1  // K1 has no 0x2a (restore-defaults) arm

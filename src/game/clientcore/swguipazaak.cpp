@@ -679,16 +679,12 @@ void CSWGuiPazaakGame::HandleTutorialClose(CSWGuiControl* pControl) {
         case STRREF_TUT_MATCH_OVER: {
 #if KOTOR1
             // K1: no panel chain, just state 4.
-            m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
+            SetToBeDeleted(0);
             g_pAppManager->m_pClientExoApp->EndPazaakGame(
                 m_pPazaak->m_players[0].m_nRoundsWon > m_pPazaak->m_players[1].m_nRoundsWon, m_pPazaak->m_nWager, 0,
                 m_pPazaak->m_oidOpponent);
 #else
-            CSWGuiPanel* pPanel = this;
-            do {
-                pPanel->m_stateFlags = static_cast<unsigned short>((pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
+            SetToBeDeleted(0);
             int bPlayerAhead = m_pPazaak->m_players[0].m_nRoundsWon > m_pPazaak->m_players[1].m_nRoundsWon;
             g_pAppManager->m_pClientExoApp->EndPazaakGame(bPlayerAhead, m_pPazaak->m_nWager, 0,
                                                          m_pPazaak->m_oidOpponent);
@@ -742,16 +738,7 @@ void CSWGuiPazaakGame::Draw(float f) {
 void CSWGuiPazaakGame::HandleQuitDialog(CSWGuiControl* pControl) {
     K2_UNUSED(pControl);
     if (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox->m_bAccepted) {
-#if KOTOR1
-        // K1: no panel chain, just state 4.
-        m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-#else
-        CSWGuiPanel* pPanel = this;
-        do {
-            pPanel->m_stateFlags = static_cast<unsigned short>((pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel);
-#endif
+        SetToBeDeleted(0);
         g_pAppManager->m_pClientExoApp->EndPazaakGame(0, m_pPazaak->m_nWager, 0,
                                                       m_pPazaak->m_oidOpponent);
     }
@@ -1411,8 +1398,7 @@ void CSWGuiPazaakGame::OnPanelAdded() {
     SetActiveControl(&m_aPlrHand[3], 0);
 #endif
     m_lbl0.m_text.m_params.SetText(
-        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId())->m_pStats->GetFullName());
+        g_pAppManager->m_pServerExoApp->GetPlayerCreature()->m_pStats->GetFullName());
     ReconnectSidedeckButtons();
     CSWGuiPanel::OnPanelAdded();
 }
@@ -1520,7 +1506,7 @@ int CSWGuiPazaakGame::DoGameSequence()
         m_nGameState = GAME_STATE_PLAYER_TURN;
         return 1;
     case GAME_STATE_END_MATCH:
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+        SetToBeDeleted(0);
         g_pAppManager->m_pClientExoApp->EndPazaakGame(
             m_pPazaak->m_players[0].m_nRoundsWon > m_pPazaak->m_players[1].m_nRoundsWon, m_pPazaak->m_nWager, 0,
             m_pPazaak->m_oidOpponent);
@@ -2240,11 +2226,10 @@ void CSWGuiPazaakStart::HandleQuitDialog(CSWGuiControl* pControl)
 #if KOTOR1
     // K1: no panel chain, just state 4, and K1 passes 0 rather than the table's m_nWager as
     // EndPazaakGame's second argument.
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+    SetToBeDeleted(0);
     g_pAppManager->m_pClientExoApp->EndPazaakGame(0, 0, 0, m_pPazaak->m_oidOpponent);
 #else
-    for (CSWGuiPanel* pPanel = this; pPanel; pPanel = pPanel->m_pNextInChain)
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+    SetToBeDeleted(0);
     g_pAppManager->m_pClientExoApp->EndPazaakGame(0, m_pPazaak->m_nWager, 0, m_pPazaak->m_oidOpponent);
 #endif
 }
@@ -2664,13 +2649,7 @@ void CSWGuiPazaakStart::HandleStartDialog(CSWGuiControl* pControl)
 
     m_pPazaak->m_players[0].ChooseSidedeck(m_aSidedeck);
     m_pGuiManager->PopModalPanel();
-#if KOTOR1
-    // K1: no panel chain, just state 4.
-    m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    for (CSWGuiPanel* pPanel = this; pPanel; pPanel = pPanel->m_pNextInChain)
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & static_cast<unsigned short>(~PANEL_REMOVE_STATE_MASK)) | PANEL_REMOVE_AND_DELETE;
-#endif
+    SetToBeDeleted(0);
 
     CSWGuiPazaakGame* pGame = new CSWGuiPazaakGame(m_pGuiManager, m_pPazaak, m_tutorial.m_bEnabled,
                                                   m_pPazaak->m_oidOpponent);
@@ -3041,6 +3020,7 @@ void CSWGuiPazaakCard::SetCard(CPazaakCard card) {
         if (static_cast<unsigned int>(card.m_nCardType - PAZAAK_CARD_TIEBREAKER) <= 4u) {
             // Types 18..22 are the five special display rules. These captions are not localized.
             CExoString s;
+            int v;
             switch (card.m_nCardType) {
                 case PAZAAK_CARD_TIEBREAKER:  // flips sign
                     if (card.m_bIsNegative)
@@ -3066,12 +3046,11 @@ void CSWGuiPazaakCard::SetCard(CPazaakCard card) {
                     else
                         s = "3&6";
                     break;
-                case PAZAAK_CARD_PLUS_MINUS_1_2: {  // ±1/±2: ceil(|value|) to at least 1, apply the sign
+                case PAZAAK_CARD_PLUS_MINUS_1_2:  // ±1/±2: ceil(|value|) to at least 1, apply the sign
                     // inlined CPazaakCard::GetCardValue()
-                    int v = card.m_nValue ? card.m_nValue : 1;
+                    v = card.m_nValue ? card.m_nValue : 1;
                     s.Format(const_cast<char*>("%d"), card.m_bIsNegative ? -v : v);
                     break;
-                }
             }
             m_label.m_text.m_params.SetText(s);
         } else if (card.m_nValue != 0) {
@@ -3522,16 +3501,16 @@ CSWGuiWagerPopup::CSWGuiWagerPopup(CSWGuiManager* pManager, CSWGuiPazaakStart* p
 
     // The gold readout for the title bar follows client PC -> server id -> server creature ->
     // m_nGold, and is 0 when the lookup comes up empty.
+    CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+    uint64_t oidServer = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pPlayer->m_objectId);
+    CSWSCreature* pPC = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidServer);
     int nGold = 0;
-    CSWSCreature* pPC = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-        g_pAppManager->m_pServerExoApp->ClientToServerObjectId(
-            g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter()->m_objectId));
     if (pPC)
         nGold = pPC->GetGold();
 
     // The wager readout, then the stakes banner, which is the first TLK strref, the maximum, a
     // newline, the second TLK strref and the gold.
-    m_lblWagerVal.m_text.m_params.SetText(CExoString(m_nWager));
+    UpdateWagerText();
     CExoString sMaximum = g_pTlkTable->GetSimpleString(STRREF_MAXIMUM_WAGER) + CExoString(" ") +
                           CExoString(m_nWagerMax) + CExoString("\n") +
                           g_pTlkTable->GetSimpleString(STRREF_CREDITS_LABEL) + CExoString(" ") + CExoString(nGold);

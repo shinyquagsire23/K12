@@ -58,16 +58,17 @@ CSWGuiScriptSelect::CSWGuiScriptSelect(CSWGuiManager* pGuiManager)
 
     // The description row is cloned from the description box's prototype row, which is never
     // bound to a control.
-    m_lblColour.Initialize(m_listBoxDesc.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem);
+    m_lblColour.Initialize(pProto->m_extent, pProto, 1.0f);
 
     CExoArrayList<CSWGuiButtonToggle*> buttons;
     CSWGuiButtonToggle* pTemplate = static_cast<CSWGuiButtonToggle*>(m_listBox.m_pProtoItem);
+    int nSize;
 
     C2DA* p2DA = new C2DA(CResRef("aiscripts"), 0);
     p2DA->Load2DArray();
 
-    int nSize = p2DA->m_nRows;
+    nSize = p2DA->m_nRows;
     if (nSize != 0)
     {
         buttons.m_capacity = nSize;
@@ -76,7 +77,8 @@ CSWGuiScriptSelect::CSWGuiScriptSelect(CSWGuiManager* pGuiManager)
     buttons.m_count = nSize;
     m_aScripts.SetSize(nSize);
 
-    for (int64_t i = 0; i < p2DA->m_nRows; i++)
+    int64_t i;
+    for (i = 0; i < p2DA->m_nRows; i++)
     {
         int nNameStrRef;
         int nDescStrRef;
@@ -271,9 +273,9 @@ void CSWGuiScriptSelect::SetCreatureID(unsigned long long nCreatureId)
         if (m_aScripts.m_pArray[i].m_nAIState == nAIState)
         {
             m_listBox.SetSelectedControl(static_cast<int>(i), 0);
-            static_cast<CSWGuiButtonToggle*>(m_listBox.GetControl(static_cast<int>(i))->AsButtonToggle())->bToggledOn = 1;
+            m_listBox.GetControl(static_cast<int>(i))->AsButtonToggle()->bToggledOn = 1;
         }
         else
-            static_cast<CSWGuiButtonToggle*>(m_listBox.GetControl(static_cast<int>(i))->AsButtonToggle())->bToggledOn = 0;
+            m_listBox.GetControl(static_cast<int>(i))->AsButtonToggle()->bToggledOn = 0;
     }
 }

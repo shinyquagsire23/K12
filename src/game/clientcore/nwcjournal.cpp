@@ -113,7 +113,7 @@ void CSWCJournal::CheckForUpdates()
                        m_pendingUpdates.m_pArray[i].m_sText);
     }
 
-    m_pendingUpdates.Clear();
+    m_pendingUpdates.SetSize(0);
 }
 
 // Finds the first entry whose plot id matches, searching the done page then the active page, and
@@ -429,34 +429,10 @@ SJournalEntry* CSWCJournal::GetActiveEntryAt(int i)
 // Empties both pages, freeing the storage of each of the four lists.
 void CSWCJournal::ClearAll()
 {
-    // inlined CExoArrayList<SJournalEntry>::Clear()
-    if (m_done.m_entries.m_pArray) {
-        delete[] m_done.m_entries.m_pArray;
-        m_done.m_entries.m_pArray = 0;
-        m_done.m_entries.m_capacity = 0;
-    }
-    m_done.m_entries.m_count = 0;
-    // inlined CExoArrayList<int>::Clear()
-    if (m_done.m_sortOrder.m_pArray) {
-        delete[] m_done.m_sortOrder.m_pArray;
-        m_done.m_sortOrder.m_pArray = 0;
-        m_done.m_sortOrder.m_capacity = 0;
-    }
-    m_done.m_sortOrder.m_count = 0;
-    // inlined CExoArrayList<SJournalEntry>::Clear()
-    if (m_active.m_entries.m_pArray) {
-        delete[] m_active.m_entries.m_pArray;
-        m_active.m_entries.m_pArray = 0;
-        m_active.m_entries.m_capacity = 0;
-    }
-    m_active.m_entries.m_count = 0;
-    // inlined CExoArrayList<int>::Clear()
-    if (m_active.m_sortOrder.m_pArray) {
-        delete[] m_active.m_sortOrder.m_pArray;
-        m_active.m_sortOrder.m_pArray = 0;
-        m_active.m_sortOrder.m_capacity = 0;
-    }
-    m_active.m_sortOrder.m_count = 0;
+    m_done.m_entries.SetSize(0);
+    m_done.m_sortOrder.SetSize(0);
+    m_active.m_entries.SetSize(0);
+    m_active.m_sortOrder.SetSize(0);
 }
 
 // True when any active entry is still flagged unread.

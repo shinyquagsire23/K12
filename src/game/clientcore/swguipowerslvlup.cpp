@@ -32,29 +32,7 @@ void IosAddButtonIcon(CSWGuiButton* pButton, char nIcon);
 #include "nwscriptconst.h"
 #include "exoinput.h"
 #include "strref.h"
-
-// The index of a power in the list, or -1.
-static int FindPowerIndex(CExoArrayList<unsigned int>& aList, unsigned int nPower)
-{
-    int nIndex = -1;
-    for (int64_t i = 0; i < aList.m_count; i++)
-    {
-        if (aList.m_pArray[i] == nPower)
-        {
-            nIndex = static_cast<int>(i);
-            break;
-        }
-    }
-    return nIndex;
-}
-
-// The power id the chart's cursor is on, or -1 when the chart is empty.
-static int GetChartPowerId(CSWGuiSkillFlowChart& chart)
-{
-    if (chart.m_aFlows.m_count < 1)
-        return -1;
-    return chart.m_aFlows.m_pArray[chart.m_nSelectedFlow]->m_aSlots[chart.m_nSelectedSlot].m_nId;
-}
+#include "exostringinline.h"
 
 // Binds the PWRLVLUP_p layout by name, builds the two pre-formatted caption strings out of the TLK,
 // stands the description row up off the prototype item, hands the chart the server stats block, then
@@ -221,7 +199,7 @@ void CSWGuiPowersLevelUp::OnPowerSelectionChanged(CSWGuiControl* pControl)
 void CSWGuiPowersLevelUp::OnDoubleClick(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    int nChartId = GetChartPowerId(m_powerChart);
+    int nChartId = m_powerChart.GetSelected();
 
 #if KOTOR1  // K1 guards on a selected row
     CSWGuiSkillFlow* pFlow = static_cast<CSWGuiSkillFlow*>(m_listBoxPowers.GetSelectedControl());
@@ -248,14 +226,17 @@ void CSWGuiPowersLevelUp::InitiatePowers()
 
     for (unsigned char nClass = 0; nClass < pStats->m_nNumClasses; nClass++)
     {
+        unsigned int nPower;
+        int nInsert;
+        int bFound;
         for (unsigned char i = 0;
              i < pStats->GetNumberKnownSpells(nClass, 0); i++)
         {
-            unsigned int nPower = static_cast<unsigned int>(pStats->GetKnownSpell(nClass, 0, i));
+            nPower = static_cast<unsigned int>(pStats->GetKnownSpell(nClass, 0, i));
             sPowerName = g_pRules->GetSpell(nPower)->GetSpellNameText();
 
-            int nInsert = 0;
-            int bFound = 0;
+            nInsert = 0;
+            bFound = 0;
             while (static_cast<int64_t>(m_aOwnedPowers.m_count) > static_cast<int64_t>(nInsert) && !bFound)
             {
                 CExoString sExistingName =
@@ -337,13 +318,15 @@ void CSWGuiPowersLevelUp::BuildAvailableList()
 
         if (pStats->CanChooseSpell(nSpell, m_nSelectionsMax, &m_aChosenPowers) != 0)
         {
+            int nInsert;
+            int bFound;
             CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
             if (pSpell->m_anPrereq2[0] != -2 && pSpell->m_nNameStrRef != 0)
             {
                 sUnused = pSpell->GetSpellNameText();
 
-                int nInsert = 0;
-                int bFound = 0;
+                nInsert = 0;
+                bFound = 0;
                 while (static_cast<int64_t>(m_aAvailablePowers.m_count) > static_cast<int64_t>(nInsert) && !bFound)
                 {
                     CExoString sExistingName =
@@ -427,12 +410,7 @@ void CSWGuiPowersLevelUp::HandleInputEvent(int nEvent, int nArg)
             break;
 
         case INPUTEVENT_GUI_X:
-            OnPowerPicked(m_powerChart.m_aFlows.m_count < 1
-                              ? 0xffffffff
-                              : static_cast<unsigned int>(m_powerChart.m_aFlows
-                                    .m_pArray[m_powerChart.m_nSelectedFlow]
-                                    ->m_aSlots[m_powerChart.m_nSelectedSlot]
-                                    .m_nId));
+            OnPowerPicked(static_cast<unsigned int>(m_powerChart.GetSelected()));
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             break;
 
@@ -475,16 +453,7 @@ void CSWGuiPowersLevelUp::HandleCancelButton()
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
 
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1  // K1 has no panel chain: one state stamp for this panel only
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     static_cast<CSWGuiLevelUpPanel*>(m_pParentPanel)->CancelledByChild();
 }
@@ -526,17 +495,17 @@ void CSWGuiPowersLevelUp::OnPowerPicked(unsigned int nPower)
 {
     uint64_t nStrRef;
 
-    if (FindPowerIndex(m_aOwnedPowers, nPower) != -1)
+    if (m_aOwnedPowers.IndexOf(nPower) != -1)
     {
         nStrRef = STRREF_CANNOT_DESELECT_OWNED_POWER;
     }
-    else if (FindPowerIndex(m_aChosenPowers, nPower) != -1)
+    else if (m_aChosenPowers.IndexOf(nPower) != -1)
     {
         RemoveChosenPower(nPower);
         BuildButtons();
         return;
     }
-    else if (FindPowerIndex(m_aAvailablePowers, nPower) != -1)
+    else if (m_aAvailablePowers.IndexOf(nPower) != -1)
     {
         if ((nPower | (FORCE_POWER_DOMINATE - FORCE_POWER_AFFECT_MIND)) == FORCE_POWER_DOMINATE
             && (m_bFlags & POWERS_FLAG_IS_PC) == 0)
@@ -560,7 +529,7 @@ void CSWGuiPowersLevelUp::OnPowerPicked(unsigned int nPower)
 #if KOTOR1
         nStrRef = STRREF_POWER_PREREQUISITES_NOT_MET;
 #else
-        nStrRef = FindPowerIndex(m_aNewPowers, nPower) != -1 ? STRREF_POWER_GRANTED_AT_LEVEL : STRREF_POWER_PREREQUISITES_NOT_MET;
+        nStrRef = m_aNewPowers.IndexOf(nPower) != -1 ? STRREF_POWER_GRANTED_AT_LEVEL : STRREF_POWER_PREREQUISITES_NOT_MET;
 #endif
     }
 
@@ -611,7 +580,7 @@ void CSWGuiPowersLevelUp::RemoveChosenPower(unsigned int nPower)
 
     for (;;)
     {
-        int nIndex = FindPowerIndex(m_aChosenPowers, nPower);
+        int nIndex = m_aChosenPowers.IndexOf(nPower);
         if (nIndex == -1)
             return;
 
@@ -705,23 +674,23 @@ void CSWGuiPowersLevelUp::AddChosenPower(unsigned int nPower)
 // 0 available, 1 chosen, 4 new, 3 none.
 void CSWGuiPowersLevelUp::DeterminePower(unsigned int nPower, unsigned char& nStatus)
 {
-    if (FindPowerIndex(m_aOwnedPowers, nPower) != -1)
+    if (m_aOwnedPowers.IndexOf(nPower) != -1)
     {
         nStatus = DRAW_STATE_OWNED;
         return;
     }
-    if (FindPowerIndex(m_aChosenPowers, nPower) != -1)
+    if (m_aChosenPowers.IndexOf(nPower) != -1)
     {
         nStatus = DRAW_STATE_CHOSEN;
         return;
     }
-    if (FindPowerIndex(m_aAvailablePowers, nPower) != -1)
+    if (m_aAvailablePowers.IndexOf(nPower) != -1)
     {
         nStatus = DRAW_STATE_AVAILABLE;
         return;
     }
 #if !KOTOR1  // K1 has no granted-powers list
-    if (FindPowerIndex(m_aNewPowers, nPower) != -1)
+    if (m_aNewPowers.IndexOf(nPower) != -1)
     {
         nStatus = DRAW_STATE_GRANTED;
         return;
@@ -746,11 +715,7 @@ void CSWGuiPowersLevelUp::SetDescription(unsigned int nStrRef)
     // One store to the row height here, and no scaling by the resolution text scalar, unlike the
     // feats page.
     CSWGuiExtent extent = m_lblDescRow.m_extent;
-#if KOTOR1  // K1 uses the out-of-line length accessor
     if (res.text.GetLength() >= 1)
-#else
-    if (res.text.m_sString && static_cast<int>(strlen(res.text.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

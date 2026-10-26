@@ -1602,7 +1602,8 @@ CSWGuiInGameGalaxyMap::CSWGuiInGameGalaxyMap(CSWGuiManager* pGuiManager)
     m_sceneViewModel.m_scene.m_pScene->SpawnRoom(const_cast<char*>("gui3D_room"), Vector(0, 0, 0),
                                                  Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
 
-    for (int i = 0; i < 16; i++)
+    int i;
+    for (i = 0; i < 16; i++)
     {
         g_pRules->m_p2DArrays->m_pPlanetary->GetCExoStringEntry(i, CExoString("Icon"), &sIcon);
         g_pRules->m_p2DArrays->m_pPlanetary->GetCExoStringEntry(i, CExoString("Model"), &sModel);

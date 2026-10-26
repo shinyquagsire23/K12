@@ -104,12 +104,6 @@ static inline Vector RotateByTranspose(const Vector& v, const Quaternion& q)
 
 #include "port/crtapi.h"
 
-// Element accessor for the node-name lookup.
-static inline char* ListStringAt(List<char*>* pList, int nIndex)
-{
-    return pList->m_pData[nIndex];
-}
-
 int GetMaxID(MdlNode* pNode, int nMax)
 {
     if (pNode->m_nNodeID > nMax)
@@ -135,15 +129,7 @@ void SynchronizeNodes(MdlNode* pNode, MdlNode* pOther, int& nIndex)
 
         for (int64_t j = 0; j < pOther->m_listChildren.m_count; j++) {
             MdlNode* pOtherChild = pOther->m_listChildren.m_pData[j];
-            if (!_stricmp(
-                    ListStringAt(&(pChild->m_pTree->AsModel()
-                                       ? pChild->m_pTree->AsModel()
-                                       : pChild->m_pTree->AsAnimation()->m_pModel)->m_listStrings,
-                                 pChild->m_nNameIndex),
-                    ListStringAt(&(pOtherChild->m_pTree->AsModel()
-                                       ? pOtherChild->m_pTree->AsModel()
-                                       : pOtherChild->m_pTree->AsAnimation()->m_pModel)->m_listStrings,
-                                 pOtherChild->m_nNameIndex))) {
+            if (!_stricmp(pChild->TranslateNodeName(), pOtherChild->TranslateNodeName())) {
                 SynchronizeNodes(pChild, pOtherChild, nIndex);
                 goto next;
             }
@@ -343,10 +329,10 @@ void MdlNodeAnimMesh::InternalGenVertices()
             Vector* pColor = PostProcess()->m_colors.m_count >= 1
                              ? &PostProcess()->m_colors.m_pData[PostProcess()->m_faces.m_pData[i].m_paVertIndices[j]] : 0;
 
+            int64_t index;
             NodeVertexAnim* pVertex = new NodeVertexAnim(pVert, pTex0, pTex1, pTex2, pTex3, pNormal, pColor,
                                                          l0, l1, l2);
 
-            int64_t index;
             for (index = 0; index < static_cast<int64_t>(PostProcess()->m_vertices.m_count); index++) {
                 NodeVertex* pOld = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[index]);
                 if (*pOld->AsNodeVertexAnim() == *pVertex) {
@@ -1382,13 +1368,13 @@ void MdlNodeDanglyMesh::InternalGenVertices()
                             ? &PostProcess()->m_tverts3.m_pData[PostProcess()->m_faces.m_pData[i].m_paTVertIndices[j + 9]] : 0;
             Vector* pNormal = &PostProcess()->m_normals.m_pData[PostProcess()->m_faces.m_pData[i].m_paNormalIndices[j]];
 
+            int64_t index;
             NodeVertexDangly* pVertex = new NodeVertexDangly(
                 &PostProcess()->m_verts.m_pData[nIdx0],
                 pTex0, pTex1, pTex2, pTex3, pNormal,
                 0,
                 m_lConstraints.m_pData[nIdx0]);
 
-            int64_t index;
             for (index = 0; index < static_cast<int64_t>(PostProcess()->m_vertices.m_count); index++) {
                 NodeVertex* pOld = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[index]);
                 if (*pOld->AsNodeVertexDangly() == *pVertex)

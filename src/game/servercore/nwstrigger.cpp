@@ -133,7 +133,7 @@ CSWSTrigger::CSWSTrigger(unsigned long long objectId)
 void CSWSTrigger::RemoveFromArea() {
     if (GetArea() != 0) {
         static_cast<CSWSArea*>(GetArea())->RemoveObjectFromArea(m_objectId);
-        static_cast<CSWSArea*>(GetArea())->m_objects.Remove(m_objectId);
+        static_cast<CSWSArea*>(GetArea())->RemoveSubArea(this);
         if (static_cast<CSWSArea*>(GetArea())->m_mineObjects.Contains(m_objectId) == 1) {
             static_cast<CSWSArea*>(GetArea())->m_mineObjects.Remove(m_objectId);
         }
@@ -158,7 +158,7 @@ void CSWSTrigger::AddToArea(CSWSArea* pArea, float x, float y, float z, int a5) 
         }
         static_cast<CSWSArea*>(GetArea())->AddObjectToArea(m_objectId, a5);
         pA = static_cast<CSWSArea*>(GetArea());
-        pA->m_objects.Add(m_objectId);
+        pA->AddSubArea(this);
         float fMinX, fMinY, fMaxX, fMaxY;
         ComputeBoundingBox(&fMinX, &fMinY, &fMaxX, &fMaxY);
     }
@@ -192,8 +192,7 @@ void CSWSTrigger::AIUpdate() {
         m_lastUpdateTod = tod;
     }
     if (m_bTrap != 0) {
-        CServerExoApp* pApp = g_pAppManager->m_pServerExoApp;
-        CSWSCreature* pPlayer = pApp->GetCreatureByGameObjectID(pApp->GetPlayerCreatureId());
+        CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (m_bMineFlagged != 0) {
             if (m_nAnimation != SERVER_ANIMATION_MINE_VISIBLE) SetAnimation(SERVER_ANIMATION_MINE_VISIBLE);
         } else if (pPlayer != 0 &&

@@ -108,9 +108,9 @@ public:
     using CSWSObject::SetOrientation;
     void            SetOrientation(const Quaternion& q);
 #if KOTOR1
-    int             GetOpenLockDC() { return m_baseOpenLockDC; }
+    unsigned char   GetOpenLockDC() { return m_baseOpenLockDC; }
 #else
-    int             GetOpenLockDC();
+    unsigned char   GetOpenLockDC();
 #endif
     int             GetLightIsOn();
     void            SetLightIsOn(int val);

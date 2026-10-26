@@ -40,6 +40,7 @@ static void K2QolFitCaption(CSWGuiLabel& label)
 #include "port/libcstring.h"
 #include "exoinput.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // CSWSkill::m_flags: skill.2da's NPCCanUse and DroidCanUse columns.
 enum {
@@ -638,17 +639,7 @@ void CSWGuiSkillsCharGen::HandleCancelButton()
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
 
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1
-    // K1 stamps one state flag per panel instead of walking the chain.
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     if (m_bLevelUp != 0)
     {
@@ -962,11 +953,7 @@ void CSWGuiSkillsCharGen::SetDescription(const CExoString& sDescription)
     CSWGuiText* pText = &m_lblDescRow.m_text;
 
     CSWGuiExtent extent = m_lblDescRow.m_extent;
-#if KOTOR1
-    if (sDescription.GetLength() >= 1)  // K1: the out-of-line accessor
-#else
-    if (sDescription.m_sString && static_cast<int>(strlen(sDescription.m_sString)) >= 1)
-#endif
+    if (sDescription.GetLength() >= 1)
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -1101,17 +1088,7 @@ void CSWGuiSkillsCharGen::CompletePanel()
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
 
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1
-    // K1 stamps one state flag per panel instead of walking the chain.
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     if (m_bLevelUp != 0)
     {

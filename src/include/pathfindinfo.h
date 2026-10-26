@@ -37,6 +37,8 @@ public:
     int  InsertPathSegmentBetween(int a, int b, Vector* pv, int c,
                                   CPathfindInformation* pPathInfo);
     void Render();
+    // Clears the six hex points and both transits (no path segment, no hex point).
+    void Reset();
 
     int    m_nSide;
 
@@ -50,14 +52,9 @@ public:
     HexTransit m_transit[2];
 };
 
-inline CAvoidCreature::CAvoidCreature()
+inline void CAvoidCreature::Reset()
 {
-    m_nSide = 0;
-    for (int i = 0; i < 6; i++) {
-        m_vHexPoints[i].x = 0.0f;
-        m_vHexPoints[i].y = 0.0f;
-        m_vHexPoints[i].z = 0.0f;
-    }
+    __builtin_memset(&m_vHexPoints, 0, sizeof(m_vHexPoints));
     for (int i = 0; i < 2; i++) {
         m_transit[i].m_nPathSegment = -1;
         m_transit[i].m_nHexPoint = -1;
@@ -65,6 +62,12 @@ inline CAvoidCreature::CAvoidCreature()
         m_transit[i].m_vPoint.y = 0.0f;
         m_transit[i].m_vPoint.z = 0.0f;
     }
+}
+
+inline CAvoidCreature::CAvoidCreature()
+{
+    m_nSide = 0;
+    Reset();
 }
 
 #endif

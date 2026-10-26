@@ -362,11 +362,13 @@ void CSWCPlaceable::GetUseItems(CSWCCreature* pCreature,
     int nLanguage = g_pAppManager->m_pClientExoApp->GetClientLanguage();
     int nOldCount = 0;
     for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
-        CSWSItem* pItem = pRepo->ItemListGetItem(i);
+        CSWSItem* pItem;
+        CSWItemProperty* pProperty;
+        CSWSpell* pSpell;
+        pItem = pRepo->ItemListGetItem(i);
         if (pItem != 0 && pItem->m_bPlot != 0) {
-            CSWItemProperty* pProperty;
             if (pItem->GetPropertyByType(&pProperty, ITEM_PROPERTY_ACTIVATE_ITEM, 0) != 0) {
-                CSWSpell* pSpell = g_pRules->GetSpell(pProperty->m_subType);
+                pSpell = g_pRules->GetSpell(pProperty->m_subType);
                 if (pSpell != 0 && pSpell->m_nItemTargeting == 2) {
                     list.SetSize(nOldCount + 1);
                     pItem->m_localizedName.GetString(nLanguage, &sName, 0);
@@ -528,8 +530,7 @@ void CSWCPlaceable::AIUpdate()
 void CSWCPlaceable::MenuActionSetPlaceableMine(unsigned int itemId, CSWCCreature* pCreature)
 {
     CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pPlayer =
-        pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = pServerApp->GetPlayerCreature();
     if (pPlayer == 0 || pPlayer->GetArea() == 0 ||
         static_cast<CSWSArea*>(pPlayer->GetArea())->GetPlayerCanSetMines() != 0) {
         itemId &= CSWGuiInterfaceAction::ACTION_ID_ITEM_CLEAR;

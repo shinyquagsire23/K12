@@ -166,10 +166,7 @@ CAurObject* CSWTrackFollower::RemoveModel(CAurObject* pModel) {
     int nModels = m_models.m_count;
     for (int i = 0; i < nModels; i++) {
         if (m_models.m_pArray[i].pModel == pModel) {
-            // inlined CExoArrayList<SWMGFollowerModel>::DelIndex(i)
-            m_models.m_count--;
-            for (int j = i; j < m_models.m_count; j++)
-                m_models.m_pArray[j] = m_models.m_pArray[j + 1];
+            m_models.DelIndex(i);
             pModel->AttachToObject(0, 0, 0);
             return pModel;
         }
@@ -493,12 +490,7 @@ int CSWTrackFollower::ClearModels() {
         pModels[i].pModel->AttachToObject(0, 0, 0);
         pModels = m_models.m_pArray;
     }
-    if (pModels != 0) {
-        delete[] pModels;
-        m_models.m_pArray = 0;
-        m_models.m_capacity = 0;
-    }
-    m_models.m_count = 0;
+    m_models.SetSize(0);
     return nModels;
 }
 

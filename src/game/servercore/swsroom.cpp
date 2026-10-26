@@ -81,7 +81,7 @@ int CSWSRoom::LoadWalkMesh(int bForceText)
 {
     if (m_bRoomNameIsWildcard)
         return 0;
-    m_pSurfaceMesh->m_resRef = m_resRoom;
+    m_pSurfaceMesh->SetMesh(m_resRoom);
     return m_pSurfaceMesh->LoadMesh(bForceText);
 }
 

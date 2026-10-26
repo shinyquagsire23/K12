@@ -139,10 +139,11 @@ void CSWGuiQuestItem::PopulateItemListBox()
 
         for (unsigned int i = 0; i < pRepository->ItemListGetCount(); i++)
         {
+            CSWGuiInGameItemEntry* pEntry;
             CSWSItem* pItem = pRepository->ItemListGetItem(i);
             if (pItem != 0 && pItem->m_bPlot != 0)
             {
-                CSWGuiInGameItemEntry* pEntry = new CSWGuiInGameItemEntry();
+                pEntry = new CSWGuiInGameItemEntry();
                 pEntry->Initialize(static_cast<CSWGuiButton*>(pProto)->m_text,
                                    static_cast<CSWGuiButton*>(pProto)->m_border,
                                    static_cast<CSWGuiButton*>(pProto)->m_borderHilight,

@@ -420,7 +420,7 @@ void CSWGuiPanel::InitControl(CSWGuiControl& control, const CExoString& sControl
 // list, as K1 scales it; the slim (xbox conversation) bar keeps it.
 static void K2ScaleListScrollBar(CSWGuiControl& control, float fXMult)
 {
-    CSWGuiListBox* pList = static_cast<CSWGuiListBox*>(control.AsListBox());
+    CSWGuiListBox* pList = control.AsListBox();
     if (pList && !pList->m_scrollBar.bSlimBar)
         pList->m_scrollBar.m_extent.w = static_cast<int>(__builtin_ceilf(pList->m_scrollBar.m_extent.w * fXMult));
 }
@@ -535,7 +535,7 @@ void CSWGuiPanel::InitControl(CSWGuiControl& control, const CExoString& sControl
     // A progress/status bar keeps the layout file's default (flat) fill instead of its own.
     if (strstr(sControlName.CStr(), "LBL_BAR"))
     {
-        CSWGuiLabel* pLabel = static_cast<CSWGuiLabel*>(control.AsLabel());
+        CSWGuiLabel* pLabel = control.AsLabel();
         if (pLabel)
             pLabel->m_border.m_params.m_flags.nFillStyle = 2;
     }
@@ -741,7 +741,7 @@ bool CSWGuiPanel::ShouldFreeMouseOnAdd()
 
 void CSWGuiPanel::SetBackground(const CResRef& resRef)
 {
-    m_pBackground->m_params.SetFillImage(resRef, 0);
+    m_pBackground->m_params.SetFillImage(resRef);
 }
 
 // The pad-button hooks differ only in the event id they forward.
@@ -791,8 +791,7 @@ void CSWGuiPanel::SetVisible(int flag)
 
 void CSWGuiPanel::ClearControls()
 {
-    m_controls.m_count = 0;
-    m_controls.Clear();
+    m_controls.RemoveAll(1);
 }
 
 CSWGuiControl* CSWGuiPanel::GetActiveControl()
@@ -1026,7 +1025,7 @@ void CSWGuiPanel::GetLocalMouseCoords(int* pX, int* pY)
 // through the shared control-list helper, which cannot be open-coded here.
 void CSWGuiPanel::RemoveControl(CSWGuiControl* pControl)
 {
-    int nIndex = GetPosInControlList(pControl);
+    int nIndex = m_controls.IndexOf(pControl);
 
     if (nIndex == -1)
         return;
@@ -1048,7 +1047,7 @@ void CSWGuiPanel::ConnectControlMoves()
         if (!pControl)
             continue;
 
-        CSWGuiNavigable* pNavigable = static_cast<CSWGuiNavigable*>(pControl->AsNavigable());
+        CSWGuiNavigable* pNavigable = pControl->AsNavigable();
         if (!pNavigable)
             continue;
 
@@ -1066,7 +1065,7 @@ void CSWGuiPanel::ConnectControlMoves()
 
 void CSWGuiPanel::BringControlToFront(CSWGuiControl* pControl)
 {
-    int nIndex = GetPosInControlList(pControl);
+    int nIndex = m_controls.IndexOf(pControl);
 
     if (nIndex == -1)
         return;
@@ -1222,7 +1221,7 @@ void CSWGuiManager::SetTemporarilyDisableToolTip(int bDisable)
         if (m_pMouseOverControl)
         {
             if (m_pMouseOverControl->AsListBox())
-                pPending = static_cast<CSWGuiListBox*>(m_pMouseOverControl->AsListBox())->HitCheckMouseLocal(0);
+                pPending = m_pMouseOverControl->AsListBox()->HitCheckMouseLocal(0);
             else
                 pPending = m_pMouseOverControl;
         }
@@ -1290,7 +1289,7 @@ void CSWGuiManager::RestoreOldMousePosition()
     m_storedMousePos.x = -1;
     m_storedMousePos.y = -1;
 
-    HandleMouseMove(m_currentMousePos.x, m_currentMousePos.y);
+    UpdateMouseMove();
 }
 
 // The option gate wrapped around RestoreOldMousePosition.
@@ -1329,6 +1328,7 @@ CSWGuiPanel* CSWGuiManager::PopModalPanel()
         return 0;
 
     CSWGuiPanel* pPanel = m_modalPanels.m_pArray[m_modalPanels.m_count - 1];
+    // inlined CExoArrayList<CSWGuiPanel*>::DelIndex(m_count - 1)
     m_modalPanels.m_count--;
 
     DetermineNeedToDraw();
@@ -1473,7 +1473,7 @@ int CSWGuiManager::HandleZMouse(int zDelta)
             m_bToolTipDisabled = 0;
         }
 
-        static_cast<CSWGuiListBox*>(pControl->AsListBox())->HandleMouseMove();
+        pControl->AsListBox()->HandleMouseMove();
         return 1;
     }
 
@@ -1699,7 +1699,7 @@ void CSWGuiManager::HandleMouseMove(int x, int y)
         }
     }
 
-    CSWGuiListBox* pListBox = static_cast<CSWGuiListBox*>(pControl->AsListBox());
+    CSWGuiListBox* pListBox = pControl->AsListBox();
     if (pListBox)
     {
         if (m_bToolTipDisabled == 1 &&
@@ -2748,7 +2748,7 @@ int CSWGuiManager::RemovePanel(CSWGuiPanel* pPanel)
     }
 
     m_pMouseOverControl = 0;
-    HandleMouseMove(m_currentMousePos.x, m_currentMousePos.y);
+    UpdateMouseMove();
     m_pMouseCaptureObject = 0;
     return 1;
 #endif
@@ -2887,8 +2887,8 @@ int CSWGuiManager::LoadGuiSounds()
 
 void CSWGuiManager::ClearPanels()
 {
-    m_modalPanels.Clear();
-    m_panels.Clear();
+    m_modalPanels.SetSize(0);
+    m_panels.SetSize(0);
 }
 
 // The modal search has no null-element guard, unlike the panel-list search.
@@ -2931,10 +2931,10 @@ int CSWGuiManager::PushModalPanel(CSWGuiPanel* pPanel)
 // the one path which skips the draw refresh.
 void CSWGuiManager::BringPanelToFront(CSWGuiPanel* pPanel)
 {
-    if (GetModalIndex(pPanel) != -1)
+    if (m_modalPanels.IndexOf(pPanel) != -1)
         return;
 
-    int nIndex = GetPanelIndex(pPanel);
+    int nIndex = m_panels.IndexOf(pPanel);
     if (nIndex != -1)
     {
         m_panels.DelIndex(nIndex);
@@ -3267,7 +3267,7 @@ void CSWGuiManager::GenerateAspectMultipliers(int bUseNativeRect, float& fXMult,
 // control-list helper; the append is CExoArrayList<CSWGuiControl*>::Add.
 void CSWGuiPanel::AddControl(CSWGuiControl* pControl)
 {
-    if (GetPosInControlList(pControl) != -1)
+    if (m_controls.IndexOf(pControl) != -1)
         return;
 
     pControl->m_pContainer = this;

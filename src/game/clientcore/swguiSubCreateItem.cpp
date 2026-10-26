@@ -134,7 +134,7 @@ void CSWGuiCreateItemSubMenu::LoadItems(int nBaseItem)
                 CResGFF* pGFF = static_cast<CResGFF*>(g_pExoResMan->GetResObject(CResRef(pName->CStr()), RESTYPE_UTI));
                 if (pGFF == 0) {
                     pGFF = new CResGFF();
-                    __strncpy_chk2(pGFF->m_sFileType, "UTI ", 4, 4, 5);
+                    pGFF->SetFileType("UTI ");
                     g_pExoResMan->SetResObject(CResRef(pName->CStr()), RESTYPE_UTI, pGFF);
                     bNewGff = 1;
                 }
@@ -220,7 +220,7 @@ void CSWGuiCreateItemSubMenu::CreateItem(CSWGuiControl* pControl)
 void CSWGuiCreateItemSubMenu::ClearItems()
 {
     m_listBox.ClearItems();
-    m_paButtons.Clear();
+    m_paButtons.SetSize(0);
     m_listRefs.Clear();
     m_listItems.Clear();
     m_nSelectedIndex = -99;

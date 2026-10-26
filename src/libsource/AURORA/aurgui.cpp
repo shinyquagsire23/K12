@@ -511,7 +511,7 @@ int AurGUISetupViewport(int x, int y, int w, int h, const Vector& vColor, bool b
     float fGreen = vColor.y;
     float fBlue = vColor.z;
     int nAlpha = static_cast<int>(fAlpha * 255.0f);
-    int bNotSentinel = !equal(vColor, Vector(-1.0f, -1.0f, -1.0f));
+    int bNotSentinel = vColor != Vector(-1.0f, -1.0f, -1.0f);
     if (nAlpha >= 1 && bNotSentinel) {
         // glColor4ubv reads the bytes in memory order: R = x, G = y, B = z, A = alpha.
         unsigned int nPacked = static_cast<unsigned int>(static_cast<int>(fRed * 255.0f)) |
@@ -522,7 +522,7 @@ int AurGUISetupViewport(int x, int y, int w, int h, const Vector& vColor, bool b
         GLRender::Disable(Aurora::kCapTexture2D);
         GLRender::Disable(Aurora::kCapLighting);
         GLRender::BeginImmediatePrimitive(Aurora::kPrimQuads);
-        ASLgl::glColor4ubv(reinterpret_cast<const unsigned char*>(&nColor));
+        GLRender::SetVertexColor(nColor);
         ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
         ASLgl::glVertex4f(1.0f, 0.0f, 0.0f, 1.0f);
         ASLgl::glVertex4f(1.0f, 1.0f, 0.0f, 1.0f);
@@ -584,8 +584,7 @@ void CAurGUIStringInternal::DrawBoundingRect(Vector, float) {
     float fRight = static_cast<float>(m_positionX + m_sizeX) / fWidth;
 
     GLRender::BeginImmediatePrimitive(Aurora::kPrimLineLoop);
-    unsigned char anColor[4] = { 0x66, 0xa5, 0xe5, 0xff };
-    ASLgl::glColor4ubv(anColor);
+    GLRender::SetVertexColor(0xffe5a566);
     ASLgl::glVertex4f(fLeft, fTop, 0.0f, 1.0f);
     ASLgl::glVertex4f(fLeft, fBottom, 0.0f, 1.0f);
     ASLgl::glVertex4f(fRight, fBottom, 0.0f, 1.0f);
@@ -1178,8 +1177,6 @@ void CAurGUIStringInternal::Draw(float fAlpha)
                                   static_cast<unsigned int>(nAlpha) << 24;
             unsigned int nWhiteColor = kColourWhiteRgb | static_cast<unsigned int>(nAlpha) << 24;
 
-            unsigned char anColor[4];
-
             if (nAbsChars > 0) {
                 int nCharIndex = 0;
                 for (;;) {
@@ -1222,8 +1219,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
                             fGap = fW * 0.6f;
                         }
 #endif
-                        *reinterpret_cast<unsigned int*>(anColor) = c > 31 ? nColor : nWhiteColor;
-                        ASLgl::glColor4ubv(anColor);
+                        GLRender::SetVertexColor(c > 31 ? nColor : nWhiteColor);
 #ifdef K2_HOST_BUILD
                         // Linear filtering at a cell's top or bottom edge blends in the row of
                         // glyphs above or below (a sliver over A, a, 4 at high resolutions): the
@@ -1286,8 +1282,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
                                         static_cast<float>(CAurGUIDraw::cm_nViewportStack
                                             [CAurGUIDraw::cm_nCurrentViewport]
                                                 .nHeight));
-                *reinterpret_cast<unsigned int*>(anColor) = nColor;
-                ASLgl::glColor4ubv(anColor);
+                GLRender::SetVertexColor(nColor);
                 ASLgl::glTexCoord2f(pFontInfo->m_aMin[45].x - 0.0001f,
                                     pFontInfo->m_aMin[45].y - 0.0001f);
                 ASLgl::glVertex4f(fPenX, fQuadTop, 0.0f, 1.0f);
@@ -1498,8 +1493,6 @@ void CAurGUIStringInternal::Draw(float fAlpha)
                                   static_cast<unsigned int>(nAlpha) << 24;
             unsigned int nWhiteColor = kColourWhiteRgb | static_cast<unsigned int>(nAlpha) << 24;
 
-            unsigned char anColor[4];
-
             if (nAbsChars > 0) {
                 int nCharIndex = 0;
                 for (;;) {
@@ -1524,8 +1517,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
                         float fBottom =
                             static_cast<unsigned char>(c - kPadGlyphFirst) < kPadGlyphCount ? fQuadBottom - 0.002f : fQuadBottom;
 
-                        *reinterpret_cast<unsigned int*>(anColor) = c > 31 ? nColor : nWhiteColor;
-                        ASLgl::glColor4ubv(anColor);
+                        GLRender::SetVertexColor(c > 31 ? nColor : nWhiteColor);
                         ASLgl::glTexCoord2f(pFontInfo->m_aMin[c].x - fTexelU,
                                             pFontInfo->m_aMin[c].y - fTexelV);
                         ASLgl::glVertex4f(fPenX, fTop, 0.0f, 1.0f);
@@ -1566,8 +1558,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
                                         static_cast<float>(CAurGUIDraw::cm_nViewportStack
                                             [CAurGUIDraw::cm_nCurrentViewport]
                                                 .nHeight));
-                *reinterpret_cast<unsigned int*>(anColor) = nColor;
-                ASLgl::glColor4ubv(anColor);
+                GLRender::SetVertexColor(nColor);
                 ASLgl::glTexCoord2f(pFontInfo->m_aMin[45].x - fTexelU,
                                     pFontInfo->m_aMin[45].y - fTexelV);
                 ASLgl::glVertex4f(fPenX, fQuadTop, 0.0f, 1.0f);
@@ -1965,6 +1956,7 @@ void CAurGUIImageInternal::Draw(float x, float y, float w, float h, unsigned cha
     if (equal(v, Vector(-1.0f, -1.0f, -1.0f))) {
         float fViewportAlpha = GetViewportAlpha() * fAlpha;
         ASLgl::glColor4f(1.0f, 1.0f, 1.0f, fViewportAlpha);
+        // inlined GLRender::SetVertexColor(unsigned long)
         unsigned char anColor[4];
         *reinterpret_cast<unsigned int*>(anColor) =
             kColourWhiteRgb | (static_cast<unsigned int>(GetViewportAlpha() * fAlpha * 255.0f) << 24);

@@ -48,6 +48,7 @@ extern CTlkTable*   g_pTlkTable;
 #include "port/libcstdlib.h"
 
 #include <stdio.h>
+#include "exostringinline.h"
 extern int   g_nSetMovieFrameRate;
 extern float displayFPS;
 extern int   g_bEnableAurPostString;
@@ -1248,11 +1249,7 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
 
     if (m_sModuleResourceName != sKey)
     {
-#if KOTOR1  // K1 reads the length through GetLength
         if (m_sModuleResourceName.GetLength() >= 1)
-#else
-        if (m_sModuleResourceName.m_sString != 0 && static_cast<int>(strlen(m_sModuleResourceName.m_sString)) >= 1)
-#endif
             RemoveModuleResources(m_sModuleResourceName);
         m_sModuleResourceName = sKey;
         AddModuleResources(sKey);
@@ -1664,18 +1661,7 @@ void CSWSModule::AddObjectToLimbo(unsigned long long objectId)
         if (m_limboList.m_pArray[i] == objectId)
             return;
 
-    // inlined CExoArrayList<unsigned long long>::Add(objectId)
-    if (m_limboList.m_count == m_limboList.m_capacity)
-    {
-        int nNewCapacity = (m_limboList.m_count == 0) ? 16 : m_limboList.m_count * 2;
-        unsigned long long* paOld = m_limboList.m_pArray;
-        m_limboList.m_capacity = nNewCapacity;
-        m_limboList.m_pArray = new unsigned long long[nNewCapacity];
-        for (long long i = 0; i < static_cast<long long>(m_limboList.m_count); i++)
-            m_limboList.m_pArray[i] = paOld[i];
-        delete[] paOld;
-    }
-    m_limboList.m_pArray[m_limboList.m_count++] = objectId;
+    m_limboList.Add(objectId);
 }
 
 // The index of the module's primary player in the IFO's player list, or -1.
@@ -1795,11 +1781,7 @@ void CSWSModule::AddModuleResources(const CExoString& sModule)
     }
     else
     {
-#if KOTOR1  // K1 reads the length through GetLength
         int nLength = sModule.GetLength();
-#else
-        int nLength = (sModule.m_sString != 0) ? static_cast<int>(strlen(sModule.m_sString)) : 0;
-#endif
         sStem = sStem + sModule.Right(nLength - nColon - 1);
     }
 
@@ -1884,11 +1866,7 @@ void CSWSModule::RemoveModuleResources(const CExoString& sModule)
     }
     else
     {
-#if KOTOR1  // K1 reads the length through GetLength
         int nLength = sModule.GetLength();
-#else
-        int nLength = (sModule.m_sString != 0) ? static_cast<int>(strlen(sModule.m_sString)) : 0;
-#endif
         sStem = sModule.Right(nLength - nColon - 1);
     }
 
@@ -2049,11 +2027,7 @@ CExoString CSWSModule::GetModuleResourceName()
     nColon = sName.Find(':', 0);
     while (nColon != -1)
     {
-#if KOTOR1  // K1 reads the length through GetLength
         int nLength = sName.GetLength();
-#else
-        int nLength = (sName.m_sString != 0) ? static_cast<int>(strlen(sName.m_sString)) : 0;
-#endif
         sName = sName.Right(nLength - nColon - 1);
 
         nColon = sName.Find(':', 0);
@@ -2398,8 +2372,7 @@ int CSWSModule::SaveStatic(CERFFile* pERF, const CExoString& sFileType, unsigned
             if (nBufferSize != 0)
             {
                 CResGFF* pNewGFF = new CResGFF();
-                const char* pszFileType = sFileType.CStr();
-                strncpy(pNewGFF->m_sFileType, pszFileType, 4);
+                pNewGFF->SetFileType(sFileType.CStr());
                 pRes = pNewGFF;
             }
             else

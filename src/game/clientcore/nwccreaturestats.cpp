@@ -32,6 +32,7 @@
 #include "nwmessagetypes.h"
 #include "nwportrait.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // CSWGuiInterfaceAction::m_nFlags: bit 0 enables the entry, bits 1-4 say why it is disabled (the
 // main interface's hint strings: force depleted, restricted by armor, missing item, target too close,
@@ -381,16 +382,6 @@ unsigned short CSWCCreatureStats::GetFeat(unsigned short nFeat)
     return m_lstFeats.m_pArray[nFeat];
 }
 
-// Counts matching ids over the whole list, with no early exit, so the loop can vectorize.
-static int CountFeatIds(const unsigned short* pIds, int nCount, unsigned short nFeat)
-{
-    int nFound = 0;
-    for (int64_t i = 0; i < nCount; i++)
-        if (pIds[i] == nFeat)
-            nFound++;
-    return nFound;
-}
-
 int CSWCCreatureStats::HasFeat(unsigned short nFeat)
 {
     for (int i = 0; i < m_lstFeats.m_count; i++)
@@ -411,9 +402,7 @@ int CSWCCreatureStats::HasClassSkillFeat(unsigned short nSkill)
         case SKILL_SECURITY:     nFeat = FEAT_CLASS_SKILL_SECURITY; break;
         case SKILL_TREAT_INJURY: nFeat = FEAT_CLASS_SKILL_TREAT_INJURY; break;
     }
-    if (CountFeatIds(m_lstFeats.m_pArray, m_lstFeats.m_count, nFeat))
-        return 1;
-    return CountFeatIds(m_lstBonusFeats.m_pArray, m_lstBonusFeats.m_count, nFeat) != 0;
+    return FeatAcquired(nFeat);
 }
 
 int CSWCCreatureStats::GetFeatRemainingUses(unsigned short nFeat)
@@ -421,9 +410,7 @@ int CSWCCreatureStats::GetFeatRemainingUses(unsigned short nFeat)
     for (int64_t i = 0; i < m_lstFeatUses.m_count; i++)
         if (m_lstFeatUses.m_pArray[i]->m_nFeat == nFeat)
             return m_lstFeatUses.m_pArray[i]->m_nRemainingUses;
-    if (CountFeatIds(m_lstFeats.m_pArray, m_lstFeats.m_count, nFeat))
-        return 100;
-    if (CountFeatIds(m_lstBonusFeats.m_pArray, m_lstBonusFeats.m_count, nFeat))
+    if (FeatAcquired(nFeat))
         return 100;
     return 0;
 }
@@ -619,7 +606,7 @@ CExoString CSWCCreatureStats::GetFullName()
 CExoString CSWCCreatureStats::GetFirstName()
 {
     CExoString sName = m_name;
-    if (m_name.m_sString != 0 && static_cast<int>(strlen(m_name.m_sString)) >= 1) {
+    if (m_name.GetLength() >= 1) {
         int nSpace = m_name.Find(' ', 0);
         if (nSpace != -1)
             sName = m_name.SubString(0, nSpace);
@@ -630,7 +617,7 @@ CExoString CSWCCreatureStats::GetFirstName()
 CExoString CSWCCreatureStats::GetLastName()
 {
     CExoString sName;
-    if (m_name.m_sString != 0 && static_cast<int>(strlen(m_name.m_sString)) >= 1) {
+    if (m_name.GetLength() >= 1) {
         int nSpace = m_name.Find(' ', 0);
         if (nSpace != -1)
             sName = m_name.SubString(nSpace + 1, -1);
@@ -701,9 +688,9 @@ CResRef CSWCCreatureStats::GetPortrait(int nType)
     CExoString sVariant;
     C2DA* pPortraits = g_pRules->m_p2DArrays->m_pPortrait;
     if (pPortraits != 0 && nType != 0) {
-        sVariant = "";
         int bFound = 0;
         short nAlignment = m_alignmentGoodEvil;
+        sVariant = "";
         if (nAlignment <= 10) {
             CExoString sColumn("BaseResRefVVVE");
             bFound = pPortraits->GetCExoStringEntry(m_portraitId, sColumn, &sVariant);
@@ -1056,7 +1043,7 @@ CExoString CSWCCreatureStats::GetGeneralDamageBonusString(CSWCCreature* pCreatur
             unsigned long long id = pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON);
             CSWCItem* pItem = pApp->GetItemByGameObjectID(id);
             if (pItem) {
-                CSWBaseItem* pBase = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+                CSWBaseItem* pBase = g_pRules->GetBaseItem(pItem->m_baseItem);
                 if (pBase) {
                     nNumDice = pBase->m_nDieToRoll;
                     nDie = pBase->m_nNumDice;
@@ -1073,7 +1060,7 @@ CExoString CSWCCreatureStats::GetGeneralDamageBonusString(CSWCCreature* pCreatur
             unsigned long long id = pCreature->GetEquippedItemID(MSG_SLOT_LEFT_WEAPON);
             CSWCItem* pItem = pApp->GetItemByGameObjectID(id);
             if (pItem) {
-                CSWBaseItem* pBase = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+                CSWBaseItem* pBase = g_pRules->GetBaseItem(pItem->m_baseItem);
                 if (pBase) {
                     nNumDice = pBase->m_nDieToRoll;
                     nDie = pBase->m_nNumDice;
@@ -1321,16 +1308,16 @@ void CSWCCreatureStats::ClearKnownSpells(unsigned char nClassPos)
 #if KOTOR1  // K1 keeps this out of line
 __attribute__((noinline))
 #endif
-int CSWCCreatureStats::GetSkillModifier(unsigned short nSkill)
+signed char CSWCCreatureStats::GetSkillModifier(unsigned short nSkill)
 {
     int nAbility = g_pRules->m_paSkills[nSkill].m_nKeyAbility;
     switch (nAbility) {
-    case ABILITY_STRENGTH: return static_cast<int>(floor(m_abScores[0] * 0.5)) - 5;
-    case ABILITY_DEXTERITY: return m_nDEXArmorAdjust + static_cast<int>(floor(m_abScores[1] * 0.5)) - 5;
-    case ABILITY_CONSTITUTION: return static_cast<int>(floor(m_abScores[2] * 0.5)) - 5;
-    case ABILITY_INTELLIGENCE: return static_cast<int>(floor(m_abScores[3] * 0.5)) - 5;
-    case ABILITY_WISDOM: return static_cast<int>(floor(m_abScores[4] * 0.5)) - 5;
-    case ABILITY_CHARISMA: return static_cast<int>(floor(m_abScores[5] * 0.5)) - 5;
+    case ABILITY_STRENGTH: return GetSTRMod();
+    case ABILITY_DEXTERITY: return GetDEXMod();
+    case ABILITY_CONSTITUTION: return GetCONMod();
+    case ABILITY_INTELLIGENCE: return GetINTMod();
+    case ABILITY_WISDOM: return GetWISMod();
+    case ABILITY_CHARISMA: return GetCHAMod();
     default: return 0;
     }
 }
@@ -1446,6 +1433,7 @@ void CSWCCreatureStats::AddKnownSpell(unsigned char nClassPos, unsigned int nSpe
         return;
     if (g_pRules->GetSpell(nSpellId) == 0)
         return;
+    // inlined CSWCCreatureStats_ClassInfo::AddKnownSpell(0, nSpellId)
     CExoArrayList<unsigned int>& lvl = m_classes[nClassPos].m_spellLevels[0];
     if (lvl.IndexOf(nSpellId) != -1)
         return;
@@ -1508,32 +1496,17 @@ void CSWCLevelUpStats::SetCONBase(unsigned char nScore)
 
 void CSWCLevelUpStats::SetDEXBase(unsigned char nScore, int bAdjustAC)
 {
-    m_abScoresBase[1] = nScore;
     unsigned short nOldAC = m_nArmorClass;
-    // Old DEX modifier, captured before the score is overwritten below.
     char nOldDexMod = GetDEXMod();
+    m_abScoresBase[1] = nScore;
     m_abScores[1] = static_cast<unsigned char>(g_pRules->m_paRaces[m_nRace].m_anAbilityAdjust[1] + nScore);
 
-    char nBonus = 0;
-    for (unsigned char i = 0; i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
-        if (pClass)
-            nBonus += pClass->GetRefSaveBonus(GetClassLevel(i));
-    }
+    SetReflexSavingThrow();
 
-    // inlined CSWCCreatureStats::GetDEXMod()
-    int nNewDexHalf = static_cast<int>(floor(static_cast<double>(m_abScores[1]) * 0.5));
-    m_nReflexSavingThrow = static_cast<char>(nBonus + m_nDEXArmorAdjust + nNewDexHalf - 5);
-
-    short nAC1, nAC2;
-    if (bAdjustAC == 0) {
-        nAC1 = static_cast<char>(m_nDEXArmorAdjust + nNewDexHalf - 5);
-        nAC2 = 10;
-    } else {
-        nAC1 = static_cast<short>(nOldAC - nOldDexMod);
-        nAC2 = static_cast<char>(m_nDEXArmorAdjust + nNewDexHalf - 5);
-    }
-    m_nArmorClass = nAC1 + nAC2;
+    if (bAdjustAC == 0)
+        m_nArmorClass = GetDEXMod() + 10;
+    else
+        m_nArmorClass = nOldAC - nOldDexMod + GetDEXMod();
 
     InitializeCombatInformation();
 }
@@ -1546,8 +1519,7 @@ void CSWCLevelUpStats::SetReflexSavingThrow()
         if (pClass)
             nBonus += pClass->GetRefSaveBonus(GetClassLevel(i));
     }
-    char nDexHalf = static_cast<char>(static_cast<int>(floor(static_cast<double>(m_abScores[1]) * 0.5)));
-    m_nReflexSavingThrow = nDexHalf + static_cast<char>(m_nDEXArmorAdjust) + nBonus - 5;
+    m_nReflexSavingThrow = nBonus + GetDEXMod();
 }
 
 void CSWCLevelUpStats::SetFortSavingThrow()
@@ -1558,7 +1530,7 @@ void CSWCLevelUpStats::SetFortSavingThrow()
         if (pClass)
             nBonus += pClass->GetFortSaveBonus(GetClassLevel(i));
     }
-    m_nFortSavingThrow = nBonus + CalcStatModifier(m_abScores[2]);
+    m_nFortSavingThrow = nBonus + GetCONMod();
 }
 
 void CSWCLevelUpStats::SetWillSavingThrow()
@@ -1569,7 +1541,7 @@ void CSWCLevelUpStats::SetWillSavingThrow()
         if (pClass)
             nBonus += pClass->GetWillSaveBonus(GetClassLevel(i));
     }
-    m_nWillSavingThrow = nBonus + CalcStatModifier(m_abScores[4]);
+    m_nWillSavingThrow = nBonus + GetWISMod();
 }
 
 int CSWCLevelUpStats::FeatRequirementsMet(unsigned short nFeat, CExoArrayList<unsigned short>* pFeats)
@@ -1759,19 +1731,21 @@ void CSWCLevelUpStats::SetSkillRankBase(unsigned short nSkill, char cRank)
         }
     }
     // Out-of-range ability ids fall through the switch, leaving the raw id as the modifier.
-    int nModifier = g_pRules->m_paSkills[nSkill].m_nKeyAbility;
-    switch (nModifier) {
-    // inlined CSWCCreatureStats::Get{STR,DEX,CON,INT,WIS,CHA}Mod()
-    case ABILITY_STRENGTH: nModifier = static_cast<int>(floor(static_cast<double>(m_abScores[0]) * 0.5)) - 5; break;
-    case ABILITY_DEXTERITY: nModifier = m_nDEXArmorAdjust + static_cast<int>(floor(static_cast<double>(m_abScores[1]) * 0.5)) - 5; break;
-    case ABILITY_CONSTITUTION: nModifier = static_cast<int>(floor(static_cast<double>(m_abScores[2]) * 0.5)) - 5; break;
-    case ABILITY_INTELLIGENCE: nModifier = static_cast<int>(floor(static_cast<double>(m_abScores[3]) * 0.5)) - 5; break;
-    case ABILITY_WISDOM: nModifier = static_cast<int>(floor(static_cast<double>(m_abScores[4]) * 0.5)) - 5; break;
-    case ABILITY_CHARISMA: nModifier = static_cast<int>(floor(static_cast<double>(m_abScores[5]) * 0.5)) - 5; break;
+    int nKeyAbility = g_pRules->m_paSkills[nSkill].m_nKeyAbility;
+    char nModifier = static_cast<char>(nKeyAbility);
+    switch (nKeyAbility) {
+    case ABILITY_STRENGTH: nModifier = GetSTRMod(); break;
+    case ABILITY_DEXTERITY: nModifier = GetDEXMod(); break;
+    case ABILITY_CONSTITUTION: nModifier = GetCONMod(); break;
+    case ABILITY_INTELLIGENCE: nModifier = GetINTMod(); break;
+    case ABILITY_WISDOM: nModifier = GetWISMod(); break;
+    case ABILITY_CHARISMA: nModifier = GetCHAMod(); break;
     }
     if (nSkill < g_pRules->m_nNumSkills)
         m_pSkillRanks[nSkill] = static_cast<unsigned char>(m_pSkillRanksBase[nSkill] + nModifier);
 }
+
+#define NWCCREATURESTATS_MAX(a, b) ((a) > (b) ? (a) : (b))
 
 void CSWCLevelUpStats::AddSkillPointsPerLevel()
 {
@@ -1795,15 +1769,11 @@ void CSWCLevelUpStats::AddSkillPointsPerLevel()
     }
 #else
     if (pClass) {
-        unsigned char nLevel = GetLevel();
-        int nPoints = pClass->m_nSkillPointsBase + GetBaseINTMod();
-        if (nLevel == 1) {
-            m_nSkillPointsRemaining = static_cast<unsigned short>((nPoints < 2) ? 4 : nPoints * 4);
-        } else {
-            if (nPoints < 2)
-                nPoints = 1;
-            m_nSkillPointsRemaining = static_cast<unsigned short>(m_nSkillPointsRemaining + nPoints);
-        }
+        if (GetLevel() == 1)
+            m_nSkillPointsRemaining = static_cast<unsigned short>(
+                NWCCREATURESTATS_MAX(pClass->m_nSkillPointsBase + GetBaseINTMod(), 1) * 4);
+        else
+            m_nSkillPointsRemaining += NWCCREATURESTATS_MAX(pClass->m_nSkillPointsBase + GetBaseINTMod(), 1);
     }
 #endif
 }
@@ -2057,10 +2027,7 @@ int CSWCLevelUpStats::FeatAcquired(unsigned short nFeat, CExoArrayList<unsigned 
 {
     if (nFeat == 0xffff)
         return 0;
-    // Counts matching feats over the whole list rather than stopping at the first.
-    if (CountFeatIds(m_lstFeats.m_pArray, m_lstFeats.m_count, nFeat) != 0)
-        return 1;
-    if (CountFeatIds(m_lstBonusFeats.m_pArray, m_lstBonusFeats.m_count, nFeat) != 0)
+    if (CSWCCreatureStats::FeatAcquired(nFeat))
         return 1;
     if (pChosen != 0) {
         for (unsigned short i = 0; i < pChosen->m_count; i++)

@@ -188,9 +188,9 @@ Vector WindManager::GetGlobalWindNoPoint(const Vector& v, float f)
 // two-angle rotation.
 Vector WindManager::GetGlobalWind(Vector v, float f)
 {
+    // inlined Vector::IsZero()
     if (m_vWind.x == 0.0f && m_vWind.y == 0.0f && m_vWind.z == 0.0f) {
         Vector vStill = pointSourceWindVector(v);
-        // inlined Vector::IsZero()
         if (vStill.x == 0.0f && vStill.y == 0.0f && vStill.z == 0.0f)
             return m_vWind;
     }

@@ -19,6 +19,7 @@ public:
     // </VTABLE-GEN>
 
     void SetRoomInfo(const CResRef& resName, const Vector& vPosition);
+    void SetRoomName(const CResRef& resName) { m_resRoom = resName; }
     void SetRoomEnvAudioProps(int nCount, CExoString* paNames, int* paTypes,
                               float* paValues);
 

@@ -398,29 +398,10 @@ void CPathfindInformation::Shutdown() throw()
         delete[] m_pSmoothResumeFloats;
         m_pSmoothResumeFloats = 0;
     }
-    if (m_pPathPointList) {
-        delete[] m_pPathPointList;
-        m_pPathPointList = 0;
-    }
-    m_pPathPointList = 0;
-    if (m_paSmoothingFirstWayPoints) {
-        m_nSmoothingFirstFloats = 0;
-        delete[] m_paSmoothingFirstWayPoints;
-        m_paSmoothingFirstWayPoints = 0;
-    }
-    m_paSmoothingFirstWayPoints = 0;
-    if (m_paSmoothingSecondWayPoints) {
-        m_nSmoothingSecondFloats = 0;
-        delete[] m_paSmoothingSecondWayPoints;
-        m_paSmoothingSecondWayPoints = 0;
-    }
-    m_paSmoothingSecondWayPoints = 0;
-    if (m_paSmoothingThirdWayPoints) {
-        m_nSmoothingThirdFloats = 0;
-        delete[] m_paSmoothingThirdWayPoints;
-        m_paSmoothingThirdWayPoints = 0;
-    }
-    m_paSmoothingThirdWayPoints = 0;
+    SetPathPointStepsArray(0);
+    SetSmoothingFirstWayPoints(0);
+    SetSmoothingSecondWayPoints(0);
+    SetSmoothingThirdWayPoints(0);
 }
 
 // The "walk around the creature standing in my way" solver, a short-lived stack object that models
@@ -707,14 +688,7 @@ int CAvoidCreature::PlotPathAroundCreature(CSWSCreature* pSelf, CSWSCreature* pB
 // walk the step vector round a further -60 degrees each and resolve their ground height.
 void CAvoidCreature::ComputeHexPoints(const Vector& a, const Vector& b, float f)
 {
-    __builtin_memset(&m_vHexPoints, 0, sizeof(m_vHexPoints));
-    for (int i = 0; i < 2; i++) {
-        m_transit[i].m_nPathSegment = -1;
-        m_transit[i].m_nHexPoint = -1;
-        m_transit[i].m_vPoint.x = 0.0f;
-        m_transit[i].m_vPoint.y = 0.0f;
-        m_transit[i].m_vPoint.z = 0.0f;
-    }
+    Reset();
     Vector vStep = normalize(-b) * (f / LINEFACTOR);
     Quaternion q(Vector(0.0f, 0.0f, 1.0f), -1.0471976f);
     Vector vPoint = a + vStep;

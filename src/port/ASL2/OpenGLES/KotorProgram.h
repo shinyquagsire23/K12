@@ -114,8 +114,13 @@ public:
 template <int N>
 class KotorProgramCachedValue {
 public:
-    // Kept out of line because both callers reach this through a call.
-    __attribute__((noinline))
+    // -1 never matches a real upload, so the first set always goes through.
+    KotorProgramCachedValue()
+    {
+        for (int i = 0; i < N; i++)
+            m_afValues[i] = -1.0f;
+    }
+
     bool IsDifferentAndCache(float* pfValues);
 
     float m_afValues[N];
@@ -150,12 +155,12 @@ public:
 
     int         m_nCameraSerial;
     int         m_nFogSerial;
-    float       m_afLightData[LIGHT_DATA_VEC4S * 4];
-    float       m_afFogColour[3];
-    float       m_afFogData[4];
+    KotorProgramCachedValue<LIGHT_DATA_VEC4S * 4> m_lightDataCache;
+    KotorProgramCachedValue<3> m_fogColourCache;
+    KotorProgramCachedValue<4> m_fogDataCache;
     KotorProgramCachedValue<16> m_lightMaterialCache;
     KotorProgramCachedValue<12> m_fragmentCache;
-    float       m_afVertexShaderParams[4];
+    KotorProgramCachedValue<4> m_vertexShaderCache;
     unsigned int m_uProgram;
     unsigned char m_abAttributeQueried[7];
     unsigned char m_abSamplerQueried[4];
@@ -177,7 +182,7 @@ public:
 };
 
 template <int N>
-inline bool KotorProgramCachedValue<N>::IsDifferentAndCache(float* pfValues)
+bool KotorProgramCachedValue<N>::IsDifferentAndCache(float* pfValues)
 {
 #ifdef K2_HOST_BUILD
     // With K2_GL_NOCACHE set, every upload goes through, as a test of the cache.

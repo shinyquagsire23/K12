@@ -35,6 +35,7 @@ int SWGUI_NUM_FEEDBACK_OPTIONS = 7;
 #include "port/libcstring.h"
 #include "port/k2qolapi.h"
 #include "port/asllanguage.h"
+#include "exostringinline.h"
 
 void ReInitAurora(unsigned int nWidth, unsigned int nHeight, unsigned char nBpp,
                   int nFullscreen, int bAllow);
@@ -142,18 +143,12 @@ CSWGuiOptionsGraphicsAdvanced::CSWGuiOptionsGraphicsAdvanced(CSWGuiManager* pGui
     ScaleExtentForResolution();
 #elif !defined(K2_UI_PC)   // pc: the layout's width holds the caption (no pad glyph beside it)
     // BTN_DEFAULT has to be wide enough for its own caption plus three row-heights.
-    CSWGuiControl* pDefault = &m_btnDefault;
-    CSWGuiExtent extentDefault = m_btnDefault.m_extent;
-    int nIdealWidth = extentDefault.h * 3;
-    CSWGuiExtent extentIdeal = m_btnDefault.m_text.GetIdealWidthAndHeight();
-    nIdealWidth += extentIdeal.w;
-    extentDefault.w = (extentDefault.w > nIdealWidth) ? extentDefault.w : nIdealWidth;
-    pDefault->SetExtent(extentDefault);
+    ExpandButtonToFitText(m_btnDefault);
 #endif
 
     // The description listbox's single row is cloned from the listbox's prototype item.
-    m_labelDesc.Initialize(m_listBoxDesc.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem);
+    m_labelDesc.Initialize(pProto->m_extent, pProto, 1.0f);
 
 #if !KOTOR1
     // Three cycler rows, each with the arrows' press pair and the keyboard pair.
@@ -739,7 +734,7 @@ void CSWGuiOptionsGraphicsAdvanced::HandleInputEvent(int type, int val)
                                              CExoString("Graphics Options"),
                                              CExoString("Disable Write-Only VBO"));
                     if (bFound) {
-                        if (sValue.m_sString && atoi(sValue.m_sString) == 1)
+                        if (sValue.AsINT() == 1)
                             AurDisableVertexBufferObjectsWriteOnly();
                         else
                             AurEnableVertexBufferObjectsWriteOnly();
@@ -753,17 +748,7 @@ void CSWGuiOptionsGraphicsAdvanced::HandleInputEvent(int type, int val)
 
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-            // Walk the whole sub-panel chain, not just this panel.
-#if KOTOR1
-            // K1: no panel chain; one stamp of state 4 (bits 8-10).
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-            CSWGuiPanel* pPanel = this;
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
-#endif
+            SetToBeDeleted(0);
             m_pParent->SetUpOptions();
 #if KOTOR1
         }
@@ -815,11 +800,7 @@ void CSWGuiOptionsGraphicsAdvanced::SetDescription(uint64_t nStrRef)
     CSWGuiText* pText = &m_labelDesc.m_text;
 
     CSWGuiExtent extent = m_labelDesc.m_extent;
-#if KOTOR1
     if (sText.GetLength() >= 1)
-#else
-    if (sText.m_sString && static_cast<int>(strlen(sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -890,7 +871,7 @@ void CSWGuiOptionsGraphicsAdvanced::K2QolAddRows()
     }
     apRows[nRows - 1]->m_moveToControls[2] = pBelow;
     if (pBelow && pBelow->AsNavigable()) {
-        CSWGuiNavigable* pNav = static_cast<CSWGuiNavigable*>(pBelow->AsNavigable());
+        CSWGuiNavigable* pNav = pBelow->AsNavigable();
         if (pNav->m_moveToControls[0] == &m_cbVSync)
             pNav->m_moveToControls[0] = pAbove;
     }
@@ -1029,8 +1010,9 @@ void CSWGuiOptionsFeedback::PopulateOptionsListbox()
             CSWGuiOptionsCheckbox* pCheckbox = new CSWGuiOptionsCheckbox();
             pCheckbox->CSWGuiButtonToggle::Initialize(pProto->m_extent, pProto);
 
+            float fScale = GetResolutionTextScalar();
             CSWGuiExtent extent = pCheckbox->m_extent;
-            extent.h = static_cast<int>(extent.h * GetResolutionTextScalar());
+            extent.h = static_cast<int>(extent.h * fScale);
             static_cast<CSWGuiControl*>(pCheckbox)->SetExtent(extent);
 
             pCheckbox->AddEvent(SWGUIEVENT_FOCUS, this,
@@ -1165,24 +1147,12 @@ void CSWGuiOptionsFeedback::OnEnterSlot(CSWGuiControl* pControl)
 void CSWGuiOptionsFeedback::HandleInputEvent(int type, int val)
 {
     if (val != 0) {
-#if !KOTOR1
-        CSWGuiPanel* pPanel;
-#endif
         switch (type) {
         case INPUTEVENT_GUI_B:
         case INPUTEVENT_GUI_BACK:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-#if KOTOR1
-            // K1: no panel chain; one stamp of state 4 (bits 8-10).
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-            pPanel = this;
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
-#endif
+            SetToBeDeleted(0);
             break;
         case INPUTEVENT_GUI_Y:
 #if KOTOR1
@@ -1266,11 +1236,7 @@ void CSWGuiOptionsFeedback::SetDescription(uint64_t nStrRef)
     m_listBoxDesc.ClearItems();
     CSWGuiText* pText = &m_labelExtent.m_text;
     CSWGuiExtent extent = m_labelExtent.m_extent;
-#if KOTOR1
     if (str.GetLength() > 0)
-#else
-    if (str.m_sString && static_cast<int>(strlen(str.m_sString)) > 0)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = m_labelExtent.m_text.GetFontHeight();
@@ -1499,8 +1465,8 @@ CSWGuiOptionsGraphics::CSWGuiOptionsGraphics(CSWGuiManager* pGuiManager)
     StopLoadFromLayout();
     ScaleExtentForResolution();
 
-    m_labelDesc.Initialize(m_listBoxDesc.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem);
+    m_labelDesc.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_sliderGamma.SetCurValue(57);
     m_sliderGamma.AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsGraphics::OnEnterSlider));
@@ -1568,7 +1534,7 @@ CSWGuiOptionsGraphics::CSWGuiOptionsGraphics(CSWGuiManager* pGuiManager)
         m_cbFullscreen.SetMoveToControl(0, &m_cbFramerateLock);
         m_cbFullscreen.SetMoveToControl(2, pBelow);
         if (pBelow && pBelow->AsNavigable()) {
-            CSWGuiNavigable* pNav = static_cast<CSWGuiNavigable*>(pBelow->AsNavigable());
+            CSWGuiNavigable* pNav = pBelow->AsNavigable();
             if (pNav->m_moveToControls[0] == &m_cbFramerateLock)
                 pNav->SetMoveToControl(0, &m_cbFullscreen);
         }
@@ -1897,35 +1863,35 @@ void CSWGuiOptionsGraphics::OnEnterSlider(CSWGuiControl* pControl)
 #if KOTOR1
     if (&m_sliderGamma == pControl)
         SetDescription(STRREF_DESC_BRIGHTNESS);
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 1;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 1;
 #else
     if (&m_sliderGamma == pControl) {
         m_bSlotDescriptionArmed = 0;
         SetDescription(STRREF_DESC_BRIGHTNESS);
     }
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 1;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 1;
 #endif
 }
 
 void CSWGuiOptionsGraphics::OnExitSlider(CSWGuiControl* pControl)
 {
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 0;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 0;
 }
 
 void CSWGuiOptionsGraphics::OnMoveGammaSlider(CSWGuiControl* pControl)
 {
 #if KOTOR1
     // K1: no description refresh and no clamp; the whole slider range maps onto the gamma curve.
-    int nMax = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nMaxValue;
-    int nCur = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nCurValue;
+    int nMax = pControl->AsSlider()->m_nMaxValue;
+    int nCur = pControl->AsSlider()->m_nCurValue;
     g_pAurora->ResetGammaRamp(static_cast<float>(nCur) / static_cast<float>(nMax) * -1.77f + 2.0f, 0);
     g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nGammaIndex = static_cast<unsigned char>(nCur);
 #else
     if (&m_sliderGamma == pControl)
         SetDescription(STRREF_DESC_BRIGHTNESS);
 
-    int nMax = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nMaxValue;
-    int nCur = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nCurValue;
+    int nMax = pControl->AsSlider()->m_nMaxValue;
+    int nCur = pControl->AsSlider()->m_nCurValue;
     int nClamped = (nCur < 85) ? nCur : 85;
     g_pAurora->ResetGammaRamp(static_cast<float>(nClamped + 15) / static_cast<float>(nMax) * -1.77f + 2.0f, 0);
     g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nGammaIndex = static_cast<unsigned char>(nCur);
@@ -2154,7 +2120,7 @@ void CSWGuiOptionsGraphics::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_BACK:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+            SetToBeDeleted(0);
 
             if (m_bResolutionChanged) {
                 CExoIni ini;
@@ -2197,16 +2163,7 @@ void CSWGuiOptionsGraphics::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_BACK: {
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-#if KOTOR1
-            // K1: no panel chain; one stamp of state 4 (bits 8-10).
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-            CSWGuiPanel* pPanel = this;
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
-#endif
+            SetToBeDeleted(0);
 
             if (m_bResolutionChanged) {
                 CExoIni ini;
@@ -2215,7 +2172,7 @@ void CSWGuiOptionsGraphics::HandleInputEvent(int type, int val)
                 int bFound = ini.ReadIniEntry(sValue, CExoString(EXO_GAME_INI),
                                               CExoString("Graphics Options"),
                                               CExoString("Disable Vertex Buffer Objects"));
-                if (bFound && sValue.m_sString && atoi(sValue.m_sString) == 1)
+                if (bFound && sValue.AsINT() == 1)
                     AurDisableVertexBufferObjects();
 
                 ReInitAurora(g_nScreenWidth, g_nScreenHeight, g_nBitsPerPixel,
@@ -2225,7 +2182,7 @@ void CSWGuiOptionsGraphics::HandleInputEvent(int type, int val)
                                           CExoString("Graphics Options"),
                                           CExoString("Disable Write-Only VBO"));
                 if (bFound) {
-                    if (sValue.m_sString && atoi(sValue.m_sString) == 1)
+                    if (sValue.AsINT() == 1)
                         AurDisableVertexBufferObjectsWriteOnly();
                     else
                         AurEnableVertexBufferObjectsWriteOnly();
@@ -2335,11 +2292,7 @@ void CSWGuiOptionsGraphics::SetDescription(uint64_t nStrRef)
     CSWGuiText* pText = &m_labelDesc.m_text;
 
     CSWGuiExtent extent = m_labelDesc.m_extent;
-#if KOTOR1
     if (sText.GetLength() >= 1)
-#else
-    if (sText.m_sString && static_cast<int>(strlen(sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -2406,18 +2359,12 @@ CSWGuiOptionsSoundAdvanced::CSWGuiOptionsSoundAdvanced(CSWGuiManager* pGuiManage
 #if KOTOR1
     ScaleExtentForResolution();
 #elif !defined(K2_UI_PC)   // pc: the layout's width holds the caption (no pad glyph beside it)
-    CSWGuiControl* pDefault = &m_btnDefault;
-    CSWGuiExtent extentDefault = m_btnDefault.m_extent;
-    int nIdealWidth = extentDefault.h * 3;
-    CSWGuiExtent extentIdeal = m_btnDefault.m_text.GetIdealWidthAndHeight();
-    nIdealWidth += extentIdeal.w;
-    extentDefault.w = (extentDefault.w > nIdealWidth) ? extentDefault.w : nIdealWidth;
-    pDefault->SetExtent(extentDefault);
+    ExpandButtonToFitText(m_btnDefault);
 #endif
 
     // The description listbox's single row is cloned from the listbox's prototype item.
-    m_labelDesc.Initialize(m_listBoxDesc.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem);
+    m_labelDesc.Initialize(pProto->m_extent, pProto, 1.0f);
 
     // Five EAX controls, with the click and toggle events on the three that act and the hover
     // event on all four of the top group.
@@ -2606,6 +2553,8 @@ void CSWGuiOptionsSoundAdvanced::SetEAXText()
     else if (m_nEAXLevel == ((nBest < 3) ? nBest : 3))
         m_btnEAXRight.m_tail.bVisible = 0;
 #else
+    int nBest;
+    int nLimit;
     switch (m_nEAXLevel) {
     case 0:  m_btnEAX.m_text.m_params.SetStrRef(STRREF_EAX_DISABLED); break;
     case 2:  m_btnEAX.m_text.m_params.SetStrRef(STRREF_EAX_2); break;
@@ -2616,8 +2565,8 @@ void CSWGuiOptionsSoundAdvanced::SetEAXText()
     m_btnEAXLeft.m_tail.bVisible = 1;
     m_btnEAXRight.m_tail.bVisible = 1;
 
-    int nBest = g_pExoSound->GetBestEAXAvailable();
-    int nLimit = (nBest > 3) ? 3 : g_pExoSound->GetBestEAXAvailable();
+    nBest = g_pExoSound->GetBestEAXAvailable();
+    nLimit = (nBest > 3) ? 3 : g_pExoSound->GetBestEAXAvailable();
 
     if (m_nEAXLevel == 0)
         m_btnEAXLeft.m_tail.bVisible = 0;
@@ -2707,16 +2656,7 @@ void CSWGuiOptionsSoundAdvanced::HandleInputEvent(int type, int val)
             }
             m_nOptionsChanged = 0;
             m_pGuiManager->PopModalPanel();
-#if KOTOR1
-            // K1: no panel chain; one stamp of state 4 (bits 8-10).
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-            CSWGuiPanel* pPanel = this;
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
-#endif
+            SetToBeDeleted(0);
             break;
         }
 #if !KOTOR1  // K1 has no 0x2a (restore-defaults) input arm here
@@ -2754,11 +2694,7 @@ void CSWGuiOptionsSoundAdvanced::SetDescription(uint64_t nStrRef)
     CSWGuiText* pText = &m_labelDesc.m_text;
 
     CSWGuiExtent extent = m_labelDesc.m_extent;
-#if KOTOR1
     if (sText.GetLength() >= 1)
-#else
-    if (sText.m_sString && static_cast<int>(strlen(sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -2878,8 +2814,8 @@ void CSWGuiOptionsMouse::OnEnterRevMouseButtons(CSWGuiControl* pControl)
 
 void CSWGuiOptionsMouse::OnMoveMouseSenSlider(CSWGuiControl* pControl)
 {
-    int nMaxValue = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nMaxValue;
-    int nCurValue = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nCurValue;
+    int nMaxValue = pControl->AsSlider()->m_nMaxValue;
+    int nCurValue = pControl->AsSlider()->m_nCurValue;
     float fPosition = static_cast<float>(nCurValue) / static_cast<float>(nMaxValue);
     (void)fPosition;
     g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nMouseSensitivity = static_cast<unsigned char>(nCurValue);
@@ -2889,12 +2825,12 @@ void CSWGuiOptionsMouse::OnEnterSlider(CSWGuiControl* pControl)
 {
     if (&m_sliderSensitivity == pControl)
         SetDescription(STRREF_DESC_MOUSE_SENSITIVITY);
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 1;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 1;
 }
 
 void CSWGuiOptionsMouse::OnExitSlider(CSWGuiControl* pControl)
 {
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 0;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 0;
 }
 
 void CSWGuiOptionsMouse::OnDefault(CSWGuiControl* pControl)
@@ -2923,16 +2859,7 @@ void CSWGuiOptionsMouse::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_BACK: {
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-#if KOTOR1
-            // K1: no panel chain; one stamp of state 4 (bits 8-10).
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-            CSWGuiPanel* pPanel = this;
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
-#endif
+            SetToBeDeleted(0);
             break;
         }
 #if !KOTOR1  // K1 has no 0x2a (restore-defaults) input arm here
@@ -2946,8 +2873,8 @@ void CSWGuiOptionsMouse::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_START:
             if (m_pActiveControl != 0 && m_pActiveControl->AsButtonToggle() != 0) {
                 m_pGuiManager->PlayGuiSound(GUISOUND_CHECKBOX_CHECK);
-                CSWGuiButtonToggle* pToggle = static_cast<CSWGuiButtonToggle*>(m_pActiveControl->AsButtonToggle());
-                pToggle->bToggledOn = !static_cast<CSWGuiButtonToggle*>(m_pActiveControl->AsButtonToggle())->bToggledOn;
+                CSWGuiButtonToggle* pToggle = m_pActiveControl->AsButtonToggle();
+                pToggle->bToggledOn = !m_pActiveControl->AsButtonToggle()->bToggledOn;
             }
             break;
         case INPUTEVENT_GUI_SCROLL_UP:
@@ -2978,11 +2905,7 @@ void CSWGuiOptionsMouse::SetDescription(uint64_t nDescription)
     CSWGuiText* pText = &m_labelDesc.m_text;
 
     CSWGuiExtent extent = m_labelDesc.m_extent;
-#if KOTOR1
     if (sText.GetLength() >= 1)
-#else
-    if (sText.m_sString && static_cast<int>(strlen(sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -3086,18 +3009,10 @@ CSWGuiOptionsMain::CSWGuiOptionsMain(CSWGuiManager* pGuiManager)
     m_aButtons[3].AddEvent(INPUTEVENT_GUI_START, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnGraphicsOpt));
     m_aButtons[4].AddEvent(INPUTEVENT_GUI_START, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnSoundOpt));
 
-    m_aButtons[0].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnEnterSlot));
-    m_aButtons[0].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
-    m_aButtons[1].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnEnterSlot));
-    m_aButtons[1].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
-    m_aButtons[2].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnEnterSlot));
-    m_aButtons[2].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
-    m_aButtons[3].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnEnterSlot));
-    m_aButtons[3].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
-    m_aButtons[4].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnEnterSlot));
-    m_aButtons[4].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
-    m_aButtons[5].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnEnterSlot));
-    m_aButtons[5].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
+    for (int i = 0; i < 6; i++) {
+        m_aButtons[i].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsMain::OnEnterSlot));
+        m_aButtons[i].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
+    }
 
     SetActiveControl(&m_aButtons[0], 0);
 #if KOTOR1
@@ -3121,19 +3036,11 @@ void CSWGuiOptionsMain::HandleInputEvent(int type, int val) {
         case INPUTEVENT_GUI_B:
         case INPUTEVENT_GUI_BACK: {
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-#if KOTOR1
-            // K1: no main-menu idle timer; no panel chain, one stamp of state 4.
-            m_pGuiManager->PopModalPanel();
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
+#if !KOTOR1  // K1 has no main-menu idle timer
             g_pAppManager->m_pClientExoApp->EnableMainMenuIdleTimer();
-            m_pGuiManager->PopModalPanel();
-            CSWGuiPanel* pPanel = this;
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
 #endif
+            m_pGuiManager->PopModalPanel();
+            SetToBeDeleted(0);
             g_pAppManager->m_pClientExoApp->SaveOptions();
             break;
         }
@@ -3202,11 +3109,7 @@ void CSWGuiOptionsMain::SetDescription(uint64_t nDescription)
     CSWGuiText* pText = &m_labelDesc.m_text;
 
     CSWGuiExtent extent = m_labelDesc.m_extent;
-#if KOTOR1
     if (sText.GetLength() >= 1)
-#else
-    if (sText.m_sString && static_cast<int>(strlen(sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -3332,18 +3235,12 @@ CSWGuiOptionsSound::CSWGuiOptionsSound(CSWGuiManager* pGuiManager)
 #if KOTOR1
     ScaleExtentForResolution();
 #elif !defined(K2_UI_PC)   // pc: the layout's width holds the caption (no pad glyph beside it)
-    CSWGuiControl* pDefault = &m_btnDefault;
-    CSWGuiExtent extentDefault = m_btnDefault.m_extent;
-    int nIdealWidth = extentDefault.h * 3;
-    CSWGuiExtent extentIdeal = m_btnDefault.m_text.GetIdealWidthAndHeight();
-    nIdealWidth += extentIdeal.w;
-    extentDefault.w = (extentDefault.w > nIdealWidth) ? extentDefault.w : nIdealWidth;
-    pDefault->SetExtent(extentDefault);
+    ExpandButtonToFitText(m_btnDefault);
 #endif
 
     // The description listbox's single row is cloned from the listbox's prototype item.
-    m_labelDesc.Initialize(m_listBoxDesc.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem);
+    m_labelDesc.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_sliderMusic.SetCurValue(50);
     m_sliderVO.SetCurValue(50);
@@ -3419,18 +3316,18 @@ CSWGuiOptionsSound::CSWGuiOptionsSound(CSWGuiManager* pGuiManager)
 void CSWGuiOptionsSound::OnEnterSlider(CSWGuiControl* pControl)
 {
     SetDescription(pControl->m_tail.m_nUserData);
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 1;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 1;
 }
 
 void CSWGuiOptionsSound::OnExitSlider(CSWGuiControl* pControl)
 {
-    static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_imageThumb.m_params.bHilight = 0;
+    pControl->AsSlider()->m_imageThumb.m_params.bHilight = 0;
 }
 
 void CSWGuiOptionsSound::OnMoveVolumeSlider(CSWGuiControl* pControl)
 {
-    int nMax = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nMaxValue;
-    int nCur = static_cast<CSWGuiSlider*>(pControl->AsSlider())->m_nCurValue;
+    int nMax = pControl->AsSlider()->m_nMaxValue;
+    int nCur = pControl->AsSlider()->m_nCurValue;
     float fVolume = static_cast<float>(nCur) / static_cast<float>(nMax) + 0.0f;
     if (&m_sliderMusic == pControl) {
         g_pExoSound->SetMusicVolume(fVolume, 0);
@@ -3496,16 +3393,7 @@ void CSWGuiOptionsSound::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_BACK: {
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-#if KOTOR1
-            // K1: no panel chain; one stamp of state 4 (bits 8-10).
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-            CSWGuiPanel* pPanel = this;
-            do {
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                pPanel = pPanel->m_pNextInChain;
-            } while (pPanel);
-#endif
+            SetToBeDeleted(0);
             break;
         }
         case INPUTEVENT_GUI_Y:
@@ -3547,11 +3435,7 @@ void CSWGuiOptionsSound::SetDescription(uint64_t nStrRef)
     CSWGuiText* pText = &m_labelDesc.m_text;
 
     CSWGuiExtent extent = m_labelDesc.m_extent;
-#if KOTOR1
     if (sText.GetLength() >= 1)
-#else
-    if (sText.m_sString && static_cast<int>(strlen(sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -3612,7 +3496,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
     devMode.m_size = sizeof(PortDevMode);
 
     if (m_listBox.m_pProtoItem != 0) {
-        CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem->AsButton());
+        CSWGuiButton* pTemplate = m_listBox.m_pProtoItem->AsButton();
         unsigned int nMode = 0;
         CSWGuiButton* pSelected = 0;
         CSWGuiButton* pButton = 0;
@@ -3689,13 +3573,14 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
     int nDesktopHeight = 0;
     PortDevMode devMode = PortDevMode();
     devMode.m_size = sizeof(PortDevMode);
+    CSWGuiButton* pTemplate;
+    unsigned int nMode = 0;
+    CSWGuiButton* pSelected = 0;
+    CSWGuiButton* pButton = 0;
     CAuroraInterface::GetDesktopResolution(nDesktopWidth, nDesktopHeight);
 
     if (m_listBox.m_pProtoItem != 0) {
-        CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem->AsButton());
-        unsigned int nMode = 0;
-        CSWGuiButton* pSelected = 0;
-        CSWGuiButton* pButton = 0;
+        pTemplate = m_listBox.m_pProtoItem->AsButton();
 
         while (EnumDisplaySettingsA(0, nMode, &devMode) != 0) {
             if (devMode.m_displayFrequency < 2) {
@@ -3782,7 +3667,7 @@ void CSWGuiOptionsResolution::HandleInputEvent(int type, int val)
         if (type == INPUTEVENT_GUI_BACK || type == INPUTEVENT_GUI_B) {
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+            SetToBeDeleted(0);
 
             if (m_bResolutionChanged) {
                 CExoIni ini;
@@ -3816,11 +3701,7 @@ void CSWGuiOptionsResolution::HandleInputEvent(int type, int val)
     if (val != 0 && (type == INPUTEVENT_GUI_BACK || type == INPUTEVENT_GUI_B)) {
         m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
         m_pGuiManager->PopModalPanel();
-        CSWGuiPanel* pPanel = this;
-        do {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel);
+        SetToBeDeleted(0);
 
         if (m_bResolutionChanged) {
             CExoIni ini;
@@ -3831,7 +3712,7 @@ void CSWGuiOptionsResolution::HandleInputEvent(int type, int val)
             if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"),
                                  CExoString("Graphics Options"),
                                  CExoString("Disable Write-Only VBO"))) {
-                if (sValue.m_sString && atoi(sValue.m_sString) == 1)
+                if (sValue.AsINT() == 1)
                     AurDisableVertexBufferObjectsWriteOnly();
                 else
                     AurEnableVertexBufferObjectsWriteOnly();

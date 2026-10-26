@@ -164,6 +164,25 @@ public:
     CClientExoAppInternal();
     ~CClientExoAppInternal();
     CGameObject* GetGameObject(unsigned long long id);
+    // Drops the downloaded character file.
+    void ResetCharacterFile()
+    {
+        if (m_pCharacterFileBuffer) {
+            delete[] m_pCharacterFileBuffer;
+            m_pCharacterFileBuffer = 0;
+        }
+        m_characterFileSize = 0;
+        m_characterFileSubDir = 0;
+    }
+    // A joystick is attached and joystick input is enabled.
+    bool GetIsJoystickConnected();
+    // The item-drop sound table's entry, or the empty resref before the table is loaded.
+    CResRef GetItemDropSound(unsigned char nSound)
+    {
+        if (m_pItemDropSounds)
+            return m_pItemDropSounds[nSound];
+        return CResRef("");
+    }
 
     enum DoDLResDirParam { DoDLOnlineDir = 0, DoDLModulesDir = 1 };
     // m_mouseHideMask's bits, the reasons the mouse is hidden: HideMouse sets one, ShowMouse clears

@@ -439,7 +439,7 @@ unsigned int IllumDesatNoiseMultEMFragmentShaderID;
 #endif
 
 extern "C" const char* gluErrorString(unsigned int error);
-const float* Homogenize(const Vector& v, const float& w);
+float* Homogenize(const Vector& v, const float& w);
 bool AuroraUseARBShaders();
 int AurMultiTextureAvailable();
 CAurTexture* AurTextureGetNormalizationCubeMap();
@@ -1373,13 +1373,6 @@ void GLRender::InitializeATIFragmentShaders()
 #endif
 
 
-// Latches the active texture unit, and re-selects it when multi-texturing is available (the ARB
-// installers leave the unit wherever the previous pass stopped).
-static inline void SelectStage(unsigned int nStage)
-{
-    GLRender::SetActiveTexture(nStage);
-}
-
 // EnableFragmentShadersARB is K2's alone (K1 has no ARB installer, though its build compiles this
 // one), so its modes past kPSIllumDesatNoiseEMLMMultiply carry K2's numbers in both builds.
 enum {
@@ -1415,15 +1408,15 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, kK2PSDefault);
         ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
         ASLgl::glEnable(GL_LIGHTING);
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        SelectStage(2);
+        SetActiveTexture(2);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        SelectStage(0);
+        SetActiveTexture(0);
         SetCurrentStageTID(0, 0);
         SetCurrentStageTID(1, 0);
         SetCurrentStageTID(2, 0);
@@ -1437,7 +1430,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
 
     // One or two plain units, then a colour constant and a program.
     case kPSStandardFog:
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
         ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, standardFogFragmentShaderID);
@@ -1448,16 +1441,16 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSBumpmap:
         tex1on = 1;
         ASLgl::glDisable(GL_LIGHTING);
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         pTex1->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         pTex2->Bind();
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex3->Bind();
         ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
@@ -1467,16 +1460,16 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSNormalmap:
         tex1on = 1;
         ASLgl::glDisable(GL_LIGHTING);
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         pTex2->Bind();
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         pTex3->Bind();
         ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
@@ -1524,28 +1517,28 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     // clear envmapon/tex1on.
     case kPSBumpmapOff:
         ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
-        SelectStage(2);
+        SetActiveTexture(2);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
         ASLgl::glEnable(GL_LIGHTING);
-        SelectStage(0);
+        SetActiveTexture(0);
         break;
 
     case kPSEnvMapLightmapOff:
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
-        SelectStage(2);
+        SetActiveTexture(2);
         ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
@@ -1553,23 +1546,23 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         ASLgl::glDisable(GL_TEXTURE_GEN_T);
         ASLgl::glDisable(GL_TEXTURE_GEN_R);
         ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
-        SelectStage(0);
+        SetActiveTexture(0);
         break;
 
     case kPSMultiTextureOff:
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glDisable(GL_TEXTURE_3D);
         ASLgl::glBindTexture(GL_TEXTURE_3D, 0);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
-        SelectStage(2);
+        SetActiveTexture(2);
         ASLgl::glDisable(GL_TEXTURE_3D);
         ASLgl::glBindTexture(GL_TEXTURE_3D, 0);
         ASLgl::glDisable(GL_TEXTURE_2D);
         cm_nGLCurrentTID[cm_uiCurrentStage] = 0;
         if (envmapon)
             ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
-        SelectStage(1);
+        SetActiveTexture(1);
         if (envmapon)
         {
             ASLgl::glDisable(GL_TEXTURE_CUBE_MAP);
@@ -1583,14 +1576,14 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         tex1on = 0;
         ASLgl::glBindTexture(GL_TEXTURE_3D, 0);
         ASLgl::glDisable(GL_TEXTURE_3D);
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
         break;
 
     case kPSDesatOff:
         ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
         ASLgl::glEnable(GL_LIGHTING);
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glDisable(GL_TEXTURE_3D);
@@ -1602,7 +1595,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
             ASLgl::glDisable(GL_TEXTURE_GEN_T);
             ASLgl::glDisable(GL_TEXTURE_GEN_R);
         }
-        SelectStage(2);
+        SetActiveTexture(2);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glDisable(GL_TEXTURE_3D);
@@ -1615,12 +1608,12 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
             ASLgl::glDisable(GL_TEXTURE_GEN_R);
             envmapon = 0;
         }
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
         ASLgl::glDisable(GL_TEXTURE_2D);
         ASLgl::glDisable(GL_TEXTURE_3D);
         ASLgl::glBindTexture(GL_TEXTURE_3D, 0);
-        SelectStage(0);
+        SetActiveTexture(0);
         SetCurrentStageTID(0, 0);
         SetCurrentStageTID(1, 0);
         SetCurrentStageTID(2, 0);
@@ -1630,20 +1623,20 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
 
     case kPSHoloOff:
         ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
         ASLgl::glDisable(GL_TEXTURE_2D);
-        SelectStage(0);
+        SetActiveTexture(0);
         SetCurrentStageTID(0, 0);
         SetCurrentStageTID(1, 0);
         break;
 
     // The two 2D-unit family.
     case kPSLightmap:
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
         tex1on = 1;
@@ -1655,10 +1648,10 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSNoiseSubtract:
         if (pTex1 == 0)
             return;
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex1->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -1672,13 +1665,13 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
 
     // Two 2D units plus the cube map on unit 2 (the only family that flags unit 1 in use).
     case kPSNoiseLMSubtract:
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         tex1on = 1;
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
@@ -1690,13 +1683,13 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         break;
 
     case kPSNoiseLMAdd:
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         tex1on = 1;
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
@@ -1713,13 +1706,13 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     // the desat-noise program instead of the noise one.
     case kPSDesatNoiseLMSubtract:
     {
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         tex1on = 1;
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
@@ -1743,9 +1736,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSEnvMapLightmapNV1x:
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         pTex1->Bind();
         if (pTex1->IsCubeMap())
         {
@@ -1770,9 +1763,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     {
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         pTex1->Bind();
         if (pTex1->IsCubeMap())
         {
@@ -1803,9 +1796,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     {
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         pTex1->Bind();
         if (pTex1->IsCubeMap())
         {
@@ -1838,9 +1831,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         g_illumShaderValues = m_PerInstanceIllumination;
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         pTex1->Bind();
         if (pTex1->IsCubeMap())
         {
@@ -1869,9 +1862,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSEnvMapLightmap:
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         pTex2->Bind();
         if (pTex2->IsCubeMap())
         {
@@ -1890,7 +1883,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
             ASLgl::glEnable(GL_TEXTURE_GEN_T);
         }
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
         ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
@@ -1902,9 +1895,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     {
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         pTex2->Bind();
         if (pTex2->IsCubeMap())
         {
@@ -1923,7 +1916,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
             ASLgl::glEnable(GL_TEXTURE_GEN_T);
         }
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
         PerInstanceColor vDesat = { 0.3f, 0.59f, 0.11f, g_DesatureFactor };
@@ -1939,9 +1932,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSNoiseEMLMSubtract:
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         pTex2->Bind();
         if (pTex2->IsCubeMap())
         {
@@ -1960,10 +1953,10 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
             ASLgl::glEnable(GL_TEXTURE_GEN_T);
         }
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex3->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -1976,9 +1969,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSNoiseEMLMAdd:
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         pTex2->Bind();
         if (pTex2->IsCubeMap())
         {
@@ -1997,10 +1990,10 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
             ASLgl::glEnable(GL_TEXTURE_GEN_T);
         }
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex3->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -2016,9 +2009,9 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     {
         envmapon = 1;
         tex1on = 1;
-        SelectStage(0);
+        SetActiveTexture(0);
         pTex0->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         pTex2->Bind();
         if (pTex2->IsCubeMap())
         {
@@ -2037,10 +2030,10 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
             ASLgl::glEnable(GL_TEXTURE_GEN_T);
         }
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex3->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -2077,25 +2070,25 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSFGlowBumpyShiny:
     {
         MakeLookUpTexture(5.0f);
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         AurTextureGetNormalizationCubeMap()->Bind();
-        SelectStage(2);
+        SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         AurTextureGetNormalizationCubeMap()->Bind();
-        SelectStage(3);
+        SetActiveTexture(3);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         AurTextureGetNormalizationCubeMap()->Bind();
-        SelectStage(4);
+        SetActiveTexture(4);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         AurTextureGetNormalizationCubeMap()->Bind();
-        SelectStage(5);
+        SetActiveTexture(5);
         ASLgl::glEnable(GL_TEXTURE_CUBE_MAP);
         pTex3->Bind();
-        SelectStage(0);
+        SetActiveTexture(0);
         PerInstanceColor vGlow = { 0.3f, 0.59f, 0.11f, 0.8f };
         ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 7, reinterpret_cast<const float*>(&vGlow));
         ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, reinterpret_cast<const float*>(&m_ForceSightColor));
@@ -2118,10 +2111,10 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
 
     case kPSDesatLM:
     {
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex0->Bind();
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
         tex1on = 1;
@@ -2137,7 +2130,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     // constant (0.75 alpha rather than 0.8).
     case kPSHolo:
     {
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         m_pHologramFilterTexture->Bind();
         PerInstanceColor vHolo = { 0.3f, 0.59f, 0.11f, 0.75f };
@@ -2149,7 +2142,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
 
     case kPSHoloDesat:
     {
-        SelectStage(1);
+        SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         m_pHologramFilterTexture->Bind();
         PerInstanceColor vHolo = { 0.3f, 0.59f, 0.11f, 0.75f };
@@ -2188,7 +2181,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     // For the mode the prologue already installed, keep the default program and just bind the base
     // map when there is one (the null case is tolerated).
     case kK2PSDefault:
-        SelectStage(0);
+        SetActiveTexture(0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         if (pTex0 != 0)
             pTex0->Bind();
@@ -2385,10 +2378,8 @@ void GLRender::EnableFragmentShaders(int nShaderID, CAurTexture* pTex0, CAurText
         GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        cm_uiCurrentStage = 2;
         tex1on = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);

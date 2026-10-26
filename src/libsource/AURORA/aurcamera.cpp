@@ -108,10 +108,7 @@ Camera::Camera(char* pszName)
     m_nViewY = 0;
     m_nViewW = 0;
     m_nViewH = 0;
-    m_viewState.m_aViewVolumes.m_capacity = 6;
-    Plane* pVolumes = new Plane[6];
-    m_viewState.m_aViewVolumes.m_pData = pVolumes;
-    m_viewState.m_aViewVolumes.m_count = 6;
+    m_viewState.m_aViewVolumes.SetSize(6);
 }
 
 Camera::~Camera()

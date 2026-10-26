@@ -38,6 +38,7 @@ public:
     void ClearAbilities();
     void AbilitiesChanged();
     void PortraitChanged();
+    void NameChanged();
 
     CSWCCreature*         m_pCreature;
     CSWGuiClassSelection* m_pClassSelection;
@@ -92,5 +93,13 @@ public:
 #if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
 K2_LAYOUT_ASSERT(sizeof(CSWGuiMainCharGen) == 0x3a98, "CSWGuiMainCharGen size drift");
 #endif
+
+#include "nwccreature.h"
+
+// Shows the creature's current name in the name row.
+inline void CSWGuiMainCharGen::NameChanged()
+{
+    SetNameString(m_pCreature->GetName());
+}
 
 #endif // CSWGUIMAINCHARGEN_H

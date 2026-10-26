@@ -803,7 +803,7 @@ int CSWSCombatRound::CalculateOffHandAttacks() {
     if (pWeapon != 0) {
         int nBaseItem = pWeapon->m_baseItem;
         CSWBaseItem* pBaseItem =
-            g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+            g_pRules->GetBaseItem(nBaseItem);
         int nWeaponSize = pBaseItem->m_nWeaponSize;
         if (m_pCreature->m_nCreatureSize < nWeaponSize) {
             bOffHand = pWeapon->GetBaseItem()->m_weaponWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED;
@@ -812,8 +812,8 @@ int CSWSCombatRound::CalculateOffHandAttacks() {
                     static_cast<CSWSItem*>(m_pCreature->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON));
             if (pWeapon != 0) {
                 int nOffBaseItem = pWeapon->m_baseItem;
-                if (g_pRules->m_pBaseItemArray->GetBaseItem(nOffBaseItem)->m_nWeaponType != 0) {
-                    bOffHand = g_pRules->m_pBaseItemArray->GetBaseItem(pWeapon->m_baseItem)
+                if (g_pRules->GetBaseItem(nOffBaseItem)->m_nWeaponType != 0) {
+                    bOffHand = g_pRules->GetBaseItem(pWeapon->m_baseItem)
                                    ->m_weaponWieldType != CSWBaseItem::WEAPON_WIELD_NONE;
                 }
             }
@@ -847,7 +847,7 @@ void CSWSCombatRound::ClearAllSpecialAttacks() {
             m_attacks[i].m_nFeatId = 0;
         }
     }
-    m_specialAttacks.Clear();
+    m_specialAttacks.SetSize(0);
 }
 
 unsigned short CSWSCombatRound::GetSpecialAttack(int nIndex) {
@@ -989,7 +989,7 @@ void CSWSCombatRound::RemoveAllActions() {
             if (m_pRoundActionList->m_pInternal->m_pHead == 0) {
                 return;
             }
-            void* pAction = m_pRoundActionList->m_pInternal->RemoveHead();
+            void* pAction = m_pRoundActionList->RemoveHead();
             if (pAction != 0) {
                 ::operator delete(pAction);
             }
@@ -1196,7 +1196,7 @@ CSWSItem* CSWSCombatRound::GetCurrentAttackWeapon(int nAttackType) {
         CSWSItem* pWeapon =
                 static_cast<CSWSItem*>(m_pCreature->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
         if (pWeapon != 0
-                && g_pRules->m_pBaseItemArray->GetBaseItem(pWeapon->m_baseItem)
+                && g_pRules->GetBaseItem(pWeapon->m_baseItem)
                        ->m_weaponWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
             return pWeapon;
         }
@@ -1403,7 +1403,7 @@ int CSWSCombatRound::GetCombatStepRequired(unsigned long long objectId)
             CSWSItem* pWeapon =
                     static_cast<CSWSItem*>(m_pCreature->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
             if (pWeapon == 0 ||
-                g_pRules->m_pBaseItemArray->GetBaseItem(pWeapon->m_baseItem)->m_bRangedWeapon == 0) {
+                g_pRules->GetBaseItem(pWeapon->m_baseItem)->m_bRangedWeapon == 0) {
                 float fRange = m_pCreature->DesiredAttackRange(objectId, 0);
                 Vector vDelta = m_pCreature->m_position - pTarget->m_position;
                 float fDist2 =

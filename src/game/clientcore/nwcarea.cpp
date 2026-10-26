@@ -185,18 +185,8 @@ int CSWCArea::GetIsObjectCorpse(unsigned long long objectId)
 
 void CSWCArea::ClearTilePathNodes()
 {
-    if (m_tilePathNodesB.m_pData != 0) {
-        delete[] m_tilePathNodesB.m_pData;
-        m_tilePathNodesB.m_pData = 0;
-    }
-    m_tilePathNodesB.m_count = 0;
-    m_tilePathNodesB.m_capacity = 0;
-    if (m_tilePathNodesA.m_pData != 0) {
-        delete[] m_tilePathNodesA.m_pData;
-        m_tilePathNodesA.m_pData = 0;
-    }
-    m_tilePathNodesA.m_count = 0;
-    m_tilePathNodesA.m_capacity = 0;
+    m_tilePathNodesB.SetSize(0);
+    m_tilePathNodesA.SetSize(0);
 }
 
 void* CSWCArea::GetPlaceableObjectLight(unsigned long long objectId)
@@ -1600,13 +1590,7 @@ void CSWCArea::ClearAllMapPins()
         if (pPin != 0)
             delete pPin;
     }
-    // inlined CExoArrayList<CSWCMapPin*>::Clear()
-    if (m_mapPins.m_pArray != 0) {
-        delete[] m_mapPins.m_pArray;
-        m_mapPins.m_pArray = 0;
-        m_mapPins.m_capacity = 0;
-    }
-    m_mapPins.m_count = 0;
+    m_mapPins.SetSize(0);
 }
 
 void CSWCArea::ChangeTriggerDisplay(int b)

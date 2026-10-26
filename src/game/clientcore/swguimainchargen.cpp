@@ -273,25 +273,15 @@ void CSWGuiMainCharGen::AbilitiesChanged()
     m_lblNewWill.m_text.m_params.SetText(CExoString(m_pCreature->m_pStats->m_nWillSavingThrow));
 }
 
-// Tears the three pages down: anything the manager still knows about is hidden, anything it has
-// already forgotten is deleted and its slot cleared, in the order custom, quick-or-custom, quick.
+// Tears the three pages down: a page the manager still shows is marked for deletion, one it has
+// already dropped is deleted and its slot cleared, in the order custom, quick-or-custom, quick.
 void CSWGuiMainCharGen::RemoveSubPanels()
 {
     m_pGuiManager->PopModalPanel();
 
     if (m_pGuiManager->PanelExists(m_pCustomPanel))
     {
-        CSWGuiPanel* pPanel = m_pCustomPanel;
-#if KOTOR1
-        // K1: no panel chain, one stamp per panel.
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        do
-        {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel != 0);
-#endif
+        m_pCustomPanel->SetToBeDeleted(0);
     }
     else
     {
@@ -301,16 +291,7 @@ void CSWGuiMainCharGen::RemoveSubPanels()
 
     if (m_pGuiManager->PanelExists(m_pQuickOrCustomPanel))
     {
-        CSWGuiPanel* pPanel = m_pQuickOrCustomPanel;
-#if KOTOR1
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        do
-        {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel != 0);
-#endif
+        m_pQuickOrCustomPanel->SetToBeDeleted(0);
     }
     else
     {
@@ -320,16 +301,7 @@ void CSWGuiMainCharGen::RemoveSubPanels()
 
     if (m_pGuiManager->PanelExists(m_pQuickPanel))
     {
-        CSWGuiPanel* pPanel = m_pQuickPanel;
-#if KOTOR1
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-        do
-        {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel != 0);
-#endif
+        m_pQuickPanel->SetToBeDeleted(0);
     }
     else
     {
@@ -338,18 +310,7 @@ void CSWGuiMainCharGen::RemoveSubPanels()
     }
 
     m_pGuiManager->PopModalPanel();
-
-    // The same re-seat for this panel's own chain.
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 }
 
 // An unknown page lands on VISIBLE_PANEL_NONE, the "nothing showing" sentinel.

@@ -15,7 +15,7 @@ public:
 
     virtual void SetExtent(const CSWGuiExtent& extent);
     virtual void Draw(float f);
-    virtual CSWGuiControl* AsSkillFlow();
+    virtual CSWGuiSkillFlow* AsSkillFlow();
 
     // Resets all three slots to the empty state (id -1, status 0, deselected).
     void Clear();
@@ -38,6 +38,10 @@ public:
 
     void SetSkillStatus(unsigned char bSlot, unsigned char bStatus);
     void SetSkillSelected(unsigned char bSlot, int nSelected);
+    // Gives a slot its feat or power id and icon.
+    void SetSkillInfo(unsigned char bSlot, unsigned int nId, const CResRef& resIcon);
+    // The slot holding nId, or -1.
+    int GetSkillIDIndex(unsigned int nId);
 
     // One skill row, with the icon and background images and the id and status the chart sets.
     struct Slot {
@@ -55,6 +59,20 @@ public:
     // Arrow k-1 pairs with slot k.
     CSWGuiImage m_aArrow[2];
 };
+
+inline void CSWGuiSkillFlow::SetSkillInfo(unsigned char bSlot, unsigned int nId, const CResRef& resIcon)
+{
+    m_aSlots[bSlot].m_nId = nId;
+    m_aSlots[bSlot].m_imageIcon.m_params.SetImage(resIcon);
+}
+
+inline int CSWGuiSkillFlow::GetSkillIDIndex(unsigned int nId)
+{
+    for (int i = 0; i < 3; i++)
+        if (m_aSlots[i].m_nId == static_cast<int>(nId))
+            return i;
+    return -1;
+}
 
 #endif // CSWGUISKILLFLOW_H
 

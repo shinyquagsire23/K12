@@ -336,7 +336,7 @@ extern unsigned int* cStandardVPDeclaration;
 #if KOTOR1
 // K1: the grass row's own colour triples feed ambient/diffuse (no emission), and one
 // DrawLightmappedGrass covers the whole bin.
-const float* Homogenize(const Vector& v, const float& w);
+float* Homogenize(const Vector& v, const float& w);
 extern bool s_useAlphaTestShader;
 void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, WindManager* pWind)
 {
@@ -718,9 +718,7 @@ void CAurTriangleBin::UpdateGrassForWind(WindManager* pWind)
             vForceDirection.y = vWind.y + vSpringDist.y + vPoint.y;
             vForceDirection.z = vWind.z + vSpringDist.z + vPoint.z;
 
-            // inlined Vector::IsZero()
-            if (vForceDirection.x != 0.0f || vForceDirection.y != 0.0f ||
-                vForceDirection.z != 0.0f)
+            if (!vForceDirection.IsZero())
             {
                 float fNewX = vC.x + fSpring * vForceDirection.x;
                 float fNewY = vC.y + fSpring * vForceDirection.y;

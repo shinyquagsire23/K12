@@ -345,17 +345,6 @@ AnimRun* Gob::GetAnimation(char* pszName, float* pfTime, float* pfLength)
     return pAnimation;
 }
 
-// Counts how many of the model's animations are this tree. Counting rather than breaking on the first
-// match is what keeps the scan vectorisable.
-static int CountOwnedAnimations(Model* pModel, Animation* pAnimation)
-{
-    int nOwned = 0;
-    for (int i = 0; i < pModel->m_animations.m_count; i++)
-        if (pModel->m_animations.m_pData[i] == pAnimation)
-            nOwned++;
-    return nOwned;
-}
-
 // Walks the supermodel chain to the model that owns the animation, multiplying each hop's animation
 // scale on the way. There is no null guard, so a tree no model in the chain owns loops forever.
 float FindAnimScale(Model* pModel, Animation* pAnimation)
@@ -363,8 +352,7 @@ float FindAnimScale(Model* pModel, Animation* pAnimation)
     float fScale = 1.0f;
     for (;;)
     {
-        int nOwned = CountOwnedAnimations(pModel, pAnimation);
-        if (nOwned != 0)
+        if (pModel->m_animations.Contains(pAnimation) != 0)
             return fScale;
         fScale = fScale * pModel->m_fAnimScale;
         pModel = pModel->m_pSuperModel;
@@ -1724,9 +1712,9 @@ void PartLightsaber::Animate(float fDelta)
     // Emit a segment unless the part has not moved and no slot has aged past 60 ms; the age test is what
     // keeps a stationary but shimmering blade emitting.
 #if KOTOR1  // K1: emits only when the part moved, with no 60 ms age test
-    if (!equal(vPos, m_vLastSegmentPos))
+    if (vPos != m_vLastSegmentPos)
 #else
-    if (!equal(vPos, m_vLastSegmentPos) || m_afSegmentLife[m_nLifeIndex] > 60.0f)
+    if (vPos != m_vLastSegmentPos || m_afSegmentLife[m_nLifeIndex] > 60.0f)
 #endif
     {
         if (magnitude(vPos - m_vLastSegmentPos) > 1.0f)
@@ -2569,7 +2557,7 @@ void NewController::Control(Part* pPart, MdlNode* pNode, float fPrevTime, float 
                 GetQuaternionValue(fPrevTime, pNode, qPrev);
                 qFrom = qPrev;
             }
-            *pDest = slerp(qFrom, qValue, fAlpha);
+            *pDest = Interpolate(qFrom, qValue, fAlpha);
             break;
         }
         case kKeyFloat: {

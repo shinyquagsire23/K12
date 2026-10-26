@@ -108,8 +108,6 @@ static inline Vector RotateVector(const Vector& v, const Quaternion& q);
 
 
 
-enum { kFogLinear = 0, kFogExp = 1, kFogExp2 = 2 };
-
 enum {
     kCapBlend       = 0,  // GL_BLEND
     kCapAlphaTest   = 1,  // GL_ALPHA_TEST
@@ -136,7 +134,6 @@ enum { kCmpLEqual = 3, kCmpGreater = 4, kCmpAlways = 7 };  // GL_LEQUAL / GL_GRE
 enum { kStencilKeep = 0, kStencilReplace = 2,  // GL_KEEP / GL_REPLACE
        kStencilIncr = 3, kStencilDecr = 4 };  // GL_INCR / GL_DECR — the shadow-volume pair
 enum { kFaceCW = 0, kFaceCCW = 1 };  // GL_CW / GL_CCW (cullTranslationTable)
-enum { kMatrixProjection = 1, kMatrixModelView = 2 };  // transformTranslationTable ordinals
 enum { kFaceFront = 0 };  // GL_FRONT
 enum { kMaterialAmbient = 1, kMaterialDiffuse = 2, kMaterialEmission = 3 };
 enum { kColorTrackingEmission = 0 };  // colorTrackingTranslationTable[0] = GL_EMISSION
@@ -156,6 +153,9 @@ void SetBeaming();
 int  AurGetStencilClearValue();
 void AurVertexProgramMakeCurrent();
 void IosSetDistortBuffer(bool bEnable);
+#if !KOTOR1
+void SetDistortBuffer(bool bEnable);
+#endif
 
 extern List<Part*> staticbeambucket;
 extern List<Part*> staticshadowbucket;
@@ -258,7 +258,7 @@ int enablerenderstatic = 1;
 extern int enablerendertriggers;
 int enablerenderdynamic = 1;
 
-const float* Homogenize(const Vector& v, const float& w);
+float* Homogenize(const Vector& v, const float& w);
 
 // The port's framebuffer-effect bracket; not present in the desktop build.
 void FrameBufferModificationsStartIos(bool bEnable);
@@ -1154,7 +1154,8 @@ static List<PartTriMesh*> s_listLateAdditiveMeshes;
 static bool K2QolIsAdditiveMaterial(Material* pMaterial)
 {
     return pMaterial->m_lstSrcBlend.m_count > 0 && pMaterial->m_lstDstBlend.m_count > 0 &&
-           static_cast<int>(pMaterial->m_lstSrcBlend.m_pData[0]) == 0 && static_cast<int>(pMaterial->m_lstDstBlend.m_pData[0]) == 2;
+           pMaterial->m_lstSrcBlend.m_pData[0] == Aurora::kBlendSrcAlpha &&
+           pMaterial->m_lstDstBlend.m_pData[0] == Aurora::kBlendOne;
 }
 #endif
 
@@ -1356,12 +1357,10 @@ void Scene::RenderSinglePass()
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Disable(Aurora::kCapStencilTest);
 
-    unsigned int nColorArray = clientStateTranslationTable[kArrayColor];
-    ASLgl::glDisableClientState(nColorArray);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
     GLRender::DisableColorMaterial();
 
-    Vector vZero;
-    GLRender::SetLightModel(Homogenize(vZero, 1.0f));
+    GLRender::SetLightModel(Homogenize(Vector(), 1.0f));
 
     RenderInterface::SetDepthMask(1);
 
@@ -1372,7 +1371,7 @@ void Scene::RenderSinglePass()
     }
 
     GLRender::SetLightModel(Homogenize(m_ambient, 1.0f));
-    ASLgl::glDisableClientState(nColorArray);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
     GLRender::DisableColorMaterial();
 
     if (enablerendertriggers)
@@ -1409,8 +1408,8 @@ void Scene::RenderSinglePass()
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialAmbient], vWhite);
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialDiffuse], vWhite);
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialEmission], vBlack);
-        GLRender::SetLightModel(Homogenize(vZero, 1.0f));
-        ASLgl::glDisableClientState(nColorArray);
+        GLRender::SetLightModel(Homogenize(Vector(), 1.0f));
+        GLRender::DisableClientState(Aurora::kClientStateColor);
         GLRender::DisableColorMaterial();
         GLRender::Enable(Aurora::kCapBlend);
         PartTriMesh::m_bMaterialHasChanged = true;
@@ -1478,7 +1477,7 @@ void Scene::RenderSinglePass()
     GLRender::DisableClientState(Aurora::kClientStateNormal);
     GLRender::DisableClientState(Aurora::kClientStateTexCoord);
     GLRender::DisableClientState(Aurora::kClientStateVertex);
-    ASLgl::glDisableClientState(nColorArray);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
     GLRender::DisableColorMaterial();
 }
 #endif
@@ -1910,8 +1909,7 @@ void Scene::DoDistortionBuckets()
     if (g_listForcePushBucket.m_count == 0)
         return;
 
-    g_bDistortBufferUsed = 1;
-    IosSetDistortBuffer(true);
+    SetDistortBuffer(true);
 
     RenderInterface::SetDepthMask(0);
     g_useDistortionOutput = true;
@@ -1920,7 +1918,7 @@ void Scene::DoDistortionBuckets()
         g_listForcePushBucket.m_pData[i]->Render(false);
 
     g_useDistortionOutput = false;
-    ASLgl::glDepthMask(1);
+    RenderInterface::SetDepthMask(1);
     IosSetDistortBuffer(false);
 }
 #endif
@@ -1989,17 +1987,15 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
 
         ASLgl::glColorMask(0, 0, 0, 0);
         GLRender::SetStencilFunc(Aurora::kCmpAlways, 0xf, 0xf);
-        unsigned int nStencilKeep = stencilOpTranslationTable[kStencilKeep];
-        ASLgl::glStencilOp(nStencilKeep, stencilOpTranslationTable[kStencilIncr], nStencilKeep);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
         GLRender::SetFrontFace(Aurora::kCullCW);
         highlights.m_pData[i]->DrawVolume();
 
-        ASLgl::glStencilOp(nStencilKeep, stencilOpTranslationTable[kStencilDecr], nStencilKeep);
-        unsigned int nFrontFace = cullTranslationTable[kFaceCCW];
-        ASLgl::glFrontFace(nFrontFace);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
+        GLRender::SetFrontFace(Aurora::kCullCCW);
         highlights.m_pData[i]->DrawVolume();
 
-        ASLgl::glFrontFace(nFrontFace);
+        GLRender::SetFrontFace(Aurora::kCullCCW);
         ASLgl::glColorMask(1, 1, 1, 1);
 
         List<Vector> corners;
@@ -2015,7 +2011,7 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
         GLRender::Enable(Aurora::kCapBlend);
         GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         GLRender::SetStencilFunc(Aurora::kCmpLEqual, 1 << (nStencilBits - 1), 0xffffffff);
-        ASLgl::glStencilOp(nStencilKeep, nStencilKeep, nStencilKeep);
+        GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilKeep);
 
         PartTrigger* pTrigger = highlights.m_pData[i];
         if (pTrigger->m_bPulse)
@@ -2030,10 +2026,7 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
             ASLgl::glColor4fv(pTrigger->m_color);
         }
 
-        GLRender::BeginImmediatePrimitive(Aurora::kPrimQuads);
-        for (int j = 0; j < corners.m_count; j++)
-            ASLgl::glVertex3fv(reinterpret_cast<const float*>(&corners.m_pData[j]));
-        ASLgl::glEnd();
+        GLRender::DrawFromVerts(Aurora::kPrimQuads, corners);
 
         ASLgl::glPopMatrix();
         GLRender::Disable(Aurora::kCapStencilTest);
@@ -2090,13 +2083,11 @@ void Scene::RenderLensFlares()
     if (m_bFogEnabled)
         GLRender::Disable(Aurora::kCapFog);
 
-    unsigned int nProjectionMode = transformTranslationTable[kMatrixProjection];
-    ASLgl::glMatrixMode(nProjectionMode);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
-    unsigned int nModelViewMode = transformTranslationTable[kMatrixModelView];
-    ASLgl::glMatrixMode(nModelViewMode);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glTranslatef(0.0f, 0.0f, -2.0f);
@@ -2234,9 +2225,9 @@ void Scene::RenderLensFlares()
     if (m_bFogEnabled)
         GLRender::Enable(Aurora::kCapFog);
 
-    ASLgl::glMatrixMode(nModelViewMode);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView2);
     ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(nProjectionMode);
+    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPopMatrix();
 }
 
@@ -2269,8 +2260,8 @@ void Scene::DoFog()
     {
         m_bFogEnabled = 1;
         GLRender::Enable(Aurora::kCapFog);
-        ASLgl::glFogi(GL_FOG_MODE, fogModeTranslationTable[
-            m_nFogMode == 0 ? kFogLinear : (m_nFogMode == 1 ? kFogExp : kFogExp2)]);
+        GLRender::SetFogMode(m_nFogMode == 0 ? Aurora::kFogLinear
+                                 : (m_nFogMode == 1 ? Aurora::kFogExp : Aurora::kFogExp2));
 
         Vector vRed;
         vRed.x = 1.0f;
@@ -2375,8 +2366,8 @@ void Scene::DoFog()
     }
 
     GLRender::Enable(Aurora::kCapFog);
-    ASLgl::glFogi(GL_FOG_MODE, fogModeTranslationTable[
-        m_nFogMode == 0 ? kFogLinear : (m_nFogMode == 1 ? kFogExp : kFogExp2)]);
+    GLRender::SetFogMode(m_nFogMode == 0 ? Aurora::kFogLinear
+                             : (m_nFogMode == 1 ? Aurora::kFogExp : Aurora::kFogExp2));
 
     if (LightManager::m_pOnlyGob)
     {
@@ -2447,65 +2438,25 @@ void Scene::RenderGobFirst(CAurObject* pObject)
 
 void Scene::RenderGobAfter(CAurObject* pObject, CAurObject* pAnchor)
 {
-#if KOTOR1
-    int nIndex = Objects().GetIndex(static_cast<Gob*>(pAnchor)) + 1;
-#else
-    int nIndex = 0;
-    for (int64_t i = 0; i < Objects().m_count; i++)
-    {
-        if (Objects().m_pData[i] == static_cast<Gob*>(pAnchor))
-        {
-            nIndex = static_cast<int>(i) + 1;
-            break;
-        }
-    }
-#endif
+    int nIndex = Objects().IndexOf(static_cast<Gob*>(pAnchor)) + 1;
 
     Objects().Remove(static_cast<Gob*>(pObject));
-#if KOTOR1  // K1: List::Insert out of line
     Objects().Insert(static_cast<Gob*>(pObject), nIndex);
-#else
-    Objects().Add(static_cast<Gob*>(pObject));
-
-    for (int i = Objects().m_count - 1; i > nIndex; i--)
-        Objects().m_pData[i] = Objects().m_pData[i - 1];
-    Objects().m_pData[nIndex] = static_cast<Gob*>(pObject);
-#endif
 }
 
 void Scene::RenderGobBefore(CAurObject* pObject, CAurObject* pAnchor)
 {
-#if KOTOR1
-    int nIndex = Objects().GetIndex(static_cast<Gob*>(pAnchor));
-#else
-    int nIndex = -1;
-    for (int i = 0; i < Objects().m_count; i++)
-    {
-        if (Objects().m_pData[i] == static_cast<Gob*>(pAnchor))
-        {
-            nIndex = i;
-            break;
-        }
-    }
-#endif
+    int nIndex = Objects().IndexOf(static_cast<Gob*>(pAnchor));
 
     Objects().Remove(static_cast<Gob*>(pObject));
-#if KOTOR1  // K1: List::Insert out of line
     Objects().Insert(static_cast<Gob*>(pObject), nIndex);
-#else
-    Objects().Add(static_cast<Gob*>(pObject));
-
-    for (int i = Objects().m_count - 1; i > nIndex; i--)
-        Objects().m_pData[i] = Objects().m_pData[i - 1];
-    Objects().m_pData[nIndex] = static_cast<Gob*>(pObject);
-#endif
 }
 
 void Scene::SetTileLights(const Vector& v, const Vector& vLightA, const Vector& vLightB)
 {
     TileData* pTileData = SceneBSPGetTileData(this, v);
 
-    if (pTileData->m_paLights[0] && !equal(pTileData->m_paLights[0]->m_vLightColour, vLightA))
+    if (pTileData->m_paLights[0] && pTileData->m_paLights[0]->m_vLightColour != vLightA)
     {
         pTileData->m_paLights[0]->m_vLightColour = vLightA;
         UpdateStaticLighting(this, pTileData->m_paLights[0]);
@@ -2515,7 +2466,7 @@ void Scene::SetTileLights(const Vector& v, const Vector& vLightA, const Vector& 
         pTileData->m_paLights[0]->m_nLightPriority = 5;
     }
 
-    if (pTileData->m_paLights[1] && !equal(pTileData->m_paLights[1]->m_vLightColour, vLightB))
+    if (pTileData->m_paLights[1] && pTileData->m_paLights[1]->m_vLightColour != vLightB)
     {
         pTileData->m_paLights[1]->m_vLightColour = vLightB;
         UpdateStaticLighting(this, pTileData->m_paLights[1]);
@@ -2713,9 +2664,8 @@ void Scene::DoMeshBuckets()
             pPart->Mat();
             pPart->Draw(false);
 
-            TileData* pTile = pPart->m_pTileData;
-            if (pTile && !tileList.Contains(pTile))
-                tileList.Add(pTile);
+            if (pPart->m_pTileData && !tileList.Contains(pPart->m_pTileData))
+                tileList.Add(pPart->m_pTileData);
         }
     }
 
@@ -2727,9 +2677,8 @@ void Scene::DoMeshBuckets()
         pPart->Mat();
         pPart->Draw(false);
 
-        TileData* pTile = pPart->m_pTileData;
-        if (!tileList.Contains(pTile))
-            tileList.Add(pTile);
+        if (!tileList.Contains(pPart->m_pTileData))
+            tileList.Add(pPart->m_pTileData);
     }
 
     GLRender::EnableClientState(Aurora::kClientStateTexCoord);
@@ -2795,23 +2744,15 @@ void Scene::DoBinBucket()
 
     GLRender::Disable(Aurora::kCapCullFace);
 
-    if (AurMultiTextureAvailable())
-        ASLgl::glClientActiveTextureARB(GL_TEXTURE0_ARB);
+    GLRender::ActivateTextureStage(0);
 
-    Gob* pOnlyGob = LightManager::m_pOnlyGob;
-    unsigned int nColorArray = clientStateTranslationTable[kArrayColor];
-
-    GLRender::cm_uiCurrentStage = 0;
-
-    if (pOnlyGob)
-        ASLgl::glEnableClientState(nColorArray);
-    ASLgl::glDisableClientState(nColorArray);
+    if (LightManager::m_pOnlyGob)
+        GLRender::EnableClientState(Aurora::kClientStateColor);
+    GLRender::DisableClientState(Aurora::kClientStateColor);
 
     ASLgl::glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
 
-    float fGrassRef = grassalphatest;
-    unsigned int nGreater = cmpTranslationTable[kCmpGreater];
-    ASLgl::glAlphaFunc(nGreater, fGrassRef);
+    GLRender::SetAlphaFunc(Aurora::kCmpGreater, grassalphatest);
 
     for (int i = 0; i < g_GrassInfo.m_count; i++)
     {
@@ -2823,7 +2764,7 @@ void Scene::DoBinBucket()
                                                    m_pWindManager);
     }
 
-    ASLgl::glAlphaFunc(nGreater, alphatest);
+    GLRender::SetAlphaFunc(Aurora::kCmpGreater, alphatest);
     PartTriMesh::m_bMaterialHasChanged = true;
     GLRender::Enable(Aurora::kCapCullFace);
 }
@@ -2843,8 +2784,7 @@ void Scene::DoFadeBuckets()
         GLRender::EnableColorMaterial();
 #else
         GLRender::Enable(Aurora::kCapBlend);
-        unsigned int nFace = facingTranslationTable[kFaceFront];
-        ASLgl::glColorMaterial(nFace, colorTrackingTranslationTable[kColorTrackingEmission]);
+        GLRender::SetColorMaterial(Aurora::kFacingFront, Aurora::kColorTrackingEmission);
         GLRender::EnableColorMaterial();
 #endif
 
@@ -2855,9 +2795,15 @@ void Scene::DoFadeBuckets()
         float vWhite[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
         float vBlack[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
+#if KOTOR1
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialAmbient], vWhite);
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialDiffuse], vWhite);
         ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialEmission], vBlack);
+#else
+        GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialAmbient, vWhite);
+        GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialDiffuse, vWhite);
+        GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialEmission, vBlack);
+#endif
 
         for (int i = 0; i < caps.m_count; i++)
         {
@@ -4479,14 +4425,7 @@ CAurRoom::~CAurRoom()
 
 MdlNode* findnode(MdlNode* pNode, char* pszName)
 {
-    Model* pModel;
-    if (pNode->m_pTree->AsModel())
-        pModel = pNode->m_pTree->AsModel();
-    else
-        pModel = pNode->m_pTree->AsAnimation()->m_pModel;
-
-    int nIndex = pNode->m_nNameIndex;
-    if (strcmp(pModel->m_listStrings.m_pData[nIndex], pszName) == 0)
+    if (strcmp(pNode->TranslateNodeName(), pszName) == 0)
         return pNode;
 
     for (int i = 0; i < pNode->m_listChildren.m_count; i++) {
@@ -4707,18 +4646,6 @@ Gob* SpawnPartsForTile(char* pszName, const Vector& vPos, const Quaternion& qOri
     return pGob;
 }
 
-static inline char* ListStringAt(List<char*>* pList, int nIndex)
-{
-    return pList->m_pData[nIndex];
-}
-
-static inline char* TranslateNodeName(MdlNode* pNode)
-{
-    return ListStringAt(&(pNode->m_pTree->AsModel() ? pNode->m_pTree->AsModel()
-                                                    : pNode->m_pTree->AsAnimation()->m_pModel)->m_listStrings,
-                        pNode->m_nNameIndex);
-}
-
 void CollapsePartTree(Gob* pGob, Part* pPart, List<Part*>& parts, Vector vPos, Quaternion qOrient,
                       Scene* pScene, CAurRoom* pRoom)
 {
@@ -4763,7 +4690,7 @@ void CollapsePartTree(Gob* pGob, Part* pPart, List<Part*>& parts, Vector vPos, Q
         for (int64_t j = 0; j < pNode->m_nChildren; j++)
         {
             Part* pChild = pNode->m_paChildren[j];
-            if (pGob != 0 && _stricmp(TranslateNodeName(pChild->m_pNode), szName) == 0)
+            if (pGob != 0 && _stricmp(pChild->m_pNode->TranslateNodeName(), szName) == 0)
             {
                 pFound = pChild;
             }
@@ -5022,15 +4949,8 @@ void ExpandReferenceParts(Part* pPart)
         pRef->GetMinimumSphere_cache_GetData()->bValid = false;
 #endif
 
-        Model* pNodeModel;
-        if (pRefNode->m_pTree->AsModel())
-            pNodeModel = pRefNode->m_pTree->AsModel();
-        else
-            pNodeModel = pRefNode->m_pTree->AsAnimation()->m_pModel;
-
-        int nIndex = pRefNode->m_nNameIndex;
         char szTag[32];
-        ScenePrintf(szTag, sizeof(szTag), "%s", pNodeModel->m_listStrings.m_pData[nIndex]);
+        ScenePrintf(szTag, sizeof(szTag), "%s", pRefNode->TranslateNodeName());
         PartInitMaterial(0, pPart, szTag);
     }
 
@@ -5044,70 +4964,34 @@ bool ProcessTilePart(TileData* pTileData, Part* pPart, char* pszName)
 
     __strcpy_chk(szBuf, pszName, sizeof(szBuf));
     __strcat_chk(szBuf, "ml1", sizeof(szBuf));
+    if (_stricmp(pPart->m_pNode->TranslateNodeName(), szBuf) == 0)
     {
-        MdlNode* pNode = pPart->m_pNode;
-        Model* pModel;
-        if (pNode->m_pTree->AsModel())
-            pModel = pNode->m_pTree->AsModel();
-        else
-            pModel = pNode->m_pTree->AsAnimation()->m_pModel;
-        int nIndex = pNode->m_nNameIndex;
-        if (_stricmp(pModel->m_listStrings.m_pData[nIndex], szBuf) == 0)
-        {
-            pTileData->m_paLights[0] = pPart->AsPartLight();
-            return 1;
-        }
+        pTileData->m_paLights[0] = pPart->AsPartLight();
+        return 1;
     }
 
     __strcpy_chk(szBuf, pszName, sizeof(szBuf));
     __strcat_chk(szBuf, "ml2", sizeof(szBuf));
+    if (_stricmp(pPart->m_pNode->TranslateNodeName(), szBuf) == 0)
     {
-        MdlNode* pNode = pPart->m_pNode;
-        Model* pModel;
-        if (pNode->m_pTree->AsModel())
-            pModel = pNode->m_pTree->AsModel();
-        else
-            pModel = pNode->m_pTree->AsAnimation()->m_pModel;
-        int nIndex = pNode->m_nNameIndex;
-        if (_stricmp(pModel->m_listStrings.m_pData[nIndex], szBuf) == 0)
-        {
-            pTileData->m_paLights[1] = pPart->AsPartLight();
-            return 1;
-        }
+        pTileData->m_paLights[1] = pPart->AsPartLight();
+        return 1;
     }
 
     __strcpy_chk(szBuf, pszName, sizeof(szBuf));
     __strcat_chk(szBuf, "sl1", sizeof(szBuf));
+    if (_stricmp(pPart->m_pNode->TranslateNodeName(), szBuf) == 0)
     {
-        MdlNode* pNode = pPart->m_pNode;
-        Model* pModel;
-        if (pNode->m_pTree->AsModel())
-            pModel = pNode->m_pTree->AsModel();
-        else
-            pModel = pNode->m_pTree->AsAnimation()->m_pModel;
-        int nIndex = pNode->m_nNameIndex;
-        if (_stricmp(pModel->m_listStrings.m_pData[nIndex], szBuf) == 0)
-        {
-            pTileData->m_paFlameParts[0] = pPart;
-            return 1;
-        }
+        pTileData->m_paFlameParts[0] = pPart;
+        return 1;
     }
 
     __strcpy_chk(szBuf, pszName, sizeof(szBuf));
     __strcat_chk(szBuf, "sl2", sizeof(szBuf));
+    if (_stricmp(pPart->m_pNode->TranslateNodeName(), szBuf) == 0)
     {
-        MdlNode* pNode = pPart->m_pNode;
-        Model* pModel;
-        if (pNode->m_pTree->AsModel())
-            pModel = pNode->m_pTree->AsModel();
-        else
-            pModel = pNode->m_pTree->AsAnimation()->m_pModel;
-        int nIndex = pNode->m_nNameIndex;
-        if (_stricmp(pModel->m_listStrings.m_pData[nIndex], szBuf) == 0)
-        {
-            pTileData->m_paFlameParts[1] = pPart;
-            return true;
-        }
+        pTileData->m_paFlameParts[1] = pPart;
+        return true;
     }
 
     return false;
@@ -5188,6 +5072,8 @@ Gob* Scene::SpawnTile(char* pszName, const Vector& vPos, int nAngle, int nMode)
 
     List<Part*> parts;
     Gob* pGob = SpawnPartsForTile(pszName, vPos, qOrient, nAngle, nMode, parts);
+    int i;
+    int j;
 
     TileData* pTileData = new TileData();
     pTileData->m_vPosition = vPos;
@@ -5198,11 +5084,9 @@ Gob* Scene::SpawnTile(char* pszName, const Vector& vPos, int nAngle, int nMode)
 
     ProcessStaticParts(parts, this, pTileData, pszName, nMode);
 
-// Declared outside the guard so the post-loop cleanup shares the same scope.
-    int j;
     if (pTileData->m_aParts.m_count > 0)
     {
-        int i = 0;
+        i = 0;
         while (i < pTileData->m_aParts.m_count && pTileData->m_aParts[i]->AsPartTriMesh() == 0)
             i++;
 
@@ -5225,7 +5109,7 @@ Gob* Scene::SpawnTile(char* pszName, const Vector& vPos, int nAngle, int nMode)
 
     SceneBSPAddTileData(this, pTileData, vPos);
 
-    for (int i = -1; i <= 1; i += 2)
+    for (i = -1; i <= 1; i += 2)
     {
         Vector vOffset(static_cast<float>(i) * Scene::cellsize, 0.0f, 0.0f);
         TileData* pNeighbor = SceneBSPGetTileData(this, vPos + vOffset);
@@ -5243,7 +5127,7 @@ Gob* Scene::SpawnTile(char* pszName, const Vector& vPos, int nAngle, int nMode)
         }
     }
 
-    for (int i = -1; i <= 1; i += 2)
+    for (i = -1; i <= 1; i += 2)
     {
         Vector vOffset(0.0f, static_cast<float>(i) * Scene::cellsize, 0.0f);
         TileData* pNeighbor = SceneBSPGetTileData(this, vPos + vOffset);

@@ -1843,7 +1843,7 @@ int CSWCMessage::SendPlayerToServerCheat_CastSpell(unsigned int nSpellId, const 
 
     CreateWriteMessage(24, MSG_PLAYERID_ALL_CLIENTS, 1);
 
-    float fDistSq = pos.x * pos.x + pos.y * pos.y + pos.z * pos.z;
+    float fDistSq = dot(pos, pos);
     unsigned char nMask = (objId != OBJECT_INVALID);
     if (fDistSq >= 0.00001f)
         nMask |= 2;
@@ -1877,7 +1877,7 @@ int CSWCMessage::SendPlayerToServerInput_CastSpellLikeAbility(unsigned int nSpel
 
     CreateWriteMessage(4, MSG_PLAYERID_ALL_CLIENTS, 1);
 
-    float fDistSq = pos.x * pos.x + pos.y * pos.y + pos.z * pos.z;
+    float fDistSq = dot(pos, pos);
     unsigned char nMask = (objId != OBJECT_INVALID);
     if (fDistSq >= 0.00001f)
         nMask |= 2;
@@ -1912,7 +1912,7 @@ int CSWCMessage::SendPlayerToServerInput_CastSpell(unsigned int nSpellId, unsign
 
     CreateWriteMessage(4, MSG_PLAYERID_ALL_CLIENTS, 1);
 
-    float fDistSq = pos.x * pos.x + pos.y * pos.y + pos.z * pos.z;
+    float fDistSq = dot(pos, pos);
     unsigned char nMask = (objId != OBJECT_INVALID);
     if (fDistSq >= 0.00001f)
         nMask |= 2;
@@ -1975,16 +1975,16 @@ int CSWCMessage::SendPlayerToServerInput_UseItem(unsigned long long itemId, unsi
     }
 
     Vector vZero = { 0.0f, 0.0f, 0.0f };
-    if (equal(pos, vZero))
-    {
-        WriteBOOL(0);
-    }
-    else
+    if (pos != vZero)
     {
         WriteBOOL(1);
         WriteFLOAT(pos.x, 1.0f, 32);
         WriteFLOAT(pos.y, 1.0f, 32);
         WriteFLOAT(pos.z, 1.0f, 32);
+    }
+    else
+    {
+        WriteBOOL(0);
     }
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)

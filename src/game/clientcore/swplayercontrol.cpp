@@ -32,6 +32,11 @@ float fCombatTurnSpeed = 900.0f;
 float turbospeed = 15.0f;
 int turbo;
 
+inline CSWCCreature* CSWPlayerControl::GetPlayer()
+{
+    return g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId);
+}
+
 void CSWPlayerControl::Initialize()
 {
     m_objectId = OBJECT_INVALID;
@@ -736,37 +741,37 @@ float CSWPlayerControlCamRelative::GetMaxSpeed()
     if (turbo != 0 || g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bTurboSpeed != 0)
         return turbospeed;
 
-    if (g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId) == 0)
+    if (GetPlayer() == 0)
         return 6.0f;
 
     g_pAppManager->m_pClientExoApp->GetSWParty();
 
 #if KOTOR1
-    unsigned short nFlags = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_nActivityFlags;
+    unsigned short nFlags = GetPlayer()->m_nActivityFlags;
 #ifdef K2_QOL_CONTROLLER
     float fScale = k2qol_faster_movement() ? g_fDriveSpeedScale : 1.0f;
 #else
     float fScale = g_fDriveSpeedScale;
 #endif
     CSWCCreatureAppearance* pAppearance =
-        g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_pCreatureAppearance;
+        GetPlayer()->m_pCreatureAppearance;
     return fScale * ((nFlags & 1) ? pAppearance->m_walkSpeed : pAppearance->m_fDriveMaxSpeed);
 #elif defined(K2_QOL_CONTROLLER)
     // The Faster Movement option, KOTOR 1's mobile drive-speed scale.
     const float fScale = k2qol_faster_movement() ? 1.3f : 1.0f;
-    if ((g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_nActivityFlags & 1) != 0 &&
-        g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_pStats->HasFeat(FEAT_STEALTH_RUN) == 0)
+    if ((GetPlayer()->m_nActivityFlags & 1) != 0 &&
+        GetPlayer()->m_pStats->HasFeat(FEAT_STEALTH_RUN) == 0)
     {
-        return fScale * g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_pCreatureAppearance->m_walkSpeed;
+        return fScale * GetPlayer()->m_pCreatureAppearance->m_walkSpeed;
     }
-    return fScale * g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_pCreatureAppearance->m_fDriveMaxSpeed;
+    return fScale * GetPlayer()->m_pCreatureAppearance->m_fDriveMaxSpeed;
 #else
-    if ((g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_nActivityFlags & 1) != 0 &&
-        g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_pStats->HasFeat(FEAT_STEALTH_RUN) == 0)
+    if ((GetPlayer()->m_nActivityFlags & 1) != 0 &&
+        GetPlayer()->m_pStats->HasFeat(FEAT_STEALTH_RUN) == 0)
     {
-        return g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_pCreatureAppearance->m_walkSpeed;
+        return GetPlayer()->m_pCreatureAppearance->m_walkSpeed;
     }
-    return g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_pCreatureAppearance->m_fDriveMaxSpeed;
+    return GetPlayer()->m_pCreatureAppearance->m_fDriveMaxSpeed;
 #endif
 }
 
@@ -774,25 +779,25 @@ float CSWPlayerControlCamRelative::GetMaxSpeed()
 void CSWPlayerControlCamRelative::SetMaxSpeed(float fMaxSpeed)
 {
     K2_UNUSED(fMaxSpeed);
-    if (g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId) == 0)
+    if (GetPlayer() == 0)
         return;
-    g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId);
+    GetPlayer();
 }
 
 // 25.0f, the acceleration default, when there is no creature; otherwise the creature's own value.
 float CSWPlayerControlCamRelative::GetAcceleration()
 {
-    if (g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId) == 0)
+    if (GetPlayer() == 0)
         return 25.0f;
-    return g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->GetDriveAcceleration();
+    return GetPlayer()->GetDriveAcceleration();
 }
 
 // Writes the creature appearance's drive acceleration directly; there is no setter for it.
 void CSWPlayerControlCamRelative::SetAcceleration(float fAcceleration)
 {
-    if (g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId) == 0)
+    if (GetPlayer() == 0)
         return;
-    g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_objectId)->m_pCreatureAppearance->m_driveAccel = fAcceleration;
+    GetPlayer()->m_pCreatureAppearance->m_driveAccel = fAcceleration;
 }
 
 // The larger of the two velocity components.

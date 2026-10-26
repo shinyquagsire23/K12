@@ -67,9 +67,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::CreateMainPowersFeatsSkillsMenu()
     m_listBox.ClearItems();
     CExoArrayList<CSWGuiControl*> list;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
-    list.m_capacity = 3;
-    list.m_pArray = new CSWGuiControl*[3];
-    list.m_count = 3;
+    list.SetSize(3);
     list.m_pArray[0] = CreateOption(CExoString("Add Power"),
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPowersFeatsSkillsDebugMenu::OnAddPowerPicked),
         pTemplate);
@@ -129,7 +127,8 @@ void CSWGuiPowersFeatsSkillsDebugMenu::CreateSkillsSubMenu()
     int64_t nCount = g_pRules->m_nNumSkills;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
     list.SetSize(static_cast<int>(nCount));
-    for (int64_t i = 0; i < nCount; i++) {
+    int64_t i;
+    for (i = 0; i < nCount; i++) {
         CExoString s("Add ");
         s = s + g_pRules->m_paSkills[i].GetNameText();
         CSWGuiButton* pButton = CreateOption(s,
@@ -155,7 +154,8 @@ void CSWGuiPowersFeatsSkillsDebugMenu::CreateFeatsSubMenu()
     int64_t nCount = g_pRules->m_nFeatIndices;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
     list.SetSize(static_cast<int>(nCount));
-    for (int64_t i = 0; i < nCount; i++) {
+    int64_t i;
+    for (i = 0; i < nCount; i++) {
         CExoString s("Add ");
         s = s + g_pRules->GetFeat(g_pRules->m_paFeatIndices[i])->GetNameText();
         CSWGuiButton* pButton = CreateOption(s,
@@ -201,8 +201,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::OnPowerPicked(CSWGuiControl* pControl)
     if (pControl->m_tail.nCurrentEventArg) {
         int nSpell = static_cast<int>(pControl->m_tail.m_nUserData);
         CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
-        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pSpell && pCreature)
             AddPrerequisiteSpells(nSpell, pCreature);
         CreateMainPowersFeatsSkillsMenu();
@@ -320,8 +319,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::OnSkillPicked(CSWGuiControl* pControl)
         int nSkill = 0;
         while (m_listBox.GetControl(nSkill) != pControl)
             nSkill++;
-        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pCreature) {
             CSWSCreatureStats* pStats = pCreature->m_pStats;
             pStats->SetSkillRank(static_cast<unsigned char>(nSkill), static_cast<char>(pStats->GetLevel(0) + 3));
@@ -342,8 +340,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::OnFeatPicked(CSWGuiControl* pControl)
             nRow++;
         unsigned short nFeat = g_pRules->m_paFeatIndices[static_cast<unsigned short>(nRow)];
         CSWFeat* pFeat = g_pRules->GetFeat(nFeat);
-        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pFeat && pCreature)
             AddPrerequisiteFeats(nFeat, pCreature);
         CreateMainPowersFeatsSkillsMenu();

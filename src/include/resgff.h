@@ -6,6 +6,14 @@
 struct Quaternion;
 struct Vector;
 struct GFFHeader;
+
+// bionic's fortified strncpy (port/libcbase.h), for CResGFF::SetFileType.
+extern "C" char* __strncpy_chk2(char* dst, const char* src, size_t n, size_t nDstSize, size_t nSrcSize);
+#if defined(_MSC_VER) && !defined(__clang__)
+// k2_compiler.h maps SetFileType's checked strncpy to the plain one. Not in k2_compiler.h itself:
+// K1's platforms/k1/k1crt.cpp must see no CRT header (its _strlwr/_strupr have C++ linkage).
+#include <string.h>
+#endif
 struct CResGFFStruct;
 struct CResGFFField;
 struct GFFLabel;
@@ -205,6 +213,16 @@ public:
     char         m_sLabelCache[16];
     char         m_nLabelCacheTerminator;
     char         m_sFileType[4];
+    // strncpy(m_sFileType, sType, 4) through bionic's _FORTIFY_SOURCE wrapper: a source of known size
+    // goes to __strncpy_chk2, an unknown one to the compiler's checked strncpy (a plain strncpy here).
+    void SetFileType(const char* sType)
+    {
+        uint64_t nSrcSize = __builtin_object_size(sType, 1);
+        if (nSrcSize == static_cast<uint64_t>(-1))
+            __builtin___strncpy_chk(m_sFileType, sType, 4, __builtin_object_size(m_sFileType, 1));
+        else
+            __strncpy_chk2(m_sFileType, sType, 4, __builtin_object_size(m_sFileType, 1), nSrcSize);
+    }
     int          m_nValid;
     int          m_bResourceBacked;
     int          m_bHoldingResObject;

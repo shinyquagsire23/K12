@@ -5,6 +5,7 @@
 const float CExoLocString::TIME_PER_CHARACTER_SPOKEN = 0.11f;
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 CExoLocString::CExoLocString()
 {
@@ -245,23 +246,12 @@ float CExoLocString::GetSpokenTimeEstimate(int nLanguage, unsigned char gender) 
         g_pTlkTable->ParseStr(s);
 
     float estimate = 0.0f;
-    while (s.m_sString != 0)
-    {
-        if (static_cast<int>(strlen(s.m_sString)) < 1)
-            break;
-        if (static_cast<unsigned char>(s[0]) != ' ')
-            break;
-        s = s.SubString(1, (s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0) - 1);
-    }
-    while (s.m_sString != 0 && static_cast<int>(strlen(s.m_sString)) >= 1 &&
-           static_cast<unsigned char>(s[(s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0) - 1]) == ' ')
-        s = s.SubString(0, (s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0) - 1);
-    if (s.m_sString != 0)
-    {
-        if (static_cast<int>(strlen(s.m_sString)) != 0)
-            estimate = static_cast<float>(s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0) *
-                           TIME_PER_CHARACTER_SPOKEN + 1.0f;
-    }
+    while (s.GetLength() >= 1 && static_cast<unsigned char>(s[0]) == ' ')
+        s = s.SubString(1, s.GetLength() - 1);
+    while (s.GetLength() >= 1 && static_cast<unsigned char>(s[s.GetLength() - 1]) == ' ')
+        s = s.SubString(0, s.GetLength() - 1);
+    if (s.GetLength() != 0)
+        estimate = static_cast<float>(s.GetLength()) * TIME_PER_CHARACTER_SPOKEN + 1.0f;
     return estimate;
 #endif
 }

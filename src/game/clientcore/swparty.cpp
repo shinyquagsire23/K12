@@ -1242,10 +1242,10 @@ void CSWParty::Update(float fDelta)
 #endif
         int bRanRetreat = 0;
         for (int i = 1; i < m_nCharacterCount; i++) {
-            unsigned long long oid =
-                g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_members[i].id);
-            CSWSCreature* pServerMember =
-                g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oid);
+            unsigned long long oid;
+            CSWSCreature* pServerMember;
+            oid = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_members[i].id);
+            pServerMember = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oid);
             if (pServerMember == 0) {
                 continue;
             }

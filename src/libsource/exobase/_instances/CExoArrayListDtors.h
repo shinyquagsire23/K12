@@ -139,6 +139,13 @@ public:
         }
         m_count = n;
     }
+
+    // Empties the list; bFree also releases the array.
+    void RemoveAll(int bFree) {
+        m_count = 0;
+        if (bFree)
+            SetSize(0);
+    }
 };
 
 // A list that can alias a loaded resource buffer: while m_bStatic is set it does not own its array,

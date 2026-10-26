@@ -78,6 +78,7 @@ bool IsHandle(void* h) { return h != 0 && h != reinterpret_cast<void*>(-1); }
     // ThreadProc stored the handle in the auto-TLS block (offset 0; see above)
     if (ThreadHANDLE* p = t_pAutoTls ? *reinterpret_cast<ThreadHANDLE**>(t_pAutoTls->bytes) : 0) p->m_hThread = 0;  // raw-offset: the auto-TLS block holds the handle at offset 0 by contract
     pthread_exit(reinterpret_cast<void*>(static_cast<uintptr_t>(nCode)));
+    __builtin_unreachable();   // winpthreads and compat/include-msvc declare pthread_exit without noreturn
 }
 
 } // namespace

@@ -12,6 +12,7 @@
 
 #include <string.h>
 #include "exoinput.h"
+#include "exostringinline.h"
 
 void AspyrAddButtonIcon(CSWGuiButton* pButton, char nIcon);
 #if KOTOR1
@@ -112,20 +113,7 @@ void CSWGuiQuickOrCustomPanel::HandleInputEvent(int nType, int nArg)
         case INPUTEVENT_GUI_B:
         case INPUTEVENT_GUI_BACK:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            if (m_pParentPanel != 0)
-                static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->RemoveSubPanels();
-
-#if KOTOR1
-            m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-#else
-            {
-                CSWGuiPanel* pChain = this;
-                do {
-                    pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-                    pChain = pChain->m_pNextInChain;
-                } while (pChain != 0);
-            }
-#endif
+            HandleCancelButton();
             break;
 
         case INPUTEVENT_GUI_START:
@@ -145,21 +133,12 @@ void CSWGuiQuickOrCustomPanel::HandleInputEvent(int nType, int nArg)
     CSWGuiPanel::HandleInputEvent(nType, nArg);
 }
 
-// Detaches from char-gen, then stamps the panel chain; not a vtable slot.
+// Detaches from char-gen, then deletes the page; not a vtable slot.
 void CSWGuiQuickOrCustomPanel::HandleCancelButton()
 {
     if (m_pParentPanel != 0)
         static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->RemoveSubPanels();
-
-#if KOTOR1
-    m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-#else
-    CSWGuiPanel* pChain = this;
-    do {
-        pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-#endif
+    SetToBeDeleted(0);
 }
 
 // Retargets the page's one description row at a talk-table string and shows the overflow glyph
@@ -177,11 +156,7 @@ void CSWGuiQuickOrCustomPanel::SetDescription(unsigned int nStrRef)
     // devirtualised.
     CSWGuiText* pText = &m_lblDesc.m_text;
     CSWGuiExtent extent = m_lblDesc.m_extent;
-#if KOTOR1
     if (strRes.text.GetLength() > 0)
-#else
-    if (strRes.text.m_sString != 0 && static_cast<int>(strlen(strRes.text.m_sString)) > 0)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -191,8 +166,5 @@ void CSWGuiQuickOrCustomPanel::SetDescription(unsigned int nStrRef)
     m_listBox.AddControls(apRows, 1, 0, 0, 0);
     m_listBox.SetSelectedControl(&m_lblDesc, 0);
 
-    m_lblRanalog.m_tail.bVisible =
-        (m_listBox.m_nRowHeight + m_listBox.m_nPadding > m_listBox.m_innerExtent.h
-         && m_listBox.m_aControls.m_count > 0)
-            ? !m_listBox.bUnequalRows : false;
+    m_lblRanalog.m_tail.bVisible = m_listBox.IsOversized();
 }

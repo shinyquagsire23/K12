@@ -128,7 +128,7 @@ void CSWGuiInGameJournal::MarkNewQuestsObserved()
         if (pEntry)
             pEntry->m_bNewUnobserved = 0;
     }
-    m_aNewQuestRows.Clear();
+    m_aNewQuestRows.SetSize(0);
 }
 
 #if KOTOR1  // K1 also relabels the sort button and the page title
@@ -784,18 +784,17 @@ CSWGuiInGameJournal::CSWGuiInGameJournal(CSWGuiManager* pGuiManager)
     // The filter buttons carry their sort key in the control's user data, which is why one handler
     // serves all three.
 #if !KOTOR1  // K1 has no filter buttons
+    void (CSWGuiObject::*pfnFilter)(CSWGuiControl*) =
+        static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameJournal::OnFilterPressed);
     m_btnFilterTime.m_tail.bFocusOnHover = 0;
     m_btnFilterTime.m_tail.m_nUserData = JOURNAL_SORT_BY_DATE;
-    m_btnFilterTime.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
-                                             &CSWGuiInGameJournal::OnFilterPressed));
+    m_btnFilterTime.AddEvent(INPUTEVENT_GUI_A, this, pfnFilter);
     m_btnFilterName.m_tail.bFocusOnHover = 0;
     m_btnFilterName.m_tail.m_nUserData = JOURNAL_SORT_BY_NAME;
-    m_btnFilterName.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
-                                             &CSWGuiInGameJournal::OnFilterPressed));
+    m_btnFilterName.AddEvent(INPUTEVENT_GUI_A, this, pfnFilter);
     m_btnFilterPlanet.m_tail.bFocusOnHover = 0;
     m_btnFilterPlanet.m_tail.m_nUserData = JOURNAL_SORT_BY_PLANET;
-    m_btnFilterPlanet.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
-                                               &CSWGuiInGameJournal::OnFilterPressed));
+    m_btnFilterPlanet.AddEvent(INPUTEVENT_GUI_A, this, pfnFilter);
 #endif
     m_btnMessages.m_tail.bFocusOnHover = 0;
     m_btnMessages.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(

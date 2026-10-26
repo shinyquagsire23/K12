@@ -80,7 +80,8 @@ void CExoAliasListInternal::ChangePath(const CExoString& alias, const CExoString
     if (pPathStr[sPath.GetLength() - 1] != '\\')
         sPath = sPath + "\\";
 
-    for (CExoAliasListEntry* pCur = m_pList; pCur != 0; pCur = pCur->m_pNext)
+    CExoAliasListEntry* pCur;
+    for (pCur = m_pList; pCur != 0; pCur = pCur->m_pNext)
     {
         if (pCur->m_sAlias == sAlias)
         {

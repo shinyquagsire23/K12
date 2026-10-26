@@ -151,7 +151,9 @@ public:
     signed char GetSTRMod() { return CalcStatModifier(m_abScores[0]); }
     signed char GetDEXMod() { return static_cast<signed char>(CalcStatModifier(m_abScores[1]) + m_nDEXArmorAdjust); }
     signed char GetCONMod() { return CalcStatModifier(m_abScores[2]); }
+    signed char GetINTMod() { return CalcStatModifier(m_abScores[3]); }
     signed char GetWISMod() { return CalcStatModifier(m_abScores[4]); }
+    signed char GetCHAMod() { return CalcStatModifier(m_abScores[5]); }
     signed char GetBaseINTMod() { return CalcStatModifier(m_abScoresBase[3]); }
     unsigned char GetClassLeveledUpIn() { return GetClass(m_nNumClasses - 1); }
     int  CalculateCriticalHitRange();
@@ -169,6 +171,13 @@ public:
     unsigned short GetFeat(unsigned short nFeat);
     int  HasFeat(unsigned short nFeat);
     int  HasClassSkillFeat(unsigned short nSkill);
+    // Whether the feat is in the feat list or the bonus-feat list.
+    int  FeatAcquired(unsigned short nFeat)
+    {
+        if (m_lstFeats.Contains(nFeat))
+            return 1;
+        return m_lstBonusFeats.Contains(nFeat) != 0;
+    }
     int  GetFeatRemainingUses(unsigned short nFeat);
     void SetFeatRemainingUses(unsigned short nFeat, unsigned char nUses);
     unsigned short GetBonusFeat(unsigned short nFeat);
@@ -212,7 +221,7 @@ public:
     int  HasSpell(unsigned char nSpellLevel, unsigned int nSpellId);
     int  GetCanUseSkill(unsigned short nSkill);
     int  GetSkillRank(unsigned short nSkill);
-    int  GetSkillModifier(unsigned short nSkill);
+    signed char GetSkillModifier(unsigned short nSkill);
     int  GetCombatModeAttackModifier(CSWCCreature* pCreature);
     int  GetCombatModeDamageModifier(CSWCCreature* pCreature);
     CExoString GetGeneralAttackBonusString(CSWCCreature* pCreature, int nHand);

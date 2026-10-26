@@ -492,7 +492,7 @@ void CSWSEncounter::RemoveFromArea() {
     if (GetArea() != 0) {
         static_cast<CSWSArea*>(GetArea())->RemoveObjectFromArea(m_objectId);
         CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
-        pArea->m_objects.Remove(m_objectId);
+        pArea->RemoveSubArea(this);
     }
     SetArea(0);
     Vector v = {};
@@ -500,7 +500,7 @@ void CSWSEncounter::RemoveFromArea() {
 }
 
 // Attaches to the area: detaches from any current one, sets the new area and position, registers with
-// the area, then appends the object id to its object list.
+// the area, then adds itself to the area's sub-area list.
 void CSWSEncounter::AddToArea(CSWSArea* pArea, float x, float y, float z, int n) {
     RemoveFromArea();
     if (pArea != 0) {
@@ -512,7 +512,7 @@ void CSWSEncounter::AddToArea(CSWSArea* pArea, float x, float y, float z, int n)
         SetPosition(v, 0, 1, 0);
         static_cast<CSWSArea*>(GetArea())->AddObjectToArea(m_objectId, n);
         CSWSArea* pA = static_cast<CSWSArea*>(GetArea());
-        pA->m_objects.Add(m_objectId);
+        pA->AddSubArea(this);
     }
 }
 
@@ -1205,6 +1205,10 @@ void CSWSEncounter::LoadFractionalCRData() {
             CExoString colName("Min");
             p2DA->GetFLOATEntry(i, colName, &value);
         }
+#if KOTOR1
+        m_pFractionalCRThresholds->Add(value);
+#else
+        // inlined CExoArrayList<float>::Add(float): the call swaps x8/x9 in the store
         float v = value;
         pList = m_pFractionalCRThresholds;
         int count = pList->m_count;
@@ -1224,6 +1228,7 @@ void CSWSEncounter::LoadFractionalCRData() {
         float* pData = pList->m_pArray;
         pList->m_count = count + 1;
         pData[count] = v;
+#endif
     }
 }
 

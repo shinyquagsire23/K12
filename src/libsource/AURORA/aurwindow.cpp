@@ -292,29 +292,18 @@ public:
 };
 List<TimeTrigger*> timetriggers;
 
-// Inserts the trigger sorted by m_fTime. Finds the first existing trigger whose time is at least
-// ours, appends (which grows the list), then if the scan found an earlier slot shifts the tail up
-// by one and drops this trigger into it. The append's own store at the old end is overwritten by
-// the shift, and that redundancy is real.
+// Inserts the trigger sorted by m_fTime, ahead of the first existing trigger whose time is at
+// least ours.
 TimeTrigger::TimeTrigger(float fTime, char* pszCommand)
 {
     m_fTime = fTime;
     strcpy(m_szCommand, pszCommand ? pszCommand : "");
-    int64_t nCount = timetriggers.m_count;
-    int64_t nPos = 0;
-    int bFound = 0;
-    for (nPos = 0; nPos < nCount; nPos++) {
-        if (!(m_fTime > timetriggers.m_pData[nPos]->m_fTime)) {
-            bFound = 1;
+    int nPos;
+    for (nPos = 0; nPos < timetriggers.m_count; nPos++) {
+        if (!(m_fTime > timetriggers.m_pData[nPos]->m_fTime))
             break;
-        }
     }
-    timetriggers.Add(this);
-    if (bFound) {
-        for (int64_t j = nCount; j > nPos; j--)
-            timetriggers.m_pData[j] = timetriggers.m_pData[j - 1];
-        timetriggers.m_pData[nPos] = this;
-    }
+    timetriggers.Insert(this, nPos);
 }
 
 TimeTrigger::~TimeTrigger()

@@ -284,19 +284,7 @@ CSWSPlayerLastUpdateObject::~CSWSPlayerLastUpdateObject()
 void CSWSPlayerLastUpdateObject::ClearActionQueue()
 {
     for (int i = 0; i < NUM_ACTION_QUEUE_ENTRIES; i++)
-    {
-        m_actionQueue[i].m_nGroupId = CSWActionQueueEntry::SLOT_EMPTY;
-        m_actionQueue[i].m_nActionId = CSWActionQueueEntry::SLOT_EMPTY;
-        m_actionQueue[i].m_nAltActionId = CSWActionQueueEntry::SLOT_EMPTY;
-        m_actionQueue[i].m_vTarget.x = 0.0f;
-        m_actionQueue[i].m_vTarget.y = 0.0f;
-        m_actionQueue[i].m_vTarget.z = 0.0f;
-        // A literal rather than CSWSObject::OBJECT_INVALID, which is an exported object every site
-        // would have to read through an extra indirection; both writers of this array use the value
-        // directly.
-        m_actionQueue[i].m_targetId = OBJECT_INVALID;
-        m_actionQueue[i].m_nSpellId = -1;
-    }
+        m_actionQueue[i].ClearData();
 }
 
 // The two knowledge arrays are [N][1], so the class stride and the level stride are the same.
@@ -320,7 +308,7 @@ void CSWSPlayerLastUpdateObject::AddKnownSpell(unsigned char nClass, unsigned ch
 void CSWSPlayerLastUpdateObject::ClearKnownSpells()
 {
     for (int i = 0; i < 2; i++)
-        m_knownSpells[i][0].Clear();
+        m_knownSpells[i][0].SetSize(0);
 }
 
 // Drains the owned visibility nodes from the back.
@@ -338,8 +326,8 @@ void CSWSPlayerLastUpdateObject::ClearVisibilityList()
 // pointer, and clears the array.
 void CSWSPlayerLastUpdateObject::ClearFeats()
 {
-    m_feats.Clear();
-    m_bonusFeats.Clear();
+    m_feats.SetSize(0);
+    m_bonusFeats.SetSize(0);
 
     for (int i = 0; i < m_featRemainingUses.m_count; i++)
     {
@@ -350,7 +338,7 @@ void CSWSPlayerLastUpdateObject::ClearFeats()
         }
     }
 
-    m_featRemainingUses.Clear();
+    m_featRemainingUses.SetSize(0);
 }
 
 // Clears the two lists as a pair per class.
@@ -358,8 +346,8 @@ void CSWSPlayerLastUpdateObject::ClearSpellAddDeleteLists()
 {
     for (int i = 0; i < 2; i++)
     {
-        m_spellDeleteList[i][0].Clear();
-        m_spellAddList[i][0].Clear();
+        m_spellDeleteList[i][0].SetSize(0);
+        m_spellAddList[i][0].SetSize(0);
     }
 }
 
@@ -387,12 +375,10 @@ void CSWSPlayerLastUpdateObject::SetKnownSpellUsesLeft(unsigned char nClass, uns
 // Does nothing beyond the member-destructor chain of two strings, two array lists and two location
 // strings, the last one a tail call.
 //
-// The nine zeroed scalars are member initialisers, since they must run before the first member
-// constructor; the four seeded scalars are body statements, after the last one.
+// The zeroed position, orientation and last path point are member initialisers, since they must run
+// before the first member constructor; the four seeded scalars are body statements, after the last one.
 CLastUpdateObject::CLastUpdateObject()
-    : m_fPositionX(0.0f), m_fPositionY(0.0f), m_fPositionZ(0.0f),
-      m_fOrientationX(0.0f), m_fOrientationY(0.0f), m_fOrientationZ(0.0f),
-      m_lastPathPoint(0.0f, 0.0f), m_fLastPathPointZ(0.0f)
+    : m_position(), m_orientation(), m_lastPathPoint(0.0f, 0.0f), m_fLastPathPointZ(0.0f)
 {
     m_nSoundSetFile = 0;
     m_nAnimation = SERVER_ANIMATION_READY;

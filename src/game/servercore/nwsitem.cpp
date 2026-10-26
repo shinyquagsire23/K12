@@ -408,7 +408,7 @@ void CSWSItem::EventHandler(unsigned int nEventType, unsigned long long nCallerI
         // Either way the carrier just got one unit lighter.
         if (pPossessor != 0 && pPossessor->m_pInventory->GetItemInInventory(this) != 0) {
             pPossessor->m_nEquippedWeight -=
-                g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nTenthLbs;
+                g_pRules->GetBaseItem(m_baseItem)->m_nTenthLbs;
         }
         return;
     }
@@ -460,7 +460,7 @@ void CSWSItem::CloseItemForAllPlayers()
 {
     // Only container items have a UI to close.
     int nBaseItem = m_baseItem;
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(nBaseItem);
     if (pBaseItem == 0 || pBaseItem->m_bContainer == 0) return;
 
     CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
@@ -488,7 +488,7 @@ int CItemRepository::GetItemInRepository(CSWSItem* pItem, int bRecurse)
             return 1;
         if (bRecurse && pCur != 0)
         {
-            CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pCur->m_baseItem);
+            CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pCur->m_baseItem);
             if (pBaseItem != 0 && pBaseItem->m_bContainer != 0 && pCur->m_pItemRepository != 0 &&
                 pCur->m_pItemRepository->GetItemInRepository(pItem, bRecurse) != 0)
                 return 1;
@@ -555,7 +555,7 @@ int CItemRepository::AddItem(CSWSItem** ppItem, int bStack, int nPossessor, int 
             // A container item's own repository credits the two consumable kinds to whoever is
             // carrying the container, not to the container.
             CSWSItem* pContainer = pObject->AsSWSItem();
-            if (g_pRules->m_pBaseItemArray->GetBaseItem(pContainer->m_baseItem)->m_bContainer == 1 &&
+            if (g_pRules->GetBaseItem(pContainer->m_baseItem)->m_bContainer == 1 &&
                 pContainer->m_possessorId != OBJECT_INVALID)
             {
                 CSWSCreature* pCarrier = g_pAppManager->m_pServerExoApp
@@ -1121,7 +1121,7 @@ void CSWSItem::InitRepository(unsigned long long ownerObjectId)
         delete m_pItemRepository;
         m_pItemRepository = 0;
     }
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_bContainer != 0)
+    if (g_pRules->GetBaseItem(m_baseItem)->m_bContainer != 0)
         m_pItemRepository = new CItemRepository(ownerObjectId, 0);
 }
 
@@ -1129,7 +1129,7 @@ int CSWSItem::MergeItem(CSWSItem* pOther)
 {
     if (CompareItem(pOther) == 0)
         return 0;
-    int nMaxStack = g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nStacking;
+    int nMaxStack = g_pRules->GetBaseItem(m_baseItem)->m_nStacking;
     int nCount = m_stackCount;
     if (nCount + pOther->m_stackCount > nMaxStack)
     {
@@ -1247,8 +1247,8 @@ int CSWSItem::AcquireItem(CSWSItem** ppItem, unsigned long long possessorId, int
     else
     {
         if (pOldPossessor != 0 &&
-            g_pRules->m_pBaseItemArray->GetBaseItem((*ppItem)->m_baseItem)->m_bContainer != 0 &&
-            g_pRules->m_pBaseItemArray->GetBaseItem(pOldPossessor->m_baseItem)->m_bContainer != 0)
+            g_pRules->GetBaseItem((*ppItem)->m_baseItem)->m_bContainer != 0 &&
+            g_pRules->GetBaseItem(pOldPossessor->m_baseItem)->m_bContainer != 0)
             return 0;
         pRepository->AddItem(ppItem, 1, 0, 1);
         if (*ppItem != 0)
@@ -1624,7 +1624,7 @@ CExoString CSWSItem::GetPropertiesOnlyDescription()
 int CSWSItem::GetDamageFlags()
 {
     int nBaseItem = m_baseItem;
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(nBaseItem);
     if (pBaseItem != 0 && pBaseItem->m_nDamageFlags != 0)
         return pBaseItem->m_nDamageFlags;
 #if KOTOR1  // K1's fallback is 8, not 1
@@ -1733,7 +1733,7 @@ void CSWSItem::OpenInventory(unsigned long long objectId)
     if (m_nFlagsLow & FLAG_INVENTORY_OPEN)
         return;
     int nBaseItem = m_baseItem;
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_bContainer == 0)
+    if (g_pRules->GetBaseItem(nBaseItem)->m_bContainer == 0)
         return;
     CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(objectId);
     if (pPlayer != 0)
@@ -1983,9 +1983,9 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
     }
     else
     {
-        unsigned char nDice = g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nNumDice;
+        unsigned char nDice = g_pRules->GetBaseItem(m_baseItem)->m_nNumDice;
         unsigned char nDieSize =
-            g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nDieToRoll;
+            g_pRules->GetBaseItem(m_baseItem)->m_nDieToRoll;
         CExoString sDamageType;
         GetDamageTypeString(GetDamageFlags(), sDamageType);
         if (sDamageType != "")
@@ -2035,9 +2035,9 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
     }
     else
     {
-        unsigned char nDice = g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nNumDice;
+        unsigned char nDice = g_pRules->GetBaseItem(m_baseItem)->m_nNumDice;
         unsigned char nDieSize =
-            g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nDieToRoll;
+            g_pRules->GetBaseItem(m_baseItem)->m_nDieToRoll;
         CExoString sDamageType;
         GetDamageTypeString(GetDamageFlags(), sDamageType);
         int nMin = nDice;
@@ -3406,7 +3406,7 @@ int CSWSItem::ShowModel()
         return 0;
     if (pItem->LoadModel(pItem->m_modelResRef, CSWCObject::ANIM_MODEL_BODY, 0) != 0)
         return 0;
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bHasEnvMap == 0)
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_bHasEnvMap == 0)
         return 1;
     pItem->SetEnvMap(CSWCObject::ANIM_MODEL_BODY, 1, CResRef("default"));
     return 1;
@@ -3441,7 +3441,7 @@ int CSWSItem::SaveItem(CResGFF* pGFF, CResStruct* pStruct)
     pGFF->WriteFieldBYTE(pStruct, m_bits.m_bDropable, const_cast<char*>("Dropable"));
     pGFF->WriteFieldBYTE(pStruct, m_bits.m_bPickpocketable, const_cast<char*>("Pickpocketable"));
     pGFF->WriteFieldBYTE(pStruct, m_nModelVariation, const_cast<char*>("ModelVariation"));
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nModelType == 1)
+    if (g_pRules->GetBaseItem(m_baseItem)->m_nModelType == 1)
     {
         pGFF->WriteFieldBYTE(pStruct, m_nBodyVariation, const_cast<char*>("BodyVariation"));
         pGFF->WriteFieldBYTE(pStruct, m_nTextureVar, const_cast<char*>("TextureVar"));
@@ -3451,7 +3451,7 @@ int CSWSItem::SaveItem(CResGFF* pGFF, CResStruct* pStruct)
     pGFF->WriteFieldDWORD(pStruct, GetCost(), const_cast<char*>("Cost"));
     pGFF->WriteFieldDWORD(pStruct, m_nAddCost, const_cast<char*>("AddCost"));
     pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(m_bPlot), const_cast<char*>("Plot"));
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_bContainer != 0)
+    if (g_pRules->GetBaseItem(m_baseItem)->m_bContainer != 0)
         SaveContainerItems(pGFF, pStruct);
     SaveItemProperties(pGFF, pStruct);
     pGFF->WriteFieldFLOAT(pStruct, m_position.x, const_cast<char*>("XPosition"));
@@ -3631,9 +3631,9 @@ void CSWSItem::LoadDataFromGff(CResGFF* pGFF, CResStruct* pStruct)
             nModelVariation = 1;
     }
     m_nModelVariation = nModelVariation;
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nModelType == 1)
+    if (g_pRules->GetBaseItem(m_baseItem)->m_nModelType == 1)
     {
-        m_nBodyVariation = g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nBodyVar;
+        m_nBodyVariation = g_pRules->GetBaseItem(m_baseItem)->m_nBodyVar;
         m_nTextureVar = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("TextureVar"), nReadOk, 1);
     }
     m_nCharges = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Charges"), nReadOk, 50);
@@ -3641,7 +3641,7 @@ void CSWSItem::LoadDataFromGff(CResGFF* pGFF, CResStruct* pStruct)
     m_bits.m_bNewItem = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("NewItem"), nReadOk, m_bits.m_bNewItem);
     m_bits.m_bDeleting = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("DELETING"), nReadOk, m_bits.m_bDeleting);
     m_nAddCost = pGFF->ReadFieldDWORD(pStruct, const_cast<char*>("AddCost"), nReadOk, m_nAddCost);
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_bContainer != 0)
+    if (g_pRules->GetBaseItem(m_baseItem)->m_bContainer != 0)
         ReadContainerItemsFromGff(pGFF, pStruct);
     m_bPlot = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Plot"), nReadOk, static_cast<unsigned char>(m_bPlot));
     if (pGFF->GetList(&list, pStruct, const_cast<char*>("PropertiesList")) == 1)
@@ -3660,10 +3660,7 @@ void CSWSItem::LoadDataFromGff(CResGFF* pGFF, CResStruct* pStruct)
                 if (nReadOk != 0 && ActiveProperty(nType) != 0)
                     nActiveCount++;
             }
-            m_nActiveProperties = nActiveCount;
-            delete[] m_pActiveProperties;
-            m_pActiveProperties =
-                nActiveCount != 0 ? new CSWItemProperty[m_nActiveProperties] : 0;
+            SetNumActiveProperties(nActiveCount);
             int nActive = 0;
             for (int i = 0; i < nCount; i++)
             {
@@ -3705,21 +3702,18 @@ void CSWSItem::LoadDataFromGff(CResGFF* pGFF, CResStruct* pStruct)
                 m_pActiveProperties[nActive].m_bUseable = nUseable;
                 unsigned char nUsesPerDay =
                     pGFF->ReadFieldBYTE(&element, const_cast<char*>("UsesPerDay"), nReadOk, CSWItemProperty::USES_PER_DAY_UNSET);
-                m_pActiveProperties[nActive].m_nUsesPerDay = nUsesPerDay;
+                GetActiveProperty(nActive)->m_nUsesPerDay = nUsesPerDay;
                 unsigned char nUpgradeType =
                     pGFF->ReadFieldBYTE(&element, const_cast<char*>("UpgradeType"), nReadOk, CSWItemProperty::UPGRADE_TYPE_NONE);
-                m_pActiveProperties[nActive].m_nUpgradeType = nUpgradeType;
+                GetActiveProperty(nActive)->m_nUpgradeType = nUpgradeType;
 #if !KOTOR1  // K1 has no PropUpgrade field
                 unsigned short nPropUpgrade =
                     pGFF->ReadFieldWORD(&element, const_cast<char*>("PropUpgrade"), nReadOk, 0xff);
-                m_pActiveProperties[nActive].m_nPropUpgrade = nPropUpgrade;
+                GetActiveProperty(nActive)->m_nPropUpgrade = nPropUpgrade;
 #endif
                 nActive++;
             }
-            m_nPassiveProperties = nCount - m_nActiveProperties;
-            delete[] m_pPassiveProperties;
-            m_pPassiveProperties =
-                m_nPassiveProperties != 0 ? new CSWItemProperty[m_nPassiveProperties] : 0;
+            SetNumPassiveProperties(nCount - m_nActiveProperties);
             int nPassive = 0;
             for (int i = 0; i < nCount; i++)
             {
@@ -3761,29 +3755,20 @@ void CSWSItem::LoadDataFromGff(CResGFF* pGFF, CResStruct* pStruct)
                 m_pPassiveProperties[nPassive].m_bUseable = nUseable;
                 unsigned char nUsesPerDay =
                     pGFF->ReadFieldBYTE(&element, const_cast<char*>("UsesPerDay"), nReadOk, CSWItemProperty::USES_PER_DAY_UNSET);
-                m_pPassiveProperties[nPassive].m_nUsesPerDay = nUsesPerDay;
+                GetPassiveProperty(nPassive)->m_nUsesPerDay = nUsesPerDay;
                 unsigned char nUpgradeType =
                     pGFF->ReadFieldBYTE(&element, const_cast<char*>("UpgradeType"), nReadOk, CSWItemProperty::UPGRADE_TYPE_NONE);
-                m_pPassiveProperties[nPassive].m_nUpgradeType = nUpgradeType;
+                GetPassiveProperty(nPassive)->m_nUpgradeType = nUpgradeType;
 #if !KOTOR1  // K1 has no PropUpgrade field
                 unsigned short nPropUpgrade =
                     pGFF->ReadFieldWORD(&element, const_cast<char*>("PropUpgrade"), nReadOk, 0xff);
-                m_pPassiveProperties[nPassive].m_nPropUpgrade = nPropUpgrade;
+                GetPassiveProperty(nPassive)->m_nPropUpgrade = nPropUpgrade;
 #endif
                 nPassive++;
             }
         }
     }
-    for (int i = 0; i < m_nActiveProperties; i++)
-    {
-        CSWItemProperty* pProp = &m_pActiveProperties[i];
-        if (pProp != 0 && pProp->m_type == ITEM_PROPERTY_ACTIVATE_ITEM && pProp->m_nUsesPerDay == CSWItemProperty::USES_PER_DAY_UNSET) {
-            if (static_cast<unsigned int>(pProp->m_costTableValue - IPRP_CHARGECOST_1_USE_PER_DAY) <=
-                IPRP_CHARGECOST_5_USES_PER_DAY - IPRP_CHARGECOST_1_USE_PER_DAY)
-                pProp->m_nUsesPerDay = static_cast<unsigned char>(pProp->m_costTableValue - 7);
-            pProp->m_bUseable = 1;
-        }
-    }
+    RestoreUsedActiveProperties(1);
     UpdateUsedActiveProperties();
     if (m_nActiveProperties == 0 && m_nPassiveProperties == 0)
         m_flags |= FLAG_IDENTIFIED;

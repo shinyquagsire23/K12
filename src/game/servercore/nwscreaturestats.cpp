@@ -380,8 +380,8 @@ int CSWSCreatureStats::GetDamageRoll(CSWSObject* pTarget, int bOffhand, int bCri
             }
             else
             {
-                anDice[0] = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nNumDice;
-                anDice[1] = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nDieToRoll;
+                anDice[0] = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nNumDice;
+                anDice[1] = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nDieToRoll;
             }
             nDamage = anDice[1] * anDice[0];
         }
@@ -472,8 +472,8 @@ int CSWSCreatureStats::GetDamageRoll(CSWSObject* pTarget, int bOffhand, int bCri
             }
             else
             {
-                anDice[0] = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nNumDice;
-                anDice[1] = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nDieToRoll;
+                anDice[0] = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nNumDice;
+                anDice[1] = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nDieToRoll;
 
                 short nDiceTotal = static_cast<short>(anDice[1] * anDice[0]);
 #if !KOTOR1
@@ -886,28 +886,14 @@ CSWSCreatureStats_ClassInfo::CSWSCreatureStats_ClassInfo()
 
 CSWSCreatureStats_ClassInfo::~CSWSCreatureStats_ClassInfo()
 {
-    m_knownSpells[0].Clear();
-}
-
-static int FindKnownSpellIndex(CExoArrayList<unsigned int>& list, unsigned int nSpellId)
-{
-    int nIndex = -1;
-    for (int64_t i = 0; i < list.m_count; i++)
-    {
-        if (list.m_pArray[i] == nSpellId)
-        {
-            nIndex = static_cast<int>(i);
-            break;
-        }
-    }
-    return nIndex;
+    m_knownSpells[0].SetSize(0);
 }
 
 void CSWSCreatureStats_ClassInfo::AddKnownSpell(unsigned char level, unsigned int nSpellId) {
     if (level != 0)
         return;
 
-    if (FindKnownSpellIndex(m_knownSpells[level], nSpellId) != -1)
+    if (m_knownSpells[level].IndexOf(nSpellId) != -1)
         return;
 
     m_knownSpells[level].Add(nSpellId);
@@ -918,19 +904,7 @@ void CSWSCreatureStats_ClassInfo::RemoveKnownSpell(unsigned char level, unsigned
         return;
 
     CExoArrayList<unsigned int>* pList = &m_knownSpells[level];
-    int nIndex = -1;
-    if (pList->m_count >= 1)
-    {
-        for (int64_t i = 0; i < pList->m_count; i++)
-        {
-            if (pList->m_pArray[i] == nSpellId)
-            {
-                nIndex = static_cast<int>(i);
-                break;
-            }
-        }
-    }
-    if (nIndex < 0)
+    if (pList->IndexOf(nSpellId) < 0)
         return;
 
     pList->Remove(nSpellId);
@@ -1437,11 +1411,11 @@ int CSWSCreatureStats::GetRangedDamageBonus()
     int nSpec = 0;
     if (pItem != 0)
     {
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon == 0)
+        if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon == 0)
             return 0;
 
         unsigned char nWieldType =
-            g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType;
+            g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType;
         signed char nSTRMod = static_cast<signed char>(m_nSTRMod);
         nBonus = nSTRMod;
         if (nWieldType != 7)
@@ -1502,7 +1476,7 @@ int CSWSCreatureStats::GetMeleeDamageBonus(int bWieldingOffhand)
     {
         pItem = static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON));
         if (pItem != 0 &&
-            g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType !=
+            g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType !=
                 CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
             pItem = 0;
     }
@@ -1512,7 +1486,7 @@ int CSWSCreatureStats::GetMeleeDamageBonus(int bWieldingOffhand)
     }
 
     if (pItem != 0 &&
-        g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0)
+        g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0)
         return 0;
 
     int nBonus;
@@ -1526,7 +1500,7 @@ int CSWSCreatureStats::GetMeleeDamageBonus(int bWieldingOffhand)
     {
         CSWBaseItem* pBase;
         if (pItem != 0 &&
-            (pBase = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem))->m_nWeaponSize -
+            (pBase = g_pRules->GetBaseItem(pItem->m_baseItem))->m_nWeaponSize -
                     m_pOwner->m_nCreatureSize == 1 &&
             pBase->m_weaponWieldType != CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
         {
@@ -1563,8 +1537,8 @@ void CSWSCreatureStats::GetTotalDamageRange(CSWSCreature* pCreature, CSWSItem* p
     // + STR mod. No damage feats, no off-hand / two-handed STR scaling.
     if (pCreature != 0 && pItem != 0)
     {
-        nMinBase = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nNumDice;
-        nMaxBase = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nDieToRoll * nMinBase;
+        nMinBase = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nNumDice;
+        nMaxBase = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nDieToRoll * nMinBase;
         if (pItem->GetBaseItem()->m_bRangedWeapon == 0)
         {
             nMinBase += static_cast<signed char>(m_nSTRMod);
@@ -1596,8 +1570,8 @@ void CSWSCreatureStats::GetTotalDamageRange(CSWSCreature* pCreature, CSWSItem* p
 #else
     if (pCreature != 0 && pItem != 0)
     {
-        nMinBase = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nNumDice;
-        nMaxBase = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nDieToRoll * nMinBase;
+        nMinBase = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nNumDice;
+        nMaxBase = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nDieToRoll * nMinBase;
         if (pItem->GetBaseItem()->m_bRangedWeapon != 0)
         {
             if (HasFeat(FEAT_INCREASE_COMBAT_DAMAGE_3))
@@ -1781,7 +1755,7 @@ int CSWSCreatureStats::GetCriticalHitMultiplier(int bWieldingOffhand)
             static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
     if (bWieldingOffhand != 0 && pItem != 0)
     {
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType !=
+        if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType !=
             CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
             pItem =
                     static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON));
@@ -1789,7 +1763,7 @@ int CSWSCreatureStats::GetCriticalHitMultiplier(int bWieldingOffhand)
 
     int nMult;
     if (pItem != 0)
-        nMult = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nCritMultiplier;
+        nMult = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nCritMultiplier;
     else
         nMult = 2;
 #if !KOTOR1
@@ -1823,7 +1797,7 @@ int CSWSCreatureStats::GetCriticalHitRoll(int bWieldingOffhand)
             static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
     if (bWieldingOffhand != 0 && pItem != 0)
     {
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType !=
+        if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType !=
             CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
             pItem =
                     static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON));
@@ -1835,7 +1809,7 @@ int CSWSCreatureStats::GetCriticalHitRoll(int bWieldingOffhand)
     int nRoll = 0;
     if (pItem != 0)
     {
-        nThreat = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nCritThreat;
+        nThreat = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nCritThreat;
         CSWItemProperty* pProperty = 0;
         // `!= 0` means the property is present; the keen case subtracts the threat, so inverting
         // the test would widen the crit range.
@@ -2002,26 +1976,26 @@ int CSWSCreatureStats::CalcStatModifier(unsigned char nStat)
 void CSWSCreatureStats::SetSTRBase(unsigned char nScore)
 {
     m_nSTRBase = nScore;
-    m_nSTRMod = static_cast<unsigned char>(CalcStatModifier(GetSTRStat()));
+    UpdateSTRModifier();
 }
 
 void CSWSCreatureStats::SetDEXBase(unsigned char nScore)
 {
     m_nDEXBase = nScore;
-    m_nDEXMod = static_cast<signed char>(CalcStatModifier(GetDEXStat()));
+    UpdateDEXModifier();
 }
 
 void CSWSCreatureStats::SetINTBase(unsigned char nScore)
 {
     m_nINTBase = nScore;
-    m_nINTMod = static_cast<unsigned char>(CalcStatModifier(GetINTStat()));
+    UpdateINTModifier();
     AdjustSpellUsesPerDay();
 }
 
 void CSWSCreatureStats::SetWISBase(unsigned char nScore)
 {
     m_nWISBase = nScore;
-    m_nWISMod = static_cast<signed char>(CalcStatModifier(GetWISStat()));
+    UpdateWISModifier();
     AdjustSpellUsesPerDay();
 }
 
@@ -2033,7 +2007,7 @@ void CSWSCreatureStats::SetCONBase(unsigned char nScore, int bAdjustHP)
     int nOldMaxHP = 0;
     if (bAdjustHP == 1)
         nOldMaxHP = m_pOwner->GetMaxHitPoints(1);
-    m_nCONMod = static_cast<signed char>(CalcStatModifier(GetCONStat()));
+    UpdateCONModifier();
     if (bAdjustHP == 1)
     {
         CSWSCreature* pOwner = m_pOwner;
@@ -2045,7 +2019,7 @@ void CSWSCreatureStats::SetCONBase(unsigned char nScore, int bAdjustHP)
 void CSWSCreatureStats::SetCHABase(unsigned char nScore)
 {
     m_nCHABase = nScore;
-    m_nCHAMod = static_cast<unsigned char>(CalcStatModifier(GetCHAStat()));
+    UpdateCHAModifier();
     AdjustSpellUsesPerDay();
 }
 
@@ -2552,10 +2526,10 @@ void CSWSCreatureStats::UpdateCombatInformation()
     CSWSItem* pOffHand =
             static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON));
     if (pOffHand != 0 &&
-        g_pRules->m_pBaseItemArray->GetBaseItem(pOffHand->m_baseItem)->m_nWeaponType != 0)
+        g_pRules->GetBaseItem(pOffHand->m_baseItem)->m_nWeaponType != 0)
         m_pCombatInformation->m_bOffHandWeaponEquipped = 1;
     else if (pOnHand != 0 &&
-             g_pRules->m_pBaseItemArray->GetBaseItem(pOnHand->m_baseItem)->m_weaponWieldType !=
+             g_pRules->GetBaseItem(pOnHand->m_baseItem)->m_weaponWieldType !=
                  CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
         m_pCombatInformation->m_bOffHandWeaponEquipped = 0;
 
@@ -2565,7 +2539,7 @@ void CSWSCreatureStats::UpdateCombatInformation()
         m_pCombatInformation->m_offHandWeaponId = OBJECT_INVALID;
 
     if (pOnHand != 0 &&
-        g_pRules->m_pBaseItemArray->GetBaseItem(pOnHand->m_baseItem)->m_bRangedWeapon != 0)
+        g_pRules->GetBaseItem(pOnHand->m_baseItem)->m_bRangedWeapon != 0)
     {
         m_pCombatInformation->m_nAttackModOnHand = static_cast<signed char>(GetRangedAttackBonus(0, 0, 0));
         m_pCombatInformation->m_nStrDamageModOnHand = static_cast<signed char>(GetRangedDamageBonus());
@@ -2629,7 +2603,7 @@ char CSWSCreatureStats::GetDamageBonus(CSWSCreature* pCreature, int bWieldingOff
     CSWSItem* pOnHand =
             static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
     if (pOnHand != 0)
-        g_pRules->m_pBaseItemArray->GetBaseItem(pOnHand->m_baseItem);
+        g_pRules->GetBaseItem(pOnHand->m_baseItem);
     if (bRanged != 0)
         pAttack->m_damage.m_nStrDamageBonus = 0;
     else
@@ -2818,7 +2792,7 @@ int CSWSCreatureStats::GetRangedAttackBonus(int a1, int a2, int a3)
     CSWSItem* pItem =
             static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
     if (pItem != 0 &&
-        g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon == 0)
+        g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon == 0)
         return 0;
     int nBonus = 0;
     if (a2 == 1) {
@@ -2852,10 +2826,10 @@ int CSWSCreatureStats::GetRangedAttackBonus(int a1, int a2, int a3)
 #ifdef K2_FIX_ENGINE_BUGS
             pItem != 0 &&
 #endif
-            g_pRules->m_pBaseItemArray->GetBaseItem(pOff->m_baseItem)->m_nWeaponType != 0) {
+            g_pRules->GetBaseItem(pOff->m_baseItem)->m_nWeaponType != 0) {
             if (m_pOwner->GetRelativeWeaponSize(pItem) < 0)
                 nOff = -4;
-            else if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+            else if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
                      CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
                 nOff = -4;
             else
@@ -2934,7 +2908,7 @@ int CSWSCreatureStats::GetMeleeAttackBonus(int a1, int a2, int a3, int a4)
     CSWSItem* pItem =
             static_cast<CSWSItem*>(m_pOwner->m_pInventory->GetItemInSlot((a4 != 0 || a1 == 0) ? CSWInventory::SLOT_RIGHTWEAPON : CSWInventory::SLOT_LEFTWEAPON));
     if (pItem != 0 &&
-        g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0)
+        g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0)
         return 0;
     int nBonus = 0;
     if (a2 == 1) {
@@ -2990,10 +2964,10 @@ int CSWSCreatureStats::GetMeleeAttackBonus(int a1, int a2, int a3, int a4)
             }
         } else {
             if (pOff != 0 &&
-                g_pRules->m_pBaseItemArray->GetBaseItem(pOff->m_baseItem)->m_nWeaponType != 0) {
+                g_pRules->GetBaseItem(pOff->m_baseItem)->m_nWeaponType != 0) {
                 if (m_pOwner->GetRelativeWeaponSize(pOff) == -1)
                     nOff = -4;
-                else if (g_pRules->m_pBaseItemArray->GetBaseItem(pOff->m_baseItem)->m_weaponWieldType ==
+                else if (g_pRules->GetBaseItem(pOff->m_baseItem)->m_weaponWieldType ==
                          CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
                     nOff = -4;
                 else
@@ -3051,7 +3025,7 @@ int CSWSCreatureStats::GetAttackModifierVersus(CSWSCreature* pTarget)
     unsigned char nAttackType = pAttack->m_nWeaponAttackType;
     CSWSItem* pWeapon = m_pOwner->m_pCombatRound->GetCurrentAttackWeapon(nAttackType);
     if (pWeapon != 0)
-        g_pRules->m_pBaseItemArray->GetBaseItem(pWeapon->m_baseItem);
+        g_pRules->GetBaseItem(pWeapon->m_baseItem);
 
     int nBAB;
     if (nAttackType == CSWSCombatRound::WEAPON_ATTACK_TYPE_OFFHAND)
@@ -3087,7 +3061,7 @@ int CSWSCreatureStats::GetAttackModifierVersus(CSWSCreature* pTarget)
         if (pOffWeapon != 0)
         {
             CSWBaseItem* pOffBase =
-                g_pRules->m_pBaseItemArray->GetBaseItem(pOffWeapon->m_baseItem);
+                g_pRules->GetBaseItem(pOffWeapon->m_baseItem);
             if (pOffBase != 0 && pOffBase->m_weaponWieldType != CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
                 pOffWeapon = 0;
         }
@@ -3153,11 +3127,11 @@ int CSWSCreatureStats::GetAttackModifierVersus(CSWSCreature* pTarget)
     {
         pAttack->m_attack.m_bOffhandAttack = 0;
         if (pOffWeapon != 0 &&
-            g_pRules->m_pBaseItemArray->GetBaseItem(pOffWeapon->m_baseItem)->m_nWeaponType != 0)
+            g_pRules->GetBaseItem(pOffWeapon->m_baseItem)->m_nWeaponType != 0)
         {
             int nBase;
             if (m_pOwner->GetRelativeWeaponSize(pOffWeapon) == -1 ||
-                g_pRules->m_pBaseItemArray->GetBaseItem(pOffWeapon->m_baseItem)
+                g_pRules->GetBaseItem(pOffWeapon->m_baseItem)
                         ->m_weaponWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
             {
                 nBase = -4;
@@ -3900,28 +3874,8 @@ int CSWSCreatureStats::HasFeat(unsigned short nFeat)
     }
     return 1;
 #else
-    int64_t nFeats = m_feats.m_count;
-    unsigned short* pFeat = m_feats.m_pArray;
-    if (nFeats > 0)
-    {
-        do
-        {
-            if (*pFeat == nFeat)
-                return 1;
-            pFeat++;
-        } while (--nFeats != 0);
-    }
-    int64_t nBonusFeats = m_bonusFeats.m_count;
-    unsigned short* pBonusFeat = m_bonusFeats.m_pArray;
-    if (nBonusFeats > 0)
-    {
-        do
-        {
-            if (*pBonusFeat == nFeat)
-                return 1;
-            pBonusFeat++;
-        } while (--nBonusFeats != 0);
-    }
+    if (m_feats.ContainsFast(nFeat) || m_bonusFeats.ContainsFast(nFeat))
+        return 1;
     return 0;
 #endif
 }
@@ -4068,12 +4022,13 @@ CSWSCreatureStats::~CSWSCreatureStats()
 // each entry.
 void CSWSCreatureStats::ClearFeats()
 {
-    m_feats.Clear();
+    m_feats.SetSize(0);
 
     while (m_featRemainingUses.m_count != 0)
     {
         int nLast = m_featRemainingUses.m_count - 1;
         CSWSStats_FeatRemainingUses* pEntry = m_featRemainingUses.m_pArray[nLast];
+        // inlined CExoArrayList<CFeatUseListEntry*>::DelIndex(m_count - 1)
         m_featRemainingUses.m_count = nLast;
         delete pEntry;
     }
@@ -4135,7 +4090,7 @@ int CSWSCreatureStats::GetHasPowerFromItem(int nPower)
         if (pItem == 0)
             continue;
         int nBaseItem = pItem->m_baseItem;
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_nEquipableSlots != 0)
+        if (g_pRules->GetBaseItem(nBaseItem)->m_nEquipableSlots != 0)
             continue;
         if (!pItem->GetPropertyByTypeExists(ITEM_PROPERTY_ACTIVATE_ITEM, 0))
             continue;
@@ -4194,7 +4149,7 @@ int CSWSCreatureStats::GetItemDetailsForPower(int nPower, unsigned long long& rI
         CSWSItem* pItem = pRepo->ItemListGetItem(i);
         if (pItem == 0)
             continue;
-        if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nEquipableSlots != 0)
+        if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_nEquipableSlots != 0)
             continue;
         if (!pItem->GetPropertyByTypeExists(ITEM_PROPERTY_ACTIVATE_ITEM, 0))
             continue;
@@ -5291,11 +5246,11 @@ void CSWSCreatureStats::SetStatById(int nStatId, float fValue)
     case 4:  m_nWillSaveBonus = static_cast<signed char>(fValue); break;
     case 5:
         m_nSTRBase = static_cast<unsigned char>(fValue);
-        m_nSTRMod = static_cast<unsigned char>(CalcStatModifier(GetSTRStat()));
+        UpdateSTRModifier();
         break;
     case 6:
         m_nDEXBase = static_cast<unsigned char>(fValue);
-        m_nDEXMod = static_cast<signed char>(CalcStatModifier(GetDEXStat()));
+        UpdateDEXModifier();
         break;
     case 7:
     {
@@ -6206,7 +6161,7 @@ int CSWSCreatureStats::GetCreatureTalentRandomPowerFromItem(int a1, int a2, int&
             CSWSItem* pItem = pRepo->ItemListGetItem(i);
             if (pItem == 0)
                 continue;
-            if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nEquipableSlots != 0)
+            if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_nEquipableSlots != 0)
                 continue;
             if (!pItem->GetPropertyByTypeExists(ITEM_PROPERTY_ACTIVATE_ITEM, 0))
                 continue;
@@ -6874,32 +6829,14 @@ int CSWSCreatureStats::HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned i
         int nId = pSpell->m_anPrereq2[k];
         if (HasSpell(0, nId, 1))
             continue;
-        if (pChosenSpells->m_count < 1)
-            return 0;
-        int nIndex = -1;
-        for (int64_t j = 0; j != pChosenSpells->m_count; j++) {
-            if (pChosenSpells->m_pArray[j] == static_cast<unsigned int>(nId)) {
-                nIndex = static_cast<int>(j);
-                break;
-            }
-        }
-        if (nIndex == -1)
+        if (pChosenSpells->IndexOf(static_cast<unsigned int>(nId)) == -1)
             return 0;
     }
     for (int64_t k = 0; pSpell->m_anPrereq1[k] != -1; k++) {
         int nId = pSpell->m_anPrereq1[k];
         if (HasSpell(0, nId, 1))
             continue;
-        if (pChosenSpells->m_count < 1)
-            return 0;
-        int nIndex = -1;
-        for (int64_t j = 0; j != pChosenSpells->m_count; j++) {
-            if (pChosenSpells->m_pArray[j] == static_cast<unsigned int>(nId)) {
-                nIndex = static_cast<int>(j);
-                break;
-            }
-        }
-        if (nIndex == -1)
+        if (pChosenSpells->IndexOf(static_cast<unsigned int>(nId)) == -1)
             return 0;
     }
     unsigned char nLevel = GetLevel(0);
@@ -8213,7 +8150,7 @@ void CSWSCreatureStats::SaveStats(CResGFF* pGFF, CResStruct* pStruct)
         m_pCombatInformation->m_onHandWeaponId));
     if (pItem != 0) {
         pItem->m_localizedName.GetString(0, &m_pCombatInformation->m_onHandWeaponName, 0);
-        pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+        pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
         if (pBaseItem != 0) {
             CCombatInformation* pCombatInfo = m_pCombatInformation;
             pCombatInfo->m_nOverrideDie = pBaseItem->m_nNumDice;

@@ -314,7 +314,7 @@ int CSWSItemPropertyHandler::ApplyAttackPenalty(CSWSItem* pItem, CSWItemProperty
     case CSWInventory::SLOT_CWEAPON_B: pEffect->SetInteger(1, CSWSEffectListHandler::ATTACK_BONUS_CWEAPON3); break;
     }
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
         CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
         CGameEffect* pOffHand = new CGameEffect(0);
         pOffHand->CopyEffect(pEffect, 0);
@@ -381,7 +381,7 @@ int CSWSItemPropertyHandler::ApplyDamageBonus(CSWSItem* pItem, CSWItemProperty* 
         }
     }
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
         CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
         CGameEffect* pOffHand = new CGameEffect(0);
         pOffHand->CopyEffect(pEffect, 0);
@@ -396,7 +396,7 @@ int CSWSItemPropertyHandler::ApplyDamagePenalty(CSWSItem* pItem, CSWItemProperty
                                                 CSWSCreature* pCreature, unsigned int a, int b)
 {
     // The result is dropped; the base item is fetched again below for the twin-blade test.
-    g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    g_pRules->GetBaseItem(pItem->m_baseItem);
 
     CGameEffect* pEffect = new CGameEffect(1);
 
@@ -427,7 +427,7 @@ int CSWSItemPropertyHandler::ApplyDamagePenalty(CSWSItem* pItem, CSWItemProperty
     pEffect->SetInteger(1, pItem->GetDamageFlags());
     pEffect->SetInteger(2, g_pRules->m_nNumRaces);
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
         CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
         CGameEffect* pOffHand = new CGameEffect(0);
         pOffHand->CopyEffect(pEffect, 0);
@@ -1605,7 +1605,7 @@ int CSWSItemPropertyHandler::ApplyAttackBonus(CSWSItem* pItem, CSWItemProperty* 
         pEffect->SetInteger(2, pProp->m_subType);
     }
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
         CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
         CGameEffect* pOffHand = new CGameEffect(0);
         pOffHand->CopyEffect(pEffect, 0);
@@ -1710,7 +1710,7 @@ int CSWSItemPropertyHandler::ApplyEnhancementBonus(CSWSItem* pItem, CSWItemPrope
     if (a == CSWInventory::SLOT_RIGHTWEAPON2 || a == CSWInventory::SLOT_LEFTWEAPON2)
         return 0;
 
-    g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    g_pRules->GetBaseItem(pItem->m_baseItem);
 
     CGameEffect* pAttack = new CGameEffect(1);
     CGameEffect* pDamage = new CGameEffect(1);
@@ -1750,7 +1750,7 @@ int CSWSItemPropertyHandler::ApplyEnhancementBonus(CSWSItem* pItem, CSWItemPrope
         pAttack->SetInteger(2, pProp->m_subType);
     }
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
         CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
         CGameEffect* pOffHand = new CGameEffect(0);
         pOffHand->CopyEffect(pAttack, 0);
@@ -1789,7 +1789,7 @@ int CSWSItemPropertyHandler::ApplyEnhancementBonus(CSWSItem* pItem, CSWItemPrope
         pDamage->SetInteger(2, pProp->m_subType);
     }
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
         CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
         CGameEffect* pOffHand = new CGameEffect(0);
         pOffHand->CopyEffect(pDamage, 0);
@@ -1952,7 +1952,7 @@ int CSWSItemPropertyHandler::RemoveEnhancementBonus(CSWSItem* pItem, CSWItemProp
 int CSWSItemPropertyHandler::ApplyEnhancementPenalty(CSWSItem* pItem, CSWItemProperty* pProp,
                                                      CSWSCreature* pCreature, unsigned int a, int b)
 {
-    g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    g_pRules->GetBaseItem(pItem->m_baseItem);
 
     CGameEffect* pAttack = new CGameEffect(1);
     CGameEffect* pDamage = new CGameEffect(1);
@@ -1980,7 +1980,7 @@ int CSWSItemPropertyHandler::ApplyEnhancementPenalty(CSWSItem* pItem, CSWItemPro
     case CSWInventory::SLOT_CWEAPON_B: pAttack->SetInteger(1, CSWSEffectListHandler::ATTACK_BONUS_CWEAPON3); break;
     }
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
         CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
         CGameEffect* pOffHand = new CGameEffect(0);
         pOffHand->CopyEffect(pAttack, 0);
@@ -2007,7 +2007,7 @@ int CSWSItemPropertyHandler::ApplyEnhancementPenalty(CSWSItem* pItem, CSWItemPro
     pDamage->SetInteger(1, pItem->GetDamageFlags());
     pDamage->SetInteger(2, g_pRules->m_nNumRaces);
 
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
+    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_weaponWieldType ==
         CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
         CGameEffect* pOffHand = new CGameEffect(0);
         pOffHand->CopyEffect(pDamage, 0);
@@ -2181,7 +2181,7 @@ int CSWSItemPropertyHandler::ApplyACBonus(CSWSItem* pItem, CSWItemProperty* pPro
     pEffect->m_durationTypeBits = CGameEffect::DURATION_TYPE_EQUIPPED |
                                   (pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK);
     pEffect->SetCreator(pItem->m_objectId);
-    pEffect->SetInteger(0, g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nACEnchant);
+    pEffect->SetInteger(0, g_pRules->GetBaseItem(pItem->m_baseItem)->m_nACEnchant);
     pEffect->SetInteger(1, nValue);
     pEffect->SetInteger(5, CSWSEffectListHandler::DAMAGE_FLAG_PHYSICAL);
     pEffect->SetInteger(2, g_pRules->m_nNumRaces);
@@ -2211,7 +2211,7 @@ int CSWSItemPropertyHandler::RemoveACBonus(CSWSItem* pItem, CSWItemProperty* pPr
     int nValue;
     pCostTable->GetINTEntry(pProp->m_costTableValue, CExoString("Value"), &nValue);
 
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
 
     for (int i = pCreature->m_pStats->m_iFirstACIncrease;
          i < pCreature->m_effects.m_count; i++)

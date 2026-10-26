@@ -5,6 +5,7 @@
 // vtable has no virtual destructor.
 // idiom-exempt: canonical
 class CAurCamera;
+class CSWCCreature;
 
 class CSWPlayerControl {
 public:
@@ -33,6 +34,8 @@ public:
     void SetCamera(CAurCamera* pAurCamera);
     void SetEnabled(int bEnabled);
     void SetPlayer(unsigned long long id);
+    // The controlled creature; defined inline in swplayercontrol.cpp, its only user.
+    CSWCCreature* GetPlayer();
 
     unsigned long long m_objectId;
     CAurCamera* m_pCamera;

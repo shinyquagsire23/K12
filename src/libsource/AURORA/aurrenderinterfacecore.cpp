@@ -6,6 +6,7 @@
 #endif
 #include "aurrenderinterfacecore.h"
 #include "port/aslglapi.h"
+#include "aurglcore.h"
 
 
 int envmapon;
@@ -20,7 +21,7 @@ int AurPixelShadersAvailable()
                 returnval = 1;
                 return returnval;
             }
-            ASLgl::glGetIntegerv(queryTranslationTable[1], &returnval);
+            GLRender::QueryIntegerv(Aurora::kQueryUnmapped, &returnval);
             if (returnval > 7) {
                 returnval = 1;
                 return returnval;

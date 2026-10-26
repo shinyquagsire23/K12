@@ -268,7 +268,7 @@ int CSWSPlaceable::AcquireItem(CSWSItem** ppItem, unsigned long long possessorId
         } else if (pObject->m_objectType == GAME_OBJECT_TYPE_ITEM) {  // a container item
             CSWRules* pRules = g_pRules;
             int nBaseItem = pObject->AsSWSItem()->m_baseItem;
-            if (pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_bContainer == 1)
+            if (pRules->GetBaseItem(nBaseItem)->m_bContainer == 1)
                 pObject->AsSWSItem()->m_pItemRepository->RemoveItem(*ppItem);
         } else if (pObject->m_objectType == GAME_OBJECT_TYPE_PLACEABLE) {
             pObject->AsSWSPlaceable()->RemoveItem(*ppItem);
@@ -368,19 +368,30 @@ int CSWSPlaceable::GetItemCount(int flag) {
 }
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
-int CSWSPlaceable::GetOpenLockDC() {
+// The lock DC by formula. Formula 4 shifts the base DC by -5/0/+5 for difficulty 0/1/2 and floors it
+// at zero; any other formula starts from m_lockDCFlatBase plus 21 (16 + 5 x difficulty below 3), and
+// formula 3 also adds the PC's level at spawn plus 7.
+// EFFECTIVE: one commutative add takes its operands in the other order (m_lockDCFlatBase + adj in
+// the orig, adj + m_lockDCFlatBase here), which reschedules the non-4 arm. Structure and calls match.
+unsigned char CSWSPlaceable::GetOpenLockDC() {
     unsigned char formula = m_lockDCFormula;
+    int result;
     if (formula == 4) {
         unsigned char diff = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
         int val = (diff < 3) ? diff * 5 - 5 : 0;
         val += m_baseOpenLockDC;
-        return val < 0 ? 0 : val;
+        result = val < 0 ? 0 : val;
+    } else {
+        int bLevelScaled = formula == 3;
+        unsigned char diff = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
+        int adj = (diff < 3) ? diff * 5 + 16 : 21;
+        int extra = m_nPCLevelAtSpawn + 7;
+        if (!bLevelScaled) {
+            extra = 0;
+        }
+        result = m_lockDCFlatBase + adj + extra;
     }
-    unsigned char diff = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
-    int base = (diff < 3) ? diff * 5 + 16 : 21;
-    int val = m_lockDCFlatBase + base;
-    val += (formula == 3) ? (m_nPCLevelAtSpawn + 7) : 0;
-    return val;
+    return result;
 }
 #endif // !KOTOR1
 
@@ -464,7 +475,7 @@ void CSWSPlaceable::AddToArea(CSWSArea* pArea, const Vector& vPosition, int n) {
         pTable->GetCExoStringEntry(appearance, col, &sModelName);
     }
     const CResRef& rModel = CResRef(sModelName);
-    m_walkMesh.m_resRef = rModel;
+    m_walkMesh.SetMesh(rModel);
     if (m_walkMesh.LoadMesh(0) != 0) {
         Vector vMin;
         Vector vMax;
@@ -655,8 +666,8 @@ int CSWSPlaceable::LoadBodyBag(int nAppearance) {
         nStrRef = 0;
     locName.m_nStrRef = nStrRef;
 
-    m_templateResRef = CResRef("");
-    m_sTag = CExoString("Body Bag").LowerCase();
+    SetTemplateResRef(CResRef(""));
+    SetTag(CExoString("Body Bag"));
     m_firstName = locName;
 
     m_bAutoRemoveKey = 0;
@@ -691,7 +702,7 @@ int CSWSPlaceable::LoadBodyBag(int nAppearance) {
     m_closeLockDC = 0;
 
     SetPortrait(CResRef("PO_PLC_B04_"));
-    m_dialogResref = CResRef("");
+    SetDialogResref(CResRef(""));
 
     locName.ClearLocString();
     locName.m_nStrRef = STRREF_CREATURE_REMAINS;
@@ -800,10 +811,7 @@ Vector CSWSPlaceable::GetNearestActionPoint(const Vector& target) {
 
 void CSWSPlaceable::SetOrientation(const Quaternion& q) {
     m_orientation = q;
-    Vector dir;
-    // The rotated Y axis, from matrix entries m01 = 2(xy - wz) and m11 = 1 - 2(x² + z²).
-    dir.x = 2.0f * (q.x * q.y - q.w * q.z);
-    dir.y = 1.0f - 2.0f * (q.x * q.x + q.z * q.z);
+    Vector dir = q.ydir();
     dir.z = 0.0f;
     dir = normalize(dir);
     CSWSObject::SetOrientation(dir);
@@ -1138,7 +1146,7 @@ void CSWSPlaceable::EventHandler(unsigned int nEventType, unsigned long long nCa
                 signed char nBase =
                     static_cast<signed char>(pCreature->m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 0) / 20 + 20);
                 int nCheck = pEvent->GetInteger(3) + nBase;
-                if (nCheck >= static_cast<int>(static_cast<unsigned char>(GetOpenLockDC()))) {
+                if (nCheck >= GetOpenLockDC()) {
                     m_bLocked = 0;
                     CScriptEvent* pUnlockEvent = new CScriptEvent();
                     pUnlockEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_UNLOCKED;

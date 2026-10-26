@@ -111,7 +111,7 @@ CSWSExpression::~CSWSExpression()
     }
     for (int i = 0; i < m_aMatchedStrings.m_count; i++)
         delete m_aMatchedStrings.m_pArray[i];
-    m_aMatchedStrings.Clear();
+    m_aMatchedStrings.SetSize(0);
 }
 
 void CSWSExpression::ClearGraph()

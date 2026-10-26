@@ -46,6 +46,7 @@ float GetResolutionTextScalar();
 #include "port/libcbase.h"
 #include "port/libcstring.h"
 #include "port/k2qolapi.h"
+#include "exostringinline.h"
 
 void AspyrAddButtonIcon(CSWGuiButton* pButton, char nIcon);
 #if KOTOR1
@@ -320,8 +321,7 @@ CSWGuiInGameEquip::~CSWGuiInGameEquip() {
         m_lstItemEntries.m_pArray[i] = 0;
     }
 
-    m_lstItemEntries.m_count = 0;
-    m_lstItemEntries.Clear();
+    m_lstItemEntries.RemoveAll(1);
 
     if (m_slot.m_pSavedItemCopy != 0) {
         delete m_slot.m_pSavedItemCopy;
@@ -956,7 +956,7 @@ void CSWGuiInGameEquip::ShowDescription(int n) {
         m_btnEquip.m_tail.bVisible = 1;
 
         for (int i = 0; i < m_lbItems.m_aControls.m_count; i++) {
-            CSWGuiButton* pRow = static_cast<CSWGuiButton*>(m_lbItems.GetControl(i)->AsButton());
+            CSWGuiButton* pRow = m_lbItems.GetControl(i)->AsButton();
             pRow->m_border.m_params.m_fAlpha = 1.0f;
         }
     } else {
@@ -975,7 +975,7 @@ void CSWGuiInGameEquip::ShowDescription(int n) {
         m_btnEquip.m_tail.bVisible = 0;
 
         for (int i = 0; i < m_lbItems.m_aControls.m_count; i++) {
-            CSWGuiButton* pRow = static_cast<CSWGuiButton*>(m_lbItems.GetControl(i)->AsButton());
+            CSWGuiButton* pRow = m_lbItems.GetControl(i)->AsButton();
             pRow->m_border.m_params.m_fAlpha = 0.0f;
         }
     }
@@ -1029,7 +1029,7 @@ void CSWGuiInGameEquip::ShowDescription(int n) {
         m_btnEquip.m_tail.bVisible = 1;
 
         for (int i = 0; i < m_lbItems.m_aControls.m_count; i++) {
-            CSWGuiButton* pRow = static_cast<CSWGuiButton*>(m_lbItems.GetControl(i)->AsButton());
+            CSWGuiButton* pRow = m_lbItems.GetControl(i)->AsButton();
             pRow->m_border.m_params.m_fAlpha = 1.0f;
         }
     } else {
@@ -1072,7 +1072,7 @@ void CSWGuiInGameEquip::ShowDescription(int n) {
         m_btnEquip.m_tail.bVisible = 0;
 
         for (int i = 0; i < m_lbItems.m_aControls.m_count; i++) {
-            CSWGuiButton* pRow = static_cast<CSWGuiButton*>(m_lbItems.GetControl(i)->AsButton());
+            CSWGuiButton* pRow = m_lbItems.GetControl(i)->AsButton();
             pRow->m_border.m_params.m_fAlpha = 0.0f;
         }
     }
@@ -1148,11 +1148,7 @@ void CSWGuiInGameEquip::SetDescription(const CExoString& sDescription) {
 #endif
 
     CSWGuiExtent extent = m_lblDescription.m_extent;
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (sDescription.GetLength() >= 1)
-#else
-    if (sDescription.m_sString && static_cast<int>(strlen(sDescription.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();
@@ -2150,11 +2146,12 @@ void CSWGuiInGameEquip::OnNextNPCClicked(CSWGuiControl* pControl) {
             case NPC_DISCIPLE:    sTag = "disciple";   break;
             }
 
+            CClientExoApp* pClient;
             unsigned long long oidTag =
                 g_pAppManager->m_pServerExoApp->GetModule()->FindObjectByTagOrdinal(
                     sTag.LowerCase(), 0);
 
-            CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
+            pClient = g_pAppManager->m_pClientExoApp;
             pCreature =
                 pClient->GetCreatureByGameObjectID(pClient->ServerToClientObjectId(oidTag));
             if (pCreature == 0)
@@ -2241,8 +2238,7 @@ void CSWGuiInGameEquip::OnPanelRemoved() {
         m_lstItemEntries.m_pArray[i] = 0;
     }
 
-    m_lstItemEntries.m_count = 0;
-    m_lstItemEntries.Clear();
+    m_lstItemEntries.RemoveAll(1);
 
     m_slot.m_nPendingSlot = 0;
     m_slot.m_oidPendingItem = OBJECT_INVALID;
@@ -2610,8 +2606,7 @@ int CSWGuiInGameEquip::EquipItem(unsigned int nItemId, int nSlot, int nFlag) {
     if (pServerCreature == 0)
         return 0;
 
-    if ((g_pRules->m_pBaseItemArray->GetBaseItem(pObject->AsSWSItem()->m_baseItem)->m_nEquipableSlots
-             & nSlot) == 0)
+    if ((g_pRules->GetBaseItem(pObject->AsSWSItem()->m_baseItem)->m_nEquipableSlots & nSlot) == 0)
         return 0;
 
     if (nFlag != 0) {
@@ -2641,8 +2636,7 @@ int CSWGuiInGameEquip::EquipItem(unsigned int nItemId, int nSlot, int nFlag) {
         nWeaponSlot = CSWInventory::SLOT_LEFTWEAPON;
     if (nWeaponSlot & CSWInventory::SLOT_RIGHTWEAPON2)
         nWeaponSlot = CSWInventory::SLOT_RIGHTWEAPON;
-    if ((g_pRules->m_pBaseItemArray->GetBaseItem(pObject->AsSWSItem()->m_baseItem)->m_nEquipableSlots
-             & nWeaponSlot) == 0)
+    if ((g_pRules->GetBaseItem(pObject->AsSWSItem()->m_baseItem)->m_nEquipableSlots & nWeaponSlot) == 0)
         return 0;
 
     if (nFlag != 0) {
@@ -2934,7 +2928,6 @@ void CSWGuiInGameItemEntry::Draw(float f) {
 }
 
 int CSWGuiInGameItemEntry::GetNumItems() {
-#if KOTOR1  // K1: CExoString's own IsEmpty / AsINT
     int nNumItems;
     CExoString sCount = m_text.m_params.m_sText;
     if (sCount.IsEmpty())
@@ -2942,13 +2935,6 @@ int CSWGuiInGameItemEntry::GetNumItems() {
     else
         nNumItems = sCount.AsINT();
     return nNumItems;
-#else
-    int nNumItems = 1;
-    CExoString sCount = m_text.m_params.m_sText;
-    if (sCount.m_sString != 0 && sCount.m_sString[0] != 0)
-        nNumItems = atoi(sCount.m_sString);
-    return nNumItems;
-#endif
 }
 
 void CSWGuiInGameItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderNormal,
@@ -3133,12 +3119,7 @@ void CSWGuiInGameItemEntry::SetExtent(const CSWGuiExtent& extent)
 
     CSWGuiExtent extentText = extentIcon;
     // The count string's presence picks the label's line height (55 or 21) and its alignment.
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (m_textCount.m_params.m_sText.GetLength() > 2) {
-#else
-    if (m_textCount.m_params.m_sText.m_sString
-        && static_cast<int>(strlen(m_textCount.m_params.m_sText.m_sString)) > 2) {
-#endif
         extentText.w = 55;
         m_textCount.m_params.SetAlignment(36);
     } else {
@@ -3277,9 +3258,10 @@ void CSWGuiContainer::SetupGiveMode(int bSelect)
         int nWidth = m_lstItems.m_innerExtent.w - m_lstItems.m_nPadding * 2;
         int nRow = 0;
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
-            unsigned long long oid =
-                pClient->ServerToClientObjectId(pRepo->ItemListGetItemObjectID(i));
-            CSWSItem* pItem = pRepo->ItemListGetItem(i);
+            unsigned long long oid;
+            CSWSItem* pItem;
+            oid = pClient->ServerToClientObjectId(pRepo->ItemListGetItemObjectID(i));
+            pItem = pRepo->ItemListGetItem(i);
             if (pItem == 0)
                 continue;
             if (pItem->m_bPlot != 0)
@@ -3347,8 +3329,8 @@ void CSWGuiContainer::SetContainer(unsigned long long objId, int flag)
     CItemRepository* pRepo = pPlaceable->m_pItemRepository;
 
     aControls.SetSize(pRepo->ItemListGetCount());
+    int nWidth = m_lstItems.m_innerExtent.w - m_lstItems.m_nPadding * 2;
     if (pRepo->ItemListGetCount() != 0) {
-        int nWidth = m_lstItems.m_innerExtent.w - m_lstItems.m_nPadding * 2;
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
             unsigned long long oid =
                 pClient->ServerToClientObjectId(pRepo->ItemListGetItemObjectID(i));
@@ -3622,12 +3604,7 @@ void CSWGuiStoreItemEntry::SetExtent(const CSWGuiExtent& extent)
 
     CSWGuiExtent extentText = extentIcon;
     // The count string's presence picks the label's line height (55 or 21) and its alignment.
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (m_textCount.m_params.m_sText.GetLength() > 2) {
-#else
-    if (m_textCount.m_params.m_sText.m_sString
-        && static_cast<int>(strlen(m_textCount.m_params.m_sText.m_sString)) > 2) {
-#endif
         extentText.w = 55;
         m_textCount.m_params.SetAlignment(36);
     } else {
@@ -3829,12 +3806,8 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped, 
             // A '<' or '{' in the name means it is a TLK token string; resolve it through the
             // client talk-table with the party leader as the speaker.
             if (sName.Find('<', 0) != -1 || sName.Find('{', 0) != -1) {
-                g_pSWTlkTable->m_pSpeakerObj =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-                CSWTlkTable* pTlk = g_pSWTlkTable;
-                pTlk->m_gender = pTlk->GetObjectGender();
-                pTlk->m_bSuppressEnabled |= 1;
-                pTlk->ParseStr(sName);
+                CGameObject* pSpeaker = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+                g_pSWTlkTable->ParseStr(sName, pSpeaker, 1, 1);
             }
             if (m_nEquippedBy != -1)
                 sName = sName + " (" + g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_EQUIPPED) + ")";

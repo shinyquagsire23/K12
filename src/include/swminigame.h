@@ -125,6 +125,8 @@ public:
     SWMGTrackInfo* GetProtoTrack(int index);
     // The "Music" field lands in m_resForfeitSound.
     void SetMusic(const CResRef& resMusic) { m_resForfeitSound = resMusic; }
+    void SetCurrentPhysicsState(CSWMGPhysicsState sState) { m_curPhysicsState = sState; }
+    void SetPreviousPhysicsState(CSWMGPhysicsState sState) { m_prevPhysicsState = sState; }
     SWMGTrackInfo* GetProtoTrack(const CResRef& resTrack);
     SWMGTrackInfo* AddTrack(const CResRef& resTrack, const Vector& vPosition);
     Vector BumpPlane(const Quaternion& qRot);
@@ -181,6 +183,12 @@ public:
     // along the axis and a lateral drag term proportional to the velocity. Type 1 also applies
     // gravity to the z velocity plus two lateral velocity clamps.
     void  AxisAcceleration(const Vector& vAxis, float fDelta);
+    // Moves the vehicle with the stick directly: the position is last frame's plus the axis scaled
+    // by the speed and the frame time.
+    void  AxisVelocity(const Vector& vAxis, float fDelta)
+    {
+        m_curPhysicsState.m_vPosition = m_prevPhysicsState.m_vPosition + m_movementPerSecond * vAxis * fDelta;
+    }
     void  UpdateAxis(Vector& vAxis, float fDelta);
     void  UpdateJoystick(float fX, float fY, float fDelta);
     void  UpdateMouse(float fX, float fY, float fDelta);

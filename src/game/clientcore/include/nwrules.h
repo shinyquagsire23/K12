@@ -4,9 +4,9 @@
 #include "twodimarrays.h"
 #include "exoresman.h"
 #include "nwspell.h"
+#include "nwitem.h"
 
 class CExoString;
-class CSWBaseItemArray;
 class CSWSkill;
 class CSWClass;
 class CSWRace;
@@ -128,6 +128,7 @@ public:
     void    LoadDifficultyInfo();
     CSWFeat* GetFeat(unsigned short nFeat);
     CSWSpell* GetSpell(unsigned int nSpellId) { return m_pSpellArray->GetSpell(nSpellId); }
+    CSWBaseItem* GetBaseItem(unsigned int nBaseItem) { return m_pBaseItemArray->GetBaseItem(nBaseItem); }
     int     IsFeatUseable(unsigned char nWisdom, unsigned short nFeat);
     CExoString GetMasterFeatNameText(char nMasterFeat);
     CExoString GetMasterFeatDescriptionText(char nMasterFeat);

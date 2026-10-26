@@ -115,8 +115,7 @@ int CSWSWaypoint::LoadWaypoint(CResGFF* pGFF, CResStruct* pStruct) {
     unsigned char mapNoteEnabled;
     CSWSModule* pModule;
 
-    m_sTag =
-        pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), found, CExoString("")).LowerCase();
+    SetTag(pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), found, CExoString("")));
     m_firstName = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("LocalizedName"), foundName, CExoLocString());
     position.x = pGFF->ReadFieldFLOAT(pStruct, const_cast<char*>("XPosition"), found, 0.0f);
     position.y = pGFF->ReadFieldFLOAT(pStruct, const_cast<char*>("YPosition"), found, 0.0f);

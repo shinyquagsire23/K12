@@ -222,26 +222,6 @@ public:
     CSWGuiManager();
     ~CSWGuiManager();
 
-    // Index of a panel in m_panels, or -1.
-    int GetPanelIndex(CSWGuiPanel* pPanel)
-    {
-        for (int i = 0; i < m_panels.m_count; i++)
-        {
-            if (m_panels.m_pArray[i] == pPanel)
-                return i;
-        }
-        return -1;
-    }
-    // Modal-stack twin of GetPanelIndex.
-    int GetModalIndex(CSWGuiPanel* pPanel)
-    {
-        for (int i = 0; i < m_modalPanels.m_count; i++)
-        {
-            if (m_modalPanels.m_pArray[i] == pPanel)
-                return i;
-        }
-        return -1;
-    }
     int  GetPosInPanelList(CSWGuiPanel* pPanel);
     int  PanelExists(CSWGuiPanel* pPanel);
     // nFlags: bit 0 pushes the panel onto the modal stack, bit 1 marks it opaque/full-screen.
@@ -310,6 +290,8 @@ public:
     void RestoreMouseForMouseTeleportingToButtons();
     void MoveMouseToPosition(int x, int y);
     void HandleMouseMove(int x, int y);
+    // Replays the last mouse position, so hover state follows a panel change.
+    void UpdateMouseMove() { HandleMouseMove(m_currentMousePos.x, m_currentMousePos.y); }
     void HandleInputEvent(int a, int b);
     // Selects a software-mouse cursor. nCursor indexes g_asMouseCursorNames into
     // m_mouseCursorRes and is cached in m_nSoftwareMouseCursor; nX is the cursor-shown state;
@@ -497,16 +479,6 @@ public:
     // Unlinks a control from the list and clears the control's own m_pContainer back-pointer.
     void RemoveControl(CSWGuiControl* pControl);
 
-    // Convenience search the z-order helpers share; returns -1 when the control is absent.
-    int GetPosInControlList(CSWGuiControl* pControl)
-    {
-        for (int i = 0; i < m_controls.m_count; i++)
-        {
-            if (m_controls.m_pArray[i] == pControl)
-                return i;
-        }
-        return -1;
-    }
     // Control z-order. "Front" is the end of m_controls.
     void BringControlToFront(CSWGuiControl* pControl);
     void SendControlToBack(CSWGuiControl* pControl);
@@ -540,6 +512,17 @@ public:
             pPanel = pPanel->m_pNextInChain;
         } while (pPanel != 0);
 #endif
+    }
+
+    // Stamps a plain remove on this panel alone, unless a remove-and-delete is already pending;
+    // bDeferred leaves the request to the draw and input sweeps.
+    void SetToBeRemoved(int bDeferred)
+    {
+        unsigned short nFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_DEFERRED)
+                                                            | (bDeferred & 1) * PANEL_REMOVE_DEFERRED);
+        if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
+            nFlags = static_cast<unsigned short>((nFlags & ~PANEL_REMOVE_MASK) + PANEL_REMOVE);
+        m_stateFlags = nFlags;
     }
 };
 

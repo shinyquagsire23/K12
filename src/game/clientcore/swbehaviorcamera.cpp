@@ -117,13 +117,13 @@ CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFol
     // The start orientation is the target's local +Z in the XZ plane, the style's pitch, and no
     // roll.
     Quaternion qTarget = m_pTargetObject.m_pObject->GetOrientation();
-    Vector vDir = normalize(qTarget.zdir());
-    m_qDesiredOrientation = YawPitchRoll(Yaw(vDir), m_fPresetPitch, 0.0f);
+    m_qDesiredOrientation = YawPitchRoll(Yaw(normalize(qTarget.zdir())), m_fPresetPitch, 0.0f);
     m_pOwner->SetOrientation(m_qDesiredOrientation);
 
+    Vector vNew;
     Vector vTarget = m_pTargetObject.m_pObject->GetPosition();
     vTarget.z += 1.5f;
-    Vector vNew = vTarget - qTarget.ydir();
+    vNew = vTarget - qTarget.ydir();
     m_pOwner->SetPosition(vNew);
 
     m_vLastCameraPosition = vNew;
@@ -181,8 +181,7 @@ CSWCameraOnAStick::CSWCameraOnAStick(CCameraSettings& settings)
 #endif
 
     Quaternion qTarget = m_pTargetObject.m_pObject->GetOrientation();
-    Vector vDir = normalize(qTarget.zdir());
-    m_qDesiredOrientation = YawPitchRoll(Yaw(vDir), m_fPresetPitch, 0.0f);
+    m_qDesiredOrientation = YawPitchRoll(Yaw(normalize(qTarget.zdir())), m_fPresetPitch, 0.0f);
     // The camera starts at the target's own orientation, not at m_qDesiredOrientation.
     m_pOwner->SetOrientation(qTarget);
 

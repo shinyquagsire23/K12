@@ -366,7 +366,7 @@ void CSWMiniGame::UpdateAxis(Vector& vAxis, float fDelta)
     if (m_nPhysicsModel == 1)
         AxisAcceleration(vAxis, fDelta);
     else if (m_nPhysicsModel == 0)
-        m_curPhysicsState.m_vPosition = m_prevPhysicsState.m_vPosition + vAxis * m_movementPerSecond * fDelta;
+        AxisVelocity(vAxis, fDelta);
 }
 
 // Feeds a two-axis stick through the same type remap and physics dispatch as UpdateAxis, with the
@@ -374,22 +374,7 @@ void CSWMiniGame::UpdateAxis(Vector& vAxis, float fDelta)
 void CSWMiniGame::UpdateJoystick(float fX, float fY, float fDelta)
 {
     Vector v(fX, 0.0f, fY);
-    if (m_type == MINIGAME_TYPE_SWOOP) {
-        v.y = -v.y;
-#if KOTOR1  // K1's swoop negates z too
-        v.z = -v.z;
-#else
-        v.z = v.z * 0.0f;
-#endif
-    } else if (m_type == MINIGAME_TYPE_TURRET) {
-        v = Vector(-v.z, -v.y, -v.x);
-    } else {
-        return;   // no other type steers
-    }
-    if (m_nPhysicsModel == 1)
-        AxisAcceleration(v, fDelta);
-    else if (m_nPhysicsModel == 0)
-        m_curPhysicsState.m_vPosition = m_prevPhysicsState.m_vPosition + v * m_movementPerSecond * fDelta;
+    UpdateAxis(v, fDelta);
 }
 
 // Steers by mouse. Each configured axis names which position component it drives, and a negative
@@ -558,7 +543,7 @@ int CSWMiniGame::ClearTracks()
         if (pTrack != 0)
             delete pTrack;
     }
-    m_protoTracks.Clear();
+    m_protoTracks.SetSize(0);
     return nNumTracks;
 }
 
@@ -571,7 +556,7 @@ int CSWMiniGame::ClearEnemies()
         if (pEnemy != 0)
             delete static_cast<CSWTrackFollower*>(pEnemy);
     }
-    m_enemyIds.Clear();
+    m_enemyIds.SetSize(0);
     return nCount;
 }
 
@@ -585,7 +570,7 @@ int CSWMiniGame::ClearObstacles()
         if (pObstacle != 0)
             delete pObstacle;
     }
-    m_obstacleIds.Clear();
+    m_obstacleIds.SetSize(0);
     return nCount;
 }
 
@@ -625,20 +610,10 @@ void CSWMiniGame::Resume()
         m_pSound->Resume();
 }
 
-// Index of an object id in an id list. A file-local helper rather than a list member, since the
-// list template has no index-returning finder.
-static int FindMiniGameObjectId(const CExoArrayList<unsigned int>& list, unsigned int nObjectId)
-{
-    for (int i = 0; i < list.m_count; i++)
-        if (list.m_pArray[i] == nObjectId)
-            return i;
-    return -1;
-}
-
 CSWMiniEnemy* CSWMiniGame::RemoveEnemy(CSWMiniEnemy* pEnemy)
 {
     unsigned int nObjectId = static_cast<CSWMiniGameObject*>(pEnemy)->m_nObjectId;
-    int i = FindMiniGameObjectId(m_enemyIds, nObjectId);
+    int i = m_enemyIds.IndexOf(nObjectId);
     if (i != -1) {
         m_enemyIds.DelIndex(i);
         return pEnemy;
@@ -650,7 +625,7 @@ CSWMiniEnemy* CSWMiniGame::RemoveEnemy(CSWMiniEnemy* pEnemy)
 CSWMGObstacle* CSWMiniGame::RemoveObstacle(CSWMGObstacle* pObstacle)
 {
     unsigned int nObjectId = static_cast<CSWMiniGameObject*>(pObstacle)->m_nObjectId;
-    int i = FindMiniGameObjectId(m_obstacleIds, nObjectId);
+    int i = m_obstacleIds.IndexOf(nObjectId);
     if (i != -1) {
         m_obstacleIds.DelIndex(i);
         pObstacle->m_pGob.m_pObject->AttachToScene(0);
@@ -679,17 +654,11 @@ Vector CSWMiniGame::BumpPlane(const Quaternion& qRot)
 {
     switch (m_bumpPlane) {
     case MINIGAME_AXIS_X:
-        return Vector(1.0f - 2.0f * (qRot.y * qRot.y + qRot.z * qRot.z),
-                      2.0f * (qRot.x * qRot.y + qRot.z * qRot.w),
-                      2.0f * (qRot.z * qRot.x - qRot.y * qRot.w));
+        return qRot.xdir();
     case MINIGAME_AXIS_Y:
-        return Vector(2.0f * (qRot.x * qRot.y - qRot.w * qRot.z),
-                      1.0f - 2.0f * (qRot.x * qRot.x + qRot.z * qRot.z),
-                      2.0f * (qRot.x * qRot.w + qRot.y * qRot.z));
+        return qRot.ydir();
     case MINIGAME_AXIS_Z:
-        return Vector(2.0f * (qRot.x * qRot.z + qRot.w * qRot.y),
-                      2.0f * (qRot.z * qRot.y - qRot.x * qRot.w),
-                      1.0f - 2.0f * (qRot.x * qRot.x + qRot.y * qRot.y));
+        return qRot.zdir();
     default:
         return Vector(0.0f, 0.0f, 0.0f);
     }

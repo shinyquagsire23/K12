@@ -974,7 +974,7 @@ void CSWGuiOptionsMain::K2QolAddControllerButton()
     button.m_moveToControls[3] = above.m_moveToControls[3];
     above.m_moveToControls[2] = &button;
     if (pBelow && pBelow->AsNavigable()) {
-        CSWGuiNavigable* pNav = static_cast<CSWGuiNavigable*>(pBelow->AsNavigable());
+        CSWGuiNavigable* pNav = pBelow->AsNavigable();
         if (pNav->m_moveToControls[0] == &above)
             pNav->m_moveToControls[0] = &button;
     }
@@ -1179,7 +1179,7 @@ void K2QolGrowListRow(CSWGuiListBox* pList, CSWGuiControl* pRow, int nRows)
     // call site: inventory, journal, terminal, pop-ups) is not at the game's size and is left exactly
     // as its screen fitted it.
     if (nRows == 1 && pRow->AsLabel()) {
-        CSWGuiText& text = static_cast<CSWGuiLabel*>(pRow->AsLabel())->m_text;
+        CSWGuiText& text = pRow->AsLabel()->m_text;
         CAurGUIStringInternal* pString = text.m_pString;
         if (!pString)
             return;
@@ -1198,10 +1198,10 @@ void K2QolGrowListRow(CSWGuiListBox* pList, CSWGuiControl* pRow, int nRows)
     CSWGuiText* pText = 0;
     bool bMark = false;
     if (pRow->AsButton()) {
-        pText = &static_cast<CSWGuiButton*>(pRow->AsButton())->m_text;
+        pText = &pRow->AsButton()->m_text;
         bMark = true;
     } else if (pRow->AsLabel() && nRows > 1) {
-        pText = &static_cast<CSWGuiLabel*>(pRow->AsLabel())->m_text;
+        pText = &pRow->AsLabel()->m_text;
     }
     if (!pText || !pText->m_pString || pText->m_extent.h <= 0)
         return;
@@ -1309,7 +1309,7 @@ void K2QolMarkLayoutLabel(CSWGuiControl& control, const CExoString& sControlName
         return;
     for (unsigned i = 0; i < sizeof kReadouts / sizeof kReadouts[0]; i++) {
         if (!strcmp(sControlName.m_sString, kReadouts[i])) {
-            K2QolMarkFitText(&static_cast<CSWGuiLabel*>(control.AsLabel())->m_text);
+            K2QolMarkFitText(&control.AsLabel()->m_text);
             return;
         }
     }

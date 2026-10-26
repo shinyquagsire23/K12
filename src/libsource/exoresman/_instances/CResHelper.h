@@ -40,6 +40,20 @@ public:
 
     void SetResRef(const CResRef& resRef, int bRequest);
 
+    // Forward to the bound resource; 0 while nothing is bound.
+    int Request()
+    {
+        if (m_pRes)
+            return m_pRes->Request();
+        return 0;
+    }
+    int CancelRequest()
+    {
+        if (m_pRes)
+            return m_pRes->CancelRequest();
+        return 0;
+    }
+
     int     m_bRequested;
     T*      m_pRes;
     CResRef m_resRef;

@@ -244,8 +244,8 @@ CSWGuiPartySelection::CSWGuiPartySelection(CSWGuiManager* pGuiManager)
     extent.w = nHeight;
     m_btnBack.SetExtent(extent);
     extent = m_btnDone.m_extent;
-    extent.w = nHeight;
     extent.x = nDoneGap + m_btnBack.m_extent.x + m_btnBack.m_extent.w;
+    extent.w = nHeight;
     m_btnDone.SetExtent(extent);
     g_scaleMipc = nOldMipc;
 
@@ -257,10 +257,10 @@ CSWGuiPartySelection::CSWGuiPartySelection(CSWGuiManager* pGuiManager)
     InitControl(m_aBars[4],     CExoString("LBL_BAR5"),    1, 1, 0, 0, 0);
     InitControl(m_lblNameBack, CExoString("LBL_NAMEBACK"), 1, 1, 0, 0, 0);
 
+    CAurScene* pScene = m_view3D.m_scene.m_pScene;
+    CAurCamera* pCamera = m_view3D.m_scene.m_pCamera;
     if (g_bDo3DGUIs)
     {
-        CAurScene* pScene = m_view3D.m_scene.m_pScene;
-        CAurCamera* pCamera = m_view3D.m_scene.m_pCamera;
         pScene->SpawnRoom(const_cast<char*>("gui3D_room"), Vector(0, 0, 0), Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
         CAurObject* pModel = m_view3D.m_scene.AddModel(CExoString("charrec_light"), -1);
         if (pModel)
@@ -970,11 +970,7 @@ void CSWGuiPartySelection::OnDone(CSWGuiControl* pControl)
             AcceptParty(0);
             g_pAppManager->m_pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
             g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bInGameMenuShown = 0;
-
-            unsigned short nFlags = m_stateFlags | PANEL_REMOVE_DEFERRED;
-            if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                nFlags = (nFlags & ~PANEL_REMOVE_AND_DELETE) | PANEL_REMOVE;
-            m_stateFlags = nFlags;
+            SetToBeRemoved(1);
             return;
         }
 
@@ -1216,15 +1212,12 @@ void CSWGuiPartySelection::AcceptParty()
 
     if (g_bCreateAllGUIs)
     {
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-        m_stateFlags = nFlags;
+        SetToBeRemoved(0);
     }
     else
     {
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMessagesPanel = 0;
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+        SetToBeDeleted(0);
     }
     m_pGuiManager->PopModalPanel();
 
@@ -1431,12 +1424,7 @@ void CSWGuiPartySelection::AcceptParty(int nSelected)
             m_pGuiManager->PlayGuiSound(GUISOUND_FULLSCREEN_PANEL_REMOVED);
             g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
             g_pAppManager->m_pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
-
-            // State 4 (bits 8-9 == 2) just drops bit 7, anything else becomes state 2.
-            unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-            if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                nFlags = (nFlags & ~PANEL_REMOVE_MASK) | PANEL_REMOVE;
-            m_stateFlags = nFlags;
+            SetToBeRemoved(0);
         }
     }
 }
@@ -1577,12 +1565,7 @@ void CSWGuiPartySelection::ConfirmPartySelection(CSWGuiControl* pControl)
         AcceptParty(0);
         g_pAppManager->m_pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bInGameMenuShown = 0;
-
-        // Same state-flag write CSWGuiMessageBox::HandleInputEvent ends with.
-        unsigned short nFlags = m_stateFlags | PANEL_REMOVE_DEFERRED;
-        if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (nFlags & ~PANEL_REMOVE_AND_DELETE) | PANEL_REMOVE;
-        m_stateFlags = nFlags;
+        SetToBeRemoved(1);
     }
 #endif
 }

@@ -136,14 +136,13 @@ CSWGuiInGameCredits::CSWGuiInGameCredits(CSWGuiManager* pGuiManager, const CExoS
     C2DA* p2DA = new C2DA(CResRef("credits"), 0);
     if (p2DA->Load2DArray() != 0)
     {
-        unsigned char nCount = static_cast<unsigned char>(p2DA->m_nRows);
-        m_nTextCount = nCount;
-        m_paNameStrRefs = new uint64_t[nCount];
+        m_nTextCount = static_cast<unsigned char>(p2DA->m_nRows);
+        m_paNameStrRefs = new uint64_t[m_nTextCount];
 
+        int nValue;
+        int bOk;
         for (uint64_t i = 0; i < m_nTextCount; i++)
         {
-            int nValue;
-            int bOk;
             {
                 CExoString sColumn("Name");
                 bOk = p2DA->GetINTEntry(static_cast<int>(i), sColumn, &nValue);
@@ -269,14 +268,7 @@ void CSWGuiInGameCredits::UpdateScrolling(float f)
     if (m_listBox.m_scrollBar.m_nCurValue == m_listBox.m_scrollBar.m_nMaxValue)
     {
         if (m_pMusic->IsPlaying() == 0)
-        {
-#if KOTOR1
-            m_stateFlags = (m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-#else
-            for (CSWGuiPanel* pChain = this; pChain != 0; pChain = pChain->m_pNextInChain)
-                pChain->m_stateFlags = (pChain->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-#endif
-        }
+            SetToBeDeleted(0);
     }
     else
     {

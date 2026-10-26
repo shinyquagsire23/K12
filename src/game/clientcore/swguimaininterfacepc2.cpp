@@ -315,6 +315,7 @@ void CSWGuiMainInterface::UpdateActionDescription() {
         static_cast<void>(widget);
         if (nIndex >= 0) {
 #else
+        // inlined CSWGuiMainInterfaceAction::GetActive()
         if ((widget.m_icon.m_tail.bActive || widget.m_btnUp.m_tail.bActive ||
              widget.m_btnDown.m_tail.bActive || widget.m_button.m_tail.bActive) &&
             nIndex >= 0) {
@@ -484,8 +485,9 @@ void CSWGuiMainInterface::StartRotation() {
     if (nCount < 2)
         return;
     m_fRotationTimer = 0.25f;
-    for (int nI = 0; nI < 4; nI++)
+    for (int nI = 0; nI < 3; nI++)
         m_aCharacters[nI].SetupGoto(nI, nCount, m_pGuiManager);
+    m_charOffscreen.SetupGoto(3, nCount, m_pGuiManager);
 #else
     g_pAppManager->m_pClientExoApp->GetSWParty();
 #endif
@@ -2809,16 +2811,9 @@ void CSWGuiMainInterfaceStatus::Initialize(CSWGuiMainInterface* pInterface, unsi
     m_label.m_border.m_params.SetPulsingAlpha(1, 0, 1);
 }
 
-static int FindFloatyText(const CExoArrayList<CSWGuiFloatyText*>& list, CSWGuiFloatyText* pText) {
-    for (int i = 0; i < list.m_count; i++)
-        if (list.m_pArray[i] == pText)
-            return i;
-    return -1;
-}
-
 void CSWGuiMainInterface::RemoveFloatyText(CSWGuiFloatyText* pText) {
     if (pText) {
-        int nIndex = FindFloatyText(m_floatyTexts, pText);
+        int nIndex = m_floatyTexts.IndexOf(pText);
         if (nIndex != -1)
             m_floatyTexts.DelIndex(nIndex);
         delete pText;
@@ -6016,6 +6011,7 @@ void CSWGuiTargetActionMenu::UpdateNameLabel(CSWCObject* pTarget) {
                     sName = g_pAppManager->m_pClientExoApp->GetGUIString(m_nHintStrRef);
                 } else {
                     int nIndex = static_cast<signed char>(m_nFocusedAction);
+                    // inlined CSWGuiMainInterfaceAction::GetActive()
                     if ((m_widgets[nIndex].m_icon.m_tail.bActive ||
                          m_widgets[nIndex].m_btnUp.m_tail.bActive ||
                          m_widgets[nIndex].m_btnDown.m_tail.bActive ||
@@ -6522,12 +6518,8 @@ void CSWGuiTargetActionMenu::SetNameLabel(const CExoString& sName) {
     int nLt = sText.Find('<', 0);
     int nBr = sText.Find('{', 0);
     if ((nLt & nBr) != -1) {
-        CSWTlkTable* pTlk = g_pSWTlkTable;
-        pTlk->m_pSpeakerObj =
-            g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-        pTlk->m_gender = pTlk->GetObjectGender();
-        pTlk->m_bSuppressEnabled |= 1;
-        pTlk->ParseStr(sText);
+        CGameObject* pSpeaker = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+        g_pSWTlkTable->ParseStr(sText, pSpeaker, 1, 1);
     }
     m_lblName.m_text.m_params.SetText(sText);
 #endif
@@ -7037,7 +7029,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 #pragma clang loop unroll(disable)
     for (int i = -3; i != 0; i++)
         m_aCharacters[i + 3].Initialize(this, i + 4);
-    m_aCharacters[3].Initialize(this, 4);
+    m_charOffscreen.Initialize(this, 4);
 
     for (int i = 0; i < 4; i++) {
         sName.Format(const_cast<char*>("LBL_QUEUE%d"), i);  // idiom-exempt: char* literal, Format's parameter type
@@ -7759,7 +7751,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     for (int i = -3; i != 0; i++)
         m_aCharacters[i + 3].Initialize(this, i + 4, 1);
     g_scaleMipc = 4;
-    m_aCharacters[3].Initialize(this, 4, 1);
+    m_charOffscreen.Initialize(this, 4, 1);
 
     sName.Format(const_cast<char*>("LBL_QUEUE%d"), 0);  // idiom-exempt: char* literal, Format's parameter type
     InitControl(m_actionQueueIcons[0], sName, 1, 1, 0, 0, 0);
@@ -8766,24 +8758,24 @@ void CSWGuiMainInterface::Draw(float fDelta) {
             m_aCharacters[0].Adjust(m_fRotationTimer);
             m_aCharacters[1].Adjust(m_fRotationTimer);
             m_aCharacters[2].Adjust(m_fRotationTimer);
-            m_aCharacters[3].Adjust(m_fRotationTimer);
+            m_charOffscreen.Adjust(m_fRotationTimer);
         } else {
             m_aCharacters[0].Adjust(0.25f);
             m_aCharacters[1].Adjust(0.25f);
             m_aCharacters[2].Adjust(0.25f);
-            m_aCharacters[3].Adjust(0.25f);
-            m_aCharacters[3].m_aLabels[5].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aLabels[0].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aBars[0].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aBars[1].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aLabels[1].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aLabels[2].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aLabels[3].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aLabels[4].m_tail.bVisible = 0;
-            m_aCharacters[3].m_nGoodEffectCount = 0;
-            m_aCharacters[3].m_nBadEffectCount = 0;
+            m_charOffscreen.Adjust(0.25f);
+            m_charOffscreen.m_aLabels[5].m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[0].m_tail.bVisible = 0;
+            m_charOffscreen.m_aBars[0].m_tail.bVisible = 0;
+            m_charOffscreen.m_aBars[1].m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[1].m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[2].m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[3].m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[4].m_tail.bVisible = 0;
+            m_charOffscreen.m_nGoodEffectCount = 0;
+            m_charOffscreen.m_nBadEffectCount = 0;
             m_fRotationTimer = 0.0f;
-            m_aCharacters[3].m_btnChar.m_tail.bVisible = 0;
+            m_charOffscreen.m_btnChar.m_tail.bVisible = 0;
 #ifdef K1_UI_XBOX
             // xbox: the portraits above were filled in the rotation's slot mapping; back at their
             // home slots that would show the old order for a frame, so refill them now.
@@ -8885,11 +8877,11 @@ void CSWGuiMainInterface::Draw(float fDelta) {
             if (m_aCharacters[2].m_nBadEffectCount)
                 m_aCharacters[2].DrawStack(fDelta, 0, 0);
         }
-        if (m_aCharacters[3].m_aLabels[5].m_tail.bVisible) {
-            if (m_aCharacters[3].m_nGoodEffectCount)
-                m_aCharacters[3].DrawStack(fDelta, 0, 1);
-            if (m_aCharacters[3].m_nBadEffectCount)
-                m_aCharacters[3].DrawStack(fDelta, 0, 0);
+        if (m_charOffscreen.m_aLabels[5].m_tail.bVisible) {
+            if (m_charOffscreen.m_nGoodEffectCount)
+                m_charOffscreen.DrawStack(fDelta, 0, 1);
+            if (m_charOffscreen.m_nBadEffectCount)
+                m_charOffscreen.DrawStack(fDelta, 0, 0);
         }
         AurGUIStopLayer();
     }
@@ -8987,23 +8979,23 @@ void CSWGuiMainInterface::Draw(float fDelta) {
             m_aCharacters[0].Adjust(m_fRotationTimer);
             m_aCharacters[1].Adjust(m_fRotationTimer);
             m_aCharacters[2].Adjust(m_fRotationTimer);
-            m_aCharacters[3].Adjust(m_fRotationTimer);
+            m_charOffscreen.Adjust(m_fRotationTimer);
         } else {
             m_aCharacters[0].Adjust(0.25f);
             m_aCharacters[1].Adjust(0.25f);
             m_aCharacters[2].Adjust(0.25f);
-            m_aCharacters[3].Adjust(0.25f);
-            m_aCharacters[3].m_aLabels[4].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aLabels[0].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aBars[0].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aBars[1].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aLabels[1].m_tail.bVisible = 0;
-            m_aCharacters[3].m_aLabels[2].m_tail.bVisible = 0;
-            m_aCharacters[3].m_nGoodEffectCount = 0;
-            m_aCharacters[3].m_nBadEffectCount = 0;
+            m_charOffscreen.Adjust(0.25f);
+            m_charOffscreen.m_aLabels[4].m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[0].m_tail.bVisible = 0;
+            m_charOffscreen.m_aBars[0].m_tail.bVisible = 0;
+            m_charOffscreen.m_aBars[1].m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[1].m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[2].m_tail.bVisible = 0;
+            m_charOffscreen.m_nGoodEffectCount = 0;
+            m_charOffscreen.m_nBadEffectCount = 0;
             m_fRotationTimer = 0.0f;
-            m_aCharacters[3].m_aLabels[3].m_tail.bVisible = 0;
-            m_aCharacters[3].m_btnChar.m_tail.bVisible = 0;
+            m_charOffscreen.m_aLabels[3].m_tail.bVisible = 0;
+            m_charOffscreen.m_btnChar.m_tail.bVisible = 0;
         }
     }
 
@@ -9094,11 +9086,11 @@ void CSWGuiMainInterface::Draw(float fDelta) {
             if (m_aCharacters[2].m_nBadEffectCount)
                 m_aCharacters[2].DrawStack(fDelta, 0, 0);
         }
-        if (m_aCharacters[3].m_aLabels[4].m_tail.bVisible) {
-            if (m_aCharacters[3].m_nGoodEffectCount)
-                m_aCharacters[3].DrawStack(fDelta, 0, 1);
-            if (m_aCharacters[3].m_nBadEffectCount)
-                m_aCharacters[3].DrawStack(fDelta, 0, 0);
+        if (m_charOffscreen.m_aLabels[4].m_tail.bVisible) {
+            if (m_charOffscreen.m_nGoodEffectCount)
+                m_charOffscreen.DrawStack(fDelta, 0, 1);
+            if (m_charOffscreen.m_nBadEffectCount)
+                m_charOffscreen.DrawStack(fDelta, 0, 0);
         }
         AurGUIStopLayer();
     }
@@ -9220,14 +9212,14 @@ void CSWGuiMainInterface::UpdatePortraits() {
             m_aCharacters[nSlot].m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
             m_aCharacters[nSlot].m_btnChar.m_tail.bVisible = 1;
             if (nSlot == 0 && m_fRotationTimer > 0.0f) {
-                m_aCharacters[3].m_sFirstName = pChar->m_pStats->m_name;
-                m_aCharacters[3].m_sLastName = pChar->m_pStats->m_sLastName;
-                m_aCharacters[3].m_aLabels[5].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
+                m_charOffscreen.m_sFirstName = pChar->m_pStats->m_name;
+                m_charOffscreen.m_sLastName = pChar->m_pStats->m_sLastName;
+                m_charOffscreen.m_aLabels[5].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
                 short nCurHPMirror = pServer->GetCurrentHitPoints(0);
                 short nMaxHPMirror = pServer->GetMaxHitPoints(1);
                 int bPoisonedMirror = pServer->m_bPoisoned;
-                m_aCharacters[3].m_aBars[0].SetMaxValue(nMaxHPMirror);
-                m_aCharacters[3].m_aBars[0].SetCurValue(nCurHPMirror);
+                m_charOffscreen.m_aBars[0].SetMaxValue(nMaxHPMirror);
+                m_charOffscreen.m_aBars[0].SetCurValue(nCurHPMirror);
 #ifdef K1_UI_XBOX
                 CResRef sGreenMirror("lbl_healthp");
                 CResRef sRedMirror("lbl_health");
@@ -9235,42 +9227,42 @@ void CSWGuiMainInterface::UpdatePortraits() {
                 CResRef sGreenMirror("greenfill");
                 CResRef sRedMirror("redfill");
 #endif
-                m_aCharacters[3].m_aBars[0].m_borderProgress.m_params.SetFillImage(bPoisonedMirror ? sGreenMirror : sRedMirror, 0);
-                m_aCharacters[3].m_nCurHP = nCurHPMirror;
-                m_aCharacters[3].m_nMaxHP = nMaxHPMirror;
-                m_aCharacters[3].m_bToolTipDirty = 1;
+                m_charOffscreen.m_aBars[0].m_borderProgress.m_params.SetFillImage(bPoisonedMirror ? sGreenMirror : sRedMirror, 0);
+                m_charOffscreen.m_nCurHP = nCurHPMirror;
+                m_charOffscreen.m_nMaxHP = nMaxHPMirror;
+                m_charOffscreen.m_bToolTipDirty = 1;
                 short nFPBonusMirror = pServer->m_pStats->m_nTemporaryForcePoints;
                 short nFPCurMirror = pServer->m_pStats->m_nCurrentForcePoints;
                 short nMaxFPMirror = pServer->GetMaxForcePoints();
                 short nFPCurTotMirror = nFPBonusMirror + nFPCurMirror;
                 if (nMaxFPMirror == 0) {
-                    m_aCharacters[3].m_aBars[1].SetMaxValue(1);
-                    m_aCharacters[3].m_aBars[1].SetCurValue(0);
+                    m_charOffscreen.m_aBars[1].SetMaxValue(1);
+                    m_charOffscreen.m_aBars[1].SetCurValue(0);
                 } else {
-                    m_aCharacters[3].m_aBars[1].SetMaxValue(nMaxFPMirror);
-                    m_aCharacters[3].m_aBars[1].SetCurValue(nFPCurTotMirror);
+                    m_charOffscreen.m_aBars[1].SetMaxValue(nMaxFPMirror);
+                    m_charOffscreen.m_aBars[1].SetCurValue(nFPCurTotMirror);
                 }
-                m_aCharacters[3].m_nCurFP = nFPCurTotMirror;
-                m_aCharacters[3].m_nMaxFP = nMaxFPMirror;
-                m_aCharacters[3].m_bToolTipDirty = 1;
-                m_aCharacters[3].m_nLevel = pServer->m_pStats->GetLevel(0) & 0xff;
-                m_aCharacters[3].m_bToolTipDirty = 1;
+                m_charOffscreen.m_nCurFP = nFPCurTotMirror;
+                m_charOffscreen.m_nMaxFP = nMaxFPMirror;
+                m_charOffscreen.m_bToolTipDirty = 1;
+                m_charOffscreen.m_nLevel = pServer->m_pStats->GetLevel(0) & 0xff;
+                m_charOffscreen.m_bToolTipDirty = 1;
                 int nExpDiffMirror = pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience;
                 if (nExpDiffMirror < 1)
                     nExpDiffMirror = 0;
-                m_aCharacters[3].m_nXPToLevel = nExpDiffMirror;
-                m_aCharacters[3].m_bToolTipDirty = 1;
-                m_aCharacters[3].m_aLabels[5].m_tail.bVisible = 1;
-                m_aCharacters[3].m_aLabels[0].m_tail.bVisible = 1;
-                m_aCharacters[3].m_aBars[0].m_tail.bVisible = 1;
-                m_aCharacters[3].m_aBars[1].m_tail.bVisible = 1;
-                m_aCharacters[3].m_aLabels[1].m_tail.bVisible = (nState & 2) != 0;
-                m_aCharacters[3].m_aLabels[2].m_tail.bVisible = (nState & 1) != 0;
-                m_aCharacters[3].m_aLabels[3].m_tail.bVisible = (nState & 4) != 0;
-                m_aCharacters[3].m_aLabels[4].m_tail.bVisible = (nState & 4) != 0;
-                m_aCharacters[3].m_nGoodEffectCount = static_cast<unsigned char>(nState == 0 ? nEffA : 0);
-                m_aCharacters[3].m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
-                m_aCharacters[3].m_btnChar.m_tail.bVisible = 1;
+                m_charOffscreen.m_nXPToLevel = nExpDiffMirror;
+                m_charOffscreen.m_bToolTipDirty = 1;
+                m_charOffscreen.m_aLabels[5].m_tail.bVisible = 1;
+                m_charOffscreen.m_aLabels[0].m_tail.bVisible = 1;
+                m_charOffscreen.m_aBars[0].m_tail.bVisible = 1;
+                m_charOffscreen.m_aBars[1].m_tail.bVisible = 1;
+                m_charOffscreen.m_aLabels[1].m_tail.bVisible = (nState & 2) != 0;
+                m_charOffscreen.m_aLabels[2].m_tail.bVisible = (nState & 1) != 0;
+                m_charOffscreen.m_aLabels[3].m_tail.bVisible = (nState & 4) != 0;
+                m_charOffscreen.m_aLabels[4].m_tail.bVisible = (nState & 4) != 0;
+                m_charOffscreen.m_nGoodEffectCount = static_cast<unsigned char>(nState == 0 ? nEffA : 0);
+                m_charOffscreen.m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
+                m_charOffscreen.m_btnChar.m_tail.bVisible = 1;
             }
         }
         if (!bShow) {
@@ -9414,47 +9406,47 @@ void CSWGuiMainInterface::UpdatePortraits() {
             m_aCharacters[nSlot].m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
             m_aCharacters[nSlot].m_btnChar.m_tail.bVisible = 1;
             if (nSlot == 0 && m_fRotationTimer > 0.0f) {
-                m_aCharacters[3].m_sFirstName = pChar->m_pStats->GetFirstName();
-                m_aCharacters[3].m_sLastName = pChar->m_pStats->GetLastName();
-                m_aCharacters[3].m_aLabels[4].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
+                m_charOffscreen.m_sFirstName = pChar->m_pStats->GetFirstName();
+                m_charOffscreen.m_sLastName = pChar->m_pStats->GetLastName();
+                m_charOffscreen.m_aLabels[4].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
                 int nCurHPMirror = pServer->GetCurrentHitPoints(0);
                 int nMaxHPMirror = pServer->GetMaxHitPoints(1);
                 int bPoisonedMirror = pServer->m_bPoisoned;
-                m_aCharacters[3].SetHealth(nCurHPMirror, nMaxHPMirror, bPoisonedMirror);
+                m_charOffscreen.SetHealth(nCurHPMirror, nMaxHPMirror, bPoisonedMirror);
                 short nFPBonusMirror = pServer->m_pStats->m_nTemporaryForcePoints;
                 short nFPCurMirror = pServer->m_pStats->m_nCurrentForcePoints;
                 short nMaxFPMirror = pServer->GetMaxForcePoints();
                 short nFPCurTotMirror = nFPBonusMirror + nFPCurMirror;
                 // inlined CSWGuiMainInterfaceChar::SetForce(int, int)
                 if (nMaxFPMirror == 0) {
-                    m_aCharacters[3].m_aBars[1].SetMaxValue(1);
-                    m_aCharacters[3].m_aBars[1].SetCurValue(0);
+                    m_charOffscreen.m_aBars[1].SetMaxValue(1);
+                    m_charOffscreen.m_aBars[1].SetCurValue(0);
                 } else {
-                    m_aCharacters[3].m_aBars[1].SetMaxValue(nMaxFPMirror);
-                    m_aCharacters[3].m_aBars[1].SetCurValue(nFPCurTotMirror);
+                    m_charOffscreen.m_aBars[1].SetMaxValue(nMaxFPMirror);
+                    m_charOffscreen.m_aBars[1].SetCurValue(nFPCurTotMirror);
                 }
-                m_aCharacters[3].m_nCurFP = nFPCurTotMirror;
-                m_aCharacters[3].m_nMaxFP = nMaxFPMirror;
-                m_aCharacters[3].m_bToolTipDirty = 1;
-                m_aCharacters[3].m_nLevel = pServer->m_pStats->GetLevel(0) & 0xff;
-                m_aCharacters[3].m_bToolTipDirty = 1;
+                m_charOffscreen.m_nCurFP = nFPCurTotMirror;
+                m_charOffscreen.m_nMaxFP = nMaxFPMirror;
+                m_charOffscreen.m_bToolTipDirty = 1;
+                m_charOffscreen.m_nLevel = pServer->m_pStats->GetLevel(0) & 0xff;
+                m_charOffscreen.m_bToolTipDirty = 1;
                 int nExpDiffMirror;
                 if (static_cast<int>(pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience) < 1)
                     nExpDiffMirror = 0;
                 else
                     nExpDiffMirror = pServer->m_pStats->GetExpNeededForLevelUp() - pServer->m_pStats->m_nExperience;
-                m_aCharacters[3].m_nXPToLevel = nExpDiffMirror;
-                m_aCharacters[3].m_bToolTipDirty = 1;
-                m_aCharacters[3].m_aLabels[4].m_tail.bVisible = 1;
-                m_aCharacters[3].m_aLabels[0].m_tail.bVisible = 1;
-                m_aCharacters[3].m_aBars[0].m_tail.bVisible = 1;
-                m_aCharacters[3].m_aBars[1].m_tail.bVisible = 1;
-                m_aCharacters[3].m_aLabels[1].m_tail.bVisible = (nState & 2) != 0;
-                m_aCharacters[3].m_aLabels[2].m_tail.bVisible = (nState & 1) != 0;
-                m_aCharacters[3].m_aLabels[3].m_tail.bVisible = (nState & 4) != 0;
-                m_aCharacters[3].m_nGoodEffectCount = static_cast<unsigned char>(nState == 0 ? nEffA : 0);
-                m_aCharacters[3].m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
-                m_aCharacters[3].m_btnChar.m_tail.bVisible = 1;
+                m_charOffscreen.m_nXPToLevel = nExpDiffMirror;
+                m_charOffscreen.m_bToolTipDirty = 1;
+                m_charOffscreen.m_aLabels[4].m_tail.bVisible = 1;
+                m_charOffscreen.m_aLabels[0].m_tail.bVisible = 1;
+                m_charOffscreen.m_aBars[0].m_tail.bVisible = 1;
+                m_charOffscreen.m_aBars[1].m_tail.bVisible = 1;
+                m_charOffscreen.m_aLabels[1].m_tail.bVisible = (nState & 2) != 0;
+                m_charOffscreen.m_aLabels[2].m_tail.bVisible = (nState & 1) != 0;
+                m_charOffscreen.m_aLabels[3].m_tail.bVisible = (nState & 4) != 0;
+                m_charOffscreen.m_nGoodEffectCount = static_cast<unsigned char>(nState == 0 ? nEffA : 0);
+                m_charOffscreen.m_nBadEffectCount = static_cast<unsigned char>(nState == 0 ? nEffB : 0);
+                m_charOffscreen.m_btnChar.m_tail.bVisible = 1;
             }
         }
         if (!bShow) {

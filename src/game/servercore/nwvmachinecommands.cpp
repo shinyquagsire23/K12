@@ -1400,8 +1400,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetIsPuppet(int nCommand, int nArgC
 int CSWVirtualMachineCommands::ExecuteCommandGetAreaUnescapable(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     // The declared return type is the flat CSWArea base.
     CSWSArea* pArea = static_cast<CSWSArea*>(pCreature->GetArea());
     int nUnescapable = pArea->m_nUnescapable;
@@ -1413,8 +1412,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetAreaUnescapable(int nCommand, in
 int CSWVirtualMachineCommands::ExecuteCommandGetMaxStealthXP(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nMaxStealthXP = 0;
     if (pCreature) {
         CSWSArea* pArea = static_cast<CSWSArea*>(pCreature->GetArea());
@@ -5037,8 +5035,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetInventoryDisturbItem(int nComman
 int CSWVirtualMachineCommands::ExecuteCommandGetCurrentStealthXP(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nCurrentStealthXP = 0;
     if (pCreature) {
         CSWSArea* pArea = static_cast<CSWSArea*>(pCreature->GetArea());
@@ -5053,8 +5050,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetCurrentStealthXP(int nCommand, i
 int CSWVirtualMachineCommands::ExecuteCommandGetStealthXPDecrement(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nDecrement = 0;
     if (pCreature) {
         CSWSArea* pArea = static_cast<CSWSArea*>(pCreature->GetArea());
@@ -5069,8 +5065,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetStealthXPDecrement(int nCommand,
 int CSWVirtualMachineCommands::ExecuteCommandGetStealthXPEnabled(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nEnabled = 0;
     if (pCreature) {
         CSWSArea* pArea = static_cast<CSWSArea*>(pCreature->GetArea());
@@ -8947,8 +8942,7 @@ int CSWVirtualMachineCommands::ExecuteCommandEffectSkillIncrease(int nCommand, i
 int CSWVirtualMachineCommands::ExecuteCommandSetCurrentStealthXP(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nStealthXP;
     if (!g_pVirtualMachine->StackPopInteger(&nStealthXP))
         return VM_ERROR_POP_FAILED;
@@ -8963,8 +8957,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetCurrentStealthXP(int nCommand, i
 int CSWVirtualMachineCommands::ExecuteCommandSetMaxStealthXP(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nMaxStealthXP;
     if (!g_pVirtualMachine->StackPopInteger(&nMaxStealthXP))
         return VM_ERROR_POP_FAILED;
@@ -8980,8 +8973,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetMaxStealthXP(int nCommand, int n
 int CSWVirtualMachineCommands::ExecuteCommandSetStealthXPDecrement(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int nDecrement;
     if (!g_pVirtualMachine->StackPopInteger(&nDecrement))
         return VM_ERROR_POP_FAILED;
@@ -8996,8 +8988,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetStealthXPDecrement(int nCommand,
 int CSWVirtualMachineCommands::ExecuteCommandSetStealthXPEnabled(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pCreature = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     int bEnabled;
     if (!g_pVirtualMachine->StackPopInteger(&bEnabled))
         return VM_ERROR_POP_FAILED;
@@ -9384,7 +9375,7 @@ int CSWVirtualMachineCommands::ExecuteCommandTakeGoldFromCreature(int nCommand, 
             if (pContainer != 0) {
                 CSWRules* pRules = g_pRules;
                 int nBaseItem = pContainer->m_baseItem;
-                if (pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_bContainer != 0) {
+                if (pRules->GetBaseItem(nBaseItem)->m_bContainer != 0) {
                     CItemRepository* pRepository = pContainer->m_pItemRepository;
                     if (pRepository != 0) {
                         CSWSItem* pGold = new CSWSItem(OBJECT_INVALID);
@@ -9751,7 +9742,7 @@ int CSWVirtualMachineCommands::ExecuteCommandCreateItemOnObject(int nCommand, in
         CSWSItem* pItem = new CSWSItem(OBJECT_INVALID);
         if (pItem->LoadFromTemplate(resRef) != 0) {
             pItem->m_bits.m_bDropable = 1;
-            CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+            CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
             if (pBaseItem != 0 && nStackSize > pBaseItem->m_nStacking)
                 nStackSize = pBaseItem->m_nStacking;
             if (nStackSize >= 1) {
@@ -9958,7 +9949,7 @@ int CSWVirtualMachineCommands::ExecuteCommandVectorNormalize(int nCommand, int n
         return VM_ERROR_POP_FAILED;
     Vector vZero;
     Vector vResult;
-    if (!equal(vVector, vZero))
+    if (vVector != vZero)
         vResult = normalize(vVector);
     if (!g_pVirtualMachine->StackPushVector(vResult))
         return VM_ERROR_PUSH_FAILED;
@@ -10941,8 +10932,7 @@ int CSWVirtualMachineCommands::ExecuteCommandPlayVisualAreaEffect(int nCommand, 
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopEngineStructure(ENGINE_STRUCTURE_LOCATION, reinterpret_cast<void**>(&pLocation)))
         return VM_ERROR_POP_FAILED;
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pPlayer = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     if (pPlayer == 0)
         return 0;
     CSWSArea* pArea = static_cast<CSWSArea*>(pPlayer->GetArea());
@@ -11294,7 +11284,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetWeaponRanged(int nCommand, int n
     int bRanged = 0;
     if (pItem != 0) {
         int nBaseItem = pItem->m_baseItem;
-        bRanged = (g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_bRangedWeapon != 0);
+        bRanged = (g_pRules->GetBaseItem(nBaseItem)->m_bRangedWeapon != 0);
     }
     if (!g_pVirtualMachine->StackPushInteger(bRanged))
         return VM_ERROR_PUSH_FAILED;
@@ -18005,7 +17995,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGiveItem(int nCommand, int nArgCoun
         } else if (pTarget->m_objectType == GAME_OBJECT_TYPE_ITEM) {  // a container item
             CSWRules* pRules = g_pRules;
             int nBaseItem = pTarget->AsSWSItem()->m_baseItem;
-            if (pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_bContainer != 0)
+            if (pRules->GetBaseItem(nBaseItem)->m_bContainer != 0)
                 pTarget->AsSWSItem()->AcquireItem(&pItem, pItem->m_possessorId, 0);
         } else if (pTarget->m_objectType == GAME_OBJECT_TYPE_PLACEABLE) {
             pTarget->AsSWSPlaceable()->AcquireItem(&pItem, pItem->m_possessorId, 0);
@@ -18033,7 +18023,7 @@ int CSWVirtualMachineCommands::ExecuteCommandItemActivated(int nCommand, int nAr
             sLocation.m_vPosition =
                     Vector(pModule->m_fActivateTargetX, pModule->m_fActivateTargetY,
                            pModule->m_fActivateTargetZ);
-            if (pActivator != 0 && equal(pActivator->m_position, sLocation.m_vPosition) == 0)
+            if (pActivator != 0 && pActivator->m_position != sLocation.m_vPosition)
                 sLocation.m_vOrientation =
                         normalize(sLocation.m_vPosition - pActivator->m_position);
         }
@@ -18421,7 +18411,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetItemStackSize(int nCommand, int 
     CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidItem);
     if (pItem == 0)
         return 0;
-    int nMaxStack = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem)->m_nStacking;
+    int nMaxStack = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nStacking;
     if (nStackSize > nMaxStack)
         nStackSize = nMaxStack;
     if (nStackSize < 1)
@@ -18728,7 +18718,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetItemInInventory(int nCommand, in
             if (pRepo->ItemListGetCount() > nIndex) {
                 CSWSItem* pItem = pRepo->ItemListGetItem(nIndex);
                 if (pItem != 0) {
-                    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(pItem->m_baseItem);
+                    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
                     if (pBaseItem != 0 && pBaseItem->m_bContainer != 0) {
                         if (pObject->AsSWSCreature() != 0) {
                             pObject->AsSWSCreature()->m_oidItemIteratorContainer = pItem->m_objectId;

@@ -1617,12 +1617,9 @@ void CSWRoomSurfaceMesh::AddCrossing(const Vector& segStart, const Vector& dir,
     int i = 0;
     if (m_aCrossingPoints.m_count > 0)
     {
-        float pointProj = point.x * dir.x + point.y * dir.y + point.z * dir.z;
         for (; i < m_aCrossingPoints.m_count; i++)
         {
-            float proj = dir.x * points.m_pArray[i].x + dir.y * points.m_pArray[i].y +
-                         dir.z * points.m_pArray[i].z;
-            if (pointProj < proj)
+            if (dot(point, dir) < dot(points.m_pArray[i], dir))
                 break;
         }
     }

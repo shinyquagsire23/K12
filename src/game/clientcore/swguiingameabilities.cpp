@@ -698,6 +698,7 @@ void CSWGuiInGameAbilities::UpdateView()
 #if KOTOR1  // K1: BLUE/YELLOW page tabs, no LB_DESC_FEATS switch, and the POWERS page keeps the
             // previous readout texts.
     CExoArrayList<CSWGuiControl*> aControls;
+    int nNumRows;
     SetDescription(CExoString(""));
 
     unsigned char nMode = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nAbilitiesMode;
@@ -765,7 +766,7 @@ void CSWGuiInGameAbilities::UpdateView()
         m_labelTotal.m_tail.bVisible = 1;
         m_labelTotalVal.m_tail.bVisible = 1;
 
-        int nNumRows = m_aSkillList.m_count;
+        nNumRows = m_aSkillList.m_count;
         if (nNumRows > 0) {
             if (nNumRows > 10)
                 nNumRows = 10;
@@ -783,6 +784,7 @@ void CSWGuiInGameAbilities::UpdateView()
     SetActiveControl(&m_lbAbility, 0);
 #else
     CExoArrayList<CSWGuiControl*> aControls;
+    int nNumRows;
     SetDescription(CExoString(""));
 
     unsigned char nMode = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nAbilitiesMode;
@@ -854,7 +856,7 @@ void CSWGuiInGameAbilities::UpdateView()
         m_lbFeats.m_tail.bVisible = 0;
         m_lbDesc.m_tail.bVisible = 1;
 
-        int nNumRows = m_aSkillList.m_count;
+        nNumRows = m_aSkillList.m_count;
         if (nNumRows > 0) {
             if (nNumRows > 10)
                 nNumRows = 10;

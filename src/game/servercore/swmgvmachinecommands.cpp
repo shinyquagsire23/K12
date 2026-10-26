@@ -847,7 +847,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSWMG_SetGunBankStringInfo(int nComm
         pGunBank = static_cast<CSWTrackFollower*>(pObject)->GetGunBank(nBank);
         if (pGunBank != 0) {
             if (nCommand == CMD_SWMG_SetGunBankBulletModel)
-                pGunBank->m_resBullet = CResRef(sValue);
+                pGunBank->SetBulletModel(CResRef(sValue));
             else if (nCommand == CMD_SWMG_SetGunBankGunModel)
                 pGunBank->SetGunModel(CResRef(sValue));
         }
@@ -1208,8 +1208,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSWMG_SetLateralAccelPerSec(int nCom
     if (!g_pVirtualMachine->StackPopFloat(&fAccel))
         return -2001;
 #else
-    CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pPlayer = pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId());
+    CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
     char nDexMod = static_cast<char>(pPlayer->m_pStats->GetDEXMod(0));
     float fAccel;
     if (!g_pVirtualMachine->StackPopFloat(&fAccel))
@@ -1300,9 +1299,13 @@ int CSWVirtualMachineCommands::ExecuteCommandSWMG_PlayerApplyForce(int nCommand,
     if (g_pVirtualMachine->StackPopVector(&vForce)) {
         CSWMiniGame* pMiniGame = g_pAppManager->m_pClientExoApp->GetMiniGame();
         pMiniGame->m_jumpSpeed = vForce.z;
-        pMiniGame->m_curPhysicsState.m_vVelocity.x = vForce.x;
+        CSWMGPhysicsState sCurrent = pMiniGame->m_curPhysicsState;
+        CSWMGPhysicsState sPrevious = pMiniGame->m_prevPhysicsState;
+        sCurrent.m_vVelocity.x = vForce.x;
+        sPrevious.m_vVelocity.x = vForce.x;
+        pMiniGame->SetCurrentPhysicsState(sCurrent);
+        pMiniGame->SetPreviousPhysicsState(sPrevious);
         pMiniGame->m_lateralAccelPerSec = vForce.x;
-        pMiniGame->m_prevPhysicsState.m_vVelocity.x = vForce.x;
     }
     return 0;
 }

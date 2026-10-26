@@ -17,13 +17,14 @@ CSWGuiDynamic::CSWGuiDynamic(CSWGuiManager* pGuiManager, const CResRef& sLayout)
     {
         int bSuccess;
         CResStruct sStruct;
+        unsigned int nControlType;
+        CSWGuiControl* pControl;
         pGFF->GetListElement(&sStruct, &m_layoutList, i);
 
-        unsigned int nControlType =
+        nControlType =
             pGFF->ReadFieldDWORD(&sStruct, const_cast<char*>("CONTROLTYPE"), bSuccess, 0);
         sTag = pGFF->ReadFieldCExoString(&sStruct, const_cast<char*>("TAG"), bSuccess, CExoString(""));
 
-        CSWGuiControl* pControl;
         switch (nControlType)
         {
         case SWGUICONTROL_LABEL:         pControl = new CSWGuiLabel; break;
@@ -55,5 +56,5 @@ CSWGuiDynamic::~CSWGuiDynamic()
             delete m_controls.m_pArray[i];
     }
 
-    m_controls.Clear();
+    m_controls.SetSize(0);
 }

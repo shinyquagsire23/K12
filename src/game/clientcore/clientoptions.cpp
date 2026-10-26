@@ -39,6 +39,7 @@ int GAME_OPTION_DEFAULT_FRAMEBUFFER;
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
 #include "nwcanimbase.h"
+#include "exostringinline.h"
 
 
 // Aurora renderer feature toggles. Each graphics setter stores the option and then calls the
@@ -1339,132 +1340,132 @@ int CClientOptions::LoadOptions(int a)
     CExoIni ini;
     CExoString sValue;
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Difficulty Level"))
-        m_difficultyLevel = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_difficultyLevel = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Auto Level Up NPCs"))
-        SetAutoLevelUpNPCs(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        SetAutoLevelUpNPCs(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Mouse Look"))
-        m_bGameplay1 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bGameplay1 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "AutoSave"))
-        m_bAutoSave = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bAutoSave = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Reverse Minigame YAxis"))
-        m_bGameplay3 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bGameplay3 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Reverse Ingame YAxis"))
-        m_bGameplay4 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bGameplay4 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Combat Movement"))
-        m_bGameplay5 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bGameplay5 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Auto Run"))
-        m_bAutoRun = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bAutoRun = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Mouse Sensitivity"))
-        m_nMouseSensitivity = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nMouseSensitivity = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Enable Mouse Teleporting To Buttons"))
-        m_bMouseTeleportToButtons = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bMouseTeleportToButtons = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Hide Unequippable"))
-        m_bFeedback0 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bFeedback0 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Tutorial Popups"))
-        m_bTutorialWindows = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bTutorialWindows = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Subtitles"))
-        m_bFeedback2 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bFeedback2 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Mini Map"))
-        m_bFeedback3 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bFeedback3 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Floating Numbers"))
-        m_bFeedback4 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bFeedback4 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Status Summary"))
-        m_bFeedback5 = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bFeedback5 = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Use Small Fonts"))
-        SetUseSmallFonts(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        SetUseSmallFonts(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Hide InGame GUI"))
-        m_bHideInGameGui = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bHideInGameGui = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "CurSithLord"))
-        m_nCurrentSithLord = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nCurrentSithLord = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "GameCompleted"))
-        m_nGamesCompleted = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nGamesCompleted = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "PCGender"))
-        m_nPCGender = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nPCGender = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "AppearanceType"))
-        m_nAppearanceType = static_cast<unsigned short>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nAppearanceType = static_cast<unsigned short>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "BodyVariation"))
-        m_nBodyVariation = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nBodyVariation = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "TextureVariation"))
-        m_nTextureVariation = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nTextureVariation = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Autopause Options", "End Of Combat Round"))
-        m_bAutoPauseEndOfCombatRound = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bAutoPauseEndOfCombatRound = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Autopause Options", "Enemy Sighted"))
-        m_bAutoPauseEnemySighted = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bAutoPauseEnemySighted = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Autopause Options", "Mine Sighted"))
-        m_bAutoPauseMineSighted = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bAutoPauseMineSighted = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Autopause Options", "Party Killed"))
-        m_bAutoPausePartyKilled = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bAutoPausePartyKilled = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Autopause Options", "Action Menu"))
-        m_bAutoPauseActionMenu = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bAutoPauseActionMenu = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Autopause Options", "New Target Selected"))
-        m_bAutoPauseNewTarget = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bAutoPauseNewTarget = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Brightness"))
-        m_nGammaIndex = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nGammaIndex = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Shadows"))
-        SetShadows(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        SetShadows(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "AllowSoftShadows"))
-        if (sValue.m_sString != 0 && atoi(sValue.m_sString) == 1)
+        if (sValue.AsINT() == 1)
             AurATIUnlockSoftShadowsForHotFix();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Soft Shadows"))
-        SetSoftShadows(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        SetSoftShadows(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Grass"))
-        SetGrass(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        SetGrass(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "ForceSpeed"))
-        g_allowForceSpeedEffect = (sValue.m_sString ? atoi(sValue.m_sString) : 0) != 0;
+        g_allowForceSpeedEffect = (sValue.AsINT()) != 0;
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "LockFramerate"))
-        g_bFrameRateLocked = (sValue.m_sString ? atoi(sValue.m_sString) : 0) != 0;
+        g_bFrameRateLocked = (sValue.AsINT()) != 0;
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Texture Quality"))
-        SetTexQual(static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0));
+        SetTexQual(static_cast<unsigned char>(sValue.AsINT()));
     if (a) {
         if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Anti Aliasing"))
-            SetAntiAlias(static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0));
+            SetAntiAlias(static_cast<unsigned char>(sValue.AsINT()));
     }
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Anti Aliasing"))
-        SetAntiAlias(static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0));
+        SetAntiAlias(static_cast<unsigned char>(sValue.AsINT()));
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Frame Buffer"))
-        SetFrameBuffer(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        SetFrameBuffer(sValue.AsINT());
     if (a) {
         if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Anisotropy"))
-            SetAnisotropy(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+            SetAnisotropy(sValue.AsINT());
     }
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Anisotropy"))
-        SetAnisotropy(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        SetAnisotropy(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "V-Sync")) {
-        m_bVSync = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bVSync = sValue.AsINT();
         if (m_bVSync) AurSetVSyncState(true);
         else AurSetVSyncState(false);
     }
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Sound Options", "Music Volume"))
-        m_nMusicVolume = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nMusicVolume = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Sound Options", "Voiceover Volume"))
-        m_nVoiceVolume = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nVoiceVolume = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Sound Options", "Sound Effects Volume"))
-        m_nSoundEffectsVolume = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nSoundEffectsVolume = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Sound Options", "Movie Volume"))
-        m_nMovieVolume = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_nMovieVolume = static_cast<unsigned char>(sValue.AsINT());
     ApplySoundOptions();
 
     CExoString sName;
     for (int i = 0; i < 11; i++) {
         sName.Format(const_cast<char*>("Movie%2d"), i);
         ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Movies Shown", sName.CStr());
-        m_movieShown[i] = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_movieShown[i] = static_cast<unsigned char>(sValue.AsINT());
     }
     m_bEnableCheats = 0;
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "EnableCheats"))
-        m_bEnableCheats = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bEnableCheats = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Keyboard Camera DPS"))
-        SetCameraKeyboardDPS(sValue.m_sString ? static_cast<float>(atof(sValue.m_sString)) : 0.0f);
+        SetCameraKeyboardDPS(sValue.AsFLOAT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Keyboard Camera Acceleration"))
-        SetCameraKeyboardAcceleration(sValue.m_sString ? static_cast<float>(atof(sValue.m_sString)) : 0.0f);
+        SetCameraKeyboardAcceleration(sValue.AsFLOAT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Keyboard Camera Deceleration"))
-        SetCameraKeyboardDeceleration(sValue.m_sString ? static_cast<float>(atof(sValue.m_sString)) : 0.0f);
+        SetCameraKeyboardDeceleration(sValue.AsFLOAT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Enable Tooltips"))
-        m_bEnableToolTips = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bEnableToolTips = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "Reverse Mouse Buttons"))
-        m_bReverseMouseButtons = sValue.m_sString ? atoi(sValue.m_sString) : 0;
+        m_bReverseMouseButtons = sValue.AsINT();
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Game Options", "EnableScreenShot"))
-        m_bScreenShotEnabled = static_cast<unsigned char>(sValue.m_sString ? atoi(sValue.m_sString) : 0);
+        m_bScreenShotEnabled = static_cast<unsigned char>(sValue.AsINT());
     return 1;
 }
 #endif

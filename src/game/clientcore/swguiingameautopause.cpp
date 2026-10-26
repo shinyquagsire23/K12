@@ -11,6 +11,7 @@
 #include "port/libcstring.h"
 #include "exoinput.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 void ExpandButtonToFitText(CSWGuiButton& button);
 void AspyrAddButtonIcon(CSWGuiButton* pButton, char nIcon);
@@ -65,15 +66,7 @@ void CSWGuiInGameAutoPause::ClosePanel() {
     SaveOptions();
     m_pGuiManager->PopModalPanel();
 
-#if KOTOR1  // K1: no panel chain, one remove-and-delete stamp
-    m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE);
-#else
-    CSWGuiPanel* pChain = this;
-    do {
-        pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE);
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-#endif
+    SetToBeDeleted(0);
 }
 
 // Retargets the description listbox's single row, which is m_labelDesc.
@@ -83,11 +76,7 @@ void CSWGuiInGameAutoPause::SetDescription(uint64_t nStrRef) {
     m_listBoxDetails.ClearItems();
     CSWGuiText* pText = &m_labelDesc.m_text;
     CSWGuiExtent extent = m_labelDesc.m_extent;
-#if KOTOR1
     if (str.GetLength() > 0)
-#else
-    if (str.m_sString && static_cast<int>(strlen(str.m_sString)) > 0)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = m_labelDesc.m_text.GetFontHeight();
@@ -231,12 +220,8 @@ CSWGuiInGameAutoPause::CSWGuiInGameAutoPause(CSWGuiManager* pGuiManager)
 
     m_listBoxDetails.m_nScrollSound = GUISOUND_ENTERED_DEFAULT;
     // The row-hover wiring precedes the StrRef stamps below.
-    m_aCheckbox[kCbEndRound].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbEnemySighted].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbMineSighted].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbPartyKilled].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbActionMenu].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbTriggers].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
+    for (int i = 0; i < 6; i++)
+        m_aCheckbox[i].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
 
     m_aCheckbox[kCbEndRound].m_tail.m_nUserData = STRREF_DESC_PAUSE_END_OF_ROUND;
     m_aCheckbox[kCbEnemySighted].m_tail.m_nUserData = STRREF_DESC_PAUSE_ENEMY_SIGHTED;
@@ -247,8 +232,8 @@ CSWGuiInGameAutoPause::CSWGuiInGameAutoPause(CSWGuiManager* pGuiManager)
     StopLoadFromLayout();
 
     ExpandButtonToFitText(m_btnDefault);
-    m_labelDesc.Initialize(m_listBoxDetails.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDetails.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDetails.m_pProtoItem);
+    m_labelDesc.Initialize(pProto->m_extent, pProto, 1.0f);
     m_btnDefault.m_tail.bFocusOnHover = 0;
     m_btnDefault.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
     AspyrAddButtonIcon(&m_btnBack, 'b');

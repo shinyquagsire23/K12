@@ -231,12 +231,12 @@ bool CNetLayer::HandleBNCSMessage(unsigned int a, unsigned char* data, unsigned 
             name = sender;
         }
 
+        bool granted;
         unsigned char* reply = new unsigned char[10];
         *reinterpret_cast<unsigned int*>(reply) = FOURCC_BNCR;
         m_playerInfo.m_sName = name;
         m_playerInfo.m_bValid = 1;
 
-        bool granted;
         if (connectType == CONNECTTYPE_SERVERADMIN)
         {
             if (m_sServerAdminPassword == "")

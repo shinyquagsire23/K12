@@ -50,8 +50,8 @@ enum {
 
 
 extern const unsigned int fogModeTranslationTable[] = { 9729, 2048, 2049 };
-int queryTranslationTable[2] = { 2912 };
-unsigned int blendTranslationTable[] = { 770, 771, 1, 0, 768, 774, 773, 772 };
+extern const int queryTranslationTable[2] = { 2912 };
+extern const unsigned int blendTranslationTable[] = { 770, 771, 1, 0, 768, 774, 773, 772 };
 extern const int transformTranslationTable[4] = { 5889, 5888, 5888, 5890 };
 extern const unsigned int cmpTranslationTable[] = { 512, 513, 514, 515, 516, 517, 518, 519 };
 extern const unsigned int cullTranslationTable[] = { 2304, 2305 };
@@ -275,7 +275,7 @@ int AurATISoftShadowsAvailable();
 int AurATIFrameBufferModificationsAvailable();
 int AurSoftShadowsAvailable();
 bool AuroraUseARBShaders();
-const float* Homogenize(const Vector& v, const float& f);
+float* Homogenize(const Vector& v, const float& f);
 
 extern int envmapon;
 extern int tex1on;
@@ -2645,10 +2645,10 @@ void GLRender::RenderObjectsVTCQuad(unsigned int nPool, int nCount)
     if (AurVertexBufferObjectARBAvailable())
     {
         char* pPool = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_COLOR_ARRAY);
-        ASLgl::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glDisableClientState(GL_NORMAL_ARRAY);
+        GLRender::EnableClientState(Aurora::kClientStateVertex);
+        GLRender::EnableClientState(Aurora::kClientStateColor);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pPool)));
         ASLgl::glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(RenderVertexVTC), reinterpret_cast<void*>(offsetof(RenderVertexVTC, color)));
         ASLgl::glTexCoordPointer(2, GL_FLOAT, sizeof(RenderVertexVTC), reinterpret_cast<void*>(offsetof(RenderVertexVTC, u)));
@@ -2677,10 +2677,10 @@ void GLRender::RenderObjectsVTQuadUP(RenderVertexVT* paVertices, int nCount)
     if (AurVertexBufferObjectARBAvailable())
     {
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, 0);
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glDisableClientState(GL_NORMAL_ARRAY);
-        ASLgl::glDisableClientState(GL_COLOR_ARRAY);
+        GLRender::EnableClientState(Aurora::kClientStateVertex);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
+        GLRender::DisableClientState(Aurora::kClientStateColor);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, sizeof(RenderVertexVT), &paVertices->u);
         ASLgl::glVertexPointer(3, GL_FLOAT, sizeof(RenderVertexVT), paVertices);
         ASLgl::glDrawArrays(7, 0, nCount);
@@ -2705,9 +2705,9 @@ void GLRender::RenderObjectsVTQuad(unsigned int nPool, int nCount)
     if (AurVertexBufferObjectARBAvailable())
     {
         char* pPool = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glDisableClientState(GL_NORMAL_ARRAY);
+        GLRender::EnableClientState(Aurora::kClientStateVertex);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pPool)));
         ASLgl::glTexCoordPointer(2, GL_FLOAT, sizeof(RenderVertexVT), reinterpret_cast<void*>(offsetof(RenderVertexVT, u)));
         ASLgl::glVertexPointer(3, GL_FLOAT, sizeof(RenderVertexVT), static_cast<void*>(0));
@@ -2734,9 +2734,9 @@ void GLRender::RenderObjectsVTQuadStrip(unsigned int nPool, int nCount)
     if (AurVertexBufferObjectARBAvailable())
     {
         char* pPool = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glDisableClientState(GL_NORMAL_ARRAY);
+        GLRender::EnableClientState(Aurora::kClientStateVertex);
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pPool)));
         ASLgl::glTexCoordPointer(2, GL_FLOAT, sizeof(RenderVertexVT), reinterpret_cast<void*>(offsetof(RenderVertexVT, u)));
         ASLgl::glVertexPointer(3, GL_FLOAT, sizeof(RenderVertexVT), static_cast<void*>(0));
@@ -2803,10 +2803,10 @@ void GLRender::RenderObjectsVCUP(Aurora::AuroraPrimitiveTypes eType, RenderVerte
     if (AurVertexBufferObjectARBAvailable())
     {
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, 0);
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_COLOR_ARRAY);
-        ASLgl::glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glDisableClientState(GL_NORMAL_ARRAY);
+        GLRender::EnableClientState(Aurora::kClientStateVertex);
+        GLRender::EnableClientState(Aurora::kClientStateColor);
+        GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
         ASLgl::glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(RenderVertexVC), &paVertices->color);
         ASLgl::glVertexPointer(3, GL_FLOAT, sizeof(RenderVertexVC), paVertices);
         ASLgl::glDrawArrays(primTypeTranslationTable[eType], 0, nCount);
@@ -2832,10 +2832,10 @@ void GLRender::RenderObjectsVC(Aurora::AuroraPrimitiveTypes eType, unsigned int 
     char* pPool = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
     if (bVBO)
     {
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_COLOR_ARRAY);
-        ASLgl::glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glDisableClientState(GL_NORMAL_ARRAY);
+        GLRender::EnableClientState(Aurora::kClientStateVertex);
+        GLRender::EnableClientState(Aurora::kClientStateColor);
+        GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pPool)));
         ASLgl::glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(RenderVertexVC), reinterpret_cast<void*>(offsetof(RenderVertexVC, color)));
         ASLgl::glVertexPointer(3, GL_FLOAT, sizeof(RenderVertexVC), static_cast<void*>(0));
@@ -2863,16 +2863,16 @@ void GLRender::RenderObjectsVCQuads(unsigned int nPool, int nOffset, int nCount)
     char* pPool = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
     if (bVBO)
     {
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_COLOR_ARRAY);
-        ASLgl::glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glDisableClientState(GL_NORMAL_ARRAY);
+        GLRender::EnableClientState(Aurora::kClientStateVertex);
+        GLRender::EnableClientState(Aurora::kClientStateColor);
+        GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+        GLRender::DisableClientState(Aurora::kClientStateNormal);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pPool)));
         ASLgl::glTexCoordPointer(2, GL_FLOAT, sizeof(RenderVertexVC), reinterpret_cast<void*>(offsetof(RenderVertexVC, color)));
         ASLgl::glVertexPointer(3, GL_FLOAT, sizeof(RenderVertexVC), static_cast<void*>(0));
         ASLgl::glDrawArrays(7, 0, nCount);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, 0);
-        ASLgl::glDisableClientState(GL_COLOR_ARRAY);
+        GLRender::DisableClientState(Aurora::kClientStateColor);
     }
     else
     {
@@ -3870,8 +3870,7 @@ void GLRender::InitAttenuationTexture()
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    ASLgl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, anAttenuation);
-    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, cm_nAnisotropy);
+    CreateTextureImageRaw(Aurora::kTexTarget2D, 0, GL_RGB8, 64, 64, 0, Aurora::kTexFormatRGBA, anAttenuation);
 }
 
 // The one-time GL context latch.
@@ -4209,7 +4208,7 @@ void GLRender::RenderPausePlane()
 void GLRender::RenderOverlayOverbrighten(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glBegin(7);
 
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -4271,7 +4270,7 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
         RenderSaturationAdjustmentATI(cm_nTargetTexture);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -4313,7 +4312,7 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
         RenderSaturationAdjustmentATI(cm_nTargetTexture);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -4356,7 +4355,7 @@ void GLRender::FrameBufferModificationsARB2(uint64_t nFlags)
         RenderSaturationAdjustmentARB(cm_nTargetTexture);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -4405,7 +4404,7 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
         RenderSaturationAdjustment(cm_nTargetTexture);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -4448,7 +4447,7 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
         RenderSaturationAdjustment(cm_nTargetTexture);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -4583,7 +4582,7 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         RenderOverlayFilmNoise(cm_nTargetTexture, false);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -4750,7 +4749,7 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         RenderFury(nTexture);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -4907,7 +4906,7 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
         RenderDreamDistortionARB(nTexture, true);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -5082,7 +5081,7 @@ void GLRender::FrameBufferModificationsATI(uint64_t nFlags)
         RenderFuryATI(nTexture);
     }
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapLighting);
@@ -5102,7 +5101,7 @@ void GLRender::RenderAccumulationBlur(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #if !KOTOR1 // K1: an empty body
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nAccumulationBlur);
@@ -5156,7 +5155,7 @@ void GLRender::RenderAccumulationBlurATI(unsigned int nTexture)
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nAccumulationBlur);
@@ -5231,7 +5230,7 @@ void GLRender::RenderSaturationAdjustment(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #endif
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glDisable(GL_BLEND);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
@@ -5283,7 +5282,7 @@ void GLRender::RenderFrameToTexture(unsigned int nTexture)
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, nTexture);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glBegin(7);
 
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -5315,7 +5314,7 @@ void GLRender::RenderOverlayFilmNoise(unsigned int nTexture, bool bScanNoise)
     K2_UNUSED(nTexture); K2_UNUSED(bScanNoise);
 #endif
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, nTexture);
@@ -5367,7 +5366,7 @@ void GLRender::RenderSaturationAdjustmentATI(unsigned int nTexture)
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
@@ -5441,7 +5440,7 @@ void GLRender::RenderFrameToTextureATI(unsigned int nTexture)
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
@@ -5474,7 +5473,7 @@ void GLRender::RenderFrameToTextureATI(unsigned int nTexture)
 // Draws the ARB-shader overbrighten composite. The three ramp ids go straight to the program.
 void GLRender::RenderOverlayOverbrightenATI(unsigned int nTexture)
 {
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     FrameBufferModificationPixelShadersATI(kFBShaderOverbrighten,  nTexture, cm_nOverbrightenRed,
                                            cm_nOverbrightenGreen, cm_nOverbrightenBlue);
 
@@ -5520,7 +5519,7 @@ void GLRender::RenderOverlayFilmNoiseATI(unsigned int nTexture, bool bScanNoise)
     GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
@@ -5591,10 +5590,10 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
 #if !KOTOR1 // K1: an empty body
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::Enable(Aurora::kCapBlend);
     wglMakeCurrent(cm_hConvolutionHDC[3], cm_hConvolutionHGLRC[3]);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
@@ -5643,7 +5642,7 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
                 basesize, 0);
 
     wglMakeCurrent(m_hDC, m_hGLRC);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
@@ -5699,13 +5698,13 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
         ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         ASLgl::glClear(GL_COLOR_BUFFER_BIT);
     }
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::Enable(Aurora::kCapBlend);
     void* hDC = m_hDC;
     void* hGLRC = m_hGLRC;
     wglMakeContextCurrentARB(cm_hConvolutionHDC[3], cm_hConvolutionHDC[3], cm_hConvolutionHGLRC[3]);
     ASLgl::glDrawBuffer(GL_FRONT);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
@@ -5760,7 +5759,7 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
                    basesize, 0);
 
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
@@ -5825,7 +5824,7 @@ void GLRender::MipmapFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHei
     K2_UNUSED(fSize);
     wglMakeCurrent(hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
@@ -5881,7 +5880,7 @@ void GLRender::MipmapFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     K2_UNUSED(fSize);
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
@@ -5944,7 +5943,7 @@ void GLRender::BloomFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
@@ -6078,7 +6077,7 @@ void GLRender::BloomFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeig
     K2_UNUSED(bSoftShadow);   // cl.exe has no GNU asm: the barrier above is compiled away
 #endif
     wglMakeCurrent(hDC, hGLRC);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
@@ -6189,7 +6188,7 @@ void GLRender::BloomFilterFromTexture(HDC__* hDC, HGLRC__* hGLRC, float fWidth, 
                                       unsigned int nTexture, float fSizeU, float fSizeV)
 {
     K2_UNUSED(hDC); K2_UNUSED(hGLRC);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
 
     for (int nUnit = 0; nUnit < 4; nUnit++)
     {
@@ -6291,7 +6290,7 @@ void GLRender::BloomFilterFromTextureATI(HDC__* hDC, HGLRC__* hGLRC, float fWidt
                                          unsigned int nTexture, float fSizeU, float fSizeV)
 {
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(fSizeU); K2_UNUSED(fSizeV);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
 
     for (int nUnit = 0; nUnit < 4; nUnit++)
     {
@@ -6415,7 +6414,7 @@ void GLRender::BloomFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(pPBuffer);
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
@@ -6543,7 +6542,7 @@ void GLRender::RenderForceDistortion(unsigned int nTexture)
     ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 0.0f, 1.0f, 0.0f, 0.0f);
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, cm_pHeatDistortionVertexProg);
     cm_pForceDistortionTexture->GetWidth();
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     GLRender::SetActiveTexture(0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
@@ -6561,8 +6560,8 @@ void GLRender::RenderForceDistortion(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     GLRender::Enable(Aurora::kCapStencilTest); // GL_STENCIL_TEST
-    ASLgl::glStencilFunc(GL_LESS, 0, 1);
-    ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    SetStencilFunc(Aurora::kCmpLess, 0, 1);
+    SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilKeep);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glBegin(7);
@@ -6612,7 +6611,7 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, cm_pHeatDistortionVertexProg);
     cm_pForceDistortionTexture->GetWidth();
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     GLRender::SetActiveTexture(0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
@@ -6637,8 +6636,8 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nForceDistortionShaderARB);
     }
     GLRender::Enable(Aurora::kCapStencilTest);
-    ASLgl::glStencilFunc(GL_LESS, 0, 1);
-    ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    GLRender::SetStencilFunc(Aurora::kCmpLess, 0, 1);
+    GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilKeep);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
 
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
@@ -6681,7 +6680,7 @@ void GLRender::RenderDreamDistortion(unsigned int nTexture)
     ASLgl::glDisable(GL_DEPTH_TEST);
     GLRender::Enable(Aurora::kCapAlphaTest); // GL_ALPHA_TEST
     GLRender::Enable(Aurora::kCapBlend); // GL_BLEND
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
@@ -6753,7 +6752,7 @@ void GLRender::RenderFury(unsigned int nTexture)
     ASLgl::glDisable(GL_DEPTH_TEST);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapBlend);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
@@ -6831,7 +6830,7 @@ void GLRender::RenderDreamDistortionATI(unsigned int nTexture)
     ASLgl::glDisable(GL_DEPTH_TEST);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapBlend);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
@@ -6915,7 +6914,7 @@ void GLRender::RenderFuryATI(unsigned int nTexture)
     ASLgl::glDisable(GL_DEPTH_TEST);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapBlend);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
@@ -7618,7 +7617,7 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     BloomFilterATI(reinterpret_cast<HDC__*>(cm_hSoftShadowTargetPBuffer), cm_hSoftShadowTargetHGLRC, 512.0f,
                    512.0f, cm_hSoftShadowPBuffer, cm_nSoftShadowRenderTexture, 512.0f, 1);
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
@@ -7630,7 +7629,7 @@ void GLRender::FinishSoftShadowsATI()
     wglMakeContextCurrentARB(m_hDC, m_hDC, m_hGLRC);
     ASLgl::glDrawBuffer(GL_BACK);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
@@ -7765,7 +7764,7 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 #ifdef K2_FIX_ENGINE_BUGS
     HDC__* hDC = nullptr;
     HGLRC__* hGLRC = nullptr;
@@ -7783,7 +7782,7 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glPopMatrix();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
@@ -7886,7 +7885,7 @@ void GLRender::FinishSoftShadows()
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, cm_nBufferRegionTexture);
     ASLgl::glDisable(GL_LIGHTING);
     GLRender::Enable(Aurora::kCapBlend);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glDisable(GL_STENCIL_TEST);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
@@ -7932,7 +7931,7 @@ void GLRender::FinishSoftShadows()
                 cm_hSoftShadowTargetPBuffer, cm_nSoftShadowTargetRenderTexture, 512.0f, 1);
     wglMakeCurrent(m_hDC, m_hGLRC);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nSoftShadowRenderTexture);
@@ -8636,7 +8635,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
 #endif
         {
             GLRender::Enable(Aurora::kCapBlend);
-            ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
             ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
             RenderModificationQuad();
             GLRender::Disable(Aurora::kCapBlend);
@@ -8806,7 +8805,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
         {
             RenderModificationQuadSetup setup;
             GLRender::Enable(Aurora::kCapBlend);
-            ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
             ASLgl::glBegin(7);
             ASLgl::glColor4f(1.0f, 1.0f, 1.0f, GLRender::m_fAccumulationRatio);
@@ -8863,7 +8862,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
         return;
 #endif
     GLRender::Enable(Aurora::kCapBlend);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
     RenderModificationQuad();
     GLRender::Disable(Aurora::kCapBlend);
@@ -8928,7 +8927,7 @@ void GLRender::RenderAccumulationBlurARB(unsigned int nTexture)
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 
     Vector vRatio(m_fAccumulationRatio, m_fAccumulationRatio, m_fAccumulationRatio);
 
@@ -9003,7 +9002,7 @@ void GLRender::RenderDreamDistortionARB(unsigned int nTexture, bool bFury)
     ASLgl::glDisable(GL_DEPTH_TEST);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapBlend);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
@@ -9324,7 +9323,7 @@ void GLRender::RenderFrameToTextureARB(unsigned int nTexture)
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, nTexture);
 #endif
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glBegin(7);
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
@@ -9373,7 +9372,7 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, cm_pHeatDistortionVertexProg);
     cm_pForceDistortionTexture->GetWidth();
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     GLRender::SetActiveTexture(0);
     ASLgl::glEnable(GL_TEXTURE_2D);
     cm_pForceDistortionTexture->Bind();
@@ -9394,8 +9393,8 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nForceDistortionShaderARB);
     GLRender::Enable(Aurora::kCapStencilTest); // GL_STENCIL_TEST
-    ASLgl::glStencilFunc(GL_LESS, 0, 1);
-    ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    SetStencilFunc(Aurora::kCmpLess, 0, 1);
+    SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilKeep);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glBegin(7);
 
@@ -9437,7 +9436,7 @@ void GLRender::RenderSaturationAdjustmentARB(unsigned int nTexture)
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
 #if KOTOR1 // K1: GL_TEXTURE_2D source
     android_port_glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -9522,7 +9521,7 @@ void GLRender::RenderSaturationAdjustmentARB(unsigned int nTexture)
 void GLRender::RenderOverlayOverbrightenARB(unsigned int nTexture)
 {
 #if KOTOR1 // K1: a quarter-size quad with normalised texcoords on GL_TEXTURE_2D
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     FrameBufferModificationPixelShadersARB(kFBShaderOverbrighten,  nTexture, cm_nOverbrightenRed,
                                            cm_nOverbrightenGreen, cm_nOverbrightenBlue);
     ASLgl::glBegin(7);
@@ -9543,7 +9542,7 @@ void GLRender::RenderOverlayOverbrightenARB(unsigned int nTexture)
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
 #else
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     FrameBufferModificationPixelShadersARB(kFBShaderOverbrighten,  nTexture, cm_nOverbrightenRed,
                                            cm_nOverbrightenGreen, cm_nOverbrightenBlue);
     ASLgl::glBegin(7);
@@ -9578,10 +9577,10 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
         ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         ASLgl::glClear(GL_COLOR_BUFFER_BIT);
     }
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::Enable(Aurora::kCapBlend);
     glBindFramebuffer(GL_FRAMEBUFFER, s_ConvolutionFBOs[3]);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
@@ -9640,7 +9639,7 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
                    basesize, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
@@ -9699,7 +9698,7 @@ void GLRender::MipmapFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
 {
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(pPBuffer); K2_UNUSED(fSize);
     ASLgl::glEnable(GL_BLEND);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, 1);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
     GLRender::SetMatrixMode(Aurora::kMatrixProjection);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
@@ -9752,7 +9751,7 @@ void GLRender::RenderOverlayFilmNoiseARB(unsigned int nTexture, bool bScanNoise)
     GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
-    ASLgl::glBlendFunc(1, 0);
+    GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, nTexture);
@@ -9889,10 +9888,9 @@ void GLRender::ConvertHeightFieldAndLoadNormalMapTexture(unsigned char* pData, i
         pBuffer = convertHeightFieldToNormalMap(pData, nWidth, nHeight, nSrcWidth, nSrcHeight, fScale);
     }
 
-    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    ASLgl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, nWidth, nHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, pBuffer);
-    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, cm_nAnisotropy);
+    SetTextureParameteri(Aurora::kTexTarget2D, Aurora::kTexParamMagFilter, 5);
+    SetTextureParameteri(Aurora::kTexTarget2D, Aurora::kTexParamMinFilter, 6);
+    CreateTextureImageRaw(Aurora::kTexTarget2D, 0, GL_RGBA8, nWidth, nHeight, 0, Aurora::kTexFormatBGRA, pBuffer);
 
     if (nHeight > 1 || nWidth > 1)
     {
@@ -9909,14 +9907,12 @@ void GLRender::ConvertHeightFieldAndLoadNormalMapTexture(unsigned char* pData, i
             pBuffer = downSampleNormalMap(pBuffer, nWidth, nHeight, nNewWidth, nNewHeight);
             if (nUseSubImage == 0)
             {
-                ASLgl::glTexImage2D(GL_TEXTURE_2D, nLevel, GL_RGBA8, nNewWidth, nNewHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE,
-                                    pBuffer);
-                ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, cm_nAnisotropy);
+                CreateTextureImageRaw(Aurora::kTexTarget2D, nLevel, GL_RGBA8, nNewWidth, nNewHeight, 0,
+                                      Aurora::kTexFormatBGRA, pBuffer);
             }
             else
             {
-                ASLgl::glTexSubImage2D(GL_TEXTURE_2D, nLevel, 0, 0, nNewWidth, nNewHeight, GL_RGBA, GL_UNSIGNED_BYTE,
-                                       pBuffer);
+                CreateTexSubImage(Aurora::kTexTarget2D, nLevel, nNewWidth, nNewHeight, Aurora::kTexFormatRGBA, pBuffer);
             }
             nLevel++;
             nWidth = nNewWidth;
@@ -10014,12 +10010,12 @@ void GLRender::RenderGammaCorrection()
     ASLgl::glLoadIdentity();
     if (fGamma > 1.0f)
     {
-        ASLgl::glBlendFunc(GL_DST_COLOR, 1);
+        GLRender::SetBlendFunc(Aurora::kBlendDstColor, Aurora::kBlendOne);
         ASLgl::glColor3f(fGamma - 1.0f, fGamma - 1.0f, fGamma - 1.0f);
     }
     else
     {
-        ASLgl::glBlendFunc(0, GL_SRC_COLOR);
+        GLRender::SetBlendFunc(Aurora::kBlendZero, Aurora::kBlendSrcColor);
         ASLgl::glColor3f(fGamma, fGamma, fGamma);
     }
     ASLgl::glBegin(7);
@@ -10031,7 +10027,7 @@ void GLRender::RenderGammaCorrection()
     ASLgl::glEnable(GL_DEPTH_TEST);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glEnable(GL_LIGHTING);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 #else
     static unsigned int gammaPS;
 
@@ -10110,7 +10106,7 @@ void GLRender::RenderGammaCorrection()
     ASLgl::glEnable(GL_DEPTH_TEST);
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glEnable(GL_LIGHTING);
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 #endif
 }
 
@@ -10172,15 +10168,12 @@ void GLRender::SetInterleavedBuffer(unsigned int nStride, int nFlags, unsigned i
     {
         if (nFlags & MDX_TANGENT_SPACE)
         {
-            if (usearbvertexprograms)
-                ASLgl::glVertexAttribPointerARB(12, 3, GL_FLOAT, 0, pNode->m_nVertexStride,
-                                                pData + pNode->m_nTangentOfs);
-            if (usearbvertexprograms)
-                ASLgl::glVertexAttribPointerARB(13, 3, GL_FLOAT, 0, pNode->m_nVertexStride,
-                                                pData + pNode->m_nTangentOfs + 12);
-            if (usearbvertexprograms)
-                ASLgl::glVertexAttribPointerARB(14, 3, GL_FLOAT, 0, pNode->m_nVertexStride,
-                                                pData + pNode->m_nTangentOfs + 24);
+            GLRender::SetVertexProgramAttrib(12, 3, GL_FLOAT, pNode->m_nVertexStride,
+                                             pData + pNode->m_nTangentOfs);
+            GLRender::SetVertexProgramAttrib(13, 3, GL_FLOAT, pNode->m_nVertexStride,
+                                             pData + pNode->m_nTangentOfs + 12);
+            GLRender::SetVertexProgramAttrib(14, 3, GL_FLOAT, pNode->m_nVertexStride,
+                                             pData + pNode->m_nTangentOfs + 24);
             ASLgl::glEnableVertexAttribArrayARB(12);
             ASLgl::glEnableVertexAttribArrayARB(13);
             ASLgl::glEnableVertexAttribArrayARB(14);
@@ -10196,14 +10189,12 @@ void GLRender::SetInterleavedBuffer(unsigned int nStride, int nFlags, unsigned i
         {
             int nSkinStride = pNode->m_nVertexStride;
             MdlNodeSkin* pSkin = pNode->AsMdlNodeSkin();
-            if (usearbvertexprograms)
-                ASLgl::glVertexAttribPointerARB(1, 4, GL_FLOAT, 0, nSkinStride,
-                    pData + static_cast<uint64_t>(static_cast<unsigned int>(pSkin->m_nBoneWeightsOfs)));
+            GLRender::SetVertexProgramAttrib(1, 4, GL_FLOAT, nSkinStride,
+                pData + static_cast<uint64_t>(static_cast<unsigned int>(pSkin->m_nBoneWeightsOfs)));
             nSkinStride = pNode->m_nVertexStride;
             pSkin = pNode->AsMdlNodeSkin();
-            if (usearbvertexprograms)
-                ASLgl::glVertexAttribPointerARB(4, 4, GL_FLOAT, 0, nSkinStride,
-                    pData + static_cast<uint64_t>(static_cast<unsigned int>(pSkin->m_nBoneIndicesOfs)));
+            GLRender::SetVertexProgramAttrib(4, 4, GL_FLOAT, nSkinStride,
+                pData + static_cast<uint64_t>(static_cast<unsigned int>(pSkin->m_nBoneIndicesOfs)));
             ASLgl::glEnableVertexAttribArrayARB(1);
             ASLgl::glEnableVertexAttribArrayARB(4);
         }
@@ -10899,13 +10890,13 @@ void GLRender::RenderShadowArray(int nStart, int nCount, int nUnused)
     ASLgl::glVertexPointer(3, GL_FLOAT, 12, cm_pUserShadowData);
 
 #if KOTOR1 // K1: always the two-pass front/back draw, culling left as it is
-    ASLgl::glFrontFace(GL_CW);
-    ASLgl::glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
+    SetFrontFace(Aurora::kCullCW);
+    SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
     if (AurVertexBufferObjectARBAvailable())
         ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
     ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
-    ASLgl::glFrontFace(GL_CCW);
-    ASLgl::glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
+    SetFrontFace(Aurora::kCullCCW);
+    SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
     if (AurVertexBufferObjectARBAvailable())
         ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
     ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
@@ -10925,20 +10916,20 @@ void GLRender::RenderShadowArray(int nStart, int nCount, int nUnused)
             ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
         ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
         ASLgl::glEnable(GL_CULL_FACE);
-        ASLgl::glFrontFace(GL_CCW);
+        SetFrontFace(Aurora::kCullCCW);
         ASLgl::glDisable(GL_STENCIL_TEST_TWO_SIDE_EXT);
     }
     else
     {
         unsigned char bWasEnabled = GLRender::IsEnabled(Aurora::kCapCullFace);
         GLRender::Enable(Aurora::kCapCullFace);
-        ASLgl::glFrontFace(GL_CW);
-        ASLgl::glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
+        SetFrontFace(Aurora::kCullCW);
+        SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
         if (AurVertexBufferObjectARBAvailable())
             ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
         ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
-        ASLgl::glFrontFace(GL_CCW);
-        ASLgl::glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
+        SetFrontFace(Aurora::kCullCCW);
+        SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
         if (AurVertexBufferObjectARBAvailable())
             ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
         ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);

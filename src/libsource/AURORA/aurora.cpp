@@ -451,7 +451,7 @@ void AurSetClearColor(float fRed, float fGreen, float fBlue, float fAlpha)
 
 void AurGetClearColor(float* pfColor)
 {
-    ASLgl::glGetFloatv(GL_COLOR_CLEAR_VALUE, pfColor);
+    GLRender::GetClearColor(pfColor);
 }
 
 // The movie-style post effects, speed blur, saturation, scan and film noise.

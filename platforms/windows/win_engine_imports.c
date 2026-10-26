@@ -35,26 +35,36 @@ int __sprintf_chk(char* pszDst, int nFlag, size_t nDstLen, const char* pszFormat
     return n;
 }
 
-#define K2_GL_FORWARD(ret, name, params, args)                                  \
+#define K2_GL_PROC(ret, name, params)                                           \
+    static ret (__stdcall* s_p) params;                                         \
+    if (!s_p) *(void**)&s_p = k2shim_gl_proc_c(#name)
+
+#define K2_GL_FORWARD(name, params, args)                                       \
+    void name params                                                            \
+    {                                                                           \
+        K2_GL_PROC(void, name, params);                                         \
+        s_p args;                                                               \
+    }
+
+#define K2_GL_FORWARD_RET(ret, name, params, args)                              \
     ret name params                                                             \
     {                                                                           \
-        static ret (__stdcall* s_p) params;                                     \
-        if (!s_p) *(void**)&s_p = k2shim_gl_proc_c(#name);                     \
+        K2_GL_PROC(ret, name, params);                                          \
         return s_p args;                                                        \
     }
 
-K2_GL_FORWARD(void, glBindFramebuffer, (unsigned int eTarget, unsigned int nFramebuffer), (eTarget, nFramebuffer))
-K2_GL_FORWARD(void, glDeleteFramebuffers, (int nCount, const unsigned int* pnFramebuffers), (nCount, pnFramebuffers))
-K2_GL_FORWARD(void, glGenFramebuffers, (int nCount, unsigned int* pnFramebuffers), (nCount, pnFramebuffers))
-K2_GL_FORWARD(void, glFramebufferTexture2D,
+K2_GL_FORWARD(glBindFramebuffer, (unsigned int eTarget, unsigned int nFramebuffer), (eTarget, nFramebuffer))
+K2_GL_FORWARD(glDeleteFramebuffers, (int nCount, const unsigned int* pnFramebuffers), (nCount, pnFramebuffers))
+K2_GL_FORWARD(glGenFramebuffers, (int nCount, unsigned int* pnFramebuffers), (nCount, pnFramebuffers))
+K2_GL_FORWARD(glFramebufferTexture2D,
               (unsigned int eTarget, unsigned int eAttachment, unsigned int eTexTarget, unsigned int nTexture, int nLevel),
               (eTarget, eAttachment, eTexTarget, nTexture, nLevel))
-K2_GL_FORWARD(void, glGenRenderbuffers, (int nCount, unsigned int* pnRenderbuffers), (nCount, pnRenderbuffers))
-K2_GL_FORWARD(void, glDeleteRenderbuffers, (int nCount, const unsigned int* pnRenderbuffers), (nCount, pnRenderbuffers))
-K2_GL_FORWARD(void, glBindRenderbuffer, (unsigned int eTarget, unsigned int nRenderbuffer), (eTarget, nRenderbuffer))
-K2_GL_FORWARD(void, glRenderbufferStorage, (unsigned int eTarget, unsigned int eFormat, int nWidth, int nHeight),
+K2_GL_FORWARD(glGenRenderbuffers, (int nCount, unsigned int* pnRenderbuffers), (nCount, pnRenderbuffers))
+K2_GL_FORWARD(glDeleteRenderbuffers, (int nCount, const unsigned int* pnRenderbuffers), (nCount, pnRenderbuffers))
+K2_GL_FORWARD(glBindRenderbuffer, (unsigned int eTarget, unsigned int nRenderbuffer), (eTarget, nRenderbuffer))
+K2_GL_FORWARD(glRenderbufferStorage, (unsigned int eTarget, unsigned int eFormat, int nWidth, int nHeight),
               (eTarget, eFormat, nWidth, nHeight))
-K2_GL_FORWARD(void, glFramebufferRenderbuffer,
+K2_GL_FORWARD(glFramebufferRenderbuffer,
               (unsigned int eTarget, unsigned int eAttachment, unsigned int eRbTarget, unsigned int nRenderbuffer),
               (eTarget, eAttachment, eRbTarget, nRenderbuffer))
-K2_GL_FORWARD(unsigned int, glCheckFramebufferStatus, (unsigned int eTarget), (eTarget))
+K2_GL_FORWARD_RET(unsigned int, glCheckFramebufferStatus, (unsigned int eTarget), (eTarget))

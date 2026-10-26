@@ -277,9 +277,10 @@ void CSWCCreatureAppearance::GetBTypeModelAndTextureResRef(CCAppearanceInfo* pIn
         szTexCol[3] = cLetter;
     }
     CExoString sValue;
+    int bFound;
     if (pModelOut != nullptr)
     {
-        int bFound = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
+        bFound = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
             pInfo->core.m_nAppearanceId, CExoString(szModelCol), &sValue);
         if (bFound == 0)
             sValue = "";
@@ -287,7 +288,7 @@ void CSWCCreatureAppearance::GetBTypeModelAndTextureResRef(CCAppearanceInfo* pIn
     }
     if (pTextureOut != nullptr)
     {
-        int bFound = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
+        bFound = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
             pInfo->core.m_nAppearanceId, CExoString(szTexCol), &sValue);
         if (bFound == 0)
         {
@@ -551,11 +552,12 @@ int CSWCCreatureAppearance::CreateSimple(unsigned char a, CCAppearanceInfo* pInf
             pPart->AttachToScene(nullptr);
             pPart->AttachToObject(nullptr, nullptr, 0);
         }
+        int bLoaded;
         m_pCreature->UnloadMonkVisuals();
         int bHadCallback = m_pCreature->ClearQuededAnimationCallback();
         m_pCreature->UnloadModel(CSWCAnimBase::ANIM_MODEL_BODY);
         m_pCreature->UpdateMonkVisuals();
-        int bLoaded = m_pCreature->LoadModel(sModelResRef, CSWCAnimBase::ANIM_MODEL_BODY, a);
+        bLoaded = m_pCreature->LoadModel(sModelResRef, CSWCAnimBase::ANIM_MODEL_BODY, a);
         if (bLoaded == 0)
         {
             return 0;
@@ -571,8 +573,7 @@ int CSWCCreatureAppearance::CreateSimple(unsigned char a, CCAppearanceInfo* pInf
 
         if (g_pAppManager->m_pClientExoApp->GetPlayerCreature() == m_pCreature)
         {
-            Gob* pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
-            pModel->SetCanDownSample(0);
+            m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1)->SetCanDownSample(0);
         }
 
         *reinterpret_cast<CCAppearanceCore*>(this) = pInfo->core;  // idiom-exempt: not a base-class relationship — CSWCCreatureAppearance's own 0x00-0x3f fields independently mirror CCAppearanceCore's layout (see the EFFECTIVE note above); the orig itself compiles this as one aggregate copy (paired NEON ldp/stp), confirmed via bltally/dump, not per-field stores
@@ -586,15 +587,13 @@ int CSWCCreatureAppearance::CreateSimple(unsigned char a, CCAppearanceInfo* pInf
         unsigned char nType = static_cast<unsigned char>(GetAnimType(sModelType));
         if ((nType & 0xfe) == 2 && sModelType.Find('L', 0) == -1)
         {
-            CSWCAnimBase* pAnimBase = m_pCreature->GetAnimationBase();
-            if (pAnimBase != nullptr)
+            if (m_pCreature->GetAnimationBase() != nullptr)
                 m_pCreature->GetAnimationBase()->SetWieldLimited(0);
             m_pCreature->SetCreatureType(CSWCAnimBase::CREATURE_TYPE_FULL);
         }
         else
         {
-            CSWCAnimBase* pAnimBase = m_pCreature->GetAnimationBase();
-            if (pAnimBase != nullptr)
+            if (m_pCreature->GetAnimationBase() != nullptr)
                 m_pCreature->GetAnimationBase()->SetWieldLimited(1);
             m_pCreature->SetCreatureType(CSWCAnimBase::CREATURE_TYPE_LIMITED);
         }
@@ -605,8 +604,7 @@ int CSWCCreatureAppearance::CreateSimple(unsigned char a, CCAppearanceInfo* pInf
                 pInfo->core.m_nAppearanceId, CExoString("RaceTex"), &sEnvMap);
             if (bFound != 0)
             {
-                int bExists = g_pExoResMan->Exists(CResRef(sEnvMap), RESTYPE_TGA, static_cast<unsigned int*>(nullptr));
-                if (bExists != 0 ||
+                if (g_pExoResMan->Exists(CResRef(sEnvMap), RESTYPE_TGA, static_cast<unsigned int*>(nullptr)) != 0 ||
                     g_pExoResMan->Exists(CResRef(sEnvMap), RESTYPE_TPC, static_cast<unsigned int*>(nullptr)) != 0)
                 {
                     m_pCreature->ReplaceTexture(CResRef(""), CResRef(sEnvMap), 1);

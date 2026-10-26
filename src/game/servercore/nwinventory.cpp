@@ -23,7 +23,7 @@ CSWInventory::~CSWInventory()
 
 int CSWInventory::FindSlot(unsigned int nBaseItem)
 {
-    unsigned int nSlots = g_pRules->m_pBaseItemArray->GetBaseItem(nBaseItem)->m_nEquipableSlots;
+    unsigned int nSlots = g_pRules->GetBaseItem(nBaseItem)->m_nEquipableSlots;
     if (nSlots & SLOT_HEAD) return SLOT_HEAD;
     if (nSlots & SLOT_BODY) return SLOT_BODY;
     if (nSlots & SLOT_BOOTS) return SLOT_BOOTS;

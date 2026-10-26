@@ -1187,6 +1187,7 @@ public:
     bool IsMdlNodeSkin();
     bool IsMdlNodeTrigger();
     bool IsMdlNodeTriMesh();
+    char* TranslateNodeName();
     unsigned short m_nFlags;
     short m_nNodeID;
     int  m_nNameIndex;
@@ -1761,3 +1762,10 @@ public:
     List<AnimationEvent> m_events;
     Model*   m_pModel;
 };
+
+// The node's name, from the string table of the model that owns its tree (an animation's tree
+// borrows its model's).
+inline char* MdlNode::TranslateNodeName()
+{
+    return (m_pTree->AsModel() ? m_pTree->AsModel() : m_pTree->AsAnimation()->m_pModel)->m_listStrings[m_nNameIndex];
+}

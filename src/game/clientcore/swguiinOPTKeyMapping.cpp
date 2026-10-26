@@ -34,8 +34,7 @@ extern CTlkTable* g_pTlkTable;
 CSWGuiInGameOptKeyMappings::CSWGuiInGameOptKeyMappings(CSWGuiManager* pGuiManager)
     : CSWGuiPanel(pGuiManager)
 {
-    m_bCapturing = 0;
-    g_pExoInput->SetCaptureKeyboardKeys(0);
+    SetCaptureKeyboardMode(0);
     m_nFilterMode = FILTER_MOVE;
     m_pCaptureEvent = 0;
 
@@ -205,21 +204,10 @@ void CSWGuiInGameOptKeyMappings::OnAcceptClick(CSWGuiControl* pControl)
         if (pButton->m_bDisabled == 0 && pButton->m_bChanged != 0)
             pButton->PostChangeToEvent();
     }
-    m_bCapturing = 0;
-    g_pExoInput->SetCaptureKeyboardKeys(0);
+    SetCaptureKeyboardMode(0);
     m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
     m_pGuiManager->PopModalPanel();
-
-#if KOTOR1
-    // K1 only changes this panel's state, not the whole chain.
-    m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
-#else
-    CSWGuiPanel* pChain = this;
-    do {
-        pChain->m_stateFlags = static_cast<unsigned short>((pChain->m_stateFlags & static_cast<unsigned short>(~PANEL_REMOVE_STATE_MASK)) | PANEL_REMOVE_AND_DELETE);
-        pChain = pChain->m_pNextInChain;
-    } while (pChain != 0);
-#endif
+    SetToBeDeleted(0);
 }
 
 void CSWGuiInGameOptKeyMappings::OnFilterMove(CSWGuiControl* pControl)
@@ -321,11 +309,10 @@ void CSWGuiInGameOptKeyMappings::HandleInputEvent(int type, int val)
         switch (type) {
         case INPUTEVENT_GUI_B:
         case INPUTEVENT_GUI_BACK:
-            m_bCapturing = 0;
-            g_pExoInput->SetCaptureKeyboardKeys(0);
+            SetCaptureKeyboardMode(0);
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-            m_stateFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE);
+            SetToBeDeleted(0);
             return;
         }
     }
@@ -335,17 +322,10 @@ void CSWGuiInGameOptKeyMappings::HandleInputEvent(int type, int val)
         switch (type) {
         case INPUTEVENT_GUI_B:
         case INPUTEVENT_GUI_BACK: {
-            m_bCapturing = 0;
-            g_pExoInput->SetCaptureKeyboardKeys(0);
+            SetCaptureKeyboardMode(0);
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-
-            CSWGuiPanel* pChain = this;
-            do {
-                pChain->m_stateFlags =
-                    static_cast<unsigned short>((pChain->m_stateFlags & static_cast<unsigned short>(~PANEL_REMOVE_STATE_MASK)) | PANEL_REMOVE_AND_DELETE);
-                pChain = pChain->m_pNextInChain;
-            } while (pChain != 0);
+            SetToBeDeleted(0);
             return;
         }
         case INPUTEVENT_GUI_Y:
@@ -489,10 +469,10 @@ void CSWGuiKeyMapButton::SetDescription(const CExoString& sActionName)
     m_text.m_params.SetText(sKey);
     sKey = g_pTlkTable->GetSimpleString(STRREF_NONE_SET);
 
+    int nKey;
     CExoInputEventDesc* pEvent =
         static_cast<CExoInputEventDesc*>(g_pExoInput->GetEvent(m_nActionId, -1));
     if (pEvent != 0) {
-        int nKey;
         if (pEvent->Is2Button() != 0 && m_nEventClass >= 2) {
             if (m_bChanged == 0) {
                 nKey = static_cast<CExoInputeventDesc2ButtonAxis*>(pEvent)->m_nKeyCode2;
@@ -665,30 +645,17 @@ void CSWGuiKeyMapButton::PostChangeToEvent()
 
 void CSWGuiInGameOptKeyMappings::SetCaptureEvent(CSWGuiKeyMapButton* pButton)
 {
-    CSWGuiKeyMapButton* pPrev = m_pCaptureEvent;
-    if (pPrev != pButton) {
-        if (pPrev != 0) {
-            pPrev->UpdateColor();
-            pPrev->m_btnKey.m_border.m_params.SetPulsingAlpha(0, 0, 0);
-        }
-        m_bCapturing = 0;
+    if (m_pCaptureEvent != pButton) {
+        if (m_pCaptureEvent != 0)
+            m_pCaptureEvent->SetEditing(0);
         m_listBox.bSelectOnLeftClick = 0;
-        g_pExoInput->SetCaptureKeyboardKeys(0);
+        SetCaptureKeyboardMode(0);
     }
     if (pButton != 0) {
         m_pCaptureEvent = pButton;
-#if KOTOR1
-        // K1's capture highlight is COLOR_YELLOW.
-        pButton->m_btnKey.m_border.m_params.m_color =
-            *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
-#else
-        pButton->m_btnKey.m_border.m_params.m_color =
-            *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_HIGHLIGHT);
-#endif
-        pButton->m_btnKey.m_border.m_params.SetPulsingAlpha(1, 1, 1);
-        m_bCapturing = 1;
+        pButton->SetEditing(1);
         m_listBox.bSelectOnLeftClick = 1;
-        g_pExoInput->SetCaptureKeyboardKeys(1);
+        SetCaptureKeyboardMode(1);
     }
 }
 
@@ -770,15 +737,7 @@ CSWGuiKeyMapButton::CSWGuiKeyMapButton(CSWGuiInGameOptKeyMappings* pOwner)
 void CSWGuiKeyMapButton::onControlEntered(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    CSWGuiInGameOptKeyMappings* pOwner = m_pOwner;
-    CSWGuiKeyMapButton* pCapture = pOwner->m_pCaptureEvent;
-    if (pCapture != 0) {
-        pCapture->UpdateColor();
-        pCapture->m_btnKey.m_border.m_params.SetPulsingAlpha(0, 0, 0);
-        pOwner->m_bCapturing = 0;
-        pOwner->m_listBox.bSelectOnLeftClick = 0;
-        g_pExoInput->SetCaptureKeyboardKeys(0);
-    }
+    m_pOwner->SetCaptureEvent(0);
 }
 
 void CSWGuiKeyMapButton::onControlExit(CSWGuiControl* pControl)

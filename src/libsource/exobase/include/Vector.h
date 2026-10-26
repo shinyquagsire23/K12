@@ -56,6 +56,22 @@ inline Vector operator*(const Vector& v, float f) {
     return r;
 }
 
+inline Vector operator*(float f, const Vector& v) {
+    Vector r = { f * v.x, f * v.y, f * v.z };
+    return r;
+}
+
+// Divides by f through its reciprocal; a zero divisor returns the vector unchanged.
+inline Vector operator/(const Vector& v, float f) {
+    if (f == 0.0f)
+        return v;
+    float fInv = 1.0f / f;
+    Vector r = { fInv * v.x, fInv * v.y, fInv * v.z };
+    return r;
+}
+
+inline int operator!=(const Vector& a, const Vector& b) { return !equal(a, b); }
+
 inline Vector operator-(const Vector& a, const Vector& b) {
     Vector r = { a.x - b.x, a.y - b.y, a.z - b.z };
     return r;

@@ -47,6 +47,13 @@ public:
     FModAudioSystemChannelInfo();
     ~FModAudioSystemChannelInfo();
     void Reset();
+    // Takes ownership of the 3D position, freeing the one it replaces.
+    void SetPosition(FMOD_VECTOR* pPosition)
+    {
+        if (m_pVec3DPosition != 0 && m_pVec3DPosition != pPosition)
+            delete m_pVec3DPosition;
+        m_pVec3DPosition = pPosition;
+    }
 
     int            m_nUID;
     int            m_nPriority;

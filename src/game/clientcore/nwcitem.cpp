@@ -237,7 +237,7 @@ void CSWCItem::SetStackSize(int nStackSize)
 {
     m_nStackSize = nStackSize;
     int nBase = m_baseItem;
-    g_pRules->m_pBaseItemArray->GetBaseItem(nBase);
+    g_pRules->GetBaseItem(nBase);
 }
 
 void CSWCItem::SetItemPropertyUsesLeft(int nIndex, unsigned short nUses)
@@ -372,8 +372,7 @@ void CSWCItem::PlayDropSound()
     }
     else
     {
-        unsigned char nInvSound =
-            g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_nInvSoundType;
+        unsigned char nInvSound = g_pRules->GetBaseItem(m_baseItem)->m_nInvSoundType;
         resSound = g_pAppManager->m_pClientExoApp->GetItemDropSound(nInvSound);
     }
     g_pExoSound->PlayOneShotSound(resSound, PRIORITY_GROUP_GUI, 0, 0, 0.0f, 0.0f);
@@ -422,14 +421,14 @@ void CSWCItem::UpdateOrientation(const Vector& v)
     K2_UNUSED(v);
     Quaternion q;
     float fPitch, fRoll;
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_bRotateOnGround == 1)
+    if (g_pRules->GetBaseItem(m_baseItem)->m_bRotateOnGround == 1)
     {
         fPitch = 0.0f;
         fRoll = 90.0f;
     }
     else
     {
-        fPitch = g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_bRotateOnGround == 2
+        fPitch = g_pRules->GetBaseItem(m_baseItem)->m_bRotateOnGround == 2
                      ? 90.0f
                      : 0.0f;
         fRoll = 0.0f;
@@ -539,8 +538,7 @@ CExoString CSWCItem::GetName(int nForm)
     if (m_sDisplayName.GetLength() > 0
         && m_bIdentified != 0)
         return m_sDisplayName;
-    g_pTlkTable->Fetch(static_cast<unsigned int>(g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)
-                           ->m_nNameStrRef),
+    g_pTlkTable->Fetch(static_cast<unsigned int>(g_pRules->GetBaseItem(m_baseItem)->m_nNameStrRef),
                        strRes, CTlkTable::GENDER_MALE);
     sName = strRes.text;
     if (m_bIdentified == 0)
@@ -562,7 +560,7 @@ int CSWCItem::LoadVisualEffect(unsigned char nWhich)
     CExoString sEffect;
     if (m_pModel == 0)
         return 0;
-    CSWBaseItem* pBaseItem = g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem);
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(m_baseItem);
     if (pBaseItem == 0)
         return 0;
     sEffect = pBaseItem->m_resRefStem;
@@ -607,7 +605,7 @@ void CSWCItem::PowerItem(int nPowered, int b, int c, int d)
         return;
     }
     ResolveCreaturePoweredAnimations(nPowered);
-    if (g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_bPoweredItem != 1)
+    if (g_pRules->GetBaseItem(m_baseItem)->m_bPoweredItem != 1)
         return;
     g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_equippedByObjectId);
 #if KOTOR1  // K1 fetches the anim base only on a state change and never null-tests it
@@ -626,7 +624,7 @@ void CSWCItem::PowerItem(int nPowered, int b, int c, int d)
         if (m_pPropertySound == 0)
         {
             m_pPropertySound = new CExoSoundSource(CResRef(
-                g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_sPoweredSnd));
+                g_pRules->GetBaseItem(m_baseItem)->m_sPoweredSnd));
             m_pPropertySound->Set3D(1);
             m_pPropertySound->SetPosition(vPos, 0.0f);
         }
@@ -662,8 +660,7 @@ void CSWCItem::PowerItem(int nPowered, int b, int c, int d)
                 // Re-powering after a switch: the blade's own one-shot.
                 if (d == 0)
                     g_pExoSound->Play3DOneShotSound(
-                        CResRef(
-                            g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_sPowerDownSnd),
+                        CResRef(g_pRules->GetBaseItem(m_baseItem)->m_sPowerDownSnd),
                         vPos, 0.0f, PRIORITY_GROUP_SINGLE_SHOT_GLOBAL, 0, 0, 0.0f, 0.0f);
             }
             else
@@ -675,8 +672,7 @@ void CSWCItem::PowerItem(int nPowered, int b, int c, int d)
                         ->PlayAnimation(const_cast<char*>(NULL_NAME), 1.0f, 0, 0.0f);
                 if (d == 0)
                     g_pExoSound->Play3DOneShotSound(
-                        CResRef(
-                            g_pRules->m_pBaseItemArray->GetBaseItem(m_baseItem)->m_sPowerUpSnd),
+                        CResRef(g_pRules->GetBaseItem(m_baseItem)->m_sPowerUpSnd),
                         vPos, 0.0f, PRIORITY_GROUP_SINGLE_SHOT_GLOBAL, 0, 0, 0.0f, 0.0f);
             }
             m_pModel->SetAnimation(nAnimPowered, 1.0f, 1, 0.0f);

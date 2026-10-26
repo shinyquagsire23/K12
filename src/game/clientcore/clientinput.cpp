@@ -349,7 +349,14 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
                             nInsertAt = j + 1;
                     }
                     if (nInsertAt != -1) {
+#if KOTOR1  // K1 always inserts
                         events.Insert(events.m_pArray[i], nInsertAt);
+#else
+                        if (nInsertAt < nEvents)
+                            events.Insert(events.m_pArray[i], nInsertAt);
+                        else
+                            events.Add(events.m_pArray[i]);
+#endif
                         events.DelIndex(i);
                     }
                 }
@@ -2338,6 +2345,7 @@ show_walk:
 // current animation into a drive-control packet, a waypoint walk, a turn in place or a strafe.
 void CClientExoAppInternal::UpdateDriveMode()
 {
+    Vector vFacing;
     CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
 #ifdef K2_HOST_BUILD
     if (pPlayer != 0) {
@@ -2424,7 +2432,8 @@ void CClientExoAppInternal::UpdateDriveMode()
             if (static_cast<unsigned long long>(nNow) - m_nDriveKeyPressTime > 49)
                 goto waypoint_else;
             Vector vDir = -pPlayer->m_orientation;
-            Vector vTarget = pPlayer->m_position - normalize(vDir) * 0.5f;
+            vDir = normalize(vDir) * 0.5f;
+            Vector vTarget = pPlayer->m_position - vDir;
             pPlayer->ComputeZValue(pPlayer->m_pArea, &vTarget, pPlayer->m_position.z, 0);
             m_pSWCMessage->SendPlayerToServerInput_WalkToWayPoint(
                 pPlayer->m_pArea->m_objectId, vTarget.x, vTarget.y, vTarget.z,
@@ -2441,7 +2450,8 @@ void CClientExoAppInternal::UpdateDriveMode()
                 float dz = pTarget->m_position.z - pPlayer->m_position.z;
                 if (dx * dx + dy * dy + dz * dz <= 4.0f) {
                     Vector vDir = pPlayer->m_orientation;
-                    Vector vTarget = pPlayer->m_position - normalize(vDir) * 0.5f;
+                    vDir = normalize(vDir) * 0.5f;
+                    Vector vTarget = pPlayer->m_position - vDir;
                     pPlayer->ComputeZValue(pPlayer->m_pArea, &vTarget, pPlayer->m_position.z, 0);
                     m_pSWCMessage->SendPlayerToServerInput_WalkToWayPoint(
                         pPlayer->m_pArea->m_objectId, vTarget.x, vTarget.y, vTarget.z,
@@ -2458,8 +2468,8 @@ void CClientExoAppInternal::UpdateDriveMode()
 
 waypoint_else:
     if (bDrive) {
-        double dFacing =
-            atan2(static_cast<double>(pPlayer->m_orientation.y), static_cast<double>(pPlayer->m_orientation.x)) * 57.295776f;
+        vFacing = pPlayer->m_orientation;
+        double dFacing = atan2(static_cast<double>(vFacing.y), static_cast<double>(vFacing.x)) * 57.295776f;
         if (dFacing < 0.0)
             dFacing = dFacing + 360.0;
         int nHeading = static_cast<int>(dFacing * 10.0);
@@ -2467,7 +2477,6 @@ waypoint_else:
                                                             static_cast<unsigned short>(nHeading),
                                                             nTag, static_cast<unsigned char>(nMoveBits));
         double dAngle = static_cast<double>(static_cast<unsigned short>(nHeading)) / 10.0 * 0.017453292f;
-        Vector vFacing;
         vFacing.x = static_cast<float>(cos(dAngle));
         vFacing.y = static_cast<float>(sin(dAngle));
         vFacing.z = 0.0f;
@@ -2488,7 +2497,8 @@ turn_walk:
             vDir = Vector(-pPlayer->m_orientation.y, pPlayer->m_orientation.x, pPlayer->m_orientation.z);
         else if (m_keyboardModalFlags[6] != 0)
             vDir = Vector(pPlayer->m_orientation.y, -pPlayer->m_orientation.x, pPlayer->m_orientation.z);
-        vTarget = pPlayer->m_position + normalize(vDir) * 0.5f;
+        vDir = normalize(vDir) * 0.5f;
+        vTarget = vDir + pPlayer->m_position;
         pPlayer->ComputeZValue(pPlayer->m_pArea, &vTarget, pPlayer->m_position.z, 0);
         m_pSWCMessage->SendPlayerToServerInput_WalkToWayPoint(
             pPlayer->m_pArea->m_objectId, vTarget.x, vTarget.y, vTarget.z,

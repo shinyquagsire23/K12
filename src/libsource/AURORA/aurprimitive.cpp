@@ -81,24 +81,26 @@ void VertexPrimitive::Rebuild()
     m_bRebuildPending = 1;
 }
 
-// Re-runs the subtype's array setup and clears the rebuild-pending flag. The colour client array is
-// toggled first, on whether another gob is already lit.
-//
-// The two disable calls stay separate branches rather than one `if (a && !b)`: folding them
-// changes the emitted control flow.
-void VertexPrimitive::SetupVertexArraysStandard()
+// The vertex colour array is live only for a mesh with a colour pool, and never while the light
+// manager is isolating one gob. The two disable calls stay separate branches rather than one
+// `if (a && !b)`: folding them changes the emitted control flow.
+inline void SetupColorState(bool bHasColorPool)
 {
-    PartTriMesh* pTriMesh = m_pPart->AsPartTriMesh();
-
-    if (pTriMesh->m_bHasColorPool) {
-        if (LightManager::m_pOnlyGob)
-            GLRender::DisableClientState(Aurora::kClientStateColor);
-        else
+    if (bHasColorPool) {
+        if (!LightManager::m_pOnlyGob)
             GLRender::EnableClientState(Aurora::kClientStateColor);
+        else
+            GLRender::DisableClientState(Aurora::kClientStateColor);
     } else {
         GLRender::DisableClientState(Aurora::kClientStateColor);
     }
+}
 
+// Re-runs the subtype's array setup and clears the rebuild-pending flag, after toggling the colour
+// client array.
+void VertexPrimitive::SetupVertexArraysStandard()
+{
+    SetupColorState(m_pPart->AsPartTriMesh()->m_bHasColorPool);
     SetupArrays();
     m_bRebuildPending = 0;
 }
@@ -403,13 +405,9 @@ unsigned char* VertexPrimitiveSkinned::ReconnectArraysVAR(unsigned char* paData)
     MdlNodeTriMesh* node = static_cast<MdlNodeTriMesh*>(m_pNode);
     int nCount = static_cast<short>(node->m_nVertexCount);
 
-    if (usearbvertexprograms) {
-        ASLgl::glVertexAttribPointerARB(1, 4, GL_FLOAT, 0, 0, p);
-    }
+    GLRender::SetVertexProgramAttrib(1, 4, GL_FLOAT, 0, p);
     p += nCount * 16;
-    if (usearbvertexprograms) {
-        ASLgl::glVertexAttribPointerARB(4, 4, GL_SHORT, 0, 0, p);
-    }
+    GLRender::SetVertexProgramAttrib(4, 4, GL_SHORT, 0, p);
     p = reinterpret_cast<unsigned char*>(reinterpret_cast<unsigned int*>(p) + nCount);
     return p;
 }

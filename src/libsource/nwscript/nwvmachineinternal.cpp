@@ -156,15 +156,17 @@ int CVirtualMachineInternal::RunScript(CExoString* pScriptName, unsigned long lo
         m_pCmdImplementer->m_oidSelf = m_anScriptOid[m_nSituationCount];
     }
     // The name is fetched and discarded for a nested script on both outcomes.
+    if (nResult != 0) {
+        if (nOldCount != 0)
+            pScriptName->CStr();
+        return 0;
+    }
     if (nOldCount != 0)
         pScriptName->CStr();
-    if (nResult != 0)
-        return 0;
 
     // Exactly one value left above where the script started is its return value; a stack that came
     // back level means it produced nothing, and anything else is a runaway, trimmed away without
     // being read.
-    int nReturn;
     int nSp = static_cast<int>(m_sStack.m_nStackPointer);
     if (nSp == static_cast<int>(nSpBefore) + 1) {
         if (m_sStack.m_pTypeData[static_cast<int>(nSpBefore)] == NCS_TYPE_INTEGER) {
@@ -172,16 +174,19 @@ int CVirtualMachineInternal::RunScript(CExoString* pScriptName, unsigned long lo
             m_pReturnValue = m_sStack.m_pValueData[static_cast<int>(nSpBefore)];
         }
         m_sStack.SetStackPointer(static_cast<int>(nSpBefore));
-        nReturn = 1;
-    } else if (nSp == static_cast<int>(nSpBefore)) {
-        nReturn = 1;
-    } else {
-        m_sStack.SetStackPointer(static_cast<int>(nSpBefore));
-        nReturn = 0;
+        if (m_nSituationCount == -1)
+            m_sStack.ClearStack();
+        return 1;
     }
+    if (nSp == static_cast<int>(nSpBefore)) {
+        if (m_nSituationCount == -1)
+            m_sStack.ClearStack();
+        return 1;
+    }
+    m_sStack.SetStackPointer(static_cast<int>(nSpBefore));
     if (m_nSituationCount == -1)
         m_sStack.ClearStack();
-    return nReturn;
+    return 0;
 }
 
 // Runs one saved situation: re-seats the operand stack from the situation's own saved copy,

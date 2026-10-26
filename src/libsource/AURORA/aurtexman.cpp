@@ -760,19 +760,25 @@ int AurTextureReplaceTileReferences(CAurScene* pScene, const Vector& v, char* ps
     }
 
     List<CAurTexture*> listTextures;
+    List<CAurTexture*> listMatches;
     SceneBSPGetTileTextures(reinterpret_cast<Scene*>(pScene), v, listTextures);
-    for (int64_t i = 0; i < listTextures.m_count; i++)
+    for (int i = 0; i < listTextures.m_count; i++)
     {
         CAurTexture* pTexture = listTextures.m_pData[i];
-        if (pTexture == 0)
-            continue;
-        if (pTexture->m_pReferenced != pOldBasic)
-            continue;
-        pTexture->m_pReferenced = pNew;
-        AurTextureRelease(pOldBasic);
-        return true;
+        if (pTexture != 0 && pTexture->m_pReferenced == pOldBasic)
+        {
+            listMatches.AddUnique(pTexture);
+            break;
+        }
     }
-    return false;
+    if (listMatches.m_count < 1)
+        return false;
+    for (int i = 0; i < listMatches.m_count; i++)
+    {
+        listMatches.m_pData[i]->m_pReferenced = pNew;
+        AurTextureRelease(pOldBasic);
+    }
+    return true;
 }
 
 
@@ -1434,19 +1440,11 @@ void CAurTextureBasic::AsNormalizeVectorCubeMap()
     m_panTIDIndex[0] = m_nTIDIndex;
     GLRender::Enable(Aurora::kCapNormalize);
     GLRender::SetActiveTexture(1);
-    int nTID = m_nTIDIndex;
-#if KOTOR1
-    ASLgl::glBindTexture(enableTranslationTable[12], nTID);
-    GLRender::cm_nGLCurrentTID[GLRender::cm_uiCurrentStage] = nTID;
+    GLRender::BindTexture(Aurora::kCapTextureCubeMap, m_nTIDIndex);
     GLRender::MakeNormalizationCubeMap(256);
-#else
-    ASLgl::glBindTexture(enableTranslationTable[12], nTID);
-    ASLgl::glTexParameteri(enableTranslationTable[12], GL_TEXTURE_MAX_ANISOTROPY_EXT, GLRender::cm_nAnisotropy);
-    GLRender::cm_nGLCurrentTID[GLRender::cm_uiCurrentStage] = nTID;
-    GLRender::MakeNormalizationCubeMap(256);
-    unsigned int nTarget = texParamTargetTranslationTable[0];
-    ASLgl::glTexParameteri(nTarget, texParamTranslationTable[2], GL_LINEAR);
-    ASLgl::glTexParameteri(nTarget, texParamTranslationTable[3], GL_LINEAR_MIPMAP_LINEAR);
+#if !KOTOR1
+    GLRender::SetTextureParameteri(Aurora::kTexTarget2D, Aurora::kTexParamMagFilter, 5);
+    GLRender::SetTextureParameteri(Aurora::kTexTarget2D, Aurora::kTexParamMinFilter, 6);
 #endif
     GLRender::Disable(Aurora::kCapTextureCubeMap);
     GLRender::SetActiveTexture(0);
@@ -2605,13 +2603,6 @@ enum {
     kCapTexture3D = 20
 };
 
-// The same slots as byte offsets, for the read whose index is chosen at runtime.
-enum {
-    kCapTexture2DOffset = 4 * kCapTexture2D,
-    kCapCubeMapOffset   = 4 * kCapCubeMap,
-    kCapTexture3DOffset = 4 * kCapTexture3D
-};
-
 enum {
     kBlockSizeDXT1 = 8,
     kBlockSizeDXT5 = 16
@@ -2761,14 +2752,12 @@ void AurTextureBindTID(unsigned int nTID, bool bCubeMap, bool bCubeStrip)
         return;
 
         // The table is indexed in bytes here because the slot is chosen at runtime.
-    unsigned int nOffset = bCubeStrip ? kCapTexture3DOffset : kCapTexture2DOffset;
     if (bCube)
-        nOffset = kCapCubeMapOffset;
-
-    ASLgl::glBindTexture(*reinterpret_cast<unsigned int*>(reinterpret_cast<char*>(enableTranslationTable) + nOffset), nTID);
-    ASLgl::glTexParameteri(*reinterpret_cast<unsigned int*>(reinterpret_cast<char*>(enableTranslationTable) + nOffset),
-                           GL_TEXTURE_MAX_ANISOTROPY_EXT, GLRender::cm_nAnisotropy);
-    GLRender::cm_nGLCurrentTID[GLRender::cm_uiCurrentStage] = nTID;
+        GLRender::BindTexture(Aurora::kCapTextureCubeMap, nTID);
+    else if (bCubeStrip)
+        GLRender::BindTexture(Aurora::kCapTexture3D, nTID);
+    else
+        GLRender::BindTexture(Aurora::kCapTexture2D, nTID);
     countbinds++;
 }
 #endif
@@ -2973,15 +2962,14 @@ void AurSnapshot(char* pszName, bool bWrite)
         AurTextureSprintf(szFile, sizeof(szFile), "snap%d.tga", ++g_nSnapshotCounter);
     }
     int nViewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT /* GL_VIEWPORT */, nViewport);
+    GLRender::GetViewPort(nViewport);
     int nPitch = nViewport[2] + ((nViewport[2] % 4 != 0) ? 4 - nViewport[2] % 4 : 0);
     if (bWrite) {
         int nHeight = nViewport[3];
         uint64_t nBytes = nPitch * nHeight * 3;
         unsigned char* pPixels = new unsigned char[nBytes];
         memset(pPixels, 0, nBytes);  // idiom-exempt: runtime length (the viewport's pixels)
-        ASLgl::glReadPixels(0, 0, nPitch, nHeight, textureFormatTranslationTable[1],
-                            GL_UNSIGNED_BYTE /* GL_UNSIGNED_BYTE */, pPixels);
+        GLRender::ReadPixelsFromBuffer(0, 0, nPitch, nHeight, Aurora::kTexFormatRGB, pPixels);
         ImageFlipY(pPixels, nPitch, nHeight, 3);
         ImageWriteTGA(szFile, nPitch, nHeight, 3, pPixels);
         delete[] pPixels;
@@ -3002,14 +2990,13 @@ void AurSnapshot(char* pszName)
         AurTextureSprintf(szFile, sizeof(szFile), "snap%d.tga", ++g_nSnapshotCounter);
     }
     int nViewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT /* GL_VIEWPORT */, nViewport);
+    GLRender::GetViewPort(nViewport);
     int nHeight = nViewport[3];
     int nPitch = nViewport[2] + ((nViewport[2] % 4 != 0) ? 4 - nViewport[2] % 4 : 0);
     int nSize = nPitch * nHeight;
     unsigned char* pPixels = new unsigned char[nSize * 3];
     memset(pPixels, 0, nSize * 3);  // idiom-exempt: 3 is the RGB channel count of a runtime-
-    ASLgl::glReadPixels(0, 0, nPitch, nHeight, textureFormatTranslationTable[1],
-                        GL_UNSIGNED_BYTE /* GL_UNSIGNED_BYTE */, pPixels);
+    GLRender::ReadPixelsFromBuffer(0, 0, nPitch, nHeight, Aurora::kTexFormatRGB, pPixels);
     ImageFlipY(pPixels, nPitch, nHeight, 3);
     ImageWriteTGA(szFile, nPitch, nHeight, 3, pPixels, true);
     delete[] pPixels;
@@ -3033,7 +3020,7 @@ void AurSaveGameSnapshot(char* pszName, int nDimension, bool bFlag, bool bSquare
         AurTextureSprintf(szFile, sizeof(szFile), "snap%d.tga", ++g_nSaveGameSnapshotCounter);
     }
     int nViewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT /* GL_VIEWPORT */, nViewport);
+    GLRender::GetViewPort(nViewport);
     int nHeight = nViewport[3];
     int nWidth = nViewport[2] + ((nViewport[2] % 4 != 0) ? 4 - nViewport[2] % 4 : 0);
     int nDim = nDimension;
@@ -3048,8 +3035,7 @@ void AurSaveGameSnapshot(char* pszName, int nDimension, bool bFlag, bool bSquare
     uint64_t nBytes = nHeight * nWidth * 3;
     unsigned char* pPixels = new unsigned char[nBytes];
     memset(pPixels, 0, nBytes);  // idiom-exempt: runtime length (the viewport's pixels)
-    ASLgl::glReadPixels(0, 0, nWidth, nHeight, textureFormatTranslationTable[1],
-                        GL_UNSIGNED_BYTE /* GL_UNSIGNED_BYTE */, pPixels);
+    GLRender::ReadPixelsFromBuffer(0, 0, nWidth, nHeight, Aurora::kTexFormatRGB, pPixels);
     ImageFlipY(pPixels, nWidth, nHeight, 3);
     unsigned char* pScaled = ImageScale(pPixels, nWidth, nHeight, 3, nDimension, nDim);
     if (!bSquare || bFlag) {
@@ -3079,7 +3065,7 @@ void AurSaveGameSnapshot(char* pszName, int nDimension, bool bFlag)
         AurTextureSprintf(szFile, sizeof(szFile), "snap%d.tga", ++g_nSaveGameSnapshotCounter);
     }
     int nViewport[4];
-    ASLgl::glGetIntegerv(GL_VIEWPORT /* GL_VIEWPORT */, nViewport);
+    GLRender::GetViewPort(nViewport);
     int nWidth = nViewport[2];
     int nHeight = nViewport[3];
     int nDim = nDimension;
@@ -3094,8 +3080,7 @@ void AurSaveGameSnapshot(char* pszName, int nDimension, bool bFlag)
     int nPixels = nHeight * nWidth;
     unsigned char* pPixels = new unsigned char[nPixels * 3];
     memset(pPixels, 0, nPixels * 3);  // idiom-exempt: 3 = RGB channels of a runtime-sized buffer
-    ASLgl::glReadPixels(0, 0, nWidth, nHeight, textureFormatTranslationTable[1],
-                        GL_UNSIGNED_BYTE /* GL_UNSIGNED_BYTE */, pPixels);
+    GLRender::ReadPixelsFromBuffer(0, 0, nWidth, nHeight, Aurora::kTexFormatRGB, pPixels);
     ImageFlipY(pPixels, nWidth, nHeight, 3);
     unsigned char* pScaled = ImageScale(pPixels, nWidth, nHeight, 3, nDimension, nDim);
     if (bFlag) {

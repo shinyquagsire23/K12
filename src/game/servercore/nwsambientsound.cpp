@@ -43,7 +43,7 @@ void CSWSAmbientSound::PlayMusic(int nState)
 // Fills the list with the players in the area and returns their count.
 int CSWSAmbientSound::GetPlayersInArea(CExoArrayList<unsigned long long>* pPlayers)
 {
-    pPlayers->Clear();
+    pPlayers->SetSize(0);
 
     CExoLinkedList<CSWSClient>* ppList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     if (ppList == 0)

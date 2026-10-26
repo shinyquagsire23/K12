@@ -31,6 +31,7 @@ static void K2QolFitCaption(CSWGuiLabel& label)
 #include "exoinput.h"
 #include "tutorial.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // Adds a controller glyph to a button.
 void AspyrAddButtonIcon(CSWGuiButton* pButton, char nIcon);
@@ -362,7 +363,8 @@ CSWGuiAbilitiesCharGen::CSWGuiAbilitiesCharGen(CSWGuiManager* pGuiManager, CSWCC
         m_anBaseValues[5] = nCHA;
     }
 
-    for (int i = 0; i < 6; i++)
+    int i;
+    for (i = 0; i < 6; i++)
     {
         // A points row reports both enter and exit; the plus/minus buttons only the press.
         m_aPointsButtons[i].AddEvent(SWGUIEVENT_FOCUS, this,
@@ -477,16 +479,7 @@ void CSWGuiAbilitiesCharGen::HandleInputEvent(int nEvent, int nArg)
                 m_pGuiManager->PopModalPanel();
                 m_pParentPanel->SetVisible(1);
 
-                CSWGuiPanel* pPanel = this;
-#if KOTOR1  // no panel chain, so this panel is the only one stamped
-                pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-                do
-                {
-                    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-                    pPanel = pPanel->m_pNextInChain;
-                } while (pPanel != 0);
-#endif
+                SetToBeDeleted(0);
 
                 if (m_nMode == 0)
                 {
@@ -684,16 +677,7 @@ void CSWGuiAbilitiesCharGen::HandleCancelButton()
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
 
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1  // no panel chain, so this panel is the only one stamped
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     if (m_nMode != 0)
     {
@@ -972,11 +956,7 @@ void CSWGuiAbilitiesCharGen::SetDescription(unsigned int nStrRef)
     CSWGuiExtent extent = m_lblDescRow.m_extent;
     // Through a pointer, so the height getter stays a virtual call.
     CSWGuiText* pDescText = &m_lblDescRow.m_text;
-#if KOTOR1
-    if (strRes.text.GetLength() >= 1)  // K1 hides the length behind an accessor
-#else
-    if (strRes.text.m_sString != 0 && static_cast<int>(strlen(strRes.text.m_sString)) >= 1)
-#endif
+    if (strRes.text.GetLength() >= 1)
         extent.h = pDescText->GetIdealHeight();
     else
         extent.h = pDescText->GetFontHeight();
@@ -1013,16 +993,7 @@ void CSWGuiAbilitiesCharGen::CompletePanel()
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
 
-    CSWGuiPanel* pPanel = this;
-#if KOTOR1  // no panel chain, so this panel is the only one stamped
-    pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-#else
-    do
-    {
-        pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-        pPanel = pPanel->m_pNextInChain;
-    } while (pPanel != 0);
-#endif
+    SetToBeDeleted(0);
 
     if (m_nMode != 0)
     {

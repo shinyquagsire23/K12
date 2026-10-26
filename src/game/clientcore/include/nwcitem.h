@@ -70,6 +70,8 @@ public:
     virtual CSWCItem* AsSWCItem();
     virtual void      AIUpdate();
     virtual int       LoadModel(const CResRef& r, unsigned char a, unsigned char b);
+    void SetIcon(const CResRef& resRef) { m_iconResRef = resRef; }
+    void SetModelResRef(const CResRef& resRef) { m_modelResRef = resRef; }
     virtual void      UnloadModel();
     virtual void      UnloadModel(unsigned char a);
     virtual void      SetOrientation(const Vector& v);
