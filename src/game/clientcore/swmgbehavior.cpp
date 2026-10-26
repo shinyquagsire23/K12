@@ -1,3 +1,4 @@
+#define K1_AURORA_LIST  // K1's AURORA List layout: an empty watcher list grows to 8
 #include <stddef.h>
 #include "AURORA/aurmodel.h"
 #include "exosound.h"

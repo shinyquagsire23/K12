@@ -645,20 +645,20 @@ float CSWCCreatureStats_ClassInfo::GetMinSpellRange(const CExoString& sRange)
 #ifdef K2_FIX_ENGINE_BUGS
     fUnknown = 0.0f;
 #endif
-    float* pRange;
+    float fRange;
     if (sRange == "T" || sRange == "P")
-        pRange = &g_pRules->m_fMinSpellRange[1];
+        fRange = g_pRules->m_fMinSpellRange[1];
     else if (sRange == "S")
-        pRange = &g_pRules->m_fMinSpellRange[2];
+        fRange = g_pRules->m_fMinSpellRange[2];
     else if (sRange == "M")
-        pRange = &g_pRules->m_fMinSpellRange[3];
+        fRange = g_pRules->m_fMinSpellRange[3];
     else if (sRange == "L")
-        pRange = &g_pRules->m_fMinSpellRange[4];
+        fRange = g_pRules->m_fMinSpellRange[4];
     else if (sRange == "W")
-        pRange = &g_pRules->m_fMinSpellRange[5];
+        fRange = g_pRules->m_fMinSpellRange[5];
     else
         return fUnknown;
-    return *pRange;
+    return fRange;
 }
 
 float CSWCCreatureStats::GetMinSpellRange(const CExoString& sRange)
@@ -1388,15 +1388,7 @@ int CSWCCreatureStats::GetKnownSpell(unsigned char nClassPos, unsigned char nSpe
 {
     if (nClassPos > 1)
         return -1;
-#if KOTOR1
     return m_classes[nClassPos].GetKnownSpell(nSpellLevel, nIndex);
-#else
-    if (nSpellLevel != 0)
-        return -1;
-    if (m_classes[nClassPos].m_spellLevels[nSpellLevel].m_count <= nIndex)
-        return -1;
-    return m_classes[nClassPos].m_spellLevels[nSpellLevel].m_pArray[nIndex];
-#endif
 }
 
 void CSWCCreatureStats::RemoveKnownSpell(unsigned char nClassPos, unsigned int nSpellId)
@@ -2046,6 +2038,19 @@ void CSWCLevelUpStats::SetClass(unsigned char nClassPos, unsigned char nClass)
     SetReflexSavingThrow();
     SetWillSavingThrow();
     SetFortSavingThrow();
+
+#if KOTOR1
+    // K1: a creature with no base hit points yet takes the class's hit die
+    if (m_nHitPointsBase == 0) {
+        unsigned char nHitDie = g_pRules->m_paClasses[nClass].m_nHitDie;
+        short nHP = nHitDie + GetCONMod();
+        if (nHP < 2)
+            nHP = 1;
+        m_nHitPointsBase = nHitDie;
+        m_nMaxHitPoints = nHP;
+        m_nCurrentHitPoints = nHP;
+    }
+#endif
 
     InitializeCombatInformation();
 }

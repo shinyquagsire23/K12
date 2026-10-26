@@ -342,7 +342,11 @@ float g_fIosBloomScaleV    __attribute__((visibility("hidden"))) = 0.8f;
 float g_fIosDistortOffsetU __attribute__((visibility("hidden"))) = 0.5f;
 float g_fIosDistortOffsetV __attribute__((visibility("hidden"))) = 2.4f;
 #endif
+#if KOTOR1  // K1: file-local and read from memory; nothing writes it, so the bloom term is 0
+static volatile float g_fIosBloomAmount;
+#else
 float g_fIosBloomAmount    __attribute__((visibility("hidden")));
+#endif
 __attribute__((visibility("hidden"))) ImposterTable manRefImposter;
 #if KOTOR1
 float g_afIosPostParams[4] __attribute__((visibility("hidden"))) = { 0.6f, 1.9f, 1.0f, 3.0f };
@@ -7078,6 +7082,105 @@ int GetCompressedContactSheetOffset(int nNumBlocks, int nSize, int nLevels)
 
 extern int maxshadowvar;
 
+// Draws the per-frame shadows: expands index pairs into a strip-shaped list and draws it against
+// both stencil faces.
+void GLRender::RenderShadowArray(int nStart, int nCount, int nUnused)
+{
+    K2_UNUSED(nUnused);
+    static unsigned short* pShadowData = new unsigned short[6144];
+
+    if (nCount == 0)
+        return;
+
+    if (nCount > 0)
+    {
+        int nBase = nStart * 2;
+        unsigned short* pOut = pShadowData;
+        for (uint64_t i = 0; i < static_cast<unsigned int>(nCount); i++)
+        {
+            int nVertex0 = m_UsedVertices[PartTriMesh::m_VertexIndices[i * 2]] * 2;
+            int nVertex1 = m_UsedVertices[PartTriMesh::m_VertexIndices[i * 2 + 1]] * 2;
+            if ((i & 1) == 0)
+            {
+                pOut[1] = static_cast<unsigned short>(nVertex0 - 2);
+                pOut[0] = static_cast<unsigned short>(nBase);
+                pOut[2] = static_cast<unsigned short>(nVertex1 - 2);
+                pOut[3] = static_cast<unsigned short>(nVertex0 - 1);
+                pOut[4] = static_cast<unsigned short>(nVertex1 - 1);
+                pOut[5] = static_cast<unsigned short>(nBase | 1);
+            }
+            else
+            {
+                pOut[2] = static_cast<unsigned short>(nVertex0 - 1);
+                pOut[0] = static_cast<unsigned short>(nBase | 1);
+                pOut[1] = static_cast<unsigned short>(nVertex1 - 1);
+                pOut[3] = static_cast<unsigned short>(nVertex1 - 2);
+                pOut[4] = static_cast<unsigned short>(nVertex0 - 2);
+                pOut[5] = static_cast<unsigned short>(nBase);
+            }
+            pOut += 6;
+        }
+    }
+
+    if (AurVertexBufferObjectARBAvailable())
+        ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, 0);
+
+    ASLgl::glVertexPointer(3, GL_FLOAT, 12, cm_pUserShadowData);
+
+#if KOTOR1 // K1: always the two-pass front/back draw, culling left as it is
+    SetFrontFace(Aurora::kCullCW);
+    SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
+    if (AurVertexBufferObjectARBAvailable())
+        ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
+    ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
+    SetFrontFace(Aurora::kCullCCW);
+    SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
+    if (AurVertexBufferObjectARBAvailable())
+        ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
+    ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
+#else
+    if (usetwosidedshadows != 0 && AurTwoSidedStencilAvailable())
+    {
+        ASLgl::glDisable(GL_CULL_FACE);
+        ASLgl::glEnable(GL_STENCIL_TEST_TWO_SIDE_EXT);
+        ASLgl::glActiveStencilFaceEXT(GL_BACK);
+        ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
+        ASLgl::glStencilMask(0xffffffff);
+        ASLgl::glStencilFunc(GL_ALWAYS, 0, 0xffffffff);
+        ASLgl::glActiveStencilFaceEXT(GL_FRONT);
+        ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_INCR_WRAP);
+        ASLgl::glStencilMask(0xffffffff);
+        if (AurVertexBufferObjectARBAvailable())
+            ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
+        ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
+        ASLgl::glEnable(GL_CULL_FACE);
+        SetFrontFace(Aurora::kCullCCW);
+        ASLgl::glDisable(GL_STENCIL_TEST_TWO_SIDE_EXT);
+    }
+    else
+    {
+        unsigned char bWasEnabled = GLRender::IsEnabled(Aurora::kCapCullFace);
+        GLRender::Enable(Aurora::kCapCullFace);
+        SetFrontFace(Aurora::kCullCW);
+        SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
+        if (AurVertexBufferObjectARBAvailable())
+            ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
+        ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
+        SetFrontFace(Aurora::kCullCCW);
+        SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
+        if (AurVertexBufferObjectARBAvailable())
+            ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
+        ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
+        if (!bWasEnabled)
+            GLRender::Disable(Aurora::kCapCullFace);
+    }
+#endif
+
+#if !KOTOR1  // K1 keeps no draw counters
+    countfaces += nCount * 8;
+#endif
+}
+
 // Returns the scratch buffer, not a status.
 void* AllocateShadowMemory(int nSize)
 {
@@ -7093,6 +7196,79 @@ void* AllocateShadowMemory(int nSize)
         s_nShadowMemorySize = nSize;
     }
     return s_pShadowMemory;
+}
+
+struct RenderVertexV { // the walkmesh vertex-pool element, position only
+    float pos[3];
+};
+
+struct RenderVertexC {        // the packed AABBGGRR colour token, indexed by material
+    unsigned int color;
+};
+
+// Builds the shadow volume: renumbers the used vertices, then writes one 24-byte record per vertex.
+int GLRender::BuildShadowArray(Vector const& vOrigin, float const& fHeight, Plane const& plane,
+                               Vector const& vA, Vector const& vB, int nCount,
+                               RenderVertexV* pVerts)
+{
+    static Vector light2temp;
+    static Vector scratch[2];
+
+    int nUsed = 0;
+    if (nCount >= 1)
+    {
+        unsigned short* pUsed = m_UsedVertices;
+        for (uint64_t i = static_cast<unsigned int>(nCount); i != 0; i--, pUsed++)
+        {
+            if (*pUsed == 1)
+            {
+                nUsed++;
+                *pUsed = static_cast<unsigned short>(nUsed);
+            }
+        }
+    }
+
+    float* pShadow = static_cast<float*>(AllocateShadowMemory(nUsed * 24 + 24));
+    cm_pUserShadowData = pShadow;
+
+    if (nCount >= 1)
+    {
+        unsigned short* pUsed = m_UsedVertices;
+        for (uint64_t i = static_cast<unsigned int>(nCount); i != 0; pVerts++, i--, pUsed++)
+        {
+            uint64_t nIndex = *pUsed;
+            if (nIndex == 0)
+                continue;
+
+            uint64_t nOffset = nIndex * 6 - 6;
+
+            scratch[0] = reinterpret_cast<const Vector*>(pVerts)[0];
+            light2temp = normalize(scratch[0] - vOrigin);
+            scratch[1] = light2temp * fHeight + vOrigin;
+
+            if (noclipshadows == 0)
+            {
+                ClipProjection(scratch[0], vOrigin, plane);
+                ClipProjection(scratch[1], vOrigin, plane);
+            }
+
+            if (dontprotectagainstclip != 0)
+            {
+                if ((scratch[0].x - scratch[1].x) * light2temp.x +
+                    (scratch[0].y - scratch[1].y) * light2temp.y +
+                    (scratch[0].z - scratch[1].z) * light2temp.z > 0.0f)
+                    scratch[1] = scratch[0];
+            }
+
+            memcpy(&pShadow[nOffset], scratch, sizeof(scratch));
+        }
+    }
+
+    reinterpret_cast<Vector*>(&pShadow[nUsed * 6])[0] = vA;
+    reinterpret_cast<Vector*>(&pShadow[nUsed * 6])[1] = vB;
+
+// The number of used vertices is the return value.
+    return nUsed;
 }
 
 
@@ -7213,7 +7389,6 @@ static void K1DeletePBuffer(PBUFFERARB_IOS*& pPBuffer)
 }
 #endif
 
-// Creates the five pbuffers and clears the distort target.
 #if KOTOR1 && defined(K2_QOL_FULLSCREEN)
 // desktop K1, a live window change (swguioptions.cpp K1QolApplyDisplay): K1's re-init keeps the
 // scene pbuffers, sized for the old window -- the scene and its viewport stayed at that size.
@@ -7222,58 +7397,6 @@ void K1QolResizeSceneBuffers()
     GLRender::InitializeFrameBufferModifications();
 }
 #endif
-
-void GLRender::InitializeFrameBufferModificationsARB()
-{
-#if KOTOR1 // K1: shaders first, the display size scaled UP for AA, no distort target, two halves only with bloom
-    InitializeFrameBufferModificationFragmentShadersARB();
-#ifdef K2_QOL_K1_ANTIALIAS
-    K1DeletePBuffer(s_pPBuffer);
-    K1DeletePBuffer(s_pHalfPBuffer1);
-    K1DeletePBuffer(s_pHalfPBuffer2);
-#endif
-    int nWidth = g_SDL_mode.w;
-    int nHeight = g_SDL_mode.h;
-    if (IosAntiAliasOn())
-        IosAntiAliasScaleSize(nWidth, nHeight);
-    s_pPBuffer = CreatePBufferIos(nWidth, nHeight);
-    if (IosBloomEnabled())
-    {
-        nWidth /= 2;
-        nHeight /= 2;
-        s_pHalfPBuffer1 = CreatePBufferIos(nWidth, nHeight);
-        s_pHalfPBuffer2 = CreatePBufferIos(nWidth, nHeight);
-    }
-#else
-    int nWidth = g_nScreenWidth;
-    int nHeight = g_nScreenHeight;
-#ifdef K2_QOL_IMPROVEMENTS
-    K2QolDeletePBufferIos(s_pPBuffer);
-    K2QolDeletePBufferIos(s_pDistortPBuffer);
-    K2QolDeletePBufferIos(s_pHalfPBuffer1);
-    K2QolDeletePBufferIos(s_pHalfPBuffer2);
-    K2QolDeletePBufferIos(s_pHalfPBuffer3);
-    K2QolSceneBufferSize(nWidth, nHeight);
-#elif defined(K2_MOBILE_OPT)   // the mobile port's: the scene at 7/10 of a screen 2048 or wider
-    if (nWidth >= 2048)
-    {
-        nWidth = nWidth * 7 / 10;
-        nHeight = nHeight * 7 / 10;
-    }
-#endif
-    s_pPBuffer = CreatePBufferIos(nWidth, nHeight, false);
-    s_pDistortPBuffer = CreatePBufferIos(s_pPBuffer->m_nWidth, s_pPBuffer->m_nHeight, true);
-    IosSetDistortBuffer(true);
-    ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    ASLgl::glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-    glBindFramebuffer(GL_FRAMEBUFFER, s_nSavedDistortFramebuffer);
-    nWidth /= 2;
-    nHeight /= 2;
-    s_pHalfPBuffer1 = CreatePBufferIos(nWidth, nHeight, false);
-    s_pHalfPBuffer2 = CreatePBufferIos(nWidth, nHeight, false);
-    s_pHalfPBuffer3 = CreatePBufferIos(nWidth, nHeight, false);
-#endif
-}
 
 #ifdef K2_QOL_SOFT_SHADOWS
 // Soft shadows, the PC's image-space pass (SetUpSoftShadows / FinishSoftShadowsARB /
@@ -8595,9 +8718,10 @@ void FrameBufferModificationsEndIos(bool bEnable)
             _aglRestoreContext();
             _aglSetCurrentPBuffer(s_pHalfPBuffer1);
             ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBlur);
-            afParam2[0] = g_fIosBloomAmount;
-            afParam2[1] = g_fIosBloomAmount;
-            afParam2[2] = g_fIosBloomAmount;
+            float fBloom = g_fIosBloomAmount;
+            afParam2[0] = fBloom;
+            afParam2[1] = fBloom;
+            afParam2[2] = fBloom;
             afParam2[3] = g_afIosPostParams[3];
             ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 0, afParam2);
             afParam3[0] = 0.0f;
@@ -8866,6 +8990,59 @@ void FrameBufferModificationsEndIos(bool bEnable)
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
     RenderModificationQuad();
     GLRender::Disable(Aurora::kCapBlend);
+#endif
+}
+
+// Creates the five pbuffers and clears the distort target.
+void GLRender::InitializeFrameBufferModificationsARB()
+{
+#if KOTOR1 // K1: shaders first, the display size scaled UP for AA, no distort target, two halves only with bloom
+    InitializeFrameBufferModificationFragmentShadersARB();
+#ifdef K2_QOL_K1_ANTIALIAS
+    K1DeletePBuffer(s_pPBuffer);
+    K1DeletePBuffer(s_pHalfPBuffer1);
+    K1DeletePBuffer(s_pHalfPBuffer2);
+#endif
+    int nWidth = g_SDL_mode.w;
+    int nHeight = g_SDL_mode.h;
+    if (IosAntiAliasOn())
+        IosAntiAliasScaleSize(nWidth, nHeight);
+    s_pPBuffer = CreatePBufferIos(nWidth, nHeight);
+    if (IosBloomEnabled())
+    {
+        nWidth /= 2;
+        nHeight /= 2;
+        s_pHalfPBuffer1 = CreatePBufferIos(nWidth, nHeight);
+        s_pHalfPBuffer2 = CreatePBufferIos(nWidth, nHeight);
+    }
+#else
+    int nWidth = g_nScreenWidth;
+    int nHeight = g_nScreenHeight;
+#ifdef K2_QOL_IMPROVEMENTS
+    K2QolDeletePBufferIos(s_pPBuffer);
+    K2QolDeletePBufferIos(s_pDistortPBuffer);
+    K2QolDeletePBufferIos(s_pHalfPBuffer1);
+    K2QolDeletePBufferIos(s_pHalfPBuffer2);
+    K2QolDeletePBufferIos(s_pHalfPBuffer3);
+    K2QolSceneBufferSize(nWidth, nHeight);
+#elif defined(K2_MOBILE_OPT)   // the mobile port's: the scene at 7/10 of a screen 2048 or wider
+    if (nWidth >= 2048)
+    {
+        nWidth = nWidth * 7 / 10;
+        nHeight = nHeight * 7 / 10;
+    }
+#endif
+    s_pPBuffer = CreatePBufferIos(nWidth, nHeight, false);
+    s_pDistortPBuffer = CreatePBufferIos(s_pPBuffer->m_nWidth, s_pPBuffer->m_nHeight, true);
+    IosSetDistortBuffer(true);
+    ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    ASLgl::glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_nSavedDistortFramebuffer);
+    nWidth /= 2;
+    nHeight /= 2;
+    s_pHalfPBuffer1 = CreatePBufferIos(nWidth, nHeight, false);
+    s_pHalfPBuffer2 = CreatePBufferIos(nWidth, nHeight, false);
+    s_pHalfPBuffer3 = CreatePBufferIos(nWidth, nHeight, false);
 #endif
 }
 
@@ -9792,14 +9969,6 @@ void GLRender::RenderOverlayFilmNoiseARB(unsigned int nTexture, bool bScanNoise)
 #endif
 }
 
-
-struct RenderVertexV { // the walkmesh vertex-pool element, position only
-    float pos[3];
-};
-
-struct RenderVertexC {        // the packed AABBGGRR colour token, indexed by material
-    unsigned int color;
-};
 
 // Draws the face list directly, re-loading its buffer pointer after every GL call.
 void GLRender::DrawTriangles(List<MaxFace>& faces, RenderVertexV* pVerts, RenderVertexC* pColors)
@@ -10844,169 +11013,7 @@ void GLRender::CreateTexture(CAurTexture* pTexture, bool bParam, int nIndex)
     }
 }
 
-// Draws the per-frame shadows: expands index pairs into a strip-shaped list and draws it against
-// both stencil faces.
-void GLRender::RenderShadowArray(int nStart, int nCount, int nUnused)
-{
-    K2_UNUSED(nUnused);
-    static unsigned short* pShadowData = new unsigned short[6144];
 
-    if (nCount == 0)
-        return;
-
-    if (nCount > 0)
-    {
-        int nBase = nStart * 2;
-        unsigned short* pOut = pShadowData;
-        for (uint64_t i = 0; i < static_cast<unsigned int>(nCount); i++)
-        {
-            int nVertex0 = m_UsedVertices[PartTriMesh::m_VertexIndices[i * 2]] * 2;
-            int nVertex1 = m_UsedVertices[PartTriMesh::m_VertexIndices[i * 2 + 1]] * 2;
-            if ((i & 1) == 0)
-            {
-                pOut[1] = static_cast<unsigned short>(nVertex0 - 2);
-                pOut[0] = static_cast<unsigned short>(nBase);
-                pOut[2] = static_cast<unsigned short>(nVertex1 - 2);
-                pOut[3] = static_cast<unsigned short>(nVertex0 - 1);
-                pOut[4] = static_cast<unsigned short>(nVertex1 - 1);
-                pOut[5] = static_cast<unsigned short>(nBase | 1);
-            }
-            else
-            {
-                pOut[2] = static_cast<unsigned short>(nVertex0 - 1);
-                pOut[0] = static_cast<unsigned short>(nBase | 1);
-                pOut[1] = static_cast<unsigned short>(nVertex1 - 1);
-                pOut[3] = static_cast<unsigned short>(nVertex1 - 2);
-                pOut[4] = static_cast<unsigned short>(nVertex0 - 2);
-                pOut[5] = static_cast<unsigned short>(nBase);
-            }
-            pOut += 6;
-        }
-    }
-
-    if (AurVertexBufferObjectARBAvailable())
-        ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, 0);
-
-    ASLgl::glVertexPointer(3, GL_FLOAT, 12, cm_pUserShadowData);
-
-#if KOTOR1 // K1: always the two-pass front/back draw, culling left as it is
-    SetFrontFace(Aurora::kCullCW);
-    SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
-    if (AurVertexBufferObjectARBAvailable())
-        ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
-    ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
-    SetFrontFace(Aurora::kCullCCW);
-    SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
-    if (AurVertexBufferObjectARBAvailable())
-        ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
-    ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
-#else
-    if (usetwosidedshadows != 0 && AurTwoSidedStencilAvailable())
-    {
-        ASLgl::glDisable(GL_CULL_FACE);
-        ASLgl::glEnable(GL_STENCIL_TEST_TWO_SIDE_EXT);
-        ASLgl::glActiveStencilFaceEXT(GL_BACK);
-        ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
-        ASLgl::glStencilMask(0xffffffff);
-        ASLgl::glStencilFunc(GL_ALWAYS, 0, 0xffffffff);
-        ASLgl::glActiveStencilFaceEXT(GL_FRONT);
-        ASLgl::glStencilOp(GL_KEEP, GL_KEEP, GL_INCR_WRAP);
-        ASLgl::glStencilMask(0xffffffff);
-        if (AurVertexBufferObjectARBAvailable())
-            ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
-        ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
-        ASLgl::glEnable(GL_CULL_FACE);
-        SetFrontFace(Aurora::kCullCCW);
-        ASLgl::glDisable(GL_STENCIL_TEST_TWO_SIDE_EXT);
-    }
-    else
-    {
-        unsigned char bWasEnabled = GLRender::IsEnabled(Aurora::kCapCullFace);
-        GLRender::Enable(Aurora::kCapCullFace);
-        SetFrontFace(Aurora::kCullCW);
-        SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilIncr, Aurora::kStencilKeep);
-        if (AurVertexBufferObjectARBAvailable())
-            ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
-        ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
-        SetFrontFace(Aurora::kCullCCW);
-        SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilDecr, Aurora::kStencilKeep);
-        if (AurVertexBufferObjectARBAvailable())
-            ASLgl::glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, 0);
-        ASLgl::glDrawElements(5, nCount * 6, GL_UNSIGNED_SHORT, pShadowData);
-        if (!bWasEnabled)
-            GLRender::Disable(Aurora::kCapCullFace);
-    }
-#endif
-
-#if !KOTOR1  // K1 keeps no draw counters
-    countfaces += nCount * 8;
-#endif
-}
-
-// Builds the shadow volume: renumbers the used vertices, then writes one 24-byte record per vertex.
-int GLRender::BuildShadowArray(Vector const& vOrigin, float const& fHeight, Plane const& plane,
-                               Vector const& vA, Vector const& vB, int nCount,
-                               RenderVertexV* pVerts)
-{
-    static Vector light2temp;
-    static Vector scratch[2];
-
-    int nUsed = 0;
-    if (nCount >= 1)
-    {
-        unsigned short* pUsed = m_UsedVertices;
-        for (uint64_t i = static_cast<unsigned int>(nCount); i != 0; i--, pUsed++)
-        {
-            if (*pUsed == 1)
-            {
-                nUsed++;
-                *pUsed = static_cast<unsigned short>(nUsed);
-            }
-        }
-    }
-
-    float* pShadow = static_cast<float*>(AllocateShadowMemory(nUsed * 24 + 24));
-    cm_pUserShadowData = pShadow;
-
-    if (nCount >= 1)
-    {
-        unsigned short* pUsed = m_UsedVertices;
-        for (uint64_t i = static_cast<unsigned int>(nCount); i != 0; pVerts++, i--, pUsed++)
-        {
-            uint64_t nIndex = *pUsed;
-            if (nIndex == 0)
-                continue;
-
-            uint64_t nOffset = nIndex * 6 - 6;
-
-            scratch[0] = reinterpret_cast<const Vector*>(pVerts)[0];
-            light2temp = normalize(scratch[0] - vOrigin);
-            scratch[1] = light2temp * fHeight + vOrigin;
-
-            if (noclipshadows == 0)
-            {
-                ClipProjection(scratch[0], vOrigin, plane);
-                ClipProjection(scratch[1], vOrigin, plane);
-            }
-
-            if (dontprotectagainstclip != 0)
-            {
-                if ((scratch[0].x - scratch[1].x) * light2temp.x +
-                    (scratch[0].y - scratch[1].y) * light2temp.y +
-                    (scratch[0].z - scratch[1].z) * light2temp.z > 0.0f)
-                    scratch[1] = scratch[0];
-            }
-
-            memcpy(&pShadow[nOffset], scratch, sizeof(scratch));
-        }
-    }
-
-    reinterpret_cast<Vector*>(&pShadow[nUsed * 6])[0] = vA;
-    reinterpret_cast<Vector*>(&pShadow[nUsed * 6])[1] = vB;
-
-// The number of used vertices is the return value.
-    return nUsed;
-}
 
 // Builds the 256x256 luminance-alpha gamma ramp, a linear luminance byte and a gamma alpha byte.
 void GLRender::MakeLookUpTexture(float fGamma)

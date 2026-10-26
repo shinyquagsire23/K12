@@ -331,6 +331,11 @@ int CSWSItemPropertyHandler::ApplyDamageBonus(CSWSItem* pItem, CSWItemProperty* 
 {
     CGameEffect* pEffect = new CGameEffect(1);
 
+#if KOTOR1  // K1: no second weapon set; a zero amount leaks the effect (kept)
+    int nAmount = pProp->m_costTableValue;
+    if (nAmount == 0)
+        return 0;
+#else
     // The second weapon set's two slots never take a damage bonus this way.
     if (a == CSWInventory::SLOT_RIGHTWEAPON2 || a == CSWInventory::SLOT_LEFTWEAPON2) {
         delete pEffect;
@@ -341,6 +346,7 @@ int CSWSItemPropertyHandler::ApplyDamageBonus(CSWSItem* pItem, CSWItemProperty* 
         delete pEffect;
         return 0;
     }
+#endif
 
     pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_DAMAGE_INCREASE);
     pEffect->m_durationTypeBits = CGameEffect::DURATION_TYPE_EQUIPPED |
@@ -404,10 +410,15 @@ int CSWSItemPropertyHandler::ApplyDamagePenalty(CSWSItem* pItem, CSWItemProperty
     int nValue;
     pCostTable->GetINTEntry(pProp->m_costTableValue, CExoString("Value"), &nValue);
     nValue = -nValue;
+#if KOTOR1  // K1: a zero penalty leaks the effect (kept)
+    if (nValue == 0)
+        return 0;
+#else
     if (nValue == 0) {
         delete pEffect;
         return 0;
     }
+#endif
 
     pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_DAMAGE_DECREASE);
     pEffect->m_durationTypeBits = CGameEffect::DURATION_TYPE_EQUIPPED |
@@ -1149,11 +1160,16 @@ int CSWSItemPropertyHandler::ApplyRegeneration(CSWSItem* pItem, CSWItemProperty*
     CGameEffect* pEffect = new CGameEffect(1);
 
     unsigned short nValue = pProp->m_costTableValue;
+#if KOTOR1  // K1: a zero value leaks the effect (kept)
+    if (nValue == 0)
+        return 0;
+#else
     if (nValue == 0)
     {
         delete pEffect;
         return 0;
     }
+#endif
 
     pEffect->SetCreator(pItem->m_objectId);
     pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_REGENERATE);
@@ -2172,10 +2188,15 @@ int CSWSItemPropertyHandler::ApplyACBonus(CSWSItem* pItem, CSWItemProperty* pPro
     C2DA* pCostTable = g_pRules->m_p2DArrays->GetIPRPCostTable(IPRP_COST_TABLE_BONUS);
     int nValue;
     pCostTable->GetINTEntry(pProp->m_costTableValue, CExoString("Value"), &nValue);
+#if KOTOR1  // K1: a zero bonus leaks the effect (kept)
+    if (nValue == 0)
+        return 0;
+#else
     if (nValue == 0) {
         delete pEffect;
         return 0;
     }
+#endif
 
     pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_AC_INCREASE);
     pEffect->m_durationTypeBits = CGameEffect::DURATION_TYPE_EQUIPPED |

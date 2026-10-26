@@ -46,21 +46,10 @@ CExoArrayList<T>& CExoArrayList<T>::operator=(const CExoArrayList<T>& other)
 template <class T>
 void CExoArrayList<T>::Insert(T v, int index)
 {
-#if KOTOR1  // K1 shifts with a plain descending loop, K2 with an explicit guarded do-while
     int i = m_count;
     Add(v);
     for (; i > index; i--)
         m_pArray[i] = m_pArray[i - 1];
-#else
-    int64_t i = m_count;
-    Add(v);
-    if (static_cast<int>(i) > index) {
-        do {
-            m_pArray[i] = m_pArray[i - 1];
-            i--;
-        } while (i > index);
-    }
-#endif
     m_pArray[index] = v;
 }
 

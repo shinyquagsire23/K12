@@ -514,14 +514,13 @@ int CSWGuiInGameOptKeyMappings::UpdateEvent(int nActionId, int nEventClass, unsi
     C2DA* pBindable = g_pRules->m_p2DArrays->m_pBindableKey;
 #if KOTOR1
     // K1 also refuses Caps Lock and Left Ctrl.
-    int bFound = pBindable->GetINTEntry(sKey, CExoString("Bindable"), &nBindable);
-    int nResult = CSWGuiKeyMapButton::KEY_INVALID;
-    if (bFound != 0 && nBindable != 0 &&
-        CExoInput::KEYBOARD_CAPSLOCK != nKeyCode && CExoInput::KEYBOARD_LEFTCTRL != nKeyCode) {
-        IsKeyUsedAlready(nKeyCode, nActionId, nEventClass, nInputClassMask);
-        nResult = CSWGuiKeyMapButton::KEY_GOOD;
-    }
-    return nResult;
+    int bBindable = pBindable->GetINTEntry(sKey, CExoString("Bindable"), &nBindable) != 0 && nBindable != 0;
+    if (!bBindable)
+        return CSWGuiKeyMapButton::KEY_INVALID;
+    if (CExoInput::KEYBOARD_CAPSLOCK == nKeyCode || CExoInput::KEYBOARD_LEFTCTRL == nKeyCode)
+        return CSWGuiKeyMapButton::KEY_INVALID;
+    IsKeyUsedAlready(nKeyCode, nActionId, nEventClass, nInputClassMask);
+    return CSWGuiKeyMapButton::KEY_GOOD;
 #else
     if (pBindable->GetINTEntry(sKey, CExoString("Bindable"), &nBindable) != 0 && nBindable != 0) {
         IsKeyUsedAlready(nKeyCode, nActionId, nEventClass, nInputClassMask);

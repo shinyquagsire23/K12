@@ -122,9 +122,15 @@ void CAurGUIStringInternal::SetString(char* szText) {
     strcpy(m_pText, szText);
 }
 
+#if KOTOR1
+short CAurGUIStringInternal::GetStringSize() {
+    return static_cast<short>(strlen(m_pText));
+}
+#else
 int CAurGUIStringInternal::GetStringSize() {
     return static_cast<int>(strlen(m_pText));
 }
+#endif
 
 // SetString with the length supplied instead of measured: grow and copy when the request is
 // longer than the held buffer, otherwise truncate in place.
@@ -299,8 +305,8 @@ CAurGUIStringInternal::CAurGUIStringInternal(char* szText, char* szFontTexture, 
     m_sizeX = 0;
     m_sizeY = 0;
 
-#if KOTOR1  // K1: the scale is 1.3x the screen height over 768 lines and fAlpha is unused
-    K2_UNUSED(fAlpha);
+#if KOTOR1  // K1: the scale is 1.3x the screen height over 768 lines; the fAlpha seed is overwritten
+    m_fFontScale = fAlpha;
     m_fFontScale = static_cast<float>(g_SDL_mode.h) * 1.3f / 768.0f;
 #else
     float fScale = GetResolutionTextScalar();
@@ -992,7 +998,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
     static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
 #endif
 
-    if (CAurGUIStringInternal::GetStringSize() == 0 || noguirender)
+    if (static_cast<int>(strlen(m_pText)) == 0 || noguirender)
         return;
 
     GLRender::Disable(Aurora::kCapLighting);

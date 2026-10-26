@@ -8258,6 +8258,8 @@ castFailed:
     return CSWSObject::ACTION_FAILED;
 }
 
+// EFFECTIVE: the orig's pads and frame in both games; the rest is one spill pair, a tbnz order and an
+// unshared ACTION_COMPLETE return tail (K2 +12 B, K1 +4 B).
 int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
 {
     Vector vTarget = {};
@@ -8266,17 +8268,40 @@ int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
     unsigned int nNowTod;
     unsigned int nElapsedDay;
     unsigned int nElapsedTod;
+    unsigned int nSpellId;
+    int nClass;
+    int nDomainLevel;
+    int nMetaMagic;
+    int bSkipCharge;
+    unsigned long long oidTarget;
+    unsigned int nFlags;
+    int nFeatId;
+    int nReadyKind;
+    int nSign;
+    int nAttackCast;
+    int nAttackBit;
+    unsigned char nPathCount;
+    CSWSpell* pSpell;
+    CGameObject* pObj;
+    CSWSCreature* pBlocker;
+    int nConjureTime;
+    int nCastTime;
+    int nRecovery;
+    int nPause;
+    unsigned short nConjureAnim;
 
     if (m_bInParty != 0) {
         CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
         int nIndex = pClient->GetSWParty()->GetIndex(
             pClient->ServerToClientObjectId(m_objectId));
-        if (nIndex >= 0)
+        if (nIndex >= 0) {
+            CSWParty* pParty = pClient->GetSWParty();
 #if KOTOR1  // K1: strref 48208
-            pClient->GetSWParty()->m_members[nIndex].SetCombatMessage(STRREF_USE_LIGHTSABER);
+            pParty->m_members[nIndex].SetCombatMessage(STRREF_USE_LIGHTSABER);
 #else
-            pClient->GetSWParty()->m_members[nIndex].SetCombatMessage(STRREF_COMBAT_MODE_ENGAGED);
+            pParty->m_members[nIndex].SetCombatMessage(STRREF_COMBAT_MODE_ENGAGED);
 #endif
+        }
     }
 
     m_nEndRoundScriptTimer = 3000;
@@ -8290,23 +8315,22 @@ int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
         return CSWSObject::ACTION_FAILED;
     }
 
-    unsigned int       nSpellId     = pAction->m_args.m_spellId;
-    int                nClass       = pAction->m_args.m_castClassIndex;
-    int                nDomainLevel = pAction->m_args.m_castDomainLevel;
-    int                nMetaMagic   = pAction->m_args.m_castMetaMagic;
-    int                bSkipCharge  = pAction->m_args.m_bCastSkipReadyCount;
-    unsigned long long oidTarget    = pAction->m_args.m_castTargetId;
-    vTarget.x = pAction->m_args.m_castPointX;
-    vTarget.y = pAction->m_args.m_castPointY;
-    vTarget.z = pAction->m_args.m_castPointZ;
-    unsigned int       nFlags       = pAction->m_args.m_castFlags;
-    int                nFeatId      = pAction->m_args.m_castFeatId;
-    int                nReadyKind   = pAction->m_args.m_castReadyKind;
+    nSpellId = pAction->m_args.m_spellId;
+    nClass = pAction->m_args.m_castClassIndex;
+    nDomainLevel = pAction->m_args.m_castDomainLevel;
+    nMetaMagic = pAction->m_args.m_castMetaMagic;
+    bSkipCharge = pAction->m_args.m_bCastSkipReadyCount;
+    oidTarget = pAction->m_args.m_castTargetId;
+    vTarget = Vector(pAction->m_args.m_castPointX, pAction->m_args.m_castPointY,
+                     pAction->m_args.m_castPointZ);
+    nFlags = pAction->m_args.m_castFlags;
+    nFeatId = pAction->m_args.m_castFeatId;
+    nReadyKind = pAction->m_args.m_castReadyKind;
 
-    int nSign       = nFlags >> 31;
-    int nAttackCast = nFlags & CAST_FLAG_ATTACK;
-    int nAttackBit  = nAttackCast >> 30;
-    unsigned char nPathCount = (nFlags & 0xff) != 0 ? 7 : 6;
+    nSign = nFlags >> 31;
+    nAttackCast = nFlags & CAST_FLAG_ATTACK;
+    nAttackBit = nAttackCast >> 30;
+    nPathCount = (nFlags & 0xff) != 0 ? 7 : 6;
 
     if (oidTarget == OBJECT_INVALID) {
         Vector vDir = vTarget - m_position;
@@ -8318,7 +8342,7 @@ int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
         SetLockOrientationToObject(oidTarget, 0);
     }
 
-    CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
+    pSpell = g_pRules->GetSpell(nSpellId);
     if (pSpell == 0) {
         RemoveSpellActionFromRound();
         ProcessPendingCombatActions();
@@ -8330,7 +8354,7 @@ int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
         ProcessPendingCombatActions();
         return CSWSObject::ACTION_FAILED;
     }
-    if ((pSpell->m_nRequireItemMask & ~nForceItemMask) != 0) {
+    if ((pSpell->m_nRequireItemMask & nForceItemMask) != pSpell->m_nRequireItemMask) {
         RemoveSpellActionFromRound();
         ProcessPendingCombatActions();
         return CSWSObject::ACTION_FAILED;
@@ -8344,14 +8368,13 @@ int CSWSCreature::AIActionCastSpell(CSWSObjectActionNode* pAction)
 
     m_oidSpellTarget = (oidTarget == OBJECT_INVALID) ? m_cachedAreaId : oidTarget;
 
-    CGameObject* pObj = static_cast<CGameObject*>(g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget));
+    pObj = static_cast<CGameObject*>(g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget));
     if (oidTarget != OBJECT_INVALID && pObj == 0) {
         RemoveSpellActionFromRound();
         ProcessPendingCombatActions();
         return CSWSObject::ACTION_FAILED;
     }
     if (pObj != 0 && pObj->AsSWSCreature() != 0) {
-        CSWSCreature* pBlocker;
         if (pObj->AsSWSCreature()->GetDead() != 0)
             goto castBlocked;
         pBlocker = pObj->AsSWSCreature();
@@ -8404,15 +8427,15 @@ castBlocked:
         return CSWSObject::ACTION_COMPLETE;
     }
 
-    int nConjureTime = pSpell->m_nConjureTimeMS;
-    int nCastTime    = pSpell->m_nCastPauseMS;
-    int nRecovery    = pSpell->m_nCastRecoveryMS;
+    nConjureTime = pSpell->m_nConjureTimeMS;
+    nCastTime = pSpell->m_nCastPauseMS;
+    nRecovery = pSpell->m_nCastRecoveryMS;
 
     if (m_pCombatRound->m_bRoundStarted != 0) {
         if (m_pCombatRound->m_bRoundPaused == 0 && m_pCombatRound->m_nCastsThisRound <= 0) {
             m_pCombatRound->SetSpellCastRound(nSpellId, nSign);
             m_pCombatRound->SetRoundPaused(1, m_objectId);
-            int nPause = nCastTime + nConjureTime + nRecovery;
+            nPause = nCastTime + nConjureTime + nRecovery;
             m_pCombatRound->SetPauseTimer(nPause, 0);
             m_pCombatRound->DecrementRoundLength(nPause, 0);
             if (pObj != 0 && m_pCombatRound->m_bEngaged != 0 && pObj->AsSWSCreature() != 0) {
@@ -8428,7 +8451,7 @@ castBlocked:
         m_pCombatRound->StartCombatRound(oidTarget, nEngaged, nMaster, 0, 0);
         m_pCombatRound->SetSpellCastRound(nSpellId, nSign);
         m_pCombatRound->SetRoundPaused(1, m_objectId);
-        int nPause = nCastTime + nConjureTime + nRecovery;
+        nPause = nCastTime + nConjureTime + nRecovery;
         m_pCombatRound->SetPauseTimer(nPause, 0);
         m_pCombatRound->DecrementRoundLength(nPause, 0);
         if (pObj != 0 && nEngaged != 0 && pObj->AsSWSCreature() != 0 &&
@@ -8461,7 +8484,7 @@ castBlocked:
     }
 
     if (nElapsedTod < static_cast<unsigned int>(nConjureTime)) {
-        unsigned short nConjureAnim = pSpell->m_nConjureAnimationKind;
+        nConjureAnim = pSpell->m_nConjureAnimationKind;
         if (nConjureAnim == CSWSpell::CAST_ANIMATION_SELF)
             SetAnimation(SERVER_ANIMATION_CONJURE_1);
         else if (nConjureAnim == CSWSpell::CAST_ANIMATION_DARK)
@@ -8478,6 +8501,7 @@ castBlocked:
     if (pAction->m_bInterruptable == 1) {
         pAction->m_bInterruptable = (m_pCombatRound->m_bEngaged != 0);
         if (nSign == 0) {
+            int i;
             if (GetArea() == 0) {
                 RemoveSpellActionFromRound();
                 ProcessPendingCombatActions();
@@ -8485,9 +8509,13 @@ castBlocked:
             }
             if (nClass != CSWSObject::CAST_CLASS_NONE && m_bSpellChargeSpent == 0) {
                 if (bSkipCharge != 0) {
+                    // The level the skipped charge would have cost; nothing reads it.
+                    int nSpellLevel = nDomainLevel;
                     if (nDomainLevel == 0)
-                        pSpell->GetSpellLevel(m_pStats->GetClass(static_cast<unsigned char>(nClass)));
-                    g_pRules->GetMetaMagicLevelCost(static_cast<unsigned char>(nMetaMagic));
+                        nSpellLevel = pSpell->GetSpellLevel(
+                            m_pStats->GetClass(static_cast<unsigned char>(nClass)));
+                    nSpellLevel += g_pRules->GetMetaMagicLevelCost(static_cast<unsigned char>(nMetaMagic));
+                    K2_UNUSED(nSpellLevel);
                 } else {
                     if (DecrementSpellReadyCount(nSpellId, static_cast<unsigned char>(nClass),
                                                  static_cast<unsigned char>(nDomainLevel),
@@ -8500,7 +8528,7 @@ castBlocked:
                 }
                 m_bSpellChargeSpent = 1;
             }
-            for (int i = 0; i < m_effects.m_count; i++) {
+            for (i = 0; i < m_effects.m_count; i++) {
                 if (m_effects.m_pArray[i]->m_subType ==
                         CSWSEffectListHandler::EFFECT_ENTANGLE) {
                     SetAnimation(SERVER_ANIMATION_READY);
@@ -8612,9 +8640,9 @@ castBlocked:
             SpellCastAndImpact(nSpellId, vTarget, oidTarget, static_cast<unsigned char>(nClass),
                                OBJECT_INVALID, 0, 0, static_cast<unsigned char>(nFlags), nAttackBit);
         } else {
+            CSWSObject* pTarget = 0;
             CGameObject* pProjTarget =
                 static_cast<CGameObject*>(g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget));
-            CSWSObject* pTarget = 0;
             if (pProjTarget != 0)
                 pTarget = pProjTarget->AsSWSObject();
             if (pTarget != 0)

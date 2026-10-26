@@ -266,6 +266,9 @@ void Camera::RenderScene()
         else
             GLRender::SetViewTransform(m_vPosition, m_qOrientation);
 
+#if KOTOR1  // K1 keeps the plane loop rolled
+#pragma clang loop unroll(disable)
+#endif
         for (int iVolume = 0; iVolume < 6; iVolume++) {
             Plane& q = m_viewState.m_aViewVolumes[iVolume];
                         Vector r = RotateVector(Vector(q.a, q.b, q.c), m_qOrientation);

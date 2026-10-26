@@ -829,14 +829,9 @@ int CExoInputeventDesc2ButtonAxis::Is2Button()
 int CExoInputInternal::IsEventInClass(unsigned int nEvent, int nType)
 {
     if (static_cast<unsigned int>(nType) <= 5) {
-#if KOTOR1
         int nCount = m_aEventClass[nType].m_aEventBits.m_count;
         int nWord = static_cast<int>(nEvent) / 32;
         if (nWord >= nCount) {
-#else
-        int nWord = static_cast<int>(nEvent) / 32;
-        if (nWord >= m_aEventClass[nType].m_aEventBits.m_count) {
-#endif
             int nOld = m_aEventClass[nType].m_aEventBits.m_count;
             int nSize = nWord * 2 + 1;
             m_aEventClass[nType].m_aEventBits.SetSize(nSize);

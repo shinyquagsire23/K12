@@ -1725,12 +1725,10 @@ void CExoSoundInternal::PlaySourceOn3DVoice(CExoSoundSourceInternal* pSource, C3
 
 int CExoSoundInternal::GetNumber2DSamplesPlaying()
 {
-    uint64_t i = 0;
     int nPlaying = 0;
-    for (; i < m_nNumber2DVoices; i++)
+    for (uint64_t i = 0; i < m_nNumber2DVoices; i++)
     {
-        CExoSoundSourceInternal* pSource = m_pa2DVoices[i].m_pSource;
-        if (pSource && pSource->IsPlaying())
+        if (m_pa2DVoices[i].m_pSource && m_pa2DVoices[i].m_pSource->IsPlaying())
             nPlaying++;
     }
     return nPlaying;
@@ -1738,12 +1736,10 @@ int CExoSoundInternal::GetNumber2DSamplesPlaying()
 
 int CExoSoundInternal::GetNumber3DSamplesPlaying()
 {
-    uint64_t i = 0;
     int nPlaying = 0;
-    for (; i < m_nNumber3DVoices; i++)
+    for (uint64_t i = 0; i < m_nNumber3DVoices; i++)
     {
-        CExoSoundSourceInternal* pSource = m_pa3DVoices[i].m_pSource;
-        if (pSource && pSource->IsPlaying())
+        if (m_pa3DVoices[i].m_pSource && m_pa3DVoices[i].m_pSource->IsPlaying())
             nPlaying++;
     }
     return nPlaying;

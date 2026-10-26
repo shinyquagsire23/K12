@@ -1,3 +1,4 @@
+#define K1_AURORA_LIST  // K1: the minigame lists grow from 8
 // Swoop-race and turret minigame controller (client side).
 
 #include "appmanager.h"

@@ -930,46 +930,31 @@ Vector CSWSDoor::GetNearestActionPoint(const Vector& pos, int stateOverride) {
     return result;
 }
 
+// EFFECTIVE: K1 MATCH; K2 has the orig's pads and frame, and the orig tail-merges the Tag default's
+// destructor call into the next cleanup block (+4 B).
 int CSWSDoor::LoadDoorExternal(CResGFF* pGFF, CResStruct* pStruct, int external) {
     int success;
     if (external == 0) {
         LoadDoor(pGFF, pStruct, external);
     } else {
-        CResRef emptyResRef("");
-        CResRef templateResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("TemplateResRef"), success, emptyResRef);
+        CResRef templateResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("TemplateResRef"), success, CResRef(""));
         if (success == 0 || LoadFromTemplate(templateResRef) == 0) {
             return 0;
         }
-        {
-            CExoLocString result = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("TransitionDestination"), success, m_transitionDestination);
-            m_transitionDestination = result;
-        }
-        {
-            CExoString linkedToDefault("");
-            CExoString result = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("LinkedTo"), success, linkedToDefault);
-            m_linkedTo = result;
-        }
+        m_transitionDestination = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("TransitionDestination"), success, m_transitionDestination);
+        m_linkedTo = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("LinkedTo"), success, CExoString(""));
         m_linkedToFlags = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("LinkedToFlags"), success, 0);
         {
             CExoString str;
-            {
-                CResRef emptyResRef2("");
-                CResRef linkedToModuleResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("LinkedToModule"), success, emptyResRef2);
-                linkedToModuleResRef.CopyToString(str);
-            }
+            CResRef linkedToModuleResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("LinkedToModule"), success, CResRef(""));
+            linkedToModuleResRef.CopyToString(str);
             m_linkedToModule = str;
 #if !KOTOR1  // K1: no tweak colour and no "Tag" override
             m_bUseTweakColor = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("UseTweakColor"), success, 0);
             m_tweakColor = pGFF->ReadFieldDWORD(pStruct, const_cast<char*>("TweakColor"), success, 0);
-            {
-                CExoString tagDefault("");
-                CExoString result = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), success, tagDefault);
-                str = result;
-            }
-            if (success) {
-                // inlined CSWSObject::SetTag(CExoString const&)
-                m_sTag = str.LowerCase();
-            }
+            str = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), success, CExoString(""));
+            if (success)
+                SetTag(str);
 #endif
         }
     }

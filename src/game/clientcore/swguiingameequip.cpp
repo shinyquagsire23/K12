@@ -2613,7 +2613,7 @@ int CSWGuiInGameEquip::EquipItem(unsigned int nItemId, int nSlot, int nFlag) {
     if (pServerCreature->m_bCombatState != 0
         && pServerCreature->m_pCombatRound->m_oidAttackTarget != OBJECT_INVALID) {
         pServerCreature->AddAttackActions(pServerCreature->m_pCombatRound->m_oidAttackTarget,
-                                          0, 0, 0, 0, 0, 1, 1, SERVER_ANIMATION_ATTACK,
+                                          0, 0, 0, 0, 0, 0, 1, SERVER_ANIMATION_ATTACK,
                                           ATTACK_ANIMATION_TIME_MS, 1, 0, 0, 4, 0);
     }
     return 1;
@@ -2687,7 +2687,7 @@ void CSWGuiInGameEquip::UnequipItem(unsigned int nItemId, int nFlag) {
 
     if (pServerCreature->m_bCombatState != 0
         && pServerCreature->m_pCombatRound->m_oidAttackTarget != OBJECT_INVALID) {
-#if KOTOR1  // K1: the sixth flag is 0 here (EquipItem passes 1)
+#if KOTOR1  // K1: the sixth flag is 0, as in K1's EquipItem
         pServerCreature->AddAttackActions(pServerCreature->m_pCombatRound->m_oidAttackTarget,
                                           0, 0, 0, 0, 0, 0, 1, SERVER_ANIMATION_ATTACK,
                                           ATTACK_ANIMATION_TIME_MS, 1, 0, 0, 4, 0);
@@ -3163,6 +3163,8 @@ void CSWGuiContainer::OnPanelRemoved()
     CSWGuiPanel::OnPanelRemoved();
 }
 
+// EFFECTIVE: the two centre sums load m_extent before the button extent and issue g_pGuiMan's GOT load
+// first in the orig (registers rename); same loads and calls, armv7 exact.
 void CSWGuiContainer::OnPanelAdded()
 {
 #if !KOTOR1  // K1: an empty override (no cursor parking, not even the base call)

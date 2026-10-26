@@ -349,14 +349,10 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
                             nInsertAt = j + 1;
                     }
                     if (nInsertAt != -1) {
-#if KOTOR1  // K1 always inserts
-                        events.Insert(events.m_pArray[i], nInsertAt);
-#else
                         if (nInsertAt < nEvents)
                             events.Insert(events.m_pArray[i], nInsertAt);
                         else
                             events.Add(events.m_pArray[i]);
-#endif
                         events.DelIndex(i);
                     }
                 }

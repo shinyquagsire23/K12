@@ -452,15 +452,17 @@ void CSWGuiNavigable::Load(CResGFF* pGFF, CResStruct& resStruct)
 
 void CSWGuiControl::Load(CResGFF* pGFF, CResStruct& resStruct)
 {
-    m_extent.Load(pGFF, resStruct);
-#if KOTOR1  // K1 calls the base setter directly (no virtual dispatch)
-    CSWGuiObject::SetExtent(m_extent);
+    int bSuccess;
+#if KOTOR1  // K1 loads into a copy and calls the base setter directly (no virtual dispatch)
+    CSWGuiExtent extent = m_extent;
+    extent.Load(pGFF, resStruct);
+    CSWGuiObject::SetExtent(extent);
 #else
+    m_extent.Load(pGFF, resStruct);
     SetExtent(m_extent);
     SetOriginalExtent(m_extent);
 #endif
 
-    int bSuccess;
     m_tail.nControlId = pGFF->ReadFieldINT(&resStruct, const_cast<char*>("ID"), bSuccess, -1);
     int nParentId = pGFF->ReadFieldINT(&resStruct, const_cast<char*>("Obj_ParentID"), bSuccess, -1);
     if (nParentId == -1)
@@ -1326,72 +1328,6 @@ void CSWGuiSlider::HandleInputEvent(int nType, int nVal)
 #if !KOTOR1
 CSWGuiSlider::~CSWGuiSlider()
 {
-}
-#endif
-
-
-#if KOTOR1
-// K1: resolution rescale in place of K2's aspect multipliers, for all four
-// ScaleExtentForResolution bodies. The factor is the screen height over K1's 768-pixel design
-// height (g_SDL_mode), computed once per class; x/y truncate and w/h round up.
-
-void CSWGuiObject::ScaleExtentForResolution()
-{
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
-    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#else
-    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#endif
-    ScaleExtentForResolution(s_fScale);
-}
-
-void CSWGuiObject::ScaleExtentForResolution(float fScale)
-{
-    CSWGuiExtent extent = m_extent;
-    extent.x = static_cast<int>(extent.x * fScale);
-    extent.y = static_cast<int>(extent.y * fScale);
-    extent.w = static_cast<int>(ceilf(extent.w * fScale));
-    extent.h = static_cast<int>(ceilf(extent.h * fScale));
-    SetExtent(extent);
-    m_bScaledForResolution = 1;
-}
-
-void CSWGuiPanel::ScaleExtentForResolution()
-{
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
-    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#else
-    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#endif
-    CSWGuiPanel::ScaleExtentForResolution(s_fScale);
-}
-
-void CSWGuiPanel::ScaleExtentForResolution(float fScale)
-{
-    CSWGuiObject::ScaleExtentForResolution(fScale);
-    for (int i = 0; i < m_controls.m_count; i++)
-    {
-        CSWGuiControl* pControl = m_controls.m_pArray[i];
-#if !defined(K2_UI_TOUCH)
-        // pc / xbox: the bar column keeps its layout width, so scale it too.
-        if (pControl && pControl->AsListBox()) {
-            CSWGuiListBox* pList = pControl->AsListBox();
-            pList->m_scrollBar.m_extent.w = static_cast<int>(ceilf(pList->m_scrollBar.m_extent.w * fScale));
-        }
-#endif
-#if defined(K2_UI_TOUCH) && defined(K2_FIX_ENGINE_BUGS)
-        // The rows a list box builds from its prototype take its height; the prototype is scaled with
-        // the list, or the rows stay at layout size while their text grows with the screen and is
-        // dropped (the journal's quests, the feedback and resolution lists, AI script select).
-        if (pControl && pControl->AsListBox()) {
-            CSWGuiListBox* pList = pControl->AsListBox();
-            if (pList->m_pProtoItem)
-                pList->m_pProtoItem->ScaleExtentForResolution(fScale);
-        }
-#endif
-        if (pControl)
-            pControl->ScaleExtentForResolution(fScale);
-    }
 }
 #endif
 
@@ -2481,7 +2417,9 @@ void CSWGuiListBox::AddControls(CExoArrayList<CSWGuiControl*>& aControls, int bO
     for (int i = 0; i < nCount; i++)
     {
         CSWGuiControl* pControl = aControls.m_pArray[i];
+#if !KOTOR1 || defined(K2_FIX_ENGINE_BUGS)  // K1 has no null test on the element
         if (pControl)
+#endif
         {
 #if !KOTOR1
             pControl->m_bCenterOnNativeRect = m_bCenterOnNativeRect;

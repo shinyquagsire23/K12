@@ -790,9 +790,17 @@ int CERFKey::Read(CExoFile& file)
 
 int CERFKey::Write(CExoFile& file)
 {
+#if KOTOR1
+    unsigned int* pID = &m_nID;
+    unsigned short* pType = &m_nType;
+    file.Write(m_sName, 16, 1);
+    file.Write(pID, 4, 1);
+    file.Write(pType, 2, 1);
+#else
     file.Write(m_sName, 16, 1);
     file.Write(&m_nID, 4, 1);
     file.Write(&m_nType, 2, 1);
+#endif
     file.Write(&m_nReserved1, 2, 1);
     return 1;
 }
@@ -944,6 +952,8 @@ void CERFString::SetText(CExoString& text)
     m_pString[m_nLength] = 0;
 }
 
+// EFFECTIVE (K1): the inlined SetText reloads m_nLength through the kept &m_nLength in the orig and through
+// this+4 in ours, so x20/x21 swap for the buffer; same loads and stores, armv7 -O3 exact.
 int CERFString::Read(CExoFile& file)
 {
     CExoString sText;
@@ -956,8 +966,14 @@ int CERFString::Read(CExoFile& file)
 
 int CERFString::Write(CExoFile& file)
 {
+#if KOTOR1
+    unsigned int* pLength = &m_nLength;
+    file.Write(&m_nLanguageId, 4, 1);
+    file.Write(pLength, 4, 1);
+#else
     file.Write(&m_nLanguageId, 4, 1);
     file.Write(&m_nLength, 4, 1);
+#endif
     file.Write(m_pString, m_nLength, 1);
     return 1;
 }

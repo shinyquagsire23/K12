@@ -404,8 +404,10 @@ CSWGuiLevelUpPanel::CSWGuiLevelUpPanel(CSWGuiManager* pGuiManager, unsigned long
     : CSWGuiPanel(pGuiManager)
 {
     CExoString sTmp;
+#if !KOTOR1
     m_bHasGrantedFeats = 0;
     m_bHasGrantedPowers = 0;
+#endif
 
     m_pGuiManager = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
     m_pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(oid);
@@ -576,5 +578,7 @@ CSWGuiLevelUpPanel::CSWGuiLevelUpPanel(CSWGuiManager* pGuiManager, unsigned long
     m_btnCancel.AddEvent(INPUTEVENT_GUI_A, this,
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiLevelUpPanel::OnCancelPressed));
 
+#if !KOTOR1  // K1: the back button carries no gamepad glyph
     AspyrAddButtonIcon(&m_btnBack, 'b');
+#endif
 }

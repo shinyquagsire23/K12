@@ -238,15 +238,12 @@ int CSWSMessage::CompareVisualEffectLists(CExoArrayList<CLoopingVisualEffect*>* 
         int bIsBeam = pEffect->GetIsBeam();
 
         int bFound = 0;
-        for (int j = 0; j < pB->m_count; j++)
+        for (int j = 0; j < pB->m_count && !bFound; j++)
         {
             CLoopingVisualEffect* pOther = pB->m_pArray[j];
             if (pOther->m_nVisualEffectId == nVisualEffectId &&
                 (bIsBeam == 0 || pOther->m_targetId == pEffect->m_targetId))
-            {
                 bFound = 1;
-                break;
-            }
         }
 
         if (!bFound)
@@ -260,15 +257,12 @@ int CSWSMessage::CompareVisualEffectLists(CExoArrayList<CLoopingVisualEffect*>* 
         int bIsBeam = pEffect->GetIsBeam();
 
         int bFound = 0;
-        for (int j = 0; j < pA->m_count; j++)
+        for (int j = 0; j < pA->m_count && !bFound; j++)
         {
             CLoopingVisualEffect* pOther = pA->m_pArray[j];
             if (pOther->m_nVisualEffectId == nVisualEffectId &&
                 (bIsBeam == 0 || pOther->m_targetId == pEffect->m_targetId))
-            {
                 bFound = 1;
-                break;
-            }
         }
 
         if (!bFound)

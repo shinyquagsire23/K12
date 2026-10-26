@@ -409,7 +409,10 @@ public:
     CExoArrayList<CSWGuiControl*> m_controls;
     CResGFF*       m_pLayoutRes;
     CResList       m_layoutList;
-    unsigned short m_stateFlags;
+    // A full-width bitfield: its accesses carry no struct-path alias tag, so the compiler reloads
+    // it after a store through another struct (GetExtentAccountingForPanelOffset, Hide/ShowAllPanels,
+    // K1 RemovePanel). Its address cannot be taken.
+    unsigned short m_stateFlags : 16;
 #if !KOTOR1
     char           _pad7e[0x80-0x7e];
     int            m_bDrawOffScreen;

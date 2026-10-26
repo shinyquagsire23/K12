@@ -863,26 +863,14 @@ int CSWCameraFreeLook::Control(float fDeltaTime)
         // A non-zero tilt input integrates directly and clears the spring; otherwise the spring's
         // second state vector holds the increment.
         if (m_fTiltSpeed != 0.0f) {
-#if KOTOR1
-            // K1 clears both integrator states at once.
             m_fPitchAngle += m_fTiltSpeedScale * fDeltaTime * m_fTiltSpeed;
             __builtin_memset(&m_acceleration.m_prev, 0, 2 * sizeof(CSWPhysicsState));
-#else
-            m_acceleration.m_prev = CSWPhysicsState();
-            m_fPitchAngle += m_fTiltSpeedScale * fDeltaTime * m_fTiltSpeed;
-            m_acceleration.m_cur = CSWPhysicsState();
-#endif
         } else {
             CSWPhysicsState state =
                 m_acceleration.Update(Vector(0.0f, m_fTiltAccel, 0.0f), fDeltaTime, 1, 0, 0, 0);
-#if KOTOR1
             float fPitchAngle = state.m_vDisplacement.y + m_fPitchAngle;
             m_fTiltAccel = 0.0f;
             m_fPitchAngle = fPitchAngle;
-#else
-            m_fTiltAccel = 0.0f;
-            m_fPitchAngle += state.m_vDisplacement.y;
-#endif
         }
 
         // Wrap into (-180, 180] and clamp to the 2DA's look limits.

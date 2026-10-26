@@ -2844,8 +2844,8 @@ int CClientExoAppInternal::WaitForMovie(int a)
     }
 
     if (m_pMoviePlayer) {
+        int bStop = 0;
         int nCount = 0;
-        bool bStop = false;
         while (m_pMoviePlayer && m_pMoviePlayer->IsMoviePlaying() == 1) {
             if (bStop || nCount != 500) {
                 // Skip the pump on this frame.
@@ -2855,9 +2855,9 @@ int CClientExoAppInternal::WaitForMovie(int a)
                     if (!m_pMoviePlayer)
                         break;
                     m_pMoviePlayer->CancelMovie(1, 0);
-                    bStop = true;
+                    bStop = 1;
                 } else {
-                    bStop = false;
+                    bStop = 0;
                 }
                 nCount = 0;
                 continue;
@@ -4890,6 +4890,7 @@ void CClientExoAppInternal::ReadAndSetVideoMode(int bPublish, int bFullScreen)
 {
     unsigned int nWidth, nHeight, nRefresh;
     unsigned char nBpp;
+    _devicemodeA devMode;
     CExoString sString;
     CExoIni cIni;
     ReadVideoModeSettings(&nWidth, &nHeight, &nBpp, &nRefresh);
@@ -4897,7 +4898,6 @@ void CClientExoAppInternal::ReadAndSetVideoMode(int bPublish, int bFullScreen)
     int nMode = CAuroraInterface::GetExactVideoMode(nWidth, nHeight, nBpp, nRefresh);
     if (nMode == -1) {
         nMode = CAuroraInterface::GetNearestVideoMode(800, 600, 32, 60);
-        _devicemodeA devMode;
         memset(&devMode, 0, sizeof(devMode));
         devMode.m_size = sizeof(devMode);
         EnumDisplaySettingsA(0, nMode, &devMode);
@@ -6363,9 +6363,10 @@ void CClientExoAppInternal::PlayMovieQueue(int nArg)
     int nLocal;
     int nEvil = 0;
     {
+        CExoArrayList<CExoString>& aMovies = m_moviesToPlay;
         CExoString sEvil(".\\movies\\55.bik");
-        for (int i = 0; i < m_moviesToPlay.m_count; i++)
-            if (m_moviesToPlay[i] == sEvil)
+        for (int i = 0; i < aMovies.m_count; i++)
+            if (aMovies[i] == sEvil)
                 nEvil++;
     }
     if (nEvil) {

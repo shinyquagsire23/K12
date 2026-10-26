@@ -2150,13 +2150,7 @@ int AurTextureGetAvailableTextureMemory()
     AurTextureFreeAll();
     int nAvailable = GLRender::GetAvailableTextureMemory();
 
-#if KOTOR1  // K1 copies the list in one assignment
     RefreshTextures = CAurTextureBasic::m_OrderedTextureList;
-#else
-    RefreshTextures.m_count = 0;
-    for (int i = 0; i < CAurTextureBasic::m_OrderedTextureList.m_count; i++)
-        RefreshTextures.Add(CAurTextureBasic::m_OrderedTextureList.m_pData[i]);
-#endif
 
     AurTextureBuildAndStoreAll();
     return nAvailable;
@@ -2285,76 +2279,28 @@ void InsertionSortTexture(CAurTextureBasic** papTexture, int nCount)
 }
 
 
-#if KOTOR1
-// K1 searches recursively.
+// Searches recursively.
 CAurTextureBasic* BinarySearchTexture(char* pszName, int nLow, int nHigh)
 {
     if (nHigh < nLow)
         return 0;
     int nMid = (nLow + nHigh) / 2;
-    CAurTextureBasic* pTexture = CAurTextureBasic::m_OrderedTextureList.m_pData[nMid];
-    int nResult = _stricmp(pszName, pTexture->m_szName);
+    int nResult = _stricmp(pszName, CAurTextureBasic::m_OrderedTextureList.m_pData[nMid]->m_szName);
     if (nResult == 0)
-        return pTexture;
+        return CAurTextureBasic::m_OrderedTextureList.m_pData[nMid];
     if (nResult < 0)
         return BinarySearchTexture(pszName, nLow, nMid - 1);
     return BinarySearchTexture(pszName, nMid + 1, nHigh);
 }
-#else
-CAurTextureBasic* BinarySearchTexture(char* pszName, int nLow, int nHigh)
-{
-    if (nHigh < nLow)
-        return 0;
-    for (;;) {
-        int nMid = (nLow + nHigh) / 2;
-        CAurTextureBasic* pTexture = CAurTextureBasic::m_OrderedTextureList.m_pData[nMid];
-        int nResult = _stricmp(pszName, pTexture->m_szName);
-        if (nResult == 0)
-            return pTexture;
-        if (nResult < 0) {
-            nHigh = nMid - 1;
-            if (nHigh < nLow)
-                return 0;
-        } else {
-            nLow = nMid + 1;
-            if (nHigh < nLow)
-                return 0;
-        }
-    }
-}
-#endif
 
 CAurTextureBasic* BinaryFindTexture(char* pszName)
 {
-#if KOTOR1  // K1 searches recursively.
     return BinarySearchTexture(pszName, 0, CAurTextureBasic::m_OrderedTextureList.m_count - 1);
-#else
-    int nLow = 0;
-    int nHigh = CAurTextureBasic::m_OrderedTextureList.m_count - 1;
-    while (nLow <= nHigh) {
-        int nMid = (nLow + nHigh) / 2;
-        CAurTextureBasic* pTexture = CAurTextureBasic::m_OrderedTextureList.m_pData[nMid];
-        int nResult = _stricmp(pszName, pTexture->m_szName);
-        if (nResult == 0)
-            return pTexture;
-        if (nResult < 0) {
-            nHigh = nMid - 1;
-            if (nHigh < nLow)
-                return 0;
-        } else {
-            nLow = nMid + 1;
-            if (nHigh < nLow)
-                return 0;
-        }
-    }
-    return 0;
-#endif
 }
 
 // Binary search for the slot the texture belongs in, then Insert there, so the ordered list
 // stays name-sorted as well as hash-sorted.
-#if KOTOR1
-// K1 searches recursively.
+// Searches recursively.
 void BinaryInsertTexture(CAurTextureBasic* pTexture, int nLow, int nHigh)
 {
     if (nHigh < nLow) {
@@ -2367,27 +2313,6 @@ void BinaryInsertTexture(CAurTextureBasic* pTexture, int nLow, int nHigh)
     else
         BinaryInsertTexture(pTexture, nMid + 1, nHigh);
 }
-#else
-void BinaryInsertTexture(CAurTextureBasic* pTexture, int nLow, int nHigh)
-{
-    if (nHigh >= nLow) {
-        for (;;) {
-            int nMid = (nLow + nHigh) / 2;
-            if (_stricmp(pTexture->m_szName,
-                         CAurTextureBasic::m_OrderedTextureList.m_pData[nMid]->m_szName) < 0) {
-                nHigh = nMid - 1;
-                if (nHigh < nLow)
-                    break;
-            } else {
-                nLow = nMid + 1;
-                if (nHigh < nLow)
-                    break;
-            }
-        }
-    }
-    CAurTextureBasic::m_OrderedTextureList.Insert(pTexture, nLow);
-}
-#endif
 
 void AurTextureCalculateNewTexMem(List<CAurTextureBasic*>& listTexture, TEXTUREMEMORYSTATS* pStats)
 {

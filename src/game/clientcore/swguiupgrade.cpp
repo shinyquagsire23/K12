@@ -2170,27 +2170,21 @@ CSWGuiUpgrade::~CSWGuiUpgrade()
 
 // Slot counts for menu types 1 to 4, one byte per type; 0 for anything else.
 
-#if KOTOR1
 unsigned char CSWGuiUpgrade::GetNumUpgrades()
-#else
-int CSWGuiUpgrade::GetNumUpgrades()
-#endif
 {
-#if KOTOR1  // K1: 3, 4, 3, 2 slots
     switch (m_nMenuType)
     {
+#if KOTOR1  // K1: 3 lightsaber and 4 ranged slots
     case CSWSItem::UPGRADABLE_TYPE_LIGHTSABER: return 3;
     case CSWSItem::UPGRADABLE_TYPE_RANGED: return 4;
+#else
+    case CSWSItem::UPGRADABLE_TYPE_LIGHTSABER: return 6;
+    case CSWSItem::UPGRADABLE_TYPE_RANGED: return 3;
+#endif
     case CSWSItem::UPGRADABLE_TYPE_MELEE: return 3;
     case CSWSItem::UPGRADABLE_TYPE_ARMOR: return 2;
     }
     return 0;
-#else
-    int n = m_nMenuType - 1;
-    if (static_cast<unsigned>(n) <= 3)
-        return 0x02030306u >> ((static_cast<unsigned long long>(n) & 0xffu) * 8);
-    return 0;
-#endif
 }
 
 #if KOTOR1  // K1: layout "upgrade", LB_DESC_LS, blue and yellow tints, no OK button
@@ -2542,6 +2536,55 @@ void CSWUpgradeItemEntry::Draw(float fAlpha) {
     m_textCount.Draw(fAlpha);
 }
 
+#if KOTOR1  // K1: layout "upgradeitems", the item list inset by 11 scaled units
+CSWGuiUpgradeItemSelect::CSWGuiUpgradeItemSelect(CSWGuiManager* pGuiManager)
+    : CSWGuiPanel(pGuiManager)
+{
+    StartLoadFromLayout(CResRef("upgradeitems"));
+
+    InitControl(m_lblTitle,       CExoString("LBL_TITLE"),       1);
+    InitControl(m_lbItems,        CExoString("LB_ITEMS"),        1);
+    InitControl(m_lbDescription,  CExoString("LB_DESCRIPTION"),  1);
+    m_lbDescription.m_nScrollSound = GUISOUND_ENTERED_DEFAULT;
+    InitControl(m_btnUpgradeItem, CExoString("BTN_UPGRADEITEM"), 1);
+    InitControl(m_btnBack,        CExoString("BTN_BACK"),        1);
+
+    StopLoadFromLayout();
+    ScaleExtentForResolution();
+
+    {
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
+        float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#else
+        static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#endif
+        CSWGuiExtent extent = m_lbItems.m_extent;
+        extent.x = static_cast<int>(s_fScale * 11.0f + static_cast<float>(extent.x));
+        extent.w = static_cast<int>(static_cast<float>(extent.w) - s_fScale * 11.0f);
+        m_lbItems.SetExtent(extent);
+    }
+    {
+        CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
+        m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
+    }
+
+    m_pUpgrade = new CSWGuiUpgrade(pGuiManager);
+    m_pUpgrade->m_pItemSelect = this;
+
+    m_btnUpgradeItem.m_tail.bFocusOnHover = 0;
+    m_btnUpgradeItem.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiUpgradeItemSelect::OnUpgradableSelected));
+    m_btnBack.m_tail.bFocusOnHover = 0;
+    m_btnBack.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPanel::OnBButtonPressed));
+
+    m_lbItems.bSelectOnLeftClick = 1;
+    m_nUpgradableType = CSWSItem::UPGRADABLE_TYPE_NONE;
+    m_pItem = NULL;
+    SetActiveControl(&m_lbItems, 0);
+    IosAddButtonIcon(&m_btnUpgradeItem, 'a');
+    IosAddButtonIcon(&m_btnBack, 'b');
+}
+#endif
+
 #if KOTOR1  // K1: the icon is 56 units at K1's resolution scale
 void CSWUpgradeItemEntry::SetExtent(const CSWGuiExtent& extent) {
 #ifndef K2_UI_TOUCH
@@ -2620,6 +2663,7 @@ void CSWUpgradeItemEntry::SetExtent(const CSWGuiExtent& extent) {
 #endif
 
 #if KOTOR1  // K1: blue and yellow frames, lbl_hex_3 backdrops, row height 56 units
+// EFFECTIVE (K1): two address adds issue in the other order; same stores and calls, armv7 -O3 exact.
 void CSWUpgradeItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderA, CSWGuiBorder& borderB,
                                      int nW) {
     m_text.m_params = text.m_params;
@@ -6659,54 +6703,7 @@ void CSWGuiUpgradeSelection::AutoUpgradeDone()
 }
 #endif
 
-#if KOTOR1  // K1: layout "upgradeitems", the item list inset by 11 scaled units
-CSWGuiUpgradeItemSelect::CSWGuiUpgradeItemSelect(CSWGuiManager* pGuiManager)
-    : CSWGuiPanel(pGuiManager)
-{
-    StartLoadFromLayout(CResRef("upgradeitems"));
-
-    InitControl(m_lblTitle,       CExoString("LBL_TITLE"),       1);
-    InitControl(m_lbItems,        CExoString("LB_ITEMS"),        1);
-    InitControl(m_lbDescription,  CExoString("LB_DESCRIPTION"),  1);
-    m_lbDescription.m_nScrollSound = GUISOUND_ENTERED_DEFAULT;
-    InitControl(m_btnUpgradeItem, CExoString("BTN_UPGRADEITEM"), 1);
-    InitControl(m_btnBack,        CExoString("BTN_BACK"),        1);
-
-    StopLoadFromLayout();
-    ScaleExtentForResolution();
-
-    {
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
-        float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#else
-        static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#endif
-        CSWGuiExtent extent = m_lbItems.m_extent;
-        extent.x = static_cast<int>(s_fScale * 11.0f + static_cast<float>(extent.x));
-        extent.w = static_cast<int>(static_cast<float>(extent.w) - s_fScale * 11.0f);
-        m_lbItems.SetExtent(extent);
-    }
-    {
-        CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
-        m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
-    }
-
-    m_pUpgrade = new CSWGuiUpgrade(pGuiManager);
-    m_pUpgrade->m_pItemSelect = this;
-
-    m_btnUpgradeItem.m_tail.bFocusOnHover = 0;
-    m_btnUpgradeItem.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiUpgradeItemSelect::OnUpgradableSelected));
-    m_btnBack.m_tail.bFocusOnHover = 0;
-    m_btnBack.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPanel::OnBButtonPressed));
-
-    m_lbItems.bSelectOnLeftClick = 1;
-    m_nUpgradableType = CSWSItem::UPGRADABLE_TYPE_NONE;
-    m_pItem = NULL;
-    SetActiveControl(&m_lbItems, 0);
-    IosAddButtonIcon(&m_btnUpgradeItem, 'a');
-    IosAddButtonIcon(&m_btnBack, 'b');
-}
-#else
+#if !KOTOR1
 CSWGuiUpgradeItemSelect::CSWGuiUpgradeItemSelect(CSWGuiManager* pGuiManager)
     : CSWGuiPanel(pGuiManager)
 {
@@ -6951,16 +6948,10 @@ void CSWGuiUpgradeItemSelect::OnUpgradableSelected(CSWGuiControl* pControl)
             pServer->GetPartyTable()->GetPartyItems()->RemoveItem(pItem);
         }
 
-#if KOTOR1  // K1 loads the sub-panel pointer first
         CSWGuiUpgrade* pUpgrade = m_pUpgrade;
         pUpgrade->m_nMenuType = m_nUpgradableType;
         pUpgrade->m_pItem = pItem;
         m_pGuiManager->AddPanel(pUpgrade, 3, 1);
-#else
-        m_pUpgrade->m_nMenuType = m_nUpgradableType;
-        m_pUpgrade->m_pItem = pItem;
-        m_pGuiManager->AddPanel(m_pUpgrade, 3, 1);
-#endif
     }
 }
 

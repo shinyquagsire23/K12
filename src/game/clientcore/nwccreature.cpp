@@ -1,3 +1,4 @@
+#define K1_AURORA_LIST  // K1: the line-of-sight hit lists grow from 8
 #include "k2stdint.h"
 #include "nwccreature.h"
 #include "nullname.h"

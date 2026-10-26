@@ -230,6 +230,8 @@ void PrintStringScreenPos(char* pszText, float fX, float fY)
 
 // Draws the same line with the current texture font, in a centred hundredth-of-a-pixel ortho box.
 // The two GL state changes at the top happen even for an empty string.
+// EFFECTIVE (K1+K2): x20/x24 swap between the s_LoadedFontList GOT pointer and consoleFont's page, and the
+// second index/list load pair issues in the other order; same loads and calls, armv7 exact in both games.
 void PrintStringScreenPos_UseTextureFont(char* pszText, float fX, float fY)
 {
     GLRender::Enable(Aurora::kCapBlend);
@@ -376,15 +378,13 @@ void PostedString::Post()
                      (1.0f - fFade) * m_cColorStart.b + fFade * m_cColorEnd.b,
                      (1.0f - fFade) * m_cColorStart.a + fFade * m_cColorEnd.a);
 
-    // Saved around the K1 draw below, which publishes the faded colour through g_cSavedCol.
+    // Saved around the draw below, which publishes the faded colour through g_cSavedCol.
     CStringColor cSaved = g_cSavedCol;
-#if KOTOR1  // K1 draws the line here, publishing the faded colour in g_cSavedCol for the call
     g_cSavedCol.r = m_cColorStart.r * (1.0f - fFade) + m_cColorEnd.r * fFade;
     g_cSavedCol.g = m_cColorStart.g * (1.0f - fFade) + m_cColorEnd.g * fFade;
     g_cSavedCol.b = m_cColorStart.b * (1.0f - fFade) + m_cColorEnd.b * fFade;
     g_cSavedCol.a = m_cColorStart.a * (1.0f - fFade) + m_cColorEnd.a * fFade;
     AurPrintString(m_szText, m_nX, m_nY);
-#endif
     g_cSavedCol = cSaved;
 
     m_fTimeLeft -= DeltaT;

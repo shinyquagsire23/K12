@@ -93,8 +93,14 @@ fi
 #   .cfi for the frame-pointer setup, and the scheduler may then sink the frame-pointer add away
 #   from the stp it belongs to. Do not drop it: -fno-unwind-tables and
 #   -fno-asynchronous-unwind-tables both reproduce that sunk-prologue shape.
+# -g: both shipped images were built with debug info and stripped. DBG_VALUEs are not free at
+#   -O2/-O3: one between `add x0,x0,#1` and `ldrb w8,[x0]` stops the load/store optimizer forming
+#   the pre-indexed `ldrb w8,[x0,#1]!`, and debug values move pre-RA scheduling. Measured 2026-10-26
+#   tree-wide: K1 +16 / -2, K2 +2 / -1, and the losses were source spellings (a `float*` local
+#   where the original kept the value; a hand-expanded `dot`), MATCH in both games once respelled.
+#   So under -g a NAMED LOCAL is evidence: an extra or missing variable can now cost bytes.
 FLAGS=(
-  -fPIC -O2 -fexceptions -frtti \
+  -fPIC -O2 -fexceptions -frtti -g \
   -funwind-tables \
   -ffunction-sections -fdata-sections \
   -fno-addrsig \

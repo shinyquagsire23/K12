@@ -360,6 +360,8 @@ unsigned int CResGFF::GetFieldCount(CResGFFStruct* pStruct)
 }
 
 #if KOTOR1
+// EFFECTIVE (K1): the null result's two stores (pointer, aligned flag) issue in the other order; armv7 -O3
+// exact.
 CResGFFAlignedPtr<CResGFFStruct> CResGFF::GetStruct(CResStruct* pStruct)
 {
     if (pStruct != 0 && m_pHeader != 0 && m_paStructs != 0) {

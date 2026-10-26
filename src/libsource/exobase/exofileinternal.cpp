@@ -77,7 +77,11 @@ void CExoAliasListInternal::ChangePath(const CExoString& alias, const CExoString
     sAlias = sAlias.UpperCase();
 
     char* pPathStr = static_cast<char*>(sPath.CStr());
+#if KOTOR1  // K1's port tests for a '/' terminator but still appends '\\'
+    if (pPathStr[sPath.GetLength() - 1] != '/')
+#else
     if (pPathStr[sPath.GetLength() - 1] != '\\')
+#endif
         sPath = sPath + "\\";
 
     CExoAliasListEntry* pCur;

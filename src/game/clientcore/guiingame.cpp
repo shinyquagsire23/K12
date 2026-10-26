@@ -866,11 +866,7 @@ checkDialogGate:
                 m_pGuiManager->RemovePanel(m_pMainInterface);
             }
             if (notify != 0 && m_pGuiManager->PanelExists(m_pPauseGuiPanel) != 0) {
-                unsigned short flags = m_pPauseGuiPanel->m_stateFlags;
-                unsigned short cleared = flags & ~PANEL_REMOVE_DEFERRED;
-                unsigned short removeMode = flags & PANEL_REMOVE_MASK;
-                unsigned short removeRequest = (flags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-                m_pPauseGuiPanel->m_stateFlags = (removeMode == PANEL_REMOVE_AND_DELETE) ? cleared : removeRequest;
+                m_pPauseGuiPanel->SetToBeRemoved(0);
             }
         }
     }
@@ -3375,11 +3371,7 @@ void CGuiInGame::SetPaused(int pause, unsigned char reason)
     }
 toggle:
     {
-        unsigned short flags = m_pPauseGuiPanel->m_stateFlags;
-        unsigned short cleared = flags & ~PANEL_REMOVE_DEFERRED;
-        unsigned short removeMode = flags & PANEL_REMOVE_MASK;
-        unsigned short removeRequest = (flags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-        m_pPauseGuiPanel->m_stateFlags = (removeMode == PANEL_REMOVE_AND_DELETE) ? cleared : removeRequest;
+        m_pPauseGuiPanel->SetToBeRemoved(0);
     }
 done:
     m_bPauseGuiShown = result;
@@ -3845,22 +3837,22 @@ int CGuiInGame::GetFadeOverridePanelVisible()
     if (m_pGuiManager == 0) return false;
     if (m_pGalaxyMapPanel != 0) {
         if (m_pGuiManager->PanelExists(m_pGalaxyMapPanel) != 0) {
-            if ((*reinterpret_cast<unsigned char*>(&m_pGalaxyMapPanel->m_stateFlags) & 4) != 0) return true;
+            if ((m_pGalaxyMapPanel->m_stateFlags & 4) != 0) return true;
         }
     }
     if (m_pMessagesPanel != 0) {
         if (m_pGuiManager->PanelExists(m_pMessagesPanel) != 0) {
-            if ((*reinterpret_cast<unsigned char*>(&m_pMessagesPanel->m_stateFlags) & 4) != 0) return true;
+            if ((m_pMessagesPanel->m_stateFlags & 4) != 0) return true;
         }
     }
     if (m_pStorePanel != 0) {
         if (m_pGuiManager->PanelExists(m_pStorePanel) != 0) {
-            if ((*reinterpret_cast<unsigned char*>(&m_pStorePanel->m_stateFlags) & 4) != 0) return true;
+            if ((m_pStorePanel->m_stateFlags & 4) != 0) return true;
         }
     }
     if (m_pInGameMenu != 0) {
         if (m_pGuiManager->PanelExists(static_cast<CSWGuiPanel*>(m_pInGameMenu)) != 0) {
-            if ((*reinterpret_cast<unsigned char*>(&static_cast<CSWGuiPanel*>(m_pInGameMenu)->m_stateFlags) & 4) != 0) return true;
+            if ((static_cast<CSWGuiPanel*>(m_pInGameMenu)->m_stateFlags & 4) != 0) return true;
         }
     }
     return g_pAppManager->m_pClientExoApp->GetPazaakIsRunning() != 0;
@@ -4072,11 +4064,7 @@ void CGuiInGame::ClearRepliesData()
     m_repliesCount = 0;
 }
 
-#if KOTOR1  // K1: returns 0
 int CGuiInGame::InitializeRepliesData(unsigned int count)
-#else
-void CGuiInGame::InitializeRepliesData(unsigned int count)
-#endif
 {
     ClearRepliesData();
     m_repliesCount = count;
@@ -4106,9 +4094,7 @@ void CGuiInGame::InitializeRepliesData(unsigned int count)
     m_paReplyFlags = static_cast<unsigned int*>(operator new[](sz4));
     m_paReplyAnimObjectIds = static_cast<void**>(operator new[](sz8));
     m_paReplyAnimations = static_cast<void**>(operator new[](sz8));
-#if KOTOR1
     return 0;
-#endif
 }
 
 void CGuiInGame::SetReplyData(unsigned int index, const CExoString& text, unsigned int a, unsigned long long b,
@@ -4654,7 +4640,8 @@ int CGuiInGame::HideSWInGameGui(int notify)
 
     m_bInGameMenuShown = 0;
     if (!removedScreenPanel && m_lastGuiPanel != -1) {
-        CSWGuiPanel* p = m_apScreenPanels[m_lastGuiPanel];
+        CSWGuiPanel*& rSlot = m_apScreenPanels[m_lastGuiPanel];
+        CSWGuiPanel* p = rSlot;
         if (p != 0) {
 #if KOTOR1  // K1: no panel chain, one stamp
             p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
@@ -4664,7 +4651,7 @@ int CGuiInGame::HideSWInGameGui(int notify)
                 p = p->m_pNextInChain;
             } while (p != 0);
 #endif
-            m_apScreenPanels[m_lastGuiPanel] = 0;
+            rSlot = 0;
         }
     }
 
@@ -4684,11 +4671,7 @@ int CGuiInGame::HideSWInGameGui(int notify)
     }
 
     if (notify != 0 && m_pGuiManager->PanelExists(m_pPauseGuiPanel) != 0) {
-        unsigned short flags = m_pPauseGuiPanel->m_stateFlags;
-        unsigned short cleared = flags & ~PANEL_REMOVE_DEFERRED;
-        unsigned short removeMode = flags & PANEL_REMOVE_MASK;
-        unsigned short removeRequest = (flags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-        m_pPauseGuiPanel->m_stateFlags = (removeMode == PANEL_REMOVE_AND_DELETE) ? cleared : removeRequest;
+        m_pPauseGuiPanel->SetToBeRemoved(0);
     }
 
     m_pBarkBubble->Resume();
@@ -4793,11 +4776,7 @@ void CGuiInGame::ToggleSWGui()
                 m_pGuiManager->RemovePanel(m_pMainInterface);
             }
             if (m_pGuiManager->PanelExists(m_pPauseGuiPanel)) {
-                unsigned short flags = m_pPauseGuiPanel->m_stateFlags;
-                unsigned short cleared = flags & ~PANEL_REMOVE_DEFERRED;
-                unsigned short removeMode = flags & PANEL_REMOVE_MASK;
-                unsigned short removeRequest = (flags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-                m_pPauseGuiPanel->m_stateFlags = (removeMode == PANEL_REMOVE_AND_DELETE) ? cleared : removeRequest;
+                m_pPauseGuiPanel->SetToBeRemoved(0);
             }
         }
         return;
@@ -4823,11 +4802,7 @@ void CGuiInGame::ToggleSWGui()
                     m_pGuiManager->RemovePanel(m_pMainInterface);
                 }
                 if (m_pGuiManager->PanelExists(m_pPauseGuiPanel)) {
-                    unsigned short flags = m_pPauseGuiPanel->m_stateFlags;
-                    unsigned short cleared = flags & ~PANEL_REMOVE_DEFERRED;
-                    unsigned short removeMode = flags & PANEL_REMOVE_MASK;
-                    unsigned short removeRequest = (flags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-                    m_pPauseGuiPanel->m_stateFlags = (removeMode == PANEL_REMOVE_AND_DELETE) ? cleared : removeRequest;
+                    m_pPauseGuiPanel->SetToBeRemoved(0);
                 }
             }
         }
@@ -4855,6 +4830,8 @@ bool CGuiInGame::IsDialogStuntAnimation(unsigned short anim)
     return static_cast<unsigned short>(anim - STUNT_ANIM_FIREFORGET_FIRST) < STUNT_ANIM_SPAN;
 }
 
+// EFFECTIVE (K1): the first `return false` is laid out inline in ours and out of line (sharing the
+// GetINTEntry failures' exit) in K1; same tests and calls, armv7 -O3 exact.
 bool CGuiInGame::IsOverlayDialogAnimation(unsigned short anim)
 {
     if (static_cast<unsigned short>(anim >> 4) < DIALOG_ANIM_2DA_BASE / 16) {
@@ -5275,13 +5252,13 @@ void CGuiInGame::DoQuickLoad()
             pClientExoApp->SetStoryHint(pEntry->m_storyHints[9], 9);
 #endif
 #if KOTOR1  // K1: the hint is drawn for an empty module name
-            uint64_t hintStrRef =
-                pClientExoApp->GetNextLoadScreenHintSTRREF(CExoString(""), 2);
+            pClientExoApp->SetLoadScreenHint(
+                pClientExoApp->GetNextLoadScreenHintSTRREF(CExoString(""), 2));
 #else
             uint64_t hintStrRef =
                 pClientExoApp->GetNextLoadScreenHintSTRREF(pEntry->m_moduleName, 2);
-#endif
             pClientExoApp->SetLoadScreenHint(hintStrRef);
+#endif
             pClientExoApp->SetLoadScreenHintUpdateTimer(0);
             UnpackQuickSaveGame(pEntry->m_nSaveSlot, pEntry->m_saveName);
             while (m_pGuiManager->m_modalPanels.m_count != 0)

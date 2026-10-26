@@ -218,7 +218,11 @@ CExoResMan::~CExoResMan()
 {
     m_bShuttingDown = 1;
     ResumeThread(reinterpret_cast<void*>(m_hAsyncThread));
+#if KOTOR1
+    if (m_hAsyncThread != 0) {
+#else
     if (static_cast<long long>(m_hAsyncThread) != -1) {
+#endif
         WaitForSingleObject(reinterpret_cast<void*>(m_hAsyncThread), INFINITE);
         CloseHandle(reinterpret_cast<void*>(m_hAsyncThread));
     }
@@ -807,7 +811,11 @@ bool CExoResMan::FileCopy(const CExoString& srcPath, const CExoString& dstPath,
     long long nSize;
     char* pBuffer;
     nSize = srcFile.GetSize();
+#if KOTOR1
+    pBuffer = new char[static_cast<uint64_t>(nSize)];
+#else
     pBuffer = new char[nSize >= 0 ? nSize : -1];
+#endif
     srcFile.Read(pBuffer, srcFile.GetSize(), 1);
     dstFile.Write(pBuffer, srcFile.GetSize(), 1);
     dstFile.Flush();
@@ -1928,7 +1936,9 @@ int CExoResMan::GetResourcesInMemory(int* pnResourceCount, int* pnKeyEntryCount,
                     nTotalBytes += nSize;
                     (*pnResourceCount)++;
                     switch (pEntry->m_resType) {
+#if !KOTOR1  // K1 has no TXB bucket
                     case RESTYPE_TXB: *pnTextureBytes += nSize; break;
+#endif
                     case RESTYPE_TPC: *pnTextureBytes += nSize; break;
                     case RESTYPE_MDX: *pnModelExtBytes += nSize; break;
                     case RESTYPE_WAV: *pnSoundBytes += nSize; break;
@@ -1974,7 +1984,9 @@ int CExoResMan::GetResourcesInMemory(int* pnResourceCount, int* pnKeyEntryCount,
                                 nTotalBytes -= nPacked;
                                 (*pnResourceCount)--;
                                 switch (pImageEntry->m_resType) {
+#if !KOTOR1  // K1 has no TXB bucket
                                 case RESTYPE_TXB: *pnTextureBytes -= nPacked; break;
+#endif
                                 case RESTYPE_TPC: *pnTextureBytes -= nPacked; break;
                                 case RESTYPE_MDX: *pnModelExtBytes -= nPacked; break;
                                 case RESTYPE_WAV: *pnSoundBytes -= nPacked; break;
@@ -1992,7 +2004,9 @@ int CExoResMan::GetResourcesInMemory(int* pnResourceCount, int* pnKeyEntryCount,
                     nTotalBytes += nSize;
                     (*pnResourceCount)++;
                     switch (pEntry->m_resType) {
+#if !KOTOR1  // K1 has no TXB bucket
                     case RESTYPE_TXB: *pnTextureBytes += nSize; break;
+#endif
                     case RESTYPE_TPC: *pnTextureBytes += nSize; break;
                     case RESTYPE_MDX: *pnModelExtBytes += nSize; break;
                     case RESTYPE_WAV: *pnSoundBytes += nSize; break;
@@ -2037,7 +2051,9 @@ int CExoResMan::GetResourcesInMemory(int* pnResourceCount, int* pnKeyEntryCount,
                                     nTotalBytes -= nPacked;
                                     (*pnResourceCount)--;
                                     switch (pImageEntry->m_resType) {
+#if !KOTOR1  // K1 has no TXB bucket
                                     case RESTYPE_TXB: *pnTextureBytes -= nPacked; break;
+#endif
                                     case RESTYPE_TPC: *pnTextureBytes -= nPacked; break;
                                     case RESTYPE_MDX: *pnModelExtBytes -= nPacked; break;
                                     case RESTYPE_WAV: *pnSoundBytes -= nPacked; break;
@@ -2056,7 +2072,9 @@ int CExoResMan::GetResourcesInMemory(int* pnResourceCount, int* pnKeyEntryCount,
                     nTotalBytes += nSize;
                     (*pnResourceCount)++;
                     switch (pEntry->m_resType) {
+#if !KOTOR1  // K1 has no TXB bucket
                     case RESTYPE_TXB: *pnTextureBytes += nSize; break;
+#endif
                     case RESTYPE_TPC: *pnTextureBytes += nSize; break;
                     case RESTYPE_MDX: *pnModelExtBytes += nSize; break;
                     case RESTYPE_WAV: *pnSoundBytes += nSize; break;
@@ -2088,7 +2106,9 @@ int CExoResMan::GetResourcesInMemory(int* pnResourceCount, int* pnKeyEntryCount,
                     nTotalBytes += nSize;
                     (*pnResourceCount)++;
                     switch (pEntry->m_resType) {
+#if !KOTOR1  // K1 has no TXB bucket
                     case RESTYPE_TXB: *pnTextureBytes += nSize; break;
+#endif
                     case RESTYPE_TPC: *pnTextureBytes += nSize; break;
                     case RESTYPE_MDX: *pnModelExtBytes += nSize; break;
                     case RESTYPE_WAV: *pnSoundBytes += nSize; break;
@@ -2733,7 +2753,19 @@ int CResRef::operator!=(const CResRef& other) const
 // bytes are signed, so the cast is needed on the stored side only.
 int CResRef::operator==(char* s) const
 {
-    for (int i = 0; i < 16; i++) {
+#if KOTOR1
+    int i = 0;
+    for (;;) {
+        int c = tolower(s[i]);
+        if (c != tolower(static_cast<unsigned char>(m_sResRef[i])))
+            return 0;
+        if (c == 0)
+            return 1;
+        if (++i == 16)
+            return 1;
+    }
+#else
+    for (int i = 0; i != 16; i++) {
         int c = tolower(s[i]);
         if (c != tolower(static_cast<unsigned char>(m_sResRef[i])))
             return 0;
@@ -2741,11 +2773,24 @@ int CResRef::operator==(char* s) const
             return 1;
     }
     return 1;
+#endif
 }
 
 int CResRef::operator!=(char* s) const
 {
-    for (int i = 0; i < 16; i++) {
+#if KOTOR1
+    int i = 0;
+    for (;;) {
+        int c = tolower(s[i]);
+        if (c != tolower(static_cast<unsigned char>(m_sResRef[i])))
+            return 1;
+        if (c == 0)
+            return 0;
+        if (++i == 16)
+            return 0;
+    }
+#else
+    for (int i = 0; i != 16; i++) {
         int c = tolower(s[i]);
         if (c != tolower(static_cast<unsigned char>(m_sResRef[i])))
             return 1;
@@ -2753,6 +2798,7 @@ int CResRef::operator!=(char* s) const
             return 0;
     }
     return 0;
+#endif
 }
 
 // Compares the string's bytes, including its NUL, against the key, clamped to the buffer; a null
@@ -2765,7 +2811,7 @@ bool CResRef::operator==(const CExoString& s) const
 #endif
     char* pStr = s.CStr();
 #if KOTOR1  // K1: CExoString::GetLength is out of line
-    unsigned int nLength = s.GetLength() + 1;
+    size_t nLength = static_cast<unsigned int>(s.GetLength() + 1);
 #else
     size_t nLength = static_cast<unsigned int>((s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0) + 1);
 #endif
@@ -2782,7 +2828,7 @@ int CResRef::operator!=(const CExoString& s) const
 #endif
     char* pStr = s.CStr();
 #if KOTOR1  // K1: CExoString::GetLength is out of line
-    unsigned int nLength = s.GetLength() + 1;
+    size_t nLength = static_cast<unsigned int>(s.GetLength() + 1);
 #else
     size_t nLength = static_cast<unsigned int>((s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0) + 1);
 #endif

@@ -2560,7 +2560,9 @@ void CSWCVisualEffectOnObject::StartVisualEffect()
     int bNoEffect = 1;
     float fParam1;
     float fParam2;
+#if !KOTOR1  // K1 unrolls it
 #pragma clang loop unroll(disable)
+#endif
     for (int i = 0; i < 3; i++)
     {
         m_anSlotTimer[i] = 0;

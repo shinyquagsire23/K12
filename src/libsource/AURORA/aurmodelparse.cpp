@@ -2749,8 +2749,7 @@ void ignorefog(char* pszName)
 }
 
 // The model table is kept sorted by name, so all three searches compare through Model::m_szName.
-#if KOTOR1
-// K1 is written recursively, so each arm keeps its own range test.
+// Written recursively, so each arm keeps its own range test.
 Model* BinarySearchModel(char* pszName, int nLow, int nHigh)
 {
     if (nHigh < nLow)
@@ -2763,47 +2762,12 @@ Model* BinarySearchModel(char* pszName, int nLow, int nHigh)
         return BinarySearchModel(pszName, nLow, mid - 1);
     return BinarySearchModel(pszName, mid + 1, nHigh);
 }
-#else
-Model* BinarySearchModel(char* pszName, int nLow, int nHigh)
-{
-    while (nLow <= nHigh) {
-        int mid = (nLow + nHigh) / 2;
-        int nCmp = _stricmp(pszName, Models.m_pData[mid]->m_szName);
-        if (nCmp == 0)
-            return Models.m_pData[mid];
-        if (nCmp < 0)
-            nHigh = mid - 1;
-        else
-            nLow = mid + 1;
-    }
-    return 0;
-}
-#endif
 
-// The same search over the whole table, written out rather than calling BinarySearchModel.
-#if KOTOR1  // K1: the whole-table call of the recursive search
+// The same search over the whole table.
 Model* BinaryFindModel(char* pszName)
 {
     return BinarySearchModel(pszName, 0, Models.m_count - 1);
 }
-#else
-Model* BinaryFindModel(char* pszName)
-{
-    int nLow = 0;
-    int nHigh = Models.m_count - 1;
-    while (nLow <= nHigh) {
-        int mid = (nLow + nHigh) / 2;
-        int nCmp = _stricmp(pszName, Models.m_pData[mid]->m_szName);
-        if (nCmp == 0)
-            return Models.m_pData[mid];
-        if (nCmp < 0)
-            nHigh = mid - 1;
-        else
-            nLow = mid + 1;
-    }
-    return 0;
-}
-#endif
 
 // Does the sorted insert the model table is built with. It finds the first slot whose name is not
 // less than the model's over [nLow, nHigh] and inserts there. InsertModel reaches it with the whole
@@ -2811,8 +2775,7 @@ Model* BinaryFindModel(char* pszName)
 //
 // The range test is repeated inside each arm, which is the only spelling that keeps two comparison
 // blocks instead of one select pair.
-#if KOTOR1
-// K1 is recursive, like BinarySearchModel.
+// Recursive, like BinarySearchModel.
 void BinaryInsertModel(Model* pModel, int nLow, int nHigh)
 {
     if (nHigh < nLow) {
@@ -2825,26 +2788,6 @@ void BinaryInsertModel(Model* pModel, int nLow, int nHigh)
     else
         BinaryInsertModel(pModel, mid + 1, nHigh);
 }
-#else
-void BinaryInsertModel(Model* pModel, int nLow, int nHigh)
-{
-    while (nHigh >= nLow) {
-        int mid = (nLow + nHigh) / 2;
-        int nCmp = _stricmp(pModel->m_szName, Models.m_pData[mid]->m_szName);
-        if (nCmp < 0) {
-            nHigh = mid - 1;
-            if (nHigh >= nLow)
-                continue;
-            break;
-        }
-        nLow = mid + 1;
-        if (nHigh >= nLow)
-            continue;
-        break;
-    }
-    Models.Insert(pModel, nLow);
-}
-#endif
 
 // Appends the model through the sorted-insert helper over the whole list. Kept out of line: its one
 // caller must keep a real call.

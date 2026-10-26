@@ -2676,12 +2676,8 @@ unsigned long long CSWSArea::GetDoorCrossed(const Vector& from, const Vector& to
             if (pDoor)
             {
                 Vector vDoorPos = pDoor->m_position;
-                float fFrom = (vFrom.x - vDoorPos.x) * pDoor->CSWSObject::m_orientation.x
-                            + (vFrom.y - vDoorPos.y) * pDoor->CSWSObject::m_orientation.y
-                            + (vFrom.z - vDoorPos.z) * pDoor->CSWSObject::m_orientation.z;
-                float fTo = (vTo.x - vDoorPos.x) * pDoor->CSWSObject::m_orientation.x
-                          + (vTo.y - vDoorPos.y) * pDoor->CSWSObject::m_orientation.y
-                          + (vTo.z - vDoorPos.z) * pDoor->CSWSObject::m_orientation.z;
+                float fFrom = dot(vFrom - vDoorPos, pDoor->CSWSObject::m_orientation);
+                float fTo = dot(vTo - vDoorPos, pDoor->CSWSObject::m_orientation);
 
                 if ((fFrom > 0.0f) != (fTo > 0.0f))
                     return oidDoor;

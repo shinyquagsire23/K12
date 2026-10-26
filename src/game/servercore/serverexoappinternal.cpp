@@ -2858,11 +2858,13 @@ void CServerExoAppInternal::StopServices()
         m_pServerAIMaster = 0;
     }
 
+#if !KOTOR1
     if (m_pVirtualMachineCommands != 0)
     {
         delete m_pVirtualMachineCommands;
         m_pVirtualMachineCommands = 0;
     }
+#endif
 
     if (m_pSWSMessage != 0)
     {
@@ -2896,6 +2898,14 @@ void CServerExoAppInternal::StopServices()
         operator delete(pVirtualMachine);
         g_pVirtualMachine = 0;
     }
+
+#if KOTOR1  // K1 deletes the command implementer after the virtual machine
+    if (m_pVirtualMachineCommands != 0)
+    {
+        delete m_pVirtualMachineCommands;
+        m_pVirtualMachineCommands = 0;
+    }
+#endif
 
     CScriptCompiler* pScriptCompiler = g_pScriptCompiler;
     if (pScriptCompiler != 0)

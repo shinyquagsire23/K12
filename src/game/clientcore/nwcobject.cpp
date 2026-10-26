@@ -258,7 +258,11 @@ void CSWCObject::RemoveTopFireForgetAnimation()
     if (m_nFireForgetCount != 0)
     {
         unsigned char nCount = m_nFireForgetCount;
+#if KOTOR1
+        *(m_paFireForgetAnims + nCount - 1) = CSWCFireForgetAnim();
+#else
         m_paFireForgetAnims[nCount - 1] = CSWCFireForgetAnim();
+#endif
         m_nFireForgetCount = nCount - 1;
     }
 }
@@ -266,7 +270,12 @@ void CSWCObject::RemoveTopFireForgetAnimation()
 // Pops as many entries as the stack could hold; the pops past the bottom are no-ops.
 void CSWCObject::RemoveAllFireForgetAnimations()
 {
+#if KOTOR1
+    unsigned int nCapacity = m_nFireForgetCapacity;
+    for (unsigned int i = 0; i < nCapacity; i++)
+#else
     for (unsigned int i = 0; i < m_nFireForgetCapacity; i++)
+#endif
         RemoveTopFireForgetAnimation();
 }
 
@@ -1508,12 +1517,14 @@ int CSWCObject::SetAnimation(unsigned short nAnimation, int b, int nForce)
             }
             if (nAnimation == SERVER_ANIMATION_PRONE) nId = CSWCAnimBase::CLIENT_ANIMATION_KNOCKED_DOWN;
             if (m_loopingAnimation == SERVER_ANIMATION_PRONE) nId = CSWCAnimBase::CLIENT_ANIMATION_STAND_FROM_KNOCKED_DOWN;
+#if !KOTOR1  // K1 has no sit-to-meditate, chair-sit or collapse transitions
             if (nAnimation == SERVER_ANIMATION_SIT_AND_MEDITATE) nId = CSWCAnimBase::CLIENT_ANIMATION_SIT_TO_MEDITATE;
             if (nAnimation == SERVER_ANIMATION_SIT_CHAIR || nAnimation == SERVER_ANIMATION_SIT_CHAIR_DRINK ||
                 nAnimation == SERVER_ANIMATION_SIT_CHAIR_PAZAK || nAnimation == SERVER_ANIMATION_SIT_CHAIR_COMP1 ||
                 nAnimation == SERVER_ANIMATION_SIT_CHAIR_COMP2)
                 nId = CSWCAnimBase::CLIENT_ANIMATION_SIT_DOWN;
             if (nAnimation == SERVER_ANIMATION_COLLAPSE_LOOP) nId = CSWCAnimBase::CLIENT_ANIMATION_COLLAPSE;
+#endif
             if (nAnimation == SERVER_ANIMATION_DESTROYED) {
                 if (m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) nId = CSWCAnimBase::CLIENT_ANIMATION_PLACEABLE_DIE;
                 else if (m_objectType == CGameObject::OBJECT_TYPE_DOOR) nId = CSWCAnimBase::CLIENT_ANIMATION_DOOR_DIE;
@@ -1970,6 +1981,8 @@ void CSWCObject::UpdateVisualEffectsList()
     }
 }
 
+// EFFECTIVE (K1): the __stack_chk_fail call is placed after the found arm in K1 and at the end in ours
+// (one extra branch); same calls and returns, armv7 -O3 exact.
 int CSWCObject::DeleteVisualEffect(unsigned short a)
 {
     CExoLinkedListNode* pos = m_visualEffects.m_pInternal->m_pHead;

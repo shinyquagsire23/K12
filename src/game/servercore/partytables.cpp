@@ -830,9 +830,15 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
     // K1 has no planets, puppets, influence or status summary fields, and its path
     // separator is a backslash.
     CExoString saveName;
-    CResGFF* pGff = new CResGFF();
+    CResGFF* pGff;
     CResStruct topStruct;
+    CResStruct struct1;
+    CResList list1;
+    unsigned int planetMask;
+    int i;
     int created;
+
+    pGff = new CResGFF();
     {
         CExoString type("PT  ");
         CExoString version("V2.0");
@@ -840,9 +846,6 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
     }
     if (created == 1)
     {
-        CResStruct struct1;
-        CResList list1;
-
         saveName = name + "/" + "PARTYTABLE";
 
         m_nTotalPlayedSecondsAccum = GetTotalPlayedSeconds();
@@ -857,7 +860,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         pGff->WriteFieldBYTE(&topStruct, static_cast<unsigned char>(m_nNumPartyMembers), const_cast<char*>("PT_NUM_MEMBERS"));
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_MEMBERS"));
-        for (int i = 0; i < m_nNumPartyMembers; i++)
+        for (i = 0; i < m_nNumPartyMembers; i++)
         {
             int memberIndex = m_partyMemberIndex[i];
             int leaderIndex = m_nLeaderIndex;
@@ -867,7 +870,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         }
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_AVAIL_NPCS"));
-        for (int i = 0; i < 9; i++)
+        for (i = 0; i < 9; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldBYTE(&struct1, static_cast<unsigned char>(m_npcAvailable[i]), const_cast<char*>("PT_NPC_AVAIL"));
@@ -877,28 +880,21 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         pGff->WriteFieldINT(&topStruct, m_aiState, const_cast<char*>("PT_AISTATE"));
         pGff->WriteFieldINT(&topStruct, m_followState, const_cast<char*>("PT_FOLLOWSTATE"));
 
-        int planetData[32];
-        for (int c = 0; c < 4; c++)
+        planetMask = 0;
+        for (i = 0; i < NUM_PLANETS; i++)
         {
-            for (int j = 0; j < 4; j++)
-            {
-                planetData[c * 8 + j] = m_planets.m_aAvailable[c * 4 + j];
-                planetData[c * 8 + 4 + j] = m_planets.m_aSelectable[c * 4 + j];
-            }
+            if (m_planets.m_aAvailable[i] != 0)
+                planetMask |= 1 << i;
+            if (m_planets.m_aSelectable[i] != 0)
+                planetMask |= PLANET_MASK_SELECTABLE_BIT0 << i;
         }
         pGff->AddStructToStruct(&struct1, &topStruct, const_cast<char*>("GlxyMap"), 0);
         pGff->WriteFieldDWORD(&struct1, NUM_PLANETS, const_cast<char*>("GlxyMapNumPnts"));
-        unsigned int planetMask = 0;
-        for (int i = 0; i < 32; i++)
-        {
-            if (planetData[i] != 0)
-                planetMask |= (1 << ((i >> 3) * 4 + (i & 3) + ((i >> 2) & 1) * 16));
-        }
         pGff->WriteFieldDWORD(&struct1, planetMask, const_cast<char*>("GlxyMapPlntMsk"));
         pGff->WriteFieldINT(&struct1, m_selectedPlanet, const_cast<char*>("GlxyMapSelPnt"));
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_PAZAAKCARDS"));
-        for (int i = 0; i < 18; i++)
+        for (i = 0; i < 18; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldINT(&struct1, m_pazaakCards[i], const_cast<char*>("PT_PAZAAKCOUNT"));
@@ -907,7 +903,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         pGff->WriteFieldBYTE(&struct1, static_cast<unsigned char>(m_cheatUsedFlags), const_cast<char*>("PT_PAZAAKCOUNT"));
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_PAZSIDELIST"));
-        for (int i = 0; i < 10; i++)
+        for (i = 0; i < 10; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldINT(&struct1, m_pazaakSideDeck[i], const_cast<char*>("PT_PAZSIDECARD"));
@@ -916,9 +912,10 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         pGff->WriteFieldVOID(&topStruct, g_pAppManager->m_pClientExoApp->GetInGameGui()->m_tutorialWindowShown, sizeof(CGuiInGame::m_tutorialWindowShown), const_cast<char*>("PT_TUT_WND_SHOWN"));
         pGff->WriteFieldINT(&topStruct, g_pAppManager->m_pClientExoApp->GetInGameGui()->m_lastGuiPanel, const_cast<char*>("PT_LAST_GUI_PNL"));
 
+        CGuiInGameMessage* pMsgBuffer;
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_FB_MSG_LIST"));
-        CGuiInGameMessage* pMsgBuffer = static_cast<CGuiInGameMessage*>(g_pAppManager->m_pClientExoApp->GetInGameGui()->GetMessageBuffer());
-        for (int i = 0; i < g_pAppManager->m_pClientExoApp->GetInGameGui()->GetMessageBufferSize(); i++)
+        pMsgBuffer = static_cast<CGuiInGameMessage*>(g_pAppManager->m_pClientExoApp->GetInGameGui()->GetMessageBuffer());
+        for (i = 0; i < g_pAppManager->m_pClientExoApp->GetInGameGui()->GetMessageBufferSize(); i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldCExoString(&struct1, pMsgBuffer[i].m_text, const_cast<char*>("PT_FB_MSG_MSG"));
@@ -926,9 +923,10 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
             pGff->WriteFieldBYTE(&struct1, pMsgBuffer[i].m_param4, const_cast<char*>("PT_FB_MSG_COLOR"));
         }
 
+        CGuiInGameDialogMessage* pDlgBuffer;
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_DLG_MSG_LIST"));
-        CGuiInGameDialogMessage* pDlgBuffer = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pDialogMessageBuffer;
-        for (int i = 0; i < g_pAppManager->m_pClientExoApp->GetInGameGui()->m_dialogMessageBufferSize; i++)
+        pDlgBuffer = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pDialogMessageBuffer;
+        for (i = 0; i < g_pAppManager->m_pClientExoApp->GetInGameGui()->m_dialogMessageBufferSize; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldCExoString(&struct1, pDlgBuffer[i].m_speaker, const_cast<char*>("PT_DLG_MSG_SPKR"));
@@ -936,7 +934,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         }
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_COST_MULT_LIST"));
-        for (int i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
+        for (i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldFLOAT(&struct1, g_pRules->GetBaseItem(i)->m_costMultiplier, const_cast<char*>("PT_COST_MULT_VALUE"));
@@ -951,9 +949,15 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
     delete pGff;
 #else
     CExoString saveName;
-    CResGFF* pGff = new CResGFF();
+    CResGFF* pGff;
     CResStruct topStruct;
+    CResStruct struct1;
+    CResList list1;
+    unsigned int planetMask;
+    int i;
     int created;
+
+    pGff = new CResGFF();
     {
         CExoString type("PT  ");
         CExoString version("V2.0");
@@ -961,9 +965,6 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
     }
     if (created == 1)
     {
-        CResStruct struct1;
-        CResList list1;
-
         saveName = name + "\\" + "PARTYTABLE";
 
         m_nTotalPlayedSecondsAccum = GetTotalPlayedSeconds();
@@ -984,7 +985,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         pGff->WriteFieldBYTE(&topStruct, static_cast<unsigned char>(m_nNumPartyMembers), const_cast<char*>("PT_NUM_MEMBERS"));
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_MEMBERS"));
-        for (int i = 0; i < m_nNumPartyMembers; i++)
+        for (i = 0; i < m_nNumPartyMembers; i++)
         {
             int memberIndex = m_partyMemberIndex[i];
             int leaderIndex = m_nLeaderIndex;
@@ -995,14 +996,14 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
 
         pGff->WriteFieldBYTE(&topStruct, static_cast<unsigned char>(m_nNumPuppets), const_cast<char*>("PT_NUM_PUPPETS"));
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_PUPPETS"));
-        for (int i = 0; i < m_nNumPuppets; i++)
+        for (i = 0; i < m_nNumPuppets; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldINT(&struct1, m_puppetIndex[i], const_cast<char*>("PT_PUPPET_ID"));
         }
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_AVAIL_PUPS"));
-        for (int i = 0; i < 3; i++)
+        for (i = 0; i < 3; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldBYTE(&struct1, static_cast<unsigned char>(m_pupAvailable[i]), const_cast<char*>("PT_PUP_AVAIL"));
@@ -1010,7 +1011,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         }
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_AVAIL_NPCS"));
-        for (int i = 0; i < 12; i++)
+        for (i = 0; i < 12; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldBYTE(&struct1, static_cast<unsigned char>(m_npcAvailable[i]), const_cast<char*>("PT_NPC_AVAIL"));
@@ -1018,7 +1019,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         }
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_INFLUENCE"));
-        for (int i = 0; i < 12; i++)
+        for (i = 0; i < 12; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldINT(&struct1, m_influence[i], const_cast<char*>("PT_NPC_INFLUENCE"));
@@ -1027,28 +1028,21 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         pGff->WriteFieldINT(&topStruct, m_aiState, const_cast<char*>("PT_AISTATE"));
         pGff->WriteFieldINT(&topStruct, m_followState, const_cast<char*>("PT_FOLLOWSTATE"));
 
-        int planetData[32];
-        for (int c = 0; c < 4; c++)
+        planetMask = 0;
+        for (i = 0; i < NUM_PLANETS; i++)
         {
-            for (int j = 0; j < 4; j++)
-            {
-                planetData[c * 8 + j] = m_planets.m_aAvailable[c * 4 + j];
-                planetData[c * 8 + 4 + j] = m_planets.m_aSelectable[c * 4 + j];
-            }
+            if (m_planets.m_aAvailable[i] != 0)
+                planetMask |= 1 << i;
+            if (m_planets.m_aSelectable[i] != 0)
+                planetMask |= PLANET_MASK_SELECTABLE_BIT0 << i;
         }
         pGff->AddStructToStruct(&struct1, &topStruct, const_cast<char*>("GlxyMap"), 0);
         pGff->WriteFieldDWORD(&struct1, NUM_PLANETS, const_cast<char*>("GlxyMapNumPnts"));
-        unsigned int planetMask = 0;
-        for (int i = 0; i < 32; i++)
-        {
-            if (planetData[i] != 0)
-                planetMask |= (1 << ((i >> 3) * 4 + (i & 3) + ((i >> 2) & 1) * 16));
-        }
         pGff->WriteFieldDWORD(&struct1, planetMask, const_cast<char*>("GlxyMapPlntMsk"));
         pGff->WriteFieldINT(&struct1, m_selectedPlanet, const_cast<char*>("GlxyMapSelPnt"));
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_PAZAAKCARDS"));
-        for (int i = 0; i < 23; i++)
+        for (i = 0; i < 23; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldINT(&struct1, m_pazaakCards[i], const_cast<char*>("PT_PAZAAKCOUNT"));
@@ -1057,7 +1051,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         pGff->WriteFieldBYTE(&struct1, static_cast<unsigned char>(m_cheatUsedFlags), const_cast<char*>("PT_PAZAAKCOUNT"));
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_PAZSIDELIST"));
-        for (int i = 0; i < 10; i++)
+        for (i = 0; i < 10; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldINT(&struct1, m_pazaakSideDeck[i], const_cast<char*>("PT_PAZSIDECARD"));
@@ -1068,10 +1062,11 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         pGff->WriteFieldINT(&struct1, m_forfeitViolations, const_cast<char*>("FORFEITVIOL"));
         pGff->WriteFieldINT(&struct1, m_forfeitConditions, const_cast<char*>("FORFEITCONDS"));
 
+        CGuiInGameMessage* pMsgBuffer;
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_FB_MSG_LIST"));
-        CGuiInGameMessage* pMsgBuffer = static_cast<CGuiInGameMessage*>(g_pAppManager->m_pClientExoApp->GetInGameGui()->GetMessageBuffer());
+        pMsgBuffer = static_cast<CGuiInGameMessage*>(g_pAppManager->m_pClientExoApp->GetInGameGui()->GetMessageBuffer());
         int msgCount = g_pAppManager->m_pClientExoApp->GetInGameGui()->GetMessageBufferSize();
-        for (int i = 0; i < msgCount; i++)
+        for (i = 0; i < msgCount; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldCExoString(&struct1, pMsgBuffer[i].m_text, const_cast<char*>("PT_FB_MSG_MSG"));
@@ -1079,20 +1074,24 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
             pGff->WriteFieldBYTE(&struct1, pMsgBuffer[i].m_param4, const_cast<char*>("PT_FB_MSG_COLOR"));
         }
 
+        CGuiInGameDialogMessage* pDlgBuffer;
+        int dlgCount;
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_DLG_MSG_LIST"));
-        CGuiInGameDialogMessage* pDlgBuffer = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pDialogMessageBuffer;
-        int dlgCount = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_dialogMessageBufferSize;
-        for (int i = 0; i < dlgCount; i++)
+        pDlgBuffer = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pDialogMessageBuffer;
+        dlgCount = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_dialogMessageBufferSize;
+        for (i = 0; i < dlgCount; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldCExoString(&struct1, pDlgBuffer[i].m_speaker, const_cast<char*>("PT_DLG_MSG_SPKR"));
             pGff->WriteFieldCExoString(&struct1, pDlgBuffer[i].m_text, const_cast<char*>("PT_DLG_MSG_MSG"));
         }
 
+        CGuiInGameMessage* pComBuffer;
+        int comCount;
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_COM_MSG_LIST"));
-        CGuiInGameMessage* pComBuffer = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pCombatMessageBuffer;
-        int comCount = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_combatMessageBufferSize;
-        for (int i = 0; i < comCount; i++)
+        pComBuffer = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pCombatMessageBuffer;
+        comCount = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_combatMessageBufferSize;
+        for (i = 0; i < comCount; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldCExoString(&struct1, pComBuffer[i].m_text, const_cast<char*>("PT_COM_MSG_MSG"));
@@ -1101,7 +1100,7 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         }
 
         pGff->AddList(&list1, &topStruct, const_cast<char*>("PT_COST_MULT_LIST"));
-        for (int i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
+        for (i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
         {
             pGff->AddListElement(&struct1, &list1, 0);
             pGff->WriteFieldFLOAT(&struct1, g_pRules->GetBaseItem(i)->m_costMultiplier, const_cast<char*>("PT_COST_MULT_VALUE"));

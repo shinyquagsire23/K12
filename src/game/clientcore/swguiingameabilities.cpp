@@ -1374,80 +1374,6 @@ void CSWGuiInGameSkillEntry::SetActive(int flag)
 }
 #endif
 
-// Copy the prototype row's text and borders, build the two highlight borders, and size the row
-// from the supplied width and the scaled text height.
-void CSWGuiInGameSkillEntry::Initialize(CSWGuiText& text, CSWGuiBorder& border,
-                                        CSWGuiBorder& borderHilight, int nWidth)
-{
-#if KOTOR1  // K1: "lbl_hex_3" rows with BLUE borders and YELLOW highlight borders.
-    m_text.m_params = text.m_params;
-    CSWGuiBorderParams& borderParams = m_border.m_params;
-    borderParams = border.m_params;
-    borderParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
-    CSWGuiBorderParams& hilightParams = m_hilightBorder.m_params;
-    hilightParams = borderHilight.m_params;
-    hilightParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
-    hilightParams.SetPulsingAlpha(1, 1, 0);
-
-    CSWGuiBorderParams& rowParams = m_borderRow.m_params;
-    rowParams = CSWGuiBorderParams(CResRef(""), CResRef(""), CResRef("lbl_hex_3"),
-                                   0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0);
-    rowParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
-
-    CSWGuiBorderParams& rowHilightParams = m_borderHilight.m_params;
-    rowHilightParams = CSWGuiBorderParams(CResRef(""), CResRef(""), CResRef("lbl_hex_3"),
-                                          0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0);
-    rowHilightParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
-    rowHilightParams.SetPulsingAlpha(1, 0, 1);
-
-#if !defined(K2_UI_TOUCH) || defined(K2_FIX_ENGINE_BUGS)
-    // the frames stretched rather than tiled once a row is drawn larger than the art
-    rowParams.m_flags.nFillStyle = 2;
-    rowHilightParams.m_flags.nFillStyle = 2;
-#endif
-#ifndef K2_UI_TOUCH
-    // pc / xbox: the 480-line layout's units
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
-    float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
-#else
-    static float s_fScale = g_SDL_mode.h / 480.0f;
-#endif
-#else
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
-    float s_fScale = g_SDL_mode.h / 768.0f;
-#else
-    static float s_fScale = g_SDL_mode.h / 768.0f;
-#endif
-#endif
-    SetExtent(CSWGuiExtent(0, 0, nWidth, static_cast<int>(s_fScale * 42.0f)));
-#else
-    m_text.m_params = text.m_params;
-    CSWGuiBorderParams& borderParams = m_border.m_params;
-    borderParams = border.m_params;
-    borderParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
-    CSWGuiBorderParams& hilightParams = m_hilightBorder.m_params;
-    hilightParams = borderHilight.m_params;
-    hilightParams.SetPulsingAlpha(1, 1, 0);
-
-    CSWGuiBorderParams& rowParams = m_borderRow.m_params;
-    rowParams = CSWGuiBorderParams(CResRef(""), CResRef(""), CResRef("UIBIT_EQP_ITM1"),
-                                   0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0);
-    rowParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
-
-    CSWGuiBorderParams& rowHilightParams = m_borderHilight.m_params;
-    rowHilightParams = CSWGuiBorderParams(CResRef(""), CResRef(""), CResRef("UIBIT_EQP_ITM1"),
-                                          0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0);
-    rowHilightParams.SetPulsingAlpha(1, 0, 1);
-#if !defined(K2_UI_TOUCH) || defined(K2_FIX_ENGINE_BUGS)
-    // the row frames stretched, not tiled (as the item rows)
-    rowParams.m_flags.nFillStyle = 2;
-    rowHilightParams.m_flags.nFillStyle = 2;
-#endif
-
-    SetExtent(CSWGuiExtent(0, 0, nWidth, static_cast<int>(GetResolutionTextScalar() * 42.0f)));
-#endif
-}
-
 void CSWGuiInGameSkillEntry::Draw(float f)
 {
     if (m_tail.bActive)
@@ -1572,6 +1498,80 @@ void CSWGuiInGameSkillEntry::SetExtent(const CSWGuiExtent& extent)
     }
     K2QolFitText(m_text, m_text.m_extent.h);
 #endif
+#endif
+}
+
+// Copy the prototype row's text and borders, build the two highlight borders, and size the row
+// from the supplied width and the scaled text height.
+void CSWGuiInGameSkillEntry::Initialize(CSWGuiText& text, CSWGuiBorder& border,
+                                        CSWGuiBorder& borderHilight, int nWidth)
+{
+#if KOTOR1  // K1: "lbl_hex_3" rows with BLUE borders and YELLOW highlight borders.
+    m_text.m_params = text.m_params;
+    CSWGuiBorderParams& borderParams = m_border.m_params;
+    borderParams = border.m_params;
+    borderParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
+    CSWGuiBorderParams& hilightParams = m_hilightBorder.m_params;
+    hilightParams = borderHilight.m_params;
+    hilightParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
+    hilightParams.SetPulsingAlpha(1, 1, 0);
+
+    CSWGuiBorderParams& rowParams = m_borderRow.m_params;
+    rowParams = CSWGuiBorderParams(CResRef(""), CResRef(""), CResRef("lbl_hex_3"),
+                                   0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0);
+    rowParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
+
+    CSWGuiBorderParams& rowHilightParams = m_borderHilight.m_params;
+    rowHilightParams = CSWGuiBorderParams(CResRef(""), CResRef(""), CResRef("lbl_hex_3"),
+                                          0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0);
+    rowHilightParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
+    rowHilightParams.SetPulsingAlpha(1, 0, 1);
+
+#if !defined(K2_UI_TOUCH) || defined(K2_FIX_ENGINE_BUGS)
+    // the frames stretched rather than tiled once a row is drawn larger than the art
+    rowParams.m_flags.nFillStyle = 2;
+    rowHilightParams.m_flags.nFillStyle = 2;
+#endif
+#ifndef K2_UI_TOUCH
+    // pc / xbox: the 480-line layout's units
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
+#else
+    static float s_fScale = g_SDL_mode.h / 480.0f;
+#endif
+#else
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
+    float s_fScale = g_SDL_mode.h / 768.0f;
+#else
+    static float s_fScale = g_SDL_mode.h / 768.0f;
+#endif
+#endif
+    SetExtent(CSWGuiExtent(0, 0, nWidth, static_cast<int>(s_fScale * 42.0f)));
+#else
+    m_text.m_params = text.m_params;
+    CSWGuiBorderParams& borderParams = m_border.m_params;
+    borderParams = border.m_params;
+    borderParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
+    CSWGuiBorderParams& hilightParams = m_hilightBorder.m_params;
+    hilightParams = borderHilight.m_params;
+    hilightParams.SetPulsingAlpha(1, 1, 0);
+
+    CSWGuiBorderParams& rowParams = m_borderRow.m_params;
+    rowParams = CSWGuiBorderParams(CResRef(""), CResRef(""), CResRef("UIBIT_EQP_ITM1"),
+                                   0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0);
+    rowParams.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
+
+    CSWGuiBorderParams& rowHilightParams = m_borderHilight.m_params;
+    rowHilightParams = CSWGuiBorderParams(CResRef(""), CResRef(""), CResRef("UIBIT_EQP_ITM1"),
+                                          0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0);
+    rowHilightParams.SetPulsingAlpha(1, 0, 1);
+#if !defined(K2_UI_TOUCH) || defined(K2_FIX_ENGINE_BUGS)
+    // the row frames stretched, not tiled (as the item rows)
+    rowParams.m_flags.nFillStyle = 2;
+    rowHilightParams.m_flags.nFillStyle = 2;
+#endif
+
+    SetExtent(CSWGuiExtent(0, 0, nWidth, static_cast<int>(GetResolutionTextScalar() * 42.0f)));
 #endif
 }
 

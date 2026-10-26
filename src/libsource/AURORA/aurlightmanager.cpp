@@ -662,7 +662,7 @@ void LightManager::EnableBumpMapLights()
 {
     List<PartLight*> lights(m_bumpMapLights);
 
-    for (int64_t i = 0; i < lights.m_count; i++)
+    for (int i = 0; i < lights.m_count; i++)
     {
         EnableThisLight(lights.m_pData[i]);
         cm_bLightManagerUpdated = 1;
@@ -1244,11 +1244,25 @@ void LightManager::SetUpVertexProgramLightShaderConstants(int nLights, int bFade
     Matrix matCamera = CurrentCamera->m_qOrientation.getmatrix();
     Vector vCamera = CurrentCamera->m_vPosition;
 
+#if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)
+    // K1: the camera basis is uploaded again only when the camera position has changed, so a pure rotation
+    // keeps the previous basis
+    static Vector vLastCamera(0.0f, 0.0f, vCamera.z == 0.0f ? 1.0f : 0.0f);
+    if (vLastCamera.x != vCamera.x || vLastCamera.y != vCamera.y || vLastCamera.z != vCamera.z) {
+        GLRender::SetVertexShaderConstant(92, matCamera.m_f[0], matCamera.m_f[3], matCamera.m_f[6], vCamera.x);
+        GLRender::SetVertexShaderConstant(91, matCamera.m_f[1], matCamera.m_f[4], matCamera.m_f[7], vCamera.y);
+        GLRender::SetVertexShaderConstant(90, matCamera.m_f[2], matCamera.m_f[5], matCamera.m_f[8], vCamera.z);
+        GLRender::SetVertexShaderConstant(89, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
+        vLastCamera = vCamera;
+    }
+#else
     GLRender::SetVertexShaderConstant(92, matCamera.m_f[0], matCamera.m_f[3], matCamera.m_f[6], vCamera.x);
     GLRender::SetVertexShaderConstant(91, matCamera.m_f[1], matCamera.m_f[4], matCamera.m_f[7], vCamera.y);
     GLRender::SetVertexShaderConstant(90, matCamera.m_f[2], matCamera.m_f[5], matCamera.m_f[8], vCamera.z);
     GLRender::SetVertexShaderConstant(89, 0.0f, 0.0f, 0.0f, 1.0f);
     GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 0.0f);
+#endif
     GLRender::SetVertexShaderConstant(88, CurrentCamera->m_vPosition.x, CurrentCamera->m_vPosition.y,
                                       CurrentCamera->m_vPosition.z, 1.0f);
 

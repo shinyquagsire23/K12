@@ -87,6 +87,7 @@ static __forceinline long long __builtin_expect(long long x, long long expected)
 
 #define __builtin_memset memset
 #define __builtin_memcpy memcpy
+#define __builtin___memcpy_chk(d, s, n, size) memcpy(d, s, n)
 #define __builtin_strcmp strcmp
 #define __builtin_strncmp strncmp
 #define __builtin_strlen strlen

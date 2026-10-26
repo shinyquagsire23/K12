@@ -310,7 +310,7 @@ int CSWGuiText::GetIdealHeight()
         return 0;
 #if KOTOR1
     // K1: an empty string is 0 high, otherwise always one pixel of leading.
-    if (static_cast<short>(m_pString->GetStringSize()) < 1)
+    if (m_pString->GetStringSize() < 1)
         return 0;
     return m_pString->GetIdealPixelHeight(-1) + 1;
 #else

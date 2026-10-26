@@ -158,8 +158,15 @@ Vector CSWSRoom::GetNormalOfPoint(Vector vPoint)
     int nPoint = m_pSurfaceMesh->FindTriangle(vPoint, 1, Vector(1.0f, 1.0f, 0.0f));
     if (nPoint >= 0) {
         Vector* paNormals = m_pSurfaceMesh->m_paTriNormals;
-        if (paNormals != 0)
+        if (paNormals != 0) {
+#if KOTOR1
+            vNormal.x = paNormals[nPoint].x;
+            vNormal.z = paNormals[nPoint].z;
+            vNormal.y = paNormals[nPoint].y;
+#else
             vNormal = paNormals[nPoint];
+#endif
+        }
     }
     return vNormal;
 }
@@ -170,8 +177,15 @@ Vector CSWSRoom::GetNormalOfPoint(int nPoint)
     Vector vNormal(0.0f, 0.0f, 1.0f);
     if (nPoint >= 0) {
         Vector* paNormals = m_pSurfaceMesh->m_paTriNormals;
-        if (paNormals != 0)
+        if (paNormals != 0) {
+#if KOTOR1
+            vNormal.x = paNormals[nPoint].x;
+            vNormal.z = paNormals[nPoint].z;
+            vNormal.y = paNormals[nPoint].y;
+#else
             vNormal = paNormals[nPoint];
+#endif
+        }
     }
     return vNormal;
 }

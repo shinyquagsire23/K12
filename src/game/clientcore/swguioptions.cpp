@@ -2419,7 +2419,7 @@ void CSWGuiOptionsSoundAdvanced::OnForceSoftware(CSWGuiControl* pControl)
 #else
         int nOld = m_nForceSoftware;
         m_nForceSoftware = (nOld == 0);
-        int bEnabled;
+        bool bEnabled;
         if (nOld != 0) {
             m_nEAXLevel = 0;
             SetEAXText();

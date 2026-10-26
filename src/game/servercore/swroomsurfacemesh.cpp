@@ -234,10 +234,10 @@ void CSWRoomSurfaceMesh::GetTriangleVertices(int unused, int triangle, int* a, i
         *b = m_paTriVertIndices[static_cast<int>(base + 1)];
         *c = m_paTriVertIndices[static_cast<int>(base + 2)];
 #else
-        int* p = &m_paTriVertIndices[static_cast<int64_t>(triangle) + static_cast<int64_t>(triangle * 2)];
-        *a = p[0];
-        *b = p[1];
-        *c = p[2];
+        int n = triangle * 3;
+        *a = m_paTriVertIndices[n];
+        *b = m_paTriVertIndices[n + 1];
+        *c = m_paTriVertIndices[n + 2];
 #endif
     }
 }
@@ -245,10 +245,11 @@ void CSWRoomSurfaceMesh::GetTriangleVertices(int unused, int triangle, int* a, i
 int CSWRoomSurfaceMesh::GetEdgeVertex(int edgeIdx, Vector& out)
 {
     if (edgeIdx < m_aEdgeAdjacency.m_count) {
-        int vertIdx = m_paTriVertIndices[m_aEdgeAdjacency[edgeIdx].edge];
-#if KOTOR1  // K1: the vertex is read through the aligned-array accessor
+#if KOTOR1  // K1: the index and the vertex are read through the aligned-array accessors
+        int vertIdx = m_paTriVertIndices.Get(m_aEdgeAdjacency[edgeIdx].edge);
         out = m_paVertices.Get(vertIdx);
 #else
+        int vertIdx = m_paTriVertIndices[m_aEdgeAdjacency[edgeIdx].edge];
         out = m_paVertices[vertIdx];
 #endif
         return 1;
@@ -259,6 +260,8 @@ int CSWRoomSurfaceMesh::GetEdgeVertex(int edgeIdx, Vector& out)
     return 0;
 }
 
+// EFFECTIVE (K1): the vertex/index loads and the two stores of v are scheduled in another order (x9/x10
+// rename); same loads and stores, armv7 -O3 exact.
 int CSWRoomSurfaceMesh::SetEdgeVertex(int edgeIdx, Vector& v)
 {
     if (edgeIdx < m_aEdgeAdjacency.m_count) {
@@ -279,12 +282,13 @@ int CSWRoomSurfaceMesh::GetEdgeVertices(int edgeIdx, Vector& out0, Vector& out1)
 {
     if (edgeIdx < m_aEdgeAdjacency.m_count) {
         int nextIdx = (edgeIdx + 1 == m_aEdgeAdjacency.m_count) ? 0 : edgeIdx + 1;
-        int vertIdx0 = m_paTriVertIndices[m_aEdgeAdjacency[edgeIdx].edge];
-#if KOTOR1  // K1: both vertices are read through the aligned-array accessor
+#if KOTOR1  // K1: the indices and both vertices are read through the aligned-array accessors
+        int vertIdx0 = m_paTriVertIndices.Get(m_aEdgeAdjacency[edgeIdx].edge);
         out0 = m_paVertices.Get(vertIdx0);
-        int vertIdx1 = m_paTriVertIndices[m_aEdgeAdjacency[nextIdx].edge];
+        int vertIdx1 = m_paTriVertIndices.Get(m_aEdgeAdjacency[nextIdx].edge);
         out1 = m_paVertices.Get(vertIdx1);
 #else
+        int vertIdx0 = m_paTriVertIndices[m_aEdgeAdjacency[edgeIdx].edge];
         out0 = m_paVertices[vertIdx0];
         int vertIdx1 = m_paTriVertIndices[m_aEdgeAdjacency[nextIdx].edge];
         out1 = m_paVertices[vertIdx1];
@@ -324,12 +328,12 @@ void CSWRoomSurfaceMesh::GetTriangleAdjacency(int unused, int triangle, int* a, 
     }
     if (m_paTriAdjacency == 0)
         return;
-    int* p = &m_paTriAdjacency[static_cast<int64_t>(triangle) + static_cast<int64_t>(triangle * 2)];
-    int e0 = p[0];
+    int n = triangle * 3;
+    int e0 = m_paTriAdjacency[n];
     *a = (e0 == -1) ? -1 : e0 / 3;
-    int e1 = p[1];
+    int e1 = m_paTriAdjacency[n + 1];
     *b = (e1 == -1) ? -1 : e1 / 3;
-    int e2 = p[2];
+    int e2 = m_paTriAdjacency[n + 2];
     *c = (e2 == -1) ? -1 : e2 / 3;
 #endif
 }
@@ -1626,18 +1630,6 @@ void CSWRoomSurfaceMesh::AddCrossing(const Vector& segStart, const Vector& dir,
 
     points.Insert(point, i);
 
-#if KOTOR1  // K1 inlines the int list's Insert; the vector list's above stays a call
-    int j = m_aCrossingEdges.m_count;
-    m_aCrossingEdges.Add(value);
-    if (j > i) {
-        do {
-            m_aCrossingEdges.m_pArray[j] = m_aCrossingEdges.m_pArray[j - 1];
-            j--;
-        } while (j > i);
-    }
-    m_aCrossingEdges.m_pArray[i] = value;
-#else
     m_aCrossingEdges.Insert(value, i);
-#endif
     outCount++;
 }

@@ -930,47 +930,46 @@ void CSWGuiStore::OnControlStoreAButton(CSWGuiControl* pControl)
     if (!pItem)
         return;
 
-    if (static_cast<unsigned int>(m_nGold) < static_cast<unsigned int>(GetItemBuyValue(pItem)))
+    if (static_cast<unsigned int>(m_nGold) >= static_cast<unsigned int>(GetItemBuyValue(pItem)))
     {
-#if KOTOR1  // K1 shows the refusal in the examine box, and no box takes message colours
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowExamineBox(STRREF_NOT_ENOUGH_CREDITS, 1);
-        return;
-#else
-        CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
-        pBox->SetMessageColors(CGuiInGame::COLOR_DARK_GOLD, CGuiInGame::COLOR_NEW_HIGHLIGHT);
-        pBox->SetAllowCancel(0);
+        // The level cap is 50 credits per character level; the box shows it via custom token 0.
+        CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
+        int nLimit = 50;
+        if (pCreature != NULL)
+            nLimit = pCreature->m_pStats->GetLevel(0) * 50;
 
-        pBox->SetMessage(g_pSWTlkTable->Fetch(STRREF_NOT_ENOUGH_CREDITS, 0, 0, 0));
-        pBox->SetCallback(0, 0, 0);
-        g_pAppManager->m_pClientExoApp->GetSWGuiManager()->AddPanel(pBox, 1, 1);
-        return;
-#endif
-    }
+        if (static_cast<unsigned int>(GetItemBuyValue(pItem)) > static_cast<unsigned int>(nLimit))
+        {
+            CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
+            CExoString sMessage;
+            g_pTlkTable->SetCustomToken(0, CExoString(nLimit));
 
-    // The level cap is 50 credits per character level; the box shows it via custom token 0.
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
-    int nLimit = 50;
-    if (pCreature != NULL)
-        nLimit = pCreature->m_pStats->GetLevel(0) * 50;
-
-    if (static_cast<unsigned int>(GetItemBuyValue(pItem)) > static_cast<unsigned int>(nLimit))
-    {
-        CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
-        CExoString sMessage;
-        g_pTlkTable->SetCustomToken(0, CExoString(nLimit));
-
-        sMessage = g_pSWTlkTable->Fetch(STRREF_CONFIRM_BUY_ABOVE_PRICE, 0, 0, 0);
+            sMessage = g_pSWTlkTable->Fetch(STRREF_CONFIRM_BUY_ABOVE_PRICE, 0, 0, 0);
 #if !KOTOR1
-        pBox->SetMessageColors(CGuiInGame::COLOR_DARK_GOLD, CGuiInGame::COLOR_NEW_HIGHLIGHT);
+            pBox->SetMessageColors(CGuiInGame::COLOR_DARK_GOLD, CGuiInGame::COLOR_NEW_HIGHLIGHT);
 #endif
-        pBox->SetAllowCancel(1);
-        pBox->SetMessage(sMessage);
-        pBox->SetCallback(this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiStore::BuyItemCallback), pControl);
-        g_pAppManager->m_pClientExoApp->GetSWGuiManager()->AddPanel(pBox, 1, 1);
+            pBox->SetAllowCancel(1);
+            pBox->SetMessage(sMessage);
+            pBox->SetCallback(this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiStore::BuyItemCallback), pControl);
+            g_pAppManager->m_pClientExoApp->GetSWGuiManager()->AddPanel(pBox, 1, 1);
+            return;
+        }
+
+        BuyItem(pItem);
         return;
     }
 
-    BuyItem(pItem);
+#if KOTOR1  // K1 shows the refusal in the examine box, and no box takes message colours
+    g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowExamineBox(STRREF_NOT_ENOUGH_CREDITS, 1);
+#else
+    CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
+    pBox->SetMessageColors(CGuiInGame::COLOR_DARK_GOLD, CGuiInGame::COLOR_NEW_HIGHLIGHT);
+    pBox->SetAllowCancel(0);
+
+    pBox->SetMessage(g_pSWTlkTable->Fetch(STRREF_NOT_ENOUGH_CREDITS, 0, 0, 0));
+    pBox->SetCallback(0, 0, 0);
+    g_pAppManager->m_pClientExoApp->GetSWGuiManager()->AddPanel(pBox, 1, 1);
+#endif
 }
 
 // Handles a hover by filling the cost, stock and on-hand readouts for the row under the cursor,

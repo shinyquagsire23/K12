@@ -1406,6 +1406,8 @@ int CSWCMessage::HandleServerToPlayerJournalMessage(unsigned char nType)
     return 0;
 }
 
+// EFFECTIVE (K1): ours tail-duplicates the shared `return 0` block into the first overflow check; K1 keeps
+// one copy (armv7 -O3 exact, same calls and returns on every path).
 int CSWCMessage::HandleServerToPlayerLevelUpMessage(unsigned char nType)
 {
     if (MessageReadOverflow(1))
@@ -1425,6 +1427,8 @@ int CSWCMessage::HandleServerToPlayerLevelUpMessage(unsigned char nType)
 }
 
 // GetInGameGui() is called for its side effect of forcing the character sheet into existence.
+// EFFECTIVE (K1): ours tail-duplicates the shared `return 0` block into the first overflow check; K1 keeps
+// one copy (armv7 -O3 exact, same calls and returns on every path).
 int CSWCMessage::HandleServerToPlayerGUICharacterSheet(unsigned char nType)
 {
     if (MessageReadOverflow(1))
@@ -1912,6 +1916,8 @@ int CSWCMessage::HandleServerToPlayerGuiQuickbar(unsigned char nType)
     return 0;
 }
 
+// EFFECTIVE (K1): ours tail-duplicates the shared `return 0` block into the first overflow check; K1 keeps
+// one copy (armv7 -O3 exact, same calls and returns on every path).
 int CSWCMessage::HandleServerToPlayerGuiTimingEvent(unsigned char nType)
 {
     if (MessageReadOverflow(1))
@@ -6112,7 +6118,12 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
                     switch (nOutcome)
                     {
                     case 0:
+#if KOTOR1  // K1: Disable Mine, Recover Mine and Security; Set Mine gets no floating feedback
+                        if (nSkillStrRef == STRREF_SECURITY || nSkillStrRef == STRREF_RECOVER_MINE
+                                || nSkillStrRef == STRREF_DISABLE_MINE)
+#else
                         if (nSkillStrRef - STRREF_DISABLE_MINE < 3 || nSkillStrRef == STRREF_SECURITY)
+#endif
                         {
                             sOut.Format(const_cast<char*>("%s *%s*"), sSkill.CStr(), sVerb.CStr());
 
@@ -6136,7 +6147,12 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
                         break;
 
                     case 3:
+#if KOTOR1  // K1: Set Mine is not in the set here either
+                        if (nSkillStrRef == STRREF_SECURITY || nSkillStrRef == STRREF_RECOVER_MINE
+                                || nSkillStrRef == STRREF_DISABLE_MINE)
+#else
                         if (nSkillStrRef - STRREF_DISABLE_MINE < 3 || nSkillStrRef == STRREF_SECURITY)
+#endif
                         {
                             CExoString sAlt =
                                 g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_SKILL_TOO_LOW);
@@ -7668,7 +7684,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             switch (nKind)
             {
             case 1:
-            case 16: nStrRef = bFlag1 == 0 ? STRREF_IS_CONFUSED : STRREF_IS_NOT_CONFUSED; break;
+#if !KOTOR1  // K1: kinds 1..10 only
+            case 16:
+#endif
+                     nStrRef = bFlag1 == 0 ? STRREF_IS_CONFUSED : STRREF_IS_NOT_CONFUSED; break;
             case 2:  nStrRef = bFlag1 == 0 ? STRREF_IS_FRIGHTENED : STRREF_IS_NOT_FRIGHTENED; break;
             case 3:  nStrRef = bFlag1 == 0 ? STRREF_IS_DROID_STUNNED : STRREF_IS_NOT_DROID_STUNNED; break;
             case 4:  nStrRef = bFlag1 == 0 ? STRREF_IS_STUNNED : STRREF_IS_NOT_STUNNED; break;
@@ -7678,10 +7697,12 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             case 8:  nStrRef = bFlag1 == 0 ? STRREF_IS_HORRIFIED : STRREF_IS_NOT_HORRIFIED; break;
             case 9:  nStrRef = bFlag1 == 0 ? STRREF_IS_FORCE_PUSHED : STRREF_IS_NOT_FORCE_PUSHED; break;
             case 10: nStrRef = bFlag1 == 0 ? STRREF_IS_IN_WHIRLWIND : STRREF_IS_NOT_IN_WHIRLWIND; break;
+#if !KOTOR1
             case 14: nStrRef = bFlag1 == 0 ? STRREF_IS_KNOCKED_DOWN : STRREF_IS_NOT_KNOCKED_DOWN; break;
             case 15: nStrRef = bFlag1 == 0 ? STRREF_IS_BEING_CRUSHED : STRREF_IS_NOT_BEING_CRUSHED; break;
             case 18: nStrRef = bFlag1 == 0 ? STRREF_IS_MIND_TRICKED : STRREF_IS_NOT_MIND_TRICKED; break;
             case 19: nStrRef = bFlag1 == 0 ? STRREF_IS_SCRAMBLED : STRREF_IS_NOT_SCRAMBLED; break;
+#endif
             }
 
             sTokenValue = g_pAppManager->m_pClientExoApp->GetGUIString(nStrRef);

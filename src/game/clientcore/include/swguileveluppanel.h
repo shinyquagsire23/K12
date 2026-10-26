@@ -81,8 +81,10 @@ public:
     // One flag per page; 1 means the page is selectable.
     int  m_anState[5];
     int  m_bCanCancel;
+#if !KOTOR1  // K1 shows the granted feats from the constructor and never the granted powers
     int  m_bHasGrantedFeats;
     int  m_bHasGrantedPowers;
+#endif
 };
 
 #if !KOTOR1  // K1's GUI base classes are smaller

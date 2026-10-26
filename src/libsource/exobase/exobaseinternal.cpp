@@ -713,6 +713,8 @@ int CExoBaseInternal::GetAugmentedDirectoryList(CExoArrayList<CFileInfo>* pOut,
 }
 
 // res-type to extension string, by linear scan of m_pResTypes.
+// EFFECTIVE (K1): K1 tail-duplicates the fallback return into the empty-table guard (ours branches to the
+// loop exit's copy); same loads and result, armv7 -O3 exact.
 const CExoString& CExoBaseInternal::GetResourceExtension(unsigned short nResType)
 {
     int64_t i;
@@ -978,7 +980,11 @@ void CExoBaseInternal::SpawnExternalApplication(const CExoString& sPath,
 int CExoBaseInternal::WcsToMbs(char* dst, const K2WChar* src, uint64_t n)
 {
     uint64_t nLen = wcslen(src);
+#if KOTOR1
+    uint64_t nLimit = (nLen > n) ? n : nLen;
+#else
     uint64_t nLimit = (nLen < n) ? nLen : n;
+#endif
     if (nLimit == 0)
         return 1;
 

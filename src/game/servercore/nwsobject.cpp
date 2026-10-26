@@ -1045,8 +1045,10 @@ int CSWSObject::GetDamageImmunity(unsigned char nDamageType) {
     return nImmunity > -100 ? nImmunity : -100;
 #else
     if (nImmunity < -100)
-        return static_cast<unsigned char>(-100);
-    return nImmunity < 100 ? nImmunity : 100;
+        nImmunity = static_cast<unsigned char>(-100);
+    else if (nImmunity >= 100)
+        nImmunity = 100;
+    return nImmunity;
 #endif
 }
 
@@ -2554,6 +2556,9 @@ void CSWSObject::SetDamageImmunity(unsigned short nFlags, char nValue) {
 }
 
 char CSWSObject::GetDamageImmunityByFlags(unsigned short nFlags) {
+#if KOTOR1
+    short nResult;
+#endif
     short nBest = 0;
     for (int i = 0; i < 15; i++) {
         if (nFlags & (1 << i)) {
@@ -2563,7 +2568,11 @@ char CSWSObject::GetDamageImmunityByFlags(unsigned short nFlags) {
                 nBest = static_cast<char>(GetDamageImmunity(static_cast<unsigned char>(i)));
         }
     }
+#if KOTOR1
+    nResult = nBest < 100 ? nBest : 100;
+#else
     int nResult = nBest < 100 ? nBest : 100;
+#endif
     return static_cast<char>(nResult > -100 ? nResult : -100);
 }
 

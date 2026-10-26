@@ -862,12 +862,14 @@ void CClientOptions::SetCreatureWindMode(unsigned char nMode)
                     continue;
                 if (oidPlayer == pObject->m_objectId)
                     continue;
-                // The `>= 2` plus nested `== 2` form keeps the two compares sharing one immediate.
-                if (nMode >= 2) {
-                    if (nMode == 2)
-                        pObject->SetWind(1, creaturewindintensity);
-                } else {
+                switch (nMode) {
+                case 0:
+                case 1:
                     pObject->SetWind(0, 0.0f);
+                    break;
+                case 2:
+                    pObject->SetWind(1, creaturewindintensity);
+                    break;
                 }
             }
         }

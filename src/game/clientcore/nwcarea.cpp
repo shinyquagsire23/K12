@@ -211,11 +211,8 @@ int CSWCArea::AddPlaceableObjectLight(unsigned long long objectId, int nPlaceabl
     Vector vRootPos = {0.0f, 0.0f, 0.0f};
     int nColorRow;
     int bGot;
-    {
-        C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
-        CExoString sColumn("LightColor");
-        bGot = p2DA->GetINTEntry(nPlaceableId, sColumn, &nColorRow);
-    }
+    bGot = g_pRules->m_p2DArrays->m_pPlaceables->GetINTEntry(nPlaceableId, CExoString("LightColor"),
+                                                             &nColorRow);
     if (bGot != 0) {
         CSWCPlaceableObjectLight* pEntry = nullptr;
         bool bFound = false;

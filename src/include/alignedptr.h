@@ -2,6 +2,19 @@
 #include "k2stdint.h"
 
 #if KOTOR1
+// bionic's _FORTIFY_SOURCE=2 memcpy (bits/fortify/string.h), which K1's unaligned stores went
+// through: an always-inline wrapper whose destination carries its object size. The engine's own
+// declarations (port/libcstring.h) leave memcpy an opaque call, and bionic's header cannot be
+// included beside them.
+static inline __attribute__((always_inline)) void* K1FortifiedMemcpy(
+    void* const pDst __attribute__((pass_object_size(0))), const void* pSrc, size_t nSize)
+{
+    size_t nDstSize = __builtin_object_size(pDst, 0);
+    if (nDstSize == static_cast<size_t>(-1) || nDstSize >= nSize)
+        return __builtin_memcpy(pDst, pSrc, nSize);
+    return __builtin___memcpy_chk(pDst, pSrc, nSize, nDstSize);
+}
+
 // K1 only: a pointer into a possibly unaligned buffer, carried with an alignment flag so elements
 // can be read and written through memcpy when the pointer is misaligned.
 template <class T>
@@ -45,7 +58,7 @@ struct CAlignedPtr {
         if (m_bAligned) {
             *m_p = t;
         } else {
-            __builtin_memcpy(reinterpret_cast<char*>(m_p), &t, sizeof(T));
+            K1FortifiedMemcpy(reinterpret_cast<char*>(m_p), &t, sizeof(T));
         }
     }
     void Set(int n, const T& t)
@@ -53,7 +66,7 @@ struct CAlignedPtr {
         if (m_bAligned) {
             m_p[n] = t;
         } else {
-            __builtin_memcpy(reinterpret_cast<char*>(m_p + n), &t, sizeof(T));
+            K1FortifiedMemcpy(reinterpret_cast<char*>(m_p + n), &t, sizeof(T));
         }
     }
     void SetAt(unsigned int n, const T& t)
@@ -61,7 +74,7 @@ struct CAlignedPtr {
         if (m_bAligned) {
             m_p[n] = t;
         } else {
-            __builtin_memcpy(reinterpret_cast<char*>(m_p) + n * sizeof(T), &t, sizeof(T));  // raw-offset: the aligned-pointer helper steps by sizeof(T)
+            K1FortifiedMemcpy(reinterpret_cast<char*>(m_p) + n * sizeof(T), &t, sizeof(T));  // raw-offset: the aligned-pointer helper steps by sizeof(T)
         }
     }
     // Frees the buffer and nulls the pointer; the alignment flag is left alone.

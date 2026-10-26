@@ -30,6 +30,7 @@ extern int g_bEnableMovementSpeedDebugging;
 #include "restype.h"
 #include "serveranimation.h"
 #include "nwscriptconst.h"
+#include "exolocstringinternal.h"
 static const unsigned char CMessagePlayer_Chat_Talk = MSG_CHAT_TALK;
 
 // The low bits of CGameEffect::m_durationTypeBits that hold the DURATION_TYPE_*.
@@ -795,6 +796,7 @@ int CSWSMessage::HandlePlayerToServerCheatMessage(CSWSPlayer* pPlayer, unsigned 
 // ReplyDialog.
 int CSWSMessage::HandlePlayerToServerDialogMessage(CSWSPlayer* pPlayer, unsigned char nType)
 {
+    CGameObject* pObject;
     int bOverflow = MessageReadOverflow(1);
     int nResult = 0;
     if (nType != MSG_DIALOG_REPLY || bOverflow)
@@ -809,7 +811,6 @@ int CSWSMessage::HandlePlayerToServerDialogMessage(CSWSPlayer* pPlayer, unsigned
     if (MessageReadUnderflow(1))
         return nResult;
 
-    CGameObject* pObject;
     if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(nObjectId, &pObject)
             == CGameObjectArray::SUCCESS)
     {
@@ -2543,12 +2544,16 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
             }
 #endif
 
+#if KOTOR1  // K1 has no second weapon set; the slot mask is tested as sent
+            unsigned int nEqFlags2 = nFlags;
+#else
             unsigned int nEqFlags = (nFlags == MSG_SLOT_LEFT_WEAPON_2)
                                    ? MSG_SLOT_LEFT_WEAPON_2 | MSG_SLOT_LEFT_WEAPON
                                    : nFlags;
             unsigned int nEqFlags2 = (nEqFlags == MSG_SLOT_RIGHT_WEAPON_2)
                                     ? MSG_SLOT_RIGHT_WEAPON_2 | MSG_SLOT_RIGHT_WEAPON
                                     : nEqFlags;
+#endif
 
             CGameObject* pGameObj;
             if (pObject != 0 &&
@@ -2562,14 +2567,23 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
                     {
                         pObject->ClearAllActions(1);
                         static_cast<CSWSCreature*>(pObject)->m_pCombatRound->RemoveAllActions();
+#if KOTOR1  // K1 queues the equip behind the creature's actions, not in front
+                        static_cast<CSWSCreature*>(pObject)->AddEquipItemActions(pGameObj->AsSWSItem(), nFlags, 0, 1, 0, 1, 0);
+#else
                         static_cast<CSWSCreature*>(pObject)->AddEquipItemActions(pGameObj->AsSWSItem(), nFlags, 1, 1, 0, 1, 0, 0);
+#endif
 
                         // Same combat-round/attack tail as UNEQUIP; the projectile id means no
                         // attack follows.
                         unsigned long long nTargetId = static_cast<CSWSCreature*>(pObject)->m_pCombatRound->m_oidAttackTarget;
                         if (nTargetId != OBJECT_INVALID)
+#if KOTOR1  // K1 re-queues the attack without the commandable/pacified re-check
+                            static_cast<CSWSCreature*>(pObject)->AddAttackActions(nTargetId, 0,
+                                0, 0, 0, 0, 0, 1, SERVER_ANIMATION_ATTACK, 1500, 1, 0, 0, 4, 0);
+#else
                             static_cast<CSWSCreature*>(pObject)->AddAttackActions(nTargetId, 0,
                                 0, 0, 0, 0, 1, 1, SERVER_ANIMATION_ATTACK, 1500, 1, 0, 0, 4, 0);
+#endif
                         return 1;
                     }
                 }
@@ -2680,13 +2694,22 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
             {
                 pObject->ClearAllActions(1);
                 static_cast<CSWSCreature*>(pObject)->m_pCombatRound->RemoveAllActions();
+#if KOTOR1  // K1 queues the unequip behind the creature's actions, not in front
+                static_cast<CSWSCreature*>(pObject)->AddUnequipActions(pGameObj->AsSWSItem(), nContainerId, 0, 1, 0);
+#else
                 static_cast<CSWSCreature*>(pObject)->AddUnequipActions(pGameObj->AsSWSItem(), nContainerId, 1, 1, 0, 0, 0);
+#endif
 
                 // Same combat-round/attack tail as EQUIP; an invalid projectile id means no attack.
                 unsigned long long nTargetId = static_cast<CSWSCreature*>(pObject)->m_pCombatRound->m_oidAttackTarget;
                 if (nTargetId != OBJECT_INVALID)
+#if KOTOR1
+                    static_cast<CSWSCreature*>(pObject)->AddAttackActions(nTargetId, 0,
+                        0, 0, 0, 0, 0, 1, SERVER_ANIMATION_ATTACK, 1500, 1, 0, 0, 4, 0);
+#else
                     static_cast<CSWSCreature*>(pObject)->AddAttackActions(nTargetId, 0,
                         0, 0, 0, 0, 1, 1, SERVER_ANIMATION_ATTACK, 1500, 1, 0, 0, 4, 0);
+#endif
                 return 1;
             }
 
@@ -2831,8 +2854,10 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
                     else if ((nEquip & MSG_SLOT_CREATURE_WEAPON_R) != 0) nEquipSlot = MSG_SLOT_CREATURE_WEAPON_R;
                     else if ((nEquip & MSG_SLOT_CREATURE_WEAPON_B) != 0) nEquipSlot = MSG_SLOT_CREATURE_WEAPON_B;
                     else if ((nEquip & MSG_SLOT_CREATURE_ARMOR) != 0) nEquipSlot = MSG_SLOT_CREATURE_ARMOR;
+#if !KOTOR1  // K1 has no second weapon set
                     else if ((nEquip & MSG_SLOT_RIGHT_WEAPON_2) != 0) nEquipSlot = MSG_SLOT_RIGHT_WEAPON_2;
                     else if ((nEquip & MSG_SLOT_LEFT_WEAPON_2) != 0) nEquipSlot = MSG_SLOT_LEFT_WEAPON_2;
+#endif
                     if (nEquipSlot != 0)
                         pCreature->AddEquipItemActions(pDstItem, nEquipSlot, 1, 0, 0, 1, 0, 0);
                 }
@@ -2869,8 +2894,10 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
                 else if ((nEquip2 & MSG_SLOT_CREATURE_WEAPON_R) != 0) nEquipSlot = MSG_SLOT_CREATURE_WEAPON_R;
                 else if ((nEquip2 & MSG_SLOT_CREATURE_WEAPON_B) != 0) nEquipSlot = MSG_SLOT_CREATURE_WEAPON_B;
                 else if ((nEquip2 & MSG_SLOT_CREATURE_ARMOR) != 0) nEquipSlot = MSG_SLOT_CREATURE_ARMOR;
+#if !KOTOR1  // K1 has no second weapon set
                 else if ((nEquip2 & MSG_SLOT_RIGHT_WEAPON_2) != 0) nEquipSlot = MSG_SLOT_RIGHT_WEAPON_2;
                 else if ((nEquip2 & MSG_SLOT_LEFT_WEAPON_2) != 0) nEquipSlot = MSG_SLOT_LEFT_WEAPON_2;
+#endif
                 if (nEquipSlot != 0)
                     pCreature->AddEquipItemActions(pSrcItem, nEquipSlot, 1, 0, 0, 1, 0, 0);
             }
@@ -3256,13 +3283,14 @@ int CSWSMessage::HandlePlayerToServerServerChatMessage(CSWSPlayer* pPlayer, unsi
 }
 
 // Party sub-opcode dispatcher; most arms send a CSWCCMessageData feedback message.
+// EFFECTIVE: the decline arm's pSelfCreature/pCreature null tests come out in the other order (K2 and K1).
 int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nType)
 {
-    // inlined STR_RES::STR_RES()
-    CExoString sPartyText;
-    CResRef sRosterResRef;
+    STR_RES strRes;
     CExoString sMemberName;
     int nResult = 0;
+    CSWSCreature* pMember;
+    CSWCCMessageData* pData;
 
     if (MessageReadOverflow(1) || pPlayer == 0)
         return nResult;
@@ -3294,7 +3322,9 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
         unsigned long long nMemberId = ReadOBJECTIDServer();
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(nMemberId);
-        g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(nMemberId);
+        CSWSPlayer* pClientObject =
+            g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(nMemberId);
+        K2_UNUSED(pClientObject);
         CSWSCreature* pSelfCreature = pPlayer->GetGameObject()->AsSWSCreature();
 #ifdef K2_FIX_ENGINE_BUGS
         if (pSelfCreature == 0 || pCreature == 0)
@@ -3302,7 +3332,7 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
 #endif
         if (pSelfCreature != 0 && pSelfCreature->ReplyToInvitation(2, pCreature->m_objectId) == 1)
         {
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, pCreature->m_objectId);
             pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_YOU_IGNORED_INVITATION, pData);
 
@@ -3312,7 +3342,7 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
         }
         else
         {
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, pSelfCreature->m_objectId);
             pCreature->SendFeedbackMessage(FEEDBACK_PARTY_INVITATION_EXPIRED, pData);
         }
@@ -3323,9 +3353,10 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
     // A server that blocks party changes refuses, otherwise the full RemoveMember fan-out.
     case MSG_PARTY_LEAVE:
     {
-        ReadOBJECTIDServer();
+        unsigned long long nMemberId = ReadOBJECTIDServer();
+        nMemberId = pPlayer->m_gameObjectId;
         CSWSCreature* pRemover =
-            g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(pPlayer->m_gameObjectId);
+            g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(nMemberId);
 #if !KOTOR1  // K1: no server-info party gate, always the faction path
         if (g_pAppManager->m_pServerExoApp->GetServerInfo()->m_bBlockPartyChanges == 1)
         {
@@ -3339,30 +3370,27 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
 #endif
         {
             CSWSPlayer* pClientObject =
-                g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(pPlayer->m_gameObjectId);
+                g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(nMemberId);
             if (pRemover != 0 && pClientObject != 0)
             {
                 CSWSFaction* pFaction = pRemover->GetFaction();
                 if (pFaction != 0)
                 {
-                    pFaction->RemoveMember(pPlayer->m_gameObjectId);
-                    if (pFaction->m_members.m_count > 0)
+                    pFaction->RemoveMember(nMemberId);
+                    unsigned long long* paMembers = pFaction->m_members.m_pArray;
+                    for (int i = 0; i < pFaction->m_members.m_count; i++)
                     {
-                        unsigned long long* paMembers = pFaction->m_members.m_pArray;
-                        for (int i = 0; i < pFaction->m_members.m_count; i++)
+                        pMember = g_pAppManager->m_pServerExoApp
+                                      ->GetCreatureByGameObjectID(paMembers[i]);
+                        if (pMember != 0)
                         {
-                            CSWSCreature* pMember = g_pAppManager->m_pServerExoApp
-                                                        ->GetCreatureByGameObjectID(paMembers[i]);
-                            if (pMember != 0)
-                            {
-                                CSWCCMessageData* pData = new CSWCCMessageData;
-                                pData->SetObjectID(0, pPlayer->m_gameObjectId);
-                                pMember->SendFeedbackMessage(FEEDBACK_PARTY_MEMBER_LEFT, pData);
-                            }
+                            pData = new CSWCCMessageData;
+                            pData->SetObjectID(0, nMemberId);
+                            pMember->SendFeedbackMessage(FEEDBACK_PARTY_MEMBER_LEFT, pData);
                         }
                     }
                     CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp
-                                                  ->GetCreatureByGameObjectID(pPlayer->m_gameObjectId);
+                                                  ->GetCreatureByGameObjectID(nMemberId);
                     if (pCreature != 0)
                         pCreature->SendFeedbackMessage(FEEDBACK_PARTY_YOU_LEFT, 0);
                 }
@@ -3390,11 +3418,11 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
                     unsigned long long* paMembers = pCreature->GetFaction()->m_members.m_pArray;
                     for (int i = 0; i < pCreature->GetFaction()->m_members.m_count; i++)
                     {
-                        CSWSCreature* pMember = g_pAppManager->m_pServerExoApp
-                                                    ->GetCreatureByGameObjectID(paMembers[i]);
+                        pMember = g_pAppManager->m_pServerExoApp
+                                      ->GetCreatureByGameObjectID(paMembers[i]);
                         if (pMember != 0)
                         {
-                            CSWCCMessageData* pData = new CSWCCMessageData;
+                            pData = new CSWCCMessageData;
                             pData->SetObjectID(0, pSelfCreature->m_objectId);
                             pMember->SendFeedbackMessage(FEEDBACK_PARTY_JOINED, pData);
                         }
@@ -3402,7 +3430,7 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
                 }
                 else
                 {
-                    CSWCCMessageData* pData = new CSWCCMessageData;
+                    pData = new CSWCCMessageData;
                     pData->SetObjectID(0, pCreature->m_objectId);
                     pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_INVITATION_EXPIRED, pData);
                 }
@@ -3424,7 +3452,7 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
         {
             if (pSelfCreature->ReplyToInvitation(1, pCreature->m_objectId) == 1)
             {
-                CSWCCMessageData* pData = new CSWCCMessageData;
+                pData = new CSWCCMessageData;
                 pData->SetObjectID(0, pCreature->m_objectId);
                 pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_YOU_REJECTED_INVITATION, pData);
 
@@ -3434,7 +3462,7 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
             }
             else
             {
-                CSWCCMessageData* pData = new CSWCCMessageData;
+                pData = new CSWCCMessageData;
                 pData->SetObjectID(0, pCreature->m_objectId);
                 pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_INVITATION_EXPIRED, pData);
             }
@@ -3465,19 +3493,16 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
             {
                 if (pFaction->AttemptRemove(nMemberId, pSelfCreature->m_objectId) == 1)
                 {
-                    if (pFaction->m_members.m_count > 0)
+                    unsigned long long* paMembers = pFaction->m_members.m_pArray;
+                    for (int i = 0; i < pFaction->m_members.m_count; i++)
                     {
-                        unsigned long long* paMembers = pFaction->m_members.m_pArray;
-                        for (int i = 0; i < pFaction->m_members.m_count; i++)
+                        pMember = g_pAppManager->m_pServerExoApp
+                                      ->GetCreatureByGameObjectID(paMembers[i]);
+                        if (pMember != 0)
                         {
-                            CSWSCreature* pMember = g_pAppManager->m_pServerExoApp
-                                                        ->GetCreatureByGameObjectID(paMembers[i]);
-                            if (pMember != 0)
-                            {
-                                CSWCCMessageData* pData = new CSWCCMessageData;
-                                pData->SetObjectID(0, nMemberId);
-                                pMember->SendFeedbackMessage(FEEDBACK_PARTY_MEMBER_KICKED, pData);
-                            }
+                            pData = new CSWCCMessageData;
+                            pData->SetObjectID(0, nMemberId);
+                            pMember->SendFeedbackMessage(FEEDBACK_PARTY_MEMBER_KICKED, pData);
                         }
                     }
                     CSWSCreature* pResolved =
@@ -3503,19 +3528,16 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
         if (pCreature != 0 && pSelfCreature != 0 && pFaction != 0)
         {
             pFaction->TransferLeadership(nCandidateId, pSelfCreature->m_objectId);
-            if (pFaction->m_members.m_count > 0)
+            unsigned long long* paMembers = pFaction->m_members.m_pArray;
+            for (int i = 0; i < pFaction->m_members.m_count; i++)
             {
-                unsigned long long* paMembers = pFaction->m_members.m_pArray;
-                for (int i = 0; i < pFaction->m_members.m_count; i++)
+                pMember = g_pAppManager->m_pServerExoApp
+                              ->GetCreatureByGameObjectID(paMembers[i]);
+                if (pMember != 0)
                 {
-                    CSWSCreature* pMember = g_pAppManager->m_pServerExoApp
-                                                ->GetCreatureByGameObjectID(paMembers[i]);
-                    if (pMember != 0)
-                    {
-                        CSWCCMessageData* pData = new CSWCCMessageData;
-                        pData->SetObjectID(0, nCandidateId);
-                        pMember->SendFeedbackMessage(FEEDBACK_PARTY_NEW_LEADER, pData);
-                    }
+                    pData = new CSWCCMessageData;
+                    pData->SetObjectID(0, nCandidateId);
+                    pMember->SendFeedbackMessage(FEEDBACK_PARTY_NEW_LEADER, pData);
                 }
             }
         }
@@ -3535,19 +3557,19 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
         {
             if (pCreature->m_bInvitedToParty != 0 || pSelfCreature->m_bInvitedToParty != 0)
             {
-                CSWCCMessageData* pData = new CSWCCMessageData;
+                pData = new CSWCCMessageData;
                 pData->SetObjectID(0, nCandidateId);
                 pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_INVITATION_PENDING, pData);
             }
             else if (pCreature->GetNumInvited() != 0)
             {
-                CSWCCMessageData* pData = new CSWCCMessageData;
+                pData = new CSWCCMessageData;
                 pData->SetObjectID(0, nCandidateId);
                 pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_INVITEE_INVITING, pData);
             }
             else if (pCreature->GetIsInInvitationsIgnored(pSelfCreature->m_objectId) == 1)
             {
-                CSWCCMessageData* pData = new CSWCCMessageData;
+                pData = new CSWCCMessageData;
                 pData->SetObjectID(0, nCandidateId);
                 pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_INVITATION_IGNORED, pData);
             }
@@ -3560,7 +3582,7 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
                 {
                     if (pFaction->InviteMember(nCandidateId, pSelfCreature->m_objectId) == 1)
                     {
-                        CSWCCMessageData* pData = new CSWCCMessageData;
+                        pData = new CSWCCMessageData;
                         pData->SetObjectID(0, pSelfCreature->m_objectId);
                         pCreature->SendFeedbackMessage(FEEDBACK_PARTY_RECEIVED_INVITATION, pData);
 
@@ -3568,16 +3590,14 @@ int CSWSMessage::HandlePlayerToServerParty(CSWSPlayer* pPlayer, unsigned char nT
                         pData->SetObjectID(0, nCandidateId);
                         pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_SENT_INVITATION, pData);
 
-                        CSWSMessage* pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
-                        CExoString sPanelName = pSelfCreature->m_pStats->GetFullName();
-                        pMessage->SendServerToPlayerPopUpGUIPanel(nCandidateId, 1, 0, 0, 0,
-                                                                 sPanelName);
+                        g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerPopUpGUIPanel(
+                            nCandidateId, 1, 0, 0, 0, pSelfCreature->m_pStats->GetFullName());
                     }
                 }
             }
             else
             {
-                CSWCCMessageData* pData = new CSWCCMessageData;
+                pData = new CSWCCMessageData;
                 pData->SetObjectID(0, nCandidateId);
                 pSelfCreature->SendFeedbackMessage(FEEDBACK_PARTY_INVITEE_IN_OTHER_PARTY, pData);
             }

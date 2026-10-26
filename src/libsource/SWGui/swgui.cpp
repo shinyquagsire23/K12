@@ -935,8 +935,7 @@ void CSWGuiPanel::GetExtentAccountingForPanelOffset(CSWGuiExtent* pExtent)
     }
     if (m_stateFlags & PANEL_STATE_CENTER_X)
         pExtent->x += (m_pGuiManager->m_nScreenWidth - 640) / 2;
-    const volatile unsigned short* pK1Flags = &m_stateFlags;
-    if (*pK1Flags & PANEL_STATE_CENTER_Y)
+    if (m_stateFlags & PANEL_STATE_CENTER_Y)
         pExtent->y += (m_pGuiManager->m_nScreenHeight - 480) / 2;
 #else
     if (m_stateFlags & 8)
@@ -944,9 +943,7 @@ void CSWGuiPanel::GetExtentAccountingForPanelOffset(CSWGuiExtent* pExtent)
 
     if (m_stateFlags & PANEL_STATE_CENTER_X)
         pExtent->x += (m_pGuiManager->m_nScreenWidth - 640) / 2;
-    // The volatile view forces this second read of the field instead of reusing the loaded value.
-    const volatile unsigned short* pFlags = &m_stateFlags;
-    if (*pFlags & PANEL_STATE_CENTER_Y)
+    if (m_stateFlags & PANEL_STATE_CENTER_Y)
         pExtent->y += (m_pGuiManager->m_nScreenHeight - 480) / 2;
 #endif
 }
@@ -975,6 +972,8 @@ void CSWGuiPanel::SetActiveControl(CSWGuiControl* pControl, int bPlaySound)
 }
 
 // Corrects the manager's mouse position against the panel's own origin and resolution.
+// EFFECTIVE (K1): ours hoists the m_extent x/y pair load above the first flag test; K1 loads it once in
+// each arm (4 B). Same loads and stores, armv7 -O3 exact.
 void CSWGuiPanel::GetLocalMouseCoords(int* pX, int* pY)
 {
     CSWGuiManager* pGuiMan = g_pGuiMan;
@@ -2530,6 +2529,71 @@ void CSWGuiManager::Draw(float fDelta)
         DrawSafeRegion(fDelta);
 #endif
 }
+
+#if KOTOR1
+// K1: resolution rescale in place of K2's aspect multipliers, for all four
+// ScaleExtentForResolution bodies. The factor is the screen height over K1's 768-pixel design
+// height (g_SDL_mode), computed once per class; x/y truncate and w/h round up.
+
+void CSWGuiObject::ScaleExtentForResolution()
+{
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#else
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#endif
+    ScaleExtentForResolution(s_fScale);
+}
+
+void CSWGuiObject::ScaleExtentForResolution(float fScale)
+{
+    CSWGuiExtent extent = m_extent;
+    extent.x = static_cast<int>(extent.x * fScale);
+    extent.y = static_cast<int>(extent.y * fScale);
+    extent.w = static_cast<int>(ceilf(extent.w * fScale));
+    extent.h = static_cast<int>(ceilf(extent.h * fScale));
+    SetExtent(extent);
+    m_bScaledForResolution = 1;
+}
+
+void CSWGuiPanel::ScaleExtentForResolution()
+{
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#else
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#endif
+    CSWGuiPanel::ScaleExtentForResolution(s_fScale);
+}
+
+void CSWGuiPanel::ScaleExtentForResolution(float fScale)
+{
+    CSWGuiObject::ScaleExtentForResolution(fScale);
+    for (int i = 0; i < m_controls.m_count; i++)
+    {
+        CSWGuiControl* pControl = m_controls.m_pArray[i];
+#if !defined(K2_UI_TOUCH)
+        // pc / xbox: the bar column keeps its layout width, so scale it too.
+        if (pControl && pControl->AsListBox()) {
+            CSWGuiListBox* pList = pControl->AsListBox();
+            pList->m_scrollBar.m_extent.w = static_cast<int>(ceilf(pList->m_scrollBar.m_extent.w * fScale));
+        }
+#endif
+#if defined(K2_UI_TOUCH) && defined(K2_FIX_ENGINE_BUGS)
+        // The rows a list box builds from its prototype take its height; the prototype is scaled with
+        // the list, or the rows stay at layout size while their text grows with the screen and is
+        // dropped (the journal's quests, the feedback and resolution lists, AI script select).
+        if (pControl && pControl->AsListBox()) {
+            CSWGuiListBox* pList = pControl->AsListBox();
+            if (pList->m_pProtoItem)
+                pList->m_pProtoItem->ScaleExtentForResolution(fScale);
+        }
+#endif
+        if (pControl)
+            pControl->ScaleExtentForResolution(fScale);
+    }
+}
+#endif
 
 // The per-frame tick. Two stacks are walked in the same shape, the main panel list and then the
 // modal list, and a panel is ticked only when it is visible and not already on the modal stack. A

@@ -496,11 +496,11 @@ unsigned int MutexHANDLE::Release()
 {
     if (!pthread_equal(pthread_self(), m_hOwner))
         return ERROR_NOT_OWNER;
-    if (m_nRecursionCount == 0) {
-        m_hOwner = 0;
+    if (m_nRecursionCount != 0) {
+        m_nRecursionCount--;
         return 0;
     }
-    m_nRecursionCount--;
+    m_hOwner = 0;
     return 0;
 }
 

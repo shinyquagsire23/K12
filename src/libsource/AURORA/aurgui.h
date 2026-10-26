@@ -105,7 +105,11 @@ public:
     virtual ~CAurGUIStringInternal();
     virtual Vector GetColor();
     virtual void SetColor(const Vector& color);
+#if KOTOR1
+    virtual short GetStringSize();
+#else
     virtual int GetStringSize();
+#endif
     virtual void SetStringSize(short);
     virtual void SetString(char*);
     // m_alignment: the horizontal alignment in bits 0-2, the vertical in bits 3-5.

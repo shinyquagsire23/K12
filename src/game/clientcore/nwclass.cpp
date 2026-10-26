@@ -32,7 +32,11 @@ CSWClass::CSWClass()
     m_nNameStrRef = STRREF_NONE;
     m_nNamePluralStrRef = STRREF_NONE;
     m_nDescriptionStrRef = STRREF_NONE;
+#if KOTOR1
+    __builtin_memset(m_aAttackBonus, 0, sizeof(m_aAttackBonus));
+#else
     __builtin_memset(m_aAttackBonus, 0x30, sizeof(m_aAttackBonus));
+#endif
     __builtin_memset(m_aSpellGain, 0x30, sizeof(m_aSpellGain));
     __builtin_memset(&m_bonusFeats.m_aByLevel[1], 0, sizeof(m_bonusFeats.m_aByLevel) - 2);
     __builtin_memset(m_normalFeats.m_aByLevel, 0, sizeof(m_normalFeats.m_aByLevel));

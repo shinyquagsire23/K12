@@ -77,7 +77,6 @@ void CSWGuiFade::SetMsg(uint64_t nMsg)
     }
 }
 
-#if KOTOR1  // K1: same screen-sized extent, set again in SetFade
 void CSWGuiFade::SetFade(int nType, float fLength, float fDelay, const Vector& vColor)
 {
     m_vColor = vColor;
@@ -94,23 +93,6 @@ void CSWGuiFade::SetFade(int nType, float fLength, float fDelay, const Vector& v
     m_nLastDrawTime = static_cast<int>(g_pAppManager->m_pClientExoApp->m_pInternal->m_pPauseTimer
                            ->GetSnapshotTime() / 1000);
 }
-#else
-void CSWGuiFade::SetFade(int nType, float fLength, float fDelay, const Vector& vColor)
-{
-    m_vColor = vColor;
-    m_fAlpha = (nType == 0) ? 0.0f : 1.0f;
-    m_fadeElapsed = fLength;
-    m_fadeDuration = fDelay;
-    m_fadeAmount = 0.1f;
-    m_nFadeType = nType;
-
-    m_extent.w = m_pGuiManager->m_nScreenWidth;
-    m_extent.h = m_pGuiManager->m_nScreenHeight;
-
-    m_nLastDrawTime = static_cast<int>(g_pAppManager->m_pClientExoApp->m_pInternal->m_pPauseTimer
-                           ->GetSnapshotTime() / 1000);
-}
-#endif
 
 void CSWGuiFade::Draw(float f)
 {

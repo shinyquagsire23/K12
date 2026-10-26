@@ -92,14 +92,6 @@ int AurBumpMapAvailable()
     return AurATIFragmentShaderAvailable();
 }
 
-int AurVertexProgramsARBAvailable()
-{
-    static int returnval = -1;
-    if (returnval == -1)
-        returnval = (GL_ARB_VERTEX_PROGRAM_BIT & existingextensions) == GL_ARB_VERTEX_PROGRAM_BIT;
-    return returnval & usearbvertexprograms;
-}
-
 // Same feature-set test as AurBumpMapAvailable, gated on the render level.
 bool AurNV1xLevelShadersAvailable()
 {
@@ -123,6 +115,8 @@ bool AurNV2xLevelShadersAvailable()
     return AurBumpyShinyAvailable() != 0;
 }
 
+// EFFECTIVE (K1+K2): ATI_FRAGMENT_SHADER_BIT's GOT load issues before the `| GL_ARB_VERTEX_PROGRAM_BIT` in
+// the orig and after it in ours (registers rename from there); same loads and logic, armv7 exact in both games.
 int AurBumpyShinyAvailable()
 {
     static int returnval = -1;
@@ -133,11 +127,11 @@ int AurBumpyShinyAvailable()
                     == (EXT_BGRA_BIT | ARB_MULTITEXTURE_BIT | NV_REGISTER_COMBINERS_BIT
                         | EXT_TEXTURE_CUBE_MAP_BIT | NV_PIXEL_SHADERS_BIT | GL_ARB_VERTEX_PROGRAM_BIT);
         if (!returnval)
-            returnval = useatifragmentshaders & usearbvertexprograms
-                        & (((ARB_MULTITEXTURE_BIT | EXT_BGRA_BIT | EXT_TEXTURE_CUBE_MAP_BIT
-                             | GL_ARB_VERTEX_PROGRAM_BIT | ATI_FRAGMENT_SHADER_BIT) & existingextensions)
-                           == (ARB_MULTITEXTURE_BIT | EXT_BGRA_BIT | EXT_TEXTURE_CUBE_MAP_BIT
-                               | GL_ARB_VERTEX_PROGRAM_BIT | ATI_FRAGMENT_SHADER_BIT));
+            returnval = (((ARB_MULTITEXTURE_BIT | EXT_BGRA_BIT | EXT_TEXTURE_CUBE_MAP_BIT
+                          | GL_ARB_VERTEX_PROGRAM_BIT | ATI_FRAGMENT_SHADER_BIT) & existingextensions)
+                        == (ARB_MULTITEXTURE_BIT | EXT_BGRA_BIT | EXT_TEXTURE_CUBE_MAP_BIT
+                            | GL_ARB_VERTEX_PROGRAM_BIT | ATI_FRAGMENT_SHADER_BIT))
+                        & useatifragmentshaders & usearbvertexprograms;
     }
     return returnval;
 }
@@ -213,6 +207,14 @@ int AurOnePassEnvMapAvailable()
         }
     }
     return returnval;
+}
+
+int AurVertexProgramsARBAvailable()
+{
+    static int returnval = -1;
+    if (returnval == -1)
+        returnval = (GL_ARB_VERTEX_PROGRAM_BIT & existingextensions) == GL_ARB_VERTEX_PROGRAM_BIT;
+    return returnval & usearbvertexprograms;
 }
 
 int AurMultiTextureAvailable()

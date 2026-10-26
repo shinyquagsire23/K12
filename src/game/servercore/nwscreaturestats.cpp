@@ -1782,8 +1782,8 @@ int CSWSCreatureStats::GetCriticalHitMultiplier(int bWieldingOffhand)
         break;
     }
 
-    if (m_pOwner->IsWieldingLightsaber())
-        return nMult + (m_pOwner->m_stanceId == FORM_SABER_V_SHIEN);
+    if (m_pOwner->IsWieldingLightsaber() && m_pOwner->m_stanceId == FORM_SABER_V_SHIEN)
+        nMult++;
 #endif
     return nMult;
 }
@@ -4611,19 +4611,9 @@ unsigned short CSWSCreatureStats::GetNumberKnownSpells(unsigned char classIndex,
 int CSWSCreatureStats::GetKnownSpell(unsigned char classIndex, unsigned char nLevel,
                                      unsigned char nIndex)
 {
-#if KOTOR1
     if (classIndex < m_numClasses)
         return m_classInfo[classIndex].GetKnownSpell(nLevel, nIndex);
     return -1;
-#else
-    if (classIndex >= m_numClasses)
-        return -1;
-    if (nLevel != 0)
-        return -1;
-    if (m_classInfo[classIndex].m_knownSpells[nLevel].m_count <= nIndex)
-        return -1;
-    return m_classInfo[classIndex].m_knownSpells[nLevel].m_pArray[nIndex];
-#endif
 }
 
 // The per-level advancement record for a 0-based character level.
@@ -5776,15 +5766,9 @@ unsigned char CSWSCreatureStats::GetLevel(int bApplyNegativeLevels)
 // Maps an effect id to its effects.2da row id.
 int CSWSCreatureStats::EffectId2Effect2DAId(int nEffectId, int nSubType)
 {
-#if !KOTOR1
-    static const int anSubTypeTable[19] =
-        { 22, 24, 21, 19, 18, 23, 15, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 25 };
-#endif
     switch (nEffectId)
     {
     case GAME_EFFECT_SETSTATE:
-#if KOTOR1
-// K1: eight subtypes (no 18/19 entries).
         switch (nSubType)
         {
         case EFFECT_STATE_CONFUSED: return 22;
@@ -5795,11 +5779,11 @@ int CSWSCreatureStats::EffectId2Effect2DAId(int nEffectId, int nSubType)
         case EFFECT_STATE_SLEEP: return 23;
         case EFFECT_STATE_CHOKE: return 15;
         case EFFECT_STATE_HORRIFIED: return 13;
-        }
-#else
-        if (nSubType >= EFFECT_STATE_CONFUSED && nSubType <= EFFECT_STATE_DROID_SCRAMBLE)
-            return anSubTypeTable[nSubType - 1];
+#if !KOTOR1  // K1: eight subtypes (no 18/19 entries)
+        case EFFECT_STATE_MIND_TRICK: return 26;
+        case EFFECT_STATE_DROID_SCRAMBLE: return 25;
 #endif
+        }
         return 0;
     case GAME_EFFECT_ENTANGLE:
         return 1;

@@ -118,8 +118,9 @@ CSWGuiInGameInventory::CSWGuiInGameInventory(CSWGuiManager* pGuiManager)
     SetActiveControl(&m_lbItems, 0);
 
     unsigned char nFilter = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nInventoryFilter;
+    unsigned int nNext = nFilter > 4 ? 0 : nFilter + 1;
     CExoString sText = g_pTlkTable->GetSimpleString(STRREF_SHOW) + CExoString(" ") +
-                       g_pTlkTable->GetSimpleString(m_nFilterName[nFilter > 4 ? 0 : nFilter + 1]);
+                       g_pTlkTable->GetSimpleString(m_nFilterName[nNext]);
     m_btnQuestItems.m_text.m_params.SetText(sText);
     IosAddButtonIcon(&m_btnQuestItems, 'x');
     sText = g_pTlkTable->GetSimpleString(STRREF_PARTY_INVENTORY) + CExoString(" - ") +

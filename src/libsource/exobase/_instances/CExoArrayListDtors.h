@@ -58,13 +58,7 @@ public:
         if (m_count == m_capacity) {
             Allocate(m_count != 0 ? m_count * 2 : 0x10);
         }
-#if KOTOR1
         m_pArray[m_count++] = v;
-#else
-        int idx = m_count;
-        m_count = idx + 1;
-        m_pArray[idx] = v;
-#endif
     }
 
     // Returns the number of matching elements, not a bool.

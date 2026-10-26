@@ -413,14 +413,14 @@ short CSWSCreature::GetMaxForcePoints() {
     if (CSWClass::IsJedi(m_pStats->GetClass(m_pStats->m_numClasses - 1)) == 0)
         return 0;
 
-    short nForcePoints = 0;
+    int nForcePoints = 0;
     for (int nCurLevel = 0; nCurLevel < m_pStats->GetLevel(0); nCurLevel++) {
         unsigned char nGain = m_pStats->GetLevelStats(static_cast<unsigned char>(nCurLevel))->m_nForcePointGain;
         if (nGain != 0) {
             int nAdd = m_pStats->m_nWISMod + nGain + static_cast<signed char>(m_pStats->m_nCHAMod);
             if (nAdd < 1)
                 nAdd = 1;
-            nForcePoints = static_cast<short>(nForcePoints + nAdd);
+            nForcePoints += nAdd;
         }
     }
     if (m_pStats->HasFeat(CSWSCreatureStats::FEAT_FORCE_SENSITIVE) != 0)
@@ -433,14 +433,14 @@ short CSWSCreature::GetMaxForcePoints() {
                 do {
                     if (CSWSEffectListHandler::EFFECT_PUREEVILPOWERS == (*ppEffect)->m_subType) {
                         nForcePoints += 50;
-                        return nForcePoints;
+                        return static_cast<short>(nForcePoints);
                     }
                     ppEffect++;
                 } while (--j != 0);
             }
         }
     }
-    return nForcePoints;
+    return static_cast<short>(nForcePoints);
 }
 #endif
 
@@ -1541,9 +1541,9 @@ float CSWSCreature::CalculateDeathExperience()
                 break;
         }
 #if KOTOR1
+        int nChallengeRating = static_cast<int>(m_pStats->m_fChallengeRating);
         float fBase = 0.0f;
-        g_pRules->m_p2DArrays->m_pXpBase->GetFLOATEntry(
-            nPlayerLevel, static_cast<int>(m_pStats->m_fChallengeRating) + 1, &fBase);
+        g_pRules->m_p2DArrays->m_pXpBase->GetFLOATEntry(nPlayerLevel, nChallengeRating + 1, &fBase);
         float fPercent = 0.0f;
         g_pRules->m_p2DArrays->m_pNPC->GetFLOATEntry(NPC_ROW_GAME_XP_GENERAL, CExoString("PercentXP"), &fPercent);
         fExperience = fBase * (fPercent / 100.0f);
@@ -5851,9 +5851,9 @@ CItemRepository* CSWSCreature::GetItemRepository(int flag)
 #else
     int nOverride = g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter();
     int bPartyItems = (m_bInParty != 0) & (flag != 0);
-    if (nOverride == -1 && !bPartyItems)
-        return m_pItemRepository;
-    return g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
+    if (nOverride != -1 || bPartyItems)
+        return g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
+    return m_pItemRepository;
 #endif
 }
 
@@ -5934,14 +5934,9 @@ int CSWSCreature::GetIsAlignmentRestricted(unsigned char nClassSlot, unsigned ch
 {
     if (m_pStats->m_numClasses <= nClassSlot)
         return 0xff;
-#if KOTOR1  // K1: through the out-of-line GetClass
     CSWRules* pRules = g_pRules;
     unsigned char nClass = m_pStats->GetClass(nClassSlot);
     CSWClass* pClass = &pRules->m_paClasses[nClass];
-#else
-    unsigned char nClass = m_pStats->m_classInfo[nClassSlot].m_class;
-    CSWClass* pClass = &g_pRules->m_paClasses[nClass];
-#endif
     if (pClass != 0) {
         unsigned char bRestrict = pClass->m_alignRestrict;
         if (nAlignType == 1) {
@@ -11156,7 +11151,6 @@ void CSWSCreature::AddPazaakCard(CSWSItem* pItem)
 void CSWSCreature::UpdatePersonalSpace()
 {
     float fValue = 0.6f;
-#if KOTOR1  // K1: one pathfind read per field, each field one store of a selected value
     int bFound = g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
         m_appearance.m_headId, CTwoDimArrays::COL2DA_APPEARANCETABLE_PERSPACE, &fValue);
     CPathfindInformation* pPathfind = m_pPathfindInfo;
@@ -11192,38 +11186,6 @@ void CSWSCreature::UpdatePersonalSpace()
         pPathfind->m_fHeight = fValue;
     else
         pPathfind->m_fHeight = 1.0f;
-#else
-    if (g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
-            m_appearance.m_headId, CTwoDimArrays::COL2DA_APPEARANCETABLE_PERSPACE,
-            &fValue) == 1) {
-        m_pPathfindInfo->m_fPersonalSpace = fValue;
-        m_pPathfindInfo->ComputeStepTolerance();
-    } else {
-        m_pPathfindInfo->m_fPersonalSpace = 0.6f;
-        m_pPathfindInfo->ComputeStepTolerance();
-    }
-    g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
-        m_appearance.m_headId, CTwoDimArrays::COL2DA_APPEARANCETABLE_CREPERSPACE, &fValue);
-    m_pPathfindInfo->m_fCrePersonalSpace = fValue;
-    if (g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
-            m_appearance.m_headId, CTwoDimArrays::COL2DA_APPEARANCETABLE_CAMERASPACE,
-            &fValue) == 1)
-        m_pPathfindInfo->m_fCameraSpace = fValue;
-    else
-        m_pPathfindInfo->m_fCameraSpace = m_pPathfindInfo->m_fCrePersonalSpace;
-    if (g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
-            m_appearance.m_headId, CTwoDimArrays::COL2DA_APPEARANCETABLE_HITDIST,
-            &fValue) == 1)
-        m_pPathfindInfo->m_fHitDistance = fValue;
-    else
-        m_pPathfindInfo->m_fHitDistance = 0.5f;
-    if (g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
-            m_appearance.m_headId, CTwoDimArrays::COL2DA_APPEARANCETABLE_HEIGHT,
-            &fValue) == 1)
-        m_pPathfindInfo->m_fHeight = fValue;
-    else
-        m_pPathfindInfo->m_fHeight = 1.0f;
-#endif
 }
 
 int CSWSCreature::UnequipItem(CSWSItem* pItem)
@@ -11560,6 +11522,7 @@ int CSWSCreature::ValidNearestObjectType(CGameObject* pObject, int& nOut)
     return 0;
 }
 
+// EFFECTIVE: K1 MATCH from this source; K2 has the orig's pads and frame, +168 B of spills and block order.
 void CSWSCreature::GetNearestObjects(float fHostileRange, float fRange,
                                      CExoArrayList<unsigned long long>& listInFront,
                                      CExoArrayList<unsigned long long>& listAround)
@@ -11589,32 +11552,38 @@ void CSWSCreature::GetNearestObjects(float fHostileRange, float fRange,
 
     int bDownActive = 1;
     int bUpActive = 1;
-    for (int k = 1; bDownActive || bUpActive; k++) {
+    int k;
+    int i;
+    unsigned long long oid;
+    CGameObject* pObject;
+    int bHostile;
+    float fDistSq;
+    float fLimit;
+    float fBearing;
+    int j;
+    float fFacing;
+    float fCone;
+    int m;
+    for (k = 1; bDownActive || bUpActive; k++) {
         if (bDownActive) {
-            int i = nIndex - k;
+            i = nIndex - k;
             if (i < 0) {
                 bDownActive = 0;
             } else {
-                unsigned long long oid = pArea->m_aObjectsByX.m_pArray[i];
+                oid = pArea->m_aObjectsByX.m_pArray[i];
                 if (oid != m_objectId) {
-                    CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oid);
-                    int bHostile;
+                    pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oid);
                     if (ValidNearestObjectType(pObject, bHostile)) {
-                        CSWSObject* pOther = pObject->AsSWSObject();
-                        vDelta.x = pOther->m_position.x - m_position.x;
-                        vDelta.y = pOther->m_position.y - m_position.y;
-                        vDelta.z = pOther->m_position.z - m_position.z;
-                        float fDistSq = vDelta.x * vDelta.x + vDelta.y * vDelta.y
-                                      + vDelta.z * vDelta.z;
-                        float fLimit = bHostile != 0 ? fHostileRange : fRange;
+                        vDelta = pObject->AsSWSObject()->m_position - m_position;
+                        fDistSq = dot(vDelta, vDelta);
+                        fLimit = bHostile != 0 ? fHostileRange : fRange;
                         if (fDistSq < fLimit * fLimit) {
-                            float fBearing = Yaw(vDelta) - fSelfYaw;
+                            fBearing = Yaw(vDelta) - fSelfYaw;
                             while (fBearing < 0.0f)
                                 fBearing += 360.0f;
                             while (fBearing > 359.0f)
                                 fBearing -= 360.0f;
 
-                            int j;
                             for (j = 0; j < listBearing.m_count; j++) {
                                 if (fBearing < listBearing.m_pArray[j])
                                     break;
@@ -11629,20 +11598,12 @@ void CSWSCreature::GetNearestObjects(float fHostileRange, float fRange,
                                 listAround.Add(oid);
                             }
 
-                            float fFacing = m_orientation.x * vDelta.x
-                                          + m_orientation.y * vDelta.y
-                                          + m_orientation.z * vDelta.z;
+                            fFacing = dot(m_orientation, vDelta);
                             if (fFacing >= 0.0f) {
-                                CSWSObject* pTo = pObject->AsSWSObject();
-                                vDelta.x = pTo->m_position.x - vFrom.x;
-                                vDelta.y = pTo->m_position.y - vFrom.y;
-                                vDelta.z = pTo->m_position.z - vFrom.z;
+                                vDelta = pObject->AsSWSObject()->m_position - vFrom;
                                 vDelta.Normalize();
-                                float fCone = m_orientation.x * vDelta.x
-                                            + m_orientation.y * vDelta.y
-                                            + m_orientation.z * vDelta.z;
+                                fCone = dot(m_orientation, vDelta);
                                 if (fCone > 0.866) {
-                                    int m;
                                     for (m = 0; m < listFrontDistSq.m_count; m++) {
                                         if (fDistSq < listFrontDistSq.m_pArray[m])
                                             break;
@@ -11662,30 +11623,24 @@ void CSWSCreature::GetNearestObjects(float fHostileRange, float fRange,
             }
         }
         if (bUpActive) {
-            int i = nIndex + k;
+            i = nIndex + k;
             if (i >= pArea->m_aObjectsByX.m_count) {
                 bUpActive = 0;
             } else {
-                unsigned long long oid = pArea->m_aObjectsByX.m_pArray[i];
+                oid = pArea->m_aObjectsByX.m_pArray[i];
                 if (oid != m_objectId) {
-                    CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oid);
-                    int bHostile;
+                    pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oid);
                     if (ValidNearestObjectType(pObject, bHostile)) {
-                        CSWSObject* pOther = pObject->AsSWSObject();
-                        vDelta.x = pOther->m_position.x - m_position.x;
-                        vDelta.y = pOther->m_position.y - m_position.y;
-                        vDelta.z = pOther->m_position.z - m_position.z;
-                        float fDistSq = vDelta.x * vDelta.x + vDelta.y * vDelta.y
-                                      + vDelta.z * vDelta.z;
-                        float fLimit = bHostile != 0 ? fHostileRange : fRange;
+                        vDelta = pObject->AsSWSObject()->m_position - m_position;
+                        fDistSq = dot(vDelta, vDelta);
+                        fLimit = bHostile != 0 ? fHostileRange : fRange;
                         if (fDistSq < fLimit * fLimit) {
-                            float fBearing = Yaw(vDelta) - fSelfYaw;
+                            fBearing = Yaw(vDelta) - fSelfYaw;
                             while (fBearing < 0.0f)
                                 fBearing += 360.0f;
                             while (fBearing > 359.0f)
                                 fBearing -= 360.0f;
 
-                            int j;
                             for (j = 0; j < listBearing.m_count; j++) {
                                 if (fBearing < listBearing.m_pArray[j])
                                     break;
@@ -11700,20 +11655,12 @@ void CSWSCreature::GetNearestObjects(float fHostileRange, float fRange,
                                 listAround.Add(oid);
                             }
 
-                            float fFacing = m_orientation.x * vDelta.x
-                                          + m_orientation.y * vDelta.y
-                                          + m_orientation.z * vDelta.z;
+                            fFacing = dot(m_orientation, vDelta);
                             if (fFacing >= 0.0f) {
-                                CSWSObject* pTo = pObject->AsSWSObject();
-                                vDelta.x = pTo->m_position.x - vFrom.x;
-                                vDelta.y = pTo->m_position.y - vFrom.y;
-                                vDelta.z = pTo->m_position.z - vFrom.z;
+                                vDelta = pObject->AsSWSObject()->m_position - vFrom;
                                 vDelta.Normalize();
-                                float fCone = m_orientation.x * vDelta.x
-                                            + m_orientation.y * vDelta.y
-                                            + m_orientation.z * vDelta.z;
+                                fCone = dot(m_orientation, vDelta);
                                 if (fCone > 0.866) {
-                                    int m;
                                     for (m = 0; m < listFrontDistSq.m_count; m++) {
                                         if (fDistSq < listFrontDistSq.m_pArray[m])
                                             break;

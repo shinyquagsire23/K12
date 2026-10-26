@@ -1020,10 +1020,21 @@ bool Scene::SetGeomFadeProperties(int nMode)
 
 
 #if KOTOR1
+// K1 stops the scan at the match and reads the slot again for the result.
 Gob* Scene::GetObject(char* pszName)
+{
+    int i;
+    for (i = 0; i < Objects().m_count; i++)
+    {
+        if (_stricmp(pszName, Objects().m_pData[i]->m_szName) == 0)
+            break;
+    }
+    if (i < Objects().m_count)
+        return Objects().m_pData[i];
+    return 0;
+}
 #else
 Gob* Scene::GetObjectA(char* pszName)
-#endif
 {
     for (int i = 0; i < Objects().m_count; i++)
     {
@@ -1032,6 +1043,7 @@ Gob* Scene::GetObjectA(char* pszName)
     }
     return 0;
 }
+#endif
 
 CAurRoom* Scene::FindRoom(char* pszName)
 {
@@ -2425,15 +2437,7 @@ extern template void List<Gob*>::Insert(Gob*, int);
 void Scene::RenderGobFirst(CAurObject* pObject)
 {
     Objects().Remove(static_cast<Gob*>(pObject));
-#if KOTOR1  // K1: List::Insert out of line
     Objects().Insert(static_cast<Gob*>(pObject), 0);
-#else
-    Objects().Add(static_cast<Gob*>(pObject));
-
-    for (int i = Objects().m_count - 1; i > 0; i--)
-        Objects().m_pData[i] = Objects().m_pData[i - 1];
-    Objects().m_pData[0] = static_cast<Gob*>(pObject);
-#endif
 }
 
 void Scene::RenderGobAfter(CAurObject* pObject, CAurObject* pAnchor)

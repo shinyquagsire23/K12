@@ -428,11 +428,7 @@ public:
     void OnSlotSelected(CSWGuiControl* pControl);
     void OnEnterSlot(CSWGuiControl* pControl);
     void ShowItems(int n);
-#if KOTOR1  // K1 returns the count as a byte
     unsigned char GetNumUpgrades();
-#else
-    int  GetNumUpgrades();
-#endif
     void UpdateItems();
     void Update3DView();
     void SetDescription(const CExoString& s);

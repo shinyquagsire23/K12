@@ -766,9 +766,11 @@ int CAuroraInterface::GetNearestVideoMode(unsigned int nWidth, unsigned int nHei
     if (EnumDisplaySettingsA(0, 0, &devMode) == 0)
         return -1;
 
+#if !KOTOR1
     // The best refresh rate is pinned to 60 Hz whenever a mode is taken, so the refresh comparison
     // below always measures the request against 60.
     int nRefreshDelta = static_cast<int>(nRefreshRate) > 60 ? static_cast<int>(nRefreshRate) - 60 : 60 - static_cast<int>(nRefreshRate);
+#endif
 
     int nBestMode = -1;
     unsigned int nBestWidth = 0;
@@ -779,7 +781,13 @@ int CAuroraInterface::GetNearestVideoMode(unsigned int nWidth, unsigned int nHei
 
     for (;;)
     {
+#if KOTOR1
+        // K1: only the five PC modes, at 16bpp or better, with no 2..59 Hz rate, are candidates
+        if (IsValidResolution(devMode.m_pelsWidth, devMode.m_pelsHeight) && devMode.m_bitsPerPel >= 16 &&
+            (devMode.m_displayFrequency < 2 || devMode.m_displayFrequency >= 60))
+#else
         if (devMode.m_bitsPerPel >= 16)
+#endif
         {
             // The tuple is replaced only when the candidate is strictly closer at the first field
             // where the two differ; an equal field falls through to the next one.
@@ -804,8 +812,14 @@ int CAuroraInterface::GetNearestVideoMode(unsigned int nWidth, unsigned int nHei
                         if (nHeightDeltaCur != nHeightDeltaBest)
                             goto next;
 
+#if KOTOR1
+                        if (__builtin_abs(static_cast<int>(devMode.m_displayFrequency) - static_cast<int>(nRefreshRate)) >=
+                            __builtin_abs(static_cast<int>(nBestRefresh) - static_cast<int>(nRefreshRate)))
+                            goto next;
+#else
                         if (nRefreshDelta >= __builtin_abs(static_cast<int>(nBestRefresh) - static_cast<int>(nRefreshRate)))
                             goto next;
+#endif
                     }
                 }
             }
@@ -814,7 +828,11 @@ int CAuroraInterface::GetNearestVideoMode(unsigned int nWidth, unsigned int nHei
             nBestWidth = devMode.m_pelsWidth;
             nBestHeight = devMode.m_pelsHeight;
             nBestBPP = devMode.m_bitsPerPel;
+#if KOTOR1
+            nBestRefresh = devMode.m_displayFrequency;
+#else
             nBestRefresh = 60;
+#endif
         }
 
     next:

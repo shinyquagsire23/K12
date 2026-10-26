@@ -552,11 +552,7 @@ public:
     void ShowStoreGui(unsigned long long a, unsigned long long b);
     void HideStoreGui();
     void ClearRepliesData();
-#if KOTOR1  // returns 0 in K1
     int  InitializeRepliesData(unsigned int count);
-#else
-    void InitializeRepliesData(unsigned int count);
-#endif
     void SetReplyData(unsigned int index, const CExoString& text, unsigned int a, unsigned long long b,
                        unsigned int c, int d, float e, float f, unsigned int g, unsigned short h,
                        float i, int j, unsigned char k, const Vector& pos, float m, float n,

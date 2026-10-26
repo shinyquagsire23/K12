@@ -265,6 +265,19 @@ void CSWCCreatureAppearance::GetBTypeModelAndTextureResRef(CCAppearanceInfo* pIn
 {
     char szModelCol[7] = "ModelA";
     char szTexCol[5] = "TEXA";
+#if KOTOR1  // K1's appearance.2da has model/texture columns A..J only
+    unsigned char nVariant = pInfo->core.m_bTypeVariant;
+    int nClamped = (nVariant < 10) ? nVariant : 10;
+    unsigned int nNumber = pInfo->core.m_bTypeNumber;
+    if (nNumber == 0)
+        nNumber = 1;
+    if (pInfo->core.m_bArmorEquipped != 0)
+    {
+        char cLetter = static_cast<char>(((nClamped > 1) ? nClamped : 1) | 0x40);
+        szModelCol[5] = cLetter;
+        szTexCol[3] = cLetter;
+    }
+#else
     unsigned int nNumber = pInfo->core.m_bTypeNumber;
     if (nNumber == 0)
         nNumber = 1;
@@ -276,6 +289,7 @@ void CSWCCreatureAppearance::GetBTypeModelAndTextureResRef(CCAppearanceInfo* pIn
         szModelCol[5] = cLetter;
         szTexCol[3] = cLetter;
     }
+#endif
     CExoString sValue;
     int bFound;
     if (pModelOut != nullptr)

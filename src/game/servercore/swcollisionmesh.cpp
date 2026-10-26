@@ -994,10 +994,9 @@ void CSWCollisionMesh::GetTriangleVertices(int triangle, int* a, int* b, int* c)
         *b = m_paTriVertIndices[static_cast<int>(base + 1)];
         *c = m_paTriVertIndices[static_cast<int>(base + 2)];
 #else
-        int* p = &m_paTriVertIndices[static_cast<int64_t>(triangle) + static_cast<int64_t>(triangle * 2)];
-        *a = p[0];
-        *b = p[1];
-        *c = p[2];
+        *a = m_paTriVertIndices[triangle * 3];
+        *b = m_paTriVertIndices[triangle * 3 + 1];
+        *c = m_paTriVertIndices[triangle * 3 + 2];
 #endif
     }
 }
@@ -1038,12 +1037,11 @@ Vector CSWCollisionMesh::LocalToWorld(const Vector& v)
         return v;
 
     Vector p = { v.x + m_localOrigin.x, v.y + m_localOrigin.y, v.z + m_localOrigin.z };
-    float w = m_rotation.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = m_rotation.x, y = m_rotation.y, z = m_rotation.z;
+    if (quaternionidentityoptimization == 0 || (m_rotation.w != 1.0f && m_rotation.w != -1.0f)) {
+        float w = m_rotation.w, x = m_rotation.x, y = m_rotation.y, z = m_rotation.z;
         float xx = x * x, yy = y * y, zz = z * z;
-        float xy = x * y, xz = x * z, yz = y * z;
-        float wx = w * x, wy = w * y, wz = w * z;
+        float xy = x * y, xz = x * z, wx = w * x;
+        float yz = y * z, wy = w * y, wz = w * z;
         Vector r;
         r.x = p.x * (1.0f - ((yy + zz) + (yy + zz))) + p.y * ((xy - wz) + (xy - wz)) + p.z * ((xz + wy) + (xz + wy));
         r.y = p.x * ((xy + wz) + (xy + wz)) + p.y * (1.0f - ((xx + zz) + (xx + zz))) + p.z * ((yz - wx) + (yz - wx));
@@ -1104,12 +1102,12 @@ Vector CSWCollisionMesh::NormalLocalToWorld(const Vector& v)
 
     float x = m_rotation.x, y = m_rotation.y, z = m_rotation.z;
     float xx = x * x, yy = y * y, zz = z * z;
-    float xy = x * y, xz = x * z, yz = y * z;
-    float wx = w * x, wy = w * y, wz = w * z;
+    float xy = x * y, xz = x * z, wx = w * x;
+    float yz = y * z, wy = w * y, wz = w * z;
     Vector r;
-    r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
-    r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
-    r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
+    r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + ((xz + wy) + (xz + wy)) * v.z;
+    r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + ((yz - wx) + (yz - wx)) * v.z;
+    r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + (1.0f - ((xx + yy) + (xx + yy))) * v.z;
     return r;
 }
 

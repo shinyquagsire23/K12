@@ -356,6 +356,201 @@ void CSWGuiDialog::SetReplies(int n, CExoString* pa, unsigned int* pb, int c, in
     m_pGuiManager->UpdateMouseMove();
 }
 
+// Recomputes the panel's height every frame so it stays centred with equal margins.
+void CSWGuiDialogTop::Draw(float f) {
+#if KOTOR1  // K1 stretches the panel to the screen height every frame
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
+    int s_nScreenHeight = g_SDL_mode.h;
+#else
+    static int s_nScreenHeight = g_SDL_mode.h;
+#endif
+    CSWGuiObject::SetExtent(CSWGuiExtent(m_extent.x, m_extent.y, m_extent.w, s_nScreenHeight));
+#elif defined(K2_UI_TOUCH)
+    m_extent.h = m_pGuiManager->m_nScreenHeight - m_extent.y * 2;
+#endif
+    // PC and console use the panel's own draw; the per-frame stretch suits the full-height touch
+    // plate and would defeat SetReply's sizing.
+    CSWGuiPanel::Draw(f);
+}
+
+// Shows the current line of dialogue: sizes and places the IosLabel that displays it, hands the
+// letterbox the full-width strip it has to cover, and hides the label when the string is blank.
+// The blank test is a whitespace scan, so a message of pure whitespace counts as blank.
+void CSWGuiDialogCinematic::ShowDialogMessage()
+{
+    m_nMessageFlags &= ~DIALOGMSG_LINE_PENDING;
+
+    // The autopause gate passes when the option is on or a pending message was queued.
+    CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
+    if (pOptions->m_bFeedback2 || g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bForceDialogText)
+    {
+        m_msgLabel.m_text.m_params.SetText(m_sDialogMessage);
+        g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bForceDialogText = 0;
+    }
+
+    m_msgLabel.m_tail.bVisible = 1;
+
+    // The spoken-line label grows to whatever the wrapped text needs, and the panel's extent
+    // grows with it: the letterbox bars have to move out of the way.
+    // The text is reached through a pointer so the height query stays virtual.
+    CSWGuiExtent extent(m_msgLabel.m_extent);
+    CSWGuiText* pMsgText = &m_msgLabel.m_text;
+#ifdef K2_QOL_IMPROVEMENTS
+    {
+        // The line grows the panel upward; it may grow until the panel's top meets the safe margin.
+        int nMarginX, nMarginY;
+        m_pGuiManager->GetSafeMargin(nMarginX, nMarginY);
+        K2QolFitText(*pMsgText, extent.h + m_extent.y - nMarginY);
+    }
+#endif
+#if KOTOR1
+    // K1: the height is measured but the label keeps its extent and the panel does not grow.
+    pMsgText->GetIdealHeight();
+    m_msgLabel.SetExtent(extent);
+
+    extent = m_extent;
+    extent.x = 0;
+    extent.w = m_pGuiManager->m_nScreenWidth;
+    extent.h = m_pGuiManager->m_nScreenHeight - extent.y;
+#ifndef K2_UI_TOUCH
+    // The line draws in the message box here, so the bottom bar must cover the band.
+    g_pAppManager->m_pClientExoApp->GetInGameGui()
+        ->m_pBottomLetterbox->SetExtentSpecial(extent);
+#endif
+#else
+    int nIdealHeight = pMsgText->GetIdealHeight();
+    int nGrow = nIdealHeight - extent.h;
+    if (nGrow >= 1)
+    {
+        m_extent.y -= nGrow;
+        m_extent.h += nGrow;
+        extent.h = nIdealHeight;
+    }
+    m_msgLabel.SetExtent(extent);
+
+    // The strip the letterbox covers, reusing the same extent local.
+    extent = m_extent;
+    extent.x = 0;
+    extent.w = m_pGuiManager->m_nScreenWidth;
+    extent.h = m_pGuiManager->m_nScreenHeight - extent.y;
+    g_pAppManager->m_pClientExoApp->GetInGameGui()
+        ->m_pBottomLetterbox->SetExtentSpecial(extent);
+#endif
+
+#ifndef K2_UI_TOUCH
+    // The PC and console builds stop here. Everything below is the touch overlay: it hides the
+    // spoken-line label the layout just placed and draws the line in a plate across the top.
+#else
+
+    m_msgLabel.m_tail.bVisible = 0;
+
+    if (IsAllWhitespace(m_sDialogMessage.CStr()))
+    {
+        m_iosLabel.m_tail.bVisible = 0;
+        if (m_pGuiManager->PanelExists(&m_panel2))
+            m_pGuiManager->RemovePanel(&m_panel2);
+        if (m_pGuiManager->PanelExists(&m_panel1))
+            m_pGuiManager->RemovePanel(&m_panel1);
+        return;
+    }
+
+#if KOTOR1
+    // K1: the plate is 0.71 of a 4:3-normalised screen width, 0.14 of its height, at y 580 in
+    // 768-line units, centred on the SDL screen.
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#else
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#endif
+    m_iosLabel.m_tail.bVisible = 1;
+    m_iosLabel.SetString(m_sDialogMessage);
+
+    float fAspect = static_cast<float>(g_SDL_mode.w) / static_cast<float>(g_SDL_mode.h);
+    double dWidth = g_SDL_mode.h * 0.71 * fAspect;
+    m_iosLabel.SetExtent(CSWGuiExtent(static_cast<int>(g_SDL_mode.w * 0.5 - dWidth * 0.5),
+                                      static_cast<int>(s_fScale * 580.0f), static_cast<int>(dWidth),
+                                      static_cast<int>(g_SDL_mode.h * 0.14)));
+#else
+    m_iosLabel.m_tail.bVisible = 1;
+    m_iosLabel.SetString(m_sDialogMessage);
+
+    // The letterbox Y is captured before the font size is set, and the width comes from extent.w.
+    int nLetterboxY = g_pAppManager->m_pClientExoApp->GetInGameGui()
+                          ->m_pBottomLetterbox->m_extent.y;
+    float fScaleX = static_cast<float>(m_pGuiManager->m_nScreenWidth) / 1024.0f;
+    float fScaleY = static_cast<float>(m_pGuiManager->m_nScreenHeight) / 768.0f;
+    float fLabelWidth = fScaleX * 934.0f;
+    float fLabelHeight = fScaleY * 92.0f;
+    m_iosLabel.SetFontSize(static_cast<int>(fScaleY * 24.0f), fScaleX, fScaleY);
+
+    m_iosLabel.m_extent.x = static_cast<int>((static_cast<float>(extent.w) - fLabelWidth) * 0.5f);
+    m_iosLabel.m_extent.y = static_cast<int>(static_cast<float>(nLetterboxY) - fLabelHeight * 0.5f);
+    m_iosLabel.m_extent.w = static_cast<int>(fLabelWidth);
+    m_iosLabel.m_extent.h = static_cast<int>(fLabelHeight);
+#endif
+
+    m_panel1.AddControl(&m_iosLabel);
+
+    if (!m_pGuiManager->PanelExists(&m_panel2))
+        m_pGuiManager->AddPanel(&m_panel2, 0, 1);
+    if (!m_pGuiManager->PanelExists(&m_panel1))
+        m_pGuiManager->AddPanel(&m_panel1, 0, 1);
+#endif
+}
+
+// Returns the screen to its resting state: re-extents the panel band, pushes the letterbox down,
+// clears the spoken line and hides the label.
+#if KOTOR1
+// K1's band is 160 of 768 lines high and sits on the letterbox line, with no text-scalar clamp.
+void CSWGuiDialogCinematic::Reset()
+{
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#else
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#endif
+    CSWGuiExtent extent;
+    int nMarginX;
+    int nMarginY;
+    m_pGuiManager->GetSafeMargin(nMarginX, nMarginY);
+    IosGetSafeWidth(nMarginX, nMarginY);
+
+    extent.x = nMarginX;
+    extent.w = m_pGuiManager->m_nScreenWidth - nMarginX * 2;
+    int nBandHeight = static_cast<int>(s_fScale * 160.0f);
+    extent.y = m_pGuiManager->m_nScreenHeight
+             - (m_pGuiManager->m_nScreenHeight
+                - static_cast<int>(static_cast<float>(m_pGuiManager->m_nScreenWidth) / 2.333333f)) / 2;
+    extent.h = nBandHeight;
+#ifndef K2_UI_TOUCH
+    // Keep the whole band on screen; the bottom letterbox grows up to its top.
+    if (extent.y > m_pGuiManager->m_nScreenHeight - nBandHeight)
+        extent.y = m_pGuiManager->m_nScreenHeight - nBandHeight;
+#endif
+
+    int nExtentHeight = m_extent.h;
+    SetExtent(extent);
+
+    extent.x = 0;
+    extent.w = m_pGuiManager->m_nScreenWidth;
+    extent.h = m_pGuiManager->m_nScreenHeight - extent.y;
+    g_pAppManager->m_pClientExoApp->GetInGameGui()
+        ->m_pBottomLetterbox->SetExtent(extent);
+
+    extent = m_msgLabel.m_extent;
+    extent.h = extent.h + (nBandHeight - nExtentHeight);
+    m_msgLabel.SetExtent(extent);
+
+    m_msgLabel.m_text.m_params.SetText(CExoString(""));
+
+    CSWGuiDialog::Reset();
+
+    m_iosLabel.m_tail.bVisible = 0;
+    if (m_pGuiManager->PanelExists(&m_panel1))
+        m_pGuiManager->RemovePanel(&m_panel1);
+}
+#endif
+
 // The reply list's rectangle in the 1024x768 iPad design grid.
 __attribute__((visibility("hidden"))) int g_nReplyListX = 91;
 __attribute__((visibility("hidden"))) int g_nReplyListY = 291;
@@ -1679,131 +1874,6 @@ void CSWGuiDialogCinematic::SetExtent(const CSWGuiExtent& extent)
     m_msgLabel.SetExtent(ext);
 }
 
-// Shows the current line of dialogue: sizes and places the IosLabel that displays it, hands the
-// letterbox the full-width strip it has to cover, and hides the label when the string is blank.
-// The blank test is a whitespace scan, so a message of pure whitespace counts as blank.
-void CSWGuiDialogCinematic::ShowDialogMessage()
-{
-    m_nMessageFlags &= ~DIALOGMSG_LINE_PENDING;
-
-    // The autopause gate passes when the option is on or a pending message was queued.
-    CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
-    if (pOptions->m_bFeedback2 || g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bForceDialogText)
-    {
-        m_msgLabel.m_text.m_params.SetText(m_sDialogMessage);
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bForceDialogText = 0;
-    }
-
-    m_msgLabel.m_tail.bVisible = 1;
-
-    // The spoken-line label grows to whatever the wrapped text needs, and the panel's extent
-    // grows with it: the letterbox bars have to move out of the way.
-    // The text is reached through a pointer so the height query stays virtual.
-    CSWGuiExtent extent(m_msgLabel.m_extent);
-    CSWGuiText* pMsgText = &m_msgLabel.m_text;
-#ifdef K2_QOL_IMPROVEMENTS
-    {
-        // The line grows the panel upward; it may grow until the panel's top meets the safe margin.
-        int nMarginX, nMarginY;
-        m_pGuiManager->GetSafeMargin(nMarginX, nMarginY);
-        K2QolFitText(*pMsgText, extent.h + m_extent.y - nMarginY);
-    }
-#endif
-#if KOTOR1
-    // K1: the height is measured but the label keeps its extent and the panel does not grow.
-    pMsgText->GetIdealHeight();
-    m_msgLabel.SetExtent(extent);
-
-    extent = m_extent;
-    extent.x = 0;
-    extent.w = m_pGuiManager->m_nScreenWidth;
-    extent.h = m_pGuiManager->m_nScreenHeight - extent.y;
-#ifndef K2_UI_TOUCH
-    // The line draws in the message box here, so the bottom bar must cover the band.
-    g_pAppManager->m_pClientExoApp->GetInGameGui()
-        ->m_pBottomLetterbox->SetExtentSpecial(extent);
-#endif
-#else
-    int nIdealHeight = pMsgText->GetIdealHeight();
-    int nGrow = nIdealHeight - extent.h;
-    if (nGrow >= 1)
-    {
-        m_extent.y -= nGrow;
-        m_extent.h += nGrow;
-        extent.h = nIdealHeight;
-    }
-    m_msgLabel.SetExtent(extent);
-
-    // The strip the letterbox covers, reusing the same extent local.
-    extent = m_extent;
-    extent.x = 0;
-    extent.w = m_pGuiManager->m_nScreenWidth;
-    extent.h = m_pGuiManager->m_nScreenHeight - extent.y;
-    g_pAppManager->m_pClientExoApp->GetInGameGui()
-        ->m_pBottomLetterbox->SetExtentSpecial(extent);
-#endif
-
-#ifndef K2_UI_TOUCH
-    // The PC and console builds stop here. Everything below is the touch overlay: it hides the
-    // spoken-line label the layout just placed and draws the line in a plate across the top.
-#else
-
-    m_msgLabel.m_tail.bVisible = 0;
-
-    if (IsAllWhitespace(m_sDialogMessage.CStr()))
-    {
-        m_iosLabel.m_tail.bVisible = 0;
-        if (m_pGuiManager->PanelExists(&m_panel2))
-            m_pGuiManager->RemovePanel(&m_panel2);
-        if (m_pGuiManager->PanelExists(&m_panel1))
-            m_pGuiManager->RemovePanel(&m_panel1);
-        return;
-    }
-
-#if KOTOR1
-    // K1: the plate is 0.71 of a 4:3-normalised screen width, 0.14 of its height, at y 580 in
-    // 768-line units, centred on the SDL screen.
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
-    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#else
-    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#endif
-    m_iosLabel.m_tail.bVisible = 1;
-    m_iosLabel.SetString(m_sDialogMessage);
-
-    float fAspect = static_cast<float>(g_SDL_mode.w) / static_cast<float>(g_SDL_mode.h);
-    double dWidth = g_SDL_mode.h * 0.71 * fAspect;
-    m_iosLabel.SetExtent(CSWGuiExtent(static_cast<int>(g_SDL_mode.w * 0.5 - dWidth * 0.5),
-                                      static_cast<int>(s_fScale * 580.0f), static_cast<int>(dWidth),
-                                      static_cast<int>(g_SDL_mode.h * 0.14)));
-#else
-    m_iosLabel.m_tail.bVisible = 1;
-    m_iosLabel.SetString(m_sDialogMessage);
-
-    // The letterbox Y is captured before the font size is set, and the width comes from extent.w.
-    int nLetterboxY = g_pAppManager->m_pClientExoApp->GetInGameGui()
-                          ->m_pBottomLetterbox->m_extent.y;
-    float fScaleX = static_cast<float>(m_pGuiManager->m_nScreenWidth) / 1024.0f;
-    float fScaleY = static_cast<float>(m_pGuiManager->m_nScreenHeight) / 768.0f;
-    float fLabelWidth = fScaleX * 934.0f;
-    float fLabelHeight = fScaleY * 92.0f;
-    m_iosLabel.SetFontSize(static_cast<int>(fScaleY * 24.0f), fScaleX, fScaleY);
-
-    m_iosLabel.m_extent.x = static_cast<int>((static_cast<float>(extent.w) - fLabelWidth) * 0.5f);
-    m_iosLabel.m_extent.y = static_cast<int>(static_cast<float>(nLetterboxY) - fLabelHeight * 0.5f);
-    m_iosLabel.m_extent.w = static_cast<int>(fLabelWidth);
-    m_iosLabel.m_extent.h = static_cast<int>(fLabelHeight);
-#endif
-
-    m_panel1.AddControl(&m_iosLabel);
-
-    if (!m_pGuiManager->PanelExists(&m_panel2))
-        m_pGuiManager->AddPanel(&m_panel2, 0, 1);
-    if (!m_pGuiManager->PanelExists(&m_panel1))
-        m_pGuiManager->AddPanel(&m_panel1, 0, 1);
-#endif
-}
-
 // Rebuilds the reply list: hands the base its copy, mirrors it into the reply panel, disables the
 // list while there is nothing to pick, snaps the list's height to whole text lines, and shows the
 // panel if the base has not already.
@@ -1898,58 +1968,7 @@ int CSWGuiDialogCinematic::SelectReply(int n)
     return 1;
 }
 
-// Returns the screen to its resting state: re-extents the panel band, pushes the letterbox down,
-// clears the spoken line and hides the label.
-#if KOTOR1
-// K1's band is 160 of 768 lines high and sits on the letterbox line, with no text-scalar clamp.
-void CSWGuiDialogCinematic::Reset()
-{
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
-    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#else
-    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#endif
-    CSWGuiExtent extent;
-    int nMarginX;
-    int nMarginY;
-    m_pGuiManager->GetSafeMargin(nMarginX, nMarginY);
-    IosGetSafeWidth(nMarginX, nMarginY);
-
-    extent.x = nMarginX;
-    extent.w = m_pGuiManager->m_nScreenWidth - nMarginX * 2;
-    int nBandHeight = static_cast<int>(s_fScale * 160.0f);
-    extent.y = m_pGuiManager->m_nScreenHeight
-             - (m_pGuiManager->m_nScreenHeight
-                - static_cast<int>(static_cast<float>(m_pGuiManager->m_nScreenWidth) / 2.333333f)) / 2;
-    extent.h = nBandHeight;
-#ifndef K2_UI_TOUCH
-    // Keep the whole band on screen; the bottom letterbox grows up to its top.
-    if (extent.y > m_pGuiManager->m_nScreenHeight - nBandHeight)
-        extent.y = m_pGuiManager->m_nScreenHeight - nBandHeight;
-#endif
-
-    int nExtentHeight = m_extent.h;
-    SetExtent(extent);
-
-    extent.x = 0;
-    extent.w = m_pGuiManager->m_nScreenWidth;
-    extent.h = m_pGuiManager->m_nScreenHeight - extent.y;
-    g_pAppManager->m_pClientExoApp->GetInGameGui()
-        ->m_pBottomLetterbox->SetExtent(extent);
-
-    extent = m_msgLabel.m_extent;
-    extent.h = extent.h + (nBandHeight - nExtentHeight);
-    m_msgLabel.SetExtent(extent);
-
-    m_msgLabel.m_text.m_params.SetText(CExoString(""));
-
-    CSWGuiDialog::Reset();
-
-    m_iosLabel.m_tail.bVisible = 0;
-    if (m_pGuiManager->PanelExists(&m_panel1))
-        m_pGuiManager->RemovePanel(&m_panel1);
-}
-#else
+#if !KOTOR1
 void CSWGuiDialogCinematic::Reset()
 {
     CSWGuiExtent extent;
@@ -2317,23 +2336,6 @@ void CSWGuiDialogTop::HandleInputEvent(int type, int val)
 {
     m_replies.HandleInputEvent(type, val);
     CSWGuiPanel::HandleInputEvent(type, val);
-}
-
-// Recomputes the panel's height every frame so it stays centred with equal margins.
-void CSWGuiDialogTop::Draw(float f) {
-#if KOTOR1  // K1 stretches the panel to the screen height every frame
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
-    int s_nScreenHeight = g_SDL_mode.h;
-#else
-    static int s_nScreenHeight = g_SDL_mode.h;
-#endif
-    CSWGuiObject::SetExtent(CSWGuiExtent(m_extent.x, m_extent.y, m_extent.w, s_nScreenHeight));
-#elif defined(K2_UI_TOUCH)
-    m_extent.h = m_pGuiManager->m_nScreenHeight - m_extent.y * 2;
-#endif
-    // PC and console use the panel's own draw; the per-frame stretch suits the full-height touch
-    // plate and would defeat SetReply's sizing.
-    CSWGuiPanel::Draw(f);
 }
 
 // Installs one line of spoken dialogue: sets the label's text, re-fits the whole panel around the

@@ -499,69 +499,6 @@ void CSWGuiMainInterface::OnFirstPersonButtonPressed(CSWGuiControl* pControl) {
     g_bFreeLook = true;
 }
 
-void CSWGuiMainInterface::ShowActionQueue(int nParam) {
-    if (((m_nInterfaceFlags >> 1) & 1) == nParam) return;
-    int nBit = (nParam & 1) << 1;
-    m_nInterfaceFlags = static_cast<unsigned char>((m_nInterfaceFlags & ~2) | nBit);
-    int nGo;
-    if (nParam == 0) nGo = m_lblActionQueue.m_tail.bVisible; else nGo = 1;
-#if KOTOR1
-    m_lblCombatBg1.m_tail.bVisible = nParam & 1;
-    m_lblCombatBg2.m_tail.bVisible = nParam & 1;
-    m_lblCombatBg3.m_tail.bVisible = nParam & 1;
-    m_lblActionQueue.m_tail.bVisible = nParam & 1;
-    m_btnClearOne.m_tail.bVisible = nParam & 1;
-    m_btnClearOne2.m_tail.bVisible = nParam & 1;
-    static bool s_bHasTouchScreen = HasTouchScreen();
-    m_btnClearAll.m_tail.bVisible = nParam != 0 && s_bHasTouchScreen;
-#else
-    m_lblCombatBg2.m_tail.bVisible = nParam & 1;
-    m_lblCombatBg3.m_tail.bVisible = nParam & 1;
-    m_actionQueueHilight.m_tail.bVisible = nParam & 1;
-    m_lblActionQueue.m_tail.bVisible = nParam & 1;
-    m_btnClearOne.m_tail.bVisible = nParam & 1;
-    m_btnClearOne2.m_tail.bVisible = nParam & 1;
-    m_btnClearAll.m_tail.bVisible = nParam & 1;
-#endif
-    if (m_bToolTipMessageShown == 0) {
-        m_lblCombatModeMsg.m_tail.bVisible = nParam & 1;
-        m_lblCombatMsgBg.m_tail.bVisible = nParam & 1;
-    }
-    m_actionQueueIcons[0].m_tail.bVisible = nParam & 1;
-    m_actionQueueIcons[1].m_tail.bVisible = nParam & 1;
-    m_actionQueueIcons[2].m_tail.bVisible = nParam & 1;
-    m_actionQueueIcons[3].m_tail.bVisible = nParam & 1;
-    int nShift = m_interfaceOffset;
-    if (nParam == 0) {
-        nShift = -nShift;
-        m_fCombatMessageTimer = -1.0f;
-    }
-    if (nGo == 0) return;
-    CSWGuiExtent sTmp;
-    sTmp = m_miniMap.m_extent;
-    sTmp.y += nShift;
-    CSWGuiLabel* pMiniMap = &m_miniMap;
-    pMiniMap->SetExtent(sTmp);
-    sTmp = m_miniMapImage.m_extent;
-    sTmp.y += nShift;
-    CSWGuiLabel* pImage = &m_miniMapImage;
-    pImage->SetExtent(sTmp);
-    sTmp = m_altMenuButton.m_extent;
-    sTmp.y += nShift;
-    CSWGuiButton* pAlt = &m_altMenuButton;
-    pAlt->SetExtent(sTmp);
-    m_mapViewExtent.y += nShift;
-#if KOTOR1
-    for (int i = 0; i < 9; i++) {
-#else
-    for (int i = 0; i < 13; i++) {
-#endif
-        sTmp = m_statusIcons[i].m_label.m_extent;
-        sTmp.y += nShift;
-        m_statusIcons[i].m_label.CSWGuiLabel::SetExtent(sTmp);
-    }
-}
-
 // Maps the pressed HUD menu-bar button onto its in-game GUI page and raises it; when the page
 // actually opens, input is handed over to it.
 void CSWGuiMainInterface::OnMenuButtonPressed(CSWGuiControl* pControl) {
@@ -607,6 +544,7 @@ HIDDEN int  g_nQueuedHelpDelay;
 #if KOTOR1
 static void ShowHelpInternal(int nPage);
 extern unsigned char IosActionMenuUp;
+extern float IOS_ACTION_MENU_GROW_X;
 #else
 static void ShowHelpInternal(int nPage, bool bGamepad);
 #endif
@@ -928,6 +866,1026 @@ void CSWGuiMainInterface::OnPanelAdded() {
 }
 #endif // !KOTOR1
 
+#if KOTOR1
+static inline void OffsetControlX(CSWGuiControl& control, int nDelta) {
+    CSWGuiExtent extent = control.m_extent;
+    extent.x += nDelta;
+    control.SetExtent(extent);
+}
+
+// An iPhone screen is not 1024x768: re-anchor a 1024x768 rectangle to the right/bottom...
+static inline void IosAnchorRightBottom(CSWGuiExtent& extent, int nW, int nH) {
+    extent.x += nW > 1023 ? nW - 1024 : -((1024 - nW) / 2);
+    extent.y -= (768 - nH) / 2;
+}
+
+#ifdef K2_UI_TOUCH
+// ...to the right/top...
+static inline void IosAnchorRightTop(CSWGuiExtent& extent, int nW, int nH) {
+    extent.x += nW > 1023 ? nW - 1024 : -((1024 - nW) / 2);
+    extent.y += (768 - nH) / 2;
+}
+
+// ...or to the left/bottom.
+static inline void IosAnchorLeftBottom(CSWGuiExtent& extent, int nW, int nH) {
+    if (nW <= 1023)
+        extent.x += (1024 - nW) / 2;
+    extent.y -= (768 - nH) / 2;
+}
+#endif
+
+#endif
+
+static void FmtBuf(char* pBuf, unsigned int nSize, const char* szFmt, ...) {
+    __builtin_va_list va;
+    __builtin_va_start(va, szFmt);
+    __vsprintf_chk(pBuf, 0, nSize, szFmt, va);
+    __builtin_va_end(va);
+}
+
+#if KOTOR1
+static const char* const s_aHelpLanguage[4] = { "fr", "it", "de", "es" };
+
+// K1: measure the five localized help-overlay images once, so AddHelpPanel can place its buttons
+// over them; each pair is (height, width) in image pixels.
+void CSWGuiMainInterface::GatherAndroidHelpPanelConstants() {
+    char szImage[256] = { 0 };
+    int nLang = ASLPlat_GetCurrentLanguage();
+    const char* szLang = nLang >= ASL_LANGUAGE_FRENCH && nLang <= ASL_LANGUAGE_SPANISH ? s_aHelpLanguage[nLang - ASL_LANGUAGE_FRENCH] : "";
+    CAurGUIImageInternal* pImage;
+    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_2");
+    pImage = NewCAurGUIImage(szImage);
+    AurMakeCurrent();
+    if (pImage) {
+        m_helpPanelConstants[1] = static_cast<float>(pImage->GetImageWidth());
+        m_helpPanelConstants[0] = static_cast<float>(pImage->GetImageHeight());
+        delete pImage;
+    }
+    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_1");
+    pImage = NewCAurGUIImage(szImage);
+    AurMakeCurrent();
+    if (pImage) {
+        m_helpPanelConstants[3] = static_cast<float>(pImage->GetImageWidth());
+        m_helpPanelConstants[2] = static_cast<float>(pImage->GetImageHeight());
+        delete pImage;
+    }
+    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_3");
+    pImage = NewCAurGUIImage(szImage);
+    AurMakeCurrent();
+    if (pImage) {
+        m_helpPanelConstants[5] = static_cast<float>(pImage->GetImageWidth());
+        m_helpPanelConstants[4] = static_cast<float>(pImage->GetImageHeight());
+        delete pImage;
+    }
+    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_4");
+    pImage = NewCAurGUIImage(szImage);
+    AurMakeCurrent();
+    if (pImage) {
+        m_helpPanelConstants[7] = static_cast<float>(pImage->GetImageWidth());
+        m_helpPanelConstants[6] = static_cast<float>(pImage->GetImageHeight());
+        delete pImage;
+    }
+    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_5");
+    pImage = NewCAurGUIImage(szImage);
+    AurMakeCurrent();
+    if (pImage) {
+        m_helpPanelConstants[9] = static_cast<float>(pImage->GetImageWidth());
+        m_helpPanelConstants[8] = static_cast<float>(pImage->GetImageHeight());
+        delete pImage;
+    }
+}
+#endif
+
+#if KOTOR1
+// K1: one help/tutorial image skin, both states.
+static inline void SetHelpButtonImage(CSWGuiButton& button, const CResRef& image) {
+    button.m_borderHilight.m_params.SetFillImage(image, 0);
+    button.m_borderHilight.m_params.m_flags.nFillStyle = 2;
+    button.m_border.m_params.SetFillImage(image, 0);
+    button.m_border.m_params.m_flags.nFillStyle = 2;
+}
+
+// K1: pages 0-3 are the help screens (page 1 is five tiles placed from the measured image sizes),
+// 4-7 the tutorial cards; a card is centred or pinned beside the widget it explains, and every
+// tutorial page shows the "tap help" hint under the help button.
+void CSWGuiMainInterface::AddHelpPanel(int nPage) {
+#ifdef K2_QOL_FULLSCREEN
+    float s_fScale = AndroidHudScaleFactor();
+#else
+    static float s_fScale = AndroidHudScaleFactor();
+#endif
+    char szImage[256];
+    CSWGuiExtent extent(0, 0, g_SDL_mode.w, g_SDL_mode.h);
+    const char* szName;
+    int bCentred;
+    int bTutorial;
+    switch (nPage) {
+    case 0: szName = "ios_help_1"; bCentred = 1; bTutorial = 0; break;
+    case 1: szName = "ios_help_2"; bCentred = 1; bTutorial = 0; break;
+    case 2: szName = "ios_help_3"; bCentred = 1; bTutorial = 0; break;
+    case 3: szName = "ios_help_4x"; bCentred = 1; bTutorial = 0; break;
+    case 4: szName = "ios_tut_1"; bCentred = 1; bTutorial = 1; break;
+    case 5: szName = "ios_tut_2"; bCentred = 0; bTutorial = 1; break;
+    case 6: szName = "ios_tut_3"; bCentred = 0; bTutorial = 1; break;
+    case 7: szName = "ios_tut_4"; bCentred = 0; bTutorial = 1; break;
+    default: szName = ""; bCentred = 0; bTutorial = 0; break;
+    }
+    int nLang = ASLPlat_GetCurrentLanguage();
+    const char* szLang = nLang >= ASL_LANGUAGE_FRENCH && nLang <= ASL_LANGUAGE_SPANISH ? s_aHelpLanguage[nLang - ASL_LANGUAGE_FRENCH] : "";
+    FmtBuf(szImage, 256, "%s%s", szName, szLang);
+    if (nPage == 1) {
+        FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_2");
+        SetHelpButtonImage(m_btnHelpPage, CResRef(szImage));
+        extent.w = static_cast<int>(m_helpPanelConstants[1] * s_fScale);
+        extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[0]);
+        extent.x = static_cast<int>(static_cast<float>(g_SDL_mode.w - extent.w) * 0.5f);
+        extent.y = 0;
+        m_btnHelpPage.SetExtent(extent);
+
+        FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_1");
+        SetHelpButtonImage(m_btnHelpTopLeft, CResRef(szImage));
+        extent.w = static_cast<int>(m_helpPanelConstants[3] * s_fScale);
+        extent.x = 0;
+        extent.y = 0;
+        extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[2]);
+#if defined(K2P_IOS) && defined(K2_QOL_CONTROLLER)
+        extent.x += K1PhoneEdgeInset();   // beside the HUD's edge buttons
+#endif
+        m_btnHelpTopLeft.SetExtent(extent);
+
+        static bool s_bHasTouchScreen = HasTouchScreen();
+        if (s_bHasTouchScreen) {
+            FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_3");
+            SetHelpButtonImage(m_btnHelpTopRight, CResRef(szImage));
+            extent.w = static_cast<int>(m_helpPanelConstants[5] * s_fScale);
+            extent.x = g_SDL_mode.w - extent.w;
+            extent.y = 0;
+            extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[4]);
+#if defined(K2P_IOS) && defined(K2_QOL_CONTROLLER)
+            extent.x -= K1PhoneEdgeInset();   // beside the HUD's edge buttons
+#endif
+            m_btnHelpTopRight.SetExtent(extent);
+        } else {
+            m_btnHelpTopRight.m_tail.bVisible = 0;
+        }
+
+        FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_4");
+        SetHelpButtonImage(m_btnHelpBottomLeft, CResRef(szImage));
+        extent.w = static_cast<int>(m_helpPanelConstants[7] * s_fScale);
+        extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[6]);
+        extent.x = 0;
+        extent.y = g_SDL_mode.h - extent.h;
+#if defined(K2P_IOS) && defined(K2_QOL_CONTROLLER)
+        extent.x += K1PhoneEdgeInset();   // beside the HUD's edge buttons
+#endif
+        m_btnHelpBottomLeft.SetExtent(extent);
+
+        FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_5");
+        SetHelpButtonImage(m_btnHelpBottomRight, CResRef(szImage));
+        extent.w = static_cast<int>(m_helpPanelConstants[9] * s_fScale);
+        extent.x = g_SDL_mode.w - extent.w;
+        extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[8]);
+        extent.y = g_SDL_mode.h - extent.h;
+#if defined(K2P_IOS) && defined(K2_QOL_CONTROLLER)
+        extent.x -= K1PhoneEdgeInset();   // beside the HUD's edge buttons
+#endif
+        m_btnHelpBottomRight.SetExtent(extent);
+    } else {
+        SetHelpButtonImage(m_btnHelpPage, CResRef(szImage));
+        int nScreenW = g_SDL_mode.w;
+        int nScreenH = g_SDL_mode.h;
+        CAurGUIImageInternal* pImage = NewCAurGUIImage(szImage);
+        AurMakeCurrent();
+        if (pImage) {
+            extent.w = static_cast<int>(s_fScale * static_cast<float>(pImage->GetImageWidth()));
+            extent.h = static_cast<int>(s_fScale * static_cast<float>(pImage->GetImageHeight()));
+            if (bCentred) {
+                extent.x = (nScreenW - extent.w) / 2;
+                extent.y = (nScreenH - extent.h) / 2;
+            } else if (nPage == 5 || nPage == 7) {
+                extent.x = m_btnEquip.m_extent.x - extent.w;
+                extent.y = static_cast<int>(static_cast<float>(m_btnEquip.m_extent.y + m_btnEquip.m_extent.h) + s_fScale * 30.0f);
+            } else if (nPage == 6) {
+                CSWGuiExtent& anchor = m_aCharacters[0].m_btnChar.m_extent;
+                extent.x = static_cast<int>(s_fScale * 35.0f + anchor.x + anchor.w);
+                extent.y = static_cast<int>(anchor.y + s_fScale * -40.0f - extent.h);
+            }
+            delete pImage;
+        }
+        m_btnHelpPage.SetExtent(extent);
+    }
+
+    static bool s_bHintHasTouchScreen = HasTouchScreen();
+    if (s_bHintHasTouchScreen) {
+        FmtBuf(szImage, 256, "ios_tut_h1%s", szLang);
+        SetHelpButtonImage(m_btnHelpHint, CResRef(szImage));
+        CAurGUIImageInternal* pImage = NewCAurGUIImage(szImage);
+        AurMakeCurrent();
+        CSWGuiExtent hint(0, 0, 0, 0);
+        if (pImage) {
+            hint.w = static_cast<int>(s_fScale * static_cast<float>(pImage->GetImageWidth()));
+            hint.h = static_cast<int>(s_fScale * static_cast<float>(pImage->GetImageHeight()));
+            CSWGuiExtent& help = m_btnCornerHelp.m_extent;
+            hint.x = help.x - hint.w + help.w / 2;
+            hint.y = static_cast<int>(static_cast<float>(help.y + help.h) + s_fScale * -10.0f);
+            delete pImage;
+        }
+        m_btnHelpHint.SetExtent(hint);
+        m_btnHelpHint.m_tail.bVisible = bTutorial;
+    } else {
+        m_btnHelpHint.m_tail.bVisible = 0;
+    }
+    g_pGuiMan->AddPanel(&m_helpPanel, 1, 1);
+}
+#endif
+
+#if KOTOR1
+void CSWGuiMainInterface::HideHelp(CSWGuiControl* pControl) {
+    K2_UNUSED(pControl);
+    g_pGuiMan->RemovePanel(&m_helpPanel);
+    CResRef sNoBackground;
+    m_helpPanel.SetBackground(sNoBackground);
+    if (g_nHelpPage == 1) {
+        m_btnHelpTopLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
+        m_btnHelpTopLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+        m_btnHelpTopRight.m_border.m_params.SetFillImage(CResRef(""), 0);
+        m_btnHelpTopRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+        m_btnHelpBottomLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
+        m_btnHelpBottomLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+        m_btnHelpBottomRight.m_border.m_params.SetFillImage(CResRef(""), 0);
+        m_btnHelpBottomRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    }
+    int nPages = ASLPlat_GetControllerPlugged() ? 4 : 3;
+    if (++g_nHelpPage < nPages)
+        AddHelpPanel(g_nHelpPage);
+    if (g_nHelpPage >= nPages) {
+        g_nHelpPage = 0;
+        g_pAppManager->m_pClientExoApp->SetInputClass(g_nHelpSavedInputClass, 0);
+        if (!g_nHelpSavedPausedByCombat)
+            g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 0, 0);
+    }
+}
+#endif
+
+#if KOTOR1
+CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
+    : CSWGuiPanel(pGuiManager),
+      m_gamepadMenu(pGuiManager, this),
+      m_actionMenuIos(pGuiManager, this),
+      m_helpPanel(pGuiManager, this)
+{
+    CExoString sName;
+    CSWGuiLabel sScratch;
+
+    CSWGuiFloatyText::m_pMainInterface = this;
+#ifdef K2_UI_TOUCH
+    StartLoadFromLayout(CResRef("ymipc210x7"));
+#else
+    // pc / xbox: `ymipc210x7` ships only as the phone variant; the PC HUD at the port's 1024x768
+    // design size is the desktop layout `mipc210x7` (gui.bzf: the menu bar, the four action columns with
+    // their arrows, the three target columns, TB_PAUSE / TB_SOLO / TB_STEALTH).
+#ifdef K1_UI_XBOX
+    // xbox: the console HUD, `maininterface` -- what the Switch loads at any width but 800
+    // (mi8x6 is the same layout at 800x600): six LBH_BORDER boxes bottom left, the portraits
+    // stacked bottom right, the minimap top right, no menu bar.
+    StartLoadFromLayout(CResRef("maininterface"));
+#else
+    StartLoadFromLayout(CResRef("mipc210x7"));
+#endif
+#endif
+    m_stateFlags |= 1;
+    for (int i = 0; i < 6; i++)
+        m_personalActionWidgets[i].Initialize(this, i, 0);
+#pragma clang loop unroll(disable)
+    for (int i = -3; i != 0; i++)
+        m_aCharacters[i + 3].Initialize(this, i + 4);
+    m_charOffscreen.Initialize(this, 4);
+
+    for (int i = 0; i < 4; i++) {
+        sName.Format(const_cast<char*>("LBL_QUEUE%d"), i);  // idiom-exempt: char* literal, Format's parameter type
+        InitControl(m_actionQueueIcons[i], sName, 1);
+        ShiftControlExtent(m_actionQueueIcons[i], 0, -1);
+    }
+    for (int i = 0; i < 9; i++)
+        m_statusIcons[i].Initialize(this, static_cast<unsigned char>(i));
+    m_targetActionMenu.Initialize(this);
+    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 1);  // idiom-exempt: char* literal, Format's parameter type
+    InitControl(m_lblMoulding1, sName, 1);
+    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 2);  // idiom-exempt: char* literal, Format's parameter type
+    InitControl(m_lblMoulding2, sName, 1);
+    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 3);  // idiom-exempt: char* literal, Format's parameter type
+    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 1);  // idiom-exempt: char* literal, Format's parameter type
+    InitControl(m_lblCombatBg1, sName, 1);
+    ShiftControlExtent(m_lblCombatBg1, 0, -1);
+    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 2);  // idiom-exempt: char* literal, Format's parameter type
+    InitControl(m_lblCombatBg2, sName, 1);
+    ShiftControlExtent(m_lblCombatBg2, 0, -1);
+    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 3);  // idiom-exempt: char* literal, Format's parameter type
+    InitControl(m_lblCombatBg3, sName, 1);
+    ShiftControlExtent(m_lblCombatBg3, 0, -1);
+    InitControl(m_btnClearOne, CExoString("BTN_CLEARONE"), 1);
+    InitControl(m_btnClearOne2, CExoString("BTN_CLEARONE2"), 1);
+    InitControl(m_btnClearAll, CExoString("BTN_CLEARALL"), 1);
+    ShiftControlExtent(m_btnClearOne, 0, -1);
+    ShiftControlExtent(m_btnClearOne2, 0, -1);
+    ShiftControlExtent(m_btnClearAll, 0, -1);
+#ifdef K1_UI_XBOX
+    // xbox: the console queue is the layout's (LBL_BG1 + LBL_HIGHLIGHT + LBL_QUEUE0..3, beside the
+    // action box) and it has no BTN_CLEARALL to centre on.
+    if (false)
+#endif
+    {
+        // Centre BTN_CLEARALL on the screen and drag the whole combat-queue group along with it.
+        CSWGuiExtent extent = m_btnClearAll.m_extent;
+        int nOldX = extent.x;
+        extent.x = (g_SDL_mode.w - extent.w) / 2;
+        m_btnClearAll.SetExtent(extent);
+        static bool s_bHasTouchScreen = HasTouchScreen();
+        int nDelta = extent.x - nOldX;
+        if (!s_bHasTouchScreen)
+            m_btnClearAll.m_tail.bVisible = 0;
+        OffsetControlX(m_actionQueueIcons[0], nDelta);
+        OffsetControlX(m_actionQueueIcons[1], nDelta);
+        OffsetControlX(m_actionQueueIcons[2], nDelta);
+        OffsetControlX(m_actionQueueIcons[3], nDelta);
+        OffsetControlX(m_lblCombatBg1, nDelta);
+        OffsetControlX(m_lblCombatBg2, nDelta);
+        OffsetControlX(m_lblCombatBg3, nDelta);
+        OffsetControlX(m_actionQueueHilight, nDelta);
+        OffsetControlX(m_btnClearOne, nDelta);
+        OffsetControlX(m_btnClearOne2, nDelta);
+    }
+    InitControl(m_actionDescLabel, CExoString("LBL_ACTIONDESC"), 1);
+    ShiftControlExtent(m_actionDescLabel, -1, -1);
+    InitControl(m_actionDescLabel2, CExoString("LBL_ACTIONDESCBG"), 1);
+    ShiftControlExtent(m_actionDescLabel2, -1, -1);
+    InitControl(m_miniMap, CExoString("LBL_MAPBORDER"), 1);
+    InitControl(m_lblArrow, CExoString("LBL_ARROW"), 0);
+    InitControl(m_miniMapImage, CExoString("LBL_MAP"), 0);
+    InitControl(sScratch, CExoString("LBL_MAPVIEW"), 0);
+    InitControl(m_altMenuButton, CExoString("BTN_MINIMAP"), 1);
+    InitControl(m_lblCombatModeMsg, CExoString("LBL_CMBTMODEMSG"), 1);
+#ifdef K2_UI_TOUCH
+    {
+        CSWGuiExtent extent = m_lblCombatModeMsg.m_extent;
+        extent.w -= 90;
+        AndroidExtentShift(extent, 1, 0);
+        m_lblCombatModeMsg.SetExtent(extent);
+    }
+    m_miniMap.m_border.m_params.SetFillImage(CResRef("ios_lbl_minimap"), 0);
+    m_miniMap.m_border.m_params.m_flags.nFillStyle = 2;
+#else
+    ShiftControlExtent(m_lblCombatModeMsg, 0, 1);   // pc / xbox: the banner, top centre
+#endif
+    m_lblCombatModeMsg2.CSWGuiLabel::Initialize(m_lblCombatModeMsg.m_extent, &m_lblCombatModeMsg, 1.0f);
+    InitControl(m_lblCombatMsgBg, CExoString("LBL_CMBTMSGBG"), 1);
+#ifndef K2_UI_TOUCH
+    ShiftControlExtent(m_lblCombatMsgBg, 0, 1);
+#endif
+    m_lblCombatModeMsg.m_tail.bVisible = 0;
+    m_lblCombatMsgBg.m_tail.bVisible = 0;
+    m_lblCombatModeMsg2.m_tail.bVisible = 0;
+    m_lblCombatModeMsg2.m_text.m_params.SetText(g_pTlkTable->GetSimpleString(STRREF_HOTKEY_HINT));
+    InitControl(m_btnEquip, CExoString("BTN_EQU"), 1);
+    InitControl(m_btnInventory, CExoString("BTN_INV"), 1);
+    InitControl(m_btnCharacter, CExoString("BTN_CHAR"), 1);
+    InitControl(m_btnAbilities, CExoString("BTN_ABI"), 1);
+    InitControl(m_btnMessages, CExoString("BTN_MSG"), 1);
+    InitControl(m_btnJournal, CExoString("BTN_JOU"), 1);
+    InitControl(m_btnMap, CExoString("BTN_MAP"), 1);
+    InitControl(m_btnOptions, CExoString("BTN_OPT"), 1);
+    InitControl(m_lblMenuBg, CExoString("LBL_MENUBG"), 1);
+    InitControl(m_lblArrowMargin, CExoString("LBL_ARROW_MARGIN"), 1);
+#ifdef K1_UI_XBOX
+    // xbox: `maininterface` has no LBL_ARROW_MARGIN, and UpdateIndicator only puts the reticle on
+    // the target inside this rectangle (inset 32) -- empty, every target got an edge arrow at the
+    // left of the screen instead. The console's rectangle is the whole screen.
+    if (m_lblArrowMargin.m_extent.w <= 0 || m_lblArrowMargin.m_extent.h <= 0)
+        m_lblArrowMargin.SetExtent(
+            CSWGuiExtent(0, 0, m_pGuiManager->m_nScreenWidth, m_pGuiManager->m_nScreenHeight));
+#endif
+#if defined(K2_UI_TOUCH) && defined(K2_FIX_ENGINE_BUGS)
+    // touch: the layout's rectangle is in units of a 1024-high screen, so scale it into screen
+    // pixels and span the whole width; the reticle then reaches the screen's edges on a larger one.
+    {
+        float fScale = static_cast<float>(m_pGuiManager->m_nScreenHeight) / 1024.0f;
+        CSWGuiExtent sMargin = m_lblArrowMargin.m_extent;
+        sMargin.x = static_cast<int>(fScale * sMargin.x);
+        sMargin.w = m_pGuiManager->m_nScreenWidth - 2 * sMargin.x;
+        sMargin.y = static_cast<int>(fScale * sMargin.y);
+        sMargin.h = static_cast<int>(fScale * sMargin.h);
+        m_lblArrowMargin.SetExtent(sMargin);
+    }
+#endif
+    InitControl(m_tbPause, CExoString("TB_PAUSE"), 1);
+    InitControl(m_tbSolo, CExoString("TB_SOLO"), 1);
+    InitControl(m_tbStealth, CExoString("TB_STEALTH"), 1);
+#ifdef K1_UI_XBOX
+    // xbox: the console layout's own pieces in the slots its PC tags leave empty -- the portraits'
+    // blue curve where a PC moulding was, the combat queue's backdrop and the ring over the
+    // executing action (which no PC/touch tag names), and the caption plate's bottom cap
+    // (LBL_ACTIONDESCBG2, under the box row; the plate above it is clipped to meet it in Draw).
+    InitControl(m_lblMoulding1, CExoString("LBL_ACTIONDESCBG2"), 1);
+    ShiftControlExtent(m_lblMoulding1, 0, 0);
+    InitControl(m_lblMoulding2, CExoString("LBL_BG2"), 1);
+    ShiftControlExtent(m_lblMoulding2, 0, 0);
+    InitControl(m_lblCombatBg1, CExoString("LBL_BG1"), 1);
+    ShiftControlExtent(m_lblCombatBg1, 0, -1);
+    InitControl(m_actionQueueHilight, CExoString("LBL_HIGHLIGHT"), 1);
+    ShiftControlExtent(m_actionQueueHilight, 0, -1);
+    K1ConsoleSaveCaption(m_actionDescLabel.m_extent, m_actionDescLabel2.m_extent);
+#endif
+    StopLoadFromLayout();
+#if !defined(K2_UI_TOUCH) && !defined(K1_UI_XBOX)
+    // pc / xbox: the PC HUD's own pieces where its layout puts them -- the menu bar and its
+    // backdrop top right, the three toggles and the mouldings bottom left -- and the target menu's
+    // margin (read just below) in screen units.
+    ShiftControlExtent(m_btnEquip, -1, 1);
+    ShiftControlExtent(m_btnInventory, -1, 1);
+    ShiftControlExtent(m_btnCharacter, -1, 1);
+    ShiftControlExtent(m_btnAbilities, -1, 1);
+    ShiftControlExtent(m_btnMessages, -1, 1);
+    ShiftControlExtent(m_btnJournal, -1, 1);
+    ShiftControlExtent(m_btnMap, -1, 1);
+    ShiftControlExtent(m_btnOptions, -1, 1);
+    ShiftControlExtent(m_lblMenuBg, -1, 1);
+    ShiftControlExtent(m_tbPause, 1, -1);
+    ShiftControlExtent(m_tbSolo, 1, -1);
+    ShiftControlExtent(m_tbStealth, 1, -1);
+    ShiftControlExtent(m_lblMoulding1, 1, -1);
+    ShiftControlExtent(m_lblMoulding2, 1, -1);
+    ShiftControlExtent(m_lblArrowMargin, 0, 0);
+    ShiftControlExtent(m_altMenuButton, 1, 1);
+    // The reticle's margin spans the screen's width; the layout's is the 4:3 composition's, which
+    // ends three quarters across a 16:9 screen.
+    {
+        CSWGuiExtent sMargin = m_lblArrowMargin.m_extent;
+        sMargin.w = m_pGuiManager->m_nScreenWidth - 2 * sMargin.x;
+        m_lblArrowMargin.SetExtent(sMargin);
+    }
+#endif
+
+    m_targetActionMenu.m_aViewport[4] = m_lblArrowMargin.m_extent.x;
+    m_targetActionMenu.m_aViewport[5] = m_lblMenuBg.m_extent.y + m_lblMenuBg.m_extent.h;
+    m_targetActionMenu.m_aViewport[6] = m_pGuiManager->m_nScreenWidth - m_targetActionMenu.m_aViewport[4] * 2;
+    m_targetActionMenu.m_aViewport[7] = m_tbPause.m_extent.y - m_targetActionMenu.m_aViewport[5];
+    AddControl(&m_lblCombatModeMsg2);
+    if (m_pGuiManager->m_nScreenWidth >= 1024) {
+        CSWGuiExtent sExtent;
+        sExtent.x = m_extent.x;
+        sExtent.y = m_extent.y;
+        sExtent.w = g_nScreenWidth;
+        sExtent.h = g_nScreenHeight;
+        SetExtent(sExtent);
+    }
+    int nSafeMarginA;
+    int nSafeMarginB;
+    m_pGuiManager->GetSafeMargin(nSafeMarginA, nSafeMarginB);
+    m_interfaceOffset = 0;
+    m_fCombatMessageTimer = -1.0f;
+    CSWGuiExtent sMap = m_miniMapImage.m_extent;
+    m_miniMapImage.SetExtent(sMap);
+    m_nMapWidth = m_miniMapImage.m_extent.w;
+    m_nMapHeight = m_miniMapImage.m_extent.h;
+#ifdef K1_UI_XBOX
+    // xbox: LBL_MAP is the map texture's 512 in `maininterface`'s 640 units, which the layout scale
+    // made 819; the image size and GetPartyMemberMapLocation's projection are in the texture's own.
+    m_nMapWidth = m_nMapWidth * 640 / 1024;
+    m_nMapHeight = m_nMapHeight * 640 / 1024;
+#endif
+    m_mapViewExtent = sScratch.m_extent;
+    AndroidExtentShift(m_mapViewExtent, 1, 1);
+    sScratch.SetExtent(m_mapViewExtent);
+    CSWGuiExtent sArrow = m_lblArrow.m_extent;
+    sArrow.w = static_cast<int>(AndroidHudScaleFactor() * sArrow.w);
+    sArrow.h = static_cast<int>(AndroidHudScaleFactor() * sArrow.h);
+    sArrow.x = (m_mapViewExtent.w - sArrow.w) / 2;
+    sArrow.y = (m_mapViewExtent.h - sArrow.h) / 2;
+    m_lblArrow.SetExtent(sArrow);
+    CSWGuiExtent sMiniMap = m_miniMap.m_extent;
+    AndroidExtentShift(sMiniMap, 1, 1);
+    m_miniMap.SetExtent(sMiniMap);
+#ifdef K1_UI_XBOX
+    // xbox: no BTN_MINIMAP in `maininterface` either; the minimap's frame becomes the button that
+    // opens the Map page (OnMenuButtonPressed's m_altMenuButton arm), as the touch HUD's does.
+    if (m_altMenuButton.m_extent.w <= 0 || m_altMenuButton.m_extent.h <= 0) {
+        m_altMenuButton.SetExtent(sMiniMap);
+        bool bListed = false;
+        for (int i = 0; i < m_controls.m_count; i++)
+            if (m_controls.m_pArray[i] == &m_altMenuButton)
+                bListed = true;
+        if (!bListed)
+            AddControl(&m_altMenuButton);
+    }
+#endif
+    m_lblTargetIndicator.m_tail.bIgnoreMouse = 1;
+    m_lblTargetIndicator.m_border.m_params.m_flags.nFillStyle = 2;
+    AddControl(&m_lblTargetIndicator);
+    CSWGuiExtent sReticle;
+    sReticle.x = 0;
+    sReticle.y = 0;
+    sReticle.w = 16;
+    sReticle.h = 16;
+    m_reticleLabel.SetExtent(sReticle);
+    m_reticleLabel.m_tail.bVisible = 0;
+    m_reticleLabel.m_tail.bIgnoreMouse = 1;
+    m_reticleLabel.m_border.m_params.m_flags.nFillStyle = 2;
+    AddControl(&m_reticleLabel);
+    m_mouseOverTargetId = OBJECT_INVALID;
+    m_targetId = OBJECT_INVALID;
+    m_lastPlayerId = OBJECT_INVALID;
+    m_fReticlePulseTimer = -1.0f;
+    m_fChallengeRating = -1.0f;
+    for (int i = 0; i < 6; i++)
+        m_personalActionIds[i] = -1;
+    m_nInterfaceFlags |= 2;
+    m_fRotationTimer = 0;
+    ShowActionQueue(0);
+    m_combatMessage = STRREF_COMBAT_MODE_ENGAGED;
+    m_bToolTipMessageShown = 0;
+
+    m_btnEquip.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_btnInventory.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_btnCharacter.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_btnAbilities.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_btnJournal.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_btnMessages.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_btnMap.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_btnOptions.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_altMenuButton.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
+    m_btnEquip.m_tail.bFocusOnHover = 0;
+    m_btnInventory.m_tail.bFocusOnHover = 0;
+    m_btnCharacter.m_tail.bFocusOnHover = 0;
+    m_btnAbilities.m_tail.bFocusOnHover = 0;
+    m_btnJournal.m_tail.bFocusOnHover = 0;
+    m_btnMessages.m_tail.bFocusOnHover = 0;
+    m_btnMap.m_tail.bFocusOnHover = 0;
+    m_btnOptions.m_tail.bFocusOnHover = 0;
+    m_altMenuButton.m_tail.bFocusOnHover = 0;
+    m_btnClearOne.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnClearOneButtonPressed));
+    m_btnClearOne2.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnClearOneButtonPressed));
+    m_btnClearAll.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnClearAllButtonPressed));
+    m_btnClearOne.m_tail.bFocusOnHover = 0;
+    m_btnClearOne2.m_tail.bFocusOnHover = 0;
+    m_btnClearAll.m_tail.bFocusOnHover = 0;
+    m_lblArrowMargin.m_tail.bVisible = 0;
+    m_lblArrowMargin.m_tail.bFocusOnHover = 0;
+    m_tbPause.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnPauseButtonPressed));
+    m_tbSolo.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnSoloButtonPressed));
+    m_tbStealth.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnStealthButtonPressed));
+    m_tbPause.m_tail.bFocusOnHover = 0;
+    m_tbSolo.m_tail.bFocusOnHover = 0;
+    m_tbStealth.m_tail.bFocusOnHover = 0;
+    m_pFogOfWarImage = NewCAurGUIImage(const_cast<char*>("blackdot"));
+    CSWGuiText* pDescText = &m_actionDescLabel.m_text;
+    m_nFocusedAction = 0;
+    m_lblCombatModeMsg.m_text.m_params.SetText(CExoString(""));
+    m_nActionDescBottom = m_actionDescLabel.m_extent.y + m_actionDescLabel.m_extent.h;
+    {
+        CExoString sCaption("");
+        m_actionDescLabel.m_text.m_params.SetText(sCaption);
+        CSWGuiExtent sExtent = m_actionDescLabel.m_extent;
+        sExtent.h = pDescText->GetIdealHeight();
+        sExtent.y = m_nActionDescBottom - sExtent.h;
+        m_actionDescLabel.SetExtent(sExtent);
+        m_actionDescLabel2.SetExtent(sExtent);
+    }
+    UpdateActionDescription();
+    m_btnEquip.m_nToolTipStrRef = STRREF_TIP_EQUIP;   m_btnEquip.m_nBoundInputEventId = INPUTEVENT_PANEL_EQUIP;
+    m_btnInventory.m_nToolTipStrRef = STRREF_TIP_INVENTORY;   m_btnInventory.m_nBoundInputEventId = INPUTEVENT_PANEL_INVENTORY;
+    m_btnCharacter.m_nToolTipStrRef = STRREF_TIP_CHARACTER;   m_btnCharacter.m_nBoundInputEventId = INPUTEVENT_PANEL_CHARACTER;
+    m_btnMap.m_nToolTipStrRef = STRREF_TIP_MAP;   m_btnMap.m_nBoundInputEventId = INPUTEVENT_PANEL_MAP;
+    m_altMenuButton.m_nToolTipStrRef = STRREF_TIP_MAP;    m_altMenuButton.m_nBoundInputEventId = INPUTEVENT_PANEL_MAP;
+    m_btnAbilities.m_nToolTipStrRef = STRREF_TIP_ABILITIES;   m_btnAbilities.m_nBoundInputEventId = INPUTEVENT_PANEL_ABILITIES;
+    m_btnJournal.m_nToolTipStrRef = STRREF_TIP_JOURNAL;   m_btnJournal.m_nBoundInputEventId = INPUTEVENT_PANEL_JOURNAL;
+    m_btnOptions.m_nToolTipStrRef = STRREF_TIP_OPTIONS;    m_btnOptions.m_nBoundInputEventId = INPUTEVENT_PANEL_OPTIONS;
+    m_btnMessages.m_nToolTipStrRef = STRREF_TIP_MESSAGES;  m_btnMessages.m_nBoundInputEventId = INPUTEVENT_PANEL_MESSAGES;
+    m_tbPause.m_nToolTipStrRef = STRREF_TIP_PAUSE; m_tbPause.m_nBoundInputEventId = INPUTEVENT_PAUSE_ALT;
+    m_tbSolo.m_nToolTipStrRef = STRREF_TIP_SOLO_MODE; m_tbSolo.m_nBoundInputEventId = INPUTEVENT_PARTY_ACTIVE;
+    m_tbStealth.m_nToolTipStrRef = STRREF_SKILL_STEALTH;   m_tbStealth.m_nBoundInputEventId = INPUTEVENT_STEALTH;
+    m_btnClearOne.m_nToolTipStrRef = STRREF_TIP_CLEAR_COMBAT_ACTION;     m_btnClearOne.m_nBoundInputEventId = INPUTEVENT_CLEAR_ONE_ACTION;
+    m_btnClearOne2.m_nToolTipStrRef = STRREF_TIP_CLEAR_COMBAT_ACTION;     m_btnClearOne2.m_nBoundInputEventId = INPUTEVENT_CLEAR_ONE_ACTION;
+    m_btnClearAll.m_nToolTipStrRef = STRREF_TIP_DISENGAGE;     m_btnClearAll.m_nBoundInputEventId = INPUTEVENT_CANCEL_COMBAT;
+#ifndef K2_UI_PC  // pc: the caption sits on the bar, where the PC layout puts it
+    m_nActionDescBottom = static_cast<int>(static_cast<float>(m_nActionDescBottom) + AndroidHudScaleFactor() * -40.0f);
+#endif
+
+    // The top-right menu buttons and the bottom-left moulding are K1 skins, hand-placed.
+#ifdef K2_UI_TOUCH
+    int nW;
+    int nH;
+    m_btnEquip.m_border.m_params.SetFillImage(CResRef("ios_lbl_miequ"), 0);
+    m_btnEquip.m_border.m_params.m_flags.nFillStyle = 2;
+    m_btnEquip.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miequ2"), 0);
+    m_btnEquip.m_borderHilight.m_params.m_flags.nFillStyle = 2;
+    CSWGuiExtent sExtent = { 927, 0, 96, 96 };
+    if (IosIsIphone(nW, nH))
+        IosAnchorRightTop(sExtent, nW, nH);
+    AndroidExtentShift(sExtent, -1, 1);
+    m_btnEquip.SetExtent(sExtent);
+    m_btnInventory.m_border.m_params.SetFillImage(CResRef("ios_lbl_miinv"), 0);
+    m_btnInventory.m_border.m_params.m_flags.nFillStyle = 2;
+    m_btnInventory.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miinv2"), 0);
+    m_btnInventory.m_borderHilight.m_params.m_flags.nFillStyle = 2;
+    CSWGuiExtent sHidden = { 0, 10, 0, 0 };
+    sExtent = sHidden;
+    AndroidExtentShift(sExtent, 1, 1);
+    m_btnInventory.SetExtent(sExtent);
+    m_btnOptions.m_border.m_params.SetFillImage(CResRef("ios_lbl_miopt"), 0);
+    m_btnOptions.m_border.m_params.m_flags.nFillStyle = 2;
+    m_btnOptions.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miopt2"), 0);
+    m_btnOptions.m_borderHilight.m_params.m_flags.nFillStyle = 2;
+    sExtent = sHidden;
+    AndroidExtentShift(sExtent, 1, 1);
+    m_btnOptions.SetExtent(sExtent);
+    sExtent = { 6, 512, 104, 148 };
+    if (IosIsIphone(nW, nH))
+        IosAnchorLeftBottom(sExtent, nW, nH);
+    AndroidExtentShift(sExtent, 1, -1);
+    m_lblMoulding1.m_border.m_params.SetFillImage(CResRef("ios_lower_left"), 0);
+    m_lblMoulding1.m_border.m_params.m_flags.nFillStyle = 2;
+    CSWGuiControl* pMoulding = &m_lblMoulding1;
+    pMoulding->SetExtent(sExtent);
+
+    // The three toggles sit bottom-left, white in both states.
+    sExtent = { 12, 517, 92, 92 };
+    if (IosIsIphone(nW, nH))
+        IosAnchorLeftBottom(sExtent, nW, nH);
+    AndroidExtentShift(sExtent, 1, -1);
+    m_tbPause.SetExtent(sExtent);
+    m_tbPause.m_border.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
+    m_tbPause.m_border.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
+    m_tbPause.m_border.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
+    m_tbPause.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
+    m_tbPause.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
+    m_tbPause.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
+    sExtent = { 10, 601, 46, 52 };
+    if (IosIsIphone(nW, nH))
+        IosAnchorLeftBottom(sExtent, nW, nH);
+    AndroidExtentShift(sExtent, 1, -1);
+    m_tbSolo.SetExtent(sExtent);
+    m_tbSolo.m_border.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
+    m_tbSolo.m_border.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
+    m_tbSolo.m_border.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
+    m_tbSolo.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
+    m_tbSolo.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
+    m_tbSolo.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
+    sExtent = { 60, 601, 46, 52 };
+    if (IosIsIphone(nW, nH))
+        IosAnchorLeftBottom(sExtent, nW, nH);
+    AndroidExtentShift(sExtent, 1, -1);
+    m_tbStealth.SetExtent(sExtent);
+    m_tbStealth.m_border.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
+    m_tbStealth.m_border.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
+    m_tbStealth.m_border.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
+    m_tbStealth.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
+    m_tbStealth.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
+    m_tbStealth.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
+#else
+    CSWGuiExtent sExtent;
+#endif
+
+    // The pop-up action menu is full screen, two halves with a close button each, 32 slots.
+    sExtent.x = 0;
+    sExtent.y = 0;
+    sExtent.w = g_SDL_mode.w;
+    sExtent.h = g_SDL_mode.h;
+    m_actionMenuIos.SetExtent(sExtent);
+    m_actionMenuIos.m_vColor.x = -2.0f;
+    m_actionMenuIos.m_vColor.y = -2.0f;
+    m_actionMenuIos.m_vColor.z = -2.0f;
+    m_actionMenuIos.m_stateFlags |= 1;
+    int nScreenW;
+    int nScreenH;
+    if (IosIsIphone(nScreenW, nScreenH)) {
+        s_fIosActionMenuTop = s_fIosActionMenuIphoneTop;
+        s_fIosActionMenuPitch = s_fIosActionMenuIphonePitch;
+        if (nScreenW > 1024) {
+            IOS_ACTION_MENU_SHIFT_X = static_cast<float>(nScreenW - 1031);
+            IOS_ACTION_MENU_GROW_X = 20.0f;
+        }
+    }
+    const CSWGuiExtent sCloseExtent = { 720, 700, 230, 47 };
+    for (int i = 0; i < 2; i++) {
+        sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 614.0f);
+        sExtent.y = 0;
+        sExtent.w = static_cast<int>(IOS_ACTION_MENU_GROW_X + 410.0f);
+        sExtent.h = 768;
+        AndroidExtentShift(sExtent, -1, 1);
+        CResRef sBg(i ? "ios_action_bg2" : "ios_action_bg");
+        m_actionMenuHalves[i].m_border.m_params.SetFillImage(sBg, 0);
+        m_actionMenuHalves[i].m_border.m_params.m_flags.nFillStyle = 2;
+        m_actionMenuHalves[i].m_borderHilight.m_params.SetFillImage(sBg, 0);
+        m_actionMenuHalves[i].m_borderHilight.m_params.m_flags.nFillStyle = 2;
+        m_actionMenuHalves[i].SetExtent(sExtent);
+        m_actionMenuHalves[i].m_text.m_params.SetText(CExoString(""));
+        m_actionMenuHalves[i].m_tail.bFocusOnHover = 0;
+        m_actionMenuIos.AddControl(&m_actionMenuHalves[i]);
+        SendControlToBack(&m_actionMenuHalves[i]);
+        sExtent = sCloseExtent;
+        int nCloseW;
+        int nCloseH;
+        if (IosIsIphone(nCloseW, nCloseH))
+            IosAnchorRightBottom(sExtent, nCloseW, nCloseH);
+        AndroidExtentShift(sExtent, -1, -1);
+        CResRef sClose(i ? "ios_action_x2" : "ios_action_x");
+        m_actionMenuCloseButtons[i].m_border.m_params.SetFillImage(sClose, 0);
+        m_actionMenuCloseButtons[i].m_border.m_params.m_flags.nFillStyle = 2;
+        m_actionMenuCloseButtons[i].m_borderHilight.m_params.SetFillImage(sClose, 0);
+        m_actionMenuCloseButtons[i].m_borderHilight.m_params.m_flags.nFillStyle = 2;
+        m_actionMenuCloseButtons[i].SetExtent(sExtent);
+        m_actionMenuCloseButtons[i].m_text.m_params.SetText(CExoString(""));
+        m_actionMenuCloseButtons[i].m_tail.bFocusOnHover = 0;
+        m_actionMenuIos.AddControl(&m_actionMenuCloseButtons[i]);
+        SendControlToBack(&m_actionMenuCloseButtons[i]);
+        m_actionMenuCloseButtons[i].AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HandleButtonActionX));
+    }
+    for (int64_t i = 0; i < 32; i++) {
+        CSWGuiButton& slot = m_actionSlots[i];
+        sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 650.0f);
+        sExtent.y = static_cast<int>(s_fIosActionMenuPitch * static_cast<float>(i) + s_fIosActionMenuTop);
+        sExtent.w = 360;
+        sExtent.h = 56;
+        AndroidExtentShift(sExtent, -1, 1);
+        slot.m_text.m_params.SetAlignment(SWGUIALIGN_MIDDLE | SWGUIALIGN_RIGHT);
+        slot.m_text.m_params.SetText(CExoString(""));
+        slot.m_tail.m_nUserData = i;
+        slot.SetExtent(sExtent);
+        sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 950.0f);
+        sExtent.y = static_cast<int>(s_fIosActionMenuPitch * static_cast<float>(i) + s_fIosActionMenuTop);
+        sExtent.w = 56;
+        sExtent.h = 56;
+        AndroidExtentShift(sExtent, -1, 1);
+        CSWGuiBorder* pBorder = &slot.m_border;
+        pBorder->SetExtent(sExtent);
+        CSWGuiBorder* pHilight = &slot.m_borderHilight;
+        pHilight->SetExtent(sExtent);
+        sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 640.0f);
+        sExtent.y = static_cast<int>(s_fIosActionMenuPitch * static_cast<float>(i) + s_fIosActionMenuTop);
+        sExtent.w = 300;
+        sExtent.h = 56;
+        AndroidExtentShift(sExtent, -1, 1);
+        CSWGuiText* pText = &slot.m_text;
+        pText->SetExtent(sExtent);
+        m_actionMenuIos.AddControl(&slot);
+        slot.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
+            static_cast<void (CSWGuiMainInterface::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HandleButtonAction)));
+    }
+    RelayoutActionMenu(0);
+
+    // The top-right corner plate.
+#ifdef K2_UI_TOUCH  // pc / xbox: no corner plate, help or quicksave button (keys and menus do that)
+    bool bIphone = IosIsIphone(nScreenW, nScreenH);
+    sExtent.x = bIphone ? 786 : 800;
+    sExtent.y = 0;
+    sExtent.w = bIphone ? 238 : 225;
+    sExtent.h = bIphone ? 98 : 99;
+    if (IosIsIphone(nW, nH))
+        IosAnchorRightTop(sExtent, nW, nH);
+    AndroidExtentShift(sExtent, -1, 1);
+    m_btnCornerPlate.SetExtent(sExtent);
+    m_btnCornerPlate.m_text.m_params.SetText(CExoString(""));
+    m_btnCornerPlate.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_upper_right") : CResRef("ios_upper_right"), 0);
+    m_btnCornerPlate.m_border.m_params.m_flags.nFillStyle = 2;
+    m_btnCornerPlate.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_upper_right") : CResRef("ios_upper_right"), 0);
+    m_btnCornerPlate.m_borderHilight.m_params.m_flags.nFillStyle = 2;
+    m_btnCornerPlate.m_tail.bFocusOnHover = 0;
+    m_btnCornerPlate.SetEnabled(0);
+    AddControl(&m_btnCornerPlate);
+    SendControlToBack(&m_btnCornerPlate);
+#endif
+
+    // The gamepad menu covers the whole screen.
+    const CSWGuiExtent sFullScreen = { 0, 0, 1024, 768 };
+    sExtent = sFullScreen;
+    if (IosIsIphone(nScreenW, nScreenH) && nScreenW > 1024) {
+        sExtent.x = 0;
+        sExtent.y = 0;
+        sExtent.w = nScreenW;
+        sExtent.h = 768;
+    }
+    sExtent.x = 0;
+    sExtent.y = 0;
+    sExtent.w = g_SDL_mode.w;
+    sExtent.h = g_SDL_mode.h;
+    m_gamepadMenu.SetExtent(sExtent);
+    m_gamepadMenu.m_stateFlags |= 1;
+    m_gamepadMenu.m_vColor.x = -2.0f;
+    m_gamepadMenu.m_vColor.y = -2.0f;
+    m_gamepadMenu.m_vColor.z = -2.0f;
+    m_gamepadMenu.LayoutGamepadMenu(true);
+
+    // Help and quicksave, under the corner plate.
+#ifdef K2_UI_TOUCH
+    int nTopY = bIphone ? 7 : 5;
+    int nTopH = bIphone ? 70 : 46;
+    sExtent.x = bIphone ? 861 : 872;
+    sExtent.y = nTopY;
+    sExtent.w = bIphone ? 90 : 76;
+    sExtent.h = nTopH;
+    if (IosIsIphone(nW, nH))
+        IosAnchorRightTop(sExtent, nW, nH);
+    AndroidExtentShift(sExtent, -1, 1);
+    m_btnCornerHelp.SetExtent(sExtent);
+    m_btnCornerHelp.m_text.m_params.SetText(CExoString(""));
+    m_btnCornerHelp.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_help") : CResRef("ios_help"), 0);
+    m_btnCornerHelp.m_border.m_params.m_flags.nFillStyle = 2;
+    m_btnCornerHelp.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_help2") : CResRef("ios_help2"), 0);
+    m_btnCornerHelp.m_borderHilight.m_params.m_flags.nFillStyle = 2;
+    m_btnCornerHelp.m_tail.bFocusOnHover = 0;
+    AddControl(&m_btnCornerHelp);
+    m_btnCornerHelp.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::ShowHelp));
+    sExtent.x = bIphone ? 792 : 807;
+    sExtent.y = nTopY;
+    sExtent.w = bIphone ? 90 : 69;
+    sExtent.h = nTopH;
+    if (IosIsIphone(nW, nH))
+        IosAnchorRightTop(sExtent, nW, nH);
+    AndroidExtentShift(sExtent, -1, 1);
+    m_btnQuickSave.SetExtent(sExtent);
+    m_btnQuickSave.m_text.m_params.SetText(CExoString(""));
+    m_btnQuickSave.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_quicksave") : CResRef("ios_quicksave"), 0);
+    m_btnQuickSave.m_border.m_params.m_flags.nFillStyle = 2;
+    m_btnQuickSave.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_quicksave2") : CResRef("ios_quicksave2"), 0);
+    m_btnQuickSave.m_borderHilight.m_params.m_flags.nFillStyle = 2;
+    m_btnQuickSave.m_tail.bFocusOnHover = 0;
+    AddControl(&m_btnQuickSave);
+    m_btnQuickSave.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::Quicksave));
+#endif
+
+    // The help overlay puts the page image and five click-to-close buttons over the whole screen
+    // (letterboxed on an iPhone, with the background stretched past the bars on a wide one).
+    sExtent = sFullScreen;
+    CSWGuiExtent sBackground = { 0, 0, 0, 0 };
+    int bWide;
+    int nHelpW;
+    int nHelpH;
+    if (IosIsIphone(nHelpW, nHelpH)) {
+        if (nHelpW > 1023) {
+            sBackground.x = -1;
+            sBackground.y = 0;
+            sBackground.w = nHelpW + 1;
+            sBackground.h = nHelpH + 2;
+            sExtent.x = 0;
+            sExtent.y = (768 - nHelpH) / 2;
+            sExtent.w = nHelpW;
+            sExtent.h = nHelpH + 1;
+            bWide = 1;
+        } else {
+            sExtent.x = (1024 - nHelpW) / 2;
+            sExtent.y = (768 - nHelpH) / 2;
+            sExtent.w = nHelpW;
+            sExtent.h = nHelpH + 1;
+            bWide = 0;
+        }
+    } else {
+        bWide = 0;
+    }
+    AndroidExtentShift(sExtent, 1, 1);
+    AndroidExtentShift(sBackground, 1, 1);
+#ifdef K2_QOL_CONTROLLER
+    // In the port, the overlay, its dimmed backdrop and its tap-to-close area cover the whole
+    // screen, whatever its shape (IosIsIphone's 1136x640 page is 16:9 at the HUD scale).
+    sExtent.x = 0;
+    sExtent.y = 0;
+    sExtent.w = g_SDL_mode.w;
+    sExtent.h = g_SDL_mode.h;
+    if (bWide) {
+        sBackground.x = -1;
+        sBackground.y = 0;
+        sBackground.w = g_SDL_mode.w + 1;
+        sBackground.h = g_SDL_mode.h + 2;
+    }
+#endif
+    m_btnHelpClose.SetExtent(sExtent);
+    m_btnHelpClose.m_text.m_params.SetText(CExoString(""));
+    m_btnHelpClose.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpClose.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpClose.m_tail.bFocusOnHover = 0;
+    m_btnHelpClose.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+    m_btnHelpPage.SetExtent(sExtent);
+    m_btnHelpPage.m_text.m_params.SetText(CExoString(""));
+    m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpPage.m_tail.bFocusOnHover = 0;
+    m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+    GatherAndroidHelpPanelConstants();
+    m_btnHelpTopLeft.SetExtent(sExtent);
+    m_btnHelpTopLeft.m_text.m_params.SetText(CExoString(""));
+    m_btnHelpTopLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpTopLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpTopLeft.m_tail.bFocusOnHover = 0;
+    m_btnHelpTopLeft.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+    m_btnHelpTopRight.SetExtent(sExtent);
+    m_btnHelpTopRight.m_text.m_params.SetText(CExoString(""));
+    m_btnHelpTopRight.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpTopRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpTopRight.m_tail.bFocusOnHover = 0;
+    m_btnHelpTopRight.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+    m_btnHelpBottomLeft.SetExtent(sExtent);
+    m_btnHelpBottomLeft.m_text.m_params.SetText(CExoString(""));
+    m_btnHelpBottomLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpBottomLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpBottomLeft.m_tail.bFocusOnHover = 0;
+    m_btnHelpBottomLeft.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+    m_btnHelpBottomRight.SetExtent(sExtent);
+    m_btnHelpBottomRight.m_text.m_params.SetText(CExoString(""));
+    m_btnHelpBottomRight.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpBottomRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpBottomRight.m_tail.bFocusOnHover = 0;
+    m_btnHelpBottomRight.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+    m_helpPanel.SetExtent(sExtent);
+    if (bWide) {
+        sExtent.x = -1;
+        m_helpPanel.m_pBackground->SetExtent(sBackground);
+    }
+    m_helpPanel.AddControl(&m_btnHelpPage);
+    m_helpPanel.AddControl(&m_btnHelpTopLeft);
+    m_helpPanel.AddControl(&m_btnHelpTopRight);
+    m_helpPanel.AddControl(&m_btnHelpBottomLeft);
+    m_helpPanel.AddControl(&m_btnHelpBottomRight);
+    m_btnHelpHint.m_tail.bFocusOnHover = 0;
+    m_btnHelpHint.m_text.m_params.SetText(CExoString(""));
+    m_btnHelpHint.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpHint.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpHint.m_tail.bFocusOnHover = 0;
+    m_helpPanel.AddControl(&m_btnHelpHint);
+    m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+    m_helpPanel.AddControl(&m_btnHelpClose);
+    m_helpPanel.m_vColor.x = -2.0f;
+    m_helpPanel.m_vColor.y = -2.0f;
+    m_helpPanel.m_vColor.z = -2.0f;
+    m_helpPanel.m_stateFlags |= 1;
+#ifdef K1_UI_XBOX
+    // xbox: the caption and its plate keep the layout's rectangles (the ctor shrink-wraps both).
+    K1ConsoleRestoreCaption(m_actionDescLabel, m_actionDescLabel2);
+#endif
+}
+#endif
+
+void CSWGuiMainInterface::ShowActionQueue(int nParam) {
+    if (((m_nInterfaceFlags >> 1) & 1) == nParam) return;
+    int nBit = (nParam & 1) << 1;
+    m_nInterfaceFlags = static_cast<unsigned char>((m_nInterfaceFlags & ~2) | nBit);
+    int nGo;
+    if (nParam == 0) nGo = m_lblActionQueue.m_tail.bVisible; else nGo = 1;
+#if KOTOR1
+    m_lblCombatBg1.m_tail.bVisible = nParam & 1;
+    m_lblCombatBg2.m_tail.bVisible = nParam & 1;
+    m_lblCombatBg3.m_tail.bVisible = nParam & 1;
+    m_lblActionQueue.m_tail.bVisible = nParam & 1;
+    m_btnClearOne.m_tail.bVisible = nParam & 1;
+    m_btnClearOne2.m_tail.bVisible = nParam & 1;
+    static bool s_bHasTouchScreen = HasTouchScreen();
+    m_btnClearAll.m_tail.bVisible = nParam != 0 && s_bHasTouchScreen;
+#else
+    m_lblCombatBg2.m_tail.bVisible = nParam & 1;
+    m_lblCombatBg3.m_tail.bVisible = nParam & 1;
+    m_actionQueueHilight.m_tail.bVisible = nParam & 1;
+    m_lblActionQueue.m_tail.bVisible = nParam & 1;
+    m_btnClearOne.m_tail.bVisible = nParam & 1;
+    m_btnClearOne2.m_tail.bVisible = nParam & 1;
+    m_btnClearAll.m_tail.bVisible = nParam & 1;
+#endif
+    if (m_bToolTipMessageShown == 0) {
+        m_lblCombatModeMsg.m_tail.bVisible = nParam & 1;
+        m_lblCombatMsgBg.m_tail.bVisible = nParam & 1;
+    }
+    m_actionQueueIcons[0].m_tail.bVisible = nParam & 1;
+    m_actionQueueIcons[1].m_tail.bVisible = nParam & 1;
+    m_actionQueueIcons[2].m_tail.bVisible = nParam & 1;
+    m_actionQueueIcons[3].m_tail.bVisible = nParam & 1;
+    int nShift = m_interfaceOffset;
+    if (nParam == 0) {
+        nShift = -nShift;
+        m_fCombatMessageTimer = -1.0f;
+    }
+    if (nGo == 0) return;
+    CSWGuiExtent sTmp;
+    sTmp = m_miniMap.m_extent;
+    sTmp.y += nShift;
+    CSWGuiLabel* pMiniMap = &m_miniMap;
+    pMiniMap->SetExtent(sTmp);
+    sTmp = m_miniMapImage.m_extent;
+    sTmp.y += nShift;
+    CSWGuiLabel* pImage = &m_miniMapImage;
+    pImage->SetExtent(sTmp);
+    sTmp = m_altMenuButton.m_extent;
+    sTmp.y += nShift;
+    CSWGuiButton* pAlt = &m_altMenuButton;
+    pAlt->SetExtent(sTmp);
+    m_mapViewExtent.y += nShift;
+#if KOTOR1
+    for (int i = 0; i < 9; i++) {
+#else
+    for (int i = 0; i < 13; i++) {
+#endif
+        sTmp = m_statusIcons[i].m_label.m_extent;
+        sTmp.y += nShift;
+        m_statusIcons[i].m_label.CSWGuiLabel::SetExtent(sTmp);
+    }
+}
+
 #if KOTOR1  // K1: the gate closes the pop-up menu instead of firing it, and the toggles show/hide without the _ios skins
 void CSWGuiMainInterface::Update(float fDelta) {
     if (m_pGuiManager->m_modalPanels.m_count == 0) {
@@ -1181,142 +2139,6 @@ void CSWGuiMainInterface::Update(float fDelta) {
 }
 #endif
 
-#if !KOTOR1 && defined(K2_QOL_IMPROVEMENTS)
-// Converts a reticle size in the HUD's layout units (g_nGUIHeight lines, the height every panel is
-// scaled from) to pixels.
-static int K2QolReticlePixels(CSWGuiManager* pManager, int nSize)
-{
-    return static_cast<int>(static_cast<float>(nSize) * static_cast<float>(pManager->m_nScreenHeight) / static_cast<float>(g_nGUIHeight));
-}
-#endif
-extern int g_bMouseCameraRotateToggle;
-void CSWGuiMainInterface::UpdateStickyTarget() {
-#if KOTOR1
-#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
-    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#else
-    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
-#endif
-#endif
-    int nMode = g_bMouseCameraRotateToggle;
-    CGameObject* pGameObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_mouseOverTargetId);
-    CSWCObject* pObject = 0;
-    if (pGameObject)
-        pObject = static_cast<CSWCObject*>(pGameObject->AsSWCObject());
-    CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
-    if (pOptions->m_bGameplay1)
-        nMode = !nMode;
-    if (pObject != 0 && nMode != 0) {
-        m_mouseOverTargetId = 0;
-        return;
-    }
-    CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-    if (pObject == 0 || pPlayer == 0) {
-        m_reticleLabel.m_tail.bVisible = false;
-        return;
-    }
-    CSWGuiExtent sExtent = m_reticleLabel.m_extent;
-#if KOTOR1  // K1: the point starts at the origin and the result is a byte
-    Vector vPos;
-    vPos.x = 0.0f;
-    vPos.y = 0.0f;
-    vPos.z = 0.0f;
-    unsigned char nRet = pObject->GetReticlePoint(vPos);
-#else
-    Vector vPos;
-    int nRet = pObject->GetReticlePoint(vPos);
-#endif
-    if (nRet == 0)
-        return;
-    float fDX = pPlayer->m_position.x - pObject->m_position.x;
-    float fDY = pPlayer->m_position.y - pObject->m_position.y;
-    float fDZ = pPlayer->m_position.z - pObject->m_position.z;
-    float fDist2 = fDX * fDX + fDY * fDY + fDZ * fDZ;
-    int nSize;
-    int nFriendly;
-    if (pObject->AsSWCCreature() != 0) {
-        if (fDist2 >= 900.0f)
-            nSize = 16;
-        else {
-            nSize = 64;
-            if (fDist2 > 25.0f)
-                nSize = 64 - static_cast<int>((__builtin_sqrtf(fDist2) - 5.0f) / 25.0f * 48.0f);
-        }
-        // Creatures skip the door/trigger/placeable ladder entirely.
-        nFriendly = pObject->IsHostile() == 0;
-    } else {
-#if KOTOR1  // K1: the non-creature reticle shrinks over the creature range (30 m, not 10 m)
-        if (fDist2 >= 900.0f)
-            nSize = 32;
-        else {
-            nSize = 64;
-            if (fDist2 > 25.0f)
-                nSize = 64 - static_cast<int>((__builtin_sqrtf(fDist2) - 5.0f) / 25.0f * 32.0f);
-        }
-#else
-        if (fDist2 >= 100.0f)
-            nSize = 32;
-        else {
-            nSize = 64;
-            if (fDist2 > 25.0f)
-                nSize = 64 - static_cast<int>((__builtin_sqrtf(fDist2) - 5.0f) / 5.0f * 32.0f);
-        }
-#endif
-        if (pObject->AsSWCDoor() != 0 && pObject->AsSWCDoor()->m_bHilighted != 0 &&
-            pObject->AsSWCDoor()->m_bHostileFaction != 0)
-            nFriendly = 0;
-        else if (pObject->AsSWCTrigger() != 0)
-            nFriendly = pObject->IsHostile() == 0;
-        else if (pObject->AsSWCPlaceable() != 0 && pObject->AsSWCPlaceable()->m_bHilighted != 0 &&
-                 pObject->AsSWCPlaceable()->m_bHostileFaction != 0)
-            nFriendly = 0;
-        else if (pObject->AsSWCPlaceable() != 0 && pObject->AsSWCPlaceable()->IsHostile() != 0) {
-            CSWSObject* pTargetSrv = pObject->AsSWCPlaceable()->GetServerObject();
-            CSWSObject* pPlayerSrv = pPlayer->GetServerObject();
-            nFriendly = pTargetSrv->GetReputation(pPlayerSrv->m_objectId, 0) > 10;
-        }
-        else
-            nFriendly = 1;
-    }
-#if !KOTOR1 && defined(K2_QOL_IMPROVEMENTS)
-    nSize = K2QolReticlePixels(m_pGuiManager, nSize);
-#endif
-    if (nRet == 2 ||
-        vPos.x < m_lblArrowMargin.m_extent.x + 32 ||
-        vPos.x > m_lblArrowMargin.m_extent.x + m_lblArrowMargin.m_extent.w - 32 ||
-        vPos.y < m_lblArrowMargin.m_extent.y + 32 ||
-        vPos.y > m_lblArrowMargin.m_extent.y + m_lblArrowMargin.m_extent.h - 32) {
-#if KOTOR1
-        sExtent.w = sExtent.h = static_cast<int>(s_fScale * nSize);
-#else
-        sExtent.w = sExtent.h = nSize;
-#endif
-        m_reticleLabel.m_tail.bVisible = false;
-        return;
-    }
-#if KOTOR1 && defined(K2_FIX_ENGINE_BUGS)
-    int nHalf = static_cast<int>(s_fScale * nSize) / 2;
-#else
-    int nHalf = nSize / 2;
-#endif
-    sExtent.y = static_cast<int>(vPos.y - nHalf);
-    sExtent.x = static_cast<int>(vPos.x - nHalf);
-#if KOTOR1
-    sExtent.w = sExtent.h = static_cast<int>(s_fScale * nSize);
-#else
-    sExtent.w = sExtent.h = nSize;
-#endif
-    m_reticleLabel.m_tail.bVisible = true;
-    m_reticleLabel.SetExtent(sExtent);
-    CResRef sFriendly("friendlyreticle");
-    CResRef sHostile("hostilereticle");
-    m_reticleLabel.m_border.m_params.SetFillImage(nFriendly != 0 ? sFriendly : sHostile, 0);
-    m_reticleLabel.m_border.m_params.m_fAlpha = 0.5f;
-#if KOTOR1
-    m_reticleLabel.m_border.m_params.m_flags.nFillStyle = 2;
-#endif
-}
-
 #if KOTOR1
 void CSWGuiMainInterface::UpdateIndicator(float fDelta) {
     CGameObject* pGameObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_targetId);
@@ -1532,7 +2354,145 @@ void CSWGuiMainInterface::UpdateIndicator(float fDelta) {
         static_cast<unsigned char>((m_targetActionMenu.m_nMenuFlags & ~1) | (bLive ? 1 : 0));
     UpdateStickyTarget();
 }
+#endif
+
+#if !KOTOR1 && defined(K2_QOL_IMPROVEMENTS)
+// Converts a reticle size in the HUD's layout units (g_nGUIHeight lines, the height every panel is
+// scaled from) to pixels.
+static int K2QolReticlePixels(CSWGuiManager* pManager, int nSize)
+{
+    return static_cast<int>(static_cast<float>(nSize) * static_cast<float>(pManager->m_nScreenHeight) / static_cast<float>(g_nGUIHeight));
+}
+#endif
+extern int g_bMouseCameraRotateToggle;
+void CSWGuiMainInterface::UpdateStickyTarget() {
+#if KOTOR1
+#ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
 #else
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
+#endif
+#endif
+    int nMode = g_bMouseCameraRotateToggle;
+    CGameObject* pGameObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_mouseOverTargetId);
+    CSWCObject* pObject = 0;
+    if (pGameObject)
+        pObject = static_cast<CSWCObject*>(pGameObject->AsSWCObject());
+    CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
+    if (pOptions->m_bGameplay1)
+        nMode = !nMode;
+    if (pObject != 0 && nMode != 0) {
+        m_mouseOverTargetId = 0;
+        return;
+    }
+    CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+    if (pObject == 0 || pPlayer == 0) {
+        m_reticleLabel.m_tail.bVisible = false;
+        return;
+    }
+    CSWGuiExtent sExtent = m_reticleLabel.m_extent;
+#if KOTOR1  // K1: the point starts at the origin and the result is a byte
+    Vector vPos;
+    vPos.x = 0.0f;
+    vPos.y = 0.0f;
+    vPos.z = 0.0f;
+    unsigned char nRet = pObject->GetReticlePoint(vPos);
+#else
+    Vector vPos;
+    int nRet = pObject->GetReticlePoint(vPos);
+#endif
+    if (nRet == 0)
+        return;
+    float fDX = pPlayer->m_position.x - pObject->m_position.x;
+    float fDY = pPlayer->m_position.y - pObject->m_position.y;
+    float fDZ = pPlayer->m_position.z - pObject->m_position.z;
+    float fDist2 = fDX * fDX + fDY * fDY + fDZ * fDZ;
+    int nSize;
+    int nFriendly;
+    if (pObject->AsSWCCreature() != 0) {
+        if (fDist2 >= 900.0f)
+            nSize = 16;
+        else {
+            nSize = 64;
+            if (fDist2 > 25.0f)
+                nSize = 64 - static_cast<int>((__builtin_sqrtf(fDist2) - 5.0f) / 25.0f * 48.0f);
+        }
+        // Creatures skip the door/trigger/placeable ladder entirely.
+        nFriendly = pObject->IsHostile() == 0;
+    } else {
+#if KOTOR1  // K1: the non-creature reticle shrinks over the creature range (30 m, not 10 m)
+        if (fDist2 >= 900.0f)
+            nSize = 32;
+        else {
+            nSize = 64;
+            if (fDist2 > 25.0f)
+                nSize = 64 - static_cast<int>((__builtin_sqrtf(fDist2) - 5.0f) / 25.0f * 32.0f);
+        }
+#else
+        if (fDist2 >= 100.0f)
+            nSize = 32;
+        else {
+            nSize = 64;
+            if (fDist2 > 25.0f)
+                nSize = 64 - static_cast<int>((__builtin_sqrtf(fDist2) - 5.0f) / 5.0f * 32.0f);
+        }
+#endif
+        if (pObject->AsSWCDoor() != 0 && pObject->AsSWCDoor()->m_bHilighted != 0 &&
+            pObject->AsSWCDoor()->m_bHostileFaction != 0)
+            nFriendly = 0;
+        else if (pObject->AsSWCTrigger() != 0)
+            nFriendly = pObject->IsHostile() == 0;
+        else if (pObject->AsSWCPlaceable() != 0 && pObject->AsSWCPlaceable()->m_bHilighted != 0 &&
+                 pObject->AsSWCPlaceable()->m_bHostileFaction != 0)
+            nFriendly = 0;
+        else if (pObject->AsSWCPlaceable() != 0 && pObject->AsSWCPlaceable()->IsHostile() != 0) {
+            CSWSObject* pTargetSrv = pObject->AsSWCPlaceable()->GetServerObject();
+            CSWSObject* pPlayerSrv = pPlayer->GetServerObject();
+            nFriendly = pTargetSrv->GetReputation(pPlayerSrv->m_objectId, 0) > 10;
+        }
+        else
+            nFriendly = 1;
+    }
+#if !KOTOR1 && defined(K2_QOL_IMPROVEMENTS)
+    nSize = K2QolReticlePixels(m_pGuiManager, nSize);
+#endif
+    if (nRet == 2 ||
+        vPos.x < m_lblArrowMargin.m_extent.x + 32 ||
+        vPos.x > m_lblArrowMargin.m_extent.x + m_lblArrowMargin.m_extent.w - 32 ||
+        vPos.y < m_lblArrowMargin.m_extent.y + 32 ||
+        vPos.y > m_lblArrowMargin.m_extent.y + m_lblArrowMargin.m_extent.h - 32) {
+#if KOTOR1
+        sExtent.w = sExtent.h = static_cast<int>(s_fScale * nSize);
+#else
+        sExtent.w = sExtent.h = nSize;
+#endif
+        m_reticleLabel.m_tail.bVisible = false;
+        return;
+    }
+#if KOTOR1 && defined(K2_FIX_ENGINE_BUGS)
+    int nHalf = static_cast<int>(s_fScale * nSize) / 2;
+#else
+    int nHalf = nSize / 2;
+#endif
+    sExtent.y = static_cast<int>(vPos.y - nHalf);
+    sExtent.x = static_cast<int>(vPos.x - nHalf);
+#if KOTOR1
+    sExtent.w = sExtent.h = static_cast<int>(s_fScale * nSize);
+#else
+    sExtent.w = sExtent.h = nSize;
+#endif
+    m_reticleLabel.m_tail.bVisible = true;
+    m_reticleLabel.SetExtent(sExtent);
+    CResRef sFriendly("friendlyreticle");
+    CResRef sHostile("hostilereticle");
+    m_reticleLabel.m_border.m_params.SetFillImage(nFriendly != 0 ? sFriendly : sHostile, 0);
+    m_reticleLabel.m_border.m_params.m_fAlpha = 0.5f;
+#if KOTOR1
+    m_reticleLabel.m_border.m_params.m_flags.nFillStyle = 2;
+#endif
+}
+
+#if !KOTOR1
 void CSWGuiMainInterface::UpdateIndicator(float fDelta) {
     CGameObject* pGameObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_targetId);
     Vector vPos;
@@ -2860,6 +3820,7 @@ void CSWGuiFloatyText::CreateEntry(unsigned long long objId, const CExoString& s
         if (pObject) {
             pObject->GetReticlePoint(vPoint);
 #if KOTOR1  // K1: the base extent is set first, then the label re-lays itself out
+            CSWGuiExtent& rExtent = m_extent;
             CSWGuiExtent extent;
 #ifdef K2_FIX_ENGINE_BUGS
             // Grows the box and its gap over the reticle point with the font: a fixed 200 pixels held
@@ -2878,7 +3839,7 @@ void CSWGuiFloatyText::CreateEntry(unsigned long long objId, const CExoString& s
             K2QolGrowFloatyText(m_text, extent);
 #endif
             CSWGuiObject::SetExtent(extent);
-            SetExtent(m_extent);
+            SetExtent(rExtent);
             if (m_text.m_pString)
                 m_text.m_pString->SetFontScale(s_fScale);
 #else
@@ -3100,33 +4061,7 @@ void CSWGuiMainInterface::ShowHelp(CSWGuiControl* pControl) {
 #endif
 }
 
-#if KOTOR1
-void CSWGuiMainInterface::HideHelp(CSWGuiControl* pControl) {
-    K2_UNUSED(pControl);
-    g_pGuiMan->RemovePanel(&m_helpPanel);
-    CResRef sNoBackground;
-    m_helpPanel.SetBackground(sNoBackground);
-    if (g_nHelpPage == 1) {
-        m_btnHelpTopLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpTopLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpTopRight.m_border.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpTopRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpBottomLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpBottomLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpBottomRight.m_border.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpBottomRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-    }
-    int nPages = ASLPlat_GetControllerPlugged() ? 4 : 3;
-    if (++g_nHelpPage < nPages)
-        AddHelpPanel(g_nHelpPage);
-    if (g_nHelpPage >= nPages) {
-        g_nHelpPage = 0;
-        g_pAppManager->m_pClientExoApp->SetInputClass(g_nHelpSavedInputClass, 0);
-        if (!g_nHelpSavedPausedByCombat)
-            g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 0, 0);
-    }
-}
-#else
+#if !KOTOR1
 void CSWGuiMainInterface::HideHelp(CSWGuiControl* pControl) {
     K2_UNUSED(pControl);
     g_pGuiMan->RemovePanel(&m_helpPanel);
@@ -3773,87 +4708,7 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::LayoutGamepadMenu(bool bInitImages)
 }
 #endif
 
-#if KOTOR1
-            // party pair only while entry 1 is lit; no input-class reset and no key aliases
-void CSWGuiMainInterface::CSWGamepadMenuIos::HandleInputEvent(int nType, int nVal) {
-    K2_UNUSED(nVal);
-    int nDir = -1;
-    switch (nType) {
-    case INPUTEVENT_GUI_Y:
-        g_nOpenMapCountdown = 2;
-        // fallthrough
-    case INPUTEVENT_GUI_B:
-    lCloseGamepadMenu:
-        if (!m_bWasPausedByCombat)
-            g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 0, 0);
-    lRemoveGamepadMenu:
-        g_pGuiMan->RemovePanel(this);
-        break;
-    case INPUTEVENT_GUI_A:
-        switch (m_nSelectedEntry) {
-        case GPAD_ENTRY_MAP:
-            g_nOpenMapCountdown = 2;
-            break;
-        case GPAD_ENTRY_PARTY:
-            break;
-        case GPAD_ENTRY_SOLO:
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-            g_pAppManager->m_pClientExoApp->TogglePartyFollow();
-            break;
-        case GPAD_ENTRY_STEALTH:
-            if (!m_bWasPausedByCombat)
-                g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 0, 0);
-            if (g_pAppManager->m_pClientExoApp->GetPlayerCreature()->IsStealthCapable())
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter()
-                    ->PartyMenuStealth(0, 0);
-            break;
-        case GPAD_ENTRY_QUICKSAVE:
-            g_pAppManager->m_pClientExoApp->SendSaveGameRequest(0, CExoString("QUICKSAVE"),
-                                                                CExoString("QUICKSAVE"));
-            break;
-        case GPAD_ENTRY_HELP: {
-            static bool s_bHasTouchScreen = HasTouchScreen();
-            ShowHelpInternal(!s_bHasTouchScreen);
-            g_nHelpSavedPausedByCombat = m_bWasPausedByCombat;
-            goto lRemoveGamepadMenu;
-        }
-        default:
-            return;
-        }
-        goto lCloseGamepadMenu;
-    case INPUTEVENT_GUI_DPAD_LEFT:
-        if (m_nSelectedEntry == GPAD_ENTRY_PARTY && m_nSelectedPartySlot > 0) {
-            --m_nSelectedPartySlot;
-            g_pAppManager->m_pClientExoApp
-                ->ChangeCharacter(m_nLastPartySlot == 2 ? 2 : 1, 1);
-            UpdateStealth();
-            LayoutGamepadMenu(false);
-        }
-        break;
-    case INPUTEVENT_GUI_DPAD_RIGHT:
-        if (m_nSelectedEntry == GPAD_ENTRY_PARTY && m_nSelectedPartySlot < m_nLastPartySlot) {
-            ++m_nSelectedPartySlot;
-            g_pAppManager->m_pClientExoApp->ChangeCharacter(1, 1);
-            UpdateStealth();
-            LayoutGamepadMenu(false);
-        }
-        break;
-    case INPUTEVENT_GUI_DPAD_DOWN:
-        nDir = 1;
-        // fallthrough
-    case INPUTEVENT_GUI_DPAD_UP: {
-        int nPrev = m_nSelectedEntry;
-        m_nSelectedEntry += nDir;
-        if (m_nSelectedEntry == GPAD_ENTRY_STEALTH && !m_bStealthCapable)
-            m_nSelectedEntry += nDir;
-        m_nSelectedEntry = (m_nSelectedEntry + GPAD_ENTRY_COUNT) % GPAD_ENTRY_COUNT;
-        if (m_nSelectedEntry != nPrev)
-            LayoutGamepadMenu(false);
-        break;
-    }
-    }
-}
-#else
+#if !KOTOR1
 void CSWGuiMainInterface::CSWGamepadMenuIos::HandleInputEvent(int nType, int nVal) {
     K2_UNUSED(nVal);
     int nDir = -1;
@@ -6927,6 +7782,97 @@ static int CustomStringsLayout(AspyrLocalizedStrings& strings)
 }
 #endif
 
+#if KOTOR1
+#include "port/ios/IosLocalizedStrings.h"
+
+const char* GetLocalizedGamepadString(int nIndex) {
+    static IosLocalizedStrings s_strings("data/gamepad.txt", true);
+    return s_strings.GetString(nIndex, 6);
+}
+#endif
+
+#if KOTOR1
+            // party pair only while entry 1 is lit; no input-class reset and no key aliases
+void CSWGuiMainInterface::CSWGamepadMenuIos::HandleInputEvent(int nType, int nVal) {
+    K2_UNUSED(nVal);
+    int nDir = -1;
+    switch (nType) {
+    case INPUTEVENT_GUI_Y:
+        g_nOpenMapCountdown = 2;
+        // fallthrough
+    case INPUTEVENT_GUI_B:
+    lCloseGamepadMenu:
+        if (!m_bWasPausedByCombat)
+            g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 0, 0);
+    lRemoveGamepadMenu:
+        g_pGuiMan->RemovePanel(this);
+        break;
+    case INPUTEVENT_GUI_A:
+        switch (m_nSelectedEntry) {
+        case GPAD_ENTRY_MAP:
+            g_nOpenMapCountdown = 2;
+            break;
+        case GPAD_ENTRY_PARTY:
+            break;
+        case GPAD_ENTRY_SOLO:
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature();
+            g_pAppManager->m_pClientExoApp->TogglePartyFollow();
+            break;
+        case GPAD_ENTRY_STEALTH:
+            if (!m_bWasPausedByCombat)
+                g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 0, 0);
+            if (g_pAppManager->m_pClientExoApp->GetPlayerCreature()->IsStealthCapable())
+                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter()
+                    ->PartyMenuStealth(0, 0);
+            break;
+        case GPAD_ENTRY_QUICKSAVE:
+            g_pAppManager->m_pClientExoApp->SendSaveGameRequest(0, CExoString("QUICKSAVE"),
+                                                                CExoString("QUICKSAVE"));
+            break;
+        case GPAD_ENTRY_HELP: {
+            static bool s_bHasTouchScreen = HasTouchScreen();
+            ShowHelpInternal(!s_bHasTouchScreen);
+            g_nHelpSavedPausedByCombat = m_bWasPausedByCombat;
+            goto lRemoveGamepadMenu;
+        }
+        default:
+            return;
+        }
+        goto lCloseGamepadMenu;
+    case INPUTEVENT_GUI_DPAD_LEFT:
+        if (m_nSelectedEntry == GPAD_ENTRY_PARTY && m_nSelectedPartySlot > 0) {
+            --m_nSelectedPartySlot;
+            g_pAppManager->m_pClientExoApp
+                ->ChangeCharacter(m_nLastPartySlot == 2 ? 2 : 1, 1);
+            UpdateStealth();
+            LayoutGamepadMenu(false);
+        }
+        break;
+    case INPUTEVENT_GUI_DPAD_RIGHT:
+        if (m_nSelectedEntry == GPAD_ENTRY_PARTY && m_nSelectedPartySlot < m_nLastPartySlot) {
+            ++m_nSelectedPartySlot;
+            g_pAppManager->m_pClientExoApp->ChangeCharacter(1, 1);
+            UpdateStealth();
+            LayoutGamepadMenu(false);
+        }
+        break;
+    case INPUTEVENT_GUI_DPAD_DOWN:
+        nDir = 1;
+        // fallthrough
+    case INPUTEVENT_GUI_DPAD_UP: {
+        int nPrev = m_nSelectedEntry;
+        m_nSelectedEntry += nDir;
+        if (m_nSelectedEntry == GPAD_ENTRY_STEALTH && !m_bStealthCapable)
+            m_nSelectedEntry += nDir;
+        m_nSelectedEntry = (m_nSelectedEntry + GPAD_ENTRY_COUNT) % GPAD_ENTRY_COUNT;
+        if (m_nSelectedEntry != nPrev)
+            LayoutGamepadMenu(false);
+        break;
+    }
+    }
+}
+#endif
+
 const char* GetLocalizedCustomString(int nIndex) {
     static AspyrLocalizedStrings s_customStrings("override/custom.txt", true);
 #if !defined(K2_UI_TOUCH) || defined(K2_FIX_ENGINE_BUGS)
@@ -6945,19 +7891,12 @@ const char* GetLocalizedCustomMobileString(int nIndex) {
     return s_strings.GetString(nIndex, 8);
 }
 
-#if KOTOR1
-#include "port/ios/IosLocalizedStrings.h"
-#endif
-
+#if !KOTOR1
 const char* GetLocalizedGamepadString(int nIndex) {
-#if KOTOR1
-    static IosLocalizedStrings s_strings("data/gamepad.txt", true);
-    return s_strings.GetString(nIndex, 6);
-#else
     static AspyrLocalizedStrings s_strings("override/gamepad.txt", true);
     return s_strings.GetString(nIndex, 8);
-#endif
 }
+#endif
 
 // Substitutes "" for a missing entry, unlike the three lookups above.
 const char* GetLocalizedGmenuString(int nIndex) {
@@ -6968,731 +7907,7 @@ const char* GetLocalizedGmenuString(int nIndex) {
     return pResult;
 }
 
-#if KOTOR1
-static inline void OffsetControlX(CSWGuiControl& control, int nDelta) {
-    CSWGuiExtent extent = control.m_extent;
-    extent.x += nDelta;
-    control.SetExtent(extent);
-}
-
-// An iPhone screen is not 1024x768: re-anchor a 1024x768 rectangle to the right/bottom...
-static inline void IosAnchorRightBottom(CSWGuiExtent& extent, int nW, int nH) {
-    extent.x += nW > 1023 ? nW - 1024 : -((1024 - nW) / 2);
-    extent.y -= (768 - nH) / 2;
-}
-
-#ifdef K2_UI_TOUCH
-// ...to the right/top...
-static inline void IosAnchorRightTop(CSWGuiExtent& extent, int nW, int nH) {
-    extent.x += nW > 1023 ? nW - 1024 : -((1024 - nW) / 2);
-    extent.y += (768 - nH) / 2;
-}
-
-// ...or to the left/bottom.
-static inline void IosAnchorLeftBottom(CSWGuiExtent& extent, int nW, int nH) {
-    if (nW <= 1023)
-        extent.x += (1024 - nW) / 2;
-    extent.y -= (768 - nH) / 2;
-}
-#endif
-
-#endif
-
-#if KOTOR1
-CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
-    : CSWGuiPanel(pGuiManager),
-      m_gamepadMenu(pGuiManager, this),
-      m_actionMenuIos(pGuiManager, this),
-      m_helpPanel(pGuiManager, this)
-{
-    CExoString sName;
-    CSWGuiLabel sScratch;
-
-    CSWGuiFloatyText::m_pMainInterface = this;
-#ifdef K2_UI_TOUCH
-    StartLoadFromLayout(CResRef("ymipc210x7"));
-#else
-    // pc / xbox: `ymipc210x7` ships only as the phone variant; the PC HUD at the port's 1024x768
-    // design size is the desktop layout `mipc210x7` (gui.bzf: the menu bar, the four action columns with
-    // their arrows, the three target columns, TB_PAUSE / TB_SOLO / TB_STEALTH).
-#ifdef K1_UI_XBOX
-    // xbox: the console HUD, `maininterface` -- what the Switch loads at any width but 800
-    // (mi8x6 is the same layout at 800x600): six LBH_BORDER boxes bottom left, the portraits
-    // stacked bottom right, the minimap top right, no menu bar.
-    StartLoadFromLayout(CResRef("maininterface"));
-#else
-    StartLoadFromLayout(CResRef("mipc210x7"));
-#endif
-#endif
-    m_stateFlags |= 1;
-    for (int i = 0; i < 6; i++)
-        m_personalActionWidgets[i].Initialize(this, i, 0);
-#pragma clang loop unroll(disable)
-    for (int i = -3; i != 0; i++)
-        m_aCharacters[i + 3].Initialize(this, i + 4);
-    m_charOffscreen.Initialize(this, 4);
-
-    for (int i = 0; i < 4; i++) {
-        sName.Format(const_cast<char*>("LBL_QUEUE%d"), i);  // idiom-exempt: char* literal, Format's parameter type
-        InitControl(m_actionQueueIcons[i], sName, 1);
-        ShiftControlExtent(m_actionQueueIcons[i], 0, -1);
-    }
-    for (int i = 0; i < 9; i++)
-        m_statusIcons[i].Initialize(this, static_cast<unsigned char>(i));
-    m_targetActionMenu.Initialize(this);
-    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 1);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblMoulding1, sName, 1);
-    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 2);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblMoulding2, sName, 1);
-    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 3);  // idiom-exempt: char* literal, Format's parameter type
-    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 1);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblCombatBg1, sName, 1);
-    ShiftControlExtent(m_lblCombatBg1, 0, -1);
-    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 2);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblCombatBg2, sName, 1);
-    ShiftControlExtent(m_lblCombatBg2, 0, -1);
-    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 3);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblCombatBg3, sName, 1);
-    ShiftControlExtent(m_lblCombatBg3, 0, -1);
-    InitControl(m_btnClearOne, CExoString("BTN_CLEARONE"), 1);
-    InitControl(m_btnClearOne2, CExoString("BTN_CLEARONE2"), 1);
-    InitControl(m_btnClearAll, CExoString("BTN_CLEARALL"), 1);
-    ShiftControlExtent(m_btnClearOne, 0, -1);
-    ShiftControlExtent(m_btnClearOne2, 0, -1);
-    ShiftControlExtent(m_btnClearAll, 0, -1);
-#ifdef K1_UI_XBOX
-    // xbox: the console queue is the layout's (LBL_BG1 + LBL_HIGHLIGHT + LBL_QUEUE0..3, beside the
-    // action box) and it has no BTN_CLEARALL to centre on.
-    if (false)
-#endif
-    {
-        // Centre BTN_CLEARALL on the screen and drag the whole combat-queue group along with it.
-        CSWGuiExtent extent = m_btnClearAll.m_extent;
-        int nOldX = extent.x;
-        extent.x = (g_SDL_mode.w - extent.w) / 2;
-        m_btnClearAll.SetExtent(extent);
-        static bool s_bHasTouchScreen = HasTouchScreen();
-        int nDelta = extent.x - nOldX;
-        if (!s_bHasTouchScreen)
-            m_btnClearAll.m_tail.bVisible = 0;
-        OffsetControlX(m_actionQueueIcons[0], nDelta);
-        OffsetControlX(m_actionQueueIcons[1], nDelta);
-        OffsetControlX(m_actionQueueIcons[2], nDelta);
-        OffsetControlX(m_actionQueueIcons[3], nDelta);
-        OffsetControlX(m_lblCombatBg1, nDelta);
-        OffsetControlX(m_lblCombatBg2, nDelta);
-        OffsetControlX(m_lblCombatBg3, nDelta);
-        OffsetControlX(m_actionQueueHilight, nDelta);
-        OffsetControlX(m_btnClearOne, nDelta);
-        OffsetControlX(m_btnClearOne2, nDelta);
-    }
-    InitControl(m_actionDescLabel, CExoString("LBL_ACTIONDESC"), 1);
-    ShiftControlExtent(m_actionDescLabel, -1, -1);
-    InitControl(m_actionDescLabel2, CExoString("LBL_ACTIONDESCBG"), 1);
-    ShiftControlExtent(m_actionDescLabel2, -1, -1);
-    InitControl(m_miniMap, CExoString("LBL_MAPBORDER"), 1);
-    InitControl(m_lblArrow, CExoString("LBL_ARROW"), 0);
-    InitControl(m_miniMapImage, CExoString("LBL_MAP"), 0);
-    InitControl(sScratch, CExoString("LBL_MAPVIEW"), 0);
-    InitControl(m_altMenuButton, CExoString("BTN_MINIMAP"), 1);
-    InitControl(m_lblCombatModeMsg, CExoString("LBL_CMBTMODEMSG"), 1);
-#ifdef K2_UI_TOUCH
-    {
-        CSWGuiExtent extent = m_lblCombatModeMsg.m_extent;
-        extent.w -= 90;
-        AndroidExtentShift(extent, 1, 0);
-        m_lblCombatModeMsg.SetExtent(extent);
-    }
-    m_miniMap.m_border.m_params.SetFillImage(CResRef("ios_lbl_minimap"), 0);
-    m_miniMap.m_border.m_params.m_flags.nFillStyle = 2;
-#else
-    ShiftControlExtent(m_lblCombatModeMsg, 0, 1);   // pc / xbox: the banner, top centre
-#endif
-    m_lblCombatModeMsg2.CSWGuiLabel::Initialize(m_lblCombatModeMsg.m_extent, &m_lblCombatModeMsg, 1.0f);
-    InitControl(m_lblCombatMsgBg, CExoString("LBL_CMBTMSGBG"), 1);
-#ifndef K2_UI_TOUCH
-    ShiftControlExtent(m_lblCombatMsgBg, 0, 1);
-#endif
-    m_lblCombatModeMsg.m_tail.bVisible = 0;
-    m_lblCombatMsgBg.m_tail.bVisible = 0;
-    m_lblCombatModeMsg2.m_tail.bVisible = 0;
-    m_lblCombatModeMsg2.m_text.m_params.SetText(g_pTlkTable->GetSimpleString(STRREF_HOTKEY_HINT));
-    InitControl(m_btnEquip, CExoString("BTN_EQU"), 1);
-    InitControl(m_btnInventory, CExoString("BTN_INV"), 1);
-    InitControl(m_btnCharacter, CExoString("BTN_CHAR"), 1);
-    InitControl(m_btnAbilities, CExoString("BTN_ABI"), 1);
-    InitControl(m_btnMessages, CExoString("BTN_MSG"), 1);
-    InitControl(m_btnJournal, CExoString("BTN_JOU"), 1);
-    InitControl(m_btnMap, CExoString("BTN_MAP"), 1);
-    InitControl(m_btnOptions, CExoString("BTN_OPT"), 1);
-    InitControl(m_lblMenuBg, CExoString("LBL_MENUBG"), 1);
-    InitControl(m_lblArrowMargin, CExoString("LBL_ARROW_MARGIN"), 1);
-#ifdef K1_UI_XBOX
-    // xbox: `maininterface` has no LBL_ARROW_MARGIN, and UpdateIndicator only puts the reticle on
-    // the target inside this rectangle (inset 32) -- empty, every target got an edge arrow at the
-    // left of the screen instead. The console's rectangle is the whole screen.
-    if (m_lblArrowMargin.m_extent.w <= 0 || m_lblArrowMargin.m_extent.h <= 0)
-        m_lblArrowMargin.SetExtent(
-            CSWGuiExtent(0, 0, m_pGuiManager->m_nScreenWidth, m_pGuiManager->m_nScreenHeight));
-#endif
-#if defined(K2_UI_TOUCH) && defined(K2_FIX_ENGINE_BUGS)
-    // touch: the layout's rectangle is in units of a 1024-high screen, so scale it into screen
-    // pixels and span the whole width; the reticle then reaches the screen's edges on a larger one.
-    {
-        float fScale = static_cast<float>(m_pGuiManager->m_nScreenHeight) / 1024.0f;
-        CSWGuiExtent sMargin = m_lblArrowMargin.m_extent;
-        sMargin.x = static_cast<int>(fScale * sMargin.x);
-        sMargin.w = m_pGuiManager->m_nScreenWidth - 2 * sMargin.x;
-        sMargin.y = static_cast<int>(fScale * sMargin.y);
-        sMargin.h = static_cast<int>(fScale * sMargin.h);
-        m_lblArrowMargin.SetExtent(sMargin);
-    }
-#endif
-    InitControl(m_tbPause, CExoString("TB_PAUSE"), 1);
-    InitControl(m_tbSolo, CExoString("TB_SOLO"), 1);
-    InitControl(m_tbStealth, CExoString("TB_STEALTH"), 1);
-#ifdef K1_UI_XBOX
-    // xbox: the console layout's own pieces in the slots its PC tags leave empty -- the portraits'
-    // blue curve where a PC moulding was, the combat queue's backdrop and the ring over the
-    // executing action (which no PC/touch tag names), and the caption plate's bottom cap
-    // (LBL_ACTIONDESCBG2, under the box row; the plate above it is clipped to meet it in Draw).
-    InitControl(m_lblMoulding1, CExoString("LBL_ACTIONDESCBG2"), 1);
-    ShiftControlExtent(m_lblMoulding1, 0, 0);
-    InitControl(m_lblMoulding2, CExoString("LBL_BG2"), 1);
-    ShiftControlExtent(m_lblMoulding2, 0, 0);
-    InitControl(m_lblCombatBg1, CExoString("LBL_BG1"), 1);
-    ShiftControlExtent(m_lblCombatBg1, 0, -1);
-    InitControl(m_actionQueueHilight, CExoString("LBL_HIGHLIGHT"), 1);
-    ShiftControlExtent(m_actionQueueHilight, 0, -1);
-    K1ConsoleSaveCaption(m_actionDescLabel.m_extent, m_actionDescLabel2.m_extent);
-#endif
-    StopLoadFromLayout();
-#if !defined(K2_UI_TOUCH) && !defined(K1_UI_XBOX)
-    // pc / xbox: the PC HUD's own pieces where its layout puts them -- the menu bar and its
-    // backdrop top right, the three toggles and the mouldings bottom left -- and the target menu's
-    // margin (read just below) in screen units.
-    ShiftControlExtent(m_btnEquip, -1, 1);
-    ShiftControlExtent(m_btnInventory, -1, 1);
-    ShiftControlExtent(m_btnCharacter, -1, 1);
-    ShiftControlExtent(m_btnAbilities, -1, 1);
-    ShiftControlExtent(m_btnMessages, -1, 1);
-    ShiftControlExtent(m_btnJournal, -1, 1);
-    ShiftControlExtent(m_btnMap, -1, 1);
-    ShiftControlExtent(m_btnOptions, -1, 1);
-    ShiftControlExtent(m_lblMenuBg, -1, 1);
-    ShiftControlExtent(m_tbPause, 1, -1);
-    ShiftControlExtent(m_tbSolo, 1, -1);
-    ShiftControlExtent(m_tbStealth, 1, -1);
-    ShiftControlExtent(m_lblMoulding1, 1, -1);
-    ShiftControlExtent(m_lblMoulding2, 1, -1);
-    ShiftControlExtent(m_lblArrowMargin, 0, 0);
-    ShiftControlExtent(m_altMenuButton, 1, 1);
-    // The reticle's margin spans the screen's width; the layout's is the 4:3 composition's, which
-    // ends three quarters across a 16:9 screen.
-    {
-        CSWGuiExtent sMargin = m_lblArrowMargin.m_extent;
-        sMargin.w = m_pGuiManager->m_nScreenWidth - 2 * sMargin.x;
-        m_lblArrowMargin.SetExtent(sMargin);
-    }
-#endif
-
-    m_targetActionMenu.m_aViewport[4] = m_lblArrowMargin.m_extent.x;
-    m_targetActionMenu.m_aViewport[5] = m_lblMenuBg.m_extent.y + m_lblMenuBg.m_extent.h;
-    m_targetActionMenu.m_aViewport[6] = m_pGuiManager->m_nScreenWidth - m_targetActionMenu.m_aViewport[4] * 2;
-    m_targetActionMenu.m_aViewport[7] = m_tbPause.m_extent.y - m_targetActionMenu.m_aViewport[5];
-    AddControl(&m_lblCombatModeMsg2);
-    if (m_pGuiManager->m_nScreenWidth >= 1024) {
-        CSWGuiExtent sExtent;
-        sExtent.x = m_extent.x;
-        sExtent.y = m_extent.y;
-        sExtent.w = g_nScreenWidth;
-        sExtent.h = g_nScreenHeight;
-        SetExtent(sExtent);
-    }
-    int nSafeMarginA;
-    int nSafeMarginB;
-    m_pGuiManager->GetSafeMargin(nSafeMarginA, nSafeMarginB);
-    m_interfaceOffset = 0;
-    m_fCombatMessageTimer = -1.0f;
-    CSWGuiExtent sMap = m_miniMapImage.m_extent;
-    m_miniMapImage.SetExtent(sMap);
-    m_nMapWidth = m_miniMapImage.m_extent.w;
-    m_nMapHeight = m_miniMapImage.m_extent.h;
-#ifdef K1_UI_XBOX
-    // xbox: LBL_MAP is the map texture's 512 in `maininterface`'s 640 units, which the layout scale
-    // made 819; the image size and GetPartyMemberMapLocation's projection are in the texture's own.
-    m_nMapWidth = m_nMapWidth * 640 / 1024;
-    m_nMapHeight = m_nMapHeight * 640 / 1024;
-#endif
-    m_mapViewExtent = sScratch.m_extent;
-    AndroidExtentShift(m_mapViewExtent, 1, 1);
-    sScratch.SetExtent(m_mapViewExtent);
-    CSWGuiExtent sArrow = m_lblArrow.m_extent;
-    sArrow.w = static_cast<int>(AndroidHudScaleFactor() * sArrow.w);
-    sArrow.h = static_cast<int>(AndroidHudScaleFactor() * sArrow.h);
-    sArrow.x = (m_mapViewExtent.w - sArrow.w) / 2;
-    sArrow.y = (m_mapViewExtent.h - sArrow.h) / 2;
-    m_lblArrow.SetExtent(sArrow);
-    CSWGuiExtent sMiniMap = m_miniMap.m_extent;
-    AndroidExtentShift(sMiniMap, 1, 1);
-    m_miniMap.SetExtent(sMiniMap);
-#ifdef K1_UI_XBOX
-    // xbox: no BTN_MINIMAP in `maininterface` either; the minimap's frame becomes the button that
-    // opens the Map page (OnMenuButtonPressed's m_altMenuButton arm), as the touch HUD's does.
-    if (m_altMenuButton.m_extent.w <= 0 || m_altMenuButton.m_extent.h <= 0) {
-        m_altMenuButton.SetExtent(sMiniMap);
-        bool bListed = false;
-        for (int i = 0; i < m_controls.m_count; i++)
-            if (m_controls.m_pArray[i] == &m_altMenuButton)
-                bListed = true;
-        if (!bListed)
-            AddControl(&m_altMenuButton);
-    }
-#endif
-    m_lblTargetIndicator.m_tail.bIgnoreMouse = 1;
-    m_lblTargetIndicator.m_border.m_params.m_flags.nFillStyle = 2;
-    AddControl(&m_lblTargetIndicator);
-    CSWGuiExtent sReticle;
-    sReticle.x = 0;
-    sReticle.y = 0;
-    sReticle.w = 16;
-    sReticle.h = 16;
-    m_reticleLabel.SetExtent(sReticle);
-    m_reticleLabel.m_tail.bVisible = 0;
-    m_reticleLabel.m_tail.bIgnoreMouse = 1;
-    m_reticleLabel.m_border.m_params.m_flags.nFillStyle = 2;
-    AddControl(&m_reticleLabel);
-    m_mouseOverTargetId = OBJECT_INVALID;
-    m_targetId = OBJECT_INVALID;
-    m_lastPlayerId = OBJECT_INVALID;
-    m_fReticlePulseTimer = -1.0f;
-    m_fChallengeRating = -1.0f;
-    for (int i = 0; i < 6; i++)
-        m_personalActionIds[i] = -1;
-    m_nInterfaceFlags |= 2;
-    m_fRotationTimer = 0;
-    ShowActionQueue(0);
-    m_combatMessage = STRREF_COMBAT_MODE_ENGAGED;
-    m_bToolTipMessageShown = 0;
-
-    m_btnEquip.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_btnInventory.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_btnCharacter.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_btnAbilities.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_btnJournal.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_btnMessages.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_btnMap.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_btnOptions.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_altMenuButton.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnMenuButtonPressed));
-    m_btnEquip.m_tail.bFocusOnHover = 0;
-    m_btnInventory.m_tail.bFocusOnHover = 0;
-    m_btnCharacter.m_tail.bFocusOnHover = 0;
-    m_btnAbilities.m_tail.bFocusOnHover = 0;
-    m_btnJournal.m_tail.bFocusOnHover = 0;
-    m_btnMessages.m_tail.bFocusOnHover = 0;
-    m_btnMap.m_tail.bFocusOnHover = 0;
-    m_btnOptions.m_tail.bFocusOnHover = 0;
-    m_altMenuButton.m_tail.bFocusOnHover = 0;
-    m_btnClearOne.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnClearOneButtonPressed));
-    m_btnClearOne2.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnClearOneButtonPressed));
-    m_btnClearAll.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnClearAllButtonPressed));
-    m_btnClearOne.m_tail.bFocusOnHover = 0;
-    m_btnClearOne2.m_tail.bFocusOnHover = 0;
-    m_btnClearAll.m_tail.bFocusOnHover = 0;
-    m_lblArrowMargin.m_tail.bVisible = 0;
-    m_lblArrowMargin.m_tail.bFocusOnHover = 0;
-    m_tbPause.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnPauseButtonPressed));
-    m_tbSolo.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnSoloButtonPressed));
-    m_tbStealth.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnStealthButtonPressed));
-    m_tbPause.m_tail.bFocusOnHover = 0;
-    m_tbSolo.m_tail.bFocusOnHover = 0;
-    m_tbStealth.m_tail.bFocusOnHover = 0;
-    m_pFogOfWarImage = NewCAurGUIImage(const_cast<char*>("blackdot"));
-    CSWGuiText* pDescText = &m_actionDescLabel.m_text;
-    m_nFocusedAction = 0;
-    m_lblCombatModeMsg.m_text.m_params.SetText(CExoString(""));
-    m_nActionDescBottom = m_actionDescLabel.m_extent.y + m_actionDescLabel.m_extent.h;
-    {
-        CExoString sCaption("");
-        m_actionDescLabel.m_text.m_params.SetText(sCaption);
-        CSWGuiExtent sExtent = m_actionDescLabel.m_extent;
-        sExtent.h = pDescText->GetIdealHeight();
-        sExtent.y = m_nActionDescBottom - sExtent.h;
-        m_actionDescLabel.SetExtent(sExtent);
-        m_actionDescLabel2.SetExtent(sExtent);
-    }
-    UpdateActionDescription();
-    m_btnEquip.m_nToolTipStrRef = STRREF_TIP_EQUIP;   m_btnEquip.m_nBoundInputEventId = INPUTEVENT_PANEL_EQUIP;
-    m_btnInventory.m_nToolTipStrRef = STRREF_TIP_INVENTORY;   m_btnInventory.m_nBoundInputEventId = INPUTEVENT_PANEL_INVENTORY;
-    m_btnCharacter.m_nToolTipStrRef = STRREF_TIP_CHARACTER;   m_btnCharacter.m_nBoundInputEventId = INPUTEVENT_PANEL_CHARACTER;
-    m_btnMap.m_nToolTipStrRef = STRREF_TIP_MAP;   m_btnMap.m_nBoundInputEventId = INPUTEVENT_PANEL_MAP;
-    m_altMenuButton.m_nToolTipStrRef = STRREF_TIP_MAP;    m_altMenuButton.m_nBoundInputEventId = INPUTEVENT_PANEL_MAP;
-    m_btnAbilities.m_nToolTipStrRef = STRREF_TIP_ABILITIES;   m_btnAbilities.m_nBoundInputEventId = INPUTEVENT_PANEL_ABILITIES;
-    m_btnJournal.m_nToolTipStrRef = STRREF_TIP_JOURNAL;   m_btnJournal.m_nBoundInputEventId = INPUTEVENT_PANEL_JOURNAL;
-    m_btnOptions.m_nToolTipStrRef = STRREF_TIP_OPTIONS;    m_btnOptions.m_nBoundInputEventId = INPUTEVENT_PANEL_OPTIONS;
-    m_btnMessages.m_nToolTipStrRef = STRREF_TIP_MESSAGES;  m_btnMessages.m_nBoundInputEventId = INPUTEVENT_PANEL_MESSAGES;
-    m_tbPause.m_nToolTipStrRef = STRREF_TIP_PAUSE; m_tbPause.m_nBoundInputEventId = INPUTEVENT_PAUSE_ALT;
-    m_tbSolo.m_nToolTipStrRef = STRREF_TIP_SOLO_MODE; m_tbSolo.m_nBoundInputEventId = INPUTEVENT_PARTY_ACTIVE;
-    m_tbStealth.m_nToolTipStrRef = STRREF_SKILL_STEALTH;   m_tbStealth.m_nBoundInputEventId = INPUTEVENT_STEALTH;
-    m_btnClearOne.m_nToolTipStrRef = STRREF_TIP_CLEAR_COMBAT_ACTION;     m_btnClearOne.m_nBoundInputEventId = INPUTEVENT_CLEAR_ONE_ACTION;
-    m_btnClearOne2.m_nToolTipStrRef = STRREF_TIP_CLEAR_COMBAT_ACTION;     m_btnClearOne2.m_nBoundInputEventId = INPUTEVENT_CLEAR_ONE_ACTION;
-    m_btnClearAll.m_nToolTipStrRef = STRREF_TIP_DISENGAGE;     m_btnClearAll.m_nBoundInputEventId = INPUTEVENT_CANCEL_COMBAT;
-#ifndef K2_UI_PC  // pc: the caption sits on the bar, where the PC layout puts it
-    m_nActionDescBottom = static_cast<int>(static_cast<float>(m_nActionDescBottom) + AndroidHudScaleFactor() * -40.0f);
-#endif
-
-    // The top-right menu buttons and the bottom-left moulding are K1 skins, hand-placed.
-#ifdef K2_UI_TOUCH
-    int nW;
-    int nH;
-    m_btnEquip.m_border.m_params.SetFillImage(CResRef("ios_lbl_miequ"), 0);
-    m_btnEquip.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnEquip.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miequ2"), 0);
-    m_btnEquip.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    CSWGuiExtent sExtent = { 927, 0, 96, 96 };
-    if (IosIsIphone(nW, nH))
-        IosAnchorRightTop(sExtent, nW, nH);
-    AndroidExtentShift(sExtent, -1, 1);
-    m_btnEquip.SetExtent(sExtent);
-    m_btnInventory.m_border.m_params.SetFillImage(CResRef("ios_lbl_miinv"), 0);
-    m_btnInventory.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnInventory.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miinv2"), 0);
-    m_btnInventory.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    CSWGuiExtent sHidden = { 0, 10, 0, 0 };
-    sExtent = sHidden;
-    AndroidExtentShift(sExtent, 1, 1);
-    m_btnInventory.SetExtent(sExtent);
-    m_btnOptions.m_border.m_params.SetFillImage(CResRef("ios_lbl_miopt"), 0);
-    m_btnOptions.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnOptions.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miopt2"), 0);
-    m_btnOptions.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    sExtent = sHidden;
-    AndroidExtentShift(sExtent, 1, 1);
-    m_btnOptions.SetExtent(sExtent);
-    sExtent = { 6, 512, 104, 148 };
-    if (IosIsIphone(nW, nH))
-        IosAnchorLeftBottom(sExtent, nW, nH);
-    AndroidExtentShift(sExtent, 1, -1);
-    m_lblMoulding1.m_border.m_params.SetFillImage(CResRef("ios_lower_left"), 0);
-    m_lblMoulding1.m_border.m_params.m_flags.nFillStyle = 2;
-    CSWGuiControl* pMoulding = &m_lblMoulding1;
-    pMoulding->SetExtent(sExtent);
-
-    // The three toggles sit bottom-left, white in both states.
-    sExtent = { 12, 517, 92, 92 };
-    if (IosIsIphone(nW, nH))
-        IosAnchorLeftBottom(sExtent, nW, nH);
-    AndroidExtentShift(sExtent, 1, -1);
-    m_tbPause.SetExtent(sExtent);
-    m_tbPause.m_border.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
-    m_tbPause.m_border.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
-    m_tbPause.m_border.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
-    m_tbPause.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
-    m_tbPause.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
-    m_tbPause.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
-    sExtent = { 10, 601, 46, 52 };
-    if (IosIsIphone(nW, nH))
-        IosAnchorLeftBottom(sExtent, nW, nH);
-    AndroidExtentShift(sExtent, 1, -1);
-    m_tbSolo.SetExtent(sExtent);
-    m_tbSolo.m_border.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
-    m_tbSolo.m_border.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
-    m_tbSolo.m_border.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
-    m_tbSolo.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
-    m_tbSolo.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
-    m_tbSolo.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
-    sExtent = { 60, 601, 46, 52 };
-    if (IosIsIphone(nW, nH))
-        IosAnchorLeftBottom(sExtent, nW, nH);
-    AndroidExtentShift(sExtent, 1, -1);
-    m_tbStealth.SetExtent(sExtent);
-    m_tbStealth.m_border.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
-    m_tbStealth.m_border.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
-    m_tbStealth.m_border.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
-    m_tbStealth.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
-    m_tbStealth.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
-    m_tbStealth.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
-#else
-    CSWGuiExtent sExtent;
-#endif
-
-    // The pop-up action menu is full screen, two halves with a close button each, 32 slots.
-    sExtent.x = 0;
-    sExtent.y = 0;
-    sExtent.w = g_SDL_mode.w;
-    sExtent.h = g_SDL_mode.h;
-    m_actionMenuIos.SetExtent(sExtent);
-    m_actionMenuIos.m_vColor.x = -2.0f;
-    m_actionMenuIos.m_vColor.y = -2.0f;
-    m_actionMenuIos.m_vColor.z = -2.0f;
-    m_actionMenuIos.m_stateFlags |= 1;
-    int nScreenW;
-    int nScreenH;
-    if (IosIsIphone(nScreenW, nScreenH)) {
-        s_fIosActionMenuTop = s_fIosActionMenuIphoneTop;
-        s_fIosActionMenuPitch = s_fIosActionMenuIphonePitch;
-        if (nScreenW > 1024) {
-            IOS_ACTION_MENU_SHIFT_X = static_cast<float>(nScreenW - 1031);
-            IOS_ACTION_MENU_GROW_X = 20.0f;
-        }
-    }
-    const CSWGuiExtent sCloseExtent = { 720, 700, 230, 47 };
-    for (int i = 0; i < 2; i++) {
-        sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 614.0f);
-        sExtent.y = 0;
-        sExtent.w = static_cast<int>(IOS_ACTION_MENU_GROW_X + 410.0f);
-        sExtent.h = 768;
-        AndroidExtentShift(sExtent, -1, 1);
-        CResRef sBg(i ? "ios_action_bg2" : "ios_action_bg");
-        m_actionMenuHalves[i].m_border.m_params.SetFillImage(sBg, 0);
-        m_actionMenuHalves[i].m_border.m_params.m_flags.nFillStyle = 2;
-        m_actionMenuHalves[i].m_borderHilight.m_params.SetFillImage(sBg, 0);
-        m_actionMenuHalves[i].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_actionMenuHalves[i].SetExtent(sExtent);
-        m_actionMenuHalves[i].m_text.m_params.SetText(CExoString(""));
-        m_actionMenuHalves[i].m_tail.bFocusOnHover = 0;
-        m_actionMenuIos.AddControl(&m_actionMenuHalves[i]);
-        SendControlToBack(&m_actionMenuHalves[i]);
-        sExtent = sCloseExtent;
-        int nCloseW;
-        int nCloseH;
-        if (IosIsIphone(nCloseW, nCloseH))
-            IosAnchorRightBottom(sExtent, nCloseW, nCloseH);
-        AndroidExtentShift(sExtent, -1, -1);
-        CResRef sClose(i ? "ios_action_x2" : "ios_action_x");
-        m_actionMenuCloseButtons[i].m_border.m_params.SetFillImage(sClose, 0);
-        m_actionMenuCloseButtons[i].m_border.m_params.m_flags.nFillStyle = 2;
-        m_actionMenuCloseButtons[i].m_borderHilight.m_params.SetFillImage(sClose, 0);
-        m_actionMenuCloseButtons[i].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_actionMenuCloseButtons[i].SetExtent(sExtent);
-        m_actionMenuCloseButtons[i].m_text.m_params.SetText(CExoString(""));
-        m_actionMenuCloseButtons[i].m_tail.bFocusOnHover = 0;
-        m_actionMenuIos.AddControl(&m_actionMenuCloseButtons[i]);
-        SendControlToBack(&m_actionMenuCloseButtons[i]);
-        m_actionMenuCloseButtons[i].AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HandleButtonActionX));
-    }
-    for (int64_t i = 0; i < 32; i++) {
-        CSWGuiButton& slot = m_actionSlots[i];
-        sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 650.0f);
-        sExtent.y = static_cast<int>(s_fIosActionMenuPitch * static_cast<float>(i) + s_fIosActionMenuTop);
-        sExtent.w = 360;
-        sExtent.h = 56;
-        AndroidExtentShift(sExtent, -1, 1);
-        slot.m_text.m_params.SetAlignment(SWGUIALIGN_MIDDLE | SWGUIALIGN_RIGHT);
-        slot.m_text.m_params.SetText(CExoString(""));
-        slot.m_tail.m_nUserData = i;
-        slot.SetExtent(sExtent);
-        sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 950.0f);
-        sExtent.y = static_cast<int>(s_fIosActionMenuPitch * static_cast<float>(i) + s_fIosActionMenuTop);
-        sExtent.w = 56;
-        sExtent.h = 56;
-        AndroidExtentShift(sExtent, -1, 1);
-        CSWGuiBorder* pBorder = &slot.m_border;
-        pBorder->SetExtent(sExtent);
-        CSWGuiBorder* pHilight = &slot.m_borderHilight;
-        pHilight->SetExtent(sExtent);
-        sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 640.0f);
-        sExtent.y = static_cast<int>(s_fIosActionMenuPitch * static_cast<float>(i) + s_fIosActionMenuTop);
-        sExtent.w = 300;
-        sExtent.h = 56;
-        AndroidExtentShift(sExtent, -1, 1);
-        CSWGuiText* pText = &slot.m_text;
-        pText->SetExtent(sExtent);
-        m_actionMenuIos.AddControl(&slot);
-        slot.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
-            static_cast<void (CSWGuiMainInterface::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HandleButtonAction)));
-    }
-    RelayoutActionMenu(0);
-
-    // The top-right corner plate.
-#ifdef K2_UI_TOUCH  // pc / xbox: no corner plate, help or quicksave button (keys and menus do that)
-    bool bIphone = IosIsIphone(nScreenW, nScreenH);
-    sExtent.x = bIphone ? 786 : 800;
-    sExtent.y = 0;
-    sExtent.w = bIphone ? 238 : 225;
-    sExtent.h = bIphone ? 98 : 99;
-    if (IosIsIphone(nW, nH))
-        IosAnchorRightTop(sExtent, nW, nH);
-    AndroidExtentShift(sExtent, -1, 1);
-    m_btnCornerPlate.SetExtent(sExtent);
-    m_btnCornerPlate.m_text.m_params.SetText(CExoString(""));
-    m_btnCornerPlate.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_upper_right") : CResRef("ios_upper_right"), 0);
-    m_btnCornerPlate.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnCornerPlate.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_upper_right") : CResRef("ios_upper_right"), 0);
-    m_btnCornerPlate.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    m_btnCornerPlate.m_tail.bFocusOnHover = 0;
-    m_btnCornerPlate.SetEnabled(0);
-    AddControl(&m_btnCornerPlate);
-    SendControlToBack(&m_btnCornerPlate);
-#endif
-
-    // The gamepad menu covers the whole screen.
-    const CSWGuiExtent sFullScreen = { 0, 0, 1024, 768 };
-    sExtent = sFullScreen;
-    if (IosIsIphone(nScreenW, nScreenH) && nScreenW > 1024) {
-        sExtent.x = 0;
-        sExtent.y = 0;
-        sExtent.w = nScreenW;
-        sExtent.h = 768;
-    }
-    sExtent.x = 0;
-    sExtent.y = 0;
-    sExtent.w = g_SDL_mode.w;
-    sExtent.h = g_SDL_mode.h;
-    m_gamepadMenu.SetExtent(sExtent);
-    m_gamepadMenu.m_stateFlags |= 1;
-    m_gamepadMenu.m_vColor.x = -2.0f;
-    m_gamepadMenu.m_vColor.y = -2.0f;
-    m_gamepadMenu.m_vColor.z = -2.0f;
-    m_gamepadMenu.LayoutGamepadMenu(true);
-
-    // Help and quicksave, under the corner plate.
-#ifdef K2_UI_TOUCH
-    int nTopY = bIphone ? 7 : 5;
-    int nTopH = bIphone ? 70 : 46;
-    sExtent.x = bIphone ? 861 : 872;
-    sExtent.y = nTopY;
-    sExtent.w = bIphone ? 90 : 76;
-    sExtent.h = nTopH;
-    if (IosIsIphone(nW, nH))
-        IosAnchorRightTop(sExtent, nW, nH);
-    AndroidExtentShift(sExtent, -1, 1);
-    m_btnCornerHelp.SetExtent(sExtent);
-    m_btnCornerHelp.m_text.m_params.SetText(CExoString(""));
-    m_btnCornerHelp.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_help") : CResRef("ios_help"), 0);
-    m_btnCornerHelp.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnCornerHelp.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_help2") : CResRef("ios_help2"), 0);
-    m_btnCornerHelp.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    m_btnCornerHelp.m_tail.bFocusOnHover = 0;
-    AddControl(&m_btnCornerHelp);
-    m_btnCornerHelp.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::ShowHelp));
-    sExtent.x = bIphone ? 792 : 807;
-    sExtent.y = nTopY;
-    sExtent.w = bIphone ? 90 : 69;
-    sExtent.h = nTopH;
-    if (IosIsIphone(nW, nH))
-        IosAnchorRightTop(sExtent, nW, nH);
-    AndroidExtentShift(sExtent, -1, 1);
-    m_btnQuickSave.SetExtent(sExtent);
-    m_btnQuickSave.m_text.m_params.SetText(CExoString(""));
-    m_btnQuickSave.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_quicksave") : CResRef("ios_quicksave"), 0);
-    m_btnQuickSave.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnQuickSave.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_quicksave2") : CResRef("ios_quicksave2"), 0);
-    m_btnQuickSave.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    m_btnQuickSave.m_tail.bFocusOnHover = 0;
-    AddControl(&m_btnQuickSave);
-    m_btnQuickSave.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::Quicksave));
-#endif
-
-    // The help overlay puts the page image and five click-to-close buttons over the whole screen
-    // (letterboxed on an iPhone, with the background stretched past the bars on a wide one).
-    sExtent = sFullScreen;
-    CSWGuiExtent sBackground = { 0, 0, 0, 0 };
-    int bWide;
-    int nHelpW;
-    int nHelpH;
-    if (IosIsIphone(nHelpW, nHelpH)) {
-        if (nHelpW > 1023) {
-            sBackground.x = -1;
-            sBackground.y = 0;
-            sBackground.w = nHelpW + 1;
-            sBackground.h = nHelpH + 2;
-            sExtent.x = 0;
-            sExtent.y = (768 - nHelpH) / 2;
-            sExtent.w = nHelpW;
-            sExtent.h = nHelpH + 1;
-            bWide = 1;
-        } else {
-            sExtent.x = (1024 - nHelpW) / 2;
-            sExtent.y = (768 - nHelpH) / 2;
-            sExtent.w = nHelpW;
-            sExtent.h = nHelpH + 1;
-            bWide = 0;
-        }
-    } else {
-        bWide = 0;
-    }
-    AndroidExtentShift(sExtent, 1, 1);
-    AndroidExtentShift(sBackground, 1, 1);
-#ifdef K2_QOL_CONTROLLER
-    // In the port, the overlay, its dimmed backdrop and its tap-to-close area cover the whole
-    // screen, whatever its shape (IosIsIphone's 1136x640 page is 16:9 at the HUD scale).
-    sExtent.x = 0;
-    sExtent.y = 0;
-    sExtent.w = g_SDL_mode.w;
-    sExtent.h = g_SDL_mode.h;
-    if (bWide) {
-        sBackground.x = -1;
-        sBackground.y = 0;
-        sBackground.w = g_SDL_mode.w + 1;
-        sBackground.h = g_SDL_mode.h + 2;
-    }
-#endif
-    m_btnHelpClose.SetExtent(sExtent);
-    m_btnHelpClose.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpClose.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpClose.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpClose.m_tail.bFocusOnHover = 0;
-    m_btnHelpClose.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpPage.SetExtent(sExtent);
-    m_btnHelpPage.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpPage.m_tail.bFocusOnHover = 0;
-    m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    GatherAndroidHelpPanelConstants();
-    m_btnHelpTopLeft.SetExtent(sExtent);
-    m_btnHelpTopLeft.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpTopLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpTopLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpTopLeft.m_tail.bFocusOnHover = 0;
-    m_btnHelpTopLeft.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpTopRight.SetExtent(sExtent);
-    m_btnHelpTopRight.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpTopRight.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpTopRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpTopRight.m_tail.bFocusOnHover = 0;
-    m_btnHelpTopRight.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpBottomLeft.SetExtent(sExtent);
-    m_btnHelpBottomLeft.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpBottomLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpBottomLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpBottomLeft.m_tail.bFocusOnHover = 0;
-    m_btnHelpBottomLeft.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpBottomRight.SetExtent(sExtent);
-    m_btnHelpBottomRight.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpBottomRight.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpBottomRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpBottomRight.m_tail.bFocusOnHover = 0;
-    m_btnHelpBottomRight.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_helpPanel.SetExtent(sExtent);
-    if (bWide) {
-        sExtent.x = -1;
-        m_helpPanel.m_pBackground->SetExtent(sBackground);
-    }
-    m_helpPanel.AddControl(&m_btnHelpPage);
-    m_helpPanel.AddControl(&m_btnHelpTopLeft);
-    m_helpPanel.AddControl(&m_btnHelpTopRight);
-    m_helpPanel.AddControl(&m_btnHelpBottomLeft);
-    m_helpPanel.AddControl(&m_btnHelpBottomRight);
-    m_btnHelpHint.m_tail.bFocusOnHover = 0;
-    m_btnHelpHint.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpHint.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpHint.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpHint.m_tail.bFocusOnHover = 0;
-    m_helpPanel.AddControl(&m_btnHelpHint);
-    m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_helpPanel.AddControl(&m_btnHelpClose);
-    m_helpPanel.m_vColor.x = -2.0f;
-    m_helpPanel.m_vColor.y = -2.0f;
-    m_helpPanel.m_vColor.z = -2.0f;
-    m_helpPanel.m_stateFlags |= 1;
-#ifdef K1_UI_XBOX
-    // xbox: the caption and its plate keep the layout's rectangles (the ctor shrink-wraps both).
-    K1ConsoleRestoreCaption(m_actionDescLabel, m_actionDescLabel2);
-#endif
-}
-#else
+#if !KOTOR1
 CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     : CSWGuiPanel(pGuiManager),
       m_gamepadMenu(pGuiManager, this),
@@ -8317,209 +8532,6 @@ bool IosAnyMainPanelUp() {
 // A modal panel (a message or tutorial box) is up over the game.
 bool K2HostModalPanelUp() {
     return g_pGuiMan != 0 && g_pGuiMan->m_modalPanels.m_count != 0;
-}
-#endif
-
-static void FmtBuf(char* pBuf, unsigned int nSize, const char* szFmt, ...) {
-    __builtin_va_list va;
-    __builtin_va_start(va, szFmt);
-    __vsprintf_chk(pBuf, 0, nSize, szFmt, va);
-    __builtin_va_end(va);
-}
-
-#if KOTOR1
-static const char* const s_aHelpLanguage[4] = { "fr", "it", "de", "es" };
-
-// K1: measure the five localized help-overlay images once, so AddHelpPanel can place its buttons
-// over them; each pair is (height, width) in image pixels.
-void CSWGuiMainInterface::GatherAndroidHelpPanelConstants() {
-    char szImage[256] = { 0 };
-    int nLang = ASLPlat_GetCurrentLanguage();
-    const char* szLang = nLang >= ASL_LANGUAGE_FRENCH && nLang <= ASL_LANGUAGE_SPANISH ? s_aHelpLanguage[nLang - ASL_LANGUAGE_FRENCH] : "";
-    CAurGUIImageInternal* pImage;
-    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_2");
-    pImage = NewCAurGUIImage(szImage);
-    AurMakeCurrent();
-    if (pImage) {
-        m_helpPanelConstants[1] = static_cast<float>(pImage->GetImageWidth());
-        m_helpPanelConstants[0] = static_cast<float>(pImage->GetImageHeight());
-        delete pImage;
-    }
-    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_1");
-    pImage = NewCAurGUIImage(szImage);
-    AurMakeCurrent();
-    if (pImage) {
-        m_helpPanelConstants[3] = static_cast<float>(pImage->GetImageWidth());
-        m_helpPanelConstants[2] = static_cast<float>(pImage->GetImageHeight());
-        delete pImage;
-    }
-    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_3");
-    pImage = NewCAurGUIImage(szImage);
-    AurMakeCurrent();
-    if (pImage) {
-        m_helpPanelConstants[5] = static_cast<float>(pImage->GetImageWidth());
-        m_helpPanelConstants[4] = static_cast<float>(pImage->GetImageHeight());
-        delete pImage;
-    }
-    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_4");
-    pImage = NewCAurGUIImage(szImage);
-    AurMakeCurrent();
-    if (pImage) {
-        m_helpPanelConstants[7] = static_cast<float>(pImage->GetImageWidth());
-        m_helpPanelConstants[6] = static_cast<float>(pImage->GetImageHeight());
-        delete pImage;
-    }
-    FmtBuf(szImage, 256, "%s%s%s", "ios_help_2", szLang, "_5");
-    pImage = NewCAurGUIImage(szImage);
-    AurMakeCurrent();
-    if (pImage) {
-        m_helpPanelConstants[9] = static_cast<float>(pImage->GetImageWidth());
-        m_helpPanelConstants[8] = static_cast<float>(pImage->GetImageHeight());
-        delete pImage;
-    }
-}
-#endif
-
-#if KOTOR1
-// K1: one help/tutorial image skin, both states.
-static inline void SetHelpButtonImage(CSWGuiButton& button, const CResRef& image) {
-    button.m_borderHilight.m_params.SetFillImage(image, 0);
-    button.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    button.m_border.m_params.SetFillImage(image, 0);
-    button.m_border.m_params.m_flags.nFillStyle = 2;
-}
-
-// K1: pages 0-3 are the help screens (page 1 is five tiles placed from the measured image sizes),
-// 4-7 the tutorial cards; a card is centred or pinned beside the widget it explains, and every
-// tutorial page shows the "tap help" hint under the help button.
-void CSWGuiMainInterface::AddHelpPanel(int nPage) {
-#ifdef K2_QOL_FULLSCREEN
-    float s_fScale = AndroidHudScaleFactor();
-#else
-    static float s_fScale = AndroidHudScaleFactor();
-#endif
-    char szImage[256];
-    CSWGuiExtent extent(0, 0, g_SDL_mode.w, g_SDL_mode.h);
-    const char* szName;
-    int bCentred;
-    int bTutorial;
-    switch (nPage) {
-    case 0: szName = "ios_help_1"; bCentred = 1; bTutorial = 0; break;
-    case 1: szName = "ios_help_2"; bCentred = 1; bTutorial = 0; break;
-    case 2: szName = "ios_help_3"; bCentred = 1; bTutorial = 0; break;
-    case 3: szName = "ios_help_4x"; bCentred = 1; bTutorial = 0; break;
-    case 4: szName = "ios_tut_1"; bCentred = 1; bTutorial = 1; break;
-    case 5: szName = "ios_tut_2"; bCentred = 0; bTutorial = 1; break;
-    case 6: szName = "ios_tut_3"; bCentred = 0; bTutorial = 1; break;
-    case 7: szName = "ios_tut_4"; bCentred = 0; bTutorial = 1; break;
-    default: szName = ""; bCentred = 0; bTutorial = 0; break;
-    }
-    int nLang = ASLPlat_GetCurrentLanguage();
-    const char* szLang = nLang >= ASL_LANGUAGE_FRENCH && nLang <= ASL_LANGUAGE_SPANISH ? s_aHelpLanguage[nLang - ASL_LANGUAGE_FRENCH] : "";
-    FmtBuf(szImage, 256, "%s%s", szName, szLang);
-    if (nPage == 1) {
-        FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_2");
-        SetHelpButtonImage(m_btnHelpPage, CResRef(szImage));
-        extent.w = static_cast<int>(m_helpPanelConstants[1] * s_fScale);
-        extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[0]);
-        extent.x = static_cast<int>(static_cast<float>(g_SDL_mode.w - extent.w) * 0.5f);
-        extent.y = 0;
-        m_btnHelpPage.SetExtent(extent);
-
-        FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_1");
-        SetHelpButtonImage(m_btnHelpTopLeft, CResRef(szImage));
-        extent.w = static_cast<int>(m_helpPanelConstants[3] * s_fScale);
-        extent.x = 0;
-        extent.y = 0;
-        extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[2]);
-#if defined(K2P_IOS) && defined(K2_QOL_CONTROLLER)
-        extent.x += K1PhoneEdgeInset();   // beside the HUD's edge buttons
-#endif
-        m_btnHelpTopLeft.SetExtent(extent);
-
-        static bool s_bHasTouchScreen = HasTouchScreen();
-        if (s_bHasTouchScreen) {
-            FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_3");
-            SetHelpButtonImage(m_btnHelpTopRight, CResRef(szImage));
-            extent.w = static_cast<int>(m_helpPanelConstants[5] * s_fScale);
-            extent.x = g_SDL_mode.w - extent.w;
-            extent.y = 0;
-            extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[4]);
-#if defined(K2P_IOS) && defined(K2_QOL_CONTROLLER)
-            extent.x -= K1PhoneEdgeInset();   // beside the HUD's edge buttons
-#endif
-            m_btnHelpTopRight.SetExtent(extent);
-        } else {
-            m_btnHelpTopRight.m_tail.bVisible = 0;
-        }
-
-        FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_4");
-        SetHelpButtonImage(m_btnHelpBottomLeft, CResRef(szImage));
-        extent.w = static_cast<int>(m_helpPanelConstants[7] * s_fScale);
-        extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[6]);
-        extent.x = 0;
-        extent.y = g_SDL_mode.h - extent.h;
-#if defined(K2P_IOS) && defined(K2_QOL_CONTROLLER)
-        extent.x += K1PhoneEdgeInset();   // beside the HUD's edge buttons
-#endif
-        m_btnHelpBottomLeft.SetExtent(extent);
-
-        FmtBuf(szImage, 256, "%s%s%s", szName, szLang, "_5");
-        SetHelpButtonImage(m_btnHelpBottomRight, CResRef(szImage));
-        extent.w = static_cast<int>(m_helpPanelConstants[9] * s_fScale);
-        extent.x = g_SDL_mode.w - extent.w;
-        extent.h = static_cast<int>(s_fScale * m_helpPanelConstants[8]);
-        extent.y = g_SDL_mode.h - extent.h;
-#if defined(K2P_IOS) && defined(K2_QOL_CONTROLLER)
-        extent.x -= K1PhoneEdgeInset();   // beside the HUD's edge buttons
-#endif
-        m_btnHelpBottomRight.SetExtent(extent);
-    } else {
-        SetHelpButtonImage(m_btnHelpPage, CResRef(szImage));
-        int nScreenW = g_SDL_mode.w;
-        int nScreenH = g_SDL_mode.h;
-        CAurGUIImageInternal* pImage = NewCAurGUIImage(szImage);
-        AurMakeCurrent();
-        if (pImage) {
-            extent.w = static_cast<int>(s_fScale * static_cast<float>(pImage->GetImageWidth()));
-            extent.h = static_cast<int>(s_fScale * static_cast<float>(pImage->GetImageHeight()));
-            if (bCentred) {
-                extent.x = (nScreenW - extent.w) / 2;
-                extent.y = (nScreenH - extent.h) / 2;
-            } else if (nPage == 5 || nPage == 7) {
-                extent.x = m_btnEquip.m_extent.x - extent.w;
-                extent.y = static_cast<int>(static_cast<float>(m_btnEquip.m_extent.y + m_btnEquip.m_extent.h) + s_fScale * 30.0f);
-            } else if (nPage == 6) {
-                CSWGuiExtent& anchor = m_aCharacters[0].m_btnChar.m_extent;
-                extent.x = static_cast<int>(s_fScale * 35.0f + anchor.x + anchor.w);
-                extent.y = static_cast<int>(anchor.y + s_fScale * -40.0f - extent.h);
-            }
-            delete pImage;
-        }
-        m_btnHelpPage.SetExtent(extent);
-    }
-
-    static bool s_bHintHasTouchScreen = HasTouchScreen();
-    if (s_bHintHasTouchScreen) {
-        FmtBuf(szImage, 256, "ios_tut_h1%s", szLang);
-        SetHelpButtonImage(m_btnHelpHint, CResRef(szImage));
-        CAurGUIImageInternal* pImage = NewCAurGUIImage(szImage);
-        AurMakeCurrent();
-        CSWGuiExtent hint(0, 0, 0, 0);
-        if (pImage) {
-            hint.w = static_cast<int>(s_fScale * static_cast<float>(pImage->GetImageWidth()));
-            hint.h = static_cast<int>(s_fScale * static_cast<float>(pImage->GetImageHeight()));
-            CSWGuiExtent& help = m_btnCornerHelp.m_extent;
-            hint.x = help.x - hint.w + help.w / 2;
-            hint.y = static_cast<int>(static_cast<float>(help.y + help.h) + s_fScale * -10.0f);
-            delete pImage;
-        }
-        m_btnHelpHint.SetExtent(hint);
-        m_btnHelpHint.m_tail.bVisible = bTutorial;
-    } else {
-        m_btnHelpHint.m_tail.bVisible = 0;
-    }
-    g_pGuiMan->AddPanel(&m_helpPanel, 1, 1);
 }
 #endif
 

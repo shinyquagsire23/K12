@@ -639,8 +639,16 @@ int CItemRepository::AddItem(CSWSItem** ppItem, int bStack, int nPossessor, int 
                     delete *ppItem;
                     *ppItem = pCur;
                     pCur->SetPossessor(pCur->m_possessorId, nPossessor, nPossessor, OBJECT_INVALID);
+#if KOTOR1  // K1 also flags the grown stack unseen
+                    if (bNew)
+                    {
+                        (*ppItem)->m_flags |= CSWSItem::FLAG_NEW_ITEM;
+                        m_nNewItemCount++;
+                    }
+#else
                     if (bNew)
                         m_nNewItemCount++;
+#endif
                     return 1;
                 }
             }
@@ -1382,9 +1390,7 @@ CResRef CSWSItem::GetIcon()
 
 CExoString CSWSItem::GetPropertyDescription()
 {
-#if !KOTOR1
     CExoArrayList<CExoString> aPropertyStrings;
-#endif
     CExoString sProperties;
 #if KOTOR1
     if (GetBaseItem()->m_nItemType != ITEM_TYPE_LIGHTSABER_CRYSTAL && GetBaseItem()->m_nItemType != ITEM_TYPE_GRENADE)
@@ -1643,7 +1649,11 @@ int CSWSItem::GetPropertyByType(CSWItemProperty** ppOut, unsigned short nType,
         if (pProp->m_nUpgradeType != CSWItemProperty::UPGRADE_TYPE_NONE && (m_nUpgrades & (1 << pProp->m_nUpgradeType)) == 0) continue;
         if (pProp->m_type != nType) continue;
         if (nSubType != 0 && pProp->m_subType != nSubType) continue;
+#if KOTOR1  // K1 stores the indexed slot
+        *ppOut = &m_pActiveProperties[i];
+#else
         *ppOut = pProp;
+#endif
         return 1;
     }
     for (int i = 0; i < m_nPassiveProperties; i++)
@@ -1652,7 +1662,11 @@ int CSWSItem::GetPropertyByType(CSWItemProperty** ppOut, unsigned short nType,
         if (pProp->m_nUpgradeType != CSWItemProperty::UPGRADE_TYPE_NONE && (m_nUpgrades & (1 << pProp->m_nUpgradeType)) == 0) continue;
         if (pProp->m_type != nType) continue;
         if (nSubType != 0 && pProp->m_subType != nSubType) continue;
+#if KOTOR1
+        *ppOut = &m_pPassiveProperties[i];
+#else
         *ppOut = pProp;
+#endif
         return 1;
     }
     return 0;
@@ -2576,6 +2590,12 @@ void CSWSItem::AddDefenceProperties(CExoString& sOut)
     }
     if (GetBaseItem()->m_nItemType != ITEM_TYPE_DROID_PLATING)
     {
+#if KOTOR1  // K1 shows the base item's cap only; no MAX_DEX_BONUS properties are summed
+        unsigned char nMaxDex = GetBaseItem()->m_nMaxDexBonus;
+        if (nMaxDex != MAX_DEX_BONUS_NONE)
+            sOut = sOut + g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_MAX_DEXTERITY_BONUS) + ": +" +
+                   CExoString(nMaxDex) + "\n\n";
+#else
         int nMaxDex = GetBaseItem()->m_nMaxDexBonus;
         int nSum = 0;
         if (GetPropertyByTypeExists(ITEM_PROPERTY_MAX_DEX_BONUS, 0))
@@ -2595,6 +2615,7 @@ void CSWSItem::AddDefenceProperties(CExoString& sOut)
         if (nTotal != MAX_DEX_BONUS_NONE)
             sOut = sOut + g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_MAX_DEXTERITY_BONUS) + ": +" +
                    CExoString(nTotal) + "\n\n";
+#endif
     }
     CExoString s1, s2, s3, s4, s5;
     if (GetPropertyByTypeExists(ITEM_PROPERTY_AC_BONUS_VS_ALIGNMENT_GROUP, 0) || GetPropertyByTypeExists(ITEM_PROPERTY_AC_BONUS_VS_DAMAGE_TYPE, 0) ||

@@ -309,11 +309,11 @@ Vector lineproject(const Vector& a, const Vector& b, const Vector& p)
     // Scratch vector, shared across calls.
     static Vector w;
     w = b - a;
-    float fLen2 = w.x * w.x + w.y * w.y + w.z * w.z;
+    float fLen2 = dot(w, w);
     float fT = fLen2;
     if (fLen2 != 0.0f)
     {
-        fT = (w.x * (p.x - a.x) + w.y * (p.y - a.y) + w.z * (p.z - a.z)) / fLen2;
+        fT = dot(w, p - a) / fLen2;
     }
     return a + w * fT;
 }
@@ -325,11 +325,11 @@ Vector segmentproject(const Vector& a, const Vector& b, const Vector& p)
 
     static Vector w;
     w = b - a;
-    float fLen2 = w.x * w.x + w.y * w.y + w.z * w.z;
+    float fLen2 = dot(w, w);
     float fT = fLen2;
     if (fLen2 != 0.0f)
     {
-        fT = (w.x * (p.x - a.x) + w.y * (p.y - a.y) + w.z * (p.z - a.z)) / fLen2;
+        fT = dot(w, p - a) / fLen2;
     }
     // Clamp to the segment.
     if (fT > 1.0f)
@@ -723,7 +723,11 @@ float Roll(Quaternion q)
     Quaternion qYaw(zaxis, DegToRad(-Yaw(q)));
     q = qYaw * q;
 
+#if KOTOR1
+    Quaternion qPitch(xaxis, -DegToRad(Pitch(q)));
+#else
     Quaternion qPitch(xaxis, DegToRad(-Pitch(q)));
+#endif
     q = qPitch * q;
 
     return atan2f(-q.xdir().z, q.xdir().x) * 57.295776f;
@@ -1068,17 +1072,16 @@ unsigned int BoxIntersect(const Vector& a, const Vector& b, const Vector& vMin, 
 int SphereIntersect(const Vector& vStart, const Vector& vEnd, const Vector& vCenter, float fRadius)
 {
     Vector vSeg = vEnd - vStart;
-    float fLenSq = vSeg.x * vSeg.x + vSeg.y * vSeg.y + vSeg.z * vSeg.z;
+    float fLenSq = dot(vSeg, vSeg);
     if (fLenSq < 1e-09)
         return 0;
-    float t = (vSeg.x * (vCenter.x - vStart.x) + vSeg.y * (vCenter.y - vStart.y)
-               + vSeg.z * (vCenter.z - vStart.z)) / fLenSq;
+    float t = dot(vSeg, vCenter - vStart) / fLenSq;
     // Clamped by comparison rather than fmaxf/fminf, which would take the NaN-propagating path.
     if (t < 0.0f)
         t = 0.0f;
     if (t > 1.0f)
         t = 1.0f;
-    Vector vClosest(vStart.x + vSeg.x * t, vStart.y + vSeg.y * t, vStart.z + vSeg.z * t);
+    Vector vClosest = vStart + vSeg * t;
     float fDist = magnitude(vClosest - vCenter);
     return fDist < fRadius;
 }
@@ -1440,6 +1443,8 @@ int IntersectLineSegments2d(const Vector& a, const Vector& b, const Vector& c, c
     return 1;
 }
 
+// EFFECTIVE (K1+K2): s4/s5 and s7/s16 swap between the discriminant/root and two dot-product temporaries;
+// same instructions and operand order, armv7 exact in both games.
 int IntersectCircle2d(const Vector& vCenter, float fRadius, const Vector& vStart,
                       const Vector& vEnd, Vector& vOut1, Vector& vOut2, bool bUnused)
 {

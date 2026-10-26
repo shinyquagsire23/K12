@@ -239,6 +239,8 @@ void CResSET::GetSectionEntryValue(char* sectionName, char* key, char* out)
         *out = 0;
 }
 
+// EFFECTIVE (K1): ours folds the latch's `add` into a pre-indexed `ldrb [x0, #1]!` (the loop test is
+// tail-duplicated into the latch); K1 keeps `add` + `ldrb`. Same loads and tests, armv7 -O3 exact.
 char* CResSET::SkipWhiteSpace(char* p)
 {
     while (*p == ' ' || *p == '\t')
