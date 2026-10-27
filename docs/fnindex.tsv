@@ -6232,8 +6232,8 @@ KOTOR2	_ZN12CSWSCreature22ComputeAIStateOnActionEiy	src/game/servercore/nwscreat
 KOTOR2	_ZN12CSWSCreature11PostProcessEv	src/game/servercore/nwscreature.cpp	12456	-
 KOTOR2	_ZN12CSWSCreature16UpdateEffectPtrsEv	src/game/servercore/nwscreature.cpp	12545	-
 KOTOR2	_ZN12CSWSCreature11ClearActionEP20CSWSObjectActionNodei	src/game/servercore/nwscreature.cpp	12610	-
-KOTOR2	_ZN27CSWSCreaturePartyFollowInfo4SaveEP7CResGFFP10CResStruct	src/game/servercore/nwscreature.cpp	12794	-
-KOTOR2	_ZN27CSWSCreaturePartyFollowInfo4LoadEP7CResGFFP10CResStruct	src/game/servercore/nwscreature.cpp	12807	-
+KOTOR2	_ZN27CSWSCreaturePartyFollowInfo4SaveEP7CResGFFP10CResStruct	src/game/servercore/nwscreature.cpp	12796	-
+KOTOR2	_ZN27CSWSCreaturePartyFollowInfo4LoadEP7CResGFFP10CResStruct	src/game/servercore/nwscreature.cpp	12809	-
 KOTOR1	_ZN12CSWSCreature25CheckItemRaceRestrictionsEP8CSWSItem	src/game/servercore/nwscreatureai.cpp	125	-
 KOTOR2	_ZN12CSWSCreature25CheckItemRaceRestrictionsEP8CSWSItemi	src/game/servercore/nwscreatureai.cpp	167	-
 KOTOR2	_ZN12CSWSCreature27CheckItemGenderRestrictionsEP8CSWSItem	src/game/servercore/nwscreatureai.cpp	217	-

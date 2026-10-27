@@ -12690,7 +12690,9 @@ int CSWSCreature::ClearAction(CSWSObjectActionNode* pNode, int bIsCurrentAction)
         SetAnimation(SERVER_ANIMATION_PAUSE);
         StopGuiTimingBar();
         m_bMineActionStarted = 0;
+#if !KOTOR1 || defined(K2_FIX_ENGINE_BUGS)  // K1 leaves the approach flag set
         m_bActionApproachDone = 0;
+#endif
         break;
     case AIACTION_RESUME_DIALOG:
         m_bDialogPaused = 0;
