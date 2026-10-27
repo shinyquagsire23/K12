@@ -1142,8 +1142,7 @@ bool Gob::Amputate(char* pszName)
         }
     }
 
-    List<Part*>& rChildren = *reinterpret_cast<List<Part*>*>(&pRoot->m_pParent->m_paChildren);  // raw-offset: Part's child array is a List<Part*> the destructor frees by hand
-    rChildren.Remove(pRoot);
+    reinterpret_cast<List<Part*>*>(&pRoot->m_pParent->m_paChildren)->Remove(pRoot);  // raw-offset: Part's child array is a List<Part*> the destructor frees by hand
 #if KOTOR1  // K1: the parent sphere memo is stale
     pRoot->m_pParent->GetMinimumSphere_cache_GetData()->bValid = false;
 #endif
@@ -1609,19 +1608,18 @@ void Gob::ReattachReference(CAurObject* a, char* b)
     {
         Part* part = parts.m_pData[0];
 
-        PartReference* ref = part->AsPartReference();
+        PartReference* ref;
+        ref = part->AsPartReference();
         if (ref != 0 && ref->m_pNode != 0 && (ref->m_pNode->m_nFlags & NODE_REFERENCE) == NODE_REFERENCE &&
             static_cast<MdlNodeReference*>(ref->m_pNode)->m_bReattachable && ref->m_pObject != 0)
         {
-            CAurObject* obj = ref->m_pObject;
             if (a != 0)
-                obj->AttachToObject(a, b, 0);
+                ref->m_pObject->AttachToObject(a, b, 0);
             else
-                obj->AttachToObject(static_cast<CAurObject*>(this), ref->Name(), 0);  // idiom-exempt: opener 21 debt (Gob:CAurObject not yet derived)
+                ref->m_pObject->AttachToObject(static_cast<CAurObject*>(this), ref->Name(), 0);  // idiom-exempt: opener 21 debt (Gob:CAurObject not yet derived)
 
-            Quaternion q = m_qOrientation;
-            Vector v = ref->m_pObject->GetPosition();
-            m_qOrientation = RotationArc(q.zdir(), v - m_vPosition) * q;
+            m_qOrientation = RotationArc(m_qOrientation.zdir(), ref->m_pObject->GetPosition() - m_vPosition)
+                             * m_qOrientation;
         }
 
         parts.DelIndex(0);
@@ -4832,9 +4830,10 @@ PartTriMesh::PartTriMesh(MdlNode* node)
         Model* pModel = pMesh->m_pTree->AsModel();
 #endif
         unsigned int nPool = pModel->m_nPool;
+        const int* pSrc;
         char* pPool = static_cast<char*>(GLRender::LockPool(nPool, 0, 0, 8));
 
-        const int* pSrc = reinterpret_cast<const int*>(pPool + pMesh->m_nTex0Ofs + pMesh->m_nGeomBase);
+        pSrc = reinterpret_cast<const int*>(pPool + pMesh->m_nTex0Ofs + pMesh->m_nGeomBase);
         for (int64_t i = 0; i < static_cast<short>(pMesh->m_nVertexCount); i++)
         {
             pDst[i].a = static_cast<unsigned int>(pSrc[0]);

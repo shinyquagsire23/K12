@@ -161,7 +161,8 @@ CSWGuiAbilitiesCharGen::CSWGuiAbilitiesCharGen(CSWGuiManager* pGuiManager, CSWCC
         m_anBaseValues[5] = nCHA;
     }
 
-    for (int i = 0; i < 6; i++)
+    int i;
+    for (i = 0; i < 6; i++)
     {
         m_aPointsButtons[i].AddEvent(SWGUIEVENT_FOCUS, this,
             static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiAbilitiesCharGen::OnEnterPointsButton));
@@ -600,27 +601,7 @@ void CSWGuiAbilitiesCharGen::OnEnterPointsButton(CSWGuiControl* pControl)
     m_aPointsButtons[5].m_text.m_params.SetColor(*pColor);
     m_aStatLabels[5].m_text.m_params.SetColor(*pColor);
 
-    // The tier cost of the next point is 1 up to 13, 2 at 14/15, 3 from 16. Level-up mode always
-    // charges a flat point (it has one per four levels).
-#if KOTOR1  // the mode test comes first and the flat point returns immediately
-    int nCost;
-    if (m_nMode != 0)
-        nCost = 1;
-    else if (m_anStatValues[m_nHoveredRow] > 15)
-        nCost = 3;
-    else
-        nCost = (m_anStatValues[m_nHoveredRow] > 13) ? 2 : 1;
-#else
-    int nCost = 1;
-    if (m_nMode == 0)
-    {
-        int nScore = m_anStatValues[m_nHoveredRow];
-        if (nScore > 15)
-            nCost = 3;
-        else
-            nCost = (nScore > 13) ? 2 : 1;
-    }
-#endif
+    int nCost = DetermineCostToIncreaseScore(m_anStatValues[m_nHoveredRow]);
 
     CExoString sCost(nCost);
 
@@ -629,10 +610,10 @@ void CSWGuiAbilitiesCharGen::OnEnterPointsButton(CSWGuiControl* pControl)
         static_cast<unsigned char>(m_anStatValues[m_nHoveredRow]));
     if (nMod < 0)
         sMod = CExoString(static_cast<int>(nMod));
-    else if (nMod != 0)
-        sMod = CExoString("+") + CExoString(static_cast<int>(nMod));
-    else
+    else if (nMod == 0)
         sMod = "-";
+    else
+        sMod = CExoString("+") + CExoString(static_cast<int>(nMod));
 
     m_lblCostPoints.m_text.m_params.SetText(sCost);
 #if KOTOR1
@@ -715,15 +696,7 @@ void CSWGuiAbilitiesCharGen::OnMinusButton()
 
     if (m_anStatValues[m_nHoveredRow] > 8)
     {
-        // Refund the tier cost of the point being given back.
-        int nCost = -1;
-        if ((m_nMode == 0) & (static_cast<unsigned int>(m_anStatValues[m_nHoveredRow] - 9) > 5))
-        {
-            nCost = -3;
-            if (static_cast<unsigned int>(m_anStatValues[m_nHoveredRow] - 15) < 2)
-                nCost = -2;
-        }
-        m_nPoints -= nCost;
+        m_nPoints = m_nPoints - DetermineCostToDecreaseScore(m_anStatValues[m_nHoveredRow]);
         m_anStatValues[m_nHoveredRow] -= 1;
     }
 
@@ -736,10 +709,10 @@ void CSWGuiAbilitiesCharGen::OnMinusButton()
         m_pCreature->m_pStats->CalcStatModifier(static_cast<unsigned char>(m_anStatValues[m_nHoveredRow]));
     if (nMod < 0)
         sMod = CExoString(static_cast<int>(nMod));
-    else if (nMod != 0)
-        sMod = CExoString("+") + CExoString(static_cast<int>(nMod));
-    else
+    else if (nMod == 0)
         sMod = "-";
+    else
+        sMod = CExoString("+") + CExoString(static_cast<int>(nMod));
     m_aBonusLabels[m_nHoveredRow].m_text.m_params.SetText(sMod);
 #endif
 
@@ -815,10 +788,10 @@ void CSWGuiAbilitiesCharGen::OnPlusButton()
     signed char nMod = m_pCreature->m_pStats->CalcStatModifier(static_cast<unsigned char>(m_anStatValues[m_nHoveredRow]));
     if (nMod < 0)
         sMod = CExoString(static_cast<int>(nMod));
-    else if (nMod != 0)
-        sMod = CExoString("+") + CExoString(static_cast<int>(nMod));
-    else
+    else if (nMod == 0)
         sMod = "-";
+    else
+        sMod = CExoString("+") + CExoString(static_cast<int>(nMod));
     m_aBonusLabels[m_nHoveredRow].m_text.m_params.SetText(sMod);
 #endif
 

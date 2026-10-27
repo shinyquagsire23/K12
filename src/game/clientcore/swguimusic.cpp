@@ -179,13 +179,16 @@ void CSWGuiTitleMusic::PopulateSongList()
 
     CExoArrayList<CSWGuiControl*> aRows;
     CSWGuiExtent extent = m_listBox.m_innerExtent;
-    for (int i = 0; i < m_aSongs.m_count; i++)
+    int nSongs = m_aSongs.m_count;
+    CSWGuiButton* pProto = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
+    for (int i = 0; i < nSongs; i++)
     {
         CSWGuiButton* pRow = new CSWGuiButton();
-        pRow->Initialize(extent, static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem));
+        pRow->Initialize(extent, pProto);
         pRow->m_text.m_params.SetStrRef(m_aSongs.m_pArray[i].m_nStrrefName);
+        CMusicItemInfo* pInfo = &m_aSongs.m_pArray[i];
         extent.h = 36;
-        pRow->m_tail.m_nUserData = reinterpret_cast<unsigned long long>(&m_aSongs.m_pArray[i]);
+        pRow->m_tail.m_nUserData = reinterpret_cast<unsigned long long>(pInfo);
         extent.h = static_cast<int>(GetResolutionTextScalar() * static_cast<float>(extent.h));
         pRow->SetExtent(extent);
         pRow->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiTitleMusic::OnPlayPicked));

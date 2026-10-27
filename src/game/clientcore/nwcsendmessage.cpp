@@ -2031,6 +2031,10 @@ int CSWCMessage::SendPlayerToServerParty_Action(unsigned long long objId, int nA
 int CSWCMessage::SendPlayerToServerLogin_LoginLocalCharacter(const CResRef& resRef, int bJoin)
 {
     CExoString sPath;
+    CExoFile* pFile;
+    int nFileSize;
+    unsigned char* pData;
+    int nSent;
     resRef.CopyToString(sPath);
 
 #if KOTOR1  // K1 has no demo build flag
@@ -2042,19 +2046,19 @@ int CSWCMessage::SendPlayerToServerLogin_LoginLocalCharacter(const CResRef& resR
     else
         sPath = CExoString("TEMP:") + sPath;
 
-    CExoFile* pFile = new CExoFile(sPath, kResTypeBic, CExoString("rb"));
+    pFile = new CExoFile(sPath, kResTypeBic, CExoString("rb"));
     if (pFile->FileOpened() == 0)
     {
         delete pFile;
         return 0;
     }
 
-    int nFileSize = pFile->GetSize();
-    unsigned char* pData = new unsigned char[static_cast<uint64_t>(nFileSize) + 4];
+    nFileSize = pFile->GetSize();
+    pData = new unsigned char[static_cast<uint64_t>(nFileSize) + 4];
     pFile->Read(pData, 1, nFileSize);
     delete pFile;
 
-    int nSent = SendPlayerToServerLogin_LoginLocalCharacter(pData, nFileSize, bJoin);
+    nSent = SendPlayerToServerLogin_LoginLocalCharacter(pData, nFileSize, bJoin);
     delete[] pData;
 
     return nSent;

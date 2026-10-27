@@ -2894,6 +2894,9 @@ CResRef CResRef::operator=(unsigned char* s)
 CResRef CResRef::operator+=(const CExoString& s)
 {
     CExoString sCombined;
+#if KOTOR1
+    const char* pStr;
+#endif
     CopyToString(sCombined);
     sCombined = sCombined + s;
     sCombined = sCombined.LowerCase();
@@ -2902,8 +2905,8 @@ CResRef CResRef::operator+=(const CExoString& s)
 
 #if KOTOR1  // K1: CExoString::GetLength is out of line (called once for the clamp)
     if (sCombined.GetLength() > 0) {
-        const char* pStr = sCombined.CStr();
-        unsigned int nLen = sCombined.GetLength();
+        pStr = sCombined.CStr();
+        size_t nLen = static_cast<unsigned int>(sCombined.GetLength());
         memcpy(m_sResRef, pStr, nLen < 16 ? nLen : 16);  // idiom-exempt: runtime length
     }
 #else

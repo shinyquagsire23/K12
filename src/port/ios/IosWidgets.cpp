@@ -798,9 +798,10 @@ int IosDialogReplies::HandleMouseCapturedMovement(int nDx, int nDy)
 
     const int nPrevY = m_nLastTouchY;
 #if KOTOR1
-    m_nLastTouchY = nMouseY;
+    const int nY = nMouseY;
+    m_nLastTouchY = nY;
 
-    int nDelta = nMouseY - m_nTouchStartY;
+    int nDelta = nY - m_nTouchStartY;
     if (nDelta < 0)
         nDelta = -nDelta;
     if (nDelta >= 11)
@@ -808,7 +809,7 @@ int IosDialogReplies::HandleMouseCapturedMovement(int nDx, int nDy)
 
     const int nPrevScroll = m_nVertScroll;
     if (EnoughScrollableHeightToScroll())
-        m_nVertScroll += nMouseY - nPrevY;
+        m_nVertScroll += nY - nPrevY;
 #else
     const int nPrevScroll = m_nVertScroll;
     m_nLastTouchY = nMouseY;

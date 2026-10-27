@@ -1031,8 +1031,7 @@ void LightNodeMeshes(BSPNode* pNode, void* pData)
             if (equal(pLight->m_vLightColour, Vector(0.0f, 0.0f, 0.0f)))
                 continue;
 
-            Vector vDelta = pLight->m_vWorldPosition - v;
-            if (magnitude(vDelta) < pLight->m_fLightRadius + pTriMesh->m_fRadius)
+            if (magnitude(pLight->m_vWorldPosition - v) < pLight->m_fLightRadius + pTriMesh->m_fRadius)
                 bucket.Add(pLight);
         }
 
@@ -1052,11 +1051,12 @@ void LightNodeTile(BSPNode* pNode, void* pData)
 
     List<PartLight*> bucket;
     for (int64_t i = 0; i < pNodeData->m_pTileData->m_aParts.m_count; i++) {
+        MdlNodeTriMesh* pTriMesh;
         PartTriMesh* pMesh = pNodeData->m_pTileData->m_aParts.m_pData[i]->AsPartTriMesh();
         if (pMesh == 0)
             continue;
 
-        MdlNodeTriMesh* pTriMesh = pMesh->m_pNode->AsMdlNodeTriMesh();
+        pTriMesh = pMesh->m_pNode->AsMdlNodeTriMesh();
         Vector v = RotateVector(pTriMesh->m_vCentroid, pMesh->m_qLocalOrientation)
                    + pMesh->m_vLocalPosition;
 
@@ -1068,8 +1068,7 @@ void LightNodeTile(BSPNode* pNode, void* pData)
             if (equal(pLight->m_vLightColour, Vector(0.0f, 0.0f, 0.0f)))
                 continue;
 
-            Vector vDelta = pLight->m_vWorldPosition - v;
-            if (magnitude(vDelta) < pLight->m_fLightRadius + pTriMesh->m_fRadius)
+            if (magnitude(pLight->m_vWorldPosition - v) < pLight->m_fLightRadius + pTriMesh->m_fRadius)
                 bucket.Add(pLight);
         }
 
@@ -1426,10 +1425,10 @@ void LightManager::CollectLightsForGivenRoom(CAurRoom* pRoom)
         rooms = currentscene->m_rooms;
     }
 
-    for (int64_t r = 0; r < rooms.m_count; r++) {
+    for (int r = 0; r < rooms.m_count; r++) {
         nodedata* pNodeData = rooms.m_pData[r]->m_pNodeData;
 
-        for (int64_t i = 0; i < pNodeData->m_lights.m_count; i++) {
+        for (int i = 0; i < pNodeData->m_lights.m_count; i++) {
             PartLight* pLight = static_cast<PartLight*>(pNodeData->m_lights.m_pData[i]);
             if (static_cast<MdlNodeLight*>(pLight->m_pNode)->m_lFlareColourShifts.m_count >= 1)
                 m_lensFlareLights.AddUnique(pLight);
@@ -1438,7 +1437,7 @@ void LightManager::CollectLightsForGivenRoom(CAurRoom* pRoom)
                 m_setupLights.Add(pLight);
         }
 
-        for (int64_t i = 0; i < pNodeData->m_movingLights.m_count; i++) {
+        for (int i = 0; i < pNodeData->m_movingLights.m_count; i++) {
             PartLight* pLight = pNodeData->m_movingLights.m_pData[i];
             if (static_cast<MdlNodeLight*>(pLight->m_pNode)->m_lFlareColourShifts.m_count >= 1)
                 m_lensFlareLights.AddUnique(pLight);

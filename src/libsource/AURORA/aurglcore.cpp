@@ -2456,8 +2456,8 @@ void GLRender::RenderBox(Vector& vMin, Vector& vMax)
 void GLRender::SetupGrassBuffers(unsigned int nPool, int nOffset)
 {
     int bVBO = AurVertexBufferObjectARBAvailable();
-    char* pBuffer = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
     float* pVerts;
+    char* pBuffer = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
     if (bVBO)
     {
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pBuffer)));
@@ -10015,8 +10015,13 @@ void GLRender::DrawSphereBound(float fRadius, Vector& vCenter, const Vector& vCo
         afMatrix[6] = afMatrix[9];
         afMatrix[9] = fTemp;
 
+#if KOTOR1  // K1 selects the modelview stack before it pushes
+        GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+        ASLgl::glPushMatrix();
+#else
         ASLgl::glPushMatrix();
         GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+#endif
         ASLgl::glMultMatrixf(afMatrix);
     }
 

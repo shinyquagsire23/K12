@@ -547,6 +547,7 @@ int CAurBehaviorNavigate::Control(float fParam) {
 // CAurBehaviorCameraOnAStick.
 CAurBehaviorCameraOnAStick::CAurBehaviorCameraOnAStick(CAurObject* pCamera, CAurObject* pTarget)
     : CAurBehavior(pCamera) {
+    Quaternion q;
     AddDependency(pTarget);
     m_pTarget = pTarget;
 
@@ -559,7 +560,7 @@ CAurBehaviorCameraOnAStick::CAurBehaviorCameraOnAStick(CAurObject* pCamera, CAur
     m_fHeight = 4.0f;
     m_fMaxDist = 0x42C80000;
 
-    Quaternion q = YawPitchRoll(0.0f, 70.0f, 0.0f);
+    q = YawPitchRoll(0.0f, 70.0f, 0.0f);
     m_fYaw = 0;
     m_pOwner->SetOrientation(q);
 
@@ -567,9 +568,8 @@ CAurBehaviorCameraOnAStick::CAurBehaviorCameraOnAStick(CAurObject* pCamera, CAur
     // result is discarded: the camera's height is m_fHeight.
     Vector vTarget = m_pTarget.m_pObject->GetPosition();
     Vector vZ = q.zdir();
-    Vector vNew(vTarget.x + vZ.x * m_fDist,
-                vTarget.y + vZ.y * m_fDist,
-                m_fHeight);
+    Vector vNew = vTarget + vZ * m_fDist;
+    vNew.z = m_fHeight;
     m_pOwner->SetPosition(vNew);
     m_vPos = vNew;
 }

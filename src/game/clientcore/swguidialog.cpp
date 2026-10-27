@@ -85,10 +85,11 @@ bool IsAllWhitespace(const char* pszText)
 CSWGuiDialog::CSWGuiDialog(CSWGuiManager* pGuiManager)
     : CSWGuiPanel(pGuiManager)
 {
-    m_nMessageFlags = static_cast<unsigned char>(
-        (m_nMessageFlags & ~(DIALOGMSG_SHOWING_LINE | DIALOGMSG_LINE_PENDING | DIALOGMSG_DIALOG_ENDED))
-        | (DIALOGMSG_SHOWING_LINE | DIALOGMSG_DIALOG_ENDED));
+    unsigned char nFlags = m_nMessageFlags;
     m_ownerId = OBJECT_INVALID;                                        // "no object" sentinel
+    m_nMessageFlags = static_cast<unsigned char>(
+        (nFlags & ~(DIALOGMSG_SHOWING_LINE | DIALOGMSG_LINE_PENDING | DIALOGMSG_DIALOG_ENDED))
+        | (DIALOGMSG_SHOWING_LINE | DIALOGMSG_DIALOG_ENDED));
     Reset();
 }
 
@@ -883,7 +884,10 @@ void CSWGuiDialogComputer::SetReplies(int n, CExoString* pa)
     // A null array means no dialog is in flight; the in-game GUI is still poked here for its
     // side effect.
     if (pa != 0)
-        g_pAppManager->m_pClientExoApp->GetInGameGui();
+    {
+        CGuiInGame* pInGame = g_pAppManager->m_pClientExoApp->GetInGameGui();
+        K2_UNUSED(pInGame);
+    }
 
     float fYMult = 1.0f;
     float fXMult = 1.0f;
@@ -1229,11 +1233,11 @@ void CSWGuiDialogLetterbox::Reset()
 }
 
 void CSWGuiDialogLetterbox::ResetFade() {
+    m_fAlpha = (m_state == 3) ? 0.0f : 1.0f;
     m_fadeElapsed = 0.0f;
     m_fadeDuration = 0.0f;
     m_fadeAmount = 0.0f;
     m_nFadeType = 0;
-    m_fAlpha = (m_state == 3) ? 0.0f : 1.0f;
 }
 
 // Moves the bars to the rectangle the dialog screens computed. Each state pins one edge and
@@ -1377,8 +1381,12 @@ void CSWGuiDialogLetterbox::SetMiddle()
     m_fadeAmount = 0.0f;
     m_nFadeType = 0;
     m_state = 3;
-    CSWGuiObject::SetExtent(CSWGuiExtent(0, 0, m_pGuiManager->m_nScreenWidth,
-                                         m_pGuiManager->m_nScreenHeight));
+    CSWGuiExtent extent;
+    extent.x = 0;
+    extent.y = 0;
+    extent.w = m_pGuiManager->m_nScreenWidth;
+    extent.h = m_pGuiManager->m_nScreenHeight;
+    CSWGuiObject::SetExtent(extent);
 }
 #else
 void CSWGuiDialogLetterbox::SetTop()
@@ -1402,9 +1410,9 @@ void CSWGuiDialogLetterbox::SetTop()
 
     m_extent.x = 0;
     m_extent.y = 0;
-    m_state = 1;
     m_extent.w = m_pGuiManager->m_nScreenWidth;
     m_extent.h = 0;
+    m_state = 1;
     g_Letterbox_top = 0;
 }
 
@@ -1513,7 +1521,8 @@ void CSWGuiDialogLetterbox::Draw(float f)
     // and no edge globals are published.
     if (m_bScrollDone == 0)
     {
-        f = std::min(f, 0.5f);
+        if (f > 0.5f)
+            f = 0.5f;
 
         if (m_state == 1)
         {
@@ -1545,7 +1554,8 @@ void CSWGuiDialogLetterbox::Draw(float f)
 #else
     if (m_bScrollDone == 0)
     {
-        f = std::min(f, 0.5f);
+        if (f > 0.5f)
+            f = 0.5f;
 
         // state 1, the top bar: it grows to the target height and pins its top edge at 0.
         if (m_state == 1)
@@ -1807,8 +1817,9 @@ CSWGuiDialogCinematic::CSWGuiDialogCinematic(CSWGuiManager* pGuiManager)
 
     float fScale = GetResolutionTextScalar();
     float fMaxY = static_cast<float>(m_pGuiManager->m_nScreenHeight) - fScale * 100.0f;
+    float fH = fScale * static_cast<float>(extent.h);
     extent.y = static_cast<int>(fMaxY > static_cast<float>(extent.y) ? static_cast<float>(extent.y) : fMaxY);
-    extent.h = static_cast<int>(fScale * static_cast<float>(extent.h));
+    extent.h = static_cast<int>(fH);
 
     // The list itself is scaled off its own current height rather than the band's.
     CSWGuiExtent listExtent(m_listBox.m_extent);
@@ -2241,12 +2252,14 @@ void CSWGuiDialogTop::SetReplies(int nReplies, CExoString* pReplies)
         m_replies.m_tail.bVisible = 1;
         m_replies.SetReplies(aReplies);
 
-        float fAspect = static_cast<float>(g_SDL_mode.w) / static_cast<float>(g_SDL_mode.h);
-        double dWidth = g_SDL_mode.h * 0.71 * fAspect;
-        m_replies.SetExtent(CSWGuiExtent(static_cast<int>(g_SDL_mode.w * 0.5 - dWidth * 0.5),
-                                         static_cast<int>(g_SDL_mode.h * 0.06 + g_SDL_mode.h * 0.14
-                                               + g_SDL_mode.h * 0.03),
-                                         static_cast<int>(dWidth), static_cast<int>(g_SDL_mode.h * 0.71)));
+        m_replies.SetExtent(CSWGuiExtent(
+            static_cast<int>(g_SDL_mode.w * 0.5
+                             - g_SDL_mode.h * 0.71
+                                   * (static_cast<float>(g_SDL_mode.w) / static_cast<float>(g_SDL_mode.h)) * 0.5),
+            static_cast<int>(g_SDL_mode.h * 0.06 + g_SDL_mode.h * 0.14 + g_SDL_mode.h * 0.03),
+            static_cast<int>(g_SDL_mode.h * 0.71
+                             * (static_cast<float>(g_SDL_mode.w) / static_cast<float>(g_SDL_mode.h))),
+            static_cast<int>(g_SDL_mode.h * 0.71)));
         AddControl(&m_replies);
     }
 

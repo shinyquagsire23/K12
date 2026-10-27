@@ -146,7 +146,11 @@ public:
     void UpdateAbilityModifiedSkillRanks();
     void ClearKnownSpells();
     void ClearKnownSpells(unsigned char nClassPos);
+#if KOTOR1
+    short GetMaxHitPoints();
+#else
     unsigned short GetMaxHitPoints();
+#endif
     signed char CalcStatModifier(unsigned char nStat);
     signed char GetSTRMod() { return CalcStatModifier(m_abScores[0]); }
     signed char GetDEXMod() { return static_cast<signed char>(CalcStatModifier(m_abScores[1]) + m_nDEXArmorAdjust); }

@@ -882,6 +882,7 @@ void CSWGuiSaveLoad::LoadPCAutoSave(const CExoString& sModule)
 
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(10, 1);
     UpdateScreen(0.033333335f, 0, 0);
+    CResStruct autoSaveStruct;
     pErf->ExportFilesFromERF(sGamePath, CExoString("GAMEINPROGRESS:"), static_cast<void*>(0), LoadScreenUpdate,
                              10, 10);
 
@@ -900,14 +901,13 @@ void CSWGuiSaveLoad::LoadPCAutoSave(const CExoString& sModule)
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(35, 1);
     UpdateScreen(0.033333335f, 0, 0);
 
-    CResGFF* pGff = new CResGFF(0, const_cast<char*>("NFO "), CResRef("savenfo"));
     CResStruct topStruct;
+    CResGFF* pGff = new CResGFF(0, const_cast<char*>("NFO "), CResRef("savenfo"));
     pGff->GetTopLevelStruct(&topStruct);
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(40, 1);
     UpdateScreen(0.033333335f, 0, 0);
 
     KOTOR_AUTOSAVE_PARAMS params;
-    CResStruct autoSaveStruct;
     if (pGff->GetStructFromStruct(&autoSaveStruct, &topStruct, const_cast<char*>("AUTOSAVEPARAMS")) != 0)
         params.LoadFromGFF(pGff, autoSaveStruct);
 
@@ -980,6 +980,7 @@ void CSWGuiSaveLoad::LoadPCAutoSave(const CExoString& sModule, bool bCloud)
 
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(10, 1);
     UpdateScreen(0.033333335f, 0, 0);
+    CResStruct autoSaveStruct;
     pErf->ExportFilesFromERF(sGamePath, CExoString("GAMEINPROGRESS:"), reinterpret_cast<void*>(-1), LoadScreenUpdate,
                              10, 10);
 
@@ -998,14 +999,13 @@ void CSWGuiSaveLoad::LoadPCAutoSave(const CExoString& sModule, bool bCloud)
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(35, 1);
     UpdateScreen(0.033333335f, 0, 0);
 
-    CResGFF* pGff = new CResGFF(0, const_cast<char*>("NFO "), CResRef("savenfo"));
     CResStruct topStruct;
+    CResGFF* pGff = new CResGFF(0, const_cast<char*>("NFO "), CResRef("savenfo"));
     pGff->GetTopLevelStruct(&topStruct);
     g_pAppManager->m_pClientExoApp->SetLoadBarProgress(40, 1);
     UpdateScreen(0.033333335f, 0, 0);
 
     KOTOR_AUTOSAVE_PARAMS params;
-    CResStruct autoSaveStruct;
     if (pGff->GetStructFromStruct(&autoSaveStruct, &topStruct, const_cast<char*>("AUTOSAVEPARAMS")) != 0)
         params.LoadFromGFF(pGff, autoSaveStruct);
 

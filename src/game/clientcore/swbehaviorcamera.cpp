@@ -86,6 +86,7 @@ static inline Vector RotateVector(const Vector& v, const Quaternion& q)
 CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFollowPart)
     : CAurBehavior(pCameraObject)
 {
+    Vector vNew;
     m_pCameraObject = pCameraObject;
     AddDependency(pFollowPart);
     m_pTargetObject = pFollowPart;
@@ -98,19 +99,13 @@ CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFol
     m_vPlayerFacing.x = 0.0f;
     m_vPlayerFacing.y = 0.0f;
     m_vPlayerFacing.z = 0.0f;
-#if KOTOR1
+    m_fReserved4 = 100.0f;
+    m_fTurn = 0.0f;
+    m_fTiltAccel = 0.0f;
+    m_fTilt = m_fPresetPitch;
+    m_fTurnAccel = 0.0f;
+#if !KOTOR1
     // K1 keeps the style's tilt speed and has no pitch integrator.
-    m_fTurn = 0.0f;
-    m_fTiltAccel = 0.0f;
-    m_fTurnAccel = 0.0f;
-    m_fReserved4 = 100.0f;
-    m_fTilt = m_fPresetPitch;
-#else
-    m_fTurn = 0.0f;
-    m_fTiltAccel = 0.0f;
-    m_fTurnAccel = 0.0f;
-    m_fReserved4 = 100.0f;
-    m_fTilt = m_fPresetPitch;
     m_fTiltAccelInput = 0.0f;
 #endif
 
@@ -120,7 +115,6 @@ CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFol
     m_qDesiredOrientation = YawPitchRoll(Yaw(normalize(qTarget.zdir())), m_fPresetPitch, 0.0f);
     m_pOwner->SetOrientation(m_qDesiredOrientation);
 
-    Vector vNew;
     Vector vTarget = m_pTargetObject.m_pObject->GetPosition();
     vTarget.z += 1.5f;
     vNew = vTarget - qTarget.ydir();
@@ -153,9 +147,9 @@ CSWCameraOnAStick::CSWCameraOnAStick(CCameraSettings& settings)
 {
     m_pTargetObject = settings.m_pTarget;
     m_pCameraObject = settings.m_pCameraObject;
-    m_nStyle = -1;
     m_nFollowingBody = settings.m_nFollowingBody;
     m_fCameraOffset = settings.m_fTargetHeight;
+    m_nStyle = -1;
 
     SetCameraStyle(settings.m_nStyle);
 
@@ -173,12 +167,12 @@ CSWCameraOnAStick::CSWCameraOnAStick(CCameraSettings& settings)
     m_fReserved4 = 100.0f;
     m_fTurn = 0.0f;
     m_fTiltAccel = 0.0f;
-    m_fTurnAccel = 0.0f;
 #if KOTOR1
     m_fTilt = m_fPresetPitch;  // K1 saves no pitch in CCameraSettings
 #else
     m_fTilt = settings.m_fTilt;
 #endif
+    m_fTurnAccel = 0.0f;
 
     Quaternion qTarget = m_pTargetObject.m_pObject->GetOrientation();
     m_qDesiredOrientation = YawPitchRoll(Yaw(normalize(qTarget.zdir())), m_fPresetPitch, 0.0f);
@@ -201,9 +195,9 @@ CSWCameraOnAStick::CSWCameraOnAStick(CCameraSettings& settings)
     m_bIsDialog = 1;
     m_bKeepCurrentYaw = 1;
 
-    m_vLastPosition = vNew;
-    m_vLastTargetPosition = vNew;
     m_vLastCameraPosition = vNew;
+    m_vLastTargetPosition = vNew;
+    m_vLastPosition = vNew;
 
     m_bMouseRotating = g_bMouseCameraRotateToggle;
 }

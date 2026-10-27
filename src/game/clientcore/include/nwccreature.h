@@ -45,8 +45,8 @@ public:
     struct {
         unsigned int    m_fCastTargetX;
         unsigned int    m_fCastTargetY;
+        unsigned int    m_fCastTargetZ;
     }                   m_castTargetGroup;
-    unsigned int        m_fCastTargetZ;
     struct {
         unsigned int    m_nSpellId;
         unsigned int    m_nCastLevel;
@@ -66,7 +66,6 @@ public:
         m_nAttackResult = o.m_nAttackResult;
         m_nReserved1 = o.m_nReserved1;
         m_reaxnGroup = o.m_reaxnGroup;
-        m_fCastTargetZ = o.m_fCastTargetZ;
         m_castTargetGroup = o.m_castTargetGroup;
         m_spellGroup = o.m_spellGroup;
         m_fAnimationSpeed = o.m_fAnimationSpeed;

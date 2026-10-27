@@ -2026,11 +2026,14 @@ void CSWCVisualEffectOnObject::ApplyBumpedOutShell(unsigned short nId)
 void CSWCVisualEffectOnObject::ApplyCheat(unsigned short nId)
 {
     CExoString sTexture;
-    CSWCObject* pTarget = GetTargetCSWCObject();
-    CSWCObject* pSource = GetSourceCSWCObject();
+    CSWCObject* pTarget;
+    CSWCObject* pSource;
+    CSWCProjectile* pProjectile;
+    pTarget = GetTargetCSWCObject();
+    pSource = GetSourceCSWCObject();
     if (pTarget == 0 || pSource == 0)
         return;
-    CSWCProjectile* pProjectile = new CSWCProjectile();
+    pProjectile = new CSWCProjectile();
     if (nId == PROGFX_CHEAT_KNGPOW)
         sTexture = "vpr_kngpow";
     if (pProjectile->LoadModel(CResRef(sTexture), CSWCObject::ANIM_MODEL_BODY, 0))
@@ -2042,7 +2045,10 @@ void CSWCVisualEffectOnObject::ApplyCheat(unsigned short nId)
 
         CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
         if (pModule != 0 && pModule->m_pArea != 0)
-            pProjectile->AttachToScene(pModule->m_pArea->m_pScene);
+        {
+            CAurScene* pScene = pModule->m_pArea->m_pScene;
+            pProjectile->AttachToScene(pScene);
+        }
 
         pProjectile->SetAnimation(CSWCAnimBaseProjectile::PROJECTILE_ANIMATION_TRAVEL);
         pProjectile->SetProjectileSpellId(CSWCProjectile::SPELL_ID_COW);
@@ -2249,7 +2255,6 @@ int CSWCVisualEffectOnObject::LoadVisualEffect(unsigned short a, int b, unsigned
     int nProgFXImpact K2_UNSET;
     int nProgFXDuration K2_UNSET;
     int nProgFXCessation K2_UNSET;
-    int nSizeCategory;
     int bHasImpact;
     int bHasDuration;
     int bHasCessation;
@@ -2275,111 +2280,114 @@ int CSWCVisualEffectOnObject::LoadVisualEffect(unsigned short a, int b, unsigned
     g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
         sId, CExoString("Imp_HeadCon_Node"), &sHeadCon);
 
-    if (sHeadCon != "")
     {
-        CExoString sTmp;
-        if ((g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bFlags0Hi & 1) == 0)
+        int nSizeCategory;
+        if (sHeadCon != "")
         {
-            if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                    sId, CExoString("LowQuality"), &sTmp))
-                sHeadCon = sTmp;
-        }
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nViolenceLevel <= 1)
-        {
-            if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                    sId, CExoString("LowViolence"), &sTmp))
-                sHeadCon = sTmp;
-        }
-    }
-
-    g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-        sId, CExoString("Imp_Impact_Node"), &sImpactNode);
-    if (sImpactNode != "")
-    {
-        CExoString sTmp;
-        if ((g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bFlags0Hi & 1) == 0)
-        {
-            if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                    sId, CExoString("LowQuality"), &sTmp))
-                sImpactNode = sTmp;
-        }
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nViolenceLevel <= 1)
-        {
-            CExoString sLowViolence;
-            if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                    sId, CExoString("LowViolence"), &sLowViolence))
-                g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                    sLowViolence, CExoString("Imp_Impact_Node"), &sImpactNode);
-        }
-    }
-
-    CSWCCreature* pCreature = pTarget->AsSWCCreature();
-    if (pCreature == 0
-        || g_pRules->m_p2DArrays->m_pAppearance->GetINTEntry(
-               pCreature->m_pCreatureAppearance->m_nAppearanceId,
-               CTwoDimArrays::COL2DA_APPEARANCETABLE_SIZECATEGORY, &nSizeCategory) == 0)
-    {
-        nSizeCategory = CREATURE_SIZE_MEDIUM;
-    }
-    else
-    {
-        if (nSizeCategory > CREATURE_SIZE_LARGE)
-            g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                sId, CExoString("Imp_Root_H_Node"), &sRootNode);
-        if (nSizeCategory >= CREATURE_SIZE_LARGE
-            && sRootNode.GetLength() == 0)
-            g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                sId, CExoString("Imp_Root_L_Node"), &sRootNode);
-    }
-    if (nSizeCategory > CREATURE_SIZE_INVALID
-        && sRootNode.GetLength() == 0)
-        g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-            sId, CExoString("Imp_Root_M_Node"), &sRootNode);
-
-    if (sRootNode != "")
-    {
-        CExoString sTmp;
-        if ((g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bFlags0Hi & 1) == 0)
-        {
-            if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                    sId, CExoString("LowQuality"), &sTmp))
-                sRootNode = sTmp;
-        }
-        if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nViolenceLevel <= 1)
-        {
-            CExoString sLowViolence;
-            if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                    sId, CExoString("LowViolence"), &sLowViolence))
+            CExoString sTmp;
+            if ((g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bFlags0Hi & 1) == 0)
             {
-                if (nSizeCategory > CREATURE_SIZE_LARGE)
-                    g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                        sLowViolence, CExoString("Imp_Root_H_Node"), &sRootNode);
-                if (nSizeCategory >= CREATURE_SIZE_LARGE
-                    && sRootNode.GetLength() == 0)
-                    g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                        sLowViolence, CExoString("Imp_Root_L_Node"), &sRootNode);
-                if (nSizeCategory > CREATURE_SIZE_INVALID
-                    && sRootNode.GetLength() == 0)
-                    g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
-                        sLowViolence, CExoString("Imp_Root_M_Node"), &sRootNode);
+                if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                        sId, CExoString("LowQuality"), &sTmp))
+                    sHeadCon = sTmp;
+            }
+            if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nViolenceLevel <= 1)
+            {
+                if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                        sId, CExoString("LowViolence"), &sTmp))
+                    sHeadCon = sTmp;
             }
         }
-    }
 
-    if (sRootNode.GetLength() == 0)
-    {
-        bHasImpact = g_pRules->m_p2DArrays->m_pVisualEffect->GetINTEntry(
-            sId, CExoString("ProgFX_Impact"), &nProgFXImpact);
-        bHasDuration = g_pRules->m_p2DArrays->m_pVisualEffect->GetINTEntry(
-            sId, CExoString("ProgFX_Duration"), &nProgFXDuration);
-        bHasCessation = g_pRules->m_p2DArrays->m_pVisualEffect->GetINTEntry(
-            sId, CExoString("ProgFX_Cessation"), &nProgFXCessation);
-    }
-    else
-    {
-        bHasImpact = 0;
-        bHasDuration = 0;
-        bHasCessation = 0;
+        g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+            sId, CExoString("Imp_Impact_Node"), &sImpactNode);
+        if (sImpactNode != "")
+        {
+            CExoString sTmp;
+            if ((g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bFlags0Hi & 1) == 0)
+            {
+                if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                        sId, CExoString("LowQuality"), &sTmp))
+                    sImpactNode = sTmp;
+            }
+            if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nViolenceLevel <= 1)
+            {
+                CExoString sLowViolence;
+                if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                        sId, CExoString("LowViolence"), &sLowViolence))
+                    g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                        sLowViolence, CExoString("Imp_Impact_Node"), &sImpactNode);
+            }
+        }
+
+        CSWCCreature* pCreature = pTarget->AsSWCCreature();
+        if (pCreature == 0
+            || g_pRules->m_p2DArrays->m_pAppearance->GetINTEntry(
+                   pCreature->m_pCreatureAppearance->m_nAppearanceId,
+                   CTwoDimArrays::COL2DA_APPEARANCETABLE_SIZECATEGORY, &nSizeCategory) == 0)
+        {
+            nSizeCategory = CREATURE_SIZE_MEDIUM;
+        }
+        else
+        {
+            if (nSizeCategory > CREATURE_SIZE_LARGE)
+                g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                    sId, CExoString("Imp_Root_H_Node"), &sRootNode);
+            if (nSizeCategory >= CREATURE_SIZE_LARGE
+                && sRootNode.GetLength() == 0)
+                g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                    sId, CExoString("Imp_Root_L_Node"), &sRootNode);
+        }
+        if (nSizeCategory > CREATURE_SIZE_INVALID
+            && sRootNode.GetLength() == 0)
+            g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                sId, CExoString("Imp_Root_M_Node"), &sRootNode);
+
+        if (sRootNode != "")
+        {
+            CExoString sTmp;
+            if ((g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bFlags0Hi & 1) == 0)
+            {
+                if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                        sId, CExoString("LowQuality"), &sTmp))
+                    sRootNode = sTmp;
+            }
+            if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nViolenceLevel <= 1)
+            {
+                CExoString sLowViolence;
+                if (g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                        sId, CExoString("LowViolence"), &sLowViolence))
+                {
+                    if (nSizeCategory > CREATURE_SIZE_LARGE)
+                        g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                            sLowViolence, CExoString("Imp_Root_H_Node"), &sRootNode);
+                    if (nSizeCategory >= CREATURE_SIZE_LARGE
+                        && sRootNode.GetLength() == 0)
+                        g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                            sLowViolence, CExoString("Imp_Root_L_Node"), &sRootNode);
+                    if (nSizeCategory > CREATURE_SIZE_INVALID
+                        && sRootNode.GetLength() == 0)
+                        g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
+                            sLowViolence, CExoString("Imp_Root_M_Node"), &sRootNode);
+                }
+            }
+        }
+
+        if (sRootNode.GetLength() == 0)
+        {
+            bHasImpact = g_pRules->m_p2DArrays->m_pVisualEffect->GetINTEntry(
+                sId, CExoString("ProgFX_Impact"), &nProgFXImpact);
+            bHasDuration = g_pRules->m_p2DArrays->m_pVisualEffect->GetINTEntry(
+                sId, CExoString("ProgFX_Duration"), &nProgFXDuration);
+            bHasCessation = g_pRules->m_p2DArrays->m_pVisualEffect->GetINTEntry(
+                sId, CExoString("ProgFX_Cessation"), &nProgFXCessation);
+        }
+        else
+        {
+            bHasImpact = 0;
+            bHasDuration = 0;
+            bHasCessation = 0;
+        }
     }
 
     pPlaceable = 0;
@@ -2473,15 +2481,16 @@ int CSWCVisualEffectOnObject::LoadVisualEffect(unsigned short a, int b, unsigned
             m_sTargetNode = "root";
     }
 
+    Gob* pModel;
     if (pSource != 0)
     {
-        Gob* pModel = pSource->GetModel(CSWCObject::ANIM_MODEL_BODY, 1);
+        pModel = pSource->GetModel(CSWCObject::ANIM_MODEL_BODY, 1);
         if (pModel != 0 && pModel->GetPart(m_sSourceNode.CStr()) == 0)
             m_sSourceNode = "root";
     }
     if (pTarget != 0)
     {
-        Gob* pModel = pTarget->GetModel(CSWCObject::ANIM_MODEL_BODY, 1);
+        pModel = pTarget->GetModel(CSWCObject::ANIM_MODEL_BODY, 1);
         if (pModel != 0 && pModel->GetPart(m_sTargetNode.CStr()) == 0)
             m_sTargetNode = "root";
     }

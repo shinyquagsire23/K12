@@ -318,6 +318,28 @@ int CResGFF::OnResourceServiced()
     return 1;
 }
 
+#if KOTOR1
+// K1 writes a value into the field data through these: an aligned destination takes a plain store,
+// a misaligned one goes through the fortified memcpy.
+template <class T> static inline void WriteAligned(T* p, const T& t)
+{
+    if ((reinterpret_cast<uint64_t>(p) & (sizeof(T) - 1)) == 0) {
+        *p = t;
+    } else {
+        K1FortifiedMemcpy(reinterpret_cast<char*>(p), &t, sizeof(T));
+    }
+}
+template <class T> static inline void WriteAligned(T* p, uint64_t nByteOffset, const T& t)
+{
+    WriteAligned(reinterpret_cast<T*>(reinterpret_cast<unsigned char*>(p) + nByteOffset), t);
+}
+// The length prefix of a string or void field is always copied.
+template <class T> static inline void WriteUnaligned(T* p, const T& t)
+{
+    K1FortifiedMemcpy(reinterpret_cast<char*>(p), &t, sizeof(T));
+}
+#endif
+
 unsigned int CResGFF::ByteSwap(unsigned int n)
 {
     ::ByteSwap(&n);
@@ -362,6 +384,7 @@ unsigned int CResGFF::GetFieldCount(CResGFFStruct* pStruct)
 #if KOTOR1
 // EFFECTIVE (K1): the null result's two stores (pointer, aligned flag) issue in the other order; armv7 -O3
 // exact.
+// EFFECTIVE: PERM, -g re-probed v2259: return 0, a named null local, one result local assigned in the branch.
 CResGFFAlignedPtr<CResGFFStruct> CResGFF::GetStruct(CResStruct* pStruct)
 {
     if (pStruct != 0 && m_pHeader != 0 && m_paStructs != 0) {
@@ -446,7 +469,7 @@ CResGFFAlignedPtr<CResGFFField> CResGFF::GetField(CResGFFStruct* pStruct, unsign
                 if (nData < tmp) {
                     tmp = pStruct->nDataOrDataOffset;
                     ::ByteSwap(&tmp);
-                    return CResGFFAlignedPtr<CResGFFField>(&m_paFields.m_p[tmp]);
+                    return m_paFields + tmp;
                 }
             } else if (m_pFieldIndices != 0) {
                 unsigned int byteOff = nData + nIndex * 4;
@@ -456,7 +479,7 @@ CResGFFAlignedPtr<CResGFFField> CResGFF::GetField(CResGFFStruct* pStruct, unsign
                 if (nEnd <= tmp) {
                     tmp = *reinterpret_cast<unsigned int*>(m_pFieldIndices + byteOff);
                     ::ByteSwap(&tmp);
-                    return CResGFFAlignedPtr<CResGFFField>(&m_paFields.m_p[tmp]);
+                    return m_paFields + tmp;
                 }
             }
         }
@@ -531,7 +554,7 @@ CResGFFAlignedPtr<CResGFFField> CResGFF::GetField(CResStruct* pStruct, unsigned 
                             if (dataIdx < tmp) {
                                 tmp = rec.nDataOrDataOffset;
                                 ::ByteSwap(&tmp);
-                                return CResGFFAlignedPtr<CResGFFField>(&m_paFields.m_p[tmp]);
+                                return m_paFields + tmp;
                             }
                         } else if (m_pFieldIndices != 0) {
                             tmp = rec.nDataOrDataOffset;
@@ -546,7 +569,7 @@ CResGFFAlignedPtr<CResGFFField> CResGFF::GetField(CResStruct* pStruct, unsigned 
                                 ::ByteSwap(&tmp);
                                 tmp = *reinterpret_cast<unsigned int*>(paFieldIndices + tmp + nIndex * 4);
                                 ::ByteSwap(&tmp);
-                                return CResGFFAlignedPtr<CResGFFField>(&m_paFields.m_p[tmp]);
+                                return m_paFields + tmp;
                             }
                         }
                     }
@@ -2315,26 +2338,15 @@ void* CResGFF::AddDataLayoutList(unsigned int nOffset, unsigned int nInsertPos, 
 #if KOTOR1
 CResGFFAlignedPtr<CResGFFField> CResGFF::AddField(CResStruct* pStruct, char* sLabel, unsigned int nType)
 {
-    if (pStruct == 0 || sLabel == 0) {
+    if (sLabel == 0) {
         return CResGFFAlignedPtr<CResGFFField>();
     }
-    if (m_pHeader == 0 || m_paStructs == 0) {
-        return CResGFFAlignedPtr<CResGFFField>();
-    }
-    unsigned int idx = pStruct->nStructIndex;
-    unsigned int tmp = m_pHeader->nStructCount;
-    ::ByteSwap(&tmp);
-    if (idx >= tmp) {
-        return CResGFFAlignedPtr<CResGFFField>();
-    }
-    CResGFFAlignedPtr<CResGFFStruct> pRec(&m_paStructs.m_p[pStruct->nStructIndex]);
+    CResGFFAlignedPtr<CResGFFStruct> pRec = GetStruct(pStruct);
     if (pRec.m_p == 0) {
         return CResGFFAlignedPtr<CResGFFField>();
     }
     CResGFFStruct rec = pRec.Get();
-    tmp = m_pHeader->nFieldCount;
-    ::ByteSwap(&tmp);
-    unsigned int nFieldIndex = tmp;
+    unsigned int nFieldIndex = ByteSwap(m_pHeader->nFieldCount);
     if (nFieldIndex >= m_nFieldCapacity) {
         m_nFieldCapacity = m_nFieldGrow + nFieldIndex;
         m_nFieldGrow *= 2;
@@ -2343,16 +2355,14 @@ CResGFFAlignedPtr<CResGFFField> CResGFF::AddField(CResStruct* pStruct, char* sLa
         m_paFields.Delete();
         m_paFields = pNew;
     }
-    tmp = nFieldIndex + 1;
-    ::ByteSwap(&tmp);
-    m_pHeader->nFieldCount = tmp;
+    m_pHeader->nFieldCount = ByteSwap(nFieldIndex + 1);
 
-    tmp = rec.nFieldCount;
-    ::ByteSwap(&tmp);
-    unsigned int nStructFieldCount = tmp;
+    unsigned int nStructFieldCount = ByteSwap(rec.nFieldCount);
     // nDataOrDataOffset is the (byte-swapped) field index at 0 fields, the head of a promoted
     // FieldIndices array at 1 field, and a growable array at 2 or more.
-    if (nStructFieldCount != 0) {
+    if (nStructFieldCount == 0) {
+        rec.nDataOrDataOffset = ByteSwap(nFieldIndex);
+    } else {
         CResGFFAlignedPtr<unsigned int> pSlot;
         if (nStructFieldCount == 1) {
             pSlot = static_cast<unsigned int*>(AddDataLayoutField(NEW_DATA_OFFSET, 0, 8));
@@ -2361,37 +2371,21 @@ CResGFFAlignedPtr<CResGFFField> CResGFF::AddField(CResStruct* pStruct, char* sLa
             }
             pSlot.Set(rec.nDataOrDataOffset);
         } else {
-            tmp = rec.nDataOrDataOffset;
-            ::ByteSwap(&tmp);
             pSlot = static_cast<unsigned int*>(AddDataLayoutField(
-                tmp, nStructFieldCount * 4, nStructFieldCount * 4 + 4));
+                ByteSwap(rec.nDataOrDataOffset), nStructFieldCount * 4, nStructFieldCount * 4 + 4));
             if (pSlot.m_p == 0) {
                 return CResGFFAlignedPtr<CResGFFField>();
             }
         }
-        tmp = nFieldIndex;
-        ::ByteSwap(&tmp);
-        CResGFFAlignedPtr<unsigned int>(pSlot.m_p + nStructFieldCount).Set(tmp);
-        tmp = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pSlot.m_p) - m_pFieldIndices);
-        ::ByteSwap(&tmp);
-        rec.nDataOrDataOffset = tmp;
-    } else {
-        tmp = nFieldIndex;
-        ::ByteSwap(&tmp);
-        rec.nDataOrDataOffset = tmp;
+        WriteAligned(pSlot.m_p + nStructFieldCount, ByteSwap(nFieldIndex));
+        rec.nDataOrDataOffset = ByteSwap(static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pSlot.m_p) - m_pFieldIndices));
     }
-    tmp = nStructFieldCount + 1;
-    ::ByteSwap(&tmp);
-    rec.nFieldCount = tmp;
+    rec.nFieldCount = ByteSwap(nStructFieldCount + 1);
     pRec.Set(rec);
 
     CResGFFField field;
-    tmp = AddLabel(sLabel);
-    ::ByteSwap(&tmp);
-    field.nLabelIndex = tmp;
-    tmp = nType;
-    ::ByteSwap(&tmp);
-    field.nType = tmp;
+    field.nLabelIndex = ByteSwap(AddLabel(sLabel));
+    field.nType = ByteSwap(nType);
     field.nDataOrDataOffset = INVALID_INDEX;
     m_paFields.SetAt(nFieldIndex, field);
     return CResGFFAlignedPtr<CResGFFField>(&m_paFields.m_p[nFieldIndex]);
@@ -2483,7 +2477,6 @@ void* CResGFF::AddField(CResStruct* pStruct, char* sLabel, unsigned int nType)
 int CResGFF::AddListElement(CResStruct* pOut, CResList* pList, unsigned int nType)
 {
     unsigned int nSize;
-    unsigned int tmp;
     if (pOut != 0 && pList != 0) {
         if (m_bResourceBacked != 0) {
             InitializeForWriting();
@@ -2498,43 +2491,28 @@ int CResGFF::AddListElement(CResStruct* pOut, CResList* pList, unsigned int nTyp
         CResGFFField* pField = GetField(&pList->m_struct, nField);
         if (pField != 0) {
 #endif
-            tmp = pField->nType;
-            ::ByteSwap(&tmp);
-            if (tmp == FIELD_LIST) {
+            if (ByteSwap(pField->nType) == FIELD_LIST) {
                 unsigned int* pList2 = static_cast<unsigned int*>(GetDataLayoutList(pField, nSize));
                 if (pList2 != 0 && nSize >= 4) {
-                    tmp = pList2[0];
-                    ::ByteSwap(&tmp);
-                    unsigned int nCount = tmp;
+                    unsigned int nCount = ByteSwap(pList2[0]);
                     unsigned int nNewCount = nCount + 1;
                     uint64_t nNewSize = static_cast<uint64_t>(nNewCount) * 4;
                     if (nNewSize <= nSize) {
-                        tmp = pField->nDataOrDataOffset;
-                        ::ByteSwap(&tmp);
-                        unsigned int* pNew = static_cast<unsigned int*>(AddDataLayoutList(tmp, static_cast<unsigned int>(nNewSize), nCount * 4 + 8));
+                        unsigned int* pNew = static_cast<unsigned int*>(AddDataLayoutList(ByteSwap(pField->nDataOrDataOffset), static_cast<unsigned int>(nNewSize), nCount * 4 + 8));
                         if (pNew != 0) {
-                            tmp = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pNew) - m_pListIndices);
-                            ::ByteSwap(&tmp);
-                            pField->nDataOrDataOffset = tmp;
+                            pField->nDataOrDataOffset = ByteSwap(static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pNew) - m_pListIndices));
 #if KOTOR1
                             pFieldRef.Set(field);
 #endif
                             unsigned int nNewStructIdx = AddStruct(nType);
                             pOut->nStructIndex = nNewStructIdx;
                             if (nNewStructIdx != INVALID_INDEX) {
-                                tmp = nNewCount;
-                                ::ByteSwap(&tmp);
 #if KOTOR1
-                                CResGFFAlignedPtr<unsigned int>(pNew).Set(tmp);
+                                WriteAligned(pNew, ByteSwap(nNewCount));
+                                WriteAligned(pNew, nNewSize, ByteSwap(pOut->nStructIndex));
 #else
-                                pNew[0] = tmp;
-#endif
-                                tmp = pOut->nStructIndex;
-                                ::ByteSwap(&tmp);
-#if KOTOR1
-                                CResGFFAlignedPtr<unsigned int>(reinterpret_cast<unsigned int*>(reinterpret_cast<unsigned char*>(pNew) + nNewSize)).Set(tmp);
-#else
-                                *reinterpret_cast<unsigned int*>(reinterpret_cast<unsigned char*>(pNew) + nNewSize) = tmp;
+                                pNew[0] = ByteSwap(nNewCount);
+                                *reinterpret_cast<unsigned int*>(reinterpret_cast<unsigned char*>(pNew) + nNewSize) = ByteSwap(pOut->nStructIndex);
 #endif
                                 return 1;
                             }
@@ -2901,16 +2879,21 @@ int CResGFF::WriteFieldDOUBLE(CResStruct* pStruct, double value, char* sLabel)
 #endif
             unsigned long long* pData = static_cast<unsigned long long*>(AddDataField(NEW_DATA_OFFSET, 0, 8));
             if (pData != 0) {
+#if KOTOR1
+                pField->nDataOrDataOffset = ByteSwap(static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData));
+                pFieldRef.Set(field);
+                union { unsigned long long v; double d; } tmp;
+                tmp.d = value;
+                WriteAligned(pData, ByteSwap64(tmp.v));
+#else
                 union { unsigned int nOff; unsigned long long v; double d; } tmp;
                 tmp.nOff = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData);
                 ::ByteSwap(&tmp.nOff);
                 pField->nDataOrDataOffset = tmp.nOff;
-#if KOTOR1
-                pFieldRef.Set(field);
-#endif
                 tmp.d = value;
                 ::ByteSwap(&tmp.v);
                 *pData = tmp.v;
+#endif
                 return 1;
             }
         }
@@ -2982,16 +2965,15 @@ int CResGFF::WriteFieldCExoString(CResStruct* pStruct, const CExoString& value, 
             unsigned int* pData = static_cast<unsigned int*>(AddDataField(NEW_DATA_OFFSET, 0, nLen + 4));
             if (pData != 0) {
                 uint64_t nCopyLen = nLen;
+#if KOTOR1
+                pField->nDataOrDataOffset = ByteSwap(static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData));
+                pFieldRef.Set(field);
+                // K1: the length prefix is written for an empty string too.
+                WriteUnaligned(pData, ByteSwap(nLen));
+#else
                 unsigned int tmp = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData);
                 ::ByteSwap(&tmp);
                 pField->nDataOrDataOffset = tmp;
-#if KOTOR1
-                pFieldRef.Set(field);
-                // K1: the length prefix is written for an empty string too.
-                tmp = nLen;
-                ::ByteSwap(&tmp);
-                *pData = tmp;
-#else
                 if (nLen != 0) {
                     tmp = nLen;
                     ::ByteSwap(&tmp);
@@ -3022,7 +3004,6 @@ int CResGFF::WriteFieldCExoLocString(CResStruct* pStruct, const CExoLocString& v
     int bSuccess = 0;
     unsigned int nTotal;
     unsigned int* pData;
-    unsigned int tmp;
     int nLang;
     unsigned char nGender;
     unsigned int nLen;
@@ -3039,20 +3020,12 @@ int CResGFF::WriteFieldCExoLocString(CResStruct* pStruct, const CExoLocString& v
             }
             pData = static_cast<unsigned int*>(AddDataField(NEW_DATA_OFFSET, 0, nTotal + 4));
             if (pData != 0) {
-                tmp = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData);
-                ::ByteSwap(&tmp);
-                field.nDataOrDataOffset = tmp;
+                field.nDataOrDataOffset = ByteSwap(static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData));
                 pFieldRef.Set(field);
-                tmp = nTotal;
-                ::ByteSwap(&tmp);
-                CResGFFAlignedPtr<unsigned int>(pData).Set(tmp);
-                tmp = static_cast<unsigned int>(value.m_nStrRef);
-                ::ByteSwap(&tmp);
-                CResGFFAlignedPtr<unsigned int>(pData + 1).Set(tmp);
-                tmp = static_cast<unsigned int>(value.GetStringCount());
-                ::ByteSwap(&tmp);
+                WriteAligned(pData, ByteSwap(nTotal));
+                WriteAligned(pData + 1, ByteSwap(static_cast<unsigned int>(value.m_nStrRef)));
+                WriteAligned(pData + 2, ByteSwap(static_cast<unsigned int>(value.GetStringCount())));
                 bSuccess = 1;
-                CResGFFAlignedPtr<unsigned int>(pData + 2).Set(tmp);
                 unsigned int* pFirstRecord = pData + 3;
                 unsigned char* p = reinterpret_cast<unsigned char*>(pFirstRecord);
                 for (unsigned int i = 0; i < static_cast<unsigned int>(value.GetStringCount()); i++) {
@@ -3064,12 +3037,8 @@ int CResGFF::WriteFieldCExoLocString(CResStruct* pStruct, const CExoLocString& v
                         nLang = -1;
                         nGender = 0;
                     }
-                    tmp = static_cast<unsigned int>(nLang * 2) + static_cast<unsigned int>(nGender);
-                    ::ByteSwap(&tmp);
-                    CResGFFAlignedPtr<unsigned int>(reinterpret_cast<unsigned int*>(p)).Set(tmp);
-                    tmp = nLen;
-                    ::ByteSwap(&tmp);
-                    CResGFFAlignedPtr<unsigned int>(reinterpret_cast<unsigned int*>(p) + 1).Set(tmp);  // idiom-exempt: GFF field-data bytes (a substring's length word)
+                    WriteAligned(reinterpret_cast<unsigned int*>(p), ByteSwap(static_cast<unsigned int>(nLang * 2) + static_cast<unsigned int>(nGender)));
+                    WriteAligned(reinterpret_cast<unsigned int*>(p) + 1, ByteSwap(nLen));  // idiom-exempt: GFF field-data bytes (a substring's length word)
                     memcpy(p + 8, str.CStr(), nLen);  // idiom-exempt: runtime length (file/buffer-derived, no compile-time size)
                     p = p + 8 + nLen;
                 }
@@ -3165,16 +3134,15 @@ int CResGFF::WriteFieldVOID(CResStruct* pStruct, const void* pData, unsigned int
             unsigned int* pDest = static_cast<unsigned int*>(AddDataField(NEW_DATA_OFFSET, 0, nBytes + 4));
             if (pDest != 0) {
                 uint64_t nLen = nBytes;
+#if KOTOR1
+                pField->nDataOrDataOffset = ByteSwap(static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pDest) - m_pFieldData));
+                pFieldRef.Set(field);
+                // K1: the length prefix is written for an empty field too.
+                WriteUnaligned(pDest, ByteSwap(nBytes));
+#else
                 unsigned int tmp = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pDest) - m_pFieldData);
                 ::ByteSwap(&tmp);
                 pField->nDataOrDataOffset = tmp;
-#if KOTOR1
-                pFieldRef.Set(field);
-                // K1: the length prefix is written for an empty field too.
-                tmp = nBytes;
-                ::ByteSwap(&tmp);
-                *pDest = tmp;
-#else
                 if (nBytes != 0) {
                     tmp = nBytes;
                     ::ByteSwap(&tmp);
@@ -3448,17 +3416,20 @@ int CResGFF::WriteGFFFile(char* pDest)
     }
     tmp = m_pHeader->nFieldDataCount;
     ::ByteSwap(&tmp);
-    if (fwrite(m_pFieldData, tmp, 1, f) != 1) {
+    unsigned int nFieldDataBytes = tmp;
+    if (fwrite(m_pFieldData, nFieldDataBytes, 1, f) != 1) {
         return 0;
     }
     tmp = m_pHeader->nFieldIndicesCount;
     ::ByteSwap(&tmp);
-    if (fwrite(m_pFieldIndices, tmp, 1, f) != 1) {
+    unsigned int nFieldIndicesBytes = tmp;
+    if (fwrite(m_pFieldIndices, nFieldIndicesBytes, 1, f) != 1) {
         return 0;
     }
     tmp = m_pHeader->nListIndicesCount;
     ::ByteSwap(&tmp);
-    if (fwrite(m_pListIndices, tmp, 1, f) != 1) {
+    unsigned int nListIndicesBytes = tmp;
+    if (fwrite(m_pListIndices, nListIndicesBytes, 1, f) != 1) {
         return 0;
     }
     fclose(f);

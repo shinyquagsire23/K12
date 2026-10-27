@@ -892,8 +892,8 @@ lblRender:
 
 void CClientExoAppInternal::UpdateRumble(float fRumble)
 {
-    float fLow = 0.0f;
     float fHigh;
+    float fLow = 0.0f;
     if (fRumble > 0.0f && m_bAreaNotReadyToDisplay == 0 &&
         m_pInGameGui->IsGlobalFadeObscuring() == 0 &&
         m_pInGameGui->IsGlobalFading() == 0) {
@@ -914,7 +914,8 @@ void CClientExoAppInternal::UpdateRumble(float fRumble)
                         fPos = r.fPhase;
                     }
                     float fMagLow, fMagHigh;
-                    if (m_rumblePatternList.m_pArray[r.nPattern].GetMagnitudes(fPos, fMagLow, fMagHigh) != 0) {
+                    int nPattern = r.nPattern;
+                    if (m_rumblePatternList.m_pArray[nPattern].GetMagnitudes(fPos, fMagLow, fMagHigh) != 0) {
                         fLow = (fLow > fMagLow) ? fLow : fMagLow;
                         fHigh = (fHigh > fMagHigh) ? fHigh : fMagHigh;
                     } else {
@@ -4893,9 +4894,10 @@ void CClientExoAppInternal::ReadAndSetVideoMode(int bPublish, int bFullScreen)
     _devicemodeA devMode;
     CExoString sString;
     CExoIni cIni;
+    int nMode;
     ReadVideoModeSettings(&nWidth, &nHeight, &nBpp, &nRefresh);
     m_pClientOptions->SetFullScreenEnabled(bFullScreen);
-    int nMode = CAuroraInterface::GetExactVideoMode(nWidth, nHeight, nBpp, nRefresh);
+    nMode = CAuroraInterface::GetExactVideoMode(nWidth, nHeight, nBpp, nRefresh);
     if (nMode == -1) {
         nMode = CAuroraInterface::GetNearestVideoMode(800, 600, 32, 60);
         memset(&devMode, 0, sizeof(devMode));
@@ -4904,8 +4906,10 @@ void CClientExoAppInternal::ReadAndSetVideoMode(int bPublish, int bFullScreen)
     }
     SetVideoMode(nMode, VIDEO_SCREEN_CURRENT);
     if (bPublish) {
-        g_nScreenWidth = g_SDL_mode.w;
-        g_nScreenHeight = g_SDL_mode.h;
+        int nScreenW = g_SDL_mode.w;
+        int nScreenH = g_SDL_mode.h;
+        g_nScreenWidth = nScreenW;
+        g_nScreenHeight = nScreenH;
         g_nBitsPerPixel = 32;
     }
 }
@@ -5775,15 +5779,13 @@ void CClientExoAppInternal::AttachPlayerGameObjectToArea()
     CSWCCreature* pCreature;
     if (m_oidCreatureCache == m_playerCreatureId) {
         pCreature = static_cast<CSWCCreature*>(m_pCreatureCache);
-        if (pCreature == 0)
-            return;
     } else {
         pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_playerCreatureId);
         m_pCreatureCache = pCreature;
         m_oidCreatureCache = m_playerCreatureId;
-        if (pCreature == 0)
-            return;
     }
+    if (pCreature == 0)
+        return;
 
     pCreature->AttachToScene(m_pModule->m_pArea->m_pScene);
 
@@ -7076,6 +7078,7 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
     CExoIni    ini;
     CExoString sValue;
     CExoString sDialogFile;
+    CExoDebug* pDebug;
 
     m_pSysAdminMessenger = new CClientMsgSysAdmin;
     m_pWorldTimer        = new CWorldTimer;
@@ -7108,7 +7111,7 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
 
     if (ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Game Options"),
                          CExoString("EnableReleaseLogging"))) {
-        CExoDebug* pDebug = g_pExoBase->m_pDebug;
+        pDebug = g_pExoBase->m_pDebug;
         pDebug->m_bEnableReleaseLogging = sValue.AsINT() != 0;
     }
 
@@ -7144,8 +7147,9 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
         StartLoadMusic();
     }
 
+    int nLanguage = ASLPlat_GetCurrentLanguage();
     const char* pszDialog;
-    switch (ASLPlat_GetCurrentLanguage()) {
+    switch (nLanguage) {
         case ASL_LANGUAGE_FRENCH:   pszDialog = "HD0:DIALOGFR"; break;
         case ASL_LANGUAGE_ITALIAN:  pszDialog = "HD0:DIALOGIT"; break;
         case ASL_LANGUAGE_GERMAN:   pszDialog = "HD0:DIALOGDE"; break;
@@ -7160,15 +7164,16 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
     srand(GetTickCount());
     m_pModule = new CSWCModule;
 
-    {
-        int bRead = ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
-                                     CExoString("Texture Quality"));
-        int nPack = sValue.AsINT();
-        if (bRead && nPack <= 3)
-            SetTexturePack(static_cast<unsigned char>(nPack), 0);
-        else
-            SetTexturePack(2, 0);
-    }
+    int nPack;
+    int nDisableMovies;
+    int nLang;
+    int bRead = ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
+                                 CExoString("Texture Quality"));
+    nPack = sValue.AsINT();
+    if (bRead && nPack <= 3)
+        SetTexturePack(static_cast<unsigned char>(nPack), 0);
+    else
+        SetTexturePack(2, 0);
 
     if (ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
                          CExoString("FullScreen"))) {
@@ -7179,36 +7184,33 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
                           CExoString("FullScreen"));
     }
 
-    int nDisableMovies = 0;
+    nDisableMovies = 0;
     if (ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Game Options"),
                          CExoString("Disable Movies")))
         nDisableMovies = sValue.AsINT();
     m_bDisableMovies = nDisableMovies;
     m_bDisableIntroMovies = 0;
 
+    int bPlayMovies = nDisableMovies == 0;
     m_pClientOptions->SetDefaultOptions();
     if (!m_pClientOptions->LoadOptions())
         m_pClientOptions->SetDefaultOptions();
     g_pAurora->ResetGammaRamp(g_pAppManager->m_pClientExoApp->GetClientOptions()->GetGammaSetting(), 0);
-    ReadAndSetVideoMode(nDisableMovies == 0, 1);
+    ReadAndSetVideoMode(bPlayMovies, 1);
 
-    {
-        int bRead = ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
-                                     CExoString("V-Sync"));
-        if (bRead && g_pAppManager->m_pClientExoApp->GetClientOptions())
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetVSync(sValue.AsINT());
-    }
+    bRead = ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
+                             CExoString("V-Sync"));
+    if (bRead && g_pAppManager->m_pClientExoApp->GetClientOptions())
+        g_pAppManager->m_pClientExoApp->GetClientOptions()->SetVSync(sValue.AsINT());
 
-    {
-        int bRead = ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
-                                     CExoString("Anisotropy"));
-        if (bRead && g_pAppManager->m_pClientExoApp->GetClientOptions())
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetAnisotropy(sValue.AsINT());
-    }
+    bRead = ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
+                             CExoString("Anisotropy"));
+    if (bRead && g_pAppManager->m_pClientExoApp->GetClientOptions())
+        g_pAppManager->m_pClientExoApp->GetClientOptions()->SetAnisotropy(sValue.AsINT());
 
-    int bReadAA = ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
-                                   CExoString("Anti Aliasing"));
-    if (bReadAA && g_pAppManager->m_pClientExoApp->GetClientOptions()) {
+    bRead = ini.ReadIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Graphics Options"),
+                             CExoString("Anti Aliasing"));
+    if (bRead && g_pAppManager->m_pClientExoApp->GetClientOptions()) {
         g_pAppManager->m_pClientExoApp->GetClientOptions()->SetAntiAlias(static_cast<unsigned char>(sValue.AsINT()));
         g_is_antialias_on = sValue.AsINT() > 0;
         if (sValue.AsINT() >= 1)
@@ -7217,7 +7219,7 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
     }
 
     m_clientName = g_pTlkTable->GetSimpleString(0);
-    int nLang = g_pTlkTable->GetLanguageVersion();
+    nLang = g_pTlkTable->GetLanguageVersion();
     m_clientLanguage = nLang;
     if (nLang == 5) {
 #ifndef _WIN32   // category 0 is LC_ALL in the Windows CRT, which knows the name: decimal commas

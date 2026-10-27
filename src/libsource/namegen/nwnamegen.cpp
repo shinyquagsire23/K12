@@ -231,59 +231,37 @@ CExoString CSWNameGen::GetRandomName(unsigned short nSpecies, unsigned char nGen
                 CExoString sFirstPart;
                 CExoString sLastPart;
 
-                if (m_bTableLoaded) {
-                    m_bTableLoaded = 0;
-                    m_pRes->Release();
-                }
+                UnloadNameTable();
 
                 if (nLength == 0) {
-                    SetResRef(CResRef(sFirst), 0);
-                    if (!m_pRes->Demand())
+                    if (!LoadNameTable(sFirst))
                         return CExoString("");
-                    m_bTableLoaded = 1;
                     sFirstPart = GetRandomName(0);
-                    if (m_bTableLoaded) {
-                        m_bTableLoaded = 0;
-                        m_pRes->Release();
-                    }
-                    SetResRef(CResRef(sLast), 0);
-                    if (!m_pRes->Demand())
+                    UnloadNameTable();
+                    if (!LoadNameTable(sLast))
                         return CExoString("");
-                    m_bTableLoaded = 1;
                     sLastPart = GetRandomName(0);
-                    if (m_bTableLoaded) {
-                        m_bTableLoaded = 0;
-                        m_pRes->Release();
-                    }
+                    UnloadNameTable();
                     if (sFirstPart.GetLength() >= 1 &&
                         sLastPart.GetLength() >= 1)
                         return sFirstPart + CExoString(" ") + sLastPart;
                     return CExoString("");
                 }
 
-                int nSplit = nLength / 3 + rand_wincompatible() % (nLength / 3);
                 int nLimit = (nLength * 2) / 3;
+                int j;
+                int nSplit = nLength / 3 + rand_wincompatible() % (nLength / 3);
                 if (nSplit >= 1) {
-                    for (int i = nSplit; i > 0; i--) {
-                        for (int j = i; j < nLimit; j++) {
-                            SetResRef(CResRef(sFirst), 0);
-                            if (!m_pRes->Demand())
+                    for (; nSplit > 0; nSplit--) {
+                        for (j = nSplit; j < nLimit; j++) {
+                            if (!LoadNameTable(sFirst))
                                 return CExoString("");
-                            m_bTableLoaded = 1;
                             sFirstPart = GetRandomName(static_cast<unsigned char>(j));
-                            if (m_bTableLoaded) {
-                                m_bTableLoaded = 0;
-                                m_pRes->Release();
-                            }
-                            SetResRef(CResRef(sLast), 0);
-                            if (!m_pRes->Demand())
+                            UnloadNameTable();
+                            if (!LoadNameTable(sLast))
                                 return CExoString("");
-                            m_bTableLoaded = 1;
                             sLastPart = GetRandomName(static_cast<unsigned char>(nLength - j));
-                            if (m_bTableLoaded) {
-                                m_bTableLoaded = 0;
-                                m_pRes->Release();
-                            }
+                            UnloadNameTable();
                             if (sFirstPart.GetLength() >= 1 &&
                                 sLastPart.GetLength() > 0)
                                 break;
@@ -308,12 +286,10 @@ CExoString CSWNameGen::GetRandomName(unsigned short nSpecies, unsigned char nGen
     }
 
     if (sFirst.GetLength() >= 1) {
-        SetResRef(CResRef(sFirst), 0);
-        if (!m_pRes->Demand())
+        if (!LoadNameTable(sFirst))
             return CExoString("");
     } else if (sLast.GetLength() >= 1) {
-        SetResRef(CResRef(sLast), 0);
-        if (!m_pRes->Demand())
+        if (!LoadNameTable(sLast))
             return CExoString("");
     } else {
         return CExoString("");

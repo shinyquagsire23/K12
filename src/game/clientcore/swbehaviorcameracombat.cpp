@@ -234,9 +234,8 @@ void CSWBehaviorCameraCombat::PutAtDesiredLocation()
 
     Vector vPos(pCreature->m_position);
     // The heading is the direction to the target.
-    CSWCObject* pObj = pTarget->AsSWCObject();
-    Vector vDiff(pObj->m_position.x - vPos.x, pObj->m_position.y - vPos.y,
-                 pObj->m_position.z - vPos.z);
+    Vector vTargetPos = pTarget->AsSWCObject()->m_position;
+    Vector vDiff(vTargetPos.x - vPos.x, vTargetPos.y - vPos.y, vTargetPos.z - vPos.z);
     float fYaw = Yaw(vDiff);
     vDiff.Normalize();
 

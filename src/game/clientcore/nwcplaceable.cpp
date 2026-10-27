@@ -660,10 +660,11 @@ void CSWCPlaceable::AnimationUpdate()
             case CSWCAnimBase::CLIENT_ANIMATION_PLACEABLE_OFF_TO_ON: {
                 CExoString sSound;
                 int nSoundRow;
+                int nAppearance = m_nAppearanceType;
 #if KOTOR1
                 // K1: a hidden body bag whose parent corpse is still in the area always sounds.
                 int bFound = g_pRules->m_p2DArrays->m_pPlaceables->GetINTEntry(
-                    m_nAppearanceType, "SoundAppType", &nSoundRow);
+                    nAppearance, "SoundAppType", &nSoundRow);
                 CSWSPlaceable* pServerPlaceable = GetServerPlaceable();
                 if (pServerPlaceable != 0 && pServerPlaceable->m_bIsBodyBag != 0 && m_pArea != 0 &&
                     pServerPlaceable->m_bIsBodyBagVisible == 0 &&
@@ -674,7 +675,7 @@ void CSWCPlaceable::AnimationUpdate()
                 if (bFound != 0) {
 #else
                 if (g_pRules->m_p2DArrays->m_pPlaceables->GetINTEntry(
-                        m_nAppearanceType, "SoundAppType", &nSoundRow) != 0) {
+                        nAppearance, "SoundAppType", &nSoundRow) != 0) {
 #endif
                     // No sound column applies: fall out of the switch rather than report failure.
                     int nResult;

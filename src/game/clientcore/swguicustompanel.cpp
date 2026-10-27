@@ -70,12 +70,10 @@ CSWGuiCustomPanel::CSWGuiCustomPanel(CSWGuiManager* pGuiManager, CSWCCreature* p
     StopLoadFromLayout();
 #if KOTOR1
     ScaleExtentForResolution();
-    {
-        // K1: centre the 4:3 page horizontally on a wider screen.
-        CSWGuiExtent extent = m_extent;
-        extent.x += (g_SDL_mode.w - static_cast<int>(g_SDL_mode.h / 768.0f * 1024.0f)) / 2;
-        SetExtent(extent);
-    }
+    // K1: centre the 4:3 page horizontally on a wider screen.
+    CSWGuiExtent extent = m_extent;
+    extent.x += (g_SDL_mode.w - static_cast<int>(g_SDL_mode.h / 768.0f * 1024.0f)) / 2;
+    SetExtent(extent);
 #endif
 
     m_aButtons[0].AddEvent(INPUTEVENT_GUI_A, this,

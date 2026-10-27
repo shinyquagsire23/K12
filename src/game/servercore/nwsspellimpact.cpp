@@ -360,10 +360,11 @@ int CSWSAreaOfEffectObject::LineSegmentIntersectAreaOfEffect(Vector from, Vector
     float fDisc = fB * fB - 4.0f * fA * fC;
     if (fDisc < 0.0f)
         return 0;
+    float fNegB = -fB;
     float fSqrtDisc = __builtin_sqrtf(fDisc);
-    float fX1 = (-fB - fSqrtDisc) / (2.0f * fA);
-    float fMinX = (from.x < to.x) ? from.x : to.x;
+    float fX1 = (fNegB - fSqrtDisc) / (2.0f * fA);
     float fMaxX = (from.x > to.x) ? from.x : to.x;
+    float fMinX = (from.x < to.x) ? from.x : to.x;
     float fX2 = (fSqrtDisc - fB) / (2.0f * fA);
     if (fMinX >= fX1 && fMaxX <= fX1)
         return 1;
@@ -495,8 +496,8 @@ void CSWSAreaOfEffectObject::LoadAreaEffect(int nRow)
     if (sShape == "C") {
         float fRadius;
         pTable->GetFLOATEntry(m_nAreaEffectId, CExoString("RADIUS"), &fRadius);
-        m_nShape = 0;
         m_fRadius = fRadius;
+        m_nShape = 0;
     } else if (sShape == "R") {
         float fWidth;
         float fLength;

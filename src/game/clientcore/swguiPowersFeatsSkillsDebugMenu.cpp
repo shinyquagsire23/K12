@@ -92,18 +92,13 @@ void CSWGuiPowersFeatsSkillsDebugMenu::CreatePowersSubMenu()
     m_nSelectedRow = 0;
     m_listBox.ClearItems();
     CExoArrayList<CSWGuiControl*> list;
-    int64_t nCount = g_pRules->m_pSpellArray->m_nCount;
+    int nCount = g_pRules->m_pSpellArray->m_nCount;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
-    for (int64_t i = 0; i < nCount; i++) {
+    for (int i = 0; i < nCount; i++) {
         CSWSpell* pSpell = g_pRules->GetSpell(static_cast<int>(i));
         if (pSpell->m_nUserType == 1 && pSpell->m_nNameStrRef != 0) {
-#if KOTOR1
             CExoString s("Add ");
             s = s + g_pRules->GetSpell(static_cast<int>(i))->GetSpellNameText();
-#else
-            CExoString s = CExoString("Add ") +
-                g_pRules->GetSpell(static_cast<int>(i))->GetSpellNameText();
-#endif
             CSWGuiButton* pButton = CreateOption(s,
                 static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPowersFeatsSkillsDebugMenu::OnPowerPicked),
                 pTemplate);

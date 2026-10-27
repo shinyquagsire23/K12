@@ -6646,8 +6646,10 @@ int CSWSMessage::SendServerToPlayerPlayModuleCharacterListResponse(unsigned int 
 
         for (int i = 0; i < nClasses; i++)
         {
-            unsigned char nClass = pCreature->m_pStats->GetClass(static_cast<unsigned char>(i));
-            unsigned char nLevel = pCreature->m_pStats->GetClassLevel(static_cast<unsigned char>(i), 0);
+            unsigned char nClass;
+            unsigned char nLevel;
+            nClass = pCreature->m_pStats->GetClass(static_cast<unsigned char>(i));
+            nLevel = pCreature->m_pStats->GetClassLevel(static_cast<unsigned char>(i), 0);
             WriteBYTE(nClass, 8);
             WriteBYTE(nLevel, 8);
         }
@@ -8335,9 +8337,10 @@ void CSWSMessage::WriteGameObjUpdate_MajorGUIPanels(CSWSPlayer* pPlayer)
             && g_pAppManager->m_pClientExoApp->GetInGameGui()->GetPartyAccessPanelUp(1))
         {
             int nNPC = g_pAppManager->m_pClientExoApp->GetInGameGui()->GetCurrentEquipScreenNPC();
+            CSWSCreature* pNPC;
             unsigned long long oidNPC =
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(nNPC, 0, 1);
-            CSWSCreature* pNPC = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidNPC);
+            pNPC = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidNPC);
             if (pNPC != 0)
             {
                 pPlayer->m_oidSWSObject = oidNPC;
@@ -8377,12 +8380,13 @@ void CSWSMessage::WriteGameObjUpdate_MajorGUIPanels(CSWSPlayer* pPlayer)
 
         for (int i = 0; i < aChangedSlots.m_count; i++)
         {
+            CSWSItem* pItem;
             WriteCHAR('G', 8);
             WriteCHAR('I', 8);
             WriteCHAR('A', 8);
             WriteDWORD(aChangedSlots.m_pArray[i], 32);
 
-            CSWSItem* pItem = static_cast<CSWSItem*>(pSubject->AsSWSCreature()->m_pInventory
+            pItem = static_cast<CSWSItem*>(pSubject->AsSWSCreature()->m_pInventory
                                   ->GetItemInSlot(aChangedSlots.m_pArray[i]));
             WriteOBJECTIDServer(pItem->m_objectId);
             AddItemAppearanceToMessage(pItem);
@@ -8415,8 +8419,9 @@ void CSWSMessage::WriteGameObjUpdate_MajorGUIPanels(CSWSPlayer* pPlayer)
         }
     }
 
-    WriteRepositoryUpdate(pPlayer, pSubject, pSubject->AsSWSCreature()->GetItemRepository(1),
-                          pPlayer->m_pInventoryGUI->m_pInventory, 1, 'R');
+    CItemRepository* pOwnRepository = pSubject->AsSWSCreature()->GetItemRepository(1);
+    CSWSPlayerLUOInventory* pInventory = pPlayer->m_pInventoryGUI->m_pInventory;
+    WriteRepositoryUpdate(pPlayer, pSubject, pOwnRepository, pInventory, 1, 'R');
 #else
     if (nContainerId == CGameObjectArray::INVALIDOBJID)
     {
@@ -8482,8 +8487,9 @@ void CSWSMessage::WriteGameObjUpdate_MajorGUIPanels(CSWSPlayer* pPlayer)
         }
     }
 
-    WriteRepositoryUpdate(pPlayer, pObject, pObject->AsSWSCreature()->GetItemRepository(1),
-                          pPlayer->m_pInventoryGUI->m_pInventory, 1, 'R');
+    CItemRepository* pOwnRepository = pObject->AsSWSCreature()->GetItemRepository(1);
+    CSWSPlayerLUOInventory* pInventory = pPlayer->m_pInventoryGUI->m_pInventory;
+    WriteRepositoryUpdate(pPlayer, pObject, pOwnRepository, pInventory, 1, 'R');
 #endif
 }
 

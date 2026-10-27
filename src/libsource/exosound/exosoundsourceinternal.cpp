@@ -652,15 +652,9 @@ int CExoSoundSourceInternal::Play(int a, int b)
         int bNotLooping = (m_bLooping == 0);
 
         if (b == 0)
-        {
             m_nPlaybackPosition = 0;
-            if (m_p3DVoice == 0)
-                goto Try2D;
-        }
-        else if (m_p3DVoice == 0)
-        {
+        if (m_p3DVoice == 0)
             goto Try2D;
-        }
 
         if (m_p3DVoice->m_nChannel != EXOSOUND_NO_CHANNEL)
         {
@@ -716,7 +710,7 @@ Try2D:
 
         if (m_b3D != 0)
         {
-            if (!(magnitude(m_pSound->m_vListenerPosition - m_vPosition) <= m_fMaxDistance))
+            if (!GetWithinRangeOfListener())
             {
                 Release();
                 if (m_bLooping == 0)

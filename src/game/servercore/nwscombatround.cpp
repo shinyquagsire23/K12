@@ -154,8 +154,8 @@ int CSWSCombatRound::GetFunctionalBonusEffectAttacks() {
 }
 
 void CSWSCombatRound::SetSpellCastRound(int spell, int round) {
-    m_spellCastRound = round;
     m_bSpellCastRound = 1;
+    m_spellCastRound = round;
     m_pCreature->m_nCurrentAttackAction = 4;
     m_pCreature->m_nCurrentForcePower = spell;
 }
@@ -191,8 +191,8 @@ void CSWSCombatRound::StartCombatRoundCast(int a1, int a2, unsigned long long oi
     }
 
     m_bRoundPaused = 0;
-    m_nPauseTimer = 0;
     m_oidPauseSource = OBJECT_INVALID;
+    m_nPauseTimer = 0;
     m_pCreature->m_nCurrentAttackAction = 4;
     m_pCreature->m_nCurrentForcePower = a1;
     if (bSkip)
@@ -475,9 +475,9 @@ void CSWSCombatRound::AddCombatStepAction(unsigned int nTimer, unsigned long lon
 void CSWSCombatRound::AddCutsceneAttackAction(unsigned long long oid, int a2, int a3, int a4) {
     CSWSCombatRoundAction* pAction = new CSWSCombatRoundAction();
     pAction->m_nActionType = CSWSCombatRoundAction::TYPE_ATTACK;
+    pAction->m_oidTarget = oid;
     pAction->m_nAnimation = SERVER_ANIMATION_ATTACK;
     pAction->m_nAnimationTime = (g_nCombatStretch + 3000) / 2;
-    pAction->m_oidTarget = oid;
     pAction->m_bCutsceneAttack = 1;
     pAction->m_nCutsceneAnimation = a2;
     pAction->m_nCutsceneAttackResult = a3;
@@ -547,10 +547,10 @@ void CSWSCombatRound::AddAttackAction(unsigned long long objectId, unsigned shor
     } else {
         pAction->m_nActionType = CSWSCombatRoundAction::TYPE_ATTACK;
     }
+    pAction->m_nAnimationTime = (g_nCombatStretch + 3000) / 2;
     pAction->m_nAnimation = SERVER_ANIMATION_ATTACK;
     pAction->m_bIsPC = a;
     pAction->m_oidTarget = objectId;
-    pAction->m_nAnimationTime = (g_nCombatStretch + 3000) / 2;
     pAction->m_nNumAttacks = c;
     AddAction(pAction, -1);
 

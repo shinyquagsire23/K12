@@ -580,15 +580,7 @@ int C2DA::GetCExoStringEntry(int nRow, const CExoString& sColumn, CExoString* pV
 #if KOTOR1
 int C2DA::GetCExoStringEntry(const CExoString& sRow, int nColumn, CExoString* pValue) {
     int nRow = GetRowIndex(sRow);
-    if (nColumn < 0) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (nRow == -1) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_nColumns <= nColumn) {
+    if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
         *pValue = m_sDefaultValue;
         return 0;
     }
@@ -606,15 +598,7 @@ int C2DA::GetCExoStringEntry(const CExoString& sRow, int nColumn, CExoString* pV
 #else
 int C2DA::GetCExoStringEntry(const CExoString& sRow, int nColumn, CExoString* pValue) {
     int nRow = GetRowIndex(sRow);
-    if (nColumn < 0) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (nRow == -1) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_nColumns <= nColumn) {
+    if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
         *pValue = m_sDefaultValue;
         return 0;
     }
@@ -636,11 +620,7 @@ int C2DA::GetCExoStringEntry(const CExoString& sRow, const CExoString& sColumn,
                              CExoString* pValue) {
     int nRow = GetRowIndex(sRow);
     int nColumn = GetColumnIndex(sColumn);
-    if (nRow == -1) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (nColumn == -1) {
+    if (nRow == -1 || nColumn == -1) {
         *pValue = m_sDefaultValue;
         return 0;
     }
@@ -660,11 +640,7 @@ int C2DA::GetCExoStringEntry(const CExoString& sRow, const CExoString& sColumn,
                              CExoString* pValue) {
     int nRow = GetRowIndex(sRow);
     int nColumn = GetColumnIndex(sColumn);
-    if (nRow == -1) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (nColumn == -1) {
+    if (nRow == -1 || nColumn == -1) {
         *pValue = m_sDefaultValue;
         return 0;
     }
@@ -754,15 +730,7 @@ int C2DA::GetFLOATEntry(int nRow, const CExoString& sColumn, float* pfValue) {
 #if KOTOR1
 int C2DA::GetFLOATEntry(const CExoString& sRow, int nColumn, float* pfValue) {
     int nRow = GetRowIndex(sRow);
-    if (nColumn < 0) {
-        *pfValue = m_sDefaultValue.AsFLOAT();
-        return 0;
-    }
-    if (nRow == -1) {
-        *pfValue = m_sDefaultValue.AsFLOAT();
-        return 0;
-    }
-    if (m_nColumns <= nColumn) {
+    if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
         *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
@@ -787,15 +755,7 @@ int C2DA::GetFLOATEntry(const CExoString& sRow, int nColumn, float* pfValue) {
 #else
 int C2DA::GetFLOATEntry(const CExoString& sRow, int nColumn, float* pfValue) {
     int nRow = GetRowIndex(sRow);
-    if (nColumn < 0) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
-        return 0;
-    }
-    if (nRow == -1) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
-        return 0;
-    }
-    if (m_nColumns <= nColumn) {
+    if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
         *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
         return 0;
     }
@@ -815,11 +775,7 @@ int C2DA::GetFLOATEntry(const CExoString& sRow, int nColumn, float* pfValue) {
 int C2DA::GetFLOATEntry(const CExoString& sRow, const CExoString& sColumn, float* pfValue) {
     int nRow = GetRowIndex(sRow);
     int nColumn = GetColumnIndex(sColumn);
-    if (nRow == -1) {
-        *pfValue = m_sDefaultValue.AsFLOAT();
-        return 0;
-    }
-    if (nColumn == -1) {
+    if (nRow == -1 || nColumn == -1) {
         *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
@@ -849,11 +805,7 @@ int C2DA::GetFLOATEntry(const CExoString& sRow, const CExoString& sColumn, float
 int C2DA::GetFLOATEntry(const CExoString& sRow, const CExoString& sColumn, float* pfValue) {
     int nRow = GetRowIndex(sRow);
     int nColumn = GetColumnIndex(sColumn);
-    if (nRow == -1) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
-        return 0;
-    }
-    if (nColumn == -1) {
+    if (nRow == -1 || nColumn == -1) {
         *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
         return 0;
     }
@@ -959,15 +911,7 @@ int C2DA::GetINTEntry(int nRow, const CExoString& sColumn, int* pnValue) {
 #if KOTOR1
 int C2DA::GetINTEntry(const CExoString& sRow, int nColumn, int* pnValue) {
     int nRow = GetRowIndex(sRow);
-    if (nColumn < 0) {
-        *pnValue = m_sDefaultValue.AsINT();
-        return 0;
-    }
-    if (nRow == -1) {
-        *pnValue = m_sDefaultValue.AsINT();
-        return 0;
-    }
-    if (m_nColumns <= nColumn) {
+    if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
         *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
@@ -1003,15 +947,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, int nColumn, int* pnValue) {
 #else
 int C2DA::GetINTEntry(const CExoString& sRow, int nColumn, int* pnValue) {
     int nRow = GetRowIndex(sRow);
-    if (nColumn < 0) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
-        return 0;
-    }
-    if (nRow == -1) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
-        return 0;
-    }
-    if (m_nColumns <= nColumn) {
+    if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
         *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
         return 0;
     }
@@ -1043,11 +979,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, int nColumn, int* pnValue) {
 int C2DA::GetINTEntry(const CExoString& sRow, const CExoString& sColumn, int* pnValue) {
     int nRow = GetRowIndex(sRow);
     int nColumn = GetColumnIndex(sColumn);
-    if (nRow == -1) {
-        *pnValue = m_sDefaultValue.AsINT();
-        return 0;
-    }
-    if (nColumn == -1) {
+    if (nRow == -1 || nColumn == -1) {
         *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
@@ -1084,11 +1016,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, const CExoString& sColumn, int* pn
 int C2DA::GetINTEntry(const CExoString& sRow, const CExoString& sColumn, int* pnValue) {
     int nRow = GetRowIndex(sRow);
     int nColumn = GetColumnIndex(sColumn);
-    if (nRow == -1) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
-        return 0;
-    }
-    if (nColumn == -1) {
+    if (nRow == -1 || nColumn == -1) {
         *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
         return 0;
     }

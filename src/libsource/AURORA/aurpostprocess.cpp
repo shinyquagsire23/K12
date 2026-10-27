@@ -148,19 +148,22 @@ int SiblingOrderCmp(void const* pA, void const* pB)
     MdlNodeTriMesh* p1 = (*static_cast<MdlNode* const*>(pA))->AsMdlNodeTriMesh();
     MdlNodeTriMesh* p2 = (*static_cast<MdlNode* const*>(pB))->AsMdlNodeTriMesh();
 
-    int nResult = p1 != 0 ? 1 : (p2 != 0 ? -1 : 0);
-    if (p1 == 0 || p2 == 0)
-        return nResult;
-
-    int n1 = p1->m_nTransparencyHint;
-    int n2 = p2->m_nTransparencyHint;
-    if (n1 == n2)
-        return 0;
-    if (n1 == 0)
-        return 1;
-    if (n2 == 0)
-        return -1;
-    return n1 <= n2 ? -1 : 1;
+    int nResult = (p1 != 0 || p2 != 0) ? -1 : 0;
+    if (p1 != 0)
+        nResult = 1;
+    if (p1 != 0 && p2 != 0) {
+        int n1 = p1->m_nTransparencyHint;
+        int n2 = p2->m_nTransparencyHint;
+        if (n1 == n2)
+            nResult = 0;
+        else if (n1 == 0)
+            nResult = 1;
+        else if (n2 == 0)
+            nResult = -1;
+        else
+            nResult = n1 <= n2 ? -1 : 1;
+    }
+    return nResult;
 }
 
 // Sorts the child list when any tri-mesh child asks for a sibling order, then recurses.

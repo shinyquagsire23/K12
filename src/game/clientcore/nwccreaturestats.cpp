@@ -141,10 +141,11 @@ CSWCCreatureStats::CSWCCreatureStats(CSWCCreature* pCreature)
     m_nAppearanceType = m_nRace;
     m_classes[0].m_nClass = CSWClass::CCLASS_SOLDIER;
 
-    m_pSkillRanks = new unsigned char[g_pRules->m_nNumSkills];
-    m_pSkillRanksBase = new unsigned char[g_pRules->m_nNumSkills];
-    memset(m_pSkillRanks, 0, g_pRules->m_nNumSkills);  // idiom-exempt: dynamic byte count == the new[] alloc above, not a struct copy
-    memset(m_pSkillRanksBase, 0, g_pRules->m_nNumSkills);  // idiom-exempt: dynamic byte count == the new[] alloc above, not a struct copy
+    CSWRules* pRules = g_pRules;
+    m_pSkillRanks = new unsigned char[pRules->m_nNumSkills];
+    m_pSkillRanksBase = new unsigned char[pRules->m_nNumSkills];
+    memset(m_pSkillRanks, 0, pRules->m_nNumSkills);  // idiom-exempt: dynamic byte count == the new[] alloc above, not a struct copy
+    memset(m_pSkillRanksBase, 0, pRules->m_nNumSkills);  // idiom-exempt: dynamic byte count == the new[] alloc above, not a struct copy
 
     m_pCombatInformation = new CCombatInformation();
     m_bCombatInformationSet = 0;
@@ -187,7 +188,11 @@ CSWCCreatureStats::~CSWCCreatureStats()
     // m_classes[2] is left to its own destructor.
 }
 
+#if KOTOR1
+short CSWCCreatureStats::GetMaxHitPoints()
+#else
 unsigned short CSWCCreatureStats::GetMaxHitPoints()
+#endif
 {
     return m_nMaxHitPoints;
 }
@@ -1026,24 +1031,34 @@ int CSWCCreatureStats::GetCombatModeDamageModifier(CSWCCreature* pCreature)
 CExoString CSWCCreatureStats::GetGeneralDamageBonusString(CSWCCreature* pCreature, int nHand)
 {
     CExoString strReturn("");
+    CCombatInformation* pInfo;
+    unsigned int nDie;
+    unsigned int nNumDice;
+    unsigned char nOverrideNumDice;
+    char cBonus;
+    CClientExoApp* pApp;
+    unsigned long long id;
+    CSWCItem* pItem;
+    CSWBaseItem* pBase;
+    int nModifier;
+
     if (pCreature == 0)
         return strReturn;
-    CCombatInformation* pInfo = m_pCombatInformation;
+    pInfo = m_pCombatInformation;
     if (pInfo == 0)
         return strReturn;
 
-    unsigned int nNumDice = pInfo->m_nDefaultDamageDiceCount;
-    unsigned int nDie = pInfo->m_nDefaultDamageDie;
-    unsigned char nOverrideNumDice = pInfo->m_nOverrideNumDice;
-    char cBonus;
+    nNumDice = pInfo->m_nDefaultDamageDiceCount;
+    nDie = pInfo->m_nDefaultDamageDie;
+    nOverrideNumDice = pInfo->m_nOverrideNumDice;
 
     if (nHand == 0) {
         if (nOverrideNumDice == 0) {
-            CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-            unsigned long long id = pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON);
-            CSWCItem* pItem = pApp->GetItemByGameObjectID(id);
+            pApp = g_pAppManager->m_pClientExoApp;
+            id = pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON);
+            pItem = pApp->GetItemByGameObjectID(id);
             if (pItem) {
-                CSWBaseItem* pBase = g_pRules->GetBaseItem(pItem->m_baseItem);
+                pBase = g_pRules->GetBaseItem(pItem->m_baseItem);
                 if (pBase) {
                     nNumDice = pBase->m_nDieToRoll;
                     nDie = pBase->m_nNumDice;
@@ -1053,14 +1068,14 @@ CExoString CSWCCreatureStats::GetGeneralDamageBonusString(CSWCCreature* pCreatur
             nDie = pInfo->m_nOverrideDie;
             nNumDice = nOverrideNumDice;
         }
-        cBonus = pInfo->m_nStrDamageModOnHand;
+        cBonus = m_pCombatInformation->m_nStrDamageModOnHand;
     } else {
         if (nOverrideNumDice == 0) {
-            CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-            unsigned long long id = pCreature->GetEquippedItemID(MSG_SLOT_LEFT_WEAPON);
-            CSWCItem* pItem = pApp->GetItemByGameObjectID(id);
+            pApp = g_pAppManager->m_pClientExoApp;
+            id = pCreature->GetEquippedItemID(MSG_SLOT_LEFT_WEAPON);
+            pItem = pApp->GetItemByGameObjectID(id);
             if (pItem) {
-                CSWBaseItem* pBase = g_pRules->GetBaseItem(pItem->m_baseItem);
+                pBase = g_pRules->GetBaseItem(pItem->m_baseItem);
                 if (pBase) {
                     nNumDice = pBase->m_nDieToRoll;
                     nDie = pBase->m_nNumDice;
@@ -1070,17 +1085,17 @@ CExoString CSWCCreatureStats::GetGeneralDamageBonusString(CSWCCreature* pCreatur
             nDie = pInfo->m_nOverrideDie;
             nNumDice = nOverrideNumDice;
         }
-        cBonus = pInfo->m_nStrDamageModOffHand;
+        cBonus = m_pCombatInformation->m_nStrDamageModOffHand;
     }
 
-    int nModifier = GetCombatModeDamageModifier(pCreature) + cBonus;
+    nModifier = GetCombatModeDamageModifier(pCreature) + cBonus;
 
     strReturn = CExoString(nDie) + "-" + CExoString(nDie * nNumDice);
 
-    if (nModifier < 0)
-        strReturn = strReturn + " - " + CExoString(-nModifier);
-    else if (nModifier > 0)
+    if (nModifier > 0)
         strReturn = strReturn + " + " + CExoString(nModifier);
+    else if (nModifier < 0)
+        strReturn = strReturn + " - " + CExoString(-nModifier);
 
     return strReturn;
 }
@@ -1090,10 +1105,16 @@ CExoString CSWCCreatureStats::GetDamageBonusString(CSWCCreature* pCreature, int 
     unsigned int nStrRef;
     CExoString strReturn("");
     STR_RES strTemp;
+    CCombatInformation* pInfo;
+    CCombatInformationNode* pMod;
+    unsigned long long nItemID;
+    int iVar7;
+    unsigned char nDamageSubType;
+    int bAppendedExtra;
 
-    CCombatInformation* pInfo = m_pCombatInformation;
+    pInfo = m_pCombatInformation;
     if (pInfo != 0) {
-        CCombatInformationNode* pMod = pInfo->m_damageBonusMods.m_pArray[nHand];
+        pMod = pInfo->m_damageBonusMods.m_pArray[nHand];
         if (pMod->m_nType < 8 && ((1 << pMod->m_nType) & COMBAT_INFO_LISTED) != 0) {
             if (bOffHand != 0) {
                 if (pMod->m_nType == COMBAT_INFO_ONHAND)
@@ -1102,12 +1123,12 @@ CExoString CSWCCreatureStats::GetDamageBonusString(CSWCCreature* pCreature, int 
                 return CExoString("");
             }
 
-            unsigned long long nItemID = pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON);
+            nItemID = pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON);
             if (nItemID != OBJECT_INVALID && pMod->m_nType == COMBAT_INFO_UNARMED)
                 return CExoString("");
 
-            int iVar7 = pMod->m_cValue + GetCombatModeDamageModifier(pCreature);
-            unsigned char nDamageSubType = pMod->m_nModifierType;
+            iVar7 = pMod->m_cValue + GetCombatModeDamageModifier(pCreature);
+            nDamageSubType = pMod->m_nModifierType;
 
             if (iVar7 < 6) {
                 if (iVar7 >= 0)
@@ -1172,7 +1193,7 @@ CExoString CSWCCreatureStats::GetDamageBonusString(CSWCCreature* pCreature, int 
 
             strReturn = strReturn + " " + strTemp.text;
 
-            int bAppendedExtra = 0;
+            bAppendedExtra = 0;
             if (pMod->m_nFlag != 0) {
                 g_pTlkTable->Fetch(0, strTemp, CTlkTable::GENDER_MALE);
                 strReturn = strReturn + " " + strTemp.text + " ";
@@ -1207,11 +1228,19 @@ CExoString CSWCCreatureStats::GetAttackBonusString(CSWCCreature* pCreature, int 
 {
     STR_RES strTemp;
     CExoString strReturn("");
+    CCombatInformation* pInfo;
+    CCombatInformationNode* pMod;
+    unsigned char nType;
+    unsigned long long nItemID;
+    int nAbilityMod;
+    int nNumAttacks;
+    int nCombatModeMod;
+    bool bAppendedExtra;
 
-    CCombatInformation* pInfo = m_pCombatInformation;
+    pInfo = m_pCombatInformation;
     if (pInfo != 0) {
-        CCombatInformationNode* pMod = pInfo->m_attackBonusMods.m_pArray[nHand];
-        unsigned char nType = pMod->m_nType;
+        pMod = pInfo->m_attackBonusMods.m_pArray[nHand];
+        nType = pMod->m_nType;
         if (nType < 8 && ((1 << nType) & COMBAT_INFO_LISTED) != 0 &&
             (pMod->m_nClassReq != g_pRules->m_nNumRaces || pMod->m_nFlag != 0)) {
 
@@ -1222,12 +1251,10 @@ CExoString CSWCCreatureStats::GetAttackBonusString(CSWCCreature* pCreature, int 
                 return CExoString("");
             }
 
-            unsigned long long nItemID = pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON);
+            nItemID = pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON);
             if (nItemID != OBJECT_INVALID && nType == COMBAT_INFO_UNARMED)
                 return CExoString("");
 
-            int nAbilityMod;
-            int nNumAttacks;
             if (bOffHand != 0) {
                 nNumAttacks = GetNumOffHandAttacks();
                 nAbilityMod = m_pCombatInformation->m_nAttackModOffHand;
@@ -1236,7 +1263,7 @@ CExoString CSWCCreatureStats::GetAttackBonusString(CSWCCreature* pCreature, int 
                 nAbilityMod = m_pCombatInformation->m_nAttackModOnHand;
             }
 
-            int nCombatModeMod = GetCombatModeAttackModifier(pCreature);
+            nCombatModeMod = GetCombatModeAttackModifier(pCreature);
 
             if (nNumAttacks > 0) {
                 int nFlat = nAbilityMod + pMod->m_cValue + nCombatModeMod;
@@ -1252,7 +1279,7 @@ CExoString CSWCCreatureStats::GetAttackBonusString(CSWCCreature* pCreature, int 
                 }
             }
 
-            bool bAppendedExtra = false;
+            bAppendedExtra = false;
             if (pMod->m_nFlag != 0) {
                 g_pTlkTable->Fetch(0, strTemp, CTlkTable::GENDER_MALE);
                 strReturn = strReturn + " " + strTemp.text + " ";
@@ -1473,7 +1500,9 @@ void CSWCLevelUpStats::SetCONBase(unsigned char nScore)
     m_abScores[2] = static_cast<unsigned char>(g_pRules->m_paRaces[m_nRace].m_anAbilityAdjust[5] + nScore);
 
     if (GetLevel() == 1 && m_nExperience == 0) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClassLeveledUpIn()];
+        CSWRules* pRules = g_pRules;
+        unsigned char nClass = GetClassLeveledUpIn();
+        CSWClass* pClass = &pRules->m_paClasses[nClass];
         if (pClass) {
             short nHP = m_nHitPointsBase + GetCONMod();
             if (nHP < 2)

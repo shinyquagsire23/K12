@@ -1466,7 +1466,6 @@ int CSWSCreature::AIActionOrientCamera(CSWSObjectActionNode* pNode)
 // Runs the pick-up-item action (id 7), a walk-to, then the reach animation, then AcquireItem.
 int CSWSCreature::AIActionPickUpItem(CSWSObjectActionNode* pNode)
 {
-#if KOTOR1  // K1 frame: the node copies and pItem sit above the two Vectors.
     unsigned long long oidItem;
     unsigned long long oidDest;
     unsigned char bNotify;
@@ -1484,21 +1483,6 @@ int CSWSCreature::AIActionPickUpItem(CSWSObjectActionNode* pNode)
     CSWSPlayer* pPlayer =
         g_pAppManager->m_pServerExoApp->m_pInternal->GetClientObjectByObjectId(m_objectId);
     pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidItem);
-#else
-    Vector vDest;
-    Vector vSafe;
-
-    ActivityManager(2);
-
-    unsigned long long oidItem = pNode->m_args.m_pickUpItemId;
-    unsigned long long oidDest = pNode->m_args.m_pickUpDestId;
-    unsigned char bNotify = pNode->m_args.m_bPickUpNotify;
-
-    CSWSMessage* pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
-    CSWSPlayer* pPlayer =
-        g_pAppManager->m_pServerExoApp->m_pInternal->GetClientObjectByObjectId(m_objectId);
-    CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidItem);
-#endif
 
 #if KOTOR1  // K1: the dying tests are GetIsPCDying() / GetDeadTemp().
     if (GetDead() != 1 && GetIsPCDying() != 1 && GetDeadTemp() != 1 && pItem != 0)
@@ -1537,9 +1521,8 @@ int CSWSCreature::AIActionPickUpItem(CSWSObjectActionNode* pNode)
             vDest = (pArea->ComputeSafeLocation(vDest, 0.5f, m_pPathfindInfo, 1, &vSafe) == 1)
                         ? vSafe
                         : pItem->m_position;
-            Vector vZero;
             AddMoveToPointActionToFront(pNode->m_nGroupId, vDest, m_cachedAreaId, OBJECT_INVALID, 1,
-                                        0.0f, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                        0.0f, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
             return ACTION_COMPLETE;
         }
 
@@ -2611,8 +2594,12 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
     Vector vTarget;
     Vector vDest;
     float fRange K2_UNSET;
-    CSWSItem* pItem;
-    CGameObject* pObject;
+    char nSkillRank;
+    char nSkillBase;
+    int nSkill;
+    int nTakeTwenty;
+    int nRoll;
+    CSWSTrigger* pTrigger;
 
     vTarget.x = 0.0f;
     vTarget.y = 0.0f;
@@ -2622,6 +2609,8 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
     vDest.z = 0.0f;
 
     ActivityManager(2);
+    CSWSItem* pItem;
+    CGameObject* pObject;
 
     oidMine   = pNode->m_args.m_setMineItemId;
     oidTarget = pNode->m_args.m_aqObjectId;
@@ -2731,11 +2720,11 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
         nDC = 1;
 
     // The demolitions rank, +2 when the second GetSkillRank read is above 4.
-    char nSkillRank = m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 0);
-    char nSkillBase = m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 1);
-    int nSkill = nSkillBase > 4 ? nSkillRank + 2 : nSkillRank;
-    int nTakeTwenty = 1;
-    int nRoll = 20;
+    nSkillRank = m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 0);
+    nSkillBase = m_pStats->GetSkillRank(SKILL_DEMOLITIONS, 0, 1);
+    nSkill = nSkillBase > 4 ? nSkillRank + 2 : nSkillRank;
+    nTakeTwenty = 1;
+    nRoll = 20;
     if (m_bCombatState != 0)
     {
         nRoll = rand_wincompatible() % 20 + 1;
@@ -2780,7 +2769,7 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
         }
         else
         {
-            CSWSTrigger* pTrigger = new CSWSTrigger(OBJECT_INVALID);
+            pTrigger = new CSWSTrigger(OBJECT_INVALID);
             pTrigger->SetCreator(m_objectId);
             pTrigger->m_trapType = static_cast<unsigned char>(nTrapType);
             pTrigger->m_scriptSlots[4] = sTrapScript;
@@ -4709,14 +4698,14 @@ float CSWSCreature::ComputeSpeedFactor(float fDistance, int nTime)
     float fNew = 1.0f;
     if (fDist <= fRef) {
         fNew = fDist / fRef;
-        fNew = !(fNew >= 0.01f) ? 0.1f : __builtin_sqrtf(fNew);
+        if (!(fNew >= 0.01f))
+            fNew = 0.1f;
+        else
+            fNew = __builtin_sqrtf(fNew);
         fNew = fNew + static_cast<float>(nTime) / -1000.0f;
     }
-    if (m_fLastSpeedFactor <= 1.0f) {
-        float fCap = static_cast<float>(nTime) / 1000.0f + m_fLastSpeedFactor;
-        if (fNew >= fCap)
-            fNew = fCap;
-    }
+    if (m_fLastSpeedFactor <= 1.0f && fNew >= static_cast<float>(nTime) / 1000.0f + m_fLastSpeedFactor)
+        fNew = static_cast<float>(nTime) / 1000.0f + m_fLastSpeedFactor;
     return fNew <= 0.1f ? 0.1f : fNew;
 }
 
@@ -6886,9 +6875,10 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk_FollowLeader_TeleportForward(
 {
     K2_UNUSED(a);
     // The first GetPathData call's result is never read.
+    int bFollowPointValid = pMemberData->m_bFollowPointValid;
     int nPathIndex = pMemberData->m_nPathIndex;
     int nHead = pFollowData->m_nWriteIndex;
-    pFollowData->GetPathData(pMemberData->m_bFollowPointValid);
+    pFollowData->GetPathData(bFollowPointValid);
     Vector vPos = pFollowData->GetPathData(nPathIndex)->m_pos;
     int i = (nPathIndex > 98) ? 0 : nPathIndex + 1;
     vPos = pFollowData->GetPathData(i)->m_pos;
@@ -6953,8 +6943,8 @@ int CSWSCreature::WalkUpdateLocationTestDistance(const Vector& vFrom, const Vect
     unsigned long long oidDoor     = OBJECT_INVALID;
     unsigned long long oidCreature = OBJECT_INVALID;
     unsigned long long oidIgnored;
-    hitInfo.m_hitObjectId = OBJECT_INVALID;
     hitInfo.m_hitSubType  = 0;
+    hitInfo.m_hitObjectId = OBJECT_INVALID;
 
     int bResult;
     int bNoWalls = static_cast<CSWSArea*>(GetArea())->NoNonWalkPolysDetailed(vFrom, vTo, fZLow, fZHigh,

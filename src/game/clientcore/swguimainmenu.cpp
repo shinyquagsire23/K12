@@ -173,10 +173,12 @@ CSWGuiMainMenu::CSWGuiMainMenu(CSWGuiManager* pGuiManager)
     m_btnWarp.AddEvent(SWGUIEVENT_UNFOCUS, this, static_cast<CSWGuiEventHandler>(&CSWGuiMainMenu::OnExitButton));
     m_btnExit.AddEvent(SWGUIEVENT_UNFOCUS, this, static_cast<CSWGuiEventHandler>(&CSWGuiMainMenu::OnExitButton));
 
+    CAurScene* pScene;
+    CAurCamera* pCamera;
     if (g_bDo3DGUIs)
     {
-        CAurScene*  pScene  = m_3DView.m_scene.m_pScene;
-        CAurCamera* pCamera = m_3DView.m_scene.m_pCamera;
+        pScene = m_3DView.m_scene.m_pScene;
+        pCamera = m_3DView.m_scene.m_pCamera;
 
         pScene->SpawnRoom(const_cast<char*>("gui3D_room"), Vector(0, 0, 0), Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
 
@@ -317,10 +319,12 @@ CSWGuiMainMenu::CSWGuiMainMenu(CSWGuiManager* pGuiManager)
     m_btnRegistration.AddEvent(INPUTEVENT_GUI_START, this, static_cast<CSWGuiEventHandler>(&CSWGuiMainMenu::OnRegistrationPressed));
     m_btnRegistration.AddEvent(INPUTEVENT_GUI_A, this, static_cast<CSWGuiEventHandler>(&CSWGuiMainMenu::OnRegistrationPressed));
 
+    CAurScene* pScene;
+    CAurCamera* pCamera;
     if (g_bDo3DGUIs)
     {
-        CAurScene*  pScene  = m_3DView.m_scene.m_pScene;
-        CAurCamera* pCamera = m_3DView.m_scene.m_pCamera;
+        pScene = m_3DView.m_scene.m_pScene;
+        pCamera = m_3DView.m_scene.m_pCamera;
 
         pScene->SpawnRoom(const_cast<char*>("gui3D_room"), Vector(0, 0, 0), Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
 
@@ -357,9 +361,9 @@ CSWGuiMainMenu::CSWGuiMainMenu(CSWGuiManager* pGuiManager)
                 *reinterpret_cast<CCAppearanceInfo*>(m_pPCCreature->m_pCreatureAppearance);
             appearance.core.m_nGender =
                 g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nPCGender;
-            appearance.core.m_bArmorEquipped = 1;
             appearance.core.m_nAppearanceId =
                 g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nAppearanceType;
+            appearance.core.m_bArmorEquipped = 1;
             appearance.core.m_bTypeVariant =
                 g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nBodyVariation;
             appearance.core.m_bTypeNumber =
@@ -687,8 +691,8 @@ bool CSWGuiMainMenu::FindNewestSaveGame(CExoString& sSave, CExoString& sName)
     CExoString sUnused;
     g_pExoBase->GetDirectoryList(&aSaves, CExoString("SAVES:"), RESTYPE_INVALID, 1, 1, 0);
 
-    int64_t nNewest = 0;
     bool bFound = false;
+    int64_t nNewest = 0;
     for (int i = 0; i < aSaves.m_count; i++)
     {
         CExoString sDir = CExoString("SAVES:") + aSaves[i];
@@ -1776,11 +1780,12 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
 void CSWGuiMainMenu::OnPanelAdded()
 {
     unsigned long long nFreeBytes;
-    unsigned long long nRequired;
     g_pExoResMan->GetFreeDiskSpace(CExoString("SAVES:"), &nFreeBytes);
+    unsigned long long nFreeKB = nFreeBytes >> 14;
 
     CExoString sSaveDir;
     sSaveDir.Format(const_cast<char*>("SAVES:%06d - %s"), 1, "AUTOSAVE");
+    unsigned long long nRequired;
 
     if (g_pExoResMan->CreateDirectory2(sSaveDir) != 0)
     {
@@ -1792,7 +1797,6 @@ void CSWGuiMainMenu::OnPanelAdded()
         nRequired = 3202;
     }
 
-    unsigned long long nFreeKB = nFreeBytes >> 14;
     if (nRequired > nFreeKB)
     {
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;

@@ -38,11 +38,14 @@ int CExoKeyTable::AddDirectoryContents(int)
     CExoArrayList<CExoString> subdirNames;
     CExoArrayList<CExoArrayList<CExoString>> subdirFileLists;
     CResRef resRef;
+    int nTopLevel;
+    unsigned int newTableSize;
+    unsigned short resType;
+    unsigned int resID;
 
     CExoString overrideLit("OVERRIDE");
-    int prefixLen = overrideLit.GetLength();
     int numSubdirs;
-    if (m_sFileName.ComparePrefixNoCase(overrideLit, prefixLen) == 0) {
+    if (m_sFileName.ComparePrefixNoCase(overrideLit, overrideLit.GetLength()) == 0) {
         numSubdirs = 0;
     } else {
         g_pExoBase->GetDirectoryList(&subdirNames, m_sFileName, RESTYPE_INVALID, 1, 0);
@@ -64,18 +67,18 @@ int CExoKeyTable::AddDirectoryContents(int)
     }
 
     g_pExoBase->GetDirectoryList(&topLevelFiles, m_sFileName, RESTYPE_INVALID, 0, 0);
-    int nTopLevel = topLevelFiles.m_count;
-    unsigned int newTableSize = ((nTopLevel + static_cast<unsigned int>(totalSubFiles)) * 2) | 1;
+    nTopLevel = topLevelFiles.m_count;
+    newTableSize = ((nTopLevel + static_cast<unsigned int>(totalSubFiles)) * 2) | 1;
     m_nTableSize = newTableSize;
     m_paEntries = AllocateTable(newTableSize);
 
     for (int i = 0; i < nTopLevel; i++) {
         curFile = topLevelFiles.m_pArray[i];
-        unsigned short resType = g_pExoResMan->GetResTypeFromFile(curFile);
+        resType = g_pExoResMan->GetResTypeFromFile(curFile);
         if (resType != RESTYPE_INVALID) {
             g_pExoResMan->GetResRefFromFile(resRef, curFile);
             if (resRef != const_cast<char*>("")) {
-                unsigned int resID = (m_nRoutingTag << RESID_FILE_SHIFT) | RESID_DIRECTORY;
+                resID = (m_nRoutingTag << RESID_FILE_SHIFT) | RESID_DIRECTORY;
                 AddKey(resRef, resType, resID, 0, CExoString(""));
             }
         }
@@ -85,11 +88,11 @@ int CExoKeyTable::AddDirectoryContents(int)
         scratch = subdirNames.m_pArray[i];
         for (int j = 0; j < subdirFileLists.m_pArray[i].m_count; j++) {
             curFile = subdirFileLists.m_pArray[i].m_pArray[j];
-            unsigned short resType = g_pExoResMan->GetResTypeFromFile(curFile);
+            resType = g_pExoResMan->GetResTypeFromFile(curFile);
             if (resType != RESTYPE_INVALID) {
                 g_pExoResMan->GetResRefFromFile(resRef, curFile);
                 if (resRef != const_cast<char*>("")) {
-                    unsigned int resID = (m_nRoutingTag << RESID_FILE_SHIFT) | RESID_DIRECTORY;
+                    resID = (m_nRoutingTag << RESID_FILE_SHIFT) | RESID_DIRECTORY;
                     AddKey(resRef, resType, resID, 0, CExoString(scratch));
                 }
             }

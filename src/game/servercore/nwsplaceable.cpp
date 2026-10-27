@@ -395,8 +395,8 @@ unsigned char CSWSPlaceable::GetOpenLockDC() {
 #endif // !KOTOR1
 
 int CSWSPlaceable::GetLightIsOn() {
-    int appearance = m_appearanceType;
     C2DA* pTable = g_pRules->m_p2DArrays->m_pPlaceables;
+    int appearance = m_appearanceType;
     int outVal;
     int success;
     {
@@ -408,8 +408,8 @@ int CSWSPlaceable::GetLightIsOn() {
 
 void CSWSPlaceable::SetLightIsOn(int val) {
     if (m_lightIsOn == val) return;
-    int appearance = m_appearanceType;
     C2DA* pTable = g_pRules->m_p2DArrays->m_pPlaceables;
+    int appearance = m_appearanceType;
     int outVal;
     int success;
     {
@@ -757,8 +757,8 @@ void CSWSPlaceable::PostProcess() {
     m_bApplyingResistanceEffect = 1;
     CGameEffect* pEffect = new CGameEffect(1);
     pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_DAMAGE_RESISTANCE);
-    pEffect->m_durationTypeBits = (pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK) |
-                                   CGameEffect::DURATION_TYPE_PERMANENT;
+    pEffect->m_durationTypeBits = CGameEffect::DURATION_TYPE_PERMANENT |
+                                  (pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK);
     pEffect->SetInteger(0, CSWSEffectListHandler::DAMAGE_FLAG_ALL);
     pEffect->SetInteger(1, m_hardness);
     pEffect->m_bIsExposed = 0;

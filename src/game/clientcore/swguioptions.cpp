@@ -3496,17 +3496,19 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
     devMode.m_size = sizeof(PortDevMode);
 
     if (m_listBox.m_pProtoItem != 0) {
-        CSWGuiButton* pTemplate = m_listBox.m_pProtoItem->AsButton();
-        unsigned int nMode = 0;
-        CSWGuiButton* pSelected = 0;
-        CSWGuiButton* pButton = 0;
+        CSWGuiButton* pTemplate;
+        unsigned int nMode;
+        CSWGuiButton* pSelected;
+        CSWGuiButton* pButton;
+        pTemplate = m_listBox.m_pProtoItem->AsButton();
+        nMode = 0;
+        pSelected = 0;
+        pButton = 0;
 #ifndef K2_UI_TOUCH
         // pc / xbox: the PC prototype's height is in the 480-line layout's units (a row of
         // the unscaled height is shorter than the caption at a tall buffer, which draws nothing).
         CSWGuiExtent extentRow = pTemplate->m_extent;
         extentRow.h = static_cast<int>(static_cast<float>(g_SDL_mode.h) / 480.0f * extentRow.h);
-#else
-        const CSWGuiExtent& extentRow = pTemplate->m_extent;
 #endif
 
         while (EnumDisplaySettingsA(0, nMode, &devMode) != 0) {
@@ -3514,7 +3516,11 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
                 if (devMode.m_bitsPerPel == 32 &&
                     g_pAppManager->m_pClientExoApp->IsValidResolution(devMode.m_pelsWidth, devMode.m_pelsHeight)) {
                     pButton = new CSWGuiButton;
+#ifndef K2_UI_TOUCH
                     pButton->Initialize(extentRow, pTemplate);
+#else
+                    pButton->Initialize(pTemplate->m_extent, pTemplate);
+#endif
                     sCaption.Format(const_cast<char*>("%d x %d"), devMode.m_pelsWidth, devMode.m_pelsHeight);
                     pButton->m_text.m_params.SetText(sCaption);
                     pButton->m_tail.m_nUserData = nMode;
@@ -3530,7 +3536,11 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
                     (g_pAppManager->m_pClientExoApp->GetAllowHighMonitorFrequency() ||
                      devMode.m_displayFrequency <= 85)) {
                     pButton = new CSWGuiButton;
+#ifndef K2_UI_TOUCH
                     pButton->Initialize(extentRow, pTemplate);
+#else
+                    pButton->Initialize(pTemplate->m_extent, pTemplate);
+#endif
                     sCaption.Format(const_cast<char*>("%d x %d @ %d Hz"), devMode.m_pelsWidth,
                                     devMode.m_pelsHeight, devMode.m_displayFrequency);
                     pButton->m_text.m_params.SetText(sCaption);

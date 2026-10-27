@@ -828,7 +828,8 @@ void CGuiInGame::SetSWGuiStatus(int status, int notify)
         goto checkDialogGate;
     case SWGUI_TOGGLE_OFF:
         newState = SWGUI_STATE_TOGGLED_OFF;
-        break;
+        m_swGuiToggleState = newState;
+        goto checkDialogGate;
     case SWGUI_COVER:
         if (m_swGuiToggleState == SWGUI_STATE_TOGGLED_OFF) {
 stayToggledOff:
@@ -1443,7 +1444,9 @@ void CGuiInGame::ShowSoloModeQuery(int text)
     if (m_bInitialized == 0 || m_pGuiManager == 0 || m_pSoloModePanel == 0) return;
 
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-    bool bMultiPartyMember = pParty != 0 && pParty->m_nCharacterCount > 1;
+    int bMultiPartyMember = 0;
+    if (pParty != 0 && pParty->m_nCharacterCount > 1)
+        bMultiPartyMember = 1;
 
     CSWCCreature* pPlayerCreature = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
     CSWSCreature* pServerCreature = pPlayerCreature != 0 ? pPlayerCreature->GetServerCreature() : 0;
@@ -1472,8 +1475,9 @@ void CGuiInGame::ShowSoloModeQuery(int text)
             // inlined CSWSCreature::GetDeadTemp()
             if (pServerCreature->m_bInParty != 0) {
                 short hp = pServerCreature->GetCurrentHitPoints(0);
-                if (bMultiPartyMember && hp >= 1) goto doQuery;
-                goto playSound;
+                if (!bMultiPartyMember) goto playSound;
+                if (hp < 1) goto playSound;
+                goto doQuery;
             }
 #endif
         }
@@ -2084,14 +2088,10 @@ void CGuiInGame::SetGuiInGameInventoryDirty(int flag)
 
 Vector CGuiInGame::GetAreaTranstionPosition()
 {
-    if (m_pAreaTransitionPanel != 0) {
-        return static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->m_position;
-    }
-    Vector zero;
-    zero.z = 0;
-    zero.y = 0;
-    zero.x = 0;
-    return zero;
+    Vector vPosition = { 0.0f, 0.0f, 0.0f };
+    if (m_pAreaTransitionPanel != 0)
+        vPosition = static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->m_position;
+    return vPosition;
 }
 
 Vector CGuiInGame::GetDialogCameraPosition(int bOffsetByOrientation)
@@ -3038,10 +3038,6 @@ void CGuiInGame::SetComputerCameraShot(int charId, unsigned int arg, int effectF
             fD = cam.m_d;
         } else {
             pos = { 0.0f, 0.0f, 0.0f };
-            rot.w = 1.0f;
-            rot.x = 0.0f;
-            rot.y = 0.0f;
-            rot.z = 0.0f;
             fC = 55.0f;
             fD = 0.0f;
         }
@@ -4247,13 +4243,9 @@ void CGuiInGame::AppendToDialogBuffer(const CExoString& text, const CExoString& 
         unsigned int size = m_dialogMessageBufferSize;
         if (size > MESSAGE_BUFFER_SIZE - 1) {
             m_dialogMessageBufferSize = MESSAGE_BUFFER_SIZE - 1;
-            unsigned int i = 0;
-            do {
-                unsigned int next = i + 1;
-                m_pDialogMessageBuffer[static_cast<unsigned short>(i)] = m_pDialogMessageBuffer[next];
-                i = next;
-                size = m_dialogMessageBufferSize;
-            } while (static_cast<unsigned short>(i) < size);
+            for (unsigned short i = 0; i < static_cast<unsigned int>(m_dialogMessageBufferSize); i++)
+                m_pDialogMessageBuffer[i] = m_pDialogMessageBuffer[i + 1];
+            size = m_dialogMessageBufferSize;
         }
         m_pDialogMessageBuffer[size].m_text = text;
         m_pDialogMessageBuffer[static_cast<unsigned int>(m_dialogMessageBufferSize)].m_speaker = speaker;
@@ -4540,7 +4532,7 @@ void CGuiInGame::UpdateCreatedInGameGUI(int oldPanel, int newPanel)
     }
 
     if (m_apScreenPanels[newPanel] == 0) {
-        CSWGuiPanel* pNewPanel = reinterpret_cast<CSWGuiPanel*>(this);  // idiom-exempt: the cast is unreachable, newPanel is always 0-7.
+        CSWGuiPanel* pNewPanel K2_UNSET;
         switch (newPanel) {
         case SCREEN_EQUIP: pNewPanel = static_cast<CSWGuiPanel*>(new CSWGuiInGameEquip(m_pGuiManager)); break;
         case SCREEN_INVENTORY: pNewPanel = new CSWGuiInGameInventory(m_pGuiManager); break;
@@ -4581,13 +4573,9 @@ int CGuiInGame::ShowSWInGameGui(int panelIndex)
             if (static_cast<unsigned int>(panelIndex) < 8) {
                 m_lastGuiPanel = panelIndex;
             } else {
-                CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-                CSWCCreature* pPlayerChar = pParty->GetPlayerCharacter();
-                if (pPlayerChar != 0) {
-                    pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-                    pPlayerChar = pParty->GetPlayerCharacter();
-                    CSWSCreature* pServerCreature = pPlayerChar->GetServerCreature();
-                    if (pServerCreature->m_pStats->CanLevelUp() != 0) {
+                if (g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter() != 0) {
+                    if (g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter()
+                            ->GetServerCreature()->m_pStats->CanLevelUp() != 0) {
                         m_lastGuiPanel = SCREEN_CHARACTER;
                     }
                 }

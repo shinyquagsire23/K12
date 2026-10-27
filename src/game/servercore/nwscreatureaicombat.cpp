@@ -1001,15 +1001,13 @@ void CSWSCreature::InitializeNewAttackTarget(unsigned long long objectId,
 
 int CSWSCreature::IsSpellCastingAnimation(unsigned short nAnimation)
 {
+    int bCasting = 0;
     if (nAnimation == SERVER_ANIMATION_CONJURE_1 || nAnimation == SERVER_ANIMATION_CONJURE_2 || nAnimation == SERVER_ANIMATION_CAST_1 ||
         nAnimation == SERVER_ANIMATION_CAST_2 || nAnimation == SERVER_ANIMATION_CAST_3 || nAnimation == SERVER_ANIMATION_CAST_4 ||
-        nAnimation == SERVER_ANIMATION_THROW_SABER_LOOP || nAnimation == SERVER_ANIMATION_INJECT || nAnimation == 10071)
-        return 1;
-    if (nAnimation == SERVER_ANIMATION_CONJURE_3)
-        return 1;
-    if (nAnimation == SERVER_ANIMATION_POWER_ATTACK)
-        return 1;
-    return 0;
+        nAnimation == SERVER_ANIMATION_THROW_SABER_LOOP || nAnimation == SERVER_ANIMATION_INJECT || nAnimation == 10071 ||
+        nAnimation == SERVER_ANIMATION_CONJURE_3 || nAnimation == SERVER_ANIMATION_POWER_ATTACK)
+        bCasting = 1;
+    return bCasting;
 }
 
 // Executes the physical-attack action. It re-derives where the attacker has to stand, asks the area
@@ -2237,7 +2235,8 @@ int CSWSCreature::ResolveMoveToForceJump(CSWSObject* pObject, unsigned short& nF
     float fDz = m_position.z - pObject->m_position.z;
     if (!(fDx * fDx + fDy * fDy + fDz * fDz >= 100.0f))
         return 0;
-    m_pPathfindInfo->m_oidGoalObject = pObject->m_objectId;
+    CPathfindInformation* pPathfind = m_pPathfindInfo;
+    pPathfind->m_oidGoalObject = pObject->m_objectId;
     if (g_pAppManager->m_pServerExoApp->TestDirectLine(m_objectId, CResRef(""), m_position,
                                                        pObject->m_position,
                                                        static_cast<float>(m_pPathfindInfo->m_fPersonalSpace),
@@ -2732,6 +2731,7 @@ void CSWSCreature::ResolveDamageShields(CSWSCreature* pAttacker)
                 nDamage = g_pRules->RollDice(static_cast<unsigned char>(nNumDice), static_cast<unsigned char>(nDie));
             }
             int nIndex = Log_Base2(nDamageFlags);
+            int nTotal = nDamage + nAmount;
 
             CGameEffect* pDamage = new CGameEffect(1);
             pDamage->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_DAMAGE);
@@ -2746,7 +2746,7 @@ void CSWSCreature::ResolveDamageShields(CSWSCreature* pAttacker)
                 if (j != nIndex)
                     pDamage->SetInteger(j, -1);
                 else
-                    pDamage->SetInteger(nIndex, nDamage + nAmount);
+                    pDamage->SetInteger(nIndex, nTotal);
             }
             pDamage->SetInteger(16, 1000);
             pAttacker->ApplyEffect(pDamage, 0, 0);
@@ -3112,7 +3112,8 @@ Vector CSWSCreature::ResolveProjectileMissLocation(CSWSObject* pTarget)
 
     Vector vFrom = m_position;
     vFrom.z = vFrom.z + 1.5f;
-    Vector vTo = vFrom + normalize(vMiss - vFrom) * 1000.0f;
+    Vector vDirTo = normalize(vMiss - vFrom);
+    Vector vTo = vFrom + vDirTo * 1000.0f;
 
     Vector vHit = { 0.0f, 0.0f, 0.0f };
     unsigned long long oidHit = OBJECT_INVALID;

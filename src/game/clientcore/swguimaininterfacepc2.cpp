@@ -700,6 +700,7 @@ struct K1ConsoleScroll {
     CSWGuiLabel* pOld;
 };
 K1ConsoleScroll s_k1Scroll[6];
+typedef void (CSWGuiObject::*K1ConsoleHandler)(CSWGuiControl*);
 }  // namespace
 
 static void K1ConsoleInitSticky()
@@ -3592,16 +3593,20 @@ void CSWGuiMainInterface::UpdateActionQueue() {
     bool bIconDone = false;
     CSWSObjectActionNode* pActionNode;
     CSWSCombatRoundAction* pRoundAction;
-    for (CExoLinkedListNode* pNode = pServer->m_actionList.m_pInternal->m_pHead;
+    CExoLinkedListNode* pNode;
+    int nType;
+    bool bMatch;
+    CSWSCombatRoundAction* pCur;
+    for (pNode = pServer->m_actionList.m_pInternal->m_pHead;
          pNode && nCount < 4;
          pServer->m_actionList.GetNext(pNode)) {
         pActionNode = static_cast<CSWSObjectActionNode*>(pServer->m_actionList.GetAtPos(pNode));
         if (!pActionNode)
             continue;
-        int nType = pActionNode->m_nActionId;
-        bool bMatch = (bExecuting & (nType == AIACTION_COMBAT)) | (nType == AIACTION_PHYSICAL_ATTACKS) | (nType == AIACTION_CAST_SPELL) | (nType == AIACTION_ITEM_CAST_SPELL);
+        nType = pActionNode->m_nActionId;
+        bMatch = (bExecuting & (nType == AIACTION_COMBAT)) | (nType == AIACTION_PHYSICAL_ATTACKS) | (nType == AIACTION_CAST_SPELL) | (nType == AIACTION_ITEM_CAST_SPELL);
         if (!bIconDone && bMatch) {
-            CSWSCombatRoundAction* pCur = pCombatRound->m_pCurrentAction;
+            pCur = pCombatRound->m_pCurrentAction;
             if (!pCur) {
                 if (nType == AIACTION_COMBAT) {
                     bIconDone = false;
@@ -4413,24 +4418,22 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::InitGamepadMenu() {
     UpdateStealth();
     m_nLastPartySlot = 0;
     for (int i = 0; i < 3; i++) {
-        CSWGuiButton& rPortrait = m_portraitButtons[i];
-        CSWGuiButton& rFrame = m_frameButtons[i];
         CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
         CSWCCreature* pMember = pParty ? pParty->GetCharacter(i) : 0;
         if (pMember)
             pMember->GetServerCreature();
         if (pMember && i < pParty->m_nCharacterCount) {
             m_nLastPartySlot = i;
-            rPortrait.m_tail.bVisible = 1;
-            rFrame.m_tail.bVisible = 1;
-            rPortrait.m_border.m_params.SetFillImage(pMember->GetPortrait(1), 0);
-            rPortrait.m_borderHilight.m_params.SetFillImage(pMember->GetPortrait(1), 0);
+            m_portraitButtons[i].m_tail.bVisible = 1;
+            m_frameButtons[i].m_tail.bVisible = 1;
+            m_portraitButtons[i].m_border.m_params.SetFillImage(pMember->GetPortrait(1), 0);
+            m_portraitButtons[i].m_borderHilight.m_params.SetFillImage(pMember->GetPortrait(1), 0);
         } else {
-            rPortrait.m_tail.bVisible = 0;
-            rFrame.m_tail.bVisible = 0;
+            m_portraitButtons[i].m_tail.bVisible = 0;
+            m_frameButtons[i].m_tail.bVisible = 0;
         }
-        rPortrait.m_border.m_params.m_flags.nFillStyle = 2;
-        rPortrait.m_borderHilight.m_params.m_flags.nFillStyle = 2;
+        m_portraitButtons[i].m_border.m_params.m_flags.nFillStyle = 2;
+        m_portraitButtons[i].m_borderHilight.m_params.m_flags.nFillStyle = 2;
     }
     LayoutGamepadMenu(false);
 }
@@ -5189,15 +5192,16 @@ void CSWGuiMainInterfaceAction::Draw(float fDelta) {
 }
 
 CSWGuiControl* CSWGuiMainInterfaceAction::HitCheckMouse(int nX, int nY) {
+    CSWGuiControl* pHit = 0;
     if (m_btnUp.HitCheckMouse(nX, nY))
-        return &m_btnUp;
-    if (m_btnDown.HitCheckMouse(nX, nY))
-        return &m_btnDown;
-    if (m_icon.HitCheckMouse(nX, nY))
-        return &m_icon;
-    if (m_button.HitCheckMouse(nX, nY))
-        return &m_button;
-    return 0;
+        pHit = &m_btnUp;
+    else if (m_btnDown.HitCheckMouse(nX, nY))
+        pHit = &m_btnDown;
+    else if (m_icon.HitCheckMouse(nX, nY))
+        pHit = &m_icon;
+    else if (m_button.HitCheckMouse(nX, nY))
+        pHit = &m_button;
+    return pHit;
 }
 
 #if KOTOR1
@@ -5391,12 +5395,11 @@ void CSWGuiMainInterfaceAction::Initialize(CSWGuiMainInterface* pInterface, int 
         // The mouse: the box and its icon select and run on a click; the arrow strip's halves
         // (CSWGuiMainInterface::HitCheckMouse: m_btnUp above the icon, m_btnDown below it) step
         // the entries on a click; the wheel steps them anywhere on the box.
-        typedef void (CSWGuiObject::*Handler)(CSWGuiControl*);
-        const Handler pfnClick = static_cast<Handler>(&CSWGuiMainInterface::OnK1ConsoleBoxClicked);
-        const Handler pfnUp = static_cast<Handler>(&CSWGuiMainInterface::OnK1ConsoleBoxWheelUp);
-        const Handler pfnDown = static_cast<Handler>(&CSWGuiMainInterface::OnK1ConsoleBoxWheelDown);
+        const K1ConsoleHandler pfnClick = static_cast<K1ConsoleHandler>(&CSWGuiMainInterface::OnK1ConsoleBoxClicked);
+        const K1ConsoleHandler pfnUp = static_cast<K1ConsoleHandler>(&CSWGuiMainInterface::OnK1ConsoleBoxWheelUp);
+        const K1ConsoleHandler pfnDown = static_cast<K1ConsoleHandler>(&CSWGuiMainInterface::OnK1ConsoleBoxWheelDown);
         CSWGuiControl* apMouse[4] = { &m_button, &m_icon, &m_btnUp, &m_btnDown };
-        const Handler apClick[4] = { pfnClick, pfnClick, pfnUp, pfnDown };
+        const K1ConsoleHandler apClick[4] = { pfnClick, pfnClick, pfnUp, pfnDown };
         for (int k = 0; k < 4; k++) {
             apMouse[k]->m_tail.bFocusOnHover = 0;
             apMouse[k]->m_tail.m_nUserData = nSlot;
@@ -6766,32 +6769,21 @@ void CSWGuiTargetActionMenu::SetFriend(int bFriendly, int bPoisoned) {
         m_progressBar.m_borderProgress.m_params.m_color =
             !bFriendly ? kHostile : (bPoisoned ? kPoisoned : k2TargetBarColor);
     }
-#else
-    m_widgets[0].m_button.m_border.m_params.SetFillImage(CResRef(sMain), 0);
-    m_widgets[0].m_button.m_borderHilight.m_params.SetFillImage(CResRef(sMain), 0);
 #endif
+    for (int i = 0; i < 3; i++) {
+#ifdef K2_UI_XBOX
+        if (i == 0)
+            continue;
+#endif
+        m_widgets[i].m_button.m_border.m_params.SetFillImage(CResRef(sMain), 0);
+        m_widgets[i].m_button.m_borderHilight.m_params.SetFillImage(CResRef(sMain), 0);
 #ifdef K2_UI_TOUCH  // pc / xbox: the layout's own arrows, turned over by ActionInit (as the macOS SetFriend)
-    m_widgets[0].m_btnDown.m_border.m_params.SetFillImage(CResRef(sArrow0), 0);
-    m_widgets[0].m_btnDown.m_borderHilight.m_params.SetFillImage(CResRef(sArrow1), 0);
-    m_widgets[0].m_btnDown.m_border.m_params.m_flags.nFlipStyle = nBarMode;
-    m_widgets[0].m_btnDown.m_borderHilight.m_params.m_flags.nFlipStyle = nBarMode;
+        m_widgets[i].m_btnDown.m_border.m_params.SetFillImage(CResRef(sArrow0), 0);
+        m_widgets[i].m_btnDown.m_borderHilight.m_params.SetFillImage(CResRef(sArrow1), 0);
+        m_widgets[i].m_btnDown.m_border.m_params.m_flags.nFlipStyle = nBarMode;
+        m_widgets[i].m_btnDown.m_borderHilight.m_params.m_flags.nFlipStyle = nBarMode;
 #endif
-    m_widgets[1].m_button.m_border.m_params.SetFillImage(CResRef(sMain), 0);
-    m_widgets[1].m_button.m_borderHilight.m_params.SetFillImage(CResRef(sMain), 0);
-#ifdef K2_UI_TOUCH
-    m_widgets[1].m_btnDown.m_border.m_params.SetFillImage(CResRef(sArrow0), 0);
-    m_widgets[1].m_btnDown.m_borderHilight.m_params.SetFillImage(CResRef(sArrow1), 0);
-    m_widgets[1].m_btnDown.m_border.m_params.m_flags.nFlipStyle = nBarMode;
-    m_widgets[1].m_btnDown.m_borderHilight.m_params.m_flags.nFlipStyle = nBarMode;
-#endif
-    m_widgets[2].m_button.m_border.m_params.SetFillImage(CResRef(sMain), 0);
-    m_widgets[2].m_button.m_borderHilight.m_params.SetFillImage(CResRef(sMain), 0);
-#ifdef K2_UI_TOUCH
-    m_widgets[2].m_btnDown.m_border.m_params.SetFillImage(CResRef(sArrow0), 0);
-    m_widgets[2].m_btnDown.m_borderHilight.m_params.SetFillImage(CResRef(sArrow1), 0);
-    m_widgets[2].m_btnDown.m_border.m_params.m_flags.nFlipStyle = nBarMode;
-    m_widgets[2].m_btnDown.m_borderHilight.m_params.m_flags.nFlipStyle = nBarMode;
-#endif
+    }
 #endif
 }
 

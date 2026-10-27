@@ -496,6 +496,7 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
             goto FINALIZE;
         CExoString sOut;
         CExoString sKey;
+        CSWSItem* pNew;
         CSWBaseItem* pBase = m_pItem->GetBaseItem();
         switch (pBase->m_nItemType)
         {
@@ -510,16 +511,15 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
             break;
         }
         m_pUpgradeC2DA2->GetCExoStringEntry(pRow->m_nUpgradeRow, sKey, &sOut);
-        CSWSItem* pNew = new CSWSItem(OBJECT_INVALID);
+        pNew = new CSWSItem(OBJECT_INVALID);
         {
             CResRef rr(sOut);
             pNew->LoadFromTemplate(rr);
         }
         pNew->SetPossessor(pApp->GetPlayerCreatureId(), 0, 0, OBJECT_INVALID);
         pNew->SetIdentified(1);
-        pNew->m_flags = static_cast<unsigned short>((pNew->m_flags & ~static_cast<unsigned int>(CSWSItem::FLAG_STOLEN))
-                                                    | (m_pItem->m_flags & static_cast<unsigned int>(CSWSItem::FLAG_STOLEN)));
         pNew->m_nUpgrades = m_pItem->m_nUpgrades;
+        pNew->m_bits.m_bStolen = m_pItem->m_bits.m_bStolen;
         delete m_pItem;
         m_pItem = pNew;
         Update3DView();
@@ -615,12 +615,18 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
         CExoString sOut;
         CExoString sKey;
         CSWBaseItem* pBase = m_pItem->GetBaseItem();
-        if (pBase->m_nItemType == ITEM_TYPE_DOUBLE_LIGHTSABER)
+        switch (pBase->m_nItemType)
+        {
+        case ITEM_TYPE_DOUBLE_LIGHTSABER:
             sKey = "DoubleMdlVar";
-        else if (pBase->m_nItemType == ITEM_TYPE_SHORT_LIGHTSABER)
+            break;
+        case ITEM_TYPE_SHORT_LIGHTSABER:
             sKey = "ShortMdlVar";
-        else if (pBase->m_nItemType == ITEM_TYPE_LIGHTSABER)
+            break;
+        case ITEM_TYPE_LIGHTSABER:
             sKey = "LongMdlVar";
+            break;
+        }
         m_pUpgradeC2DA2->GetCExoStringEntry(pRow->m_nUpgradeRow, sKey, &sOut);
         CSWSItem* pNew = new CSWSItem(OBJECT_INVALID);
         {
@@ -640,8 +646,7 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
         pNew->m_anUpgVars[4] = m_pItem->m_anUpgVars[4];
         pNew->AddUpgrade(m_apaItems[5], 5);
         pNew->m_anUpgVars[5] = m_pItem->m_anUpgVars[5];
-        pNew->m_flags = static_cast<unsigned short>((pNew->m_flags & ~static_cast<unsigned int>(CSWSItem::FLAG_STOLEN))
-                                                    | (m_pItem->m_flags & static_cast<unsigned int>(CSWSItem::FLAG_STOLEN)));
+        pNew->m_bits.m_bStolen = m_pItem->m_bits.m_bStolen;
         delete m_pItem;
         m_pItem = pNew;
         Update3DView();
@@ -752,9 +757,10 @@ void CSWGuiUpgrade::OnSlotSelected(CSWGuiControl* pControl)
                 {
                     m_pUpgradeC2DA2->GetCExoStringEntry(r, CExoString("Template"), &sVal);
                     sVal = sVal.LowerCase();
+                    unsigned long long oid;
                     if (sVal != m_apaItems[1]->m_sTag)
                     {
-                        unsigned long long oid = pRepo->FindItemWithTag(sVal);
+                        oid = pRepo->FindItemWithTag(sVal);
                         if (oid != OBJECT_INVALID)
                             list.Add(CreateItemEntry(oid, r));
                     }
@@ -1151,7 +1157,9 @@ void CSWGuiUpgrade::OnEnterSlot(CSWGuiControl* pControl)
             CExoString sText;
             CExoLocString loc = m_apaItems[n]->m_localizedName;
             loc.GetString(g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText, 0);
-            if ((sText.Find('<', 0) & sText.Find('{', 0)) != -1)
+            int nAngle = sText.Find('<', 0);
+            int nBrace = sText.Find('{', 0);
+            if ((nAngle & nBrace) != -1)
             {
                 CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
                 g_pSWTlkTable->ParseStr(sText, pPC, 1, 1);
@@ -1182,7 +1190,9 @@ void CSWGuiUpgrade::OnEnterSlot(CSWGuiControl* pControl)
             CExoString sText;
             CExoLocString loc = m_apaItems[n]->m_localizedName;
             loc.GetString(g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText, 0);
-            if ((sText.Find('<', 0) & sText.Find('{', 0)) != -1)
+            int nAngle = sText.Find('<', 0);
+            int nBrace = sText.Find('{', 0);
+            if ((nAngle & nBrace) != -1)
             {
                 CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
                 g_pSWTlkTable->ParseStr(sText, pPC, 1, 1);
@@ -1549,6 +1559,7 @@ void CSWGuiUpgrade::OnPanelAdded()
     switch (m_nMenuType) {
     case CSWSItem::UPGRADABLE_TYPE_LIGHTSABER: {
         CExoString sCol, sVal, sTmp;
+        bool bFound = false;
         switch (m_pItem->GetBaseItem()->m_nItemType) {
         case ITEM_TYPE_DOUBLE_LIGHTSABER:
             sCol = "DoubleMdlVar";
@@ -1572,9 +1583,12 @@ void CSWGuiUpgrade::OnPanelAdded()
                 continue;
             if (!m_pUpgradeC2DA2->GetCExoStringEntry(nRow, CExoString("Template"), &sTmp))
                 continue;
+            bFound = true;
+            break;
+        }
+        if (bFound) {
             m_apaItems[1] = new CSWSItem(OBJECT_INVALID);
             m_apaItems[1]->LoadFromTemplate(CResRef(sTmp));
-            break;
         }
         if (m_apaItems[1] == NULL) {
             m_stateFlags = (m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE
@@ -1631,8 +1645,9 @@ void CSWGuiUpgrade::OnPanelAdded()
             }
             m_anUpgradeRow[nSlot] = static_cast<unsigned char>(nRow);
             if (static_cast<unsigned char>(nRow) == 0xff || (m_pItem->m_nUpgrades & (1u << nRow))) {
-                m_apaItems[nSlot] = new CSWSItem(OBJECT_INVALID);
-                m_apaItems[nSlot]->LoadFromTemplate(CResRef(sTag));
+                CSWSItem* pUpgrade = new CSWSItem(OBJECT_INVALID);
+                m_apaItems[nSlot] = pUpgrade;
+                pUpgrade->LoadFromTemplate(CResRef(sTag));
             } else if (m_nMenuType != CSWSItem::UPGRADABLE_TYPE_LIGHTSABER &&
                        g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems()
                                ->FindItemWithTag(m_sCaption[nSlot]) == OBJECT_INVALID) {
@@ -1681,6 +1696,7 @@ void CSWGuiUpgrade::OnPanelAdded()
     case CSWSItem::UPGRADABLE_TYPE_LIGHTSABER: {
         CExoString sCol, sVal, sTmp;
         bool bKeep = true;
+        bool bFound = false;
         switch (m_pItem->GetBaseItem()->m_nItemType) {
         case ITEM_TYPE_DOUBLE_LIGHTSABER:
             sCol = "DoubleMdlVar";
@@ -1709,11 +1725,13 @@ void CSWGuiUpgrade::OnPanelAdded()
                 if (!m_pUpgradeC2DA2->GetCExoStringEntry(nRow, CExoString("Template"), &sTmp)) {
                     continue;
                 }
+                // First matching row wins, so the loop stops here.
+                bFound = true;
+                break;
+            }
+            if (bFound) {
                 m_apaItems[1] = new CSWSItem(OBJECT_INVALID);
                 m_apaItems[1]->LoadFromTemplate(CResRef(sTmp));
-// First matching row wins, so the loop stops here.
-
-                break;
             }
         }
         if (!bKeep) {
@@ -1896,7 +1914,8 @@ void CSWGuiUpgrade::OnControlEntered(CSWGuiControl* pControl)
                                              &s, 0);
     if (s == "")
         s = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NO_DESCRIPTION_SET);
-    if (m_nMenuType == CSWSItem::UPGRADABLE_TYPE_LIGHTSABER && static_cast<int>(m_pActive->m_tail.m_nUserData) != 1)
+    int nMenu = static_cast<int>(m_pActive->m_tail.m_nUserData);
+    if (m_nMenuType == CSWSItem::UPGRADABLE_TYPE_LIGHTSABER && nMenu != 1)
         s = m_pItem->GetKeyedPropertyString(pEntry->m_nUpgradeRow) + s;
     SetDescription(s);
 }
@@ -2210,16 +2229,12 @@ CSWGuiUpgrade::CSWGuiUpgrade(CSWGuiManager* pGuiManager)
     m_lbDesc.m_nScrollSound = GUISOUND_ENTERED_DEFAULT;
     InitControl(m_lblDescBg, CExoString("LBL_DESCBG"), 1);
     InitControl(m_lblDescBgLS, CExoString("LBL_DESCBG_LS"), 1);
-    {
-        CSWGuiExtent ext = m_lbDesc.m_extent;
-        ext.w -= 30;
-        m_lbDesc.SetExtent(ext);
-    }
-    {
-        CSWGuiExtent ext = m_lbDescLS.m_extent;
-        ext.w -= 30;
-        m_lbDescLS.SetExtent(ext);
-    }
+    CSWGuiExtent ext = m_lbDesc.m_extent;
+    ext.w -= 30;
+    m_lbDesc.SetExtent(ext);
+    ext = m_lbDescLS.m_extent;
+    ext.w -= 30;
+    m_lbDescLS.SetExtent(ext);
     InitControl(m_viewItem, CExoString("3D_MODEL"), 1);
     InitControl(m_viewChar, CExoString("3D_MODEL_LS"), 1);
     InitControl(m_lblSlotName, CExoString("LBL_SLOTNAME"), 1);
@@ -2269,8 +2284,10 @@ CSWGuiUpgrade::CSWGuiUpgrade(CSWGuiManager* pGuiManager)
     m_lblUpgrades.m_border.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
     m_lblProperty.m_border.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
     m_lbItems.m_border.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
-    m_lblDescription.Initialize(m_lbDescLS.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_lbDescLS.m_pProtoItem), 1.0f);
+    {
+        CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescLS.m_pProtoItem);
+        m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
+    }
     CSWGuiButton* pBtn = static_cast<CSWGuiButton*>(m_lbItems.m_pProtoItem);
     pBtn->m_border.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
     pBtn->m_borderHilight.m_params.m_color = *reinterpret_cast<CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
@@ -2563,10 +2580,8 @@ CSWGuiUpgradeItemSelect::CSWGuiUpgradeItemSelect(CSWGuiManager* pGuiManager)
         extent.w = static_cast<int>(static_cast<float>(extent.w) - s_fScale * 11.0f);
         m_lbItems.SetExtent(extent);
     }
-    {
-        CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
-        m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
-    }
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
+    m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_pUpgrade = new CSWGuiUpgrade(pGuiManager);
     m_pUpgrade->m_pItemSelect = this;
@@ -4922,8 +4937,8 @@ int CSWGuiCreateMedicalItem::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiCo
             {
                 pEntry->m_nCreateRow = i;
 
-                int nSkill = -1;
                 int nBaseSkill = -1;
+                int nSkill = -1;
                 if (!pArray->GetINTEntry(i, CExoString("base_skill"), &nBaseSkill))
                     return 0;
                 if (!pArray->GetINTEntry(i, CExoString("skillLevel"), &nSkill))
@@ -6158,7 +6173,8 @@ CSWGuiUpgradeSelection::CSWGuiUpgradeSelection(CSWGuiManager* pGuiManager)
     m_pUpgradeItemSelect = new CSWGuiUpgradeItemSelect(pGuiManager);
     m_pUpgradeItemSelect->m_pUpgradeSelection = this;
 
-    for (int i = 0; i < 4; i++)
+    int i;
+    for (i = 0; i < 4; i++)
     {
         m_abtnType[i].AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiUpgradeSelection::OnTypeSelected));
         m_abtnType[i].AddEvent(INPUTEVENT_GUI_START, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiUpgradeSelection::OnTypeSelected));
@@ -6718,10 +6734,8 @@ CSWGuiUpgradeItemSelect::CSWGuiUpgradeItemSelect(CSWGuiManager* pGuiManager)
 
     StopLoadFromLayout();
 
-    {
-        CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
-        m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
-    }
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
+    m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_pUpgrade = new CSWGuiUpgrade(pGuiManager);
     m_pUpgrade->m_pItemSelect = this;

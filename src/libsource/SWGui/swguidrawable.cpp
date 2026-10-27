@@ -442,10 +442,15 @@ void CSWGuiEditText::RemoveLastChar()
 void CSWGuiEditText::AddNewChar(char* sChar)
 {
     CExoString sCaret;
+#if KOTOR1  // K1's GetLength is out of line, so the limit is read again after it
+    if (m_nMaxLength != -1 && m_sText.GetLength() >= m_nMaxLength)
+        return;
+#else
     int nLimit = m_nMaxLength;
     if ((nLimit & 0xffff) != 0xffff &&
         m_sText.GetLength() >= static_cast<short>(nLimit))
         return;
+#endif
     m_sText = m_sText + CExoString(sChar);
     if (!m_bCaretVisible)
         m_params.SetText(m_sText);

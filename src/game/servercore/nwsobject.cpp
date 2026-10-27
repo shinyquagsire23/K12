@@ -2768,10 +2768,11 @@ void CSWSObject::SpellCastAndImpact(unsigned int spellId, const Vector& loc,
 {
     K2_UNUSED(a5); K2_UNUSED(a7); K2_UNUSED(a8);
     CExoString sUnused;
+    unsigned char nPathCount;
     CSWSpell* pSpell = g_pRules->GetSpell(spellId);
     if (pSpell == 0)
         return;
-    unsigned char nPathCount = 6 + (pathType != 0);
+    nPathCount = 6 + (pathType != 0);
     if (m_bCastBroadcastProjectile == 0) {
 #if !KOTOR1
         int nFinalForceCost = 0;
@@ -2786,8 +2787,9 @@ void CSWSObject::SpellCastAndImpact(unsigned int spellId, const Vector& loc,
 #if KOTOR1
             // K1: no room force rating, no Force Body vitality cost, no HP field.
             int nAlignment = AsSWSCreature()->m_pStats->m_nAlignment;
-            pData->SetInteger(2, pSpell->GetAdjustedForcePoints(nAlignment,
-                AsSWSCreature()->m_bInParty));
+            int nForceCost = pSpell->GetAdjustedForcePoints(nAlignment,
+                AsSWSCreature()->m_bInParty);
+            pData->SetInteger(2, nForceCost);
             CSWSCreatureStats* pStats = AsSWSCreature()->m_pStats;
             pData->SetInteger(3, static_cast<short>(pStats->m_nCurrentForcePoints + pStats->m_nTemporaryForcePoints));
 #else

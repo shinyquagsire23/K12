@@ -1217,8 +1217,10 @@ int CSWSMessage::HandlePlayerToServerInputAbortDriveControl(CSWSPlayer* pPlayer)
         if (pHead != 0)
         {
             CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(pHead->m_pData);
-            if (pAction != 0 && pAction->m_nActionId == AIACTION_DRIVE)
-                pAction->m_args.m_bCheckMoveToRun = 0;
+            if (pAction != 0 && pAction->m_nActionId == AIACTION_DRIVE) {
+                int bCheckMoveToRun = 0;
+                memcpy(&pAction->m_args.m_bCheckMoveToRun, &bCheckMoveToRun, sizeof(bCheckMoveToRun));
+            }
         }
     }
 

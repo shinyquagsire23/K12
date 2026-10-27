@@ -337,15 +337,13 @@ void CSWPazaak::LoadInitialSideDeck(int deckIndex, CPazaakCard* pSidedeck)
     if (!twoDA.Load2DArray())
         return;
     CExoString str;
-    CPazaakCard* pCard = pSidedeck;
     int type;
     if (deckIndex < 0)
         deckIndex = PazaakRand() % twoDA.m_nRows;
 #if KOTOR1  // K1 accepts only the '-' and '*' prefixes; no F/V/$/T cards
-    int second;
-    for (int i = 0; i < 10; i++, pCard++) {
+    for (int i = 0; i < 10; i++) {
         twoDA.GetCExoStringEntry(deckIndex, i, &str);
-        second = str[1];
+        int second = str[1];
         type = second - '1';
         switch (str[0]) {
         case '-':
@@ -357,10 +355,10 @@ void CSWPazaak::LoadInitialSideDeck(int deckIndex, CPazaakCard* pSidedeck)
         }
         CPazaakCard card;
         card.m_nCardType = type;
-        *pCard = card;
+        pSidedeck[i] = card;
     }
 #else
-    for (int i = 0; i < 10; i++, pCard++) {
+    for (int i = 0; i < 10; i++) {
         twoDA.GetCExoStringEntry(deckIndex, i, &str);
         int second = str[1];
         type = second - '1';
@@ -387,9 +385,9 @@ void CSWPazaak::LoadInitialSideDeck(int deckIndex, CPazaakCard* pSidedeck)
             type = PAZAAK_CARD_TIEBREAKER;
             break;
         }
-        pCard->m_nCardType = type;
-        pCard->m_bIsNegative = 0;
-        pCard->m_nValue = 0;
+        pSidedeck[i].m_nCardType = type;
+        pSidedeck[i].m_bIsNegative = 0;
+        pSidedeck[i].m_nValue = 0;
     }
 #endif
     twoDA.Unload2DArray();

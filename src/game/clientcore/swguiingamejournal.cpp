@@ -265,13 +265,16 @@ void CSWGuiInGameJournal::PopulateItemListBox()
     extent.h = static_cast<int>(static_cast<float>(g_SDL_mode.h) / 480.0f * static_cast<float>(extent.h));
 #endif
 
-    for (int i = 0; ; i++)
+    int i;
+    for (i = 0; ; i++)
     {
-        SJournalEntry* pEntry = GetQuestEntryAt(i);
+        SJournalEntry* pEntry;
+        CSWGuiJournalItemEntry* pRow;
+        pEntry = GetQuestEntryAt(i);
         if (pEntry == 0)
             break;
 
-        CSWGuiJournalItemEntry* pRow = new CSWGuiJournalItemEntry;
+        pRow = new CSWGuiJournalItemEntry;
         pRow->m_nEntryIndex = i;
         pRow->m_bNewHilight = 0;
         pRow->Initialize(extent, pProtoRow);
@@ -304,8 +307,8 @@ void CSWGuiInGameJournal::PopulateItemListBox()
         if (pEntry->m_bNewUnobserved && !pRow->m_bNewHilight)
         {
             pRow->m_bNewHilight = 1;
-            pRow->m_border.m_params.m_fAlpha = 0.5f;
             pRow->m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_PURPLE);
+            pRow->m_border.m_params.m_fAlpha = 0.5f;
             pRow->m_borderHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_PURPLE);
         }
 #else
@@ -331,11 +334,9 @@ void CSWGuiInGameJournal::PopulateItemListBox()
         OnControlEntered(0);
     }
 
-    void (CSWCJournal::*pfnClearHasChanged)() =
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->m_journalFlags.bShowDoneQuests
-            ? &CSWCJournal::ClearDoneHasChanged
-            : &CSWCJournal::ClearActiveHasChanged;
-    (pJournal->*pfnClearHasChanged)();
+    (pJournal->*(g_pAppManager->m_pClientExoApp->GetInGameGui()->m_journalFlags.bShowDoneQuests
+                     ? &CSWCJournal::ClearDoneHasChanged
+                     : &CSWCJournal::ClearActiveHasChanged))();
 }
 
 // Shows the quest's description, prefixed by its planet name when it has one, and remembers the row

@@ -340,7 +340,7 @@ int AurSGIMipmapAvailable()
 {
     static int returnval = -1;
     if (returnval == -1) {
-        if (existingextensions & ATI_FRAGMENT_SHADER_BIT)
+        if (ATI_FRAGMENT_SHADER_BIT & existingextensions)
             returnval = 0;
         else
             returnval = (EXT_SGIS_MIPMAP_BIT & existingextensions) == EXT_SGIS_MIPMAP_BIT;

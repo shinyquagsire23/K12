@@ -326,12 +326,7 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef, int bScaleOrigin, i
         if (pResGFF->GetStructFromStruct(&borderStruct, &resStruct, const_cast<char*>("BORDER")))
         {
             m_pBackground->Load(pResGFF, resStruct, CExoString("BORDER"));
-            CSWGuiExtent borderExtent;
-            borderExtent.x = 0;
-            borderExtent.y = 0;
-            borderExtent.w = m_extent.w;
-            borderExtent.h = m_extent.h;
-            m_pBackground->SetExtent(borderExtent);
+            m_pBackground->SetExtent(CSWGuiExtent(0, 0, m_extent.w, m_extent.h));
         }
         else
         {
@@ -908,11 +903,7 @@ void CSWGuiPanel::AddExtraBorderPanel(CSWGuiManager* pGuiManager, CExoString nam
 
     CSWGuiPanel* pChain = m_pNextInChain;
 
-    CSWGuiExtent extent;
-    extent.x = 0;
-    extent.y = 0;
-    extent.w = g_nScreenWidth;
-    extent.h = g_nScreenHeight;
+    CSWGuiExtent extent = {0, 0, g_nScreenWidth, g_nScreenHeight};
     pChain->SetExtent(extent);
 
     m_pNextInChain->m_pBackground->m_params.m_flags.nFillStyle = 2;
@@ -1748,14 +1739,10 @@ void CSWGuiManager::DrawPCBG(float fAlpha)
         {
             CSWGuiLabel* pLabel = new CSWGuiLabel();
             m_pBackgroundLabel = pLabel;
-            CSWGuiExtent extent;
-            extent.w = m_nScreenWidth;
-            extent.h = m_nScreenHeight;
-            CSWGuiTextParams textParams;
-            Vector color(1.0f, 1.0f, 1.0f);
-            CSWGuiBorderParams borderParams(CResRef(), CResRef(), CResRef(m_fullScreenBG),
-                                            0, 0, 1.0f, color, 0);
-            pLabel->Initialize(extent, textParams, borderParams, 1.0f);
+            pLabel->Initialize(CSWGuiExtent(0, 0, m_nScreenWidth, m_nScreenHeight), CSWGuiTextParams(),
+                               CSWGuiBorderParams(CResRef(), CResRef(), CResRef(m_fullScreenBG),
+                                                  0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0),
+                               1.0f);
         }
         static CExoString s_sLastBG;
         if (s_sLastBG != m_fullScreenBG)
@@ -1767,27 +1754,19 @@ void CSWGuiManager::DrawPCBG(float fAlpha)
                 if (IosIsIphone(nScreenWidth, nScreenHeight) && nScreenWidth > 1024)
                 {
                     CSWGuiLabel* pLabel = m_pBackgroundLabel;
-                    CSWGuiExtent extent;
-                    extent.w = m_nScreenWidth;
-                    extent.h = m_nScreenHeight;
-                    CSWGuiTextParams textParams;
-                    Vector color(1.0f, 1.0f, 1.0f);
-                    CSWGuiBorderParams borderParams(CResRef(), CResRef(), CResRef(m_fullScreenBG),
-                                                    0, 0, 1.0f, color, 0);
-                    pLabel->Initialize(extent, textParams, borderParams, 1.0f);
+                    pLabel->Initialize(CSWGuiExtent(0, 0, m_nScreenWidth, m_nScreenHeight), CSWGuiTextParams(),
+                                       CSWGuiBorderParams(CResRef(), CResRef(), CResRef(m_fullScreenBG),
+                                                          0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0),
+                                       1.0f);
                 }
             }
             else
             {
                 CSWGuiLabel* pLabel = m_pBackgroundLabel;
-                CSWGuiExtent extent;
-                extent.w = g_SDL_mode.w;
-                extent.h = g_SDL_mode.h;
-                CSWGuiTextParams textParams;
-                Vector color(1.0f, 1.0f, 1.0f);
-                CSWGuiBorderParams borderParams(CResRef(), CResRef(), CResRef(m_fullScreenBG),
-                                                0, 0, 1.0f, color, 0);
-                pLabel->Initialize(extent, textParams, borderParams, 1.0f);
+                pLabel->Initialize(CSWGuiExtent(0, 0, g_SDL_mode.w, g_SDL_mode.h), CSWGuiTextParams(),
+                                   CSWGuiBorderParams(CResRef(), CResRef(), CResRef(m_fullScreenBG),
+                                                      0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0),
+                                   1.0f);
             }
         }
         m_pBackgroundLabel->m_border.m_params.SetFillImage(m_fullScreenBG, 0);
@@ -1815,14 +1794,10 @@ void CSWGuiManager::DrawPCBG(float fAlpha)
         {
             CSWGuiLabel* pLabel = new CSWGuiLabel();
             m_pBackgroundLabel = pLabel;
-            CSWGuiExtent extent;
-            extent.w = m_nScreenWidth;
-            extent.h = m_nScreenHeight;
-            CSWGuiTextParams textParams;
-            Vector color(1.0f, 1.0f, 1.0f);
-            CSWGuiBorderParams borderParams(CResRef(), CResRef(), CResRef(m_fullScreenBG),
-                                            0, 0, 0, 1.0f, color, 0, 0);
-            pLabel->Initialize(extent, textParams, borderParams, 1.0f);
+            pLabel->Initialize(CSWGuiExtent(0, 0, m_nScreenWidth, m_nScreenHeight), CSWGuiTextParams(),
+                               CSWGuiBorderParams(CResRef(), CResRef(), CResRef(m_fullScreenBG),
+                                                  0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0),
+                               1.0f);
         }
         m_pBackgroundLabel->m_border.m_params.SetFillImage(m_fullScreenBG, 0);
         m_pBackgroundLabel->m_border.m_params.m_flags.nFillStyle = 2;
@@ -1844,9 +1819,7 @@ int CSWGuiManager::ActivateSoftwareMouse()
     m_pSoftwareMouse = pScene;
 
     {
-        CSWGuiExtent extent;
-        extent.w = m_nScreenWidth;
-        extent.h = m_nScreenHeight;
+        CSWGuiExtent extent(0, 0, m_nScreenWidth, m_nScreenHeight);
         pScene->SetExtent(extent);
     }
 
@@ -1858,11 +1831,9 @@ int CSWGuiManager::ActivateSoftwareMouse()
 
     // Centre the camera in scene units (0.01f per pixel), with the eye distance scaled to the
     // design width.
-    Vector vCameraPos;
-    vCameraPos.x = m_nScreenWidth * 0.5f * 0.01f;
-    vCameraPos.y = m_nScreenHeight * 0.5f * 0.01f;
-    vCameraPos.z = 5.8f * m_nScreenWidth / 640.0f;
-    m_pSoftwareMouse->m_pCamera->SetPosition(vCameraPos);
+    m_pSoftwareMouse->m_pCamera->SetPosition(Vector(m_nScreenWidth * 0.5f * 0.01f,
+                                                    m_nScreenHeight * 0.5f * 0.01f,
+                                                    5.8f * m_nScreenWidth / 640.0f));
 
     // Screen-space (y down) mouse position in scene units, with y flipped and z flat.
     Vector vMousePos;
@@ -1969,6 +1940,7 @@ CSWGuiManager::CSWGuiManager()
     m_pToolTipPanel = new CSWGuiToolTipPanel(this);
 
     m_fToolTipTimer = 0.0f;
+    m_nMouseStateFlags &= ~8;
     m_pToolTipControl = 0;
     m_bToolTipDisabled = 0;
 
@@ -1978,7 +1950,6 @@ CSWGuiManager::CSWGuiManager()
     m_pPendingToolTipControl = 0;
     m_pDragDropControl = 0;
 
-    m_nMouseStateFlags &= ~8;
     g_pGuiMan = this;
     m_nCurrentInputEvent = 0;
 
@@ -2830,18 +2801,13 @@ void CSWGuiManager::DrawSafeRegion(float fAlpha)
         // All three colour components are -1.0f.
         m_pSafeRegionPanel->m_vColor = Vector(-1.0f, -1.0f, -1.0f);
 
-        CSWGuiExtent extent;
-        CSWGuiTextParams textParams;
-        Vector color(1.0f, 1.0f, 1.0f);
-        CSWGuiBorderParams borderParams(CResRef("border2b"), CResRef("border1b"), CResRef(),
-                                       0, 0, 0, 1.0f, color, 0, 0);
-        m_pSafeRegionLabel->Initialize(extent, textParams, borderParams, 1.0f);
+        m_pSafeRegionLabel->Initialize(CSWGuiExtent(), CSWGuiTextParams(),
+                                       CSWGuiBorderParams(CResRef("border2b"), CResRef("border1b"), CResRef(),
+                                                          0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0),
+                                       1.0f);
     }
 
-    CSWGuiExtent extent;
-    extent.w = m_nScreenWidth;
-    extent.h = m_nScreenHeight;
-    m_pSafeRegionPanel->SetExtent(extent);
+    m_pSafeRegionPanel->SetExtent(CSWGuiExtent(0, 0, m_nScreenWidth, m_nScreenHeight));
 
     // The label is inset by the border's own quote, twice per axis; the getter is called once per
     // axis even though it cannot differ between them.
@@ -3830,18 +3796,20 @@ void CSWGuiExtent::Load(CResGFF* pGFF, CResStruct& resStruct)
 // The two static rectangle helpers. Union is Intersection with every min/max flipped.
 CSWGuiExtent CSWGuiExtent::Intersection(const CSWGuiExtent& a, const CSWGuiExtent& b)
 {
-    int nLeft = a.x > b.x ? a.x : b.x;
-    int nTop = a.y > b.y ? a.y : b.y;
-    int nWidth = (a.x + a.w < b.x + b.w ? a.x + a.w : b.x + b.w) - nLeft;
-    int nHeight = (a.y + a.h < b.y + b.h ? a.y + a.h : b.y + b.h) - nTop;
-    return CSWGuiExtent(nLeft, nTop, nWidth, nHeight);
+    CSWGuiExtent result;
+    result.x = a.x > b.x ? a.x : b.x;
+    result.y = a.y > b.y ? a.y : b.y;
+    result.w = (a.x + a.w < b.x + b.w ? a.x + a.w : b.x + b.w) - result.x;
+    result.h = (a.y + a.h < b.y + b.h ? a.y + a.h : b.y + b.h) - result.y;
+    return result;
 }
 
 CSWGuiExtent CSWGuiExtent::Union(const CSWGuiExtent& a, const CSWGuiExtent& b)
 {
-    int nLeft = a.x < b.x ? a.x : b.x;
-    int nTop = a.y < b.y ? a.y : b.y;
-    int nWidth = (a.x + a.w > b.x + b.w ? a.x + a.w : b.x + b.w) - nLeft;
-    int nHeight = (a.y + a.h > b.y + b.h ? a.y + a.h : b.y + b.h) - nTop;
-    return CSWGuiExtent(nLeft, nTop, nWidth, nHeight);
+    CSWGuiExtent result;
+    result.x = a.x < b.x ? a.x : b.x;
+    result.y = a.y < b.y ? a.y : b.y;
+    result.w = (a.x + a.w > b.x + b.w ? a.x + a.w : b.x + b.w) - result.x;
+    result.h = (a.y + a.h > b.y + b.h ? a.y + a.h : b.y + b.h) - result.y;
+    return result;
 }

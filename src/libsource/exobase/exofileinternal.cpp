@@ -40,7 +40,8 @@ void CExoAliasListInternal::Add(const CExoString& alias, const CExoString& path)
 
     sAlias = sAlias.UpperCase();
 
-    if (sPath.CStr()[sPath.GetLength() - 1] != '\\')
+    const char* pszPath = sPath.CStr();
+    if (pszPath[sPath.GetLength() - 1] != '\\')
         sPath = sPath + "\\";
 
     CExoAliasListEntry* pPrev = 0;
@@ -225,11 +226,13 @@ CExoFileInternal::CExoFileInternal(const CExoString& path, unsigned short resTyp
     } else {
         static bool s_bHasTouchScreen = HasTouchScreen();
         if (!s_bHasTouchScreen && mode.CompareNoCase("rb")) {
-            size_t nSlash = sTv.rfind('/');
-            if (nSlash == std::string::npos)
-                sTv.insert(0, "tv_", 3);
-            else
-                sTv.insert(nSlash + 1, "tv_", 3);
+            {
+                size_t nSlash = sTv.rfind('/');
+                if (nSlash == std::string::npos)
+                    sTv.insert(0, "tv_", 3);
+                else
+                    sTv.insert(nSlash + 1, "tv_", 3);
+            }
             m_pFile = SDL_RWFromFile(sTv.c_str(), mode.CStr());
             if (m_pFile)
                 return;

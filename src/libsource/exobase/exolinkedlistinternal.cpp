@@ -30,8 +30,8 @@ CExoLinkedListNode* CExoLinkedListInternal::AddHead(void* data)
     CExoLinkedListNode* pNode = static_cast<CExoLinkedListNode*>(::operator new(sizeof(CExoLinkedListNode)));
     CExoLinkedListNode* pOldHead = m_pHead;
     pNode->m_pPrev = 0;
-    pNode->m_pNext = pOldHead;
     pNode->m_pData = 0;
+    pNode->m_pNext = pOldHead;
     if (pOldHead != 0)
         pOldHead->m_pPrev = pNode;
     m_pHead = pNode;
@@ -69,11 +69,10 @@ CExoLinkedListNode* CExoLinkedListInternal::AddAfter(void* data, CExoLinkedListN
     CExoLinkedListNode* pNode = static_cast<CExoLinkedListNode*>(::operator new(sizeof(CExoLinkedListNode)));
     pNode->m_pNext = 0;
     pNode->m_pData = 0;
-    CExoLinkedListNode* pOldNext = pos->m_pNext;
     pNode->m_pPrev = 0;
-    pNode->m_pNext = pOldNext;
-    if (pOldNext != 0)
-        pOldNext->m_pPrev = pNode;
+    pNode->m_pNext = pos->m_pNext;
+    if (pNode->m_pNext != 0)
+        pNode->m_pNext->m_pPrev = pNode;
     pos->m_pNext = pNode;
     pNode->m_pPrev = pos;
     pNode->m_pData = data;
@@ -162,8 +161,8 @@ void* CExoLinkedListInternal::Remove(CExoLinkedListNode* pos)
         g_pExoBase->m_pDebug->Warning(307, EXOLL_FILE, "CExoLinkedListInternal::Remove() Position paramter is NULL");
         return 0;
     }
-    CExoLinkedListNode* pNext = pos->m_pNext;
     void* pData = pos->m_pData;
+    CExoLinkedListNode* pNext = pos->m_pNext;
     CExoLinkedListNode* pPrev = pos->m_pPrev;
     if (pPrev != 0)
         pPrev->m_pNext = pNext;

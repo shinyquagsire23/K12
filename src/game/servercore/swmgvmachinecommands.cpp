@@ -222,8 +222,7 @@ int CSWVirtualMachineCommands::ExecuteCommandAurPostString(int nCommand, int nAr
     if (!g_pVirtualMachine->StackPopFloat(&fLifetime))
         return -2001;
 #if KOTOR1  // K1 still reads the text (its on-screen print compiled out)
-    const char* pszText = sText.CStr();
-    (void)pszText;
+    sText.CStr();
 #endif
     return 0;
 }

@@ -359,9 +359,10 @@ char* dm_setrace(char* sArgs) {
 
     CExoString sLabel;
     char* pszResult = const_cast<char*>("Failure");
+    CSWCCreature* pCreature;
     g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(nRace, CExoString("LABEL"), &sLabel);
     if (sLabel.GetLength() >= 1) {
-        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
+        pCreature = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
         pszResult = g_pAppManager->m_pClientExoApp->GetSWCMessage()
                         ->SendPlayerToServerUpdate_AppearanceRace(pCreature->m_objectId, nRace)
                         ? const_cast<char*>("Success")

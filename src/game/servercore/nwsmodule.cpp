@@ -1774,8 +1774,8 @@ void CSWSModule::AddModuleResources(const CExoString& sModule)
     int nTicks = 0;
     g_pExoResMan->FindModuleDownloadedPkg(sModule);
 #if KOTOR1  // K1 mounts the players archive here and advances the bar in sevenths
-    g_pExoResMan->AddEncapsulatedResourceFile(CExoString("HD0:players"), 2);
     int nIncrement = nStep1 / 7;
+    g_pExoResMan->AddEncapsulatedResourceFile(CExoString("HD0:players"), 2);
 #else
 
     // A fifteenth of the first load step's count (255 -> 17).
@@ -1792,8 +1792,7 @@ void CSWSModule::AddModuleResources(const CExoString& sModule)
     }
     else
     {
-        int nLength = sModule.GetLength();
-        sStem = sStem + sModule.Right(nLength - nColon - 1);
+        sStem = sStem + sModule.Right(sModule.GetLength() - nColon - 1);
     }
 
     g_pExoResMan->AddResourceDirectory(CExoString("CURRENTGAME:"));
@@ -1873,8 +1872,7 @@ void CSWSModule::RemoveModuleResources(const CExoString& sModule)
     }
     else
     {
-        int nLength = sModule.GetLength();
-        sStem = sModule.Right(nLength - nColon - 1);
+        sStem = sModule.Right(sModule.GetLength() - nColon - 1);
     }
 
     int nDownloaded = g_pExoResMan->FindModuleDownloadedPkg(sStem);
@@ -2034,8 +2032,7 @@ CExoString CSWSModule::GetModuleResourceName()
     nColon = sName.Find(':', 0);
     while (nColon != -1)
     {
-        int nLength = sName.GetLength();
-        sName = sName.Right(nLength - nColon - 1);
+        sName = sName.Right(sName.GetLength() - nColon - 1);
 
         nColon = sName.Find(':', 0);
     }
@@ -2517,13 +2514,19 @@ int CSWSModule::SavePlayers(CResGFF* pGFF, CResStruct* pStruct, const CExoString
     CExoString sCommunityName;
     if (pModuleRes != 0)
     {
+        CResList ifoList;
         pModuleRes->Demand();
         static_cast<CResGFF*>(pModuleRes)->GetTopLevelStruct(&sTop);
-        CResList ifoList;
         if (static_cast<CResGFF*>(pModuleRes)->GetList(&ifoList, &sTop, const_cast<char*>("Mod_PlayerList")))
         {
             for (unsigned int i = 0; i < m_ifoPlayerList.m_pInternal->m_nCount; i++)
             {
+                CResStruct sIfoPlayer;
+                int valid;
+                unsigned int nObjectId;
+                int nFound;
+                CSWSPlayer* pIfoPlayer;
+                CSWSCreature* pIfoCreature;
                 int j;
                 for (j = 0; j < aPlayerIndices.m_count; j++)
                 {
@@ -2532,18 +2535,16 @@ int CSWSModule::SavePlayers(CResGFF* pGFF, CResStruct* pStruct, const CExoString
                 }
                 if (j < aPlayerIndices.m_count)
                     continue;
-                CResStruct sIfoPlayer;
                 if (!static_cast<CResGFF*>(pModuleRes)->GetListElement(&sIfoPlayer, &ifoList, i))
                 {
                     g_pExoResMan->ReleaseResObject(pModuleRes);
                     return 0;
                 }
-                int valid;
-                unsigned int nObjectId = static_cast<CResGFF*>(pModuleRes)->ReadFieldDWORD(
+                nObjectId = static_cast<CResGFF*>(pModuleRes)->ReadFieldDWORD(
                     &sIfoPlayer, const_cast<char*>("ObjectId"), valid, OBJECT_INVALID);
                 sCommunityName = static_cast<CResGFF*>(pModuleRes)->ReadFieldCExoString(
                     &sIfoPlayer, const_cast<char*>("Mod_CommntyName"), valid, CExoString(-1));
-                int nFound = 0;
+                nFound = 0;
                 for (int k = 0; k < aSavedObjectIds.m_count; k++)
                 {
                     if (aSavedObjectIds.m_pArray[k] == nObjectId)
@@ -2551,20 +2552,20 @@ int CSWSModule::SavePlayers(CResGFF* pGFF, CResStruct* pStruct, const CExoString
                 }
                 if (nObjectId != OBJECT_INVALID && nFound == 0)
                 {
-                    CSWSPlayer* pIfoPlayer = new CSWSPlayer(nObjectId);
+                    pIfoPlayer = new CSWSPlayer(nObjectId);
                     pIfoPlayer->LoadCharacterFromIFO(i, 1, 0);
-                    CSWSCreature* pCreature = static_cast<CSWSCreature*>(pIfoPlayer->GetGameObject());
+                    pIfoCreature = static_cast<CSWSCreature*>(pIfoPlayer->GetGameObject());
                     pGFF->AddListElement(&sElement, &list, GFF_STRUCT_ID_PLAYER);
                     pGFF->WriteFieldCExoString(&sElement, sCommunityName, const_cast<char*>("Mod_CommntyName"));
                     pGFF->WriteFieldBYTE(&sElement, static_cast<unsigned char>(pIfoPlayer->m_bIsPrimaryPlayer), const_cast<char*>("Mod_IsPrimaryPlr"));
-                    pGFF->WriteFieldCExoLocString(&sElement, pCreature->m_pStats->m_firstName,
+                    pGFF->WriteFieldCExoLocString(&sElement, pIfoCreature->m_pStats->m_firstName,
                                                   const_cast<char*>("Mod_FirstName"));
-                    pGFF->WriteFieldCExoLocString(&sElement, pCreature->m_pStats->m_lastName,
+                    pGFF->WriteFieldCExoLocString(&sElement, pIfoCreature->m_pStats->m_lastName,
                                                   const_cast<char*>("Mod_LastName"));
-                    pGFF->WriteFieldDWORD(&sElement, static_cast<unsigned int>(pCreature->m_objectId),
+                    pGFF->WriteFieldDWORD(&sElement, static_cast<unsigned int>(pIfoCreature->m_objectId),
                                           const_cast<char*>("ObjectId"));
-                    pCreature->SaveCreature(pGFF, &sElement);
-                    pCreature->RemoveFromArea(0);
+                    pIfoCreature->SaveCreature(pGFF, &sElement);
+                    pIfoCreature->RemoveFromArea(0);
                     delete pIfoPlayer;
                 }
             }

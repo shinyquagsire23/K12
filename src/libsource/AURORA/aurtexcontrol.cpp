@@ -49,14 +49,14 @@ inline float FloatInterpolate(float* pfGrid, float fX, float fY, int nWidth, int
 }
 
 TextureController::TextureController(CAurTexture* pTexture)
-    : m_pTexture(pTexture)
 {
+    m_pTexture = pTexture;
     m_pSourceImage = 0;
     m_nLastFrame = 0;
     m_nDistort = 0;
+    m_nDistortAngle = 1;
     m_fDistortionAmplitude = 5.0f;
     m_fSpeed = 1.0f;
-    m_nDistortAngle = 1;
 }
 
 // Each per-channel key lazily sizes the scale/translate list to four slots filled with 1.0f,
@@ -192,9 +192,9 @@ WaveTextureController::WaveTextureController(CAurTexture* pTexture)
 ArturoTextureController::ArturoTextureController(CAurTexture* pTexture)
     : TextureController(pTexture)
 {
-    m_nLastFrame = -1;
     m_nArturoWidth = 15;
     m_nArturoHeight = 15;
+    m_nLastFrame = -1;
     m_pfNextHeights = 0;
     m_pfHeights = 0;
     m_pfPrevHeights = 0;

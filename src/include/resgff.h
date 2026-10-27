@@ -8,7 +8,7 @@ struct Vector;
 struct GFFHeader;
 
 // bionic's fortified strncpy (port/libcbase.h), for CResGFF::SetFileType.
-extern "C" char* __strncpy_chk2(char* dst, const char* src, size_t n, size_t nDstSize, size_t nSrcSize);
+extern "C" char* __strncpy_chk2(char* dst, const char* src, size_t n, size_t nDstSize, size_t nSrcSize);  // idiom-exempt: bionic declaration
 #if defined(_MSC_VER) && !defined(__clang__)
 // k2_compiler.h maps SetFileType's checked strncpy to the plain one. Not in k2_compiler.h itself:
 // K1's platforms/k1/k1crt.cpp must see no CRT header (its _strlwr/_strupr have C++ linkage).

@@ -590,17 +590,17 @@ unsigned char CSWSDoor::GetDetectDC() {
 #endif // !KOTOR1
 
 Vector CSWSDoor::GetActionPoint(int state, unsigned char pointIndex) {
-    int meshIdx;
-    if (state == SERVER_ANIMATION_DOOR_OPEN2) {
-        meshIdx = CSWDoorSurfaceMesh::DOOR_STATE_OPEN2;
-    } else if (state == SERVER_ANIMATION_DOOR_OPEN1) {
-        meshIdx = CSWDoorSurfaceMesh::DOOR_STATE_OPEN1;
-    } else if (state == SERVER_ANIMATION_CLOSED) {
-        meshIdx = CSWDoorSurfaceMesh::DOOR_STATE_CLOSED;
-    } else {
-        return Vector{-9999999.0f, -9999999.0f, -9999999.0f};
-    }
-    return m_meshVariants[meshIdx]->GetOpenLocation(pointIndex);
+    if (state == SERVER_ANIMATION_DOOR_OPEN2)
+        return m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN2]->GetOpenLocation(pointIndex);
+    if (state == SERVER_ANIMATION_DOOR_OPEN1)
+        return m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN1]->GetOpenLocation(pointIndex);
+    if (state == SERVER_ANIMATION_CLOSED)
+        return m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->GetOpenLocation(pointIndex);
+    Vector v;
+    v.x = -9999999.0f;
+    v.y = -9999999.0f;
+    v.z = -9999999.0f;
+    return v;
 }
 
 #if !KOTOR1  // K1 has no difficulty-scaled GetOpenLockDC
@@ -776,7 +776,8 @@ int CSWSDoor::NoNonWalkPolysInDoor(const Vector& a, const Vector& b, const float
                                     const float& d, const float& e, CWalkHitInfo* pInfo) {
     if (m_meshVariants[m_curOpenState] == 0) return 0;
     m_meshVariants[m_curOpenState]->m_translation = m_position;
-    m_meshVariants[m_curOpenState]->m_rotation = m_orientation;
+    CSWCollisionMesh* pMesh = m_meshVariants[m_curOpenState];
+    pMesh->m_rotation = m_orientation;
     return m_meshVariants[m_curOpenState]->NoNonWalkPolys(a, b, c, d, e, pInfo);
 }
 

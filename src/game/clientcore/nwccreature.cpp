@@ -2571,12 +2571,13 @@ void CSWCCreature::LoadMonkVisuals() {
         m_pMonkVisuals = 0;
     }
     unsigned short nAlignment = static_cast<unsigned short>(m_pStats->m_alignmentGoodEvil);
+    int bEyes = nAlignment == 3;
     Gob* pMonk = static_cast<Gob*>(NewCAurObject(
-        const_cast<char*>(nAlignment == 3 ? "vfx_monkeyes" : "vfx_monkeyes01"),
+        const_cast<char*>(bEyes ? "vfx_monkeyes" : "vfx_monkeyes01"),
         const_cast<char*>("monkeyes"), 0, 0));
     m_pMonkVisuals = pMonk;
-    m_bMonkEyesLoaded = (nAlignment == 3);
-    m_bMonkEyes01Loaded = (nAlignment != 3);
+    m_bMonkEyesLoaded = bEyes;
+    m_bMonkEyes01Loaded = !bEyes;
     if (pMonk != 0) {
         CAurObject* pModel = static_cast<CAurObject*>(GetAnimationBase()->GetModel(CSWCAnimBase::ANIM_MODEL_BODY));
         pMonk->AttachToObject(pModel, const_cast<char*>("HEADHOOK"), 0);
@@ -2735,13 +2736,13 @@ int CSWCCreature::IsCreature() {
 int CSWCCreature::InCreatureCombat(CSWCObject* pObj) {
     if (pObj == 0)
         return 0;
-    if (IsCreature())
-        return 1;
-    if (pObj->AsSWCCreature() == 0)
-        return 0;
-    if (pObj->AsSWCCreature()->IsCreature())
-        return 1;
-    return 0;
+    if (!IsCreature()) {
+        if (pObj->AsSWCCreature() == 0)
+            return 0;
+        if (!pObj->AsSWCCreature()->IsCreature())
+            return 0;
+    }
+    return 1;
 }
 
 int CSWCCreature::InCreatureCombat(unsigned long long objId) {
@@ -2749,13 +2750,13 @@ int CSWCCreature::InCreatureCombat(unsigned long long objId) {
         static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(objId)->AsSWCObject());
     if (pObj == 0)
         return 0;
-    if (IsCreature())
-        return 1;
-    if (pObj->AsSWCCreature() == 0)
-        return 0;
-    if (pObj->AsSWCCreature()->IsCreature())
-        return 1;
-    return 0;
+    if (!IsCreature()) {
+        if (pObj->AsSWCCreature() == 0)
+            return 0;
+        if (!pObj->AsSWCCreature()->IsCreature())
+            return 0;
+    }
+    return 1;
 }
 
 int CSWCCreature::BarkString(unsigned long long objId, const CExoString& str,
@@ -3305,6 +3306,7 @@ void CSWCCreature::PlaySoundSetSound(unsigned short nSound, int b3D) {
             }
         }
     }
+    CExoStreamingSoundSource* pSource;
     if (g_pAppManager->m_pClientExoApp->GetPlayerCreature() == this) {
         nPriority = PRIORITY_GROUP_PLAYER_CHAT;
     } else if (g_pAppManager->m_pClientExoApp->GetPlayerByGameObjectID(m_objectId) != 0) {
@@ -3316,7 +3318,7 @@ void CSWCCreature::PlaySoundSetSound(unsigned short nSound, int b3D) {
         nPriority = nSizeCategory < 4 ? PRIORITY_GROUP_SMALL_CREATURE_VOCALIZATIONS
                                       : PRIORITY_GROUP_LARGE_CREATURE_VOCALIZATIONS;
     }
-    CExoStreamingSoundSource* pSource = m_pStreamingVocalization;
+    pSource = m_pStreamingVocalization;
     m_vocalizationType = 0;
     if (pSource != 0) {
         pSource->~CExoStreamingSoundSource();
@@ -4078,11 +4080,8 @@ void CSWCCreature::SetDesiredOrientationForLock() {
             CGameObjectArray::SUCCESS) {
             CSWCObject* pTarget = static_cast<CSWCObject*>(pObject);
             if (pTarget != 0) {
-                Vector vDelta;
-                vDelta.x = pTarget->m_position.x - m_position.x;
-                vDelta.y = pTarget->m_position.y - m_position.y;
-                vDelta.z = pTarget->m_position.z - m_position.z;
-                if (vDelta.x * vDelta.x + vDelta.y * vDelta.y + vDelta.z * vDelta.z > 1e-5f) {
+                Vector vDelta = pTarget->m_position - m_position;
+                if (dot(vDelta, vDelta) > 1e-5f) {
                     vDelta.z = 0.0f;
                     SetDesiredStationaryOrientation(normalize(vDelta));
                 }
@@ -4657,13 +4656,15 @@ void CSWCCreature::CreateUsableItemEntry(CExoArrayList<CSWGuiInterfaceAction>& l
     list.m_pArray[nOldCount].m_nObjectId = m_objectId;
     list.m_pArray[nOldCount].m_resRef = pItem->GetIcon();
     list.m_pArray[nOldCount].m_nCount = pItem->m_stackCount;
+    int bHurt;
     switch (pItem->GetBaseItem()->m_nItemType) {
     case ITEM_TYPE_DROID_REPAIR_EQUIPMENT:
-    case ITEM_TYPE_MEDICAL_EQUIPMENT:
+    case ITEM_TYPE_MEDICAL_EQUIPMENT: {
         if (m_pStats->m_nCurrentHitPoints < m_pStats->GetMaxHitPoints())
             break;
+        CSWSCreature* pServer;
         if (GetServerObject() != 0) {
-            CSWSCreature* pServer = GetServerObject()->AsSWSCreature();
+            pServer = GetServerObject()->AsSWSCreature();
             if (pServer != 0 && pServer->m_bPoisoned != 0)
                 return;
         }
@@ -4671,9 +4672,11 @@ void CSWCCreature::CreateUsableItemEntry(CExoArrayList<CSWGuiInterfaceAction>& l
         list.m_pArray[nOldCount].m_nFlags =
             (list.m_pArray[nOldCount].m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FULL_HEALTH;
         return;
+    }
     case ITEM_TYPE_SQUAD_RECOVERY_KIT: {
-        int bHurt = m_pStats->m_nCurrentHitPoints < m_pStats->GetMaxHitPoints();
-        for (int i = 1; i <= 2; i++) {
+        bHurt = m_pStats->m_nCurrentHitPoints < m_pStats->GetMaxHitPoints();
+        int i;
+        for (i = 1; i <= 2; i++) {
             CSWCCreature* pMember = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
             if (pMember != 0 && pMember->GetServerObject() != 0 &&
                 pMember->GetServerObject()->AsSWSCreature() != 0 &&
@@ -4805,13 +4808,8 @@ int CSWCCreature::PlayHitSound(CSWCCombatAttackData* pData, int a) {
     if (pObject->AsSWCObject() == 0)
         return 0;
     CSWCObject* pTarget = pObject->AsSWCObject();
-#if KOTOR1
     int nSoundAppType = 0;
     int nSoundType = 0;
-#else
-    int nSoundType = 0;
-    int nSoundAppType = 0;
-#endif
     CExoString sSound;
     float fPitch = 0.0f;
     if (a == 0 && pData->m_rangedAttackGroup.m_bRangedAttack == 0) {
@@ -4856,10 +4854,9 @@ int CSWCCreature::PlayHitSound(CSWCCombatAttackData* pData, int a) {
                         nSoundAppType, CTwoDimArrays::COL2DA_APPEARANCESOUNDS_ARMORTYPE,
                         &sMaterial);
                     if (sMaterial.IsEmpty()) {
-                        CSWCItem* pArmor =
-                            g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(
-                                pCreature->m_aEquippedItemIds[1]);
-                        if (pArmor != 0)
+                        if (CSWCItem* pArmor =
+                                g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(
+                                    pCreature->m_aEquippedItemIds[1]))
                             sMaterial = pArmor->GetBaseItem()->m_sArmorType;
                         if (sMaterial.IsEmpty())
                             sMaterial = "leather";
@@ -4867,20 +4864,22 @@ int CSWCCreature::PlayHitSound(CSWCCombatAttackData* pData, int a) {
                 }
             } else if (pTarget->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
                 CSWCDoor* pDoor = pTarget->AsSWCDoor();
-                if (pDoor->m_nAppearance == 0)
+                unsigned char nAppearance = pDoor->m_nAppearance;
+                if (nAppearance == 0)
                     g_pRules->m_p2DArrays->m_pGenericDoors->GetINTEntry(
                         pDoor->m_nGenericType, CTwoDimArrays::COL2DA_GENERICDOORS_SOUNDAPPTYPE,
                         &nSoundAppType);
                 else
                     g_pRules->m_p2DArrays->m_pDoorTypes->GetINTEntry(
-                        pDoor->m_nAppearance, CTwoDimArrays::COL2DA_DOORTYPES_SOUNDAPPTYPE,
+                        nAppearance, CTwoDimArrays::COL2DA_DOORTYPES_SOUNDAPPTYPE,
                         &nSoundAppType);
                 g_pRules->m_p2DArrays->m_pPlaceableSounds->GetCExoStringEntry(
                     nSoundAppType, CTwoDimArrays::COL2DA_PLACEABLESOUNDS_ARMORTYPE, &sMaterial);
             } else if (pTarget->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
                 CSWCPlaceable* pPlaceable = pTarget->AsSWCPlaceable();
+                int nAppearance = pPlaceable->m_nAppearanceType;
                 g_pRules->m_p2DArrays->m_pPlaceables->GetINTEntry(
-                    pPlaceable->m_nAppearanceType, CTwoDimArrays::COL2DA_PLACEABLES_SOUNDAPPTYPE,
+                    nAppearance, CTwoDimArrays::COL2DA_PLACEABLES_SOUNDAPPTYPE,
                     &nSoundAppType);
                 g_pRules->m_p2DArrays->m_pPlaceableSounds->GetCExoStringEntry(
                     nSoundAppType, CTwoDimArrays::COL2DA_PLACEABLESOUNDS_ARMORTYPE, &sMaterial);
@@ -5563,7 +5562,7 @@ CSWCCombatAttackData::CSWCCombatAttackData()
     m_nReserved1 = 0;
     m_castTargetGroup.m_fCastTargetX = 0;
     m_castTargetGroup.m_fCastTargetY = 0;
-    m_fCastTargetZ = 0;
+    m_castTargetGroup.m_fCastTargetZ = 0;
     m_reaxnGroup.m_nReaxnDelay = 0;
     m_reaxnGroup.m_nReaxnAnimation = 0;
     m_reaxnGroup.m_nReaxnAnimLength = 0;
@@ -5595,7 +5594,7 @@ void CSWCCombatAttackData::ClearAttackData()
     m_nReserved1 = 0;
     m_castTargetGroup.m_fCastTargetX = 0;
     m_castTargetGroup.m_fCastTargetY = 0;
-    m_fCastTargetZ = 0;
+    m_castTargetGroup.m_fCastTargetZ = 0;
     m_reaxnGroup.m_nReaxnDelay = 0;
     m_reaxnGroup.m_nReaxnAnimation = 0;
     m_reaxnGroup.m_nReaxnAnimLength = 0;
@@ -5854,12 +5853,7 @@ CExoString CSWCCreature::GetSaveCreatureFilename(const CExoString& s1, const CEx
         if (!g_pExoResMan->Exists(CResRef(static_cast<char*>(sResult.CStr())), RESTYPE_BIC, static_cast<unsigned int*>(0)))
             break;
         sSuffix = CExoString(nCount);
-#if KOTOR1  // K1 calls GetLength out of line
-        int nLen = sSuffix.GetLength();
-#else
-        int nLen = sSuffix.m_sString != 0 ? static_cast<int>(strlen(sSuffix.m_sString)) : 0;
-#endif
-        sName = sName.SubString(0, 16 - nLen);
+        sName = sName.SubString(0, 16 - sSuffix.GetLength());
         sResult = sName + sSuffix;
         nCount++;
     }
@@ -7381,26 +7375,30 @@ void CSWCCreature::GetNonCombatFeatsSkills(CExoArrayList<CSWGuiInterfaceAction>&
     CExoString sName;
     if (static_cast<CSWSArea*>(pServer->GetArea())->m_nPlayerRestrictMode == 0 &&
         m_pStats->GetCanUseSkill(SKILL_STEALTH) != 0) {
-        CClientExoApp* pExoApp = g_pAppManager->m_pClientExoApp;
-        bool bArmed;
-        CSWCItem* pItemR = pExoApp->GetItemByGameObjectID(m_aEquippedItemIds[10]);
+        int bArmed;
+        CSWCItem* pItemR;
+        CSWCItem* pItemL;
+#if !KOTOR1
+        int nHasFeat;
+#endif
+        pItemR = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_aEquippedItemIds[10]);
         if (pItemR == 0 || pItemR->GetBaseItem() == 0)
-            bArmed = false;
+            bArmed = 0;
         else
             bArmed = pItemR->GetBaseItem()->m_nItemType == ITEM_TYPE_STEALTH_UNIT;
-        CSWCItem* pItemL = pExoApp->GetItemByGameObjectID(m_aEquippedItemIds[14]);
+        pItemL = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_aEquippedItemIds[14]);
         if (pItemL != 0 && pItemL->GetBaseItem() != 0)
             bArmed |= pItemL->GetBaseItem()->m_nItemType == ITEM_TYPE_STEALTH_UNIT;
 #if KOTOR1
         if (bArmed) {  // K1: the stealth belt alone
 #else
-        CSWSCreatureStats* pServerStats = pServer->m_pStats;
-        int nHasFeat = pServerStats->HasFeat(FEAT_PERSONAL_CLOAKING_SHIELD);
-        if (pServerStats->HasSpell(0, FORCE_POWER_FORCE_CAMOUFLAGE, 0) != 0 ||
-            pServerStats->HasSpell(0, FORCE_POWER_IMPROVED_FORCE_CAMOUFLAGE, 0) != 0 ||
-            (nHasFeat | static_cast<int>(bArmed) | pServerStats->HasSpell(0, FORCE_POWER_MASTER_FORCE_CAMOUFLAGE, 0)) != 0) {
+        nHasFeat = pServer->m_pStats->HasFeat(FEAT_PERSONAL_CLOAKING_SHIELD);
+        int bCanStealth = pServer->m_pStats->HasSpell(0, FORCE_POWER_FORCE_CAMOUFLAGE, 0) != 0 ||
+            pServer->m_pStats->HasSpell(0, FORCE_POWER_IMPROVED_FORCE_CAMOUFLAGE, 0) != 0 ||
+            (nHasFeat | bArmed | pServer->m_pStats->HasSpell(0, FORCE_POWER_MASTER_FORCE_CAMOUFLAGE, 0)) != 0;
+        if (bCanStealth) {
 #endif
-            sName = pExoApp->GetGUIString(STRREF_STEALTH) + " (" + pExoApp->GetGUIString(STRREF_SELF) + ")";
+            sName = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_STEALTH) + " (" + g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_SELF) + ")";
             list.SetSize(nOldCount + 1);
             list.m_pArray[nOldCount].m_sName = sName;
             list.m_pArray[nOldCount].m_pfnAction = &CSWCCreature::PartyMenuStealth;
@@ -8255,8 +8253,6 @@ int CSWCCreature::LookAt(unsigned long long objId, float fRange) {
     CExoString sBone;
     CExoString sHeadBone;
     int nResult = 0;
-    Gob* pHeadModel;
-    Gob* pBodyModel;
     float fArc;
     int nHeadTrack;
     CSWCObject* pTarget;
@@ -8264,8 +8260,8 @@ int CSWCCreature::LookAt(unsigned long long objId, float fRange) {
 
     if (m_bDisableLookAt == 0 && m_lookAtTargetId != objId && m_bPlayingCutsceneAnimation == 0 &&
         m_pCreatureAppearance != 0) {
-        pHeadModel = GetModel(CSWCAnimBase::ANIM_MODEL_HEAD, 0);
-        pBodyModel = GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 0);
+        Gob* pHeadModel = GetModel(CSWCAnimBase::ANIM_MODEL_HEAD, 0);
+        Gob* pBodyModel = GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 0);
         if (pHeadModel != 0 || pBodyModel != 0) {
             if (g_pRules->m_p2DArrays->m_pAppearance->GetINTEntry(
                     m_pCreatureAppearance->m_nAppearanceId,
@@ -8280,6 +8276,7 @@ int CSWCCreature::LookAt(unsigned long long objId, float fRange) {
                     float dx = pTarget->m_position.x - m_position.x;
                     float dy = pTarget->m_position.y - m_position.y;
                     float dz = pTarget->m_position.z - m_position.z;
+                    float fArcH = 40.0f;
                     if (dx * dx + dy * dy + dz * dz > fRange * fRange) {
 // Out of range: a plain 0, with the tracking state untouched.
                     } else {
@@ -8291,7 +8288,6 @@ int CSWCCreature::LookAt(unsigned long long objId, float fRange) {
                                        &sHeadBone) == 0) {
                             sHeadBone = "hturn_g";
                         }
-                        float fArcH = 40.0f;
                         if (g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
                                 m_pCreatureAppearance->m_nAppearanceId,
                                 CTwoDimArrays::COL2DA_APPEARANCETABLE_HEAD_ARC_H, &fArc) != 0)

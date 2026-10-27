@@ -324,7 +324,7 @@ int CResTGA::Write(const CExoString& path)
             unsigned int nStride = h->m_bitsPerPixel >> 3;
             unsigned char* pPixel = pBuffer + h->m_idLength + GetTGAColorMapSize(h) + TGA_HEADER_SIZE;
             unsigned int nOffset = 0;
-            for (unsigned int n = nPixels; n != 0; n--) {
+            for (uint64_t n = nPixels; n != 0; n--) {
                 unsigned char nTmp = pPixel[nOffset];
                 pPixel[nOffset] = pPixel[nOffset + 2];
                 pPixel[nOffset + 2] = nTmp;

@@ -565,19 +565,22 @@ int CAvoidCreature::PlotPathAroundCreature(CSWSCreature* pSelf, CSWSCreature* pB
         g_pVirtualMachine->RunScript(&sScript, pSelf->m_objectId, pSelf->m_objectId != OBJECT_INVALID);
         if (pSelf->m_bCommandable != 0) return AVOIDCREATURE_FAILED;
     }
-    ComputeHexPoints(pBlocker->m_position, pSelf->m_orientation,
-                     pBlocker->m_pPathfindInfo->m_fCrePersonalSpace +
-                         pSelf->m_pPathfindInfo->m_fCrePersonalSpace +
-                         fPlotAroundCreatureAditionalSpace);
+    float fSpace = pBlocker->m_pPathfindInfo->m_fCrePersonalSpace +
+                   pSelf->m_pPathfindInfo->m_fCrePersonalSpace + fPlotAroundCreatureAditionalSpace;
+    ComputeHexPoints(pBlocker->m_position, pSelf->m_orientation, fSpace);
     IsPointInHex(Vector(pSelf->m_pPathfindInfo->m_paWayPoints[0],
                         pSelf->m_pPathfindInfo->m_paWayPoints[1], 0.0f));
     Vector vPathEnd(pSelf->m_pPathfindInfo->m_paWayPoints[pSelf->m_pPathfindInfo->m_nWayPointFloats - 2],
                     pSelf->m_pPathfindInfo->m_paWayPoints[pSelf->m_pPathfindInfo->m_nWayPointFloats - 1], 0.0f);
     if (IsPointInHex(vPathEnd) != 0) return AVOIDCREATURE_ENDINHEX;
+    Vector* pTrial1;
+    Vector* pTrial2;
     if (FindEntryAndExit(pSelf->m_pPathfindInfo) == 0) return AVOIDCREATURE_FAILED;
 
     int bBlocked1 = 0;
-    Vector* pTrial1 = FindPath(nPoints1);
+    int nOldSide;
+    int bBlocked2 = 0;
+    pTrial1 = FindPath(nPoints1);
     {
         Vector vFrom = pTrial1[0];
         Vector vTo;
@@ -597,10 +600,9 @@ int CAvoidCreature::PlotPathAroundCreature(CSWSCreature* pSelf, CSWSCreature* pB
             } while (nSeg != 0);
         }
     }
-    int nOldSide = m_nSide;
+    nOldSide = m_nSide;
     m_nSide = (nOldSide == 0);
-    int bBlocked2 = 0;
-    Vector* pTrial2 = FindPath(nPoints2);
+    pTrial2 = FindPath(nPoints2);
     {
         Vector vFrom = pTrial2[0];
         Vector vTo;

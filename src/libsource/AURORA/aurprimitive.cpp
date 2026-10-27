@@ -86,13 +86,12 @@ void VertexPrimitive::Rebuild()
 // `if (a && !b)`: folding them changes the emitted control flow.
 inline void SetupColorState(bool bHasColorPool)
 {
-    if (bHasColorPool) {
-        if (!LightManager::m_pOnlyGob)
-            GLRender::EnableClientState(Aurora::kClientStateColor);
-        else
-            GLRender::DisableClientState(Aurora::kClientStateColor);
-    } else {
+    if (!bHasColorPool) {
         GLRender::DisableClientState(Aurora::kClientStateColor);
+    } else if (LightManager::m_pOnlyGob) {
+        GLRender::DisableClientState(Aurora::kClientStateColor);
+    } else {
+        GLRender::EnableClientState(Aurora::kClientStateColor);
     }
 }
 

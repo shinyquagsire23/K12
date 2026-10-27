@@ -751,21 +751,18 @@ bool IsCursorInsideWindow()
 
     HWND__* hWnd = g_hRenderWnd;
 
-    if (GetCursorPos(&pt) == 0)
-        return false;
-    if (ScreenToClient(hWnd, &pt) == 0)
-        return false;
+    if (GetCursorPos(&pt) != 0 && ScreenToClient(hWnd, &pt) != 0) {
+        RECT rc;
+        rc.left = 0;
+        rc.top = 0;
+        rc.right = 0;
+        rc.bottom = 0;
+        GetClientRect(hWnd, &rc);
 
-    RECT rc;
-    rc.left = 0;
-    rc.top = 0;
-    rc.right = 0;
-    rc.bottom = 0;
-    GetClientRect(hWnd, &rc);
-
-    if (PtInRect_Win32(&rc, pt) == 0)
-        return false;
-    return true;
+        if (PtInRect_Win32(&rc, pt) != 0)
+            return true;
+    }
+    return false;
 }
 
 // The name is misspelled in the engine ("Cusor") and the typo is part of the exported symbol, so

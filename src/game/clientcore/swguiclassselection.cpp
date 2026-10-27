@@ -706,13 +706,14 @@ void CSWGuiClassSelection::BeginPlayGame()
     CExoString sLoadScreen;
 
     CClientExoApp* pClientExoApp = g_pAppManager->m_pClientExoApp;
+    CNetLayer* pNet;
     m_pSelectedCreature->m_pStats->m_nForcePoints = 0;
 
     g_pAppManager->CreateServer(0);
 
     m_pSelectedCreature->SaveCharGenCreature();
 
-    CNetLayer* pNet = pClientExoApp->GetNetLayer();
+    pNet = pClientExoApp->GetNetLayer();
     {
         CExoString sClientName = pClientExoApp->GetClientName();
         pNet->StartConnectToSession(0, sClientName, CExoString(""), 10,

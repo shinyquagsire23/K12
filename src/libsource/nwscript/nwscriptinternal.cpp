@@ -7571,7 +7571,7 @@ int CScriptCompilerInternal::ParseSource(char* pSource, int nLength)
             if (nResult < 0)
                 return PrintParseSourceError(nChar, nResult);
 
-            for (int nLoop = nResult + 1; nLoop > 0; nLoop--)
+            for (int nLoop = nResult; nLoop >= 0; nLoop--)
             {
                 if (nChar == '\n')
                 {
@@ -8127,12 +8127,12 @@ lFoundLabel:
             || m_pSymbolQueryList[nQuery].m_sLabel.Left(2) == "FX")
         {
 #if KOTOR1
-            int nSymbolLength = m_pSymbolQueryList[nQuery].m_sLabel.GetLength();
+            sLabel = m_pSymbolQueryList[nQuery].m_sLabel.Right(m_pSymbolQueryList[nQuery].m_sLabel.GetLength() - 3);
 #else
             int nSymbolLength = m_pSymbolQueryList[nQuery].m_sLabel.m_sString
                     ? static_cast<int>(strlen(m_pSymbolQueryList[nQuery].m_sLabel.m_sString)) : 0;
-#endif
             sLabel = m_pSymbolQueryList[nQuery].m_sLabel.Right(nSymbolLength - 3);
+#endif
 
             int nIdentifier = GetIdentifierByName(sLabel);
             if (nIdentifier < 0)
@@ -8154,12 +8154,12 @@ lFoundLabel:
 lMissingLabel:
         {
 #if KOTOR1
-            int nSymbolLength = m_pSymbolQueryList[nQuery].m_sLabel.GetLength();
+            sLabel = m_pSymbolQueryList[nQuery].m_sLabel.Right(m_pSymbolQueryList[nQuery].m_sLabel.GetLength() - 3);
 #else
             int nSymbolLength = m_pSymbolQueryList[nQuery].m_sLabel.m_sString
                     ? static_cast<int>(strlen(m_pSymbolQueryList[nQuery].m_sLabel.m_sString)) : 0;
-#endif
             sLabel = m_pSymbolQueryList[nQuery].m_sLabel.Right(nSymbolLength - 3);
+#endif
         }
         return OutputIdentifierError(sLabel, -SCRIPT_ERROR_UNDEFINED_IDENTIFIER);
     }

@@ -224,9 +224,6 @@ EventHANDLE::EventHANDLE(_SECURITY_ATTRIBUTES* pSec, int bManualReset, int bInit
                          K2WChar const* pszName)
 {
     K2_UNUSED(pSec);
-    m_szName[0] = 0;
-    m_nType = 0;
-
     GetThreadRegistry().m_syncLock.Enter();
     GetThreadRegistry().m_syncPrimitives.insert(this);
     if (pszName != 0)
@@ -391,9 +388,6 @@ unsigned int EventHANDLE::SetEvent()
 SemaphoreHANDLE::SemaphoreHANDLE(int nInitial, int nMax, K2WChar const* pszName)
 {
     K2_UNUSED(nInitial); K2_UNUSED(nMax);
-    m_szName[0] = 0;
-    m_nType = 0;
-
     GetThreadRegistry().m_syncLock.Enter();
     GetThreadRegistry().m_syncPrimitives.insert(this);
     if (pszName != 0)
@@ -440,9 +434,6 @@ unsigned int SemaphoreHANDLE::Release()
 
 MutexHANDLE::MutexHANDLE(bool bInitialOwner, K2WChar const* pszName)
 {
-    m_szName[0] = 0;
-    m_nType = 0;
-
     GetThreadRegistry().m_syncLock.Enter();
     GetThreadRegistry().m_syncPrimitives.insert(this);
     if (pszName != 0) {
@@ -508,9 +499,6 @@ WaitableTimerHANDLE::WaitableTimerHANDLE(_SECURITY_ATTRIBUTES* pSec, int bManual
                                          K2WChar const* pszName)
 {
     K2_UNUSED(pSec); K2_UNUSED(bManualReset);
-    m_szName[0] = 0;
-    m_nType = 0;
-
     GetThreadRegistry().m_syncLock.Enter();
     GetThreadRegistry().m_syncPrimitives.insert(this);
     if (pszName != 0)

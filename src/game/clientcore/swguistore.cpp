@@ -71,10 +71,8 @@ CSWGuiStore::CSWGuiStore(CSWGuiManager* pGuiManager)
     StopLoadFromLayout();
     ScaleExtentForResolution();
 
-    {
-        CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
-        m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
-    }
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
+    m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_lbShopItems.bShowScrollBar = 1;
     m_lbInvItems.bShowScrollBar = 1;
@@ -128,10 +126,8 @@ CSWGuiStore::CSWGuiStore(CSWGuiManager* pGuiManager)
 
     StopLoadFromLayout();
 
-    {
-        CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
-        m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
-    }
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbDescription.m_pProtoItem);
+    m_lblDescription.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_lbShopItems.bShowScrollBar = 1;
     m_lbInvItems.bShowScrollBar = 1;

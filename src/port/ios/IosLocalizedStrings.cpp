@@ -71,10 +71,11 @@ IosLocalizedStringsImpl::IosLocalizedStringsImpl(const char* pFileName, bool bDe
         bool bDone;
         do
         {
+            char szBuffer[512];
+            int nRead;
             if (SDL_RWseek(pFile, nOffset, RW_SEEK_SET) == -1)
                 break;
-            char szBuffer[512];
-            int nRead = static_cast<int>(SDL_RWread(pFile, szBuffer, 1, LOCALIZED_LINE_SIZE));
+            nRead = static_cast<int>(SDL_RWread(pFile, szBuffer, 1, LOCALIZED_LINE_SIZE));
             std::string sLine;
 #ifdef K2_FIX_ENGINE_BUGS
             // Only the bytes just read are the line buffer.

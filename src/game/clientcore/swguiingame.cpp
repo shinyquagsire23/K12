@@ -678,15 +678,11 @@ void AspyrAddLabelIcon(CSWGuiLabel* pLabel, char nIcon)
     pLabel->m_text.m_params.SetText(sText);
 }
 
-// Strips the icon prefix from a button's caption with the same guard as AspyrStripStringIcon, but
-// on a copy of the caption so the control's text is untouched when no prefix is present.
+// Strips the icon prefix from a copy of a button's caption and puts it back.
 void AspyrStripButtonIcon(CSWGuiButton* pButton, char nIcon)
 {
-    K2_UNUSED(nIcon);
     CExoString sText(pButton->m_text.m_params.m_sText);
-    const unsigned char* p = reinterpret_cast<const unsigned char*>(sText.CStr());
-    if (p != 0 && *p != 0 && static_cast<unsigned int>(*p - PAD_ICON_GLYPH_FIRST) <= PAD_ICON_GLYPH_LAST - PAD_ICON_GLYPH_FIRST && p[1] != 0)
-        sText = CExoString(reinterpret_cast<const char*>(p + 2));
+    AspyrStripStringIcon(sText, nIcon);
     pButton->m_text.m_params.SetText(sText);
 }
 
@@ -906,30 +902,32 @@ CSWGuiMessageBox::CSWGuiMessageBox(CSWGuiManager* pGuiManager)
                                          &CSWGuiMessageBox::OnCancelButtonPressed));
     m_lbMessage.m_nScrollSound = GUISOUND_ENTERED_DEFAULT;
 
-    CSWGuiExtent extent;
-    extent.x = 0;
-    extent.y = 10;
-    extent.w = 32;
-    extent.h = 32;
-    m_lblIcon.SetExtent(extent);
+    {
+        CSWGuiExtent extent;
+        extent.x = 0;
+        extent.y = 10;
+        extent.w = 32;
+        extent.h = 32;
+        m_lblIcon.SetExtent(extent);
+    }
     m_lblIcon.m_tail.bVisible = 0;
     AddControl(&m_lblIcon);
 #ifdef K1_UI_XBOX
     K1ConsoleAddBoxGlyphs(this);
 #endif
     ScaleExtentForResolution();
-    if (m_lbMessage.m_pProtoItem)
-        m_lblMessage.Initialize(m_lbMessage.m_pProtoItem->m_extent,
-                                static_cast<CSWGuiLabel*>(m_lbMessage.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbMessage.m_pProtoItem);
+    if (pProto)
+        m_lblMessage.Initialize(pProto->m_extent, pProto, 1.0f);
     CenterPanel();
 
     m_originalPanelExtent = m_extent;
     m_originalListBoxExtent = m_lbMessage.m_extent;
-    m_nOpenSoundIndex = GUISOUND_PROMPT;
     m_pfnCallback = 0;
     m_pCallbackObject = 0;
     m_pCallbackControl = 0;
     m_nSavedInputClass = 0;
+    m_nOpenSoundIndex = GUISOUND_PROMPT;
     m_bAccepted = 0;
     m_bFocusOkButton = 0;
 #else
@@ -951,50 +949,46 @@ CSWGuiMessageBox::CSWGuiMessageBox(CSWGuiManager* pGuiManager)
                                          &CSWGuiMessageBox::OnCancelButtonPressed));
     if (IsJoystickConnected())
     {
-        {
-            CExoString sText = m_btnOk.m_text.m_params.m_sText;
-            AspyrAddStringIcon(sText, 'a');
-            m_btnOk.m_text.m_params.SetText(sText);
-        }
-        {
-            CExoString sText = m_btnCancel.m_text.m_params.m_sText;
-            AspyrAddStringIcon(sText, 'b');
-            m_btnCancel.m_text.m_params.SetText(sText);
-        }
+        AspyrAddButtonIcon(&m_btnOk, 'a');
+        AspyrAddButtonIcon(&m_btnCancel, 'b');
     }
     m_lbMessage.m_nScrollSound = GUISOUND_ENTERED_DEFAULT;
 
     // The icon is not a layout control. It gets a literal 32x32 box under the title, is hidden
     // until SetIcon supplies an image, and is added to the panel by hand.
-    CSWGuiExtent extent;
-    extent.x = 0;
-    extent.y = 10;
-    extent.w = 32;
-    extent.h = 32;
-    m_lblIcon.SetExtent(extent);
+    {
+        CSWGuiExtent extent;
+        extent.x = 0;
+        extent.y = 10;
+        extent.w = 32;
+        extent.h = 32;
+        m_lblIcon.SetExtent(extent);
+    }
     m_lblIcon.m_tail.bVisible = 0;
     AddControl(&m_lblIcon);
-    if (m_lbMessage.m_pProtoItem)
-        m_lblMessage.Initialize(m_lbMessage.m_pProtoItem->m_extent,
-                                static_cast<CSWGuiLabel*>(m_lbMessage.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbMessage.m_pProtoItem);
+    if (pProto)
+        m_lblMessage.Initialize(pProto->m_extent, pProto, 1.0f);
     CenterPanel();
 
     float fScale = GetResolutionTextScalar();
-    extent = m_lblIcon.m_extent;
-    extent.w = static_cast<int>(extent.w * fScale);
-    extent.h = static_cast<int>(extent.h * fScale);
-    m_lblIcon.SetExtent(extent);
+    {
+        CSWGuiExtent extent = m_lblIcon.m_extent;
+        extent.w = static_cast<int>(extent.w * fScale);
+        extent.h = static_cast<int>(extent.h * fScale);
+        m_lblIcon.SetExtent(extent);
+    }
 
     m_originalPanelExtent = m_extent;
     m_originalListBoxExtent = m_lbMessage.m_extent;
 #if defined(K2_QOL_IMPROVEMENTS) && !defined(K2_UI_TOUCH)
     K2QolCompactMessageBoxButtons(this, fScale);
 #endif
-    m_nOpenSoundIndex = GUISOUND_PROMPT;
     m_pfnCallback = 0;
     m_pCallbackObject = 0;
     m_pCallbackControl = 0;
     m_nSavedInputClass = 0;
+    m_nOpenSoundIndex = GUISOUND_PROMPT;
     m_bAccepted = 0;
     m_bFocusOkButton = 0;
     m_bPausedCombat = 0;
@@ -1038,47 +1032,43 @@ CSWGuiMessageBox::CSWGuiMessageBox(CSWGuiManager* pGuiManager, int bDatapadStyle
                                          &CSWGuiMessageBox::OnCancelButtonPressed));
     if (IsJoystickConnected())
     {
-        {
-            CExoString sText = m_btnOk.m_text.m_params.m_sText;
-            AspyrAddStringIcon(sText, 'a');
-            m_btnOk.m_text.m_params.SetText(sText);
-        }
-        {
-            CExoString sText = m_btnCancel.m_text.m_params.m_sText;
-            AspyrAddStringIcon(sText, 'b');
-            m_btnCancel.m_text.m_params.SetText(sText);
-        }
+        AspyrAddButtonIcon(&m_btnOk, 'a');
+        AspyrAddButtonIcon(&m_btnCancel, 'b');
     }
 
-    CSWGuiExtent extent;
-    extent.x = 0;
-    extent.y = 10;
-    extent.w = 32;
-    extent.h = 32;
-    m_lblIcon.SetExtent(extent);
+    {
+        CSWGuiExtent extent;
+        extent.x = 0;
+        extent.y = 10;
+        extent.w = 32;
+        extent.h = 32;
+        m_lblIcon.SetExtent(extent);
+    }
     m_lblIcon.m_tail.bVisible = 0;
     AddControl(&m_lblIcon);
-    if (m_lbMessage.m_pProtoItem)
-        m_lblMessage.Initialize(m_lbMessage.m_pProtoItem->m_extent,
-                                static_cast<CSWGuiLabel*>(m_lbMessage.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_lbMessage.m_pProtoItem);
+    if (pProto)
+        m_lblMessage.Initialize(pProto->m_extent, pProto, 1.0f);
     CenterPanel();
 
     float fScale = GetResolutionTextScalar();
-    extent = m_lblIcon.m_extent;
-    extent.w = static_cast<int>(extent.w * fScale);
-    extent.h = static_cast<int>(extent.h * fScale);
-    m_lblIcon.SetExtent(extent);
+    {
+        CSWGuiExtent extent = m_lblIcon.m_extent;
+        extent.w = static_cast<int>(extent.w * fScale);
+        extent.h = static_cast<int>(extent.h * fScale);
+        m_lblIcon.SetExtent(extent);
+    }
 
     m_originalPanelExtent = m_extent;
     m_originalListBoxExtent = m_lbMessage.m_extent;
 #if defined(K2_QOL_IMPROVEMENTS) && !defined(K2_UI_TOUCH)
     K2QolCompactMessageBoxButtons(this, fScale);
 #endif
-    m_nOpenSoundIndex = GUISOUND_PROMPT;
     m_pfnCallback = 0;
     m_pCallbackObject = 0;
     m_pCallbackControl = 0;
     m_nSavedInputClass = 0;
+    m_nOpenSoundIndex = GUISOUND_PROMPT;
     m_bAccepted = 0;
     m_bFocusOkButton = 0;
 }
@@ -1622,16 +1612,8 @@ void CSWGuiMessageBox::ResetButtonMessage()
 #if !KOTOR1  // K1: no gamepad caption icons
     if (IsJoystickConnected())
     {
-        {
-            CExoString sText = m_btnOk.m_text.m_params.m_sText;
-            AspyrAddStringIcon(sText, 'a');
-            m_btnOk.m_text.m_params.SetText(sText);
-        }
-        {
-            CExoString sText = m_btnCancel.m_text.m_params.m_sText;
-            AspyrAddStringIcon(sText, 'b');
-            m_btnCancel.m_text.m_params.SetText(sText);
-        }
+        AspyrAddButtonIcon(&m_btnOk, 'a');
+        AspyrAddButtonIcon(&m_btnCancel, 'b');
     }
 #endif
 }
@@ -1822,6 +1804,7 @@ CSWGuiInGameMessages::CSWGuiInGameMessages(CSWGuiManager* pGuiManager)
 #if KOTOR1
     // K1: "messages" with two pages and a BTN_SHOW toggle; the rows' highlight is yellow and the
     // feedback page clips partial rows.
+    CSWGuiLabelHilight* pProto;
     StartLoadFromLayout(CResRef("messages"));
     InitControl(m_lbFeedback, CExoString("LB_MESSAGES"), 1);
     InitControl(m_lblMessages, CExoString("LBL_MESSAGES"), 1);
@@ -1831,7 +1814,7 @@ CSWGuiInGameMessages::CSWGuiInGameMessages(CSWGuiManager* pGuiManager)
     StopLoadFromLayout();
     ScaleExtentForResolution();
 
-    CSWGuiLabelHilight* pProto = static_cast<CSWGuiLabelHilight*>(m_lbFeedback.m_pProtoItem);
+    pProto = static_cast<CSWGuiLabelHilight*>(m_lbFeedback.m_pProtoItem);
     pProto->m_hilightBorder.m_params.m_color = reinterpret_cast<const CSWGuiColor&>(CGuiInGame::COLOR_YELLOW);
     pProto->m_hilightBorder.m_params.SetPulsingAlpha(1, 1, 0);
     m_paFeedbackRows = new CSWGuiLabelHilight[64];
@@ -2308,17 +2291,14 @@ void CSWGuiInGameMessages::ShowEffects()
     CExoArrayList<CSWGuiControl*> aGoodRows;
     CExoArrayList<CSWGuiControl*> aBadRows;
 
-    CSWGuiExtent extentGood;
-    extentGood.w = m_lbEffectsGood.m_innerExtent.w - m_lbEffectsGood.m_nPadding * 2;
-    extentGood.h = 10;
     CSWGuiLabelHilight* pProtoGood = static_cast<CSWGuiLabelHilight*>(m_lbEffectsGood.m_pProtoItem);
+    CSWGuiExtent extentGood(0, 0, m_lbEffectsGood.m_innerExtent.w - m_lbEffectsGood.m_nPadding * 2, 10);
 
-    CSWGuiExtent extentBad;
-    extentBad.w = m_lbEffectsBad.m_innerExtent.w - m_lbEffectsBad.m_nPadding * 2;
-    extentBad.h = 10;
     CSWGuiLabelHilight* pProtoBad = static_cast<CSWGuiLabelHilight*>(m_lbEffectsBad.m_pProtoItem);
+    CSWGuiExtent extentBad(0, 0, m_lbEffectsBad.m_innerExtent.w - m_lbEffectsBad.m_nPadding * 2, 10);
 
     CExoString sName;
+    CSWGuiText* pText;
     for (int64_t i = 0; i < pServerLeader->m_effectIcons.m_count; i++)
     {
         CEffectIconObject* pIcon = pServerLeader->m_effectIcons.m_pArray[i];
@@ -2332,7 +2312,7 @@ void CSWGuiInGameMessages::ShowEffects()
             pRow->Initialize(extentGood, pProtoGood);
             pRow->m_text.m_params.SetText(sName);
             pRow->m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_TEXT);
-            CSWGuiText* pText = &pRow->m_text;
+            pText = &pRow->m_text;
             extentGood.h = pText->GetIdealHeight()
                          + pRow->m_hilightBorder.m_params.GetBorderDim() * 2;
             pRow->SetExtent(extentGood);
@@ -2344,7 +2324,7 @@ void CSWGuiInGameMessages::ShowEffects()
             pRow->Initialize(extentBad, pProtoBad);
             pRow->m_text.m_params.SetText(sName);
             pRow->m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_TEXT);
-            CSWGuiText* pText = &pRow->m_text;
+            pText = &pRow->m_text;
             extentBad.h = pText->GetIdealHeight()
                         + pRow->m_hilightBorder.m_params.GetBorderDim() * 2;
             pRow->SetExtent(extentBad);
@@ -3085,13 +3065,13 @@ void CSWGuiStatusSummary::OnPanelAdded()
             extent.h = nLabelSize;
             m_aValueLabels[i].SetExtent(extent);
 
-            // The pointer keeps the call virtual.
-            CSWGuiText* pText = &m_aDescLabels[i].m_text;
-
             extent = m_aDescLabels[i].m_extent;
             extent.y = nRowY - 1;
             extent.h = (i == SUMMARY_ROW_ITEM_RECEIVED) ? pReceivedText->GetIdealHeight() : 31;
-            extent.w = pText->GetIdealWidthAndHeight().w;
+            // The pointer keeps the call virtual.
+            CSWGuiText* pText = &m_aDescLabels[i].m_text;
+            CSWGuiExtent extentIdeal = pText->GetIdealWidthAndHeight();
+            extent.w = extentIdeal.w;
             if (nMaxWidth < extent.w)
                 nMaxWidth = extent.w;
             extent.h = static_cast<int>(extent.h * fScale);

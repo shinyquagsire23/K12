@@ -226,8 +226,9 @@ void CSWSEncounter::BuildInitialSpawnList(CEncounterListEntry* pList, int& nCoun
 #endif
             while (m_paSpawnPoints[nPick].m_fPoints <= fSlack + fPool
                    && nCount < m_nMaxCreatures - m_nActiveCreatureCount) {
+                CEncounterSpawnPoint* pPoint;
                 nPick = j + rand_wincompatible() % nGroup;
-                CEncounterSpawnPoint* pPoint = &m_paSpawnPoints[nPick];
+                pPoint = &m_paSpawnPoints[nPick];
                 if (pPoint->m_bSingleSpawn == 0 || pPoint->m_bAlreadyUsed == 0) {
                     pList[nCount].resRef = pPoint->resRef;
                     CEncounterSpawnPoint* pSrc = &m_paSpawnPoints[nPick];

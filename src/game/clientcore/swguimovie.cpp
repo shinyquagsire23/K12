@@ -183,6 +183,7 @@ void CSWGuiTitleMovies::PopulateMovies()
         sName = sName.SubString(0, sName.GetLength() - 4);
 
         int nAlwaysShow;
+        CSWGuiButton* pRow;
         g_pRules->m_p2DArrays->m_pMovies->GetINTEntry(
             sName, CExoString("AlwaysShow"), &nAlwaysShow);
         if (nAlwaysShow != 1)
@@ -194,7 +195,7 @@ void CSWGuiTitleMovies::PopulateMovies()
             }
         }
 
-        CSWGuiButton* pRow = new CSWGuiButton();
+        pRow = new CSWGuiButton();
         pRow->Initialize(extent, pProto);
 
         int nStrrefName = 0;

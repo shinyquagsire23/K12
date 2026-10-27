@@ -350,6 +350,8 @@ int CExoStreamingSoundSourceInternal::Play(const CResRef& resRef, unsigned short
 
         m_resRef = resRef;
         m_nResType = a;
+        const char* pszOverride;
+        K2_UNUSED(pszOverride);
         resRef.CopyToString(m_sStreamPath);
 
         if (c != 0)
@@ -1136,22 +1138,12 @@ void CExoStreamingSoundSourceInternal::InitializeSource()
         char szPath[1024];   // the DOS2MacPath destination
         DOS2MacPath(sBase.CStr(), szPath);
 
-        m_pFile = fopen(asNames[0].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[1].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[2].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[3].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[4].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[5].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[6].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[7].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[8].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[9].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[10].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[11].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[12].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[13].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[14].CStr(), "rb");
-        if (!m_pFile) m_pFile = fopen(asNames[15].CStr(), "rb");
+        for (int i = 0; i < 16; i++)
+        {
+            m_pFile = fopen(asNames[i].CStr(), "rb");
+            if (m_pFile)
+                break;
+        }
         if (!m_pFile) m_pFile = fopen(szPath, "rb");
 
         // 1 when the candidate list fails and 1 again for the chunked stream; 0 once a candidate

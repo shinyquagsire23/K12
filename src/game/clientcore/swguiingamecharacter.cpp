@@ -951,19 +951,21 @@ extern int quaternionidentityoptimization;
 static inline Vector RotateVector(Quaternion q, const Vector& v)
 {
     float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
-        float xx = x * x, yy = y * y, zz = z * z;
-        float xy = x * y, xz = x * z, wx = x * w;
-        float yz = y * z, wy = y * w;
-        float wz = z * w;
-        Vector r;
-        r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
-        r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
-        r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
-        return r;
-    }
-    return v;
+    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+        return v;
+    float x = q.x, y = q.y, z = q.z;
+    float xx = x * x, yy = y * y, zz = z * z;
+    float xy = x * y, xz = x * z, wx = x * w;
+    float yz = y * z, wy = y * w;
+    float wz = z * w;
+    Vector r;
+    float sx = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz));
+    r.x = v.z * ((xz + wy) + (xz + wy)) + sx;
+    float sy = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz)));
+    r.y = v.z * ((yz - wx) + (yz - wx)) + sy;
+    float sz = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx));
+    r.z = v.z * (1.0f - ((xx + yy) + (xx + yy))) + sz;
+    return r;
 }
 
 void CSWGuiInGameCharacter::RotateCharacterLeft(int nAmount)

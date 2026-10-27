@@ -7531,7 +7531,8 @@ float CSWSCreature::GetWalkRate()
             g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(nClientId);
         g_pAppManager->m_pClientExoApp->GetSWParty();  // result discarded
 #if KOTOR1  // K1: no feat exemption; it tests bit 0 of the activity mask
-        if (pCreature != 0 && (m_activityFlags & 1) != 0)
+        int bStealth = m_activityFlags & 1;
+        if (pCreature != 0 && bStealth != 0)
 #else
         if ((m_activityFlags & 1) != 0 && !m_pStats->HasFeat(FEAT_STEALTH_RUN) && pCreature != 0)
 #endif
@@ -7978,7 +7979,8 @@ int CSWSCreature::UnDisguise(CGameEffect* pEffect)
 {
     K2_UNUSED(pEffect);
     if (m_bDisguised != 0) {
-        m_pStats->m_nAppearanceType = m_nDisguiseAppearance;
+        CSWSCreatureStats* pStats = m_pStats;
+        pStats->m_nAppearanceType = m_nDisguiseAppearance;
         m_appearance.m_headId = m_nDisguiseAppearance;
         UpdatePersonalSpace();
         UpdateAppearanceDependantInfo(1);
@@ -8188,7 +8190,8 @@ CSWSCreature::CSWSCreature(unsigned long long objectId, int a)
     m_bCombatState = 0;
     SetAnimation(SERVER_ANIMATION_READY);
 
-    for (int i = 0; i < 14; i++)
+    int i;
+    for (i = 0; i < 14; i++)
         m_scripts[i] = "default";
 
     m_nLastHeartbeatDay = 0;
@@ -8538,10 +8541,7 @@ void CSWSCreature::SetLockOrientationToObject(unsigned long long objectId, int a
             if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(
                     m_lockOrientationToObjectId, &pObject) == CGameObjectArray::SUCCESS &&
                 pObject->m_objectType > CGameObject::OBJECT_TYPE_AREA) {
-                Vector vDir;
-                vDir.x = static_cast<CSWSObject*>(pObject)->m_position.x - m_position.x;
-                vDir.y = static_cast<CSWSObject*>(pObject)->m_position.y - m_position.y;
-                vDir.z = static_cast<CSWSObject*>(pObject)->m_position.z - m_position.z;
+                Vector vDir = static_cast<CSWSObject*>(pObject)->m_position - m_position;
                 vDir = normalize(vDir);
                 SetOrientation(vDir);
             }

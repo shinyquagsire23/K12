@@ -2985,7 +2985,10 @@ int CSWSEffectListHandler::OnApplyPoison(CSWSObject* pObject, CGameEffect* pEffe
                 return 0;
             }
             int nRow = pEffect->GetInteger(0);
+            int nDuration;
+            int nPeriod;
             int nSaveDC;
+            int nName;
             pPoison->GetINTEntry(nRow, CExoString("DC_SAVE"), &nSaveDC);
             if (pCreature->SavingThrowRoll(SAVING_THROW_FORT, static_cast<unsigned short>(nSaveDC), SAVING_THROW_TYPE_POISON,
                                            pEffect->m_creatorId, 1, 0, 0) != 0) {
@@ -3003,7 +3006,6 @@ int CSWSEffectListHandler::OnApplyPoison(CSWSObject* pObject, CGameEffect* pEffe
                     CServerAIMaster::EVENT_REMOVE_EFFECT, pEffect);
                 return 0;
             }
-            int nName;
             pPoison->GetINTEntry(nRow, CExoString("Name"), &nName);
             CSWCCMessageData* pData = new CSWCCMessageData();
             pData->SetInteger(0, nName);
@@ -3015,13 +3017,11 @@ int CSWSEffectListHandler::OnApplyPoison(CSWSObject* pObject, CGameEffect* pEffe
             pCreature->ApplyPoisonDamage(nRow, pEffect, 0, 1.0f);
             pEffect->SetInteger(3, nDay);
             pEffect->SetInteger(4, nTime);
-            int nDuration;
             pPoison->GetINTEntry(nRow, CExoString("DURATION"), &nDuration);
             pEffect->SetInteger(5, nDuration);
             pEffect->m_durationTypeBits =
                 CGameEffect::DURATION_TYPE_TEMPORARY | (pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK);
             pEffect->m_fDuration = nDuration * 1000.0f;
-            int nPeriod;
             pPoison->GetINTEntry(nRow, CExoString("PERIOD"), &nPeriod);
             pEffect->SetInteger(6, nPeriod);
             pEffect->SetInteger(7, 0);
@@ -3034,8 +3034,9 @@ int CSWSEffectListHandler::OnApplyPoison(CSWSObject* pObject, CGameEffect* pEffe
         pFeedback->SetInteger(2, 0);
         pFeedback->SetObjectID(0, pEffect->m_creatorId);
         pCreature->ApplyEffect(pFeedback, 0, 0);
+        unsigned long long idEffect = pEffect->m_effectId;
         pCreature->m_bPoisoned = 1;
-        pCreature->m_idPoisonEffect = pEffect->m_effectId;
+        pCreature->m_idPoisonEffect = idEffect;
     }
     return 0;
 }

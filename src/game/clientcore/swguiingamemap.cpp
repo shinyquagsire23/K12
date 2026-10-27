@@ -1561,19 +1561,17 @@ CSWGuiInGameGalaxyMap::CSWGuiInGameGalaxyMap(CSWGuiManager* pGuiManager)
 #if KOTOR1
     // K1: rescale to the window, then hang the two side panels beside the 4:3 box.
     ScaleExtentForResolution();
-    {
-        CSWGuiExtent extent;
-        extent.w = static_cast<int>(__builtin_ceilf(static_cast<float>(g_SDL_mode.h) * 204.0f / 512.0f));
-        extent.h = g_SDL_mode.h;
-        extent.x = static_cast<int>((static_cast<float>(g_SDL_mode.w) - __builtin_ceilf(static_cast<float>(g_SDL_mode.h) * 4.0f / 3.0f)) * 0.5f -
-                         static_cast<float>(extent.w));
-        extent.y = 0;
-        m_imgSideLeft.Initialize(extent, CSWGuiImageParams(CResRef("and_sm_left"), 0, 0, 0.0f, SWGUIALIGN_CENTER | SWGUIALIGN_MIDDLE,
-                                                           1.0f, Vector(1.0f, 1.0f, 1.0f)));
-        extent.x = g_SDL_mode.w - extent.x - extent.w;
-        m_imgSideRight.Initialize(extent, CSWGuiImageParams(CResRef("and_sm_right"), 0, 0, 0.0f, SWGUIALIGN_CENTER | SWGUIALIGN_MIDDLE,
-                                                            1.0f, Vector(1.0f, 1.0f, 1.0f)));
-    }
+    CSWGuiExtent extent;
+    extent.w = static_cast<int>(__builtin_ceilf(static_cast<float>(g_SDL_mode.h) * 204.0f / 512.0f));
+    extent.h = g_SDL_mode.h;
+    extent.x = static_cast<int>((static_cast<float>(g_SDL_mode.w) - __builtin_ceilf(static_cast<float>(g_SDL_mode.h) * 4.0f / 3.0f)) * 0.5f -
+                     static_cast<float>(extent.w));
+    extent.y = 0;
+    m_imgSideLeft.Initialize(extent, CSWGuiImageParams(CResRef("and_sm_left"), 0, 0, 0.0f, SWGUIALIGN_CENTER | SWGUIALIGN_MIDDLE,
+                                                       1.0f, Vector(1.0f, 1.0f, 1.0f)));
+    extent.x = g_SDL_mode.w - extent.x - extent.w;
+    m_imgSideRight.Initialize(extent, CSWGuiImageParams(CResRef("and_sm_right"), 0, 0, 0.0f, SWGUIALIGN_CENTER | SWGUIALIGN_MIDDLE,
+                                                        1.0f, Vector(1.0f, 1.0f, 1.0f)));
 #endif
 
     // BTN_BACK is bound first, then BTN_ACCEPT.
@@ -1774,8 +1772,7 @@ void CSWGuiInGameGalaxyMap::PrevPlanet()
     int nIndex = pPartyTable->m_selectedPlanet;
     for (;;)
     {
-        int nNext = nIndex - 1;
-        nIndex = (nIndex < 1) ? GALAXY_MAP_PLANET_COUNT - 1 : nNext;
+        nIndex = (nIndex > 0) ? nIndex - 1 : GALAXY_MAP_PLANET_COUNT - 1;
 #if KOTOR1  // K1 also skips planets that are shown but not selectable
         if (pPartyTable->GetPlanetAvailable(nIndex) != 0 &&
             pPartyTable->GetPlanetSelectable(nIndex) != 0)
@@ -1806,20 +1803,25 @@ void CSWGuiInGameGalaxyMap::NextPlanet()
     pButton->SetActive(0);
 
     int nIndex = pPartyTable->m_selectedPlanet;
+    int nNext = nIndex + 1;
     for (;;)
     {
-        int nNext = nIndex + 1;
         nIndex = (nIndex >= GALAXY_MAP_PLANET_COUNT - 1) ? 0 : nNext;
 #if KOTOR1  // K1 also skips planets that are shown but not selectable
         if (pPartyTable->GetPlanetAvailable(nIndex) != 0 &&
             pPartyTable->GetPlanetSelectable(nIndex) != 0)
             break;
+        nNext = nIndex + 1;
+        if (nNext == pPartyTable->m_selectedPlanet)
+            goto found;
 #else
         if (pPartyTable->GetPlanetAvailable(nIndex) != 0)
             break;
-#endif
-        if (nIndex + 1 == pPartyTable->m_selectedPlanet)
+        int nSelected = pPartyTable->m_selectedPlanet;
+        nNext = nIndex + 1;
+        if (nNext == nSelected)
             goto found;
+#endif
     }
     pPartyTable->SetSelectedPlanet(nIndex);
 found:

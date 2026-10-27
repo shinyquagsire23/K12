@@ -1167,13 +1167,16 @@ void ImageWriteTGA(char* pszName, int nWidth, int nHeight, int nBpp, unsigned ch
     header.m_bitsPerPixel = static_cast<unsigned char>(nBpp << 3);
     header.m_descriptor = 0;
 
+    SDL_RWops* pFile;
+    int nSize;
+    unsigned char* pNew;
     std::string sPath(pszName);
     std::replace(sPath.begin(), sPath.end(), '\\', '/');
-    SDL_RWops* pFile = SDL_RWFromFile(sPath.c_str(), "wb");
+    pFile = SDL_RWFromFile(sPath.c_str(), "wb");
     if (pFile) {
         SDL_RWwrite(pFile, &header, sizeof(header), 1);
-        int nSize = nWidth * nHeight * nBpp;
-        unsigned char* pNew = new unsigned char[nSize];
+        nSize = nWidth * nHeight * nBpp;
+        pNew = new unsigned char[nSize];
         memcpy(pNew, pData, nSize);  // idiom-exempt: runtime length
         ImageFlipY(pNew, nWidth, nHeight, nBpp);
         ImageFlipRB(pNew, nWidth, nHeight, nBpp);

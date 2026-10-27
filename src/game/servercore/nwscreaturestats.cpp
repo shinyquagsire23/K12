@@ -4991,7 +4991,7 @@ char CSWSCreatureStats::GetFortSavingThrow(int bIgnoreEffects)
         nEffectBonus = m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nUnused, 0,
                                                      0, 1, 0, CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
     }
-    return static_cast<char>(m_nCONMod + nEffectBonus + GetBaseFortSavingThrow() + m_nFortSaveBonus);
+    return static_cast<char>(m_nCONMod + nEffectBonus + (GetBaseFortSavingThrow() + m_nFortSaveBonus));
 }
 
 char CSWSCreatureStats::GetWillSavingThrow(int bIgnoreEffects)
@@ -5003,7 +5003,7 @@ char CSWSCreatureStats::GetWillSavingThrow(int bIgnoreEffects)
         nEffectBonus = m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nUnused, 0,
                                                      0, 3, 0, CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
     }
-    return static_cast<char>(m_nWISMod + nEffectBonus + GetBaseWillSavingThrow() + m_nWillSaveBonus);
+    return static_cast<char>(m_nWISMod + nEffectBonus + (GetBaseWillSavingThrow() + m_nWillSaveBonus));
 }
 
 // Computes the reflex save, the odd one out that alone caps its ability modifier.

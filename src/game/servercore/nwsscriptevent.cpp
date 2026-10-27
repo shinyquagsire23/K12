@@ -195,16 +195,17 @@ int CScriptEvent::LoadEvent(CResGFF* pGff, CResStruct* pStruct)
     CResList list;
     CResStruct elem;
     int bSuccess;
+    unsigned int i;
     m_eventType = pGff->ReadFieldWORD(pStruct, const_cast<char*>("EventType"), bSuccess, 0);
     if (pGff->GetList(&list, pStruct, const_cast<char*>("IntList"))) {
-        for (unsigned int i = 0; i < pGff->GetListCount(&list); i++) {
+        for (i = 0; i < pGff->GetListCount(&list); i++) {
             pGff->GetListElement(&elem, &list, i);
             m_params.m_aIntegers.Add(pGff->ReadFieldINT(&elem, const_cast<char*>("Parameter"), bSuccess, 0));
         }
     }
 
     if (pGff->GetList(&list, pStruct, const_cast<char*>("FloatList"))) {
-        for (unsigned int i = 0; i < pGff->GetListCount(&list); i++) {
+        for (i = 0; i < pGff->GetListCount(&list); i++) {
             pGff->GetListElement(&elem, &list, i);
             m_params.m_aFloats.Add(pGff->ReadFieldFLOAT(&elem, const_cast<char*>("Parameter"), bSuccess, 0.0f));
         }
@@ -212,7 +213,7 @@ int CScriptEvent::LoadEvent(CResGFF* pGff, CResStruct* pStruct)
 
     if (pGff->GetList(&list, pStruct, const_cast<char*>("StringList"))) {
         CExoString sValue;
-        for (unsigned int i = 0; i < pGff->GetListCount(&list); i++) {
+        for (i = 0; i < pGff->GetListCount(&list); i++) {
             pGff->GetListElement(&elem, &list, i);
             sValue = pGff->ReadFieldCExoString(&elem, const_cast<char*>("Parameter"), bSuccess, CExoString(""));
             m_params.m_aStrings.Add(sValue);
@@ -220,7 +221,7 @@ int CScriptEvent::LoadEvent(CResGFF* pGff, CResStruct* pStruct)
     }
 
     if (pGff->GetList(&list, pStruct, const_cast<char*>("ObjectList"))) {
-        for (unsigned int i = 0; i < pGff->GetListCount(&list); i++) {
+        for (i = 0; i < pGff->GetListCount(&list); i++) {
             pGff->GetListElement(&elem, &list, i);
             m_params.m_aObjects.Add(pGff->ReadFieldDWORD(&elem, const_cast<char*>("Parameter"), bSuccess, 0));
         }

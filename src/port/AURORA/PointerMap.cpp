@@ -21,6 +21,25 @@ static int s_nAABBCount;
 
 PointerMap PointerMap::s_pointerMap;
 
+// The 32-bit image's base-tree converter, which the Model and Animation converters start from.
+inline MaxTree::MaxTree(const MaxTree32& p)
+{
+    m_pfnDestructor = reinterpret_cast<void (*)(void*)>(static_cast<int64_t>(p.m_pfnDestructor));
+    m_pfnParseField = reinterpret_cast<void (*)(void*, char*)>(static_cast<int64_t>(p.m_pfnParseField));
+    __strcpy_chk(m_szName, p.m_szName, 32);
+    m_pMdlNode = reinterpret_cast<MdlNode*>(static_cast<int64_t>(p.m_pMdlNode));
+    m_nNodeCount = p.m_nNodeCount;
+    m_freeList.m_pData = reinterpret_cast<MdlNode**>(static_cast<int64_t>(p.m_pFreeList));
+    __builtin_memcpy(&m_freeList.m_count, &p.m_nFreeListCount, sizeof(int));
+    __builtin_memcpy(&m_freeList.m_capacity, &p.m_nFreeListCap, sizeof(int));
+    m_freeTokens.m_pData = reinterpret_cast<unsigned int*>(static_cast<int64_t>(p.m_pFreeTokens));
+    __builtin_memcpy(&m_freeTokens.m_count, &p.m_nFreeTokenCount, sizeof(int));
+    __builtin_memcpy(&m_freeTokens.m_capacity, &p.m_nFreeTokenCap, sizeof(int));
+    m_pMdlResource = reinterpret_cast<void*>(static_cast<int64_t>(p.m_pMdlResource));
+    m_cType = p.m_cType;
+}
+
+
 int PointerMap::AllocateMemoryBlock(int nNumBlocks)
 {
     int nId = ++s_nNextBlockId;
@@ -121,21 +140,7 @@ MaxTree* PointerMap::CreateMaxTreeNode(MaxTree32* p)
 #else
         pPool->m_pCurrent += sizeof(MaxTree);
 #endif
-        // No base converter exists, so the base tree is default-constructed and then filled here.
-        new (pTree) MaxTree;
-        pTree->m_pfnDestructor = reinterpret_cast<void (*)(void*)>(static_cast<int64_t>(p->m_pfnDestructor));
-        pTree->m_pfnParseField = reinterpret_cast<void (*)(void*, char*)>(static_cast<int64_t>(p->m_pfnParseField));
-        __strcpy_chk(pTree->m_szName, p->m_szName, 32);
-        pTree->m_pMdlNode = reinterpret_cast<MdlNode*>(static_cast<int64_t>(p->m_pMdlNode));
-        pTree->m_nNodeCount = p->m_nNodeCount;
-        pTree->m_freeList.m_pData = reinterpret_cast<MdlNode**>(static_cast<int64_t>(p->m_pFreeList));
-        __builtin_memcpy(&pTree->m_freeList.m_count, &p->m_nFreeListCount, sizeof(int));
-        __builtin_memcpy(&pTree->m_freeList.m_capacity, &p->m_nFreeListCap, sizeof(int));
-        pTree->m_freeTokens.m_pData = reinterpret_cast<unsigned int*>(static_cast<int64_t>(p->m_pFreeTokens));
-        __builtin_memcpy(&pTree->m_freeTokens.m_count, &p->m_nFreeTokenCount, sizeof(int));
-        __builtin_memcpy(&pTree->m_freeTokens.m_capacity, &p->m_nFreeTokenCap, sizeof(int));
-        pTree->m_pMdlResource = reinterpret_cast<void*>(static_cast<int64_t>(p->m_pMdlResource));
-        pTree->m_cType = p->m_cType;
+        new (pTree) MaxTree(*p);
         pNode = pTree;
     }
 
@@ -147,21 +152,8 @@ MaxTree* PointerMap::CreateMaxTreeNode(MaxTree32* p)
 }
 
 // The 32-bit image's Model converter.
-Model::Model(Model32& p) : MaxTree()
+Model::Model(Model32& p) : MaxTree(p)
 {
-    m_pfnDestructor = reinterpret_cast<void (*)(void*)>(static_cast<int64_t>(p.m_pfnDestructor));
-    m_pfnParseField = reinterpret_cast<void (*)(void*, char*)>(static_cast<int64_t>(p.m_pfnParseField));
-    __strcpy_chk(m_szName, p.m_szName, 32);
-    m_pMdlNode = reinterpret_cast<MdlNode*>(static_cast<int64_t>(p.m_pMdlNode));
-    m_nNodeCount = p.m_nNodeCount;
-    m_freeList.m_pData = reinterpret_cast<MdlNode**>(static_cast<int64_t>(p.m_pFreeList));
-    __builtin_memcpy(&m_freeList.m_count, &p.m_nFreeListCount, sizeof(int));
-    __builtin_memcpy(&m_freeList.m_capacity, &p.m_nFreeListCap, sizeof(int));
-    m_freeTokens.m_pData = reinterpret_cast<unsigned int*>(static_cast<int64_t>(p.m_pFreeTokens));
-    __builtin_memcpy(&m_freeTokens.m_count, &p.m_nFreeTokenCount, sizeof(int));
-    __builtin_memcpy(&m_freeTokens.m_capacity, &p.m_nFreeTokenCap, sizeof(int));
-    m_pMdlResource = reinterpret_cast<void*>(static_cast<int64_t>(p.m_pMdlResource));
-    m_cType = p.m_cType;
     m_nFlags = p.m_nFlags;
     m_bReserved1 = p.m_bReserved1;
     m_cAffectedByFog = p.m_cAffectedByFog;
@@ -187,21 +179,8 @@ Model::Model(Model32& p) : MaxTree()
 // The 32-bit image's Animation converter. The animation's root name is a fixed 32-byte array in the
 // file, so it copies whole; the base's name is a terminated string and goes through the checked
 // copy.
-Animation::Animation(Animation32& p) : MaxTree()
+Animation::Animation(Animation32& p) : MaxTree(p)
 {
-    m_pfnDestructor = reinterpret_cast<void (*)(void*)>(static_cast<int64_t>(p.m_pfnDestructor));
-    m_pfnParseField = reinterpret_cast<void (*)(void*, char*)>(static_cast<int64_t>(p.m_pfnParseField));
-    __strcpy_chk(m_szName, p.m_szName, 32);
-    m_pMdlNode = reinterpret_cast<MdlNode*>(static_cast<int64_t>(p.m_pMdlNode));
-    m_nNodeCount = p.m_nNodeCount;
-    m_freeList.m_pData = reinterpret_cast<MdlNode**>(static_cast<int64_t>(p.m_pFreeList));
-    __builtin_memcpy(&m_freeList.m_count, &p.m_nFreeListCount, sizeof(int));
-    __builtin_memcpy(&m_freeList.m_capacity, &p.m_nFreeListCap, sizeof(int));
-    m_freeTokens.m_pData = reinterpret_cast<unsigned int*>(static_cast<int64_t>(p.m_pFreeTokens));
-    __builtin_memcpy(&m_freeTokens.m_count, &p.m_nFreeTokenCount, sizeof(int));
-    __builtin_memcpy(&m_freeTokens.m_capacity, &p.m_nFreeTokenCap, sizeof(int));
-    m_pMdlResource = reinterpret_cast<void*>(static_cast<int64_t>(p.m_pMdlResource));
-    m_cType = p.m_cType;
     m_fLength = p.m_fLength;
     m_fTransTime = p.m_fTransTime;
     __builtin_memcpy(m_szAnimRoot, p.m_szAnimRoot, sizeof(p.m_szAnimRoot));

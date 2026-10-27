@@ -504,11 +504,11 @@ void CSWCModule::TurnCamera(float fParam1, float fParam2) {
             float fTurnSpeed = pFreeLook->m_fTurnSpeed;
             CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
             if (pCreature != 0) {
-                pCreature->m_fFreeLookTurnVel = 0.0f;
                 float fHalf = fParam1 * 0.5f;
                 if (fHalf > 30.0f) fHalf = 30.0f;
                 if (fHalf <= -30.0f) fHalf = -30.0f;
                 float fAngle = fHalf * (fTurnSpeed * fParam2);
+                pCreature->m_fFreeLookTurnVel = 0.0f;
 
                 Quaternion q = pointto(pCreature->m_orientation);
                 float fYaw = Yaw(q) - fAngle;
@@ -1788,8 +1788,19 @@ int CSWCModule::FindClearView(float fDeltaTime, float* pfYaw, float* pfPitch) {
     Vector vCamPos = {0.0f, 0.0f, 0.0f};
     Vector vOutPos = {0.0f, 0.0f, 0.0f};
 
-    CAurBehavior* pBehavior = m_pCamera->GetBehavior(-1);
-    CAurBehaviorCameraFollow* pFollow = nullptr;
+    CAurBehavior* pBehavior;
+    CAurBehaviorCameraFollow* pFollow;
+    CGameObject* pObj;
+    CSWCObject* pSWCObj;
+    CSWCCreature* pCreature;
+    float fYaw;
+    CAurScene* pScene;
+    Vector vTargetPos;
+    Vector vReflected;
+    Vector vRotated;
+
+    pBehavior = m_pCamera->GetBehavior(-1);
+    pFollow = nullptr;
     if (pBehavior)
         pFollow = pBehavior->AsBehaviorCameraFollow();
 
@@ -1798,15 +1809,14 @@ int CSWCModule::FindClearView(float fDeltaTime, float* pfYaw, float* pfPitch) {
 
     if (!m_pArea) return 0;
 
-    CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_oidCameraFollow);
+    pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_oidCameraFollow);
     if (!pObj) return 0;
 
-    CSWCObject* pSWCObj = static_cast<CSWCObject*>(pObj->AsSWCObject());
+    pSWCObj = static_cast<CSWCObject*>(pObj->AsSWCObject());
     if (!pSWCObj) return 0;
 
     // The yaw comes from the creature's orientation when it has one, otherwise from the object's.
-    CSWCCreature* pCreature = static_cast<CSWCCreature*>(pSWCObj->AsSWCCreature());
-    float fYaw;
+    pCreature = static_cast<CSWCCreature*>(pSWCObj->AsSWCCreature());
     if (pCreature) {
         pCreature = static_cast<CSWCCreature*>(pSWCObj->AsSWCCreature());
         fYaw = Yaw(pCreature->m_vStationaryOrientation);
@@ -1821,14 +1831,12 @@ int CSWCModule::FindClearView(float fDeltaTime, float* pfYaw, float* pfPitch) {
     if (!GetNextCameraPosition(fDeltaTime, &vCamPos)) return 0;
 
     // A missing scene is an early exit.
-    CAurScene* pScene = m_pArea->m_pScene;
+    pScene = m_pArea->m_pScene;
     if (!pScene) return 0;
 
-    Vector vTargetPos = {
-        pSWCObj->m_position.x + m_vCameraOffset.x,
-        pSWCObj->m_position.y + m_vCameraOffset.y,
-        pSWCObj->m_position.z + m_vCameraOffset.z
-    };
+    vTargetPos.x = pSWCObj->m_position.x + m_vCameraOffset.x;
+    vTargetPos.y = pSWCObj->m_position.y + m_vCameraOffset.y;
+    vTargetPos.z = pSWCObj->m_position.z + m_vCameraOffset.z;
 
     pHitInfo->m_bSkipObjects = 1;
 
@@ -1841,11 +1849,9 @@ int CSWCModule::FindClearView(float fDeltaTime, float* pfYaw, float* pfPitch) {
     pHitInfo->Reset(0, ~CHitInfo::kMaterialTrigger, 0);
     pHitInfo->m_bSkipObjects = 1;
 
-    Vector vReflected = {
-        vTargetPos.x - (vCamPos.x - vTargetPos.x),
-        vTargetPos.y - (vCamPos.y - vTargetPos.y),
-        vTargetPos.z + (vCamPos.z - vTargetPos.z)
-    };
+    vReflected.x = vTargetPos.x - (vCamPos.x - vTargetPos.x);
+    vReflected.y = vTargetPos.y - (vCamPos.y - vTargetPos.y);
+    vReflected.z = vTargetPos.z + (vCamPos.z - vTargetPos.z);
 
     if (!pScene->HitCheck(vReflected, vTargetPos, &vOutPos, pHitInfo)) {
         *pfYaw = m_pCamera->GetYaw() + 180.0f;
@@ -1857,11 +1863,9 @@ int CSWCModule::FindClearView(float fDeltaTime, float* pfYaw, float* pfPitch) {
     pHitInfo->Reset(0, ~CHitInfo::kMaterialTrigger, 0);
     pHitInfo->m_bSkipObjects = 1;
 
-    Vector vRotated = {
-        vTargetPos.x - (vCamPos.y - vTargetPos.y),
-        vTargetPos.y + (vCamPos.x - vTargetPos.x),
-        vTargetPos.z + (vCamPos.z - vTargetPos.z)
-    };
+    vRotated.x = vTargetPos.x - (vCamPos.y - vTargetPos.y);
+    vRotated.y = vTargetPos.y + (vCamPos.x - vTargetPos.x);
+    vRotated.z = vTargetPos.z + (vCamPos.z - vTargetPos.z);
 
     if (!pScene->HitCheck(vRotated, vTargetPos, &vOutPos, pHitInfo)) {
         *pfYaw = m_pCamera->GetYaw() - 90.0f;

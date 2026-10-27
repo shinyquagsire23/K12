@@ -334,13 +334,15 @@ int CRIMFile::WriteResource(const CExoString& sResRef)
 
 int CRIMFile::WriteResource(char* pszName, unsigned short nType, CRes* pRes, int bGFF)
 {
+    CRIMRes res;
     if (m_nWriteIndex >= m_nRezCount)
         return 0;
     if (m_pFile == 0)
         return 0;
 
     CExoString sName(pszName);
-    CRIMRes res;
+    int nSize;
+    unsigned char* pData;
     res.SetName(sName);
     res.m_nID = m_nWriteIndex;
     res.m_nType = nType;
@@ -349,8 +351,8 @@ int CRIMFile::WriteResource(char* pszName, unsigned short nType, CRes* pRes, int
     {
         // For a plain payload, measure, copy and hand the record to CRIMRes::Write.
         res.m_nSize = pRes->GetSize();
-        int nSize = pRes->GetSize();
-        unsigned char* pData = new unsigned char[nSize];
+        nSize = pRes->GetSize();
+        pData = new unsigned char[nSize];
         memcpy(pData, pRes->GetData(), pRes->GetSize());  // idiom-exempt: runtime length (resource size)
         res.m_pData = pData;
         res.Write(*m_pFile, m_nEntriesOffset + m_nWriteIndex * CRIM_ENTRY_SIZE, m_header.m_bBlockAlign);
@@ -361,6 +363,9 @@ int CRIMFile::WriteResource(char* pszName, unsigned short nType, CRes* pRes, int
         int nDataOffset = m_pFile->GetOffset();
         unsigned char cZero = 0;
         unsigned short nZero = 0;
+        int nAlign;
+        unsigned int nRemainder;
+        unsigned int nGFFSize;
 
         CResGFF* pGFF = static_cast<CResGFF*>(pRes);
         pGFF->Pack(0, 0);
@@ -369,8 +374,8 @@ int CRIMFile::WriteResource(char* pszName, unsigned short nType, CRes* pRes, int
         for (int i = 0; i < 6; i++)
             m_pFile->Write(&cZero, 1, 1);
 
-        int nAlign = (m_header.m_bBlockAlign != 0) ? RIM_BLOCK_ALIGN : 4;
-        unsigned int nRemainder = m_pFile->GetOffset() & static_cast<unsigned int>(nAlign - 1);
+        nAlign = (m_header.m_bBlockAlign != 0) ? RIM_BLOCK_ALIGN : 4;
+        nRemainder = m_pFile->GetOffset() & static_cast<unsigned int>(nAlign - 1);
         nAlign -= static_cast<int>(nRemainder);
         if (nRemainder != 0 && nAlign != 0)
         {
@@ -381,7 +386,7 @@ int CRIMFile::WriteResource(char* pszName, unsigned short nType, CRes* pRes, int
         }
 
         nDataOffset = m_pFile->GetOffset();
-        unsigned int nGFFSize = 0;
+        nGFFSize = 0;
         pGFF->WriteGFFData(*m_pFile, nGFFSize);
 
         for (int i = 0; i < 10; i++)

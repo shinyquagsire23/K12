@@ -386,10 +386,12 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWSCreatureStats* pStats) {
     CExoArrayList<unsigned short> feats;
     CSWFeat* pFeat;
     CSWFeat* pChain;
-    int nB;
     int nC;
+    int nB;
 #if KOTOR1
-    CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClass(pStats->m_numClasses - 1)];
+    CSWRules* pRules = g_pRules;
+    unsigned char nClass = pStats->GetClass(pStats->m_numClasses - 1);
+    CSWClass* pClass = &pRules->m_paClasses[nClass];
 #else
     unsigned int nClassSel = 0xff;
     if (pStats->m_numClasses != 0) {
@@ -453,9 +455,11 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
     CSWFeat* pFeat;
     CSWFeat* pChain;
     unsigned char nGrantedLevel;
-    int nB;
     int nC;
-    CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClassLeveledUpIn()];
+    int nB;
+    CSWRules* pRules = g_pRules;
+    unsigned char nClass = pStats->GetClassLeveledUpIn();
+    CSWClass* pClass = &pRules->m_paClasses[nClass];
 
     ClearChart();
 
@@ -614,6 +618,9 @@ void CSWGuiSkillFlowChart::CreatePowerChart(CSWSCreatureStats* pStats, int bShow
 #endif
     int nB;
     int nC;
+#if KOTOR1
+    bool bKnown;
+#endif
 
     ClearChart();
     BuildSortedPowerList(powers);
@@ -625,10 +632,10 @@ void CSWGuiSkillFlowChart::CreatePowerChart(CSWSCreatureStats* pStats, int bShow
         if (pSpell->GetPriority(0) > 0)
             break;
 
-        bool bKnown;
 #if KOTOR1  // K1: lists every power, with no class spell-level test
         bKnown = bShowAvailable != 0 || pStats->HasSpell(0, powers.m_pArray[nIdx], 0) != 0;
 #else
+        bool bKnown;
         if (bShowAvailable)
             bKnown = pSpell->GetSpellLevel(pStats->GetClass(pStats->m_numClasses - 1)) != 0xff;
         else
@@ -1205,7 +1212,7 @@ void CSWGuiSkillFlow::SetSkillStatus(unsigned char bSlot, unsigned char bStatus)
                 s.m_imageBg.m_params.m_color = CGuiInGame::COLOR_NEW_GREEN;
             break;
     }
-    if (!(s.m_bSelected & 1))
+    if ((s.m_bSelected & 1) == 0)
         s.m_imageBg.m_params.bHilight = 0;
     else
         s.m_imageBg.m_params.bHilight = 1;

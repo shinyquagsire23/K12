@@ -2042,8 +2042,10 @@ int CSWVirtualMachineCommands::ExecuteCommandGetScriptParameter(int nCommand, in
     int nIndex;
     if (!g_pVirtualMachine->StackPopInteger(&nIndex))
         return VM_ERROR_POP_FAILED;
-    int nParam = 0;
-    if (nIndex >= 1 && nIndex <= 5)
+    int nParam;
+    if (nIndex < 1 || nIndex > 5)
+        nParam = 0;
+    else
         nParam = g_pVirtualMachine->m_nScriptParam[nIndex - 1];
     if (!g_pVirtualMachine->StackPushInteger(nParam))
         return VM_ERROR_PUSH_FAILED;
@@ -2312,8 +2314,8 @@ int CSWVirtualMachineCommands::ExecuteCommandGetSpellForcePointCost(int nCommand
 int CSWVirtualMachineCommands::ExecuteCommandGrantAbility(int nCommand, int nArgCount)
 {
     K2_UNUSED(nArgCount);
-    int nValue;
     unsigned long long oidCreature;
+    int nValue;
     if (!g_pVirtualMachine->StackPopInteger(&nValue))
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopObject(&oidCreature))
@@ -2321,11 +2323,11 @@ int CSWVirtualMachineCommands::ExecuteCommandGrantAbility(int nCommand, int nArg
     CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidCreature);
     if (pCreature == 0)
         return 0;
-    if (nCommand == CMD_GrantSpell)
+    if (nCommand == CMD_GrantFeat)
+        pCreature->m_pStats->AddFeat(static_cast<unsigned short>(nValue));
+    else if (nCommand == CMD_GrantSpell)
         pCreature->m_pStats->AddKnownSpell(
             static_cast<unsigned char>(pCreature->m_pStats->m_numClasses - 1), nValue);
-    else if (nCommand == CMD_GrantFeat)
-        pCreature->m_pStats->AddFeat(static_cast<unsigned short>(nValue));
     return 0;
 }
 
@@ -16663,7 +16665,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetItemPossessedBy(int nCommand, in
                     CSWSItem* pItem = static_cast<CSWSItem*>(pInventory->GetItemInSlot(1 << i));
                     if (pItem != 0 && pItem->m_sTag == sLowerTag) {
                         oidItem = pItem->m_objectId;
-                        break;
+                        i = 20;
                     }
                 }
             }
@@ -18411,9 +18413,9 @@ int CSWVirtualMachineCommands::ExecuteCommandSetItemStackSize(int nCommand, int 
     CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidItem);
     if (pItem == 0)
         return 0;
-    int nMaxStack = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nStacking;
-    if (nStackSize > nMaxStack)
-        nStackSize = nMaxStack;
+    CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
+    if (nStackSize > pBaseItem->m_nStacking)
+        nStackSize = pBaseItem->m_nStacking;
     if (nStackSize < 1)
         nStackSize = 1;
     int nOldStackSize = pItem->m_stackCount;
@@ -18747,12 +18749,14 @@ int CSWVirtualMachineCommands::ExecuteCommandGetItemInInventory(int nCommand, in
 int CSWVirtualMachineCommands::ExecuteCommandGetObjectInArea(int nCommand, int nArgCount)
 {
     CExoString sTemp;
-    CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
-    unsigned long long oidFound = CGameObjectArray::INVALIDOBJID;
+    CGameObjectArray* pObjectArray;
+    unsigned long long oidFound;
     CSWSArea* pArea = 0;
     unsigned long long oidArea;
     CGameObject* pObject;
     int nType;
+    pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
+    oidFound = CGameObjectArray::INVALIDOBJID;
     if (nArgCount >= 1) {
         if (!g_pVirtualMachine->StackPopObject(&oidArea))
             return VM_ERROR_POP_FAILED;
@@ -18775,6 +18779,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetObjectInArea(int nCommand, int n
         }
     }
     if (pArea != 0) {
+        CGameObject* pFound;
         if (nCommand == CMD_GetFirstObjectInArea) {
             if (!pArea->GetFirstObjectInArea(oidFound))
                 oidFound = CGameObjectArray::INVALIDOBJID;
@@ -18783,7 +18788,6 @@ int CSWVirtualMachineCommands::ExecuteCommandGetObjectInArea(int nCommand, int n
                 oidFound = CGameObjectArray::INVALIDOBJID;
         }
         for (;;) {
-            CGameObject* pFound;
             if (pObjectArray->GetGameObject(oidFound, &pFound) != CGameObjectArray::SUCCESS)
                 break;
             if (pFound->m_objectType == 0)

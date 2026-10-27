@@ -518,9 +518,10 @@ void CSWCProjectile::SetBehaviorListDoubleBallistic()
         g_pAppManager->m_pClientExoApp->GetGameObject(m_oidTarget) == 0)
         vAim = m_desiredPosition;
 
+    CProjectileBehavior* pBehavior;
     CAurScene* pScene = g_pAppManager->m_pClientExoApp->GetModule()->m_pArea->m_pScene;
 
-    CProjectileBehavior* pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC,
+    pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC,
         vAim, vAim, m_oidTarget, m_desiredPosTimer2, 0, -1.0f, 0);
     pBehavior->m_nSubProjectileType = 0;
     m_behaviorList.AddTail(pBehavior);
@@ -529,25 +530,35 @@ void CSWCProjectile::SetBehaviorListDoubleBallistic()
 
     // The facing is read once, before rand; the sign test below reuses it.
     float fFaceX = m_orientation.x, fFaceY = m_orientation.y;
-    float fAngle = atanf(fFaceY / fFaceX) +
-                   static_cast<float>(rand_wincompatible() % 1570) / 1000.0f + 0.7853982f;
+    float fAngle;
+    float fSin, fCos;
+    Vector vDir;
+    Vector vScatter;
+    float fDistToGoal;
+    unsigned int nTimer;
+    float fDistToScatter;
+    fAngle = atanf(fFaceY / fFaceX) +
+             static_cast<float>(rand_wincompatible() % 1570) / 1000.0f + 0.7853982f;
     fAngle = fAngle > 2.3561945f ? 2.3561945f : fAngle;
 
-    float fSin, fCos;
-    sincosf(fAngle, &fSin, &fCos);
+    fSin = sinf(fAngle);
+    fCos = cosf(fAngle);
 
-    Vector vDir(fCos, fSin, 0.0f);
+    vDir = Vector(fCos, fSin, 0.0f);
     if (fFaceX > 0.0f)
         vDir = Vector(-fCos, -fSin, 0.0f);
 
-    Vector vScatter(m_desiredPosition.x + vDir.x * 3.0f, m_desiredPosition.y + vDir.y * 3.0f, 0.0f);
-    if (pScene != 0 && pScene->HitCheck(Vector(vScatter.x, vScatter.y, 1000.0f),
-                                        Vector(vScatter.x, vScatter.y, -1000.0f), &vHit, &hitInfo))
-        vScatter.z = vHit.z;
+    vScatter = Vector(m_desiredPosition.x + vDir.x * 3.0f, m_desiredPosition.y + vDir.y * 3.0f, 0.0f);
+    if (pScene != 0) {
+        Vector vFrom(vScatter.x, vScatter.y, 1000.0f);
+        Vector vTo(vScatter.x, vScatter.y, -1000.0f);
+        if (pScene->HitCheck(vFrom, vTo, &vHit, &hitInfo))
+            vScatter.z = vHit.z;
+    }
 
-    float fDistToGoal = magnitude(m_position - m_desiredPosition);
-    unsigned int nTimer = m_desiredPosTimer2;
-    float fDistToScatter = magnitude(m_desiredPosition - vScatter);
+    fDistToGoal = magnitude(m_position - m_desiredPosition);
+    nTimer = m_desiredPosTimer2;
+    fDistToScatter = magnitude(m_desiredPosition - vScatter);
     pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vScatter, vScatter,
         OBJECT_INVALID, static_cast<int>(fDistToScatter / (fDistToGoal / static_cast<float>(nTimer) / 2.5f)), 0, -1.0f, 0);
     pBehavior->m_nSubProjectileType = 0;

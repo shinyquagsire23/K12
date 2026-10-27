@@ -1701,10 +1701,9 @@ void CSWSDialog::BarkOneLine(int nEntry)
     CResRef rSound;
 
     unsigned long long nPlayerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
-
-    m_paEntries[nEntry].m_sText.GetString(
-        g_pAppManager->m_pServerExoApp->GetPlayerLanguage(static_cast<unsigned int>(nPlayerId)), &sText,
-        m_nPlayerGender);
+    CExoLocString& rText = m_paEntries[nEntry].m_sText;
+    rText.GetString(g_pAppManager->m_pServerExoApp->GetPlayerLanguage(static_cast<unsigned int>(nPlayerId)), &sText,
+                    m_nPlayerGender);
 
     rSound = m_paEntries[nEntry].m_rVO_ResRef;
 
@@ -1717,28 +1716,30 @@ void CSWSDialog::BarkOneLine(int nEntry)
     if (!rSound.IsValid())
     {
         STR_RES sRes;
-        g_pTlkTable->Fetch(static_cast<unsigned int>(m_paEntries[nEntry].m_sText.m_nStrRef), sRes, CTlkTable::GENDER_MALE);
+        unsigned int nStrRef = static_cast<unsigned int>(m_paEntries[nEntry].m_sText.m_nStrRef);
+        g_pTlkTable->Fetch(nStrRef, sRes, CTlkTable::GENDER_MALE);
         rSound = sRes.soundResRef;
     }
 
     if (sText.CompareNoCase(""))
         return;
 
-    CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(nPlayerId);
+    CGameObject* pObject;
+    unsigned long long nSpeakerId;
+    unsigned long long nClientId;
+    CGameObject* pOwnerObject;
+    pObject = g_pAppManager->m_pServerExoApp->GetGameObject(nPlayerId);
     if (pObject == 0)
         return;
 
-    unsigned long long nSpeakerId;
     if (m_paEntries->m_sSpeaker == "")
         nSpeakerId = m_ownerId;
     else
         nSpeakerId = pObject->AsSWSObject()->GetNearestObjectByName(m_paEntries->m_sSpeaker, 0.0f);
 
-    unsigned long long nClientId
-        = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(nSpeakerId);
-    g_pAppManager->m_pClientExoApp->BarkString(
-        nClientId, sText, rSound,
-        g_pAppManager->m_pServerExoApp->GetIgnoreConversationStartRange());
+    nClientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(nSpeakerId);
+    int bIgnoreRange = g_pAppManager->m_pServerExoApp->GetIgnoreConversationStartRange();
+    g_pAppManager->m_pClientExoApp->BarkString(nClientId, sText, rSound, bIgnoreRange);
 
     if (nPlayerId != OBJECT_INVALID && g_bLogConversations)
     {
@@ -1754,7 +1755,7 @@ void CSWSDialog::BarkOneLine(int nEntry)
         }
     }
 
-    CGameObject* pOwnerObject = g_pAppManager->m_pServerExoApp->GetGameObject(m_ownerId);
+    pOwnerObject = g_pAppManager->m_pServerExoApp->GetGameObject(m_ownerId);
     if (pOwnerObject != 0)
     {
         CSWSObject* pOwner = pOwnerObject->AsSWSObject();

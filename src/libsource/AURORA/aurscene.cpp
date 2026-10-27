@@ -712,7 +712,8 @@ void Scene::RenderShadows(int, int, int bStencilShadows, int bClearStencil)
 
 void Scene::DoGobShadows()
 {
-    List<PartLight*> shadowLights = m_pLightManager->GetShadowLights(0);
+    List<PartLight*> shadowLights;
+    shadowLights = m_pLightManager->GetShadowLights(0);
     if (shadowLights.m_count == 0)
         return;
 
@@ -1082,7 +1083,8 @@ void Scene::DoDynamicMeshProjections()
     const Plane& qFar = CurrentCamera->m_viewState.m_aViewVolumes[1];
     Plane planeFar(qFar.a, qFar.b, qFar.c, qFar.d);
 
-    List<PartLight*> shadowLights = m_pLightManager->GetShadowLights(0);
+    List<PartLight*> shadowLights;
+    shadowLights = m_pLightManager->GetShadowLights(0);
     if (shadowLights.m_count < 1)
         return;
 
@@ -1965,6 +1967,7 @@ static Vector ViewVolumeNormal(int nIndex)
 void Scene::DoHighlightTriggers(bool bHighlightGroup)
 {
     List<PartTrigger*> highlights;
+    PartTrigger* pTrigger;
 
     int nStencilBits = AurGetAvailableStencilBits();
     if (nStencilBits == 0)
@@ -1982,7 +1985,7 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
 
     for (int i = 0; i < triggerbucket.m_count; i++)
     {
-        PartTrigger* pTrigger = triggerbucket.m_pData[i];
+        pTrigger = triggerbucket.m_pData[i];
         if (!pTrigger->m_bHidden || (pTrigger->m_cHighlightGroup != 0) != bHighlightGroup)
             continue;
 
@@ -2025,7 +2028,7 @@ void Scene::DoHighlightTriggers(bool bHighlightGroup)
         GLRender::SetStencilFunc(Aurora::kCmpLEqual, 1 << (nStencilBits - 1), 0xffffffff);
         GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilKeep);
 
-        PartTrigger* pTrigger = highlights.m_pData[i];
+        pTrigger = highlights.m_pData[i];
         if (pTrigger->m_bPulse)
         {
             float fAlpha = pTrigger->m_color[3] * 0.5f
@@ -2776,101 +2779,48 @@ void Scene::DoBinBucket()
 void Scene::DoFadeBuckets()
 {
     List<TileData*> tileList;
+    List<int> caps(*AurTextureGetOrdering());
 
-    {
-        List<int> caps(*AurTextureGetOrdering());
-
-        m_pLightManager->EnableLightsDynamicOnly();
+    m_pLightManager->EnableLightsDynamicOnly();
 
 #if KOTOR1  // K1 has no glColorMaterial; materials go to GL_FRONT_AND_BACK
-        GLRender::Enable(Aurora::kCapBlend);
-        unsigned int nFace = GL_FRONT_AND_BACK;
-        GLRender::EnableColorMaterial();
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::EnableColorMaterial();
 #else
-        GLRender::Enable(Aurora::kCapBlend);
-        GLRender::SetColorMaterial(Aurora::kFacingFront, Aurora::kColorTrackingEmission);
-        GLRender::EnableColorMaterial();
+    GLRender::Enable(Aurora::kCapBlend);
+    GLRender::SetColorMaterial(Aurora::kFacingFront, Aurora::kColorTrackingEmission);
+    GLRender::EnableColorMaterial();
 #endif
 
-        Gob* pOnlyGob = LightManager::m_pOnlyGob;
-        if (pOnlyGob)
-            GLRender::EnableClientState(Aurora::kClientStateColor);
+    if (LightManager::m_pOnlyGob)
+        GLRender::EnableClientState(Aurora::kClientStateColor);
 
-        float vWhite[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-        float vBlack[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    float vWhite[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float vBlack[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 #if KOTOR1
-        ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialAmbient], vWhite);
-        ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialDiffuse], vWhite);
-        ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialEmission], vBlack);
+    ASLgl::glMaterialfv(GL_FRONT_AND_BACK, materialTranslationTable[kMaterialAmbient], vWhite);
+    ASLgl::glMaterialfv(GL_FRONT_AND_BACK, materialTranslationTable[kMaterialDiffuse], vWhite);
+    ASLgl::glMaterialfv(GL_FRONT_AND_BACK, materialTranslationTable[kMaterialEmission], vBlack);
 #else
-        GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialAmbient, vWhite);
-        GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialDiffuse, vWhite);
-        GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialEmission, vBlack);
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialAmbient, vWhite);
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialDiffuse, vWhite);
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialEmission, vBlack);
 #endif
 
-        for (int i = 0; i < caps.m_count; i++)
+    for (int i = 0; i < caps.m_count; i++)
+    {
+        int nTextureId = caps.m_pData[i];
+        if (fadebuckets[nTextureId].m_nCount == 0)
+            continue;
+
+        Material* pMaterial = fadebuckets[nTextureId].m_paParts[0]->m_pMaterial;
+        pMaterial->BindTexture0();
+        pMaterial->SetBlendingMode(0);
+
+        for (int j = 0; j < fadebuckets[nTextureId].m_nCount; j++)
         {
-            int nTextureId = caps.m_pData[i];
-            if (fadebuckets[nTextureId].m_nCount == 0)
-                continue;
-
-            Material* pMaterial = fadebuckets[nTextureId].m_paParts[0]->m_pMaterial;
-            pMaterial->BindTexture0();
-            pMaterial->SetBlendingMode(0);
-
-            for (int j = 0; j < fadebuckets[nTextureId].m_nCount; j++)
-            {
-                PartTriMesh* pPart = fadebuckets[nTextureId].m_paParts[j];
-
-                float fSaved = pPart->m_fOpacity;
-                pPart->m_fOpacity = fSaved * pPart->m_pTileData->m_fOpacity;
-                if (pPart->m_fOpacity > 0.0f)
-                {
-                    pPart->Mat();
-
-                    if (pPart->m_pTileData != 0 && pPart->m_pTileData->m_fFade < 1.0f)
-                    {
-                        GLRender::Enable(Aurora::kCapFog);
-
-                        float fFade = pPart->m_pTileData->m_fFade * pPart->m_pTileData->m_fFade;
-                        Vector vSceneFog = m_vFogColor;
-                        Vector vFogColor = { vSceneFog.x * fFade, vSceneFog.y * fFade,
-                                             fFade * vSceneFog.z };
-                        GLRender::SetFogModev(Aurora::kCapFogColor, vFogColor);
-                        GLRender::SetFogModef(Aurora::kCapFogDensity, m_fFogDensity * 2.0f);
-                        GLRender::SetFogModef(Aurora::kCapFogStart,
-                                      pPart->m_pTileData->m_fFade * m_fFogStart);
-                        GLRender::SetFogModef(Aurora::kCapFogEnd,
-                                      pPart->m_pTileData->m_fFade * m_fFogEnd + 0.1f);
-                        pPart->Draw(false);
-
-                        if (!m_bFogEnabled)
-                            GLRender::Disable(Aurora::kCapFog);
-                        GLRender::SetFogModef(Aurora::kCapFogDensity, m_fFogDensity);
-                        GLRender::SetFogModef(Aurora::kCapFogStart, m_fFogStart);
-                        GLRender::SetFogModef(Aurora::kCapFogEnd, m_fFogEnd);
-                        GLRender::SetFogModev(Aurora::kCapFogColor, m_vFogColor);
-                    }
-                    else
-                    {
-                        pPart->Draw(false);
-                    }
-                }
-
-                pPart->m_fOpacity = fSaved;
-
-                TileData* pTile = pPart->m_pTileData;
-                if (!tileList.Contains(pTile))
-                    tileList.Add(pTile);
-            }
-        }
-
-        for (int i = 0; i < fadebuckets[0].m_nCount; i++)
-        {
-            PartTriMesh* pPart = fadebuckets[0].m_paParts[i];
-            if (i == 0)
-                pPart->m_pMaterial->BindTexture0();
+            PartTriMesh* pPart = fadebuckets[nTextureId].m_paParts[j];
 
             float fSaved = pPart->m_fOpacity;
             pPart->m_fOpacity = fSaved * pPart->m_pTileData->m_fOpacity;
@@ -2909,18 +2859,66 @@ void Scene::DoFadeBuckets()
 
             pPart->m_fOpacity = fSaved;
 
-            TileData* pTile = pPart->m_pTileData;
-            if (!tileList.Contains(pTile))
-                tileList.Add(pTile);
-        }
-
-        for (int i = 0; i < tileList.m_count; i++)
-        {
-            TileData* pTile = tileList.m_pData[i];
-            pTile->m_fOpacity = pTile->m_fBaseOpacity;
-            pTile->m_nFadeState = TileData::FADE_NOT_CHECKED;
+            if (!tileList.Contains(pPart->m_pTileData))
+                tileList.Add(pPart->m_pTileData);
         }
     }
+
+    for (int i = 0; i < fadebuckets[0].m_nCount; i++)
+    {
+        PartTriMesh* pPart = fadebuckets[0].m_paParts[i];
+        float fSaved;
+        if (i == 0)
+            pPart->m_pMaterial->BindTexture0();
+
+        fSaved = pPart->m_fOpacity;
+        pPart->m_fOpacity = fSaved * pPart->m_pTileData->m_fOpacity;
+        if (pPart->m_fOpacity > 0.0f)
+        {
+            pPart->Mat();
+
+            if (pPart->m_pTileData != 0 && pPart->m_pTileData->m_fFade < 1.0f)
+            {
+                GLRender::Enable(Aurora::kCapFog);
+
+                float fFade = pPart->m_pTileData->m_fFade * pPart->m_pTileData->m_fFade;
+                Vector vSceneFog = m_vFogColor;
+                Vector vFogColor = { vSceneFog.x * fFade, vSceneFog.y * fFade,
+                                     fFade * vSceneFog.z };
+                GLRender::SetFogModev(Aurora::kCapFogColor, vFogColor);
+                GLRender::SetFogModef(Aurora::kCapFogDensity, m_fFogDensity * 2.0f);
+                GLRender::SetFogModef(Aurora::kCapFogStart,
+                              pPart->m_pTileData->m_fFade * m_fFogStart);
+                GLRender::SetFogModef(Aurora::kCapFogEnd,
+                              pPart->m_pTileData->m_fFade * m_fFogEnd + 0.1f);
+                pPart->Draw(false);
+
+                if (!m_bFogEnabled)
+                    GLRender::Disable(Aurora::kCapFog);
+                GLRender::SetFogModef(Aurora::kCapFogDensity, m_fFogDensity);
+                GLRender::SetFogModef(Aurora::kCapFogStart, m_fFogStart);
+                GLRender::SetFogModef(Aurora::kCapFogEnd, m_fFogEnd);
+                GLRender::SetFogModev(Aurora::kCapFogColor, m_vFogColor);
+            }
+            else
+            {
+                pPart->Draw(false);
+            }
+        }
+
+        pPart->m_fOpacity = fSaved;
+
+        if (!tileList.Contains(pPart->m_pTileData))
+            tileList.Add(pPart->m_pTileData);
+    }
+
+    for (int i = 0; i < tileList.m_count; i++)
+    {
+        TileData* pTile = tileList.m_pData[i];
+        pTile->m_fOpacity = pTile->m_fBaseOpacity;
+        pTile->m_nFadeState = TileData::FADE_NOT_CHECKED;
+    }
+
 
     GLRender::DisableClientState(Aurora::kClientStateColor);
     GLRender::DisableColorMaterial();

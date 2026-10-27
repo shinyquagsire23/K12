@@ -187,11 +187,12 @@ void TrackFollowerPartDie(CAurObject* pModel, char*, void* pData) {
     delete pModel;
     if (pThis->m_models.m_count != 0)
         return;
+    CSWMiniGame* pMiniGame = pThis->m_pMiniGame;
     pThis->UpdateGunBanks();
-    if (pThis->m_pMiniGame->m_pPlayer == pThis)
-        pThis->m_pMiniGame->SetPlayer(0);
+    if (pMiniGame->m_pPlayer == pThis)
+        pMiniGame->SetPlayer(0);
     else {
-        pThis->m_pMiniGame->RemoveEnemy(static_cast<CSWMiniEnemy*>(pThis));  // idiom-exempt: same C-cast
+        pMiniGame->RemoveEnemy(static_cast<CSWMiniEnemy*>(pThis));  // idiom-exempt: same C-cast
                                                                 //   self-handoff as OnDeath's
         delete pThis;
     }

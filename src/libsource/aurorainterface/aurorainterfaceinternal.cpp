@@ -291,7 +291,9 @@ CAuroraModel* CAuroraInterface::GetModelInternal(const CExoString& sName, int bN
                                                 int* pnCreated,
                                                 CExoLinkedListNode** ppNode) {
     CAuroraModel* pModel = GetModelResHelper(sName, bNoLoad, pnCreated, ppNode);
-    if (pModel != 0 && bNoLoad == 0) {
+    if (pModel == 0)
+        return 0;
+    if (bNoLoad == 0) {
         if (!pModel->Load()) {
             if (pModel->m_pRes == 0 || pModel->m_pRes->GetDemands() <= 0)
                 delete pModel;

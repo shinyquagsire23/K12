@@ -162,15 +162,15 @@ void CSWGuiQuestItem::PopulateItemListBox()
     if (m_pSelectedEntry != 0)
         m_pSelectedEntry->SetActive(0);
 
-    if (aControls.m_count < 1)
+    if (aControls.m_count >= 1)
+    {
+        m_listBox.SetSelectedControl(0, 0);
+    }
+    else
     {
         m_listBox.SetSelectedControl(-1, 0);
         m_lblDescription.m_text.m_params.SetText(CExoString(""));
         OnControlEntered(0);
-    }
-    else
-    {
-        m_listBox.SetSelectedControl(0, 0);
     }
 }
 

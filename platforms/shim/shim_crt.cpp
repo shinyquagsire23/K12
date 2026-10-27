@@ -18,7 +18,7 @@
 static thread_local DWORD t_lastError;
 
 K2_WIN32_API_BEGIN
-DWORD GetLastError() throw() { return t_lastError; }
+DWORD GetLastError() { return t_lastError; }
 void  SetLastError(DWORD dwErr) throw() { t_lastError = dwErr; }
 K2_WIN32_API_END
 

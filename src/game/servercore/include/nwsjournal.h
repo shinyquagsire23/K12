@@ -10,9 +10,9 @@ struct SJournalEntry {
 #if KOTOR1  // K1 inlines the constructor at every use
     SJournalEntry() : m_nDate(-1), m_nTime(-1)
     {
-        m_nPicture = 0xffff;
         m_nState = -1;
         m_nPriority = 0xffffffff;
+        m_nPicture = 0xffff;
         m_nPlotIndex = 0;
         m_nPlanetId = -1;
         m_bEnd = 0;

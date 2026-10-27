@@ -1159,8 +1159,8 @@ void CAurTextureBasic::Reset()
     m_nTxiSize = 0;
     m_nNumMipMaps = 0;
     m_nDownSampleLevelBuilt = 0;
-    m_bFullyLoaded = 0;
     m_bMemoryDirty = 1;
+    m_bFullyLoaded = 0;
     m_nDownSampleLevel = nLevel;
     m_bProcessed = 0;
     m_bTxiLoaded = 0;
@@ -1207,10 +1207,17 @@ void CAurTextureBasic::FreeImage()
         }
         nSize = nSize * ((nRatio == 6) ? 6 : 1);
     }
+#if KOTOR1  // K1 releases a format-10 raster at its compressed size
+    if (m_nTextureFormat == 10)
+        nSize = m_nCompressedSize;
+#endif
     m_bTxiLoaded = 0;
     if (m_bReleaseRaster) {
-        AurReleaseRaster(m_pImage, m_nWidth, m_nHeight, m_nBPP, nSize, m_nRasterSize,
-                         m_nTxiSize, m_bProcessed);
+        int bProcessed = m_bProcessed;
+        int nRasterSize = m_nRasterSize;
+        int nTxiSize = m_nTxiSize;
+        AurReleaseRaster(m_pImage, m_nWidth, m_nHeight, m_nBPP, nSize, nRasterSize,
+                         nTxiSize, bProcessed);
     } else {
         delete[] static_cast<unsigned char*>(m_pImage);
     }

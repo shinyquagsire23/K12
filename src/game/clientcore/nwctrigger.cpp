@@ -501,10 +501,9 @@ void CSWCTrigger::AddToRenderList(int a)
 {
     g_pAppManager->m_pClientExoApp->GetModule()->m_pArea->m_triggerIdList.Add(m_objectId);
 
+    CAurScene* pScene = g_pAppManager->m_pClientExoApp->GetModule()->m_pArea->m_pScene;
     float afColor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    m_pPartTrigger = AurPartTriggerCreate(
-        g_pAppManager->m_pClientExoApp->GetModule()->m_pArea->m_pScene,
-        m_pVertices, m_nVertices, 1, afColor, this);
+    m_pPartTrigger = AurPartTriggerCreate(pScene, m_pVertices, m_nVertices, 1, afColor, this);
     UpdateTriggerColor(a);
 }
 

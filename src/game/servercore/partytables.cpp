@@ -1225,12 +1225,14 @@ int CSWPartyTable::LoadTableInfo()
 
     CExoString text;
     pGff->GetList(&list1, &topStruct, const_cast<char*>("PT_FB_MSG_LIST"));
+    unsigned int msgType;
+    unsigned char msgColor;
     for (int i = 0; i < static_cast<int>(pGff->GetListCount(&list1)); i++)
     {
         pGff->GetListElement(&struct1, &list1, i);
         text = pGff->ReadFieldCExoString(&struct1, const_cast<char*>("PT_FB_MSG_MSG"), bSuccess, CExoString(""));
-        unsigned int msgType = pGff->ReadFieldDWORD(&struct1, const_cast<char*>("PT_FB_MSG_TYPE"), bSuccess, kMessageTypeDebug);
-        unsigned char msgColor = pGff->ReadFieldBYTE(&struct1, const_cast<char*>("PT_FB_MSG_COLOR"), bSuccess, 0);
+        msgType = pGff->ReadFieldDWORD(&struct1, const_cast<char*>("PT_FB_MSG_TYPE"), bSuccess, kMessageTypeDebug);
+        msgColor = pGff->ReadFieldBYTE(&struct1, const_cast<char*>("PT_FB_MSG_COLOR"), bSuccess, 0);
         g_pAppManager->m_pClientExoApp->GetInGameGui()->AppendToMsgBuffer(text, msgType, msgColor);
     }
 
@@ -1247,8 +1249,9 @@ int CSWPartyTable::LoadTableInfo()
     pGff->GetList(&list1, &topStruct, const_cast<char*>("PT_COST_MULT_LIST"));
     for (int i = 0; i < g_pRules->m_pBaseItemArray->m_count; i++)
     {
+        CSWBaseItem* pBaseItem;
         pGff->GetListElement(&struct1, &list1, i);
-        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(i);
+        pBaseItem = g_pRules->GetBaseItem(i);
         pBaseItem->m_costMultiplier =
             pGff->ReadFieldFLOAT(&struct1, const_cast<char*>("PT_COST_MULT_VALUE"), bSuccess, 1.0f);
     }

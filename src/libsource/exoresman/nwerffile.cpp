@@ -456,6 +456,9 @@ int CERFFile::Write(CExoString& filePath)
 {
     time_t tNow;
     CExoFile file(filePath, RESTYPE_SAV, CExoString("wb"));
+    unsigned int nStringTableSize;
+    CExoLinkedListNode* pNode;
+    struct tm* pTime;
     if (file.FileOpened() == 0) {
         return 0;
     }
@@ -463,8 +466,8 @@ int CERFFile::Write(CExoString& filePath)
     m_header.m_nKeyCount = m_lstKeys.m_pInternal->m_nCount;
     m_header.m_nStringCount = m_lstStrings.m_pInternal->m_nCount;
 
-    unsigned int nStringTableSize = 0;
-    CExoLinkedListNode* pNode = m_lstStrings.m_pInternal->m_pHead;
+    nStringTableSize = 0;
+    pNode = m_lstStrings.m_pInternal->m_pHead;
     while (pNode != 0) {
         nStringTableSize += static_cast<CERFString*>(m_lstStrings.GetAtPos(pNode))->m_nLength + 8;
         m_lstStrings.GetNext(pNode);
@@ -475,7 +478,7 @@ int CERFFile::Write(CExoString& filePath)
     m_header.m_nResTableOffset = m_header.m_nKeyTableOffset + m_lstKeys.m_pInternal->m_nCount * ERF_KEY_ENTRY_SIZE;
 
     tNow = time(0);
-    struct tm* pTime = localtime(&tNow);
+    pTime = localtime(&tNow);
     if (pTime != 0) {
         m_header.m_nBuildYear = pTime->tm_year;
         m_header.m_nBuildDay = pTime->tm_yday;

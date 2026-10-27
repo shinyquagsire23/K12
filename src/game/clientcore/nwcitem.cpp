@@ -526,7 +526,8 @@ void CSWCItem::ResolveCreaturePoweredAnimations(int nAnimation)
         nHandMask &= ~4;
     else
         nHandMask |= 4;
-    pCreature->GetAnimationBase()->m_nPoweredHandMask = nHandMask;
+    CSWCAnimBase* pBase = pCreature->GetAnimationBase();
+    pBase->m_nPoweredHandMask = nHandMask;
 }
 
 CExoString CSWCItem::GetName(int nForm)

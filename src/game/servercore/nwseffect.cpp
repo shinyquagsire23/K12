@@ -46,15 +46,15 @@ CGameEffect::CGameEffect(int bIsExposed)
     m_durationTypeBits = 0;
     m_fDuration = 0.0f;
     m_expireDay = 0;
+    m_bSkipOnLoad = 0;
+    m_bIsExposed = bIsExposed;
+    m_spellId = -1;
     m_expireTime = 0;
     m_creatorId = OBJECT_INVALID;
-    m_bSkipOnLoad = 0;
-    m_nCasterLevel = -1;
-    m_pIntegers = 0;
     m_pLinkedEffect1 = 0;
     m_pLinkedEffect2 = 0;
-    m_spellId = -1;
-    m_bIsExposed = bIsExposed;
+    m_pIntegers = 0;
+    m_nCasterLevel = -1;
     m_numIntegers = 8;
     // Value-initialised, so the zero-fill is a compiler-synthesised memset.
     m_pIntegers = new int[8]();

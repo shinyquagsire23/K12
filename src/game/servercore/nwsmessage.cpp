@@ -31,12 +31,12 @@ void CSWSMessage::WriteOBJECTIDServer(unsigned long long nObjectId)
 // and yields 0.
 unsigned long long CSWSMessage::ReadOBJECTIDServer()
 {
+    unsigned long long nValue;
     if (m_nReadMessagePos + sizeof(unsigned long long) > m_nReadMessageSize) {
         m_nReadMessagePos += sizeof(unsigned long long);
         return 0;
     }
 
-    unsigned long long nValue;
     memcpy(&nValue, &m_pReadMessage[m_nReadMessagePos], sizeof(nValue));
     ByteSwap(&nValue);
     m_nReadMessagePos += 8;

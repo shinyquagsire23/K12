@@ -132,16 +132,17 @@ int CExoLocString::operator!=(const CExoLocString& other) const
 int CExoLocString::AddString(int nLanguage, const CExoString& str, unsigned char gender)
 {
     unsigned char g1 = (nLanguage == 0) ? 0 : gender;
+    int nBase = nLanguage * 2;
     unsigned int g2 = (nLanguage == 0) ? 0 : static_cast<unsigned int>(g1 & 0xff);
 
-    m_pInternal->RemoveString(g2 + nLanguage * 2);
+    m_pInternal->RemoveString(g2 + nBase);
 
     CExoString cur;
     GetString(nLanguage, &cur, g1);
     if (cur == str)
         return 1;
 
-    return m_pInternal->AddString(nLanguage * 2 + (g1 & 0xff), str);
+    return m_pInternal->AddString(nBase + (g1 & 0xff), str);
 }
 
 void CExoLocString::RemoveString(int nLanguage, unsigned char gender)
@@ -235,10 +236,9 @@ float CExoLocString::GetSpokenTimeEstimate(int nLanguage, unsigned char gender) 
     GetString(nLanguage * 2 + g, &s, 0);
 
 #if KOTOR1  // K1 has no token pass and no blank trimming; the raw string's length is timed
-    float estimate = 0.0f;
     if (s.GetLength() != 0)
-        estimate = static_cast<float>(s.GetLength()) * TIME_PER_CHARACTER_SPOKEN + 1.0f;
-    return estimate;
+        return static_cast<float>(s.GetLength()) * TIME_PER_CHARACTER_SPOKEN + 1.0f;
+    return 0.0f;
 #else
     int nFoundLt = s.Find('<', 0);
     int nFoundBrace = s.Find('{', 0);

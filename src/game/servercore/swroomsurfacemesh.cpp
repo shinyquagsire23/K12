@@ -37,8 +37,8 @@ int CSWRoomSurfaceMesh::LoadMeshBinary(CResBWM* pRes)
 
     CResBWMRoomHeader* pHeader = reinterpret_cast<CResBWMRoomHeader*>(pRes->m_pParsed);
     int rootAABBIndex;
-    int edgeCount;
     CSWRoomSurfaceExternalEdge* pEdgeAdjacency;
+    int edgeCount;
     if (pHeader == 0) {
         rootAABBIndex = 0;
         pEdgeAdjacency = 0;
@@ -68,8 +68,8 @@ int CSWRoomSurfaceMesh::LoadMeshBinary(CResBWM* pRes)
         m_aEdgeAdjacency.m_bStatic = 1;
     }
 
-    int aabbCount;
     CSWRoomSurfaceMeshAABBNode* pAABBNodes;
+    int aabbCount;
     int existingAABBCount;
     if (pHeader == 0) {
         aabbCount = 0;
@@ -81,9 +81,9 @@ int CSWRoomSurfaceMesh::LoadMeshBinary(CResBWM* pRes)
         existingAABBCount = m_aAABBNodes.m_count;
     }
     if (existingAABBCount == 0) {
+        m_aAABBNodes.m_pArray = pAABBNodes;
         m_aAABBNodes.m_count = aabbCount;
         m_aAABBNodes.m_capacity = aabbCount;
-        m_aAABBNodes.m_pArray = pAABBNodes;
         m_aAABBNodes.m_bStatic = 1;
     }
 
@@ -262,6 +262,7 @@ int CSWRoomSurfaceMesh::GetEdgeVertex(int edgeIdx, Vector& out)
 
 // EFFECTIVE (K1): the vertex/index loads and the two stores of v are scheduled in another order (x9/x10
 // rename); same loads and stores, armv7 -O3 exact.
+// EFFECTIVE: PERM, -g re-probed v2259: K2 arm in K1, SetAt, the index through Get, a named edge local.
 int CSWRoomSurfaceMesh::SetEdgeVertex(int edgeIdx, Vector& v)
 {
     if (edgeIdx < m_aEdgeAdjacency.m_count) {

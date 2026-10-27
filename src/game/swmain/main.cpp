@@ -936,6 +936,10 @@ template <class T> static inline T K1Min(T a, T b) { return a < b ? a : b; }
 void DoConsole(char c)
 {
     List<char*> matches;
+    int nLen;
+    int nCursor;
+    float fSize;
+    int i;
     switch (static_cast<unsigned char>(c)) {
     case '\b': {
         if (__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)) == 0)
@@ -945,39 +949,40 @@ void DoConsole(char c)
 #if KOTOR1  // K1 measures the line once per clamp
         g_console.m_nCursor = static_cast<int>(K1Min(static_cast<size_t>(static_cast<unsigned int>(g_console.m_nCursor)),
                                          __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine))));
-        int nLen = static_cast<int>(K1Min(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)), static_cast<size_t>(500)));
+        nLen = static_cast<int>(K1Min(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)), static_cast<size_t>(500)));
 #else
         g_console.m_nCursor = static_cast<unsigned int>(g_console.m_nCursor) >=
                                       __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine))
                                   ? static_cast<int>(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)))
                                   : g_console.m_nCursor;
-        int nLen = __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)) <= 500
+        nLen = __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)) <= 500
                        ? static_cast<int>(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)))
                        : 500;
 #endif
-        int nCursor = g_console.m_nCursor;
+        nCursor = g_console.m_nCursor;
         g_console.m_nCursor = nCursor - 1;
         if (nCursor > nLen)
             break;
-        for (int i = nCursor - 1; i < nLen; i++)
+        for (i = nCursor - 1; i < nLen; i++)
             g_console.m_szLine[i] = g_console.m_szLine[i + 1];
         break;
     }
     case '\t': {
-        char* pCom = g_console.m_szLine;
-        __strcpy_chk(pCom, CommandCompletion(pCom, matches), sizeof(g_console.m_szLine));
-        AurPostString(FuncPreInterp(pCom), 0, 1, 1.0f);
+        __strcpy_chk(g_console.m_szLine, CommandCompletion(g_console.m_szLine, matches),
+                     sizeof(g_console.m_szLine));
+        char* pCom = FuncPreInterp(g_console.m_szLine);
+        AurPostString(pCom, 0, 1, 1.0f);
         if (matches.m_count > 1) {
-            float fSize = 1.0f;
+            fSize = 1.0f;
             if (matches.m_count > 15)
                 fSize = 4.0f;
             if (matches.m_count < 15)
                 s_nConsoleScroll = 0;
 #if KOTOR1
-            for (int i = 0; i < matches.m_count && i < 15; i++)
+            for (i = 0; i < matches.m_count && i < 15; i++)
                 AurPostString(matches.m_pData[(s_nConsoleScroll + i) % matches.m_count], 4, i + 6, fSize);
 #else
-            for (int i = 0; i < 15 && i < matches.m_count; i++)
+            for (i = 0; i < 15 && i < matches.m_count; i++)
                 AurPostString(matches.m_pData[(s_nConsoleScroll + i) % matches.m_count], 4, i + 6,
                               fSize);
 #endif
@@ -1006,11 +1011,11 @@ void DoConsole(char c)
     }
     default: {
 #if KOTOR1
-        int nLen = static_cast<int>(K1Min(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)), static_cast<size_t>(500)));
+        nLen = static_cast<int>(K1Min(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)), static_cast<size_t>(500)));
         g_console.m_nCursor = static_cast<int>(K1Min(static_cast<size_t>(static_cast<unsigned int>(g_console.m_nCursor)),
                                          __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine))));
 #else
-        int nLen = __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)) <= 500
+        nLen = __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)) <= 500
                        ? static_cast<int>(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)))
                        : 500;
         g_console.m_nCursor = static_cast<unsigned int>(g_console.m_nCursor) >=
@@ -1019,7 +1024,7 @@ void DoConsole(char c)
                                   : g_console.m_nCursor;
 #endif
         if (nLen > g_console.m_nCursor) {
-            for (int i = nLen; i > g_console.m_nCursor; i--)
+            for (i = nLen; i > g_console.m_nCursor; i--)
                 g_console.m_szLine[i] = g_console.m_szLine[i - 1];
         }
         g_console.m_szLine[g_console.m_nCursor] = c;
@@ -1372,9 +1377,11 @@ void ReInitAurora(unsigned int nWidth, unsigned int nHeight, unsigned char nBits
     g_pAppManager->m_pClientExoApp->HideMouse(CClientExoAppInternal::MOUSEHIDE_REINIT_AURORA);
 
 #if KOTOR1  // K1: no fullscreen query and no mode restore here
-    bool bNested = (g_bInReInitAurora == 1);
-    if (!bNested)
+    int bNested = 1;
+    if (g_bInReInitAurora != 1) {
         g_bInReInitAurora = 1;
+        bNested = 0;
+    }
 
     g_pAurora->ShutDown(0, 0);
 #else
@@ -1401,8 +1408,9 @@ void ReInitAurora(unsigned int nWidth, unsigned int nHeight, unsigned char nBits
     }
 
 #if KOTOR1  // K1: the port keeps its window; no InitOpenGLWindow and no fullscreen mode probe
-    g_pAurora->Initialize(g_hWnd, g_hRenderWnd, nWidth, nHeight, nBitsPerPixel,
-                          g_nDesiredFullScreenRefreshRate, bFullscreen, nBitsPerPixel, nBitsPerPixel);
+    int nRefresh = g_nDesiredFullScreenRefreshRate;
+    g_pAurora->Initialize(g_hWnd, g_hRenderWnd, nWidth, nHeight, nBitsPerPixel, nRefresh,
+                          bFullscreen, nBitsPerPixel, nBitsPerPixel);
 #else
     InitOpenGLWindow(g_hInst, 0);
 
@@ -1469,6 +1477,7 @@ void InitOpenGLWindow(HINSTANCE__* hInstance, int nUnused)
     K2_UNUSED(nUnused);
     char szClassName[] = "Render Window";
     CExoString sName = g_sGameName;
+    HWND__* hWnd;
 
     WNDCLASSA wc;
     wc.style = CS_VREDRAW | CS_HREDRAW | CS_DBLCLKS;
@@ -1483,11 +1492,11 @@ void InitOpenGLWindow(HINSTANCE__* hInstance, int nUnused)
     wc.lpszClassName = szClassName;
     RegisterClassA(&wc);
 
-    HWND__* hWnd = CreateWindowExA(WS_EX_APPWINDOW,
-                                   szClassName, sName.CStr(),
-                                   WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-                                   kCWUsedDefault, kCWUsedDefault, kCWUsedDefault, kCWUsedDefault,
-                                   0, 0, hInstance, 0);
+    hWnd = CreateWindowExA(WS_EX_APPWINDOW,
+                           szClassName, sName.CStr(),
+                           WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+                           kCWUsedDefault, kCWUsedDefault, kCWUsedDefault, kCWUsedDefault,
+                           0, 0, hInstance, 0);
     if (hWnd != 0)
         g_hRenderWnd = hWnd;
 }

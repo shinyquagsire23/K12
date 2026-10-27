@@ -349,14 +349,16 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
         if (m_bShotObstructed != 0) {
             Vector vHitPoint(0.0f, 0.0f, 0.0f);
             CHitInfo hit(0, ~CHitInfo::kMaterialTrigger, 0);
+            CSWCObject* pObj;
+            Gob* pModel;
             hit.m_bSkipObjects = 0;
             hit.m_ignoreList.Add(m_pShotHook.m_pObject);
             hit.m_ignoreList.Add(m_pShotTarget.m_pObject);
-            CSWCObject* pObj =
+            pObj =
                 static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(m_nLineOfActionA));
             if (pObj != 0 && pObj->AsSWCObject() != 0 &&
                 static_cast<CSWCObject*>(pObj->AsSWCObject())->GetAnimationBase() != 0) {
-                Gob* pModel =
+                pModel =
                     static_cast<CSWCObject*>(pObj->AsSWCObject())->GetAnimationBase()
                         ->GetModel(CSWCObject::ANIM_MODEL_HEAD);
                 if (pModel != 0)
@@ -365,7 +367,7 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
             pObj = static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(m_nLineOfActionB));
             if (pObj != 0 && pObj->AsSWCObject() != 0 &&
                 static_cast<CSWCObject*>(pObj->AsSWCObject())->GetAnimationBase() != 0) {
-                Gob* pModel =
+                pModel =
                     static_cast<CSWCObject*>(pObj->AsSWCObject())->GetAnimationBase()
                         ->GetModel(CSWCObject::ANIM_MODEL_HEAD);
                 if (pModel != 0)

@@ -178,13 +178,14 @@ void CSWCJournal::Add(SJournalEntry entry, unsigned short nFlags)
             }
         }
     }
+    int i;
     if (bFound) {
         merged.Update(entry, nFlags);
         entry = merged;
     }
 
     if (bEnd) {
-        for (int i = 0; i < nDone; i++) {
+        for (i = 0; i < nDone; i++) {
             if (m_done.m_entries.m_pArray[i].m_sPlotId == entry.m_sPlotId) {
                 m_done.m_entries.m_pArray[i].Update(entry, nFlags);
                 if (m_bSortEnabled)
@@ -193,7 +194,7 @@ void CSWCJournal::Add(SJournalEntry entry, unsigned short nFlags)
             }
         }
     } else {
-        for (int i = 0; i < nActive; i++) {
+        for (i = 0; i < nActive; i++) {
             if (m_active.m_entries.m_pArray[i].m_sPlotId == entry.m_sPlotId) {
                 m_active.m_entries.m_pArray[i].Update(entry, nFlags);
                 if (m_bSortEnabled)

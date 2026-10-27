@@ -98,7 +98,7 @@ bool Fail(int e)
 
 K2_WIN32_API_BEGIN
 
-void* FindFirstFileA(const char* pszPattern, WIN32_FIND_DATAA* pData) throw()
+void* FindFirstFileA(const char* pszPattern, WIN32_FIND_DATAA* pData)
 {
     std::string pat(pszPattern ? pszPattern : "");
     for (char& c : pat)
@@ -151,7 +151,7 @@ void* FindFirstFileA(const char* pszPattern, WIN32_FIND_DATAA* pData) throw()
 }
 
 // End of the listing has to be ERROR_NO_MORE_FILES: the engine's scan loops test exactly that.
-int FindNextFileA(void* hFind, WIN32_FIND_DATAA* pData) throw()
+int FindNextFileA(void* hFind, WIN32_FIND_DATAA* pData)
 {
     FindHandle* h = static_cast<FindHandle*>(hFind);
     if (!h || hFind == reinterpret_cast<void*>(-1) || h->magic != kFindMagic) {
@@ -165,7 +165,7 @@ int FindNextFileA(void* hFind, WIN32_FIND_DATAA* pData) throw()
     return 1;
 }
 
-int FindClose(void* hFind) throw()
+int FindClose(void* hFind)
 {
     FindHandle* h = static_cast<FindHandle*>(hFind);
     if (!h || hFind == reinterpret_cast<void*>(-1) || h->magic != kFindMagic) {   // the engine closes INVALID_HANDLE

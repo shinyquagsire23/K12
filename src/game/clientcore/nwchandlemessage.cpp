@@ -343,12 +343,13 @@ int CSWCMessage::HandleServerToPlayerArea(unsigned char nType)
         g_pAppManager->m_pClientExoApp->GetGameObjectArray()->Delete(pArea->m_objectId, &pOldArea);
 
         CExoString sLoadScreen;
-        unsigned char nBmp = ReadBYTE(8);
+        unsigned char nBmp;
+        CGuiAreaLoadscreen* pLoadscreen;
+        nBmp = ReadBYTE(8);
         if (nBmp == 1)
             sLoadScreen = ReadCExoString(32);
 
         // The inner block ends sEntry before EmptyHitcheckIgnoreList runs.
-        CGuiAreaLoadscreen* pLoadscreen;
         {
             CExoString sEntry;
 
@@ -379,8 +380,10 @@ int CSWCMessage::HandleServerToPlayerArea(unsigned char nType)
             // Push one frame so the load screen is on screen before the load stalls.
             g_pAppManager->m_pClientExoApp->GetModule()->Update(1.0e-8f);
             SetClearColor(const_cast<char*>("0 0 0"));
-            g_pExoBase->m_pTimers->GetHighResolutionTimer();
-            g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTimeDifference();
+            uint64_t nStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+            int64_t nDelta = g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTimeDifference();
+            K2_UNUSED(nStart);
+            K2_UNUSED(nDelta);
         }
 
         g_pAppManager->m_pClientExoApp->EmptyHitcheckIgnoreList();
@@ -391,7 +394,8 @@ int CSWCMessage::HandleServerToPlayerArea(unsigned char nType)
         float fY = ReadFLOAT(1.0f, 32);
         float fZ = ReadFLOAT(1.0f, 32);
         float fFacing = ReadFLOAT(1.0f, 32);
-        ReadBOOL();
+        int bUnused = ReadBOOL();
+        K2_UNUSED(bUnused);
 
         if (MessageReadOverflow(1))
         {
@@ -415,9 +419,8 @@ int CSWCMessage::HandleServerToPlayerArea(unsigned char nType)
             pCreature->SetPosition(vPos);
             pCreature->m_desiredPosition = vPos;
 
-            float fSin;
-            float fCos;
-            sincosf(fFacing, &fSin, &fCos);
+            float fSin = __builtin_sinf(fFacing);
+            float fCos = __builtin_cosf(fFacing);
 
             Vector vOrientation;
             vOrientation.x = fCos;
@@ -2489,9 +2492,10 @@ int CSWCMessage::HandleServerToPlayerActiveItemProperties(unsigned long long oid
         pItem->m_bStolen = bFlag3;
     }
 
+    unsigned char nActiveMask;
     g_pAppManager->m_pClientExoApp->GetInGameGui();
 
-    unsigned char nActiveMask = ReadBYTE(8);
+    nActiveMask = ReadBYTE(8);
     nUsesMask = ReadBYTE(8);
 
     if (MessageReadOverflow(1))
@@ -3121,19 +3125,32 @@ int CSWCMessage::HandleServerToPlayerDoorUpdate_Add()
     CExoString sTransitionDestination;
     unsigned long long objId;
     int nVisibleModel = 1;
-
-    CGameObjectArray* pObjectArray = g_pAppManager->m_pClientExoApp->GetGameObjectArray();
-    CSWCArea* pArea = g_pAppManager->m_pClientExoApp->GetModule()->m_pArea;
-
-    objId = ReadOBJECTIDClient();
-
-    int bScenery = ReadBOOL();
-
-    unsigned char nDoorType = ReadBYTE(8);
-
+    CGameObjectArray* pObjectArray;
+    CSWCArea* pArea;
+    int bScenery;
+    unsigned char nDoorType;
     // The store below is unconditional, but the value is only assigned in the nDoorType == 0 arm,
     // so a door with a nonzero type ships whatever the local held.
     unsigned char nGenericType;
+    unsigned short nAppearance;
+    int bActionable;
+    int bLockable;
+    int bPlot;
+#if !KOTOR1
+    int bMinesSuppressed;
+#endif
+    int bAreaTransition;
+    CSWCDoor* pDoor;
+
+    pObjectArray = g_pAppManager->m_pClientExoApp->GetGameObjectArray();
+    pArea = g_pAppManager->m_pClientExoApp->GetModule()->m_pArea;
+
+    objId = ReadOBJECTIDClient();
+
+    bScenery = ReadBOOL();
+
+    nDoorType = ReadBYTE(8);
+
 #ifdef K2_FIX_ENGINE_BUGS
     nGenericType = 0xff;
 #endif
@@ -3145,15 +3162,15 @@ int CSWCMessage::HandleServerToPlayerDoorUpdate_Add()
 
     ReadBOOL();
 
-    unsigned short nAppearance = ReadWORD(16);
+    nAppearance = ReadWORD(16);
 
-    int bActionable      = ReadBOOL();
-    int bLockable        = ReadBOOL();
-    int bPlot            = ReadBOOL();
+    bActionable      = ReadBOOL();
+    bLockable        = ReadBOOL();
+    bPlot            = ReadBOOL();
 #if !KOTOR1  // K1 has no door mines and no mines bool on the wire
-    int bMinesSuppressed = ReadBOOL();
+    bMinesSuppressed = ReadBOOL();
 #endif
-    int bAreaTransition  = ReadBOOL();
+    bAreaTransition  = ReadBOOL();
 
     sTransitionDestination = ReadCExoLocStringClient();
 
@@ -3173,7 +3190,7 @@ int CSWCMessage::HandleServerToPlayerDoorUpdate_Add()
             nGenericType, CExoString("ModelName"), &sModel);
     }
 
-    CSWCDoor* pDoor = g_pAppManager->m_pClientExoApp->GetDoorByGameObjectID(objId);
+    pDoor = g_pAppManager->m_pClientExoApp->GetDoorByGameObjectID(objId);
 
     if (pDoor)
     {
@@ -3191,7 +3208,8 @@ int CSWCMessage::HandleServerToPlayerDoorUpdate_Add()
             != CGameObjectArray::SUCCESS)
             return 0;
 
-        g_pAppManager->m_pClientExoApp->GetClientAIMaster()->AddObject(pDoor);
+        CClientAIMaster* pAIMaster = g_pAppManager->m_pClientExoApp->GetClientAIMaster();
+        pAIMaster->AddObject(pDoor);
     }
 
     pDoor->AttachToScene(pArea->m_pScene);
@@ -11770,7 +11788,7 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_Update(unsigned long long ob
                     pData->m_weaponObjectId = oidAttackTarget;
                     pData->m_castTargetGroup.m_fCastTargetX = *reinterpret_cast<unsigned int*>(&fAttackX);  // idiom-exempt: the orig stores the three raw floats into the int-typed +0x3c..+0x44 run
                     pData->m_castTargetGroup.m_fCastTargetY = *reinterpret_cast<unsigned int*>(&fAttackY);  // idiom-exempt: same run
-                    pData->m_fCastTargetZ = *reinterpret_cast<unsigned int*>(&fAttackZ);                 // idiom-exempt: same run
+                    pData->m_castTargetGroup.m_fCastTargetZ = *reinterpret_cast<unsigned int*>(&fAttackZ);                 // idiom-exempt: same run
                     pData->m_spellGroup.m_nSpellId = nSpellId;
                     pData->m_spellGroup.m_nCastLevel = nSpellData;
                     pCreature->AddFireForgetAnimation(nAnim, pData);

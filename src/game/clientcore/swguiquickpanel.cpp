@@ -309,10 +309,6 @@ void CSWGuiQuickPanel::OnPanelAdded()
 // derived skill ranks.
 void CSWGuiQuickPanel::DoQuickStats()
 {
-#if !KOTOR1
-    CExoArrayList<unsigned short> aFeats;
-#endif
-
     uint64_t nClass = m_pCreature->m_pStats->GetClassLeveledUpIn();
 
     CSWClass* pClass = &g_pRules->m_paClasses[nClass & 0xff];
@@ -324,8 +320,8 @@ void CSWGuiQuickPanel::DoQuickStats()
     static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->SetINTBase(pClass->m_abRecommendedScores[3]);
     static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->SetCHABase(pClass->m_abRecommendedScores[5]);
 
-#if KOTOR1
     CExoArrayList<unsigned short> aFeats;
+#if KOTOR1
     static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedFeats(0);
 #else
     static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedFeats(0, true);
@@ -335,8 +331,8 @@ void CSWGuiQuickPanel::DoQuickStats()
 
     for (int i = 0; i < aFeats.m_count; i++)
     {
-        unsigned short nFeat = aFeats.m_pArray[i];
         CSWCCreatureStats* pStats = m_pCreature->m_pStats;
+        unsigned short nFeat = aFeats.m_pArray[i];
 
         pStats->m_lstFeats.AddUnique(nFeat);
     }

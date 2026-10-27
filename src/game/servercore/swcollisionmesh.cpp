@@ -1210,13 +1210,13 @@ const char* ConvertDoor(char* pszArgs)
     resRefName = fileName.Left(nSpace);
 
 #if KOTOR1 // K1: CExoString::GetLength is out of line
-    int len = fileName.GetLength();
+    fileName = fileName.Right(fileName.GetLength() - nSpace - 1);
 #else
     int len = 0;
     if (fileName.m_sString != 0)
         len = static_cast<int>(strlen(fileName.m_sString));
-#endif
     fileName = fileName.Right(len - nSpace - 1);
+#endif
 
     return CSWCollisionMesh::ConvertDoor(CResRef(resRefName), fileName) == 1 ? "SUSSESS" : "FAILURE";
 }
@@ -1230,13 +1230,13 @@ const char* ConvertPlaceable(char* pszArgs)
     resRefName = fileName.Left(nSpace);
 
 #if KOTOR1 // K1: CExoString::GetLength is out of line
-    int len = fileName.GetLength();
+    fileName = fileName.Right(fileName.GetLength() - nSpace - 1);
 #else
     int len = 0;
     if (fileName.m_sString != 0)
         len = static_cast<int>(strlen(fileName.m_sString));
-#endif
     fileName = fileName.Right(len - nSpace - 1);
+#endif
 
     return CSWCollisionMesh::ConvertPlaceable(CResRef(resRefName), fileName) == 1 ? "SUSSESS"
                                                                                   : "FAILURE";
@@ -1251,13 +1251,13 @@ const char* ConvertRooms(char* pszArgs)
     resRefName = fileName.Left(nSpace);
 
 #if KOTOR1 // K1: CExoString::GetLength is out of line
-    int len = fileName.GetLength();
+    fileName = fileName.Right(fileName.GetLength() - nSpace - 1);
 #else
     int len = 0;
     if (fileName.m_sString != 0)
         len = static_cast<int>(strlen(fileName.m_sString));
-#endif
     fileName = fileName.Right(len - nSpace - 1);
+#endif
 
     return CSWCollisionMesh::ConvertRooms(CResRef(resRefName), fileName) == 1 ? "SUSSESS" : "FAILURE";
 }

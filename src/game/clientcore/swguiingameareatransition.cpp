@@ -66,13 +66,13 @@ CSWGuiInGameAreaTransition::CSWGuiInGameAreaTransition(CSWGuiManager* pGuiManage
 
     float fScale = GetResolutionTextScalar();
     CSWGuiExtent extent = m_extent;
+    int nScreenWidth = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
 
     // w and h are assigned as an adjacent pair on purpose.
     extent.w = static_cast<int>(fScale * 400.0f);
     extent.h = static_cast<int>(fScale * 82.0f);
     int nHalfWidth = extent.w / 2;
-    extent.x =
-        static_cast<int>(g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth) / 2 - nHalfWidth;
+    extent.x = nScreenWidth / 2 - nHalfWidth;
     SetExtent(extent);
 
     extent.w = static_cast<int>(fScale * 50.0f);
@@ -127,8 +127,7 @@ void CSWGuiInGameAreaTransition::SetTransitionObject(unsigned long long objId, c
                 int nDash = sName.Find(CExoString("-"), 0);
                 if (nDash != -1)
                 {
-                    int nLength = sName.GetLength();
-                    sName = sName.Right(nLength - nDash - 2);
+                    sName = sName.Right(sName.GetLength() - nDash - 2);
                 }
                 m_lblDescription.m_text.m_params.SetText(sName);
 #ifdef K2_QOL_IMPROVEMENTS

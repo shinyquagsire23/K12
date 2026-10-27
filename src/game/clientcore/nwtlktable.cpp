@@ -47,8 +47,11 @@ static const uint64_t arACStrRefs[4] = {
 // codes need the speaker and its stats.
 void CSWTlkTable::GetTokenValue(const CTlkTableToken& pToken, CExoString& sValue)
 {
-    CExoString sString;
     CResRef    cResRef;
+    CExoString sString;
+    unsigned int nStartDay;
+    unsigned int nEndDay;
+    unsigned int nCurrDay;
 
     switch (pToken.m_nLanguage)
     {
@@ -196,9 +199,9 @@ void CSWTlkTable::GetTokenValue(const CTlkTableToken& pToken, CExoString& sValue
     case TOKEN_ACTION_DAY_NIGHT:
         // One of four day bands over the module's day window.
         {
-            unsigned int nStartDay = g_pAppManager->m_pClientExoApp->GetModule()->m_nDawnHour;
-            unsigned int nEndDay = g_pAppManager->m_pClientExoApp->GetModule()->m_nDuskHour;
-            unsigned int nCurrDay = g_pAppManager->m_pClientExoApp->GetModule()->m_nCalendarHour;
+            nStartDay = g_pAppManager->m_pClientExoApp->GetModule()->m_nDawnHour;
+            nEndDay = g_pAppManager->m_pClientExoApp->GetModule()->m_nDuskHour;
+            nCurrDay = g_pAppManager->m_pClientExoApp->GetModule()->m_nCalendarHour;
             unsigned char nIdx = 0;
             if (__builtin_expect(nCurrDay >= nStartDay && nCurrDay <= nEndDay, 0))
                 nIdx = static_cast<unsigned char>(((nCurrDay - nStartDay) * 3) / (nEndDay - nStartDay + 1) + 1);

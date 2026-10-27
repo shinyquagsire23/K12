@@ -507,6 +507,8 @@ int CExoBaseInternal::GetDirectoryList(CExoArrayList<CExoString>* pOut, const CE
     CExoString sFileName;
     CExoString sExtension;
     WIN32_FIND_DATAA fd;
+    void* hFind;
+    int i;
 
     sExtension = g_pExoBase->GetResourceExtension(nResType);
     if (sExtension == "" || a)
@@ -518,7 +520,7 @@ int CExoBaseInternal::GetDirectoryList(CExoArrayList<CExoString>* pOut, const CE
     else
         sPath.Format(const_cast<char*>("%s\\*.%s"), sPath.CStr(), sExtension.CStr());
 
-    void* hFind = FindFirstFileA(sPath.CStr(), &fd);
+    hFind = FindFirstFileA(sPath.CStr(), &fd);
     if (hFind == INVALID_HANDLE_VALUE)
         return 0;
 
@@ -544,8 +546,7 @@ int CExoBaseInternal::GetDirectoryList(CExoArrayList<CExoString>* pOut, const CE
                     }
                     else
                     {
-                        int i = 0;
-                        for (; i < pOut->m_count; i++)
+                        for (i = 0; i < pOut->m_count; i++)
                         {
                             if (pOut->m_pArray[i].LowerCase() >= sLowerName)
                                 break;
@@ -576,8 +577,7 @@ int CExoBaseInternal::GetDirectoryList(CExoArrayList<CExoString>* pOut, const CE
                 }
                 else if (b == 2)
                 {
-                    int i = 0;
-                    for (; i < pOut->m_count; i++)
+                    for (i = 0; i < pOut->m_count; i++)
                     {
                         if (CompareFileTime(&fd.ftLastWriteTime, &aFileTimes.m_pArray[i]) == 1)
                             break;
@@ -609,6 +609,8 @@ unsigned int CExoBaseInternal::GetDirectorySize(const CExoString& sDir)
     CExoString sName;
     CExoString sSearch;
     void* hFind;
+    unsigned int dwErr;
+    unsigned int nTotal;
 
     sPath = g_pExoBase->m_pAliasList->ResolveFileName(sDir, RESTYPE_INVALID);
 
@@ -625,12 +627,13 @@ unsigned int CExoBaseInternal::GetDirectorySize(const CExoString& sDir)
 #endif
         return 0;
 
-    unsigned int nTotal = 0;
-    unsigned int dwErr = 0;
+    nTotal = 0;
+    dwErr = 0;
     while (dwErr != ERROR_NO_MORE_FILES)
     {
+        unsigned int nSize;
         sName = fd.cFileName;
-        unsigned int nSize = fd.nFileSizeLow;
+        nSize = fd.nFileSizeLow;
         if (!FindNextFileA(hFind, &fd))
             dwErr = GetLastError();
         nTotal += nSize;
@@ -646,11 +649,15 @@ int CExoBaseInternal::GetAugmentedDirectoryList(CExoArrayList<CFileInfo>* pOut,
                                                 unsigned short nResType, int bSorted)
 {
     WIN32_FIND_DATAA fd;
-    CExoFileTime time;
-    CExoString sFileName;
+    SYSTEMTIME st;
+    FILETIME ftLocal;
+    CFileInfo info;
     CExoString sSearch;
     CExoString sUnused;
     CExoString sExt;
+    void* hFind;
+    unsigned int dwErr;
+    int nAdded;
 
     sExt = g_pExoBase->GetResourceExtension(nResType);
     if (sExt == "")
@@ -659,7 +666,7 @@ int CExoBaseInternal::GetAugmentedDirectoryList(CExoArrayList<CFileInfo>* pOut,
     sSearch = g_pExoBase->m_pAliasList->ResolveFileName(sDir, RESTYPE_INVALID);
     sSearch.Format(const_cast<char*>("%s\\*.%s"), sSearch.CStr(), sExt.CStr());
 
-    void* hFind = FindFirstFileA(sSearch.CStr(), &fd);
+    hFind = FindFirstFileA(sSearch.CStr(), &fd);
 #if KOTOR1  // K1's port FindFirstFileA fails with NULL
     if (hFind == 0)
 #else
@@ -667,39 +674,37 @@ int CExoBaseInternal::GetAugmentedDirectoryList(CExoArrayList<CFileInfo>* pOut,
 #endif
         return 0;
 
-    int nAdded = 0;
-    unsigned int dwErr = 0;
+    nAdded = 0;
+    dwErr = 0;
     do
     {
-        sFileName = fd.cFileName;
+        int i;
+        info.m_name = fd.cFileName;
 
-        FILETIME ftLocal;
-        SYSTEMTIME st;
         FileTimeToLocalFileTime(&fd.ftLastWriteTime, &ftLocal);
         FileTimeToSystemTime(&ftLocal, &st);
 
-        time.m_nYear = st.wYear;
-        time.m_nMonth = st.wMonth;
-        time.m_nDay = st.wDay;
-        time.m_nHour = st.wHour;
-        time.m_nMinute = st.wMinute;
-        time.m_nSecond = st.wSecond;
+        info.m_time.m_nYear = st.wYear;
+        info.m_time.m_nMonth = st.wMonth;
+        info.m_time.m_nDay = st.wDay;
+        info.m_time.m_nHour = st.wHour;
+        info.m_time.m_nMinute = st.wMinute;
+        info.m_time.m_nSecond = st.wSecond;
 
         if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
         {
             if (bSorted)
             {
-                int i = 0;
                 for (i = 0; i < pOut->m_count; i++)
                 {
-                    if (pOut->m_pArray[i].m_name >= sFileName)
+                    if (pOut->m_pArray[i].m_name >= info.m_name)
                         break;
                 }
-                pOut->Insert(CFileInfo{ sFileName, time }, i);
+                pOut->Insert(info, i);
             }
             else
             {
-                pOut->Add(CFileInfo{ sFileName, time });
+                pOut->Add(info);
             }
             nAdded++;
         }
@@ -1032,6 +1037,9 @@ int CExoBaseInternal::CheckForCD()
 
     int bRet = 0;
     int nDrive = 2;
+    void* hFind;
+    int nFound;
+    unsigned int dwFindErr;
     while (nDrive < 26)
     {
         if (bIni)
@@ -1047,15 +1055,15 @@ int CExoBaseInternal::CheckForCD()
         sDrivePath = sCdPath.Left(3);
         if (GetDriveTypeA(sDrivePath.CStr()) == DRIVE_CDROM)
         {
-            void* hFind = FindFirstFileA(sCdPath.CStr(), &fd);
+            hFind = FindFirstFileA(sCdPath.CStr(), &fd);
 #if KOTOR1  // K1's FindFirstFileA fails with null
             if (hFind != 0)
 #else
             if (hFind != INVALID_HANDLE_VALUE)
 #endif
             {
-                int nFound = 0;
-                unsigned int dwFindErr = 0;
+                nFound = 0;
+                dwFindErr = 0;
                 while (dwFindErr != ERROR_NO_MORE_FILES)
                 {
                     sFileName = fd.cFileName;

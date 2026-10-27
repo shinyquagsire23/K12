@@ -420,13 +420,7 @@ void AurResFree(void* pRes, int nSize) {
 #endif
         p->m_pFile = 0;
     } else {
-#ifdef K2_HOST_BUILD
         AurReleaseResource(p->m_pHandle, nSize);
-#else
-        // The release hook takes the handle only, so the second argument is dropped here.
-        K2_UNUSED(nSize);
-        reinterpret_cast<void (*)(void*)>(AurReleaseResource)(p->m_pHandle);
-#endif
         p->m_pHandle = 0;
     }
     if (Resources.Contains(p)) Resources.Remove(p);
@@ -439,7 +433,8 @@ void AurResFree(void* pRes, int nSize) {
 }
 
 void AurResFree() {
-    AurResFree(Resources.m_pData[Resources.m_count - 1], 0);
+    int nLast = Resources.m_count - 1;
+    AurResFree(Resources.m_pData[nLast], 0);
 }
 
 void AurResFreeDataBytes(void* pRes, unsigned char* pBytes) {

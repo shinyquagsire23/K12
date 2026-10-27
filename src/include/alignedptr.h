@@ -11,7 +11,7 @@ static inline __attribute__((always_inline)) void* K1FortifiedMemcpy(
 {
     size_t nDstSize = __builtin_object_size(pDst, 0);
     if (nDstSize == static_cast<size_t>(-1) || nDstSize >= nSize)
-        return __builtin_memcpy(pDst, pSrc, nSize);
+        return __builtin_memcpy(pDst, pSrc, nSize);  // idiom-exempt: forwards the caller's byte count
     return __builtin___memcpy_chk(pDst, pSrc, nSize, nDstSize);
 }
 

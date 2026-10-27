@@ -21,20 +21,18 @@ int CScriptCompilerInternal::OutputError(int nType, const CExoString& sFile, int
         if (nLine >= 1)
         {
 #if KOTOR1  // K1: CExoString::GetLength is out of line
-            int nLength = sFile.GetLength();
+            sMessage.Format(const_cast<char*>("%s(%d): %s\n"), sFile.Right(sFile.GetLength() - 1).CStr(), nLine, sMsg.CStr());
 #else
-            int nLength = sFile.m_sString ? static_cast<int>(strlen(sFile.m_sString)) : 0;
+            sMessage.Format(const_cast<char*>("%s(%d): %s\n"), sFile.Right((sFile.m_sString ? static_cast<int>(strlen(sFile.m_sString)) : 0) - 1).CStr(), nLine, sMsg.CStr());
 #endif
-            sMessage.Format(const_cast<char*>("%s(%d): %s\n"), sFile.Right(nLength - 1).CStr(), nLine, sMsg.CStr());
         }
         else
         {
 #if KOTOR1  // K1: CExoString::GetLength is out of line
-            int nLength = sFile.GetLength();
+            sMessage.Format(const_cast<char*>("%s: %s\n"), sFile.Right(sFile.GetLength() - 1).CStr(), sMsg.CStr());
 #else
-            int nLength = sFile.m_sString ? static_cast<int>(strlen(sFile.m_sString)) : 0;
+            sMessage.Format(const_cast<char*>("%s: %s\n"), sFile.Right((sFile.m_sString ? static_cast<int>(strlen(sFile.m_sString)) : 0) - 1).CStr(), sMsg.CStr());
 #endif
-            sMessage.Format(const_cast<char*>("%s: %s\n"), sFile.Right(nLength - 1).CStr(), sMsg.CStr());
         }
     }
     else

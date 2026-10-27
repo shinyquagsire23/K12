@@ -857,30 +857,13 @@ CSWMiniGame::CSWMiniGame(CSWCArea* pArea)
 #if !KOTOR1
     m_pSwoopUpgrades = new C2DA(CResRef("swoopupgrade"), 0);
     m_pSwoopUpgrades->Load2DArray();
-    int nValue = 0;
-    m_pSwoopUpgrades->GetINTEntry(g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[0],
-                                  "level", &nValue);
-    m_swoopUpgrades[0] = nValue;
-    nValue = 0;
-    m_pSwoopUpgrades->GetINTEntry(g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[1],
-                                  "level", &nValue);
-    m_swoopUpgrades[1] = nValue;
-    nValue = 0;
-    m_pSwoopUpgrades->GetINTEntry(g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[2],
-                                  "level", &nValue);
-    m_swoopUpgrades[2] = nValue;
-    nValue = 0;
-    m_pSwoopUpgrades->GetINTEntry(g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[3],
-                                  "level", &nValue);
-    m_swoopUpgrades[3] = nValue;
-    nValue = 0;
-    m_pSwoopUpgrades->GetINTEntry(g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[4],
-                                  "level", &nValue);
-    m_swoopUpgrades[4] = nValue;
-    nValue = 0;
-    m_pSwoopUpgrades->GetINTEntry(g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[5],
-                                  "level", &nValue);
-    m_swoopUpgrades[5] = nValue;
+    for (int i = 0; i < 6; i++)
+    {
+        int nValue = 0;
+        int nSwoop = g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[i];
+        m_pSwoopUpgrades->GetINTEntry(nSwoop, "level", &nValue);
+        m_swoopUpgrades[i] = nValue;
+    }
     m_jumpSpeed = 0.0f;
 #endif
 }
@@ -1356,17 +1339,27 @@ int CSWMiniGame::Load()
     CExoArrayList<CResRef> models;
     CExoArrayList<unsigned char> flags;
     CExoString sName;
+    CResStruct sTop;
+    CResStruct sMiniGame;
+    int bSuccess;
+    unsigned int nValue;
+    float fNearClip;
+    float fFarClip;
+    CResStruct sPlayer;
+    CResList list;
+    int nModels;
+    CSWMiniPlayer* pPlayer;
+    CResStruct sMouse;
+    int nEnemies;
+    int nObstacles;
 
     if (m_pRes->Demand() == 0)
         return 0;
 
-    CResStruct sTop;
     m_pRes->GetTopLevelStruct(&sTop);
-    CResStruct sMiniGame;
     m_pRes->GetStructFromStruct(&sMiniGame, &sTop, const_cast<char*>("MiniGame"));
 
-    int bSuccess;
-    unsigned int nValue = m_pRes->ReadFieldDWORD(&sMiniGame, const_cast<char*>("Type"), bSuccess, 0);
+    nValue = m_pRes->ReadFieldDWORD(&sMiniGame, const_cast<char*>("Type"), bSuccess, 0);
     if (nValue - 1 < 2)
         m_type = nValue;
 
@@ -1387,20 +1380,18 @@ int CSWMiniGame::Load()
 
     SetMusic(m_pRes->ReadFieldCResRef(&sMiniGame, const_cast<char*>("Music"), bSuccess, CResRef("")));
 
-    float fNearClip = m_pRes->ReadFieldFLOAT(&sMiniGame, const_cast<char*>("Near_Clip"), bSuccess, 0.1f);
-    float fFarClip = m_pRes->ReadFieldFLOAT(&sMiniGame, const_cast<char*>("Far_Clip"), bSuccess, 100.0f);
+    fNearClip = m_pRes->ReadFieldFLOAT(&sMiniGame, const_cast<char*>("Near_Clip"), bSuccess, 0.1f);
+    fFarClip = m_pRes->ReadFieldFLOAT(&sMiniGame, const_cast<char*>("Far_Clip"), bSuccess, 100.0f);
     SetClipDist(fNearClip, fFarClip);
     SetViewAngle(m_pRes->ReadFieldFLOAT(&sMiniGame, const_cast<char*>("CameraViewAngle"), bSuccess, 65.0f));
 
-    CResStruct sPlayer;
     bSuccess = m_pRes->GetStructFromStruct(&sPlayer, &sMiniGame, const_cast<char*>("Player"));
     if (bSuccess == 0)
         return 0;
-    CResList list;
     bSuccess = m_pRes->GetList(&list, &sPlayer, const_cast<char*>("Models"));
     if (bSuccess == 0)
         return 0;
-    int nModels = m_pRes->GetListCount(&list);
+    nModels = m_pRes->GetListCount(&list);
     for (int i = 0; i < nModels; i++)
     {
         CResStruct sModel;
@@ -1418,7 +1409,6 @@ int CSWMiniGame::Load()
     if (resTemp.IsValid() == 0)
         return 0;
 
-    CSWMiniPlayer* pPlayer;
     if (m_type == MINIGAME_TYPE_TURRET)
     {
         // The camerahook needs a resref of its own; resTemp still holds the track.
@@ -1440,7 +1430,6 @@ int CSWMiniGame::Load()
     pPlayer->Load(m_pRes, &sPlayer);
 
     // Everything from here on is optional: a failed lookup just skips its block.
-    CResStruct sMouse;
     bSuccess = m_pRes->GetStructFromStruct(&sMouse, &sMiniGame, const_cast<char*>("Mouse"));
     if (bSuccess != 0)
     {
@@ -1459,18 +1448,20 @@ int CSWMiniGame::Load()
     bSuccess = m_pRes->GetList(&list, &sMiniGame, const_cast<char*>("Enemies"));
     if (bSuccess != 0)
     {
-        int nEnemies = m_pRes->GetListCount(&list);
+        nEnemies = m_pRes->GetListCount(&list);
         for (int i = 0; i < nEnemies; i++)
         {
             CResStruct sEnemy;
+            CResList enemyModels;
+            int nEnemyModels;
+            CSWMiniEnemy* pEnemy;
             bSuccess = m_pRes->GetListElement(&sEnemy, &list, i);
             if (bSuccess == 0)
                 continue;
-            CResList enemyModels;
             bSuccess = m_pRes->GetList(&enemyModels, &sEnemy, const_cast<char*>("Models"));
             if (bSuccess == 0)
                 continue;
-            int nEnemyModels = m_pRes->GetListCount(&enemyModels);
+            nEnemyModels = m_pRes->GetListCount(&enemyModels);
             for (int j = 0; j < nEnemyModels; j++)
             {
                 CResStruct sModel;
@@ -1490,7 +1481,7 @@ int CSWMiniGame::Load()
                 flags.SetSize(0);
                 continue;
             }
-            CSWMiniEnemy* pEnemy = AddEnemy(models, flags, resTemp);
+            pEnemy = AddEnemy(models, flags, resTemp);
             models.SetSize(0);
             flags.SetSize(0);
             pEnemy->Load(m_pRes, &sEnemy);
@@ -1500,10 +1491,11 @@ int CSWMiniGame::Load()
     bSuccess = m_pRes->GetList(&list, &sMiniGame, const_cast<char*>("Obstacles"));
     if (bSuccess != 0)
     {
-        int nObstacles = m_pRes->GetListCount(&list);
+        nObstacles = m_pRes->GetListCount(&list);
         for (int i = 0; i < nObstacles; i++)
         {
             CResStruct sObstacle;
+            CSWMiniGameObject* pObject;
             bSuccess = m_pRes->GetListElement(&sObstacle, &list, i);
             if (bSuccess == 0)
                 continue;
@@ -1513,7 +1505,7 @@ int CSWMiniGame::Load()
             resTemp.CopyToString(sName);
             // Obstacles are matched by name to the object that already has a model, then the
             // obstacle loads its own GFF half on top.
-            CSWMiniGameObject* pObject =
+            pObject =
                 g_pAppManager->m_pClientExoApp->GetMGOArray()->GetMiniGameObjectByName(sName);
             if (pObject != 0)
                 static_cast<CSWMGObstacle*>(pObject)->Load(m_pRes, &sObstacle);

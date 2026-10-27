@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <algorithm>
 #include "port/sdlapi.h"
 #include "exotlktable.h"
 #include "swguicontrol.h"
@@ -138,9 +139,9 @@ CSWGuiControl* CSWGuiControl::HitCheckMouse(int x, int y)
         return 0;
     if (x < m_extent.x || x > m_extent.x + m_extent.w)
         return 0;
-    if (y < m_extent.y || y > m_extent.y + m_extent.h)
-        return 0;
-    return this;
+    if (y >= m_extent.y && y <= m_extent.y + m_extent.h)
+        return this;
+    return 0;
 }
 
 
@@ -3255,7 +3256,7 @@ void CSWGuiListBox::OrganizeUnequal()
     m_nVisibleRows = m_nBottomRow - m_nTopRow + 1;
 
     nHidden = nCount - m_nVisibleRows;
-    m_scrollBar.SetMaxValue(nHidden > 0 ? nHidden + 1 : 1, bNoSelection);
+    m_scrollBar.SetMaxValue(std::max(nHidden, 0) + 1, bNoSelection);
     m_scrollBar.SetVisibleValue(m_nBottomRow - m_nTopRow + 1);
     m_scrollBar.SetCurValue(m_nTopRow);
 }

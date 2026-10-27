@@ -1108,6 +1108,7 @@ void PartProjection::Init()
         GLRender::Transform(m_pTriMesh->m_vLocalPosition, m_pTriMesh->m_qLocalOrientation, 0);
 
     CAurShadowData data;
+    unsigned int nPoolSize;
     m_pTriMesh->Project(vLight, m_pLight->m_fLightRadius, plane, &data);
 
     ASLgl::glPopMatrix();
@@ -1118,25 +1119,29 @@ void PartProjection::Init()
     if (data.m_nPool == -1) {
         m_nIndexPool = -1;
     } else {
-        GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(1), data.m_nCount * 12, 2, 0,
-                              reinterpret_cast<unsigned int*>(&m_nIndexPool));
-        Vector* pDst = static_cast<Vector*>(GLRender::LockPool(m_nIndexPool, 0, 0, 1));
-        void* pSrc = GLRender::LockPool(data.m_nPool, 0, 0, 8);
-        memcpy(pDst, pSrc, data.m_nCount * sizeof(Vector));
-        GLRender::UnlockPool(m_nIndexPool);
-        GLRender::UnlockPool(data.m_nPool);
+        {
+            unsigned int nSize = data.m_nCount * 12;
+            GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(1), nSize, 2, 0,
+                                  reinterpret_cast<unsigned int*>(&m_nIndexPool));
+            Vector* pDst = static_cast<Vector*>(GLRender::LockPool(m_nIndexPool, 0, 0, 1));
+            void* pSrc = GLRender::LockPool(data.m_nPool, 0, 0, 8);
+            memcpy(pDst, pSrc, nSize);  // idiom-exempt: nSize is the pool size requested above (12 per Vector)
+            GLRender::UnlockPool(m_nIndexPool);
+            GLRender::UnlockPool(data.m_nPool);
+        }
 
         if (data.m_nVertexCount > 0) {
             GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0), data.m_nVertexCount * 12,
                                   0x42, 0, reinterpret_cast<unsigned int*>(&m_nVertexPool));
-            unsigned int nPoolSize = GLRender::GetPoolSize(m_nIndexPool);
+            nPoolSize = GLRender::GetPoolSize(m_nIndexPool);
             m_nVertexCount = data.m_nVertexCount;
             m_nQuadCount = nPoolSize / 12;
             if (nPoolSize <= 11)
                 m_nQuadCount = -1;
 
             Vector* pPool = static_cast<Vector*>(GLRender::LockPool(m_nVertexPool, 0, 0, 1));
-            for (int i = 0; i < data.m_nVertexCount; i++) {
+            int i;
+            for (i = 0; i < data.m_nVertexCount; i++) {
                 Vector v = RotateVector(data.m_pVertices[i], m_pTriMesh->m_qLocalOrientation) +
                            m_pTriMesh->m_vLocalPosition;
                 m_vBBoxMin = VectorMin(m_vBBoxMin, v);
@@ -1289,8 +1294,10 @@ void PartTriMesh::TransformModelviewMatrix()
     if (m_pGob != 0)
         return;
     ASLgl::glPushMatrix();
+    const Vector& v = m_vLocalPosition;
+    const Quaternion& q = m_qLocalOrientation;
     if (enabletransform)
-        GLRender::Transform(m_vLocalPosition, m_qLocalOrientation, 0);
+        GLRender::Transform(v, q, 0);
 }
 
 int PartTriMesh::WithinRange(Vector v, float f)
@@ -1330,8 +1337,10 @@ void PartAnimMesh::Draw(bool)
 {
     if (m_pGob == 0) {
         ASLgl::glPushMatrix();
+        const Vector& v = m_vLocalPosition;
+        const Quaternion& q = m_qLocalOrientation;
         if (enabletransform != 0)
-            GLRender::Transform(m_vLocalPosition, m_qLocalOrientation, 0);
+            GLRender::Transform(v, q, 0);
     }
     m_pVertexPrimitive->SetupVertexArraysStandard();
     RenderFlat(m_pVertexPrimitive->AsVertexPrimitiveFlat());
@@ -4730,11 +4739,18 @@ void RenderLightMappedBumpDiffuse(VertexPrimitiveFlat* vertices)
 
 char* setspecularexponent(char* pszArgs)
 {
-    unsigned int nExponent = static_cast<unsigned int>(atoi(pszArgs));
-    if ((nExponent > 8) | ((((1u << 1) | (1u << 2) | (1u << 4) | (1u << 8)) & (1u << nExponent)) == 0))
+    int nExponent = atoi(pszArgs);
+    switch (nExponent)
+    {
+    case 1:
+    case 2:
+    case 4:
+    case 8:
+        bmspecularexponent = nExponent;
+        return const_cast<char*>("Okey dokey.");
+    default:
         return const_cast<char*>("Exponent must be one of 1,2,4,8");
-    bmspecularexponent = static_cast<int>(nExponent);
-    return const_cast<char*>("Okey dokey.");
+    }
 }
 
 void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
@@ -4757,10 +4773,9 @@ void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
         return;
     }
 
-#if KOTOR1  // K1: this first save is never restored
-    GLRender::IsEnabled(Aurora::kCapAlphaTest);
-#else
     unsigned char bWasAlphaTest = GLRender::IsEnabled(Aurora::kCapAlphaTest);
+#if KOTOR1  // K1: this first save is never restored
+    K2_UNUSED(bWasAlphaTest);
 #endif
     GLRender::Disable(Aurora::kCapAlphaTest);
 
@@ -5529,10 +5544,10 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
         static VertexProgram* normalmapvp =
             new VertexProgram(szNormalmapVPARB, szNormalmapVPARBDeclaration);
 
-        GLRender::Enable(Aurora::kCapVertexProgram);
-
         Vector vSpec;
         Vector vDiffuse;
+        GLRender::Enable(Aurora::kCapVertexProgram);
+
         if (node != 0)
         {
             vSpec = part->m_pMaterial->Textures(4).m_pObject->GetSpecularColor();

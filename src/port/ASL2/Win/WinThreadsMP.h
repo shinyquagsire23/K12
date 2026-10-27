@@ -138,6 +138,12 @@ public:
 // The shared base of the four waitable objects. It declares no virtuals of its own.
 class SyncPrimitive : public HANDLE_Mac {
 public:
+    SyncPrimitive()
+    {
+        m_szName[0] = 0;
+        m_nType = 0;
+    }
+
     K2WChar m_szName[260];
     int     m_nType;
 };
@@ -163,7 +169,7 @@ public:
     pthread_cond_t  m_cond;
     pthread_mutex_t m_mutex;
     int m_nSignalCount;
-    int m_nWaiterCount;
+    volatile int m_nWaiterCount;
 };
 
 // A semaphore, which overrides the three wait and signal virtuals, all near-stubs in this build.

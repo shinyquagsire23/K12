@@ -265,10 +265,10 @@ int SetThreadPriority(void* hThread, int nPriority);
 unsigned int WaitForSingleObject(void* hHandle, unsigned int dwMilliseconds);
 int CloseHandle(void* hObject);
 
-void* FindFirstFileA(const char* pPattern, _WIN32_FIND_DATAA* pData) throw();
-int FindNextFileA(void* hFind, _WIN32_FIND_DATAA* pData) throw();
-int FindClose(void* hFind) throw();
-unsigned int GetLastError() throw();
+void* FindFirstFileA(const char* pPattern, _WIN32_FIND_DATAA* pData);
+int FindNextFileA(void* hFind, _WIN32_FIND_DATAA* pData);
+int FindClose(void* hFind);
+unsigned int GetLastError();
 int DeleteFileA(const char* pPath);
 unsigned int GetDriveTypeA(const char* pRootPathName) throw();
 int CreateProcessA(char* pApplicationName, char* pCommandLine, void* pProcessAttributes,

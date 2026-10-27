@@ -414,7 +414,7 @@ void CSWClass::LoadFeatGain(const CExoString& sTable)
         if (p2DA->GetINTEntry(i, sNormal, &nValue))
             m_normalFeats.m_aByLevel[i + 1] = static_cast<unsigned char>(nValue);
         if (p2DA->GetINTEntry(i, sBonus, &nValue))
-            m_bonusFeats.m_aByLevel[i + 1] = static_cast<unsigned char>(nValue);
+            (&m_bonusFeats.m_aByLevel[1])[i] = static_cast<unsigned char>(nValue);
     }
 
     delete p2DA;
@@ -456,14 +456,14 @@ void CSWClass::LoadFeatsTable(const CExoString& sTable, CSWRules* pRules)
         m_paGrantedFeats[nEntry].m_nLevel = 0;
         m_paGrantedFeats[nEntry].m_nFeat = i;
 #else
-        m_paGrantedFeats[nEntry].m_bPCOnly = 0;
-        m_paGrantedFeats[nEntry].m_nFeatList = 0;
-        m_paGrantedFeats[nEntry].m_nLevel = 0;
-        m_paGrantedFeats[nEntry].m_nFeat = 0;
-        m_paGrantedFeats[i].m_bPCOnly = 0;
-        m_paGrantedFeats[i].m_nFeatList = 0;
-        m_paGrantedFeats[i].m_nLevel = 0;
         m_paGrantedFeats[i].m_nFeat = 0;
+        m_paGrantedFeats[i].m_nLevel = 0;
+        m_paGrantedFeats[i].m_nFeatList = 0;
+        m_paGrantedFeats[i].m_bPCOnly = 0;
+        m_paGrantedFeats[nEntry].m_nFeat = 0;
+        m_paGrantedFeats[nEntry].m_nLevel = 0;
+        m_paGrantedFeats[nEntry].m_nFeatList = 0;
+        m_paGrantedFeats[nEntry].m_bPCOnly = 0;
 #endif
 
         if (pRules->GetFeat(i) == 0)

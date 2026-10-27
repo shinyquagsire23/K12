@@ -302,8 +302,10 @@ int CSWCArea::AddPlaceableObjectStatic(unsigned long long objectId, int nPlaceab
         g_pAppManager->m_pClientExoApp->GetPlaceableByGameObjectID(objectId);
     if (pPlaceable == 0) {
         CExoString sModelName;
-        CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
-        C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
+        CClientOptions* pOptions;
+        C2DA* p2DA;
+        pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
+        p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
         if (pOptions->m_nViolenceLevel != 0) {
             CExoString sColumn("ModelName");
             p2DA->GetCExoStringEntry(nPlaceableId, sColumn, &sModelName);
@@ -329,7 +331,8 @@ int CSWCArea::AddPlaceableObjectStatic(unsigned long long objectId, int nPlaceab
         pPlaceable->SetPosition(vPos);
         pPlaceable->SetOrientation(vFacing);
         // The yaw was already applied from the raw Vector above, so this call's result is unused.
-        YawPitchRoll(Yaw(vFacing), 0.0f, 0.0f);
+        float fYaw = Yaw(vFacing);
+        YawPitchRoll(fYaw, 0.0f, 0.0f);
     }
     pPlaceable->m_bPlot = 1;
     pPlaceable->m_bLockable = 0;
@@ -591,12 +594,19 @@ int CSWCArea::SetWeather(unsigned char nWeather, float f)
             default:
                 return 0;
             }
+#if KOTOR1
+            for (int i = 0; i < 6; i++) {
+                if (m_apWeatherGobs[i] != 0)
+                    m_apWeatherGobs[i]->AttachToScene(m_pScene);
+            }
+#else
             if (m_apWeatherGobs[0] != 0) m_apWeatherGobs[0]->AttachToScene(m_pScene);
             if (m_apWeatherGobs[1] != 0) m_apWeatherGobs[1]->AttachToScene(m_pScene);
             if (m_apWeatherGobs[2] != 0) m_apWeatherGobs[2]->AttachToScene(m_pScene);
             if (m_apWeatherGobs[3] != 0) m_apWeatherGobs[3]->AttachToScene(m_pScene);
             if (m_apWeatherGobs[4] != 0) m_apWeatherGobs[4]->AttachToScene(m_pScene);
             if (m_apWeatherGobs[5] != 0) m_apWeatherGobs[5]->AttachToScene(m_pScene);
+#endif
             m_nCurrentWeather = nWeather;
         }
         if (m_chanceLightning != 0) {
@@ -637,10 +647,15 @@ int CSWCArea::SetWeather(unsigned char nWeather, float f)
         sAnim = const_cast<char*>("snow");
     float fSpeed = f / 100.0f;
     for (int i = 0; i < 6; i++) {
+#if KOTOR1
+        float fLen, fCur;
+#endif
         if (m_apWeatherGobs[i] != 0) {
             m_apWeatherGobs[i]->PlayAnimation(static_cast<char*>(sAnim.CStr()), 0.0f, AnimRun::kAnimRemove, 0.0f);
             m_apWeatherGobs[i]->PlayAnimation(static_cast<char*>(sAnim.CStr()), fSpeed, 0, 0.0f);
+#if !KOTOR1
             float fLen, fCur;
+#endif
             m_apWeatherGobs[i]->GetAnimation(static_cast<char*>(sAnim.CStr()), &fLen, &fCur);
             static_cast<CAurObject*>(m_apWeatherGobs[i])->AnimateExternal(fCur);
             m_apWeatherGobs[i]->PlayAnimation(static_cast<char*>(sAnim.CStr()), 0.0f, 0, 0.0f);
@@ -782,7 +797,10 @@ void CSWCArea::SetHideFadeGeometryMode(unsigned char mode)
 {
     if (m_pScene == 0)
         return;
-    int nMode = mode;
+    int nMode;
+#ifdef K2_FIX_ENGINE_BUGS
+    nMode = mode;
+#endif
     switch (mode) {
     case 0:
         nMode = CAurScene::ENABLE_FADE;
@@ -829,9 +847,9 @@ int CSWCArea::SetWind(unsigned char nWind)
     v.z = 0.0f;
     v = normalize(v);
     if (nWind <= 2) {
-        float k = s_fWindScale[static_cast<signed char>(nWind)];
         float b = s_fWindVariationB[static_cast<signed char>(nWind)];
         float a = s_fWindVariationA[static_cast<signed char>(nWind)];
+        float k = s_fWindScale[static_cast<signed char>(nWind)];
         AurSetGlobalWind(Vector{v.x * k, v.y * k, v.z * k});
         AurSetGlobalWindVariation(a, b);
         m_windPower = nWind;
@@ -845,13 +863,14 @@ CSWMiniGame* CSWCArea::RestartMiniGame()
     if (m_pMiniGame == 0)
         return 0;
     CSWMiniGame* pNew = new CSWMiniGame(this);
+    int i;
     int nTracks = m_pMiniGame->m_protoTracks.m_count;
-    for (int i = 0; i < nTracks; i++) {
+    for (i = 0; i < nTracks; i++) {
         SWMGTrackInfo* pTrack = m_pMiniGame->GetProtoTrack(i);
         pNew->AddTrack(pTrack->m_resTrack, pTrack->m_vPosition);
     }
     int nObstacles = m_pMiniGame->m_obstacleIds.m_count;
-    for (int i = 0; i < nObstacles; i++) {
+    for (i = 0; i < nObstacles; i++) {
         CSWMGObstacle* pObstacle = m_pMiniGame->GetObstacle(i);
         CAurObject* pGob = pObstacle->m_pGob;
         CResRef resName(static_cast<char*>(pGob->GetModelName()));  // CAurObject::GetModelName is void*

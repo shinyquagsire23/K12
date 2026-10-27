@@ -215,7 +215,14 @@ void CSWMessage::WriteSigned(int64_t nValue, int nBits)
 void CSWMessage::WriteSigned(long long nValue, int nBits)
 #endif
 {
-    if (nValue < 0) {
+    if (nValue >= 0) {
+        WriteBit(0);
+        m_nWriteBitIndex++;
+        if (m_nWriteBitIndex == 8) {
+            m_nWriteFragmentsPos++;
+            m_nWriteBitIndex = 0;
+        }
+    } else {
         WriteBit(1);
         m_nWriteBitIndex++;
         if (m_nWriteBitIndex == 8) {
@@ -223,13 +230,6 @@ void CSWMessage::WriteSigned(long long nValue, int nBits)
             m_nWriteBitIndex = 0;
         }
         nValue = -nValue;
-    } else {
-        WriteBit(0);
-        m_nWriteBitIndex++;
-        if (m_nWriteBitIndex == 8) {
-            m_nWriteFragmentsPos++;
-            m_nWriteBitIndex = 0;
-        }
     }
 
     WriteUnsigned(nValue, nBits - 1);

@@ -797,8 +797,9 @@ void CSWGuiInGameEquip::OnEnterSlot(CSWGuiControl* pControl) {
     }
 
     int bScanItems;
+    CSWSItem* pItem;
     if (m_slot.m_nSlotFlag == CSWInventory::SLOT_LEFTWEAPON && m_slot.m_aoidEquipped[GUI_SLOT_WEAP_R] != OBJECT_INVALID) {
-        CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
+        pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
             g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_slot.m_aoidEquipped[GUI_SLOT_WEAP_R]));
         bScanItems = pItem == 0 || pItem->GetBaseItem()->m_nWeaponSize != CSWBaseItem::WEAPON_SIZE_LARGE;
     } else {
@@ -815,7 +816,7 @@ void CSWGuiInGameEquip::OnEnterSlot(CSWGuiControl* pControl) {
 
     if (bScanItems != 0 && pRepo->ItemListGetCount() != 0) {
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
-            CSWSItem* pItem = pRepo->ItemListGetItem(i);
+            pItem = pRepo->ItemListGetItem(i);
             if (pItem == 0)
                 continue;
             if ((pItem->GetBaseItem()->m_nEquipableSlots & m_slot.m_nSlotFlag) == 0)
@@ -829,9 +830,12 @@ void CSWGuiInGameEquip::OnEnterSlot(CSWGuiControl* pControl) {
 
             nFailedSlot = m_slot.m_nSlotFlag;
             unsigned char bCanEquip = pServerCreature->CanEquipItem(pItem, &nFailedSlot, 0, 0, 0);
-            CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
+            CClientOptions* pOptions;
+            int bProficient;
+            CSWCItem* pClientItem;
+            pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
             if (pOptions != 0 && pOptions->m_bFeedback0) {
-                int bProficient = pServerCreature->CheckProficiencies(pItem, m_slot.m_nSlotFlag);
+                bProficient = pServerCreature->CheckProficiencies(pItem, m_slot.m_nSlotFlag);
                 nFailedSlot = m_slot.m_nSlotFlag;
                 if (pServerCreature->CanEquipItem(pItem, &nFailedSlot, 0, 0, 0) == 0)
                     continue;
@@ -839,7 +843,7 @@ void CSWGuiInGameEquip::OnEnterSlot(CSWGuiControl* pControl) {
                     continue;
             }
 
-            CSWCItem* pClientItem = pItem->GetClientItem();
+            pClientItem = pItem->GetClientItem();
             if (pClientItem == 0)
                 continue;
 
@@ -863,7 +867,8 @@ void CSWGuiInGameEquip::OnEnterSlot(CSWGuiControl* pControl) {
                     && (pCompare != pClientItem
                         || pItem->GetBaseItem()->m_nWeaponSize != CSWBaseItem::WEAPON_SIZE_LARGE)) {
                     unsigned char nWield = pCompare->GetBaseItem()->m_weaponWieldType;
-                    if (nWield != pOther->GetBaseItem()->m_weaponWieldType
+                    unsigned char nOtherWield = pOther->GetBaseItem()->m_weaponWieldType;
+                    if (nWield != nOtherWield
                         || (nWield != CSWBaseItem::WEAPON_WIELD_ONE_HANDED && nWield != CSWBaseItem::WEAPON_WIELD_PISTOL))
                         nCanUse = CSWGuiInGameItemEntry::CAN_USE_INCOMPATIBLE_OFF_HAND;
                 }
@@ -887,7 +892,8 @@ void CSWGuiInGameEquip::OnEnterSlot(CSWGuiControl* pControl) {
                     && (pCompare != pClientItem
                         || pItem->GetBaseItem()->m_nWeaponSize != CSWBaseItem::WEAPON_SIZE_LARGE)) {
                     unsigned char nWield = pCompare->GetBaseItem()->m_weaponWieldType;
-                    if (nWield != pOther->GetBaseItem()->m_weaponWieldType
+                    unsigned char nOtherWield = pOther->GetBaseItem()->m_weaponWieldType;
+                    if (nWield != nOtherWield
                         || (nWield != CSWBaseItem::WEAPON_WIELD_ONE_HANDED && nWield != CSWBaseItem::WEAPON_WIELD_PISTOL))
                         nCanUse = CSWGuiInGameItemEntry::CAN_USE_INCOMPATIBLE_OFF_HAND;
                 }
@@ -2937,9 +2943,11 @@ void CSWGuiInGameItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderNor
 #if KOTOR1
     // K1: blue / yellow frames on lbl_hex_3; the row is 56 of 768 design lines high.
     m_text.m_params = text.m_params;
-    m_border.m_params = borderNormal.m_params;
+    CSWGuiBorderParams& paramsNormal = m_border.m_params;
+    paramsNormal = borderNormal.m_params;
     m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
-    m_borderHilight.m_params = borderHilight.m_params;
+    CSWGuiBorderParams& paramsHilight = m_borderHilight.m_params;
+    paramsHilight = borderHilight.m_params;
     m_borderHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
     m_borderHilight.m_params.SetPulsingAlpha(bSelected_, 1, 0);
     CSWGuiBorderParams& paramsFrame = m_borderFrame.m_params;
@@ -2951,7 +2959,6 @@ void CSWGuiInGameItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderNor
                                             Vector(1.0f, 1.0f, 1.0f), 0, 0);
     m_borderFrameHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
     m_borderFrameHilight.m_params.SetPulsingAlpha(bSelected_, 0, 1);
-    CSWGuiExtent extent;
 #if !defined(K2_UI_TOUCH) || defined(K2_FIX_ENGINE_BUGS)
     // The frame squares are drawn larger than the 64 px source on a large screen, so stretch
     // rather than tile.
@@ -2961,18 +2968,19 @@ void CSWGuiInGameItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderNor
 #ifndef K2_UI_TOUCH
     // The 56 units are the 480-line PC layout's row height; the touch build uses 768.
     m_nBoxUnits = 0;
-    extent.h = static_cast<int>(static_cast<float>(g_SDL_mode.h) / 480.0f * 56.0f);
+    CSWGuiExtent extent(0, 0, nWidth, static_cast<int>(static_cast<float>(g_SDL_mode.h) / 480.0f * 56.0f));
 #else
-    extent.h = static_cast<int>(g_SDL_mode.h / 768.0f * 56.0f);
+    CSWGuiExtent extent(0, 0, nWidth, static_cast<int>(g_SDL_mode.h / 768.0f * 56.0f));
 #endif
-    extent.w = nWidth;
     SetExtent(extent);
     bSelected = static_cast<unsigned char>(bSelected_);
 #else
     m_text.m_params = text.m_params;
-    m_border.m_params = borderNormal.m_params;
+    CSWGuiBorderParams& paramsNormal = m_border.m_params;
+    paramsNormal = borderNormal.m_params;
     m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
-    m_borderHilight.m_params = borderHilight.m_params;
+    CSWGuiBorderParams& paramsHilight = m_borderHilight.m_params;
+    paramsHilight = borderHilight.m_params;
     m_borderHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_HIGHLIGHT);
     m_borderHilight.m_params.SetPulsingAlpha(bSelected_, 1, 0);
     CSWGuiBorderParams& paramsFrame = m_borderFrame.m_params;
@@ -2990,9 +2998,7 @@ void CSWGuiInGameItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderNor
     m_borderFrame.m_params.m_flags.nFillStyle = 2;
     m_borderFrameHilight.m_params.m_flags.nFillStyle = 2;
 #endif
-    CSWGuiExtent extent;
-    extent.h = static_cast<int>(GetResolutionTextScalar() * 36.0f);
-    extent.w = nWidth;
+    CSWGuiExtent extent(0, 0, nWidth, static_cast<int>(GetResolutionTextScalar() * 36.0f));
     SetExtent(extent);
     bSelected = static_cast<unsigned char>(bSelected_);
 #endif
@@ -3644,9 +3650,11 @@ void CSWGuiStoreItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderInac
 #if KOTOR1
     // K1: blue / yellow frames on lbl_hex_3, a 56-of-768-line row.
     m_text.m_params = text.m_params;
-    m_border.m_params = borderInactive.m_params;
+    CSWGuiBorderParams& paramsNormal = m_border.m_params;
+    paramsNormal = borderInactive.m_params;
     m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_BLUE);
-    m_borderHilight.m_params = borderActive.m_params;
+    CSWGuiBorderParams& paramsHilight = m_borderHilight.m_params;
+    paramsHilight = borderActive.m_params;
     m_borderHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_YELLOW);
     m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
     CSWGuiBorderParams& paramsFrame = m_borderFrame.m_params;
@@ -3675,15 +3683,15 @@ void CSWGuiStoreItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderInac
     static float s_fScale = g_SDL_mode.h / 768.0f;
 #endif
 #endif
-    CSWGuiExtent extent;
-    extent.h = static_cast<int>(s_fScale * 56.0f);
-    extent.w = nHeight;
+    CSWGuiExtent extent(0, 0, nHeight, static_cast<int>(s_fScale * 56.0f));
     SetExtent(extent);
 #else
     m_text.m_params = text.m_params;
-    m_border.m_params = borderInactive.m_params;
+    CSWGuiBorderParams& paramsNormal = m_border.m_params;
+    paramsNormal = borderInactive.m_params;
     m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_DARK_GOLD);
-    m_borderHilight.m_params = borderActive.m_params;
+    CSWGuiBorderParams& paramsHilight = m_borderHilight.m_params;
+    paramsHilight = borderActive.m_params;
     m_borderHilight.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_HIGHLIGHT);
     m_borderHilight.m_params.SetPulsingAlpha(1, 1, 0);
     CSWGuiBorderParams& paramsFrame = m_borderFrame.m_params;
@@ -3699,9 +3707,7 @@ void CSWGuiStoreItemEntry::Initialize(CSWGuiText& text, CSWGuiBorder& borderInac
     m_borderFrame.m_params.m_flags.nFillStyle = 2;         // stretched, as the item row's
     m_borderFrameHilight.m_params.m_flags.nFillStyle = 2;
 #endif
-    CSWGuiExtent extent;
-    extent.h = static_cast<int>(GetResolutionTextScalar() * 36.0f);
-    extent.w = nHeight;
+    CSWGuiExtent extent(0, 0, nHeight, static_cast<int>(GetResolutionTextScalar() * 36.0f));
     SetExtent(extent);
 #endif
 }
@@ -3733,6 +3739,7 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped)
     (void)sReserved1;
     (void)sReserved2;
 
+    int nStack;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
     CSWSItem* pItem = pServer->GetItemByGameObjectID(oidItem);
     m_oidItem = oidItem;
@@ -3749,7 +3756,7 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped)
             pItem->m_localizedName.GetString(g_pAppManager->m_pClientExoApp->GetClientLanguage(),
                                              &sName, 0);
             m_text.m_params.SetText(sName);
-            int nStack = pItem->m_stackCount;
+            nStack = pItem->m_stackCount;
             if (nStack >= 2) {
                 if (nStack >= 100) {
                     m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_7"), 0);
@@ -3767,8 +3774,9 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped)
                                                     CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
         }
     }
-    m_borderIcon.m_params.m_flags.nFillStyle = 2;
-    m_borderIcon.m_params.SetFillImage(resRefIcon, 0);
+    CSWGuiBorderParams& iconParams = m_borderIcon.m_params;
+    iconParams.m_flags.nFillStyle = 2;
+    iconParams.SetFillImage(resRefIcon, 0);
 }
 #else
 
@@ -3783,6 +3791,7 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped, 
     (void)sReserved1;
     (void)sReserved2;
 
+    int nStack;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
     CSWSItem* pItem = pServer->GetItemByGameObjectID(oidItem);
     m_nEquippedBy = nEquippedBy;
@@ -3808,7 +3817,7 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped, 
             if (m_nEquippedBy != -1)
                 sName = sName + " (" + g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_EQUIPPED) + ")";
             m_text.m_params.SetText(sName);
-            int nStack = pItem->m_stackCount;
+            nStack = pItem->m_stackCount;
             if (nStack >= 2) {
                 if (nStack >= 100) {
                     m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"), 0);
@@ -3827,8 +3836,9 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped, 
         }
     }
     // A stretch fill on the icon border, then the item's own icon.
-    m_borderIcon.m_params.m_flags.nFillStyle = 2;
-    m_borderIcon.m_params.SetFillImage(resRefIcon, 0);
+    CSWGuiBorderParams& iconParams = m_borderIcon.m_params;
+    iconParams.m_flags.nFillStyle = 2;
+    iconParams.SetFillImage(resRefIcon, 0);
 }
 #endif
 

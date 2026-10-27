@@ -959,14 +959,16 @@ void CSWGuiInGameAbilities::OnEnterPower(unsigned int nPower)
     CExoString sCostValue;
     CExoString sAlignment;
     Vector color;
+    unsigned char nBand;
+    int nDelta;
 
     if (nAlignmentCode == 'G')
         sCostType = "GoodCost";
     else if (nAlignmentCode == 'E')
         sCostType = "EvilCost";
 
-    unsigned char nBand = static_cast<unsigned char>(nAlignment / 10);
-    int nDelta = 0;
+    nBand = static_cast<unsigned char>(nAlignment / 10);
+    nDelta = 0;
     if (sCostType != "") {
         float fScale;
         g_pRules->m_p2DArrays->m_pForceAdjust->GetFLOATEntry(nBand, sCostType, &fScale);

@@ -823,13 +823,14 @@ int CExoEncapsulatedFile::LoadHeader(unsigned char nFormatTag)
 #if KOTOR1
                 // K1 swaps a copy of each (the language in the lower slot)
                 const CEncapsulatedLocalizedString* pEntry = reinterpret_cast<const CEncapsulatedLocalizedString*>(pRecord);
-                unsigned int nLength = pEntry->m_nLength;
+                unsigned int nLength;
                 int nLanguage = pEntry->m_nLanguage;
+                nLength = pEntry->m_nLength;
                 ByteSwap(&nLanguage);
                 ByteSwap(&nLength);
-                char* pText = pRecord + sizeof(CEncapsulatedLocalizedString);
-                sText = CExoString(pText, nLength);
-                pRecord = pText + nLength;
+                pRecord += sizeof(CEncapsulatedLocalizedString);
+                sText = CExoString(pRecord, nLength);
+                pRecord += nLength;
                 m_sDescription.AddString(nLanguage, sText, 0);
                 i++;
 #else
@@ -1382,7 +1383,12 @@ int CExoKeyTable::AddEncapsulatedContents(int)
             ByteSwap(&entry.m_resIDRaw);
             ByteSwap(&entry.m_resType);
 #endif
+#if KOTOR1  // K1 names the raw bytes in a loop-body local
+            unsigned char* pRaw = reinterpret_cast<unsigned char*>(&entry);
+            resRef = pRaw;  // the raw 16 on-disk bytes, no NUL scan
+#else
             resRef = reinterpret_cast<unsigned char*>(&entry);  // the raw 16 on-disk bytes, no NUL scan
+#endif
             entry.m_resIDRaw = (entry.m_resIDRaw & RESID_LOCAL_MASK)
                                | ((m_nRoutingTag & RESID_FILE_MASK) << RESID_FILE_SHIFT)
                                | RESID_ENCAPSULATED;

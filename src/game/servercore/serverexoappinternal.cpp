@@ -1427,9 +1427,8 @@ int CServerExoAppInternal::CreatureAcquireItem(unsigned long long id, const CRes
 
 void CServerExoAppInternal::UpdateSubareasOnMoveTo(unsigned long long id, const Vector& from, const Vector& to)
 {
-
-    unsigned long long serverId = ClientToServerObjectId(id);
     CGameObject* pObject = 0;
+    unsigned long long serverId = ClientToServerObjectId(id);
     m_pObjectArray->GetGameObject(serverId, &pObject);
     if (pObject == 0)
         return;
@@ -1657,8 +1656,8 @@ int CServerExoAppInternal::UpdateAutoSaveTimer()
         m_autoSaveTimerLastTime = now;
     }
     unsigned int elapsed = m_autoSaveTimerDay + (now - last);
-    m_autoSaveTimerDay = elapsed;
     m_autoSaveTimerLastTime = now;
+    m_autoSaveTimerDay = elapsed;
     if (elapsed > AUTOSAVE_INTERVAL_MS)
     {
         m_autoSaveTimerDay = 0;
@@ -1858,6 +1857,10 @@ int CServerExoAppInternal::CopyModuleToCurrentGame(const CExoString& src, const 
     std::replace(sSrc.begin(), sSrc.end(), '\\', '/');
     std::replace(sDst.begin(), sDst.end(), '\\', '/');
     SDL_RWops* pIn = 0;
+    SDL_RWops* pOut;
+    int result;
+    char buf[1024];
+    unsigned int n;
     if (g_patchObbMounted)
         pIn = g_patchObb->RWFromFile(sSrc.c_str());
 #ifdef K2_FIX_ENGINE_BUGS
@@ -1868,12 +1871,9 @@ int CServerExoAppInternal::CopyModuleToCurrentGame(const CExoString& src, const 
         pIn = g_mainObb->RWFromFile(sSrc.c_str());
     if (pIn == 0)
         pIn = SDL_RWFromFile(sSrc.c_str(), "rb");
-    SDL_RWops* pOut = SDL_RWFromFile(sDst.c_str(), "wb");
-    int result;
+    pOut = SDL_RWFromFile(sDst.c_str(), "wb");
     if (pIn != 0 && pOut != 0)
     {
-        char buf[1024];
-        unsigned int n;
         while ((n = static_cast<unsigned int>(SDL_RWread(pIn, buf, 1, sizeof(buf)))) != 0)
             SDL_RWwrite(pOut, buf, 1, n);
         SDL_RWclose(pIn);
@@ -1952,11 +1952,11 @@ void CServerExoAppInternal::SetEstimatedSaveSize(const CExoString&, unsigned sho
         {
             CExoString prefix("GAMEINPROGRESS:");
 #if KOTOR1  // K1 calls GetLength()
-            int len = name.GetLength();
+            CExoString base = name.Left(name.GetLength() - 4);
 #else
             int len = (name.m_sString != 0) ? static_cast<int>(strlen(name.m_sString)) : 0;
-#endif
             CExoString base = name.Left(len - 4);
+#endif
             path = prefix + base;
         }
 
@@ -2481,12 +2481,12 @@ int CServerExoAppInternal::StoreCurrentModule()
     if (idx != -1)
     {
 #if KOTOR1  // K1 calls GetLength()
-        int len = tag.GetLength();
+        tag = resourceName + tag.Right(tag.GetLength() - idx - 1);
 #else
         int len = (tag.m_sString != 0) ? static_cast<int>(strlen(tag.m_sString)) : 0;
-#endif
         CExoString subTag = tag.Right(len - idx - 1);
         tag = resourceName + subTag;
+#endif
     }
     else
     {
@@ -2704,12 +2704,12 @@ CSWSPlayer* CServerExoAppInternal::GetClientObjectByObjectId(unsigned long long 
 
 int CServerExoAppInternal::ChangePlayerGameObject(unsigned long long id)
 {
+    CGameObject* pObject = 0;
     unsigned long long moduleId = OBJECT_INVALID;
     if (id != OBJECT_INVALID) {
         const unsigned int nIdBits = ~CGameObjectArray::LISTTYPE_MASK;
         moduleId = nIdBits & id;
     }
-    CGameObject* pObject = 0;
     m_pObjectArray->GetGameObject(moduleId, &pObject);
     if (pObject == 0)
         return 0;
@@ -4010,12 +4010,13 @@ int CServerExoAppInternal::MainLoop()
             CExoString moduleName(pInfo->m_saveDirectory);
 
             CSWSModule* pModule = GetModule();
-#if KOTOR1
-            int bLoadFromSaveGame = g_pAppManager->m_pClientExoApp->GetLoadingSaveGame() == 1;
-#else
-            int bLoadFromSaveGame = m_loadFromSaveGame != 0;
-#endif
+            int bLoadFromSaveGame;
             unsigned int result;
+#if KOTOR1
+            bLoadFromSaveGame = g_pAppManager->m_pClientExoApp->GetLoadingSaveGame() == 1;
+#else
+            bLoadFromSaveGame = m_loadFromSaveGame != 0;
+#endif
 
             if (pInfo->m_loadBar.m_progress == 0)
             {
@@ -4581,6 +4582,9 @@ int CServerExoAppInternal::LoadModule(const CExoString& moduleName, CSWSPlayer* 
     CExoString estimateSizeArg;
     CExoString unusedScratch;
     CExoString dbgTimestamp;
+    int slashPos;
+    int resType;
+    bool haveResult;
 
     g_pExoBase->m_pDebug->GetCurrentTimestamp(dbgTimestamp);
     dbgTimestamp.CStr();
@@ -4597,9 +4601,9 @@ int CServerExoAppInternal::LoadModule(const CExoString& moduleName, CSWSPlayer* 
 
     copyDstPath = "CURRENTGAME:";
 #if KOTOR1  // K1 splits the module path on '/'
-    int slashPos = moduleName.Find(CExoString("/"), 0);
+    slashPos = moduleName.Find(CExoString("/"), 0);
 #else
-    int slashPos = moduleName.Find(CExoString("\\"), 0);
+    slashPos = moduleName.Find(CExoString("\\"), 0);
 #endif
     if (slashPos == -1)
     {
@@ -4609,16 +4613,15 @@ int CServerExoAppInternal::LoadModule(const CExoString& moduleName, CSWSPlayer* 
     else
     {
 #if KOTOR1  // K1 calls GetLength()
-        int len = moduleName.GetLength();
+        shortModuleName = moduleName.Right(moduleName.GetLength() - slashPos - 1);
 #else
         int len = (moduleName.m_sString != 0) ? static_cast<int>(strlen(moduleName.m_sString)) : 0;
-#endif
         shortModuleName = moduleName.Right(len - slashPos - 1);
+#endif
         copyDstPath = copyDstPath + shortModuleName;
     }
 
-    int resType = RESTYPE_INVALID;
-    bool haveResult;
+    resType = RESTYPE_INVALID;
 
     if (IncludeModuleInSave(moduleName) != 0)
     {
@@ -4724,10 +4727,10 @@ LAB_NotSaved:
                 break;
             }
             scratch.Format(const_cast<char*>("LIVE%d"), i);
-            const CExoString& aliasPath = g_pExoBase->m_pAliasList->GetAliasPath(scratch, 0);
 #if KOTOR1  // K1 calls GetLength()
-            if (aliasPath.GetLength() != 0)
+            if (g_pExoBase->m_pAliasList->GetAliasPath(scratch, 0).GetLength() != 0)
 #else
+            const CExoString& aliasPath = g_pExoBase->m_pAliasList->GetAliasPath(scratch, 0);
             if (aliasPath.m_sString != 0 && static_cast<int>(strlen(aliasPath.m_sString)) != 0)
 #endif
             {
@@ -4855,8 +4858,10 @@ LAB_HaveResult:
         unsigned long long freeSpace;
         if (g_pExoResMan->GetFreeDiskSpace(CExoString("CURRENTGAME:"), &freeSpace) == 1)
         {
-            CExoFile* pFile = new CExoFile(estimateSizeArg, static_cast<unsigned short>(resType), CExoString("rb"));
-            int size = pFile->GetSize();
+            CExoFile* pFile;
+            int size;
+            pFile = new CExoFile(estimateSizeArg, static_cast<unsigned short>(resType), CExoString("rb"));
+            size = pFile->GetSize();
             pFile->~CExoFile();
             operator delete(pFile);
             if (freeSpace < static_cast<unsigned long long>(size))

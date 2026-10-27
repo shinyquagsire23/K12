@@ -164,15 +164,18 @@ void CSWGuiInGamePause::SetPauseReason(unsigned char reason)
 #endif
     CSWGuiExtent extent;
     CSWGuiExtent extentButton;
-    int nScreenWidth;
-    int nScreenHeight;
 
     int nIdealReason = pText->GetIdealHeight();
+    int nScreenWidth;
+    int nScreenHeight;
+    CSWGuiText* pText2;
+    int nPressY;
+    int nIdealPress;
     if (IosIsIphone(nScreenWidth, nScreenHeight))
         nIdealReason = static_cast<int>(s_fScale * 4.0f + nIdealReason);
+    extent.w = m_label1.m_extent.w;
     extent.x = m_label1.m_extent.x;
     extent.y = m_label1.m_extent.y;
-    extent.w = m_label1.m_extent.w;
     extent.h = nIdealReason;
     m_label1.SetExtent(extent);
 
@@ -182,9 +185,9 @@ void CSWGuiInGamePause::SetPauseReason(unsigned char reason)
     {
         m_label2.m_tail.bVisible = 1;
 
-        CSWGuiText* pText2 = &m_label2.m_text;
-        int nPressY = static_cast<int>(s_fScale + s_fScale + (extent.y + nIdealReason));
-        int nIdealPress = pText2->GetIdealHeight();
+        pText2 = &m_label2.m_text;
+        nPressY = static_cast<int>(s_fScale + s_fScale + (extent.y + nIdealReason));
+        nIdealPress = pText2->GetIdealHeight();
         if (IosIsIphone(nScreenWidth, nScreenHeight))
             nIdealPress = static_cast<int>(s_fScale * 4.0f + nIdealPress);
         extent = m_label2.m_extent;

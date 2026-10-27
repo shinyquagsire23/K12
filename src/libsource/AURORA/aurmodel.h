@@ -1215,6 +1215,8 @@ void MaxTreeParseField(void* pTree, char* pszLine);
 #define MAXTREE_KEEP_OUT_OF_LINE
 #endif
 
+struct MaxTree32;
+
 // A parsed model tree: a node hierarchy with its name table and shared data arrays.
 class MaxTree {
 public:
@@ -1246,6 +1248,7 @@ public:
     }
 
     MaxTree() {}
+    MaxTree(const MaxTree32& p);
 
     MAXTREE_KEEP_OUT_OF_LINE ~MaxTree() {
 

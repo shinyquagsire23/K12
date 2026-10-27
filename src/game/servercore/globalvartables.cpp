@@ -127,8 +127,8 @@ int CSWGlobalVariableTable::AddIdentifier(const CExoString& sName, unsigned int 
     int nProbe = 0;
     if (m_aIdentifiers[nSlot].m_szName[0] != 0)
     {
-        int nNext = (nSlot + 1) % NUM_IDENTIFIERS;
         m_nCollisions++;
+        int nNext = (nSlot + 1) % NUM_IDENTIFIERS;
         nProbe = 1;
         if (nNext != nSlot)
         {
@@ -748,7 +748,10 @@ void CSWGlobalVariableTable::ReadTableWithoutCatalogue(CResGFF* pGFF, CResStruct
 
     CScriptLocation aLocations[NUM_LOCATIONS];
     CExoString      aStrings[5];
+    CResStruct      sStruct;
+    CResList        list1;
     unsigned char   nDefault = 0;
+    int             bSuccess;
 
 #if KOTOR1  // K1 expands the two local zeroings inline (this TU's K1 build is -fno-builtin)
     __builtin_memset(aBooleans, 0, sizeof(aBooleans));
@@ -758,10 +761,6 @@ void CSWGlobalVariableTable::ReadTableWithoutCatalogue(CResGFF* pGFF, CResStruct
     memset(aNumbers, 0, sizeof(aNumbers));
 #endif
 
-    CResStruct sStruct;
-    CResList   list1;
-    int        bSuccess;
-
     pGFF->ReadFieldVOID(&sTop, aBooleans, sizeof(aBooleans), const_cast<char*>("ValBoolean"), bSuccess, &nDefault);
     pGFF->ReadFieldVOID(&sTop, aNumbers, sizeof(aNumbers), const_cast<char*>("ValNumber"), bSuccess, &nDefault);
     pGFF->ReadFieldVOID(&sTop, aLocations, sizeof(aLocations), const_cast<char*>("ValLocation"), bSuccess, &nDefault);
@@ -770,9 +769,10 @@ void CSWGlobalVariableTable::ReadTableWithoutCatalogue(CResGFF* pGFF, CResStruct
     if (pGFF->GetList(&list1, &sTop, const_cast<char*>("ValString")))
     {
 #if KOTOR1  // K1 reads the string count once
-        nString = pGFF->GetListCount(&list1);
-        if (static_cast<unsigned int>(nString) > 5)
-            nString = 5;
+        unsigned int nCount = pGFF->GetListCount(&list1);
+        if (nCount > 5)
+            nCount = 5;
+        nString = nCount;
 #else
         nString = pGFF->GetListCount(&list1) > 5 ? 5 : pGFF->GetListCount(&list1);
 #endif

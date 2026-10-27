@@ -975,7 +975,8 @@ void CSWGuiPazaakGame::HandleFlipHandCard() {
             m_pPazaak->m_players[0].m_hand[n].m_nCardType < PAZAAK_CARD_MAIN_1) {
 #else
             (m_pPazaak->m_players[0].m_hand[n].m_nCardType < PAZAAK_CARD_TIEBREAKER ||
-             (m_pPazaak->m_players[0].m_hand[n].m_nCardType | 4) == PAZAAK_CARD_PLUS_MINUS_1_2)) {
+             m_pPazaak->m_players[0].m_hand[n].m_nCardType == PAZAAK_CARD_TIEBREAKER ||
+             m_pPazaak->m_players[0].m_hand[n].m_nCardType == PAZAAK_CARD_PLUS_MINUS_1_2)) {
 #endif
             m_actbtn3.m_fFlashTimer = 0.8f;
             m_actbtn3.m_labelPos = CGuiInGame::COLOR_CYAN;
