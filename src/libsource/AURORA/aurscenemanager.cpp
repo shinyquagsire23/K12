@@ -714,15 +714,16 @@ int PartOutside(PartProjection* pPart, List<Plane>& planes)
 {
     static int lastClipped = 0;
 
+    int nRet = 0;
     for (int i = 0; i < planes.m_count; i++) {
         int nPlane = (lastClipped + i) % planes.m_count;
         if (BoxAbovePlane(pPart->m_vBBoxMin, pPart->m_vBBoxMax, planes.m_pData[nPlane]) > 0.0f) {
             lastClipped = i;
-            return true;
+            nRet = 1;
+            break;
         }
     }
-
-    return false;
+    return nRet;
 }
 
 // The projection's box test over the trigger's own box.
@@ -730,15 +731,16 @@ int PartOutside(PartTrigger* pPart, List<Plane>& planes)
 {
     static int lastClipped = 0;
 
+    int nRet = 0;
     for (int i = 0; i < planes.m_count; i++) {
         int nPlane = (lastClipped + i) % planes.m_count;
         if (BoxAbovePlane(pPart->m_vBBoxMin, pPart->m_vBBoxMax, planes.m_pData[nPlane]) > 0.0f) {
             lastClipped = i;
-            return true;
+            nRet = 1;
+            break;
         }
     }
-
-    return false;
+    return nRet;
 }
 
 // Space-delimited tokenizer for the debug console; returns the token start, or null.

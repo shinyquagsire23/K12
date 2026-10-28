@@ -575,7 +575,7 @@ void CHitInfo::ClearOutput()
 {
     m_nHitType = 0;
     m_hitObject = 0;  // SafePointer::operator= unregisters and nulls
-    m_nHitMaterialBit = 0;
+    *static_cast<volatile int*>(&m_nHitMaterialBit) = 0;
     __builtin_memset(&m_vHitNormal, 0, sizeof(m_vHitNormal) + sizeof(m_pszHitPartName));
     __builtin_memset(&m_hitPosition, 0, sizeof(m_hitPosition) + sizeof(m_vLocalHitPosition));
     m_nHitFaceIndex = -1;

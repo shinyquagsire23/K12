@@ -352,6 +352,10 @@ __attribute__((visibility("hidden"))) ImposterTable manRefImposter;
 float g_afIosPostParams[4] __attribute__((visibility("hidden"))) = { 0.6f, 1.9f, 1.0f, 3.0f };
 #endif
 
+#if KOTOR1
+typedef uint64_t __attribute__((may_alias)) AliasedWord;  // K1 zeroes the pbuffer record's leading 16 bytes as two words
+#endif
+
 static int  s_nSavedFramebuffer;
 #if !KOTOR1
 static int  s_nSavedDistortFramebuffer;
@@ -996,13 +1000,15 @@ int GLRender::GetAvailableTextureMemory()
     if (!junk)
     {
         unsigned char aTextureData[256 * 256 * 4];
-        for (uint64_t i = 0; i < 1000; i++)
+        uint64_t i = 0;
+        while (i < 1000)
         {
             unsigned int nTexture;
             aTextureData[0] = static_cast<unsigned char>(i);
             ASLgl::glGenTextures(1, &nTexture);
             ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
             s_anProbeTextures[i] = nTexture;
+            i++;
             ASLgl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                                 aTextureData);
         }
@@ -2502,7 +2508,9 @@ void* GLRender::CreatePBuffer(int nWidth, int nHeight)
 {
 #if KOTOR1 // K1: an OES framebuffer with an RGBA texture and a 24-bit depth renderbuffer
     PBUFFERARB* pPBuffer = new PBUFFERARB;
-    memset(pPBuffer, 0, 16);  // idiom-exempt: K1 zeroes the leading 16 bytes of the 0x14-byte record
+    AliasedWord* pZero = reinterpret_cast<AliasedWord*>(pPBuffer);
+    pZero[0] = 0;  // raw-offset: the leading 16 bytes are zeroed as two words
+    pZero[1] = 0;
     pPBuffer->m_nWidth = nWidth;
     pPBuffer->m_nHeight = nHeight;
     ASLgl::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &s_nSavedFramebuffer);
@@ -8093,7 +8101,9 @@ void GLRender::FinishSoftShadows()
 PBUFFERARB* CreatePBufferIos(int nWidth, int nHeight)
 {
     PBUFFERARB* pPBuffer = new PBUFFERARB;
-    memset(pPBuffer, 0, 16);  // idiom-exempt: K1 zeroes the leading 16 bytes of the 0x14-byte record
+    AliasedWord* pZero = reinterpret_cast<AliasedWord*>(pPBuffer);
+    pZero[0] = 0;  // raw-offset: the leading 16 bytes are zeroed as two words
+    pZero[1] = 0;
     pPBuffer->m_nWidth = nWidth;
     pPBuffer->m_nHeight = nHeight;
     ASLgl::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &s_nSavedFramebuffer);

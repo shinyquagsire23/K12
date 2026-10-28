@@ -453,13 +453,13 @@ int FModAudioSystem::SetChannel3DPosition(FModId nChannel, float x, float y, flo
     pPosition->y = y;
     pPosition->z = z;
     m_nLastResult = pInfo->m_pChannel->set3DAttributes(pPosition, 0);
-    if (m_nLastResult != FMOD_OK)
+    if (m_nLastResult == FMOD_OK)
     {
-        operator delete(pPosition);
-        return 0;
+        pInfo->SetPosition(pPosition);
+        return 1;
     }
-    pInfo->SetPosition(pPosition);
-    return 1;
+    operator delete(pPosition);
+    return 0;
 }
 
 int FModAudioSystem::SetChannel3DPosition(FModAudioSystemChannelInfo* pInfo, FMOD_VECTOR* pPosition)

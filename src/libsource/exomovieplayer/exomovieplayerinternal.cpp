@@ -284,11 +284,7 @@ void AsyncPlayThreadProc(void* pArg)
             ExitThread(0);
         }
 #endif
-        if (pPlayer->m_aMovies.m_count < 1)
-        {
-            pPlayer->m_bSkippable = 1;
-        }
-        else
+        if (pPlayer->m_aMovies.m_count >= 1)
         {
             for (int i = 0; i < pPlayer->m_aMovies.m_count; i++)
             {
@@ -332,6 +328,10 @@ void AsyncPlayThreadProc(void* pArg)
                     pPlayer->m_bSkipped = 0;
                 }
             }
+        }
+        else
+        {
+            pPlayer->m_bSkippable = 1;
         }
 
         if (pPlayer->m_bDeactivated == 0)

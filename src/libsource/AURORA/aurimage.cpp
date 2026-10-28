@@ -877,7 +877,7 @@ unsigned char* ImageReadS3TC(FILE* pFile, int* pWidth, int* pHeight, int* pForma
         int nMipWidth = nWidth ? nWidth : 1;
         int nMipHeight = nHeight ? nHeight : 1;
         pDst += nSize;
-        nSize = ((nMipWidth + 3) / 4) * nBlockSize * ((nMipHeight + 3) / 4);
+        nSize = ((nMipWidth + 3) / 4) * (((nMipHeight + 3) / 4) * nBlockSize);
         fread(pDst, 1, nSize, pFile);
         nWidth = nMipWidth >> 1;
         nHeight = nMipHeight >> 1;

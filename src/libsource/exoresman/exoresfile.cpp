@@ -1764,13 +1764,13 @@ void CExoKeyTable::RebuildTable()
                 continue;
             }
 
-            if (pOld->m_pRes->m_nDemandCount == 0) {
+            if (pOld->m_pRes->m_nDemandCount != 0) {
+                pOld->m_pRes->m_dwFlags |= CRes::RESFLAG_ORPHANED;
+            } else {
                 pOld->m_pRes->Dump(0);
                 // The orphan is detached from the old entry, which is deleted below.
                 pOld->m_pRes->m_pKeyEntry = NULL;
                 pOld->m_pRes->m_dwResID = RESID_INVALID;
-            } else {
-                pOld->m_pRes->m_dwFlags |= CRes::RESFLAG_ORPHANED;
             }
         }
     }

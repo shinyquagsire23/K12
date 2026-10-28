@@ -270,10 +270,12 @@ void CExoDebugInternal::InitializeAssertFile()
 
 // strlen with an explicit declaration so the loop below keeps its shape: pure merges the per-iteration
 // length reads into one call, and noduplicate keeps the loop from being rotated.
+#if !defined(K2_HOST_BUILD)  // a host keeps its C library's declaration
 #if KOTOR1
 extern "C" size_t strlen(const char* s) throw() __attribute__((pure));  // idiom-exempt: the loop's attributes
 #else
 extern "C" size_t strlen(const char* s) throw() __attribute__((pure, noduplicate));  // idiom-exempt: the loop's attributes
+#endif
 #endif
 
 // Narrows a char string into a wide buffer, stopping at the bound or at the source's terminator.

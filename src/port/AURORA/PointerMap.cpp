@@ -54,7 +54,11 @@ void PointerMap::DestroyMemoryBlock(const void* p)
 {
     for (BlockMap::iterator it = m_blocks.begin(); it != m_blocks.end(); ++it) {
         if (it->second->m_pBase == p) {
+#if KOTOR1
+            if (p != 0)
+#else
             if (it->second->m_pBase != 0)
+#endif
                 operator delete[](const_cast<void*>(p));
             delete it->second;
             m_blocks.erase(it);

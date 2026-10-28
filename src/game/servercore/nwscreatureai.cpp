@@ -4463,10 +4463,11 @@ int CSWSCreature::HandleSubAreaStateChanges(CExoArrayList<unsigned long long>* p
                                             int bCheckAreaTransitions, int bRunScripts)
 {
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
+    int64_t i;
     int bChanged = 0;
 
     // Subareas we were standing in that the new set drops -> fire OnExit.
-    for (int64_t i = 0; i < m_currentSubareaIds.m_count; i++) {
+    for (i = 0; i < m_currentSubareaIds.m_count; i++) {
         if (pNew->Contains(m_currentSubareaIds.m_pArray[i]) != 0)
             continue;
 
@@ -4489,7 +4490,7 @@ int CSWSCreature::HandleSubAreaStateChanges(CExoArrayList<unsigned long long>* p
 
     // Subareas the new set adds -> fire OnEnter, unless a non-leader party member is walking into an
     // area transition, which vetoes the whole update.
-    for (int64_t i = 0; i < pNew->m_count; i++) {
+    for (i = 0; i < pNew->m_count; i++) {
         unsigned long long objectId = pNew->m_pArray[i];
         if (m_currentSubareaIds.Contains(objectId) != 0)
             continue;

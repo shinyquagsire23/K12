@@ -105,14 +105,14 @@ void CExoRandInternal::Add(unsigned char* pData, int nLen)
     if (m_nEntropyWritePos + nLen <= BUFFER_SIZE - 1)
     {
         memcpy(m_pEntropyRing + m_nEntropyWritePos, pData, nLen);  // idiom-exempt: byte count comes from the caller
+        m_nEntropyWritePos += nLen;
     }
     else
     {
         memcpy(m_pEntropyRing + m_nEntropyWritePos, pData, BUFFER_SIZE - m_nEntropyWritePos);  // idiom-exempt: byte count is the ring's, not an object
         memcpy(m_pEntropyRing, pData + BUFFER_SIZE - m_nEntropyWritePos, nLen - (BUFFER_SIZE - m_nEntropyWritePos));  // idiom-exempt: same
-        m_nEntropyWritePos -= BUFFER_SIZE;
+        m_nEntropyWritePos = static_cast<unsigned short>(m_nEntropyWritePos - BUFFER_SIZE + nLen);
     }
-    m_nEntropyWritePos += static_cast<unsigned short>(nLen);
 }
 
 // One round of the four-lane state step, then the xor fold of the new state.

@@ -5080,9 +5080,7 @@ PartLight::~PartLight()
 {
     for (int i = 0; i < gobs.m_count; i++) {
         CAurObjectLightContainer* pLight = gobs.m_pData[i]->m_pLightContainer;
-        if (!pLight)
-            continue;
-        if (pLight->m_lights.Contains(this)) {
+        if (pLight && pLight->m_lights.Contains(this)) {
             int idx = pLight->m_lights.IndexOf(this);
             if (idx >= 0) {
                 pLight->m_lights.DelIndex(idx);
@@ -5384,11 +5382,10 @@ int PartAABB::HitCheckGeom(const Vector& p1, Vector& p2, Vector* pOut, CHitInfo*
     aabb_mesh = node->AsMdlNodeTriMesh();
     aabb_hitinfo = pInfo;
 
-    int heur = 0;
-    heur |= (p1.x < p2.x) ? AABB::kDirPosX : AABB::kDirNegX;
-    heur |= (p1.y < p2.y) ? AABB::kDirPosY : AABB::kDirNegY;
-    heur |= (p1.z < p2.z) ? AABB::kDirPosZ : AABB::kDirNegZ;
-    aabb_direction_heuristic = heur;
+    aabb_direction_heuristic = 0;
+    aabb_direction_heuristic |= (p1.x < p2.x) ? AABB::kDirPosX : AABB::kDirNegX;
+    aabb_direction_heuristic |= (p1.y < p2.y) ? AABB::kDirPosY : AABB::kDirNegY;
+    aabb_direction_heuristic |= (p1.z < p2.z) ? AABB::kDirPosZ : AABB::kDirNegZ;
 
     AABB* pRoot = node->AsMdlNodeAABB()->m_pAABB;
     int result = HitCheckAABBnode(pRoot, p1, p2, f);

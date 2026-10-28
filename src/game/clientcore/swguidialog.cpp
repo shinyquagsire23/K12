@@ -1824,7 +1824,7 @@ CSWGuiDialogCinematic::CSWGuiDialogCinematic(CSWGuiManager* pGuiManager)
     // The list itself is scaled off its own current height rather than the band's.
     CSWGuiExtent listExtent(m_listBox.m_extent);
     listExtent.h = static_cast<int>(fScale * static_cast<float>(listExtent.h));
-#if defined(K2_UI_XBOX)
+#if defined(K2_UI_XBOX) && !defined(K2_UI_TOUCH)
     // The console conversation keeps the phone's slim bar, with no arrows, at the layout's width.
     m_listBox.m_scrollBar.bSlimBar = 1;
 #elif defined(K2_UI_PC)
