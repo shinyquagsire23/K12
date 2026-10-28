@@ -188,7 +188,7 @@ public:
     int          m_nFieldDataGrow;
     int          m_nFieldIndicesGrow;
     int          m_nListIndicesGrow;
-    GFFHeader*     m_pHeader;
+    GFFHeader*     m_pFileHeader;
 #if KOTOR1
     CResGFFAlignedPtr<CResGFFStruct> m_paStructs;
     unsigned int   m_nStructCapacity;
@@ -206,10 +206,10 @@ public:
     unsigned int   m_nFieldDataCapacity;
     unsigned char* m_pFieldIndices;
     unsigned int   m_nFieldIndicesCapacity;
-    unsigned int   m_nFieldIndicesUsed;
+    unsigned int   m_nDataLayoutFieldWasted;
     unsigned char* m_pListIndices;
     unsigned int   m_nListIndicesCapacity;
-    unsigned int   m_nListIndicesUsed;
+    unsigned int   m_nDataLayoutListWasted;
     char         m_sLabelCache[16];
     char         m_nLabelCacheTerminator;
     char         m_sFileType[4];
@@ -273,8 +273,8 @@ void ByteSwap(long long* p);
 #endif
 void ByteSwap(double* p);
 
-// The on-disk GFF header (56 bytes). m_pHeader points at one, either the raw resource-cache buffer
-// or a grown one on the write path. Every multi-byte field is read through ByteSwap.
+// The on-disk GFF header (56 bytes). m_pFileHeader points at one, either the raw resource-cache
+// buffer or a grown one on the write path. Every multi-byte field is read through ByteSwap.
 struct GFFHeader {
     char         sFileType[4];
     char         sFileVersion[4];
@@ -287,9 +287,9 @@ struct GFFHeader {
     unsigned int nFieldDataOffset;
     unsigned int nFieldDataCount;
     unsigned int nFieldIndicesOffset;
-    unsigned int nFieldIndicesCount;
+    unsigned int m_nDataLayoutFieldCount;
     unsigned int nListIndicesOffset;
-    unsigned int nListIndicesCount;
+    unsigned int m_nDataLayoutListCount;
 };
 
 // On-disk struct record (12 bytes). A single field's index is stored in nDataOrDataOffset itself;

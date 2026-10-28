@@ -1238,7 +1238,7 @@ public:
     MAXTREE_KEEP_OUT_OF_LINE MaxTree(char* pszName) {
         __strcpy_chk(m_szName, pszName, 32);
         m_pMdlNode = 0;
-        m_cType = 1;
+        m_cType = kTreeBase;
         m_pMdlResource = 0;
         m_nNodeCount = 0;
         m_freeTokens.SetSize(0);

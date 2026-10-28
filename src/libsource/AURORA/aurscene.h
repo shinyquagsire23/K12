@@ -265,7 +265,7 @@ public:
 #endif
     bool   m_bAnimating;
     // Set when a face is appended to a grass bin.
-    bool   m_bBinsDirty;
+    bool   m_bHasBins;
     char   _pad124[0x04];
     void*  m_pReserved1;
     float  m_fReserved1;

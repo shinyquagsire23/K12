@@ -1833,7 +1833,7 @@ void ManageSceneBSP(Scene* pScene)
     CollectActiveRooms(pScene, rooms);
 
     if (pScene->m_rooms.m_count != 0) {
-        if (pScene->m_bBinsDirty) {
+        if (pScene->m_bHasBins) {
             for (int64_t i = 0; i < rooms.m_count; i++)
                 BSPTraverse(rooms.m_pData[i], CurrentCamera->m_vPosition,
                             CAurTriangleBin::m_fFarRadiusSquared, CollectBins);

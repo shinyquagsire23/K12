@@ -34,11 +34,11 @@ enum {
     TLK_HEADER_SIZE = 20,
     TLK_ENTRY_SIZE_V3_0 = 40,
     TLK_ENTRY_SIZE_OLD = 36,
-    FOURCC_TLK = 0x204b4c54,
-    TLKFLAG_TEXT_PRESENT = 0x1,
-    TLKFLAG_SOUND_PRESENT = 0x2,
-    TLKFLAG_SOUND_LENGTH_PRESENT = 0x4,
-    TLKFLAG_SKIP = 0x8000,
+    TLK_FILE_TYPE = 0x204b4c54,
+    TEXT_PRESENT = 0x1,
+    SND_PRESENT = 0x2,
+    SNDLENGTH_PRESENT = 0x4,
+    STRING_NOT_IN_PROJECT = 0x8000,
 };
 
 // AspyrFormatString's buffer.
@@ -100,7 +100,7 @@ int CTlkFile::ReadHeader()
     ByteSwap(&m_nStringCount);
     ByteSwap(&m_nStringTableOffset);
 
-    return m_nFileType == FOURCC_TLK;
+    return m_nFileType == TLK_FILE_TYPE;
 }
 
 CTlkTable::CTlkTable()
@@ -177,50 +177,50 @@ int CTlkTable::FetchInternal(unsigned int strRef, STR_RES& res, int bParse)
         if (!pFile->Seek(nEntrySize * strRef + TLK_HEADER_SIZE, 0))
             continue;
 
-        TLKStringEntry entry;
-        entry.m_fSoundLength = 0.0f;
-        if (pFile->Read(&entry, 1, nEntrySize) != nEntrySize)
+        TLKStringEntry strResHeader;
+        strResHeader.m_fSoundLength = 0.0f;
+        if (pFile->Read(&strResHeader, 1, nEntrySize) != nEntrySize)
             continue;
 
-        ByteSwap(&entry.m_nFlags);
-        ByteSwap(&entry.m_nVolumeVariance);
-        ByteSwap(&entry.m_nPitchVariance);
-        ByteSwap(&entry.m_nStringOffset);
-        ByteSwap(&entry.m_nStringSize);
-        ByteSwap(&entry.m_fSoundLength);
+        ByteSwap(&strResHeader.m_nFlags);
+        ByteSwap(&strResHeader.m_nVolumeVariance);
+        ByteSwap(&strResHeader.m_nPitchVariance);
+        ByteSwap(&strResHeader.m_nStringOffset);
+        ByteSwap(&strResHeader.m_nStringSize);
+        ByteSwap(&strResHeader.m_fSoundLength);
 
-        if (entry.m_nFlags & TLKFLAG_SKIP)
+        if (strResHeader.m_nFlags & STRING_NOT_IN_PROJECT)
             continue;
 
-        if (entry.m_nFlags & TLKFLAG_SOUND_LENGTH_PRESENT)
-            res.fSoundLength = entry.m_fSoundLength;
+        if (strResHeader.m_nFlags & SNDLENGTH_PRESENT)
+            res.fSoundLength = strResHeader.m_fSoundLength;
         else
             res.fSoundLength = 0.0f;
 
-        if (entry.m_nFlags & TLKFLAG_SOUND_PRESENT)
-            res.soundResRef = reinterpret_cast<unsigned char*>(entry.m_szSoundResRef);
+        if (strResHeader.m_nFlags & SND_PRESENT)
+            res.soundResRef = reinterpret_cast<unsigned char*>(strResHeader.m_szSoundResRef);
         else
             res.soundResRef = const_cast<char*>("");
 
-        if (entry.m_nFlags & TLKFLAG_TEXT_PRESENT)
+        if (strResHeader.m_nFlags & TEXT_PRESENT)
         {
-            if (pFile->m_nStringTableOffset + entry.m_nStringOffset > static_cast<unsigned int>(pFile->GetSize()))
+            if (pFile->m_nStringTableOffset + strResHeader.m_nStringOffset > static_cast<unsigned int>(pFile->GetSize()))
             {
                 res.text = strRef;
                 res.soundResRef = const_cast<char*>("");
                 return 0;
             }
 
-            if (!pFile->Seek(pFile->m_nStringTableOffset + entry.m_nStringOffset, 0))
+            if (!pFile->Seek(pFile->m_nStringTableOffset + strResHeader.m_nStringOffset, 0))
             {
                 res.text = "";
                 res.soundResRef = const_cast<char*>("");
                 return 0;
             }
 
-            char* pBuffer = new char[entry.m_nStringSize];
-            pFile->Read(pBuffer, 1, entry.m_nStringSize);
-            sText = CExoString(pBuffer, entry.m_nStringSize);
+            char* pBuffer = new char[strResHeader.m_nStringSize];
+            pFile->Read(pBuffer, 1, strResHeader.m_nStringSize);
+            sText = CExoString(pBuffer, strResHeader.m_nStringSize);
             operator delete[](pBuffer);
 
             if (bParse)

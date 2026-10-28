@@ -125,13 +125,13 @@ public:
 
 };
 
-struct EncapsulatedFileEntry {
+struct ENCAPSULATED_RESLISTENTRY {
     unsigned int m_nDataOffset;
 
     unsigned int m_nResourceSize;
 };
 
-struct CEncapsulatedFileHeader;
+struct ENCAPSULATED_HEADER;
 
 // An encapsulated file's format (CExoEncapsulatedFile::m_nFormatTag, LoadHeader's argument): the
 // resource type its file opens as.
@@ -168,9 +168,9 @@ public:
 
     CExoLocString  m_sDescription;
 
-    CEncapsulatedFileHeader* m_pHeader;
+    ENCAPSULATED_HEADER* m_pEncapsulatedHeader;
 
-    EncapsulatedFileEntry* m_paEntries;
+    ENCAPSULATED_RESLISTENTRY* m_pResListEntry;
 
     unsigned char  m_nFormatTag;
 
@@ -313,12 +313,12 @@ public:
 
 };
 
-struct CEncapsulatedFileHeader {
+struct ENCAPSULATED_HEADER {
     unsigned int m_fileType;
     unsigned int m_version;
     unsigned int m_nLanguageCount;
     unsigned int m_nLocalizedStringSize;
-    unsigned int m_nEntryCount;
+    unsigned int m_nEntries;
     int          m_nOffsetToLocalizedString;
     int          m_nOffsetToKeyList;
     int          m_nOffsetToResourceList;
@@ -332,7 +332,7 @@ struct CEncapsulatedLocalizedString {
     unsigned int m_nLength;
 };
 
-struct CEncapsulatedKeyEntry {
+struct ENCAPSULATED_KEYLISTENTRY {
     char           m_resRefData[16];
     unsigned int   m_resIDRaw;
     unsigned short m_resType;
@@ -342,7 +342,7 @@ struct CEncapsulatedKeyEntry {
 extern void* EXOMALLOC(uint64_t size, const char* file, int line);
 extern void  EXOFREE(void* p, const char* file, int line);
 
-struct KeyFileHeader {
+struct KEYFILE_HEADER {
     unsigned int m_fileType;
     unsigned int m_fileVersion;
     unsigned int m_nBifCount;
@@ -364,18 +364,18 @@ struct KeyTableEntry {
     unsigned int   m_resID;
 };
 
-struct CExoResFileHeader {
+struct BIFFFILE_HEADER {
     unsigned int m_fileType;
     unsigned int m_fileVersion;
-    unsigned int m_nVariableResourceCount;
+    unsigned int m_nNumVariableResources;
     unsigned int m_nFixedResourceCount;
     int          m_nOffsetToVariableResourceTable;
 };
 
-struct CExoResFileEntry {
+struct BIFFFILE_VARRESENTRY_V1 {
     unsigned int m_nResourceId;
     unsigned int m_nDataOffset;
-    unsigned int m_nResourceSize;
+    unsigned int m_nSize;
     unsigned int m_nResourceType;
 };
 
@@ -402,9 +402,9 @@ public:
     // </VTABLE-GEN>
     CExoResFile();
 
-    CExoResFileHeader* m_pHeader;
+    BIFFFILE_HEADER* m_pBiffHeader;
 
-    CExoResFileEntry*  m_paEntries;
+    BIFFFILE_VARRESENTRY_V1* m_pBiffVarResEntry;
 
 };
 extern void* _ZTV11CExoResFile[];

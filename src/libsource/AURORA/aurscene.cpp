@@ -347,7 +347,7 @@ Scene::Scene(char* pszName)
 
     m_pBSPRoot = 0;
     m_bAnimating = true;
-    m_bBinsDirty = false;
+    m_bHasBins = false;
     m_pReserved1 = 0;
     m_fReserved1 = 1.0f;
     m_fogOfWarRooms.m_count = 0;
@@ -3389,7 +3389,7 @@ void Scene::AddFacesToBins(PartAABB* pPartAABB, Vector const& vOrigin,
             bins.m_pData[cellx].m_pData[celly] = new CAurTriangleBin;
         GLRender::UnlockPool(pT->m_pTree->AsModel()->m_nPool);
         bins.m_pData[cellx].m_pData[celly]->AddTriangle(*pFace, pPartAABB, pTriMesh);
-        m_bBinsDirty = true;
+        m_bHasBins = true;
     }
 }
 

@@ -133,7 +133,7 @@ int CExoResourceImageFile::Initialize()
 
 unsigned int CExoEncapsulatedFile::GetResourceSize(unsigned int resId)
 {
-    return m_paEntries[resId & RESID_INDEX_MASK].m_nResourceSize;
+    return m_pResListEntry[resId & RESID_INDEX_MASK].m_nResourceSize;
 }
 
 int CExoEncapsulatedFile::Initialize()
@@ -143,8 +143,8 @@ int CExoEncapsulatedFile::Initialize()
     __builtin_memset(&m_nFileSize, 0,
                      static_cast<size_t>(reinterpret_cast<char*>(&m_bAsyncFileOpened + 1)
                      - reinterpret_cast<char*>(&m_nFileSize)));
-    m_pHeader = NULL;
-    m_paEntries = NULL;
+    m_pEncapsulatedHeader = NULL;
+    m_pResListEntry = NULL;
     m_nFormatTag = 0;
     return 1;
 }
@@ -253,15 +253,15 @@ int CExoResFile::UnloadHeader()
 {
     if (m_bHeaderLoaded)
     {
-        if (m_paEntries)
+        if (m_pBiffVarResEntry)
         {
-            delete[] m_paEntries;
-            m_paEntries = NULL;
+            delete[] m_pBiffVarResEntry;
+            m_pBiffVarResEntry = NULL;
         }
-        if (m_pHeader)
+        if (m_pBiffHeader)
         {
-            delete m_pHeader;
-            m_pHeader = NULL;
+            delete m_pBiffHeader;
+            m_pBiffHeader = NULL;
         }
         m_bHeaderLoaded = 0;
         DeleteRefCount();
@@ -305,8 +305,8 @@ int CExoResFile::Initialize()
     __builtin_memset(&m_nFileSize, 0,
                      static_cast<size_t>(reinterpret_cast<char*>(&m_bAsyncFileOpened + 1)
                      - reinterpret_cast<char*>(&m_nFileSize)));
-    m_pHeader = NULL;
-    m_paEntries = NULL;
+    m_pBiffHeader = NULL;
+    m_pBiffVarResEntry = NULL;
     return 1;
 }
 
@@ -374,54 +374,54 @@ int CExoResFile::LoadHeader(unsigned char a)
     m_nFileSize = m_pFile->GetSize();
 
 #if KOTOR1  // K1 does not check the read result; the header and every entry are byte-swapped
-    m_pHeader = new CExoResFileHeader;
-    m_pFile->Read(m_pHeader, sizeof(CExoResFileHeader), 1);
-    ByteSwap(&m_pHeader->m_fileType);
-    ByteSwap(&m_pHeader->m_fileVersion);
-    ByteSwap(&m_pHeader->m_nVariableResourceCount);
-    ByteSwap(&m_pHeader->m_nFixedResourceCount);
-    ByteSwap(reinterpret_cast<unsigned int*>(&m_pHeader->m_nOffsetToVariableResourceTable));
-    if (m_pHeader->m_fileType == FOURCC_BIFF &&
-        m_pHeader->m_fileVersion == FOURCC_V1)
+    m_pBiffHeader = new BIFFFILE_HEADER;
+    m_pFile->Read(m_pBiffHeader, sizeof(BIFFFILE_HEADER), 1);
+    ByteSwap(&m_pBiffHeader->m_fileType);
+    ByteSwap(&m_pBiffHeader->m_fileVersion);
+    ByteSwap(&m_pBiffHeader->m_nNumVariableResources);
+    ByteSwap(&m_pBiffHeader->m_nFixedResourceCount);
+    ByteSwap(reinterpret_cast<unsigned int*>(&m_pBiffHeader->m_nOffsetToVariableResourceTable));
+    if (m_pBiffHeader->m_fileType == FOURCC_BIFF &&
+        m_pBiffHeader->m_fileVersion == FOURCC_V1)
     {
-        m_paEntries = NULL;
-        if (m_pHeader->m_nVariableResourceCount)
+        m_pBiffVarResEntry = NULL;
+        if (m_pBiffHeader->m_nNumVariableResources)
         {
-            m_paEntries = new CExoResFileEntry[m_pHeader->m_nVariableResourceCount];
-            m_pFile->Seek(m_pHeader->m_nOffsetToVariableResourceTable, 0);
-            m_pFile->Read(m_paEntries, sizeof(CExoResFileEntry),
-                          m_pHeader->m_nVariableResourceCount);
-            for (unsigned int i = 0; i < m_pHeader->m_nVariableResourceCount; i++) {
-                ByteSwap(&m_paEntries[i].m_nResourceId);
-                ByteSwap(&m_paEntries[i].m_nDataOffset);
-                ByteSwap(&m_paEntries[i].m_nResourceSize);
-                ByteSwap(&m_paEntries[i].m_nResourceType);
+            m_pBiffVarResEntry = new BIFFFILE_VARRESENTRY_V1[m_pBiffHeader->m_nNumVariableResources];
+            m_pFile->Seek(m_pBiffHeader->m_nOffsetToVariableResourceTable, 0);
+            m_pFile->Read(m_pBiffVarResEntry, sizeof(BIFFFILE_VARRESENTRY_V1),
+                          m_pBiffHeader->m_nNumVariableResources);
+            for (unsigned int i = 0; i < m_pBiffHeader->m_nNumVariableResources; i++) {
+                ByteSwap(&m_pBiffVarResEntry[i].m_nResourceId);
+                ByteSwap(&m_pBiffVarResEntry[i].m_nDataOffset);
+                ByteSwap(&m_pBiffVarResEntry[i].m_nSize);
+                ByteSwap(&m_pBiffVarResEntry[i].m_nResourceType);
             }
             m_bHeaderLoaded = 1;
             return 1;
         }
     }
 #else
-    m_pHeader = new CExoResFileHeader;
-    if (m_pFile->Read(m_pHeader, sizeof(CExoResFileHeader), 1) == sizeof(CExoResFileHeader) &&
-        m_pHeader->m_fileType == FOURCC_BIFF &&
-        m_pHeader->m_fileVersion == FOURCC_V1)
+    m_pBiffHeader = new BIFFFILE_HEADER;
+    if (m_pFile->Read(m_pBiffHeader, sizeof(BIFFFILE_HEADER), 1) == sizeof(BIFFFILE_HEADER) &&
+        m_pBiffHeader->m_fileType == FOURCC_BIFF &&
+        m_pBiffHeader->m_fileVersion == FOURCC_V1)
     {
-        m_paEntries = NULL;
-        if (m_pHeader->m_nVariableResourceCount)
+        m_pBiffVarResEntry = NULL;
+        if (m_pBiffHeader->m_nNumVariableResources)
         {
-            m_paEntries = new CExoResFileEntry[m_pHeader->m_nVariableResourceCount];
-            m_pFile->Seek(m_pHeader->m_nOffsetToVariableResourceTable, 0);
-            m_pFile->Read(m_paEntries, sizeof(CExoResFileEntry),
-                          m_pHeader->m_nVariableResourceCount);
+            m_pBiffVarResEntry = new BIFFFILE_VARRESENTRY_V1[m_pBiffHeader->m_nNumVariableResources];
+            m_pFile->Seek(m_pBiffHeader->m_nOffsetToVariableResourceTable, 0);
+            m_pFile->Read(m_pBiffVarResEntry, sizeof(BIFFFILE_VARRESENTRY_V1),
+                          m_pBiffHeader->m_nNumVariableResources);
             m_bHeaderLoaded = 1;
             return 1;
         }
     }
 #endif
 
-    delete m_pHeader;
-    m_pHeader = NULL;
+    delete m_pBiffHeader;
+    m_pBiffHeader = NULL;
     DeleteRefCount();
     return 0;
 }
@@ -433,25 +433,25 @@ int CExoResFile::ReadResource(unsigned int resId, void* pBuffer, unsigned int nS
         return 0;
 
     unsigned int index = resId & RESID_INDEX_MASK;
-    if (index >= m_pHeader->m_nVariableResourceCount)
+    if (index >= m_pBiffHeader->m_nNumVariableResources)
         return 0;
 
-    m_pFile->Seek(m_paEntries[index].m_nDataOffset, 0);
+    m_pFile->Seek(m_pBiffVarResEntry[index].m_nDataOffset, 0);
 #if KOTOR1  // K1 reads a compressed BIF entry whole and decompresses it
     if (m_pFile->IsCompressed()) {
-        unsigned int nUncompressedSize = m_paEntries[index].m_nResourceSize;
+        unsigned int nUncompressedSize = m_pBiffVarResEntry[index].m_nSize;
         int nEnd;
-        if (index + 1 < m_pHeader->m_nVariableResourceCount)
-            nEnd = m_paEntries[index + 1].m_nDataOffset;
+        if (index + 1 < m_pBiffHeader->m_nNumVariableResources)
+            nEnd = m_pBiffVarResEntry[index + 1].m_nDataOffset;
         else
             nEnd = m_pFile->GetSize();
-        uint64_t nCompressedSize = nEnd - static_cast<int>(m_paEntries[index].m_nDataOffset);
+        uint64_t nCompressedSize = nEnd - static_cast<int>(m_pBiffVarResEntry[index].m_nDataOffset);
         char* pCompressed = new char[nCompressedSize];
         char* pUncompressed = new char[nUncompressedSize];
         unsigned int nRead = m_pFile->Read(pCompressed, static_cast<unsigned int>(nCompressedSize), 1);
         MacDecompress(pUncompressed, nUncompressedSize, pCompressed, nRead);
-        unsigned int nCopied = (m_paEntries[index].m_nResourceSize > nSize)
-                                   ? m_paEntries[index].m_nResourceSize : nSize;
+        unsigned int nCopied = (m_pBiffVarResEntry[index].m_nSize > nSize)
+                                   ? m_pBiffVarResEntry[index].m_nSize : nSize;
         memcpy(pBuffer, pUncompressed, nCopied);  // idiom-exempt: runtime length (the larger of entry and buffer, as the original)
         delete[] pCompressed;
         delete[] pUncompressed;
@@ -460,9 +460,9 @@ int CExoResFile::ReadResource(unsigned int resId, void* pBuffer, unsigned int nS
 #endif
 
     // Two calls rather than one clamped argument.
-    if (m_paEntries[index].m_nResourceSize > nSize)
+    if (m_pBiffVarResEntry[index].m_nSize > nSize)
         return m_pFile->Read(pBuffer, nSize, 1);
-    return m_pFile->Read(pBuffer, m_paEntries[index].m_nResourceSize, 1);
+    return m_pFile->Read(pBuffer, m_pBiffVarResEntry[index].m_nSize, 1);
 }
 
 #if KOTOR1
@@ -477,15 +477,15 @@ void CExoResFile::ReadResourceAsync(unsigned int resId, void* pBuffer, unsigned 
         return;
 
     unsigned int index = resId & RESID_INDEX_MASK;
-    if (index >= m_pHeader->m_nVariableResourceCount)
+    if (index >= m_pBiffHeader->m_nNumVariableResources)
         return;
 
-    m_pAsyncFile->Seek(m_paEntries[index].m_nDataOffset, 0);
+    m_pAsyncFile->Seek(m_pBiffVarResEntry[index].m_nDataOffset, 0);
 
-    if (m_paEntries[index].m_nResourceSize > nSize)
+    if (m_pBiffVarResEntry[index].m_nSize > nSize)
         m_pAsyncFile->ReadAsync(pBuffer, nSize, 1);
     else
-        m_pAsyncFile->ReadAsync(pBuffer, m_paEntries[index].m_nResourceSize, 1);
+        m_pAsyncFile->ReadAsync(pBuffer, m_pBiffVarResEntry[index].m_nSize, 1);
 #if KOTOR1  // K1: a compressed file waits for the async read, then re-reads synchronously
     if (m_pFile->IsCompressed()) {
         while (!m_pAsyncFile->ReadAsyncComplete()) {
@@ -539,16 +539,16 @@ int CExoEncapsulatedFile::UnloadHeader()
 {
     if (m_bHeaderLoaded)
     {
-        if (m_paEntries)
+        if (m_pResListEntry)
         {
-            delete[] m_paEntries;
-            m_paEntries = NULL;
+            delete[] m_pResListEntry;
+            m_pResListEntry = NULL;
         }
         m_sDescription.ClearLocString();
-        if (m_pHeader)
+        if (m_pEncapsulatedHeader)
         {
-            delete m_pHeader;
-            m_pHeader = NULL;
+            delete m_pEncapsulatedHeader;
+            m_pEncapsulatedHeader = NULL;
         }
         m_bHeaderLoaded = 0;
     }
@@ -655,25 +655,25 @@ int CExoEncapsulatedFile::ReadResource(unsigned int resId, void* pBuffer, unsign
         return 0;
 
     unsigned int index = resId & RESID_INDEX_MASK;
-    if (index >= m_pHeader->m_nEntryCount)
+    if (index >= m_pEncapsulatedHeader->m_nEntries)
         return 0;
 
-    m_pFile->Seek(m_paEntries[index].m_nDataOffset, 0);
+    m_pFile->Seek(m_pResListEntry[index].m_nDataOffset, 0);
 #if KOTOR1  // K1 reads a compressed ERF entry whole and decompresses it
     if (m_pFile->IsCompressed()) {
-        unsigned int nUncompressedSize = m_paEntries[index].m_nResourceSize;
+        unsigned int nUncompressedSize = m_pResListEntry[index].m_nResourceSize;
         int nEnd;
-        if (index + 1 < m_pHeader->m_nEntryCount)
-            nEnd = m_paEntries[index + 1].m_nDataOffset;
+        if (index + 1 < m_pEncapsulatedHeader->m_nEntries)
+            nEnd = m_pResListEntry[index + 1].m_nDataOffset;
         else
             nEnd = m_pFile->GetSize();
-        uint64_t nCompressedSize = nEnd - static_cast<int>(m_paEntries[index].m_nDataOffset);
+        uint64_t nCompressedSize = nEnd - static_cast<int>(m_pResListEntry[index].m_nDataOffset);
         char* pCompressed = new char[nCompressedSize];
         char* pUncompressed = new char[nUncompressedSize];
         unsigned int nRead = m_pFile->Read(pCompressed, static_cast<unsigned int>(nCompressedSize), 1);
         MacDecompress(pUncompressed, nUncompressedSize, pCompressed, nRead);
-        unsigned int nCopied = (m_paEntries[index].m_nResourceSize > nSize)
-                                   ? m_paEntries[index].m_nResourceSize : nSize;
+        unsigned int nCopied = (m_pResListEntry[index].m_nResourceSize > nSize)
+                                   ? m_pResListEntry[index].m_nResourceSize : nSize;
         memcpy(pBuffer, pUncompressed, nCopied);  // idiom-exempt: runtime length (the larger of entry and buffer, as the original)
 #ifdef K2_FIX_ENGINE_BUGS
         delete[] pCompressed;
@@ -687,9 +687,9 @@ int CExoEncapsulatedFile::ReadResource(unsigned int resId, void* pBuffer, unsign
     if (strstr(m_sFileName.CStr(), "swpc_tex_tpb"))
         puts("UNCOMPRESSED TEXTURE FILE USED FOR SOME REASON");
 #endif
-    if (m_paEntries[index].m_nResourceSize > nSize)
+    if (m_pResListEntry[index].m_nResourceSize > nSize)
         return m_pFile->Read(pBuffer, nSize, 1);
-    return m_pFile->Read(pBuffer, m_paEntries[index].m_nResourceSize, 1);
+    return m_pFile->Read(pBuffer, m_pResListEntry[index].m_nResourceSize, 1);
 }
 
 #if KOTOR1
@@ -704,14 +704,14 @@ void CExoEncapsulatedFile::ReadResourceAsync(unsigned int resId, void* pBuffer, 
         return;
 
     unsigned int index = resId & RESID_INDEX_MASK;
-    if (index >= m_pHeader->m_nEntryCount)
+    if (index >= m_pEncapsulatedHeader->m_nEntries)
         return;
 
-    m_pAsyncFile->Seek(m_paEntries[index].m_nDataOffset, 0);
-    if (m_paEntries[index].m_nResourceSize > nSize)
+    m_pAsyncFile->Seek(m_pResListEntry[index].m_nDataOffset, 0);
+    if (m_pResListEntry[index].m_nResourceSize > nSize)
         m_pAsyncFile->ReadAsync(pBuffer, nSize, 1);
     else
-        m_pAsyncFile->ReadAsync(pBuffer, m_paEntries[index].m_nResourceSize, 1);
+        m_pAsyncFile->ReadAsync(pBuffer, m_pResListEntry[index].m_nResourceSize, 1);
 #if KOTOR1  // K1: a compressed file waits for the async read, then re-reads synchronously
     if (m_pFile->IsCompressed()) {
         while (!m_pAsyncFile->ReadAsyncComplete()) {
@@ -775,45 +775,45 @@ int CExoEncapsulatedFile::LoadHeader(unsigned char nFormatTag)
     m_nFormatTag = nFormatTag;
     m_nFileSize = m_pFile->GetSize();
 
-    m_pHeader = new CEncapsulatedFileHeader;
-    m_pFile->Read(m_pHeader, sizeof(CEncapsulatedFileHeader), 1);
+    m_pEncapsulatedHeader = new ENCAPSULATED_HEADER;
+    m_pFile->Read(m_pEncapsulatedHeader, sizeof(ENCAPSULATED_HEADER), 1);
 #if KOTOR1  // K1 byte-swaps the eight header words
-    ByteSwap(&m_pHeader->m_fileType);
-    ByteSwap(&m_pHeader->m_version);
-    ByteSwap(&m_pHeader->m_nLanguageCount);
-    ByteSwap(&m_pHeader->m_nLocalizedStringSize);
-    ByteSwap(&m_pHeader->m_nEntryCount);
-    ByteSwap(reinterpret_cast<unsigned int*>(&m_pHeader->m_nOffsetToLocalizedString));
-    ByteSwap(reinterpret_cast<unsigned int*>(&m_pHeader->m_nOffsetToKeyList));
-    ByteSwap(reinterpret_cast<unsigned int*>(&m_pHeader->m_nOffsetToResourceList));
+    ByteSwap(&m_pEncapsulatedHeader->m_fileType);
+    ByteSwap(&m_pEncapsulatedHeader->m_version);
+    ByteSwap(&m_pEncapsulatedHeader->m_nLanguageCount);
+    ByteSwap(&m_pEncapsulatedHeader->m_nLocalizedStringSize);
+    ByteSwap(&m_pEncapsulatedHeader->m_nEntries);
+    ByteSwap(reinterpret_cast<unsigned int*>(&m_pEncapsulatedHeader->m_nOffsetToLocalizedString));
+    ByteSwap(reinterpret_cast<unsigned int*>(&m_pEncapsulatedHeader->m_nOffsetToKeyList));
+    ByteSwap(reinterpret_cast<unsigned int*>(&m_pEncapsulatedHeader->m_nOffsetToResourceList));
 #endif
 
     // The per-tag magic chain; every arm shares the version check and the teardown.
     if (nFormatTag == ENCAPSULATED_FORMAT_ERF)
     {
-        if (m_pHeader->m_fileType != FOURCC_ERF)
+        if (m_pEncapsulatedHeader->m_fileType != FOURCC_ERF)
             goto fail;
     }
     else if (nFormatTag == ENCAPSULATED_FORMAT_HAK)
     {
-        if (m_pHeader->m_fileType != FOURCC_HAK)
+        if (m_pEncapsulatedHeader->m_fileType != FOURCC_HAK)
             goto fail;
     }
-    else if (m_pHeader->m_fileType != FOURCC_MOD)
+    else if (m_pEncapsulatedHeader->m_fileType != FOURCC_MOD)
     {
         goto fail;
     }
 
-    if (m_pHeader->m_version != FOURCC_V1_0)
+    if (m_pEncapsulatedHeader->m_version != FOURCC_V1_0)
         goto fail;
 
-    m_pFile->Seek(m_pHeader->m_nOffsetToLocalizedString, 0);
-    if (m_pHeader->m_nLocalizedStringSize)
+    m_pFile->Seek(m_pEncapsulatedHeader->m_nOffsetToLocalizedString, 0);
+    if (m_pEncapsulatedHeader->m_nLocalizedStringSize)
     {
-        pDescription = new char[m_pHeader->m_nLocalizedStringSize];
-        m_pFile->Read(pDescription, 1, m_pHeader->m_nLocalizedStringSize);
+        pDescription = new char[m_pEncapsulatedHeader->m_nLocalizedStringSize];
+        m_pFile->Read(pDescription, 1, m_pEncapsulatedHeader->m_nLocalizedStringSize);
 
-        if (m_pHeader->m_nLanguageCount)
+        if (m_pEncapsulatedHeader->m_nLanguageCount)
         {
             unsigned int i = 0;
             char* pRecord = pDescription;
@@ -843,18 +843,18 @@ int CExoEncapsulatedFile::LoadHeader(unsigned char nFormatTag)
                 i++;
                 pRecord = pText + nLength;
 #endif
-            } while (i < m_pHeader->m_nLanguageCount);
+            } while (i < m_pEncapsulatedHeader->m_nLanguageCount);
         }
         delete[] pDescription;
     }
 
-    m_paEntries = new EncapsulatedFileEntry[m_pHeader->m_nEntryCount];
-    m_pFile->Seek(m_pHeader->m_nOffsetToResourceList, 0);
-    m_pFile->Read(m_paEntries, sizeof(EncapsulatedFileEntry), m_pHeader->m_nEntryCount);
+    m_pResListEntry = new ENCAPSULATED_RESLISTENTRY[m_pEncapsulatedHeader->m_nEntries];
+    m_pFile->Seek(m_pEncapsulatedHeader->m_nOffsetToResourceList, 0);
+    m_pFile->Read(m_pResListEntry, sizeof(ENCAPSULATED_RESLISTENTRY), m_pEncapsulatedHeader->m_nEntries);
 #if KOTOR1
-    for (unsigned int i = 0; i < m_pHeader->m_nEntryCount; i++) {
-        ByteSwap(&m_paEntries[i].m_nDataOffset);
-        ByteSwap(&m_paEntries[i].m_nResourceSize);
+    for (unsigned int i = 0; i < m_pEncapsulatedHeader->m_nEntries; i++) {
+        ByteSwap(&m_pResListEntry[i].m_nDataOffset);
+        ByteSwap(&m_pResListEntry[i].m_nResourceSize);
     }
 #endif
     m_bHeaderLoaded = 1;
@@ -862,8 +862,8 @@ int CExoEncapsulatedFile::LoadHeader(unsigned char nFormatTag)
     return 1;
 
 fail:
-    delete m_pHeader;
-    m_pHeader = NULL;
+    delete m_pEncapsulatedHeader;
+    m_pEncapsulatedHeader = NULL;
     delete m_pFile;
     m_pFile = NULL;
     return 0;
@@ -1304,8 +1304,8 @@ int CExoKeyTable::AddResourceImageContents(int)
 
 int CExoKeyTable::AddEncapsulatedContents(int)
 {
-    CEncapsulatedFileHeader header;
-    CEncapsulatedKeyEntry entry;
+    ENCAPSULATED_HEADER header;
+    ENCAPSULATED_KEYLISTENTRY entry;
     CExoString unused1;
     CExoString unused2;
     CResRef resRef;
@@ -1356,7 +1356,7 @@ int CExoKeyTable::AddEncapsulatedContents(int)
 #if KOTOR1  // K1: the read header words go through ByteSwap
     ByteSwap(&header.m_fileType);
     ByteSwap(&header.m_version);
-    ByteSwap(&header.m_nEntryCount);
+    ByteSwap(&header.m_nEntries);
     ByteSwap(reinterpret_cast<unsigned int*>(&header.m_nOffsetToKeyList));
     ByteSwap(reinterpret_cast<unsigned int*>(&header.m_nOffsetToResourceList));
 #endif
@@ -1370,12 +1370,12 @@ int CExoKeyTable::AddEncapsulatedContents(int)
     }
 
     if (header.m_version != FOURCC_V1_0) goto fail;
-    if (header.m_nEntryCount == 0) goto fail;
+    if (header.m_nEntries == 0) goto fail;
 
-    m_nTableSize = static_cast<unsigned int>(header.m_nEntryCount * 1.2);
+    m_nTableSize = static_cast<unsigned int>(header.m_nEntries * 1.2);
     m_paEntries = AllocateTable(m_nTableSize);
     pFile->Seek(header.m_nOffsetToKeyList, 0);
-    if (header.m_nEntryCount != 0) {
+    if (header.m_nEntries != 0) {
         unsigned int i = 0;
         do {
             pFile->Read(&entry, sizeof(entry), 1);
@@ -1398,7 +1398,7 @@ int CExoKeyTable::AddEncapsulatedContents(int)
             AddKey(resRef, entry.m_resType, entry.m_resIDRaw, 0, CExoString(""));
 #endif
             i++;
-        } while (i < header.m_nEntryCount);
+        } while (i < header.m_nEntries);
     }
     pFile->~CExoFile();
     operator delete(pFile);
@@ -1431,8 +1431,8 @@ fail:
 int CExoKeyTable::AddKeyTableContents(int)
 {
     CExoFile* pFile;
-    KeyFileHeader header;
-    unsigned int tableBufSize;
+    KEYFILE_HEADER header;
+    unsigned int nCurrentFileTableSize;
     void* pTableBuf;
     int colonPos;
     BifTableEntry* pBifEntry;
@@ -1479,11 +1479,11 @@ int CExoKeyTable::AddKeyTableContents(int)
     m_paEntries = AllocateTable(m_nTableSize);
 
     {
-        tableBufSize = header.m_nOffsetToKeyTable - header.m_nOffsetToFileTable;
+        nCurrentFileTableSize = header.m_nOffsetToKeyTable - header.m_nOffsetToFileTable;
 #if KOTOR1
-        pTableBuf = ExoMalloc(tableBufSize);
+        pTableBuf = ExoMalloc(nCurrentFileTableSize);
 #else
-        pTableBuf = EXOMALLOC(tableBufSize,
+        pTableBuf = EXOMALLOC(nCurrentFileTableSize,
             "C:/Users/Vu/Documents/AndroidStudioProjects/KOTOR1-2/KOTOR2_Android/app/src/main/cpp/"
             "kotor2/CODE/libsource/exoresman/exoresfile.cpp", 991);
 #endif
@@ -1495,7 +1495,7 @@ int CExoKeyTable::AddKeyTableContents(int)
         }
 
         pFile->Seek(header.m_nOffsetToFileTable, 0);
-        pFile->Read(pTableBuf, tableBufSize, 1);
+        pFile->Read(pTableBuf, nCurrentFileTableSize, 1);
 
         colonPos = m_sFileName.Find(':', 0);
         if (colonPos < 1)
@@ -1808,5 +1808,5 @@ void CExoKeyTable::RebuildTable()
 }
 unsigned int CExoResFile::GetResourceSize(unsigned int resId)
 {
-    return m_paEntries[resId & RESID_INDEX_MASK].m_nResourceSize;
+    return m_pBiffVarResEntry[resId & RESID_INDEX_MASK].m_nSize;
 }

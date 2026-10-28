@@ -5279,7 +5279,7 @@ MdlNodeLight::~MdlNodeLight()
 
 TileData::TileData()
 {
-    m_nFadeState = 4;
+    m_nFadeState = FADE_NOT_CHECKED;
     // raw-offset: the zeroed run is written as pointer pairs; typed stores do not merge into the same q stores
     void** pQuad = reinterpret_cast<void**>(&m_pGob);
     pQuad[0] = pQuad[1] = 0;
