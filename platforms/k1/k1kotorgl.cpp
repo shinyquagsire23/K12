@@ -91,6 +91,12 @@ struct ProgramType {
         case 0x103:        m_nFlags |= 0x800; break;  // the port's soft-shadow blur (kSoftShadowFragment)
         default:           break;
         }
+#ifdef K2_QOL_BUMPMAPS
+        if (nType == 6)
+            m_nFlags |= 0x1000;                       // the bump pass: kotorbump.vert / .frag
+        else if (nType == 24)
+            m_nFlags |= 0x2000;                       // the bumpy-shiny pass: the same, USE_BUMPYSHINY
+#endif
     }
     int m_nFlags;
 };
@@ -224,7 +230,11 @@ bool IsDifferentAndCache(float* pfCache, const float* pfValues)
 }
 
 // Attribute locations, in the order Use() queries them.
-enum { LOC_INDICES, LOC_WEIGHTS, LOC_POSITION, LOC_NORMAL, LOC_TEXCOORD0, LOC_TEXCOORD1, LOC_COUNT };
+enum { LOC_INDICES, LOC_WEIGHTS, LOC_POSITION, LOC_NORMAL, LOC_TEXCOORD0, LOC_TEXCOORD1,
+#ifdef K2_QOL_BUMPMAPS
+       LOC_BUMP_T, LOC_BUMP_B, LOC_BUMP_N,
+#endif
+       LOC_COUNT };
 
 class KotorProgram {
 public:
@@ -238,6 +248,9 @@ public:
         for (float& f : m_afLightMaterialData) f = -1.0f;
         for (float& f : m_afFragmentShaderParams) f = -1.0f;
         for (float& f : m_afVertexShaderParams) f = -1.0f;
+#ifdef K2_QOL_BUMPMAPS
+        for (float& f : m_afBumpParams) f = -1.0f;
+#endif
         m_uProgram = 0;
         m_nFlags = type.m_nFlags;
         Use();
@@ -252,8 +265,19 @@ public:
                      "#define USE_SKIN %d\n#define USE_ALPHATEST %d\n#define USE_LIGHTMAP %d\n"
                      "#define USE_FLAT_CUBEMAP %d\n#define USE_CUBEMAP %d\n#define USE_BUMPMAP %d\n",
                      (f & 1) != 0, (f & 0x20) != 0, (f & 2) != 0, (f & 0x40) != 0, (f & 8) != 0, (f & 4) != 0);
+#ifdef K2_QOL_BUMPMAPS
+            size_t nDefines = strlen(s_szDefines);
+            snprintf(s_szDefines + nDefines, sizeof(s_szDefines) - nDefines, "#define USE_BUMPYSHINY %d\n",
+                     (f & 0x2000) != 0);
+#endif
             const char* pszVertex = (f & 0x80) ? "kotorbloom.vert" : (f & 0xf10) ? "kotorpost1.vert" : "kotor.vert";
             const char* pszFragment = (f & 0x80) ? "kotorbloom.frag" : (f & 0x10) ? "kotorpost1.frag" : "kotor.frag";
+#ifdef K2_QOL_BUMPMAPS
+            if (f & 0x3000) {
+                pszVertex = "kotorbump.vert";
+                pszFragment = "kotorbump.frag";
+            }
+#endif
             unsigned int nVertexShader = CompileShader(pszVertex, s_szDefines, GL_VERTEX_SHADER);
             unsigned int nFragmentShader = CompileShader(pszFragment, s_szDefines, GL_FRAGMENT_SHADER,
                                                          (f & 0x100) ? kDistortionFragment
@@ -272,6 +296,12 @@ public:
             if (s_pBind) {
                 s_pBind(m_uProgram, 6, "a_matrixIndices");
                 s_pBind(m_uProgram, 7, "a_matrixWeights");
+#ifdef K2_QOL_BUMPMAPS
+                // gl4es' texcoord sets 4..6, which nothing else uses.
+                s_pBind(m_uProgram, 12, "a_bumpT");
+                s_pBind(m_uProgram, 13, "a_bumpB");
+                s_pBind(m_uProgram, 14, "a_bumpN");
+#endif
             }
             k2gl::glLinkProgram(m_uProgram);
             int nStatus = 0, nLogLength = 0;
@@ -288,6 +318,9 @@ public:
             k2gl::glUseProgram(m_uProgram);
             static const char* const s_apszAttributes[LOC_COUNT] = {
                 "a_matrixIndices", "a_matrixWeights", "a_position", "a_normal", "a_texCoord0", "a_texCoord1",
+#ifdef K2_QOL_BUMPMAPS
+                "a_bumpT", "a_bumpB", "a_bumpN",
+#endif
             };
             for (int i = 0; i < LOC_COUNT; i++)
                 m_anLocations[i] = k2gl::glGetAttribLocation(m_uProgram, s_apszAttributes[i]);
@@ -305,6 +338,9 @@ public:
             m_nLightMaterialUniform = k2gl::glGetUniformLocation(m_uProgram, "u_lightMaterialData");
             m_nFragmentShaderUniform = k2gl::glGetUniformLocation(m_uProgram, "u_fragmentShaderParams");
             m_nVertexShaderUniform = k2gl::glGetUniformLocation(m_uProgram, "u_vertexShaderParams");
+#ifdef K2_QOL_BUMPMAPS
+            m_nBumpUniform = k2gl::glGetUniformLocation(m_uProgram, "u_bumpParams");
+#endif
             for (int i = 0; i < 3; i++)
                 if (m_anSamplerUniforms[i] >= 0)
                     k2gl::glUniform1i(m_anSamplerUniforms[i], i);
@@ -351,6 +387,23 @@ public:
             SetAttributeToLoc(indices, LOC_INDICES);
         }
     }
+
+#ifdef K2_QOL_BUMPMAPS
+    // The tangent frame's three streams, for the bump program only.
+    void SetBumpAttributes(AttributeData* pFrame)
+    {
+        if (!(m_nFlags & 0x3000))
+            return;
+        for (int i = 0; i < 3; i++)
+            SetAttributeToLoc(pFrame[i], LOC_BUMP_T + i);
+    }
+
+    void SetBumpParams(float* pf)
+    {
+        if (m_nBumpUniform >= 0 && IsDifferentAndCache<12>(m_afBumpParams, pf))
+            k2gl::glUniform4fv(m_nBumpUniform, 3, pf);
+    }
+#endif
 
     void SetMatrix(float* pf) { k2gl::glUniformMatrix4fv(m_nMatrixUniform, 2, 0, pf); }
     void SetCamera(float* pf) { k2gl::glUniformMatrix4fv(m_nCameraUniform, 1, 0, pf); }
@@ -400,6 +453,10 @@ public:
     float m_afLightMaterialData[12];
     float m_afFragmentShaderParams[8];
     float m_afVertexShaderParams[4];
+#ifdef K2_QOL_BUMPMAPS
+    float m_afBumpParams[12];
+    int m_nBumpUniform;
+#endif
     unsigned int m_uProgram;
     int m_anLocations[LOC_COUNT];
     int m_anSamplerUniforms[3];
@@ -496,6 +553,10 @@ AttributeData s_unused;               // stands in for the client-array shadows 
 AttributeData s_weights;              // generic attribute 1
 AttributeData s_indices;              // generic attribute 4
 bool s_bSkinning;                     // glEnableVertexAttribArrayARB(1)
+#ifdef K2_QOL_BUMPMAPS
+AttributeData s_bumpFrame[3];         // generic attributes 12..14, the tangent frame's rows
+float s_bumpParams[3 * 4];            // env params 12..14: bump light, camera, attenuation
+#endif
 float s_fogColor[3];
 float s_fogData[4];                   // u_fogData: start, end
 float s_lastSetFogData[2];            // what glFogf set, for the next glEnable(GL_FOG)
@@ -564,6 +625,10 @@ void SetupShader()
         p->m_nCameraSerial = s_nCameraSerial;
     }
     p->SetSkinMatrices(s_boneMatrix);
+#ifdef K2_QOL_BUMPMAPS
+    p->SetBumpAttributes(s_bumpFrame);
+    p->SetBumpParams(s_bumpParams);
+#endif
     p->SetLightData(s_lightData);
     p->SetLightMaterialData(s_lightMaterialData);
     if (p->m_nFogSerial != s_nFogSerial) {
@@ -626,6 +691,10 @@ void android_port_glProgramEnvParameter4fARB(unsigned int target, unsigned int i
         dst = &s_lightData[(i - 0x49) * 4];
     } else if (i - 0x5d < 3) {
         dst = &s_lightMaterialData[(i - 0x5d) * 4];
+#ifdef K2_QOL_BUMPMAPS
+    } else if (i - 12 < 3) {
+        dst = &s_bumpParams[(i - 12) * 4];
+#endif
     } else {
         return;
     }
@@ -758,6 +827,10 @@ void android_port_glVertexAttribPointerARB(unsigned int index, int size, unsigne
 {
     if (k1gl_tracing) k1gl_trace("glVertexAttribPointerARB(%u, %d, %#x, %d, %p)", index, size, type, stride, pointer);
     AttributeData* a = index == 1 ? &s_weights : index == 4 ? &s_indices : 0;
+#ifdef K2_QOL_BUMPMAPS
+    if (index - 12 < 3)
+        a = &s_bumpFrame[index - 12];
+#endif
     if (!a)
         return;
     a->m_nSize = size;
@@ -772,6 +845,10 @@ void android_port_glEnableVertexAttribArrayARB(unsigned int index)
     if (k1gl_tracing) k1gl_trace("glEnableVertexAttribArrayARB(%u)", index);
     if (index == 1)
         s_bSkinning = s_weights.m_bIsPointer = s_indices.m_bIsPointer = true;
+#ifdef K2_QOL_BUMPMAPS
+    if (index - 12 < 3)
+        s_bumpFrame[index - 12].m_bIsPointer = true;
+#endif
 }
 
 void android_port_glDisableVertexAttribArrayARB(unsigned int index)
@@ -779,6 +856,10 @@ void android_port_glDisableVertexAttribArrayARB(unsigned int index)
     if (k1gl_tracing) k1gl_trace("glDisableVertexAttribArrayARB(%u)", index);
     if (index == 1)
         s_bSkinning = s_weights.m_bIsPointer = s_indices.m_bIsPointer = false;
+#ifdef K2_QOL_BUMPMAPS
+    if (index - 12 < 3)
+        s_bumpFrame[index - 12].m_bIsPointer = false;
+#endif
 }
 
 // The device also splits GL_QUADS into triangles; desktop GL and gl4es draw quads.

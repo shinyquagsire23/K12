@@ -2254,7 +2254,11 @@ void GLRender::EnableFragmentShaders(int nShaderID, CAurTexture* pTex0, CAurText
         BindFragmentStage(0, pTex0);
         BindFragmentStage(2, pTex1);
         ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
+#ifdef K2_FIX_ENGINE_BUGS
+        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, pTex1->IsCubeMap() ? kPSEnvMapFog : kPSEnvMap);
+#else
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, kPSEnvMapFog);
+#endif
         break;
     case kPSEnvMapLightmap:
         BindFragmentStage(0, pTex0);

@@ -38,6 +38,11 @@
 
 #include "../shim/k2shim.h"
 #include "port/k2qolapi.h"
+#include "appmanager.h"
+#include "serverexoapp.h"
+#include "nwscreature.h"
+#include "nwsarea.h"
+#include "nwsaiaction.h"
 
 SDL_Window* Android_Window;   // C++ names, as src/ declares them (the MSVC ABI mangles variables)
 bool g_bFrameRateLocked = true;   // swguioptions.cpp's Advanced Graphics row; clientoptions.cpp saves it
@@ -438,6 +443,7 @@ namespace {
 //                                            joy:N (raw joystick button N, as SDL_main numbers them)
 //                                            shot:NAME (k2shot_NAME.ppm)  quit:0
 //                                            con:CMD (a console command, `+` = space: con:warp+end_m01ab)
+//                                            jump:X,Y,Z (the player to a point in its area)
 //                                            achieve:TAG (unlock it, as the engine does: shim_achievements.cpp)
 //   K2_CTL=<file>   the same actions, live: the file is read and removed each frame; one action per
 //                   line, `+N:action:arg` delays it N frames.
@@ -612,6 +618,22 @@ void DoAction(SDL_Window* pWindow, int nFrame, const std::string& sAction, const
         for (char& c : t)
             if (c == '+') c = ' ';
         fprintf(stderr, "k1: con %s -> %s\n", t.c_str(), FuncInterp(&t[0]));
+    } else if (sAction == "jump") {
+        // the player to X,Y,Z in its area, as ActionJumpToLocation queues it
+        float x = 0.0f, y = 0.0f, z = 0.0f;
+        sscanf(sArg.c_str(), "%f,%f,%f", &x, &y, &z);
+        CSWSCreature* pPC = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
+        CSWSArea* pArea = pPC ? static_cast<CSWSArea*>(pPC->GetArea()) : 0;
+        if (pArea) {
+            unsigned long long oidArea = pArea->m_objectId;
+            int bStraightLine = 1;
+            float fRange = 20.0f, fFaceX = 0.0f, fFaceY = 1.0f;
+            pPC->AddAction(AIACTION_JUMP_TO_POINT, ACTION_GROUP_NEW, ACTION_PARAM_FLOAT, &x, ACTION_PARAM_FLOAT, &y,
+                           ACTION_PARAM_FLOAT, &z, ACTION_PARAM_OBJECT, &oidArea, ACTION_PARAM_INT, &bStraightLine,
+                           ACTION_PARAM_FLOAT, &fRange, ACTION_PARAM_FLOAT, &fFaceX, ACTION_PARAM_FLOAT, &fFaceY);
+        }
+        fprintf(stderr, "k1: jump %g,%g,%g%s\n", static_cast<double>(x), static_cast<double>(y),
+                static_cast<double>(z), pArea ? "" : " (no player)");
     } else if (sAction == "achieve") {
         k2host_unlock_achievement(sArg.c_str());   // as the engine's unlock (shim_achievements.cpp)
     } else if (sAction == "shot") {

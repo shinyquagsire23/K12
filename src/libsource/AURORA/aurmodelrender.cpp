@@ -312,6 +312,11 @@ int stenciloff = 1;
 extern int enabletransform;
 float* Homogenize(const Vector& v, const float& w);
 
+#if defined(K2_QOL_BUMPMAPS) && KOTOR1
+bool AurBumpMapCardValidate();
+bool AurNonRadeon8500Validate();
+#endif
+
 // Picks the render pass id from the part's material maps, lightmap flag and env-map watcher.
 int PartTriMesh::GetRenderPath()
 {
@@ -333,6 +338,13 @@ int PartTriMesh::GetRenderPath()
 
     if (fAlpha < 1.0f)
         return RENDER_PATH_FLAT_VP;
+
+#if defined(K2_QOL_BUMPMAPS) && KOTOR1
+    // The Mac and PC's one-pass bump path for a mesh without a lightmap, which the APK took out.
+    if (bBump && bTangent && !(nLightmap && enablelightmap) && enablebumpmap &&
+        AurNV2xLevelShadersAvailable() && AurBumpMapCardValidate() && AurNonRadeon8500Validate())
+        return RENDER_PATH_BUMPMAPPED;
+#endif
 
     if (bNormal && !bTangent && enablebumpmap && AurNV2xLevelShadersAvailable())
         return RENDER_PATH_NORMAL_MAPPED;
@@ -5208,7 +5220,12 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
 
     if (bumpLights.m_count == 0)
     {
+#ifdef K2_QOL_BUMPMAPS
+        // The PC drew this with fixed-function lighting, which only a program does here.
+        RenderFlatVP(vertices, vertices->m_pPart->AsPartTriMesh());
+#else
         RenderFlat(vertices);
+#endif
         return;
     }
 

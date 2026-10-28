@@ -4075,3 +4075,27 @@ code-identical) unless it says otherwise.
   Dantooine, K1 xbox on Windows, 2026-10-24). The PC's fixed-function path read the material and faded.
 - **Fixed under `K2_FIX_ENGINE_BUGS`:** env parameters 94 (grass diffuse, fade alpha) and 95 (grass
   ambient) are also set on the other cards, as KOTOR II does.
+
+## K1 `CAurTriangleBin::RenderGrassPolys` — the unlit/untextured grass arm draws from the bin object
+
+- **Where:** KOTOR 1's `CAurTriangleBin::RenderGrassPolys`, the final `else` (a bin on a mesh with no
+  lightmap, or `rendertexturedgrass` 0) and the multitexture fallback arm. Both hand
+  `GLRender::DrawLightmappedGrass` `&m_nX48` (an `int` at this+0x48, always 0) as the vertex base
+  instead of `m_pGrassVerts`; the original does the same (PARKED.md row). The array pointers then
+  walk the bin object and the heap past it.
+- **Impact:** garbage triangles (blades streaking off into the sky) or a read fault. The NV1x arm,
+  which normal lightmapped area grass takes, passes `m_pGrassVerts` and is correct, so the fallback
+  only shows where a grass bin has no lightmap. KOTOR II's `else` arm passes `m_pGrassVerts` with its
+  vertex program bound. (The multitexture arm cannot run on the port: every capability is forced on.)
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** the final arm draws `m_pGrassVerts` through the default
+  program (`kPSDefault`, alpha-tested like the lightmapped arm).
+
+## K1 `GLRender::EnableFragmentShaders` — a flat environment map on a skin is sampled as a cube map
+
+- **Where:** KOTOR 1's `EnableFragmentShaders` (auraticore.cpp), `kPSEnvMapFog`, the program the
+  skinned env-map pass binds (`RenderSkinnedVP` → `RenderEnvironmentMapped(.., bAti = true)`). It binds
+  program 20 (cube map) whatever the texture, while `kPSEnvMapCube` picks `kPSEnvMap` (43, the flat
+  map) for a 2D texture. KOTOR II shares one case for both.
+- **Impact:** a reflective skin with a 2D reflection map (`CM_*` sphere maps on armour, mods) samples a
+  `samplerCube` with a 2D texture on unit 2: the cube map last bound there, or black.
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** `kPSEnvMapFog` makes the same cube/flat pick.

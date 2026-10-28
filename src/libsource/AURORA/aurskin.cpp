@@ -738,6 +738,30 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
 
     if (part->m_pMaterial->HasBumpMap() && part->m_pMaterial->HasBumpyShinyMap() &&
         pNode12->HasTangentBases() && AurBumpyShinyAvailable() && enablebumpyshiny) {
+#ifdef K2_QOL_BUMPMAPS
+        // The Mac's two passes: the reflection off the bump map, then the lit diffuse over it,
+        // the reflection showing through where the diffuse's alpha is below 1.
+        GLRender::Enable(Aurora::kCapBlend);
+        GLRender::Disable(Aurora::kCapAlphaTest);
+        GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
+        GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 1.0f, 0.0f);
+        g_pBumpyShinySkinPass1->Enable(part, false);
+        GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyTextures, part->m_pMaterial->Textures(4).m_pObject, 0, 0,
+                                          part->m_pMaterial->Textures(5).m_pObject);
+        GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShiny, 0, 0, 0, 0);
+        RenderFlat(vertices);
+        GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 1.0f);
+
+        VertexProgram* pPass2 = (use3boneskinning != 0 && g_pBumpyShinySkinPass2_3bone != 0)
+                                    ? g_pBumpyShinySkinPass2_3bone : g_pBumpyShinySkinPass2;
+        pPass2->Enable(part, true);
+        if (enabledecal) {
+            GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, part->m_pMaterial->Textures(0).m_pObject, 0, 0, 0);
+            GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendInvSrcAlpha);
+            RenderFlat(vertices);
+        }
+        GLRender::Enable(Aurora::kCapAlphaTest);
+#else
         g_pBumpyShinySkinPass1->Enable(part, true);
         part->m_pMaterial->BindTexture0();
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyTextures, part->m_pMaterial->Textures(0).m_pObject, 0, 0,
@@ -745,6 +769,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShiny, 0, 0, 0, 0);
         GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         RenderFlat(vertices);
+#endif
         GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendInvSrcAlpha);
     } else if (part->m_pMaterial->HasBumpMap() && AurBumpMapCardValidate() && pNode12->HasTangentBases() &&
                AurNV2xLevelShadersAvailable() && enablebumpmap && usenewbumpyskin) {
@@ -809,7 +834,14 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             RenderFlat(vertices);
         }
         if (bumpLights.m_count == 0) {
+#ifdef K2_QOL_BUMPMAPS
+            // The program's colour is undefined without the light block: light it, and put the
+            // missing bump light out of reach.
+            newSkinBumpyVP->Enable(part, true);
+            GLRender::SetVertexShaderConstant(14, 1.0e20f, 0.0f, 0.0f, 1.0f);
+#else
             newSkinBumpyVP->Enable(part, false);
+#endif
             GLRender::pfuncSetBumpLightColor(vZero, 1.0f);
             GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
             RenderFlat(vertices);

@@ -301,6 +301,21 @@ endif()
 if(K2P_QOL_IMPROVEMENTS OR K2P_GAME STREQUAL "k1")
   add_compile_definitions(K2_QOL_SOFT_SHADOWS=1)
 endif()
+# Both games: the soft-shadow mask is halved 2:1 down to at most 1024 per side before its 512x512
+# knock-down, and KOTOR II's bloom is halved down to at most 512 per side before its blur, so every
+# pixel reaches the filter at any resolution; the PC (and the APK) sampled a few and the shadow edges
+# and small glows crawled with the camera (aurglcore.cpp QolSoftShadowBuildLevels,
+# K2QolBuildBloomLevels).
+if(K2P_QOL_IMPROVEMENTS OR K2P_GAME STREQUAL "k1")
+  add_compile_definitions(K2_QOL_STEADY_FILTERS=1)
+endif()
+# KOTOR 1: per-pixel bump mapping near dynamic lights, the PC's NVIDIA passes, which no port ran:
+# the one-pass bump path for meshes without a lightmap and the skinned bump pass (Hutts, rancors,
+# Twi'lek lekku), through the GLSL translation of the Mac's ARB programs (resources/shaders/k1/
+# kotorbump.vert / .frag; k1/k1kotorgl.cpp feeds them the tangent frame and the bump light).
+if(K2P_GAME STREQUAL "k1")
+  add_compile_definitions(K2_QOL_BUMPMAPS=1)
+endif()
 # KOTOR II: Advanced Graphics' Frame Buffer Effects, greyed out on the APK, whose post-process always
 # ran. Live, and off it leaves out the bloom and the Force Speed blur, as the PC's switch does
 # (FrameBufferModificationsEndIos in aurglcore.cpp).

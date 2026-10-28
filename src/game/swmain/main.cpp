@@ -2178,6 +2178,12 @@ int g_nPriorityClass;
 static unsigned long long g_starttime;
 
 #if !KOTOR1  // K1's SDL port has its own entry point
+#ifndef K2_MOBILE_OPT
+extern int GAME_OPTION_DEFAULT_SHADOWS;
+extern int GAME_OPTION_DEFAULT_GRASS;
+extern int GAME_OPTION_DEFAULT_FRAMEBUFFER;
+#endif
+
 // The port's entry point brings up the exo base and app manager, reads the sound and present
 // options, then runs the per-frame tick until g_bExitProgram.
 extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char* pszCmdLine,
@@ -2201,6 +2207,13 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
         SDL_Delay(10);
 
     GraphicsSettings::Initialize();
+#ifndef K2_MOBILE_OPT
+    // The PC defaults for a fresh swkotor2.ini; the APK set them per device (Shadows / Grass on
+    // every device, Frame Buffer Effects on a Shield only).
+    GAME_OPTION_DEFAULT_SHADOWS = 1;
+    GAME_OPTION_DEFAULT_GRASS = 1;
+    GAME_OPTION_DEFAULT_FRAMEBUFFER = 1;
+#endif
     CoInitialize(0);
 
     MSG msg;

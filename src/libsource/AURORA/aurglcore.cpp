@@ -7344,6 +7344,70 @@ static void K2QolDeletePBufferIos(PBUFFERARB_IOS*& pPBuffer)
 }
 #endif
 
+#if !KOTOR1 && defined(K2_QOL_STEADY_FILTERS)
+// The bloom blur's taps are a fixed 1.9/512 of the screen apart (FrameBufferModificationsEndIos'
+// fHalfScreen, the iPad's half width), under two texels of a 1024-wide iPad's half-size bright pass.
+// A wider screen spreads them past a bilinear tap's reach, so a light a few pixels across falls
+// between taps and its glow crawls as the camera moves. The bright pass is halved again, each 2:1
+// bilinear tap the exact mean of a 2x2 block, until neither side is over 512, and blurred there: the
+// same radius on screen, with every pixel in it.
+static PBUFFERARB_IOS* s_apQolBloomLevels[6];   // the halvings, then the blur's scratch at the last size
+static int s_nQolBloomLevels;
+
+static void K2QolBuildBloomLevels(int nWidth, int nHeight)
+{
+    for (int i = 0; i < 6; i++)
+        K2QolDeletePBufferIos(s_apQolBloomLevels[i]);
+    s_nQolBloomLevels = 0;
+    while ((nWidth > 512 || nHeight > 512) && s_nQolBloomLevels < 5)
+    {
+        nWidth = nWidth > 1 ? nWidth / 2 : 1;
+        nHeight = nHeight > 1 ? nHeight / 2 : 1;
+        s_apQolBloomLevels[s_nQolBloomLevels++] = CreatePBufferIos(nWidth, nHeight, false);
+    }
+    if (s_nQolBloomLevels > 0)
+        s_apQolBloomLevels[s_nQolBloomLevels] = CreatePBufferIos(nWidth, nHeight, false);
+}
+
+// Halves the bright pass in s_pHalfPBuffer1 down to the blur's size.
+static void K2QolHalveBloom()
+{
+    PBUFFERARB_IOS* pSource = s_pHalfPBuffer1;
+    for (int i = 0; i < s_nQolBloomLevels; i++)
+    {
+        PBUFFERARB_IOS* pTarget = s_apQolBloomLevels[i];
+        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, kPortProgramCopy);
+        _aglRestoreContext();
+        _aglSetCurrentPBuffer(pTarget);
+        ASLgl::glViewport(0, 0, pTarget->m_nWidth, pTarget->m_nHeight);
+        ASLgl::glBindTexture(GL_TEXTURE_2D, pSource->m_nTexture);
+        RenderModificationQuad();
+        pSource = pTarget;
+    }
+}
+#endif
+
+#if !KOTOR1
+// The bloom blur's source and result, and its scratch target.
+static inline PBUFFERARB_IOS* BloomPBuffer()
+{
+#ifdef K2_QOL_STEADY_FILTERS
+    if (s_nQolBloomLevels > 0)
+        return s_apQolBloomLevels[s_nQolBloomLevels - 1];
+#endif
+    return s_pHalfPBuffer1;
+}
+
+static inline PBUFFERARB_IOS* BloomScratchPBuffer()
+{
+#ifdef K2_QOL_STEADY_FILTERS
+    if (s_nQolBloomLevels > 0)
+        return s_apQolBloomLevels[s_nQolBloomLevels];
+#endif
+    return s_pHalfPBuffer2;
+}
+#endif
+
 #if KOTOR1 && defined(K2_QOL_K1_ANTIALIAS)
 extern "C" void glDeleteRenderbuffers(int nCount, const unsigned int* paRenderbuffers);
 
@@ -7418,6 +7482,14 @@ static unsigned int s_anQolSoftShadowTextures[4];       // scene copy, mask copy
 static unsigned int s_anQolSoftShadowFramebuffers[2];   // knock-down, blur
 static int s_nQolSoftShadowWidth;
 static int s_nQolSoftShadowHeight;
+#ifdef K2_QOL_STEADY_FILTERS
+// The mask's 2:1 halvings ahead of the 512 knock-down (QolSoftShadowBuildLevels).
+static unsigned int s_anQolSoftShadowLevelTextures[4];
+static unsigned int s_anQolSoftShadowLevelFramebuffers[4];
+static int s_anQolSoftShadowLevelWidth[4];
+static int s_anQolSoftShadowLevelHeight[4];
+static int s_nQolSoftShadowLevels;
+#endif
 
 // The framebuffer calls, each game's spelling.
 static void QolSoftShadowBind(unsigned int nFramebuffer)
@@ -7477,6 +7549,46 @@ static void QolSoftShadowQuad(unsigned int nProgram, unsigned int nTexture)
     GLRender::SetMatrixMode(Aurora::kMatrixModelView);
 }
 
+#ifdef K2_QOL_STEADY_FILTERS
+// The PC drew the mask into 512x512 with one tap per texel, so a larger screen skipped pixels (at 4K
+// seven in eight), and the shadow edges crawled as the camera moved. Each halving here is a 2:1
+// bilinear tap, the exact mean of a 2x2 block, until neither side is over 1024; the knock-down's
+// tap then covers every pixel left.
+static void QolSoftShadowBuildLevels(int nWidth, int nHeight, int nFramebuffer)
+{
+    if (s_nQolSoftShadowLevels > 0)
+    {
+        glDeleteFramebuffers(s_nQolSoftShadowLevels, s_anQolSoftShadowLevelFramebuffers);
+        ASLgl::glDeleteTextures(s_nQolSoftShadowLevels, s_anQolSoftShadowLevelTextures);
+    }
+    s_nQolSoftShadowLevels = 0;
+    while ((nWidth > 1024 || nHeight > 1024) && s_nQolSoftShadowLevels < 4)
+    {
+        if (nWidth > 1024)
+            nWidth /= 2;
+        if (nHeight > 1024)
+            nHeight /= 2;
+        int i = s_nQolSoftShadowLevels++;
+        s_anQolSoftShadowLevelWidth[i] = nWidth;
+        s_anQolSoftShadowLevelHeight[i] = nHeight;
+        ASLgl::glGenTextures(1, &s_anQolSoftShadowLevelTextures[i]);
+        QolSoftShadowTexture(s_anQolSoftShadowLevelTextures[i], nWidth, nHeight);
+#if KOTOR1
+        ASLgl::glGenFramebuffers(1, &s_anQolSoftShadowLevelFramebuffers[i]);
+#else
+        ::glGenFramebuffers(1, &s_anQolSoftShadowLevelFramebuffers[i]);
+#endif
+        QolSoftShadowBind(s_anQolSoftShadowLevelFramebuffers[i]);
+#if KOTOR1
+        glFramebufferTexture2DOES(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_anQolSoftShadowLevelTextures[i], 0);
+#else
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_anQolSoftShadowLevelTextures[i], 0);
+#endif
+    }
+    QolSoftShadowBind(nFramebuffer);
+}
+#endif
+
 // Saves the scene and clears its colour for the mask; false (the hard shadows draw instead) when the
 // scene is not in the pbuffer.
 static bool QolSoftShadowsSetUp()
@@ -7515,6 +7627,9 @@ static bool QolSoftShadowsSetUp()
         QolSoftShadowTexture(s_anQolSoftShadowTextures[1], nWidth, nHeight);
         s_nQolSoftShadowWidth = nWidth;
         s_nQolSoftShadowHeight = nHeight;
+#ifdef K2_QOL_STEADY_FILTERS
+        QolSoftShadowBuildLevels(nWidth, nHeight, nFramebuffer);
+#endif
     }
 
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_anQolSoftShadowTextures[0]);
@@ -7548,9 +7663,19 @@ static void QolSoftShadowsFinish()
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_anQolSoftShadowTextures[1]);
     ASLgl::glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, nWidth, nHeight);
 
+    unsigned int nMask = s_anQolSoftShadowTextures[1];
+#ifdef K2_QOL_STEADY_FILTERS
+    for (int i = 0; i < s_nQolSoftShadowLevels; i++)
+    {
+        QolSoftShadowViewport(0, 0, s_anQolSoftShadowLevelWidth[i], s_anQolSoftShadowLevelHeight[i]);
+        QolSoftShadowBind(s_anQolSoftShadowLevelFramebuffers[i]);
+        QolSoftShadowQuad(kPortProgramCopy, nMask);
+        nMask = s_anQolSoftShadowLevelTextures[i];
+    }
+#endif
     QolSoftShadowViewport(0, 0, 512, 512);
     QolSoftShadowBind(s_anQolSoftShadowFramebuffers[0]);
-    QolSoftShadowQuad(kPortProgramCopy, s_anQolSoftShadowTextures[1]);
+    QolSoftShadowQuad(kPortProgramCopy, nMask);
     QolSoftShadowBind(s_anQolSoftShadowFramebuffers[1]);
     QolSoftShadowQuad(kPortProgramSoftShadowBlur, s_anQolSoftShadowTextures[2]);
 
@@ -8878,9 +9003,12 @@ void FrameBufferModificationsEndIos(bool bEnable)
     RenderModificationQuad();
     afParam1[1] = 0.0f;
     ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, afParam1);
+#ifdef K2_QOL_STEADY_FILTERS
+    K2QolHalveBloom();
+#endif
 
     _aglRestoreContext();
-    _aglSetCurrentPBuffer(s_pHalfPBuffer2);
+    _aglSetCurrentPBuffer(BloomScratchPBuffer());
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBlur);
 
     afParam2[0] = 0.0f;
@@ -8894,13 +9022,13 @@ void FrameBufferModificationsEndIos(bool bEnable)
     afParam1[3] = 1.0f;
     ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, afParam1);
 
-    ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, BloomPBuffer()->m_nTexture);
     RenderModificationQuad();
 
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBloomSource);
     fInvScale = fInvScale * g_fIosDistortScale;
     _aglRestoreContext();
-    _aglSetCurrentPBuffer(s_pHalfPBuffer1);
+    _aglSetCurrentPBuffer(BloomPBuffer());
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBlur);
 
     afParam2[0] = g_fIosBloomAmount;
@@ -8914,7 +9042,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
     afParam1[3] = 1.0f;
     ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, afParam1);
 
-    ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer2->m_nTexture);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, BloomScratchPBuffer()->m_nTexture);
     RenderModificationQuad();
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBloomSource);
     _aglRestoreContext();
@@ -8997,7 +9125,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
 #endif
     GLRender::Enable(Aurora::kCapBlend);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, BloomPBuffer()->m_nTexture);
     RenderModificationQuad();
     GLRender::Disable(Aurora::kCapBlend);
 #endif
@@ -9053,6 +9181,9 @@ void GLRender::InitializeFrameBufferModificationsARB()
     s_pHalfPBuffer1 = CreatePBufferIos(nWidth, nHeight, false);
     s_pHalfPBuffer2 = CreatePBufferIos(nWidth, nHeight, false);
     s_pHalfPBuffer3 = CreatePBufferIos(nWidth, nHeight, false);
+#ifdef K2_QOL_STEADY_FILTERS
+    K2QolBuildBloomLevels(nWidth, nHeight);
+#endif
 #endif
 }
 

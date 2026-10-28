@@ -481,8 +481,17 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
     }
     else
     {
+#ifdef K2_FIX_ENGINE_BUGS
+        s_useAlphaTestShader = true;
+        GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, m_pTexture.m_pObject, 0, 0, 0);
+        GLRender::DrawLightmappedGrass(m_pGrassVerts, 12, &m_nVertexBytes, nNormalStride, 0,
+                                       m_nTotalTriangles);
+        s_useAlphaTestShader = false;
+        GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
+#else
         GLRender::DrawLightmappedGrass(&m_nX48, 12, &m_nVertexBytes, nNormalStride, 0,
                                        m_nTotalTriangles);
+#endif
     }
 }
 #else

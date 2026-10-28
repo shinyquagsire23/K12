@@ -141,10 +141,15 @@ bool AurSwapControlAvailable()
     return (EXT_SWAP_CONTROL_BIT & existingextensions) == EXT_SWAP_CONTROL_BIT;
 }
 
-// Tests the card rather than the driver. The result is inverted: 1 means the card is rejected.
+// Tests the card rather than the driver: 1 means it takes the bump passes (it is not an ATI
+// fragment-shader card).
 bool AurBumpMapCardValidate()
 {
-#if KOTOR1  // K1: the card is never rejected
+#ifdef K2_QOL_BUMPMAPS
+    // The answer for the PC's NVIDIA cards, the only ones the bump passes ever ran on: every
+    // port set the ATI bit with ARB fragment programs, and the ATI arm answers 0.
+    return 1;
+#elif KOTOR1  // K1: the card is never rejected
     return 0;
 #else
     static int returnval = -1;

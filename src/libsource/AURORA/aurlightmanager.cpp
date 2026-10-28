@@ -643,7 +643,7 @@ void LightManager::AddRenderLight(PartLight* pLight)
 // can mutate that list.
 void LightManager::DisableBumpMapLights()
 {
-#if KOTOR1  // K1: the body is empty
+#if KOTOR1 && !defined(K2_QOL_BUMPMAPS)  // K1: the body is empty (the Mac's is KOTOR II's)
 }
 #else
     List<PartLight*> lights(m_bumpMapLights);
