@@ -487,7 +487,6 @@ public:
     }
 
     int        m_nType;
-    int        m_nReserved1;
     CExoString m_sName;
     int        m_nValue;
     int        m_nCodeStart;
@@ -498,14 +497,11 @@ public:
     float      m_fVectorZ;
     int        m_nLine;
     int        m_nColumn;
-    int        m_nReserved2;
     CScriptParseTreeNode* m_pLeft;
     CScriptParseTreeNode* m_pRight;
     int        m_nResultType;
-    int        m_nReserved3;
     CExoString m_sResultStructureName;
     int        m_nSavedStackDepth;
-    int        m_nReserved4;
 };
 
 K2_LAYOUT_ASSERT(sizeof(CScriptParseTreeNode) == 112, "CScriptParseTreeNode span");
@@ -547,7 +543,7 @@ public:
     int*       m_pOptionalParameterIntegerData;
     float*     m_pOptionalParameterFloatData;
     CExoString* m_pOptionalParameterStringData;
-    long long* m_pOptionalParameterObjectData;
+    unsigned long long* m_pOptionalParameterObjectData;
     float*     m_pOptionalParameterVectorData;
     int        m_nCodeOffset;
     int        m_nCodeEnd;
@@ -831,7 +827,6 @@ public:
     int        m_nIncludeFileDepth;
     CScriptCompilerIncludeFile m_includeFiles[INCLUDE_FILE_COUNT];
     int        m_nVarStackRecursionLevel;
-    char       m_nReserved1[4];
     CScriptCompilerTable700Entry* m_pVarStackList;
     int        m_nVarStackTop;
     int        m_nVarStackVariableType;
@@ -845,7 +840,6 @@ public:
     int        m_bGlobalVariableDefinition;
     int        m_nGlobalVariableCount;
     int        m_nGlobalVariableSize;
-    char       m_nReserved2[4];
     CScriptParseTreeNode* m_pGlobalVariableParseTree;
     int        m_nLoopIdentifier;
     int        m_nSwitchLevel;
@@ -855,26 +849,21 @@ public:
     int        m_bSwitchHasDefault;
     int        m_nSwitchLabelCount;
     int        m_nSwitchLabelCapacity;
-    char       m_nReserved3[4];
     int*       m_pSwitchLabels;
     int        m_nEngineStructureCount;
-    char       m_nReserved4[4];
     int*       m_pEngineStructureValid;
     CExoString* m_pEngineStructureNames;
     int        m_bAssignmentToVariable;
     int        m_bInStructurePart;
     int        m_bInFunctionImplementation;
-    int        m_nReserved5;
     CExoString m_sFunctionImpName;
     int        m_nFunctionImpReturnType;
-    char       m_nReserved6[4];
     CExoString m_sFunctionImpReturnStructureName;
     int        m_nFunctionImpAbortStackPointer;
     int        m_nStackCurrentDepth;
     char       m_aStackTypes[532];
     int        m_nSymbolQueryListCapacity;
     int        m_nSymbolQueryListCount;
-    char       m_nReserved7[4];
     CScriptCompilerSymbolListEntry* m_pSymbolQueryList;
     int        m_nSymbolLabelListCapacity;
     int        m_nSymbolLabelListCount;
@@ -887,7 +876,7 @@ public:
     int        m_nCompiledCodeSize;
     int        m_nCompiledCodeLocation;
     int        m_nBinaryCodeOffset;
-    unsigned char m_aArgumentTypes[36];
+    unsigned char m_aArgumentTypes[MAX_PARAMETER_COUNT];
     CExoString m_aArgumentStructureNames[MAX_PARAMETER_COUNT];
     int        m_nResolvedCodeSize;
 };

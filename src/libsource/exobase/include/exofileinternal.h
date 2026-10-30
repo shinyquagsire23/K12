@@ -47,7 +47,7 @@ public:
     ~CExoFileThread();
 
     void*               m_hThread;
-    unsigned char       m_nThreadId[8];   // handed to the worker as its lpParameter and ignored
+    unsigned int        m_nThreadId;
     CExoCriticalSection m_lock;
     unsigned int        m_bComplete;  // the worker sets 1 when a read finishes
     unsigned int        m_bShutDown;  // raised by the destructor, re-tested by the worker
@@ -61,7 +61,6 @@ public:
     unsigned int        m_count;
 #endif
     unsigned int        m_bytesRead;  // elemSize * the bytes read
-    unsigned char       m_aReserved1[4];   // never written, never read
     void*               m_pBuffer;
 
     // Reads and AsyncRead run the whole request body themselves under m_lock, synchronously.

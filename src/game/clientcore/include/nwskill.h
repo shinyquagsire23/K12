@@ -33,5 +33,4 @@ public:
     CExoString    m_icon;
     int           m_nKeyAbility;
     unsigned char m_flags;
-    unsigned char _pad25[0x28 - 0x25];
 };

@@ -32,9 +32,7 @@ public:
     virtual void  EnableDistortion();
     virtual void  DisableDistortion();
 
-    unsigned long long m_nTextureData1;        // the head record's data block; ReplaceTexture writes here
-    unsigned long long m_nTextureData2;
-    int                m_nTextureData3;
+    unsigned short     m_anTextureData[10];    // the head record's data block; ReplaceTexture writes here
     unsigned char      m_nTextureCount;        // the head record's count/offset byte pair
     unsigned char      m_nTextureOffset;
     char               _pad1e[2];

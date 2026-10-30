@@ -99,7 +99,6 @@ public:
     int        m_fChallengeRating;
 #endif
 #if !KOTOR1
-    char       _padbc[0xc0 - 0xbc];
 #endif
     CExoString m_sExitScript;
 

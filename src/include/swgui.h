@@ -71,6 +71,10 @@ public:
 
     CSWGuiExtent m_extent;
     CSWGuiExtent m_originalExtent;
+    // Both derived kinds read it: a panel lays itself out against the native rect, a control
+    // inherits its panel's flag when the panel adds it.
+    int          m_bCenterOnNativeRect;
+    int          m_nReserved2;
 #endif
 };
 
@@ -162,29 +166,24 @@ public:
     // K1 has an extra leading byte, so the members below sit higher than in K2.
     unsigned char  m_nReserved1;
     CSWGuiMousePos m_currentMousePos;
-    char           _padc[0x10-0xc];
 #else
     CSWGuiMousePos m_currentMousePos;
 #endif
     CSWGuiControl* m_pMouseOverControl;
     int            m_nCaptureFlags;
-    char           _pad14[0x18-0x14];
     CSWGuiObject*  m_pMouseCaptureObject;
     CSWGuiControl* m_pLastMouseOverControl;
     CSWGuiEditbox* m_pFocusedEditbox;
     unsigned char  m_nMouseStateFlags;
-    char           _pad31[0x38-0x31];
     CSWGuiScene*   m_pSoftwareMouse;
     CAurObject*    m_pMouseCursorModel;
     CResRef        m_mouseCursorRes;
     int            m_nSoftwareMouseCursor;
-    char           _pad5c[0x60-0x5c];
     CSWGuiToolTipPanel* m_pToolTipPanel;
     CSWGuiControl* m_pToolTipControl;
     float          m_fToolTipTimer;
     float          m_fToolTipTimeDelay;
     int            m_bToolTipDisabled;
-    char           _pad7c[0x80-0x7c];
     CSWGuiControl* m_pPendingToolTipControl;
     CSWGuiControl* m_pDragDropControl;
     CSWGuiMousePos m_storedMousePos;
@@ -196,7 +195,6 @@ public:
     unsigned char  m_bSuppressCameraRender;
     unsigned char  m_nCapturedPanelCount;
     unsigned char  m_nRepeatFilterEvent;
-    char           _padab[0xb0-0xab];
     CExoString     m_fullScreenBG;
     CSWGuiLabel*   m_pBackgroundLabel;
     CSWGuiPanel*   m_pSafeRegionPanel;
@@ -205,8 +203,9 @@ public:
     CExoArrayList<CSWGuiPanel*> m_modalPanels;
     CExoSoundSource** m_paGuiSounds;
     char           m_nGuiSounds;
-    char           _pad101[0x104-0x101];
+#if !KOTOR1  // K1 has no safe-area inset
     int            m_nUIEdgeInset;
+#endif
     CSWGuiImage*   m_pFrameImage;
 #if KOTOR1
     CSWGuiImage*   m_pMirroredFrameImage;
@@ -398,11 +397,8 @@ public:
     // K1 has no m_bCenterOnNativeRect, no owned m_pNextInChain and no m_bDrawOffScreen/m_bIsMainInterface.
     int            m_bAllowFontReset;
 #else
-    int            m_bCenterOnNativeRect;
-    char           _pad2c[0x30 - 0x2c];
     CSWGuiPanel*   m_pNextInChain;
     int            m_bAllowFontReset;
-    char           _pad3c[0x40-0x3c];
 #endif
     CSWGuiManager* m_pGuiManager;
     CSWGuiControl* m_pActiveControl;
@@ -414,14 +410,11 @@ public:
     // K1 RemovePanel). Its address cannot be taken.
     unsigned short m_stateFlags : 16;
 #if !KOTOR1
-    char           _pad7e[0x80-0x7e];
     int            m_bDrawOffScreen;
 #endif
     unsigned char  m_nFullScreenBGIndex;
 #if KOTOR1
-    char           _pad5f[1];
 #else
-    char           _pad85[0x88-0x85];
 #endif
     float          m_fAlpha;
     Vector         m_vColor;

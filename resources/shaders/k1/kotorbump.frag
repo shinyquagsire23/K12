@@ -1,5 +1,6 @@
 // The bump pass: KOTOR 1's one-pass bump-map fragment program (kPSBumpmap, cBumpmapFragmentShader)
-// in GLSL; under USE_BUMPYSHINY the bumpy-shiny one (kPSBumpyShiny, cBumpyshinyFragmentShader). The
+// in GLSL; under USE_BUMPYSHINY the bumpy-shiny one (kPSBumpyShiny, cBumpyshinyFragmentShader), under
+// USE_LMBUMP the PC's lightmapped bump combiners (kPSLightmapBump*). The
 // normalization cube maps the programs renormalised their interpolated vectors with are normalize()
 // here.
 precision mediump float;
@@ -29,6 +30,36 @@ void main()
 	vec4 env = textureCube(u_texture2Sampler, R);
 	// The diffuse pass is laid over this one, fogged itself, so the reflection fogs to black.
 	gl_FragColor = vec4(env.rgb * v_fogFactor, env.a * u_fragmentShaderParams[0].a);
+}
+#elif USE_LMBUMP
+// The PC's lightmapped bump passes, its NV register-combiner modes (swkotor.exe 0x0042e600): mode 8
+// (diffuse) is ((max(N.L, 0) * c1 * atten + lightmap) * diffuse; modes 9..11 (specular)
+// lightmap * diffuse + c0 * atten * max(N.H, 0)^p, where the alpha combiners square N.H and the last
+// stage multiplies the square back in: p = 1, 3, 5 for exponents 1, 2, 4 (8 has no mode on NVIDIA;
+// the pattern gives 7). Opaque (the final alpha is invert(zero)); the normalization cube on unit 1
+// is normalize() here.
+uniform sampler2D u_texture0Sampler;	// the bump map
+uniform sampler2D u_texture2Sampler;	// the lightmap
+uniform sampler2D u_texture3Sampler;	// the diffuse map
+varying vec4	v_texCoord1;
+varying vec3	v_tsLight;
+varying vec3	v_tsHalf;
+varying float	v_bumpAtten;
+
+void main()
+{
+	vec3 N = texture2D(u_texture0Sampler, v_texCoord0.st).rgb * 2.0 - 1.0;
+	vec3 lightmap = texture2D(u_texture2Sampler, v_texCoord1.st).rgb;
+	vec3 base = texture2D(u_texture3Sampler, v_texCoord0.st).rgb;
+#if USE_LMBUMP == 1
+	float NdotL = clamp(dot(N, normalize(v_tsLight)), 0.0, 1.0);
+	vec3 color = clamp(NdotL * u_fragmentShaderParams[1].rgb * v_bumpAtten + lightmap, 0.0, 1.0) * base;
+#else
+	float NdotH = clamp(dot(N, normalize(v_tsHalf)), 0.0, 1.0);
+	float p = float(LMBUMP_EXPONENT == 1 ? 1 : LMBUMP_EXPONENT == 2 ? 3 : LMBUMP_EXPONENT == 4 ? 5 : 7);
+	vec3 color = clamp(lightmap * base + u_fragmentShaderParams[0].rgb * v_bumpAtten * pow(NdotH, p), 0.0, 1.0);
+#endif
+	gl_FragColor = vec4(mix(u_fogColor, color, v_fogFactor), 1.0);
 }
 #else
 uniform sampler2D u_texture0Sampler;	// the diffuse map

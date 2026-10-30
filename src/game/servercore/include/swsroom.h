@@ -55,5 +55,5 @@ public:
     float ComputeHeight(Vector point, int flags);
 
     CSWRoomSurfaceMesh* m_pSurfaceMesh;
-    char                _pad48[0x58 - 0x48];
+    char                _pad48[0x54 - 0x48];
 };

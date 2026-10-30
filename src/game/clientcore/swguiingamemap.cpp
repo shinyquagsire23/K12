@@ -442,7 +442,7 @@ void CSWGuiInGameMap::OnPanelRemoved()
             static_cast<unsigned long long*>(m_mapHider.m_mapNotes.m_pInternal->m_pHead->m_pData);
         if (pNoteId)
             operator delete(pNoteId);
-        m_mapHider.m_mapNotes.m_pInternal->RemoveHead();
+        m_mapHider.m_mapNotes.RemoveHead();
     }
     m_mapHider.m_pCurrentMapNote = 0;
 
@@ -657,10 +657,10 @@ void CSWGuiInGameMap::OnMapNoteClicked(CSWGuiControl* pControl)
             for (;;)
             {
                 unsigned long long* pNoteId =
-                    static_cast<unsigned long long*>(m_mapHider.m_mapNotes.m_pInternal->GetAtPos(pNode));
+                    static_cast<unsigned long long*>(m_mapHider.m_mapNotes.GetAtPos(pNode));
                 if (*pNoteId == nNoteId)
                     break;
-                m_mapHider.m_mapNotes.m_pInternal->GetNext(pNode);
+                m_mapHider.m_mapNotes.GetNext(pNode);
                 if (pNode == 0)
                     goto done;
             }
@@ -816,7 +816,7 @@ void CSWGuiMapHider::ClearMapNotes()
             static_cast<unsigned long long*>(m_mapNotes.m_pInternal->m_pHead->m_pData);
         if (pNoteId)
             operator delete(pNoteId);
-        m_mapNotes.m_pInternal->RemoveHead();
+        m_mapNotes.RemoveHead();
     }
     m_pCurrentMapNote = 0;
 }
@@ -829,10 +829,10 @@ void CSWGuiMapHider::SetMapNote(unsigned long long nNoteId)
         for (;;)
         {
             unsigned long long* pNoteId =
-                static_cast<unsigned long long*>(m_mapNotes.m_pInternal->GetAtPos(pNode));
+                static_cast<unsigned long long*>(m_mapNotes.GetAtPos(pNode));
             if (*pNoteId == nNoteId)
                 break;
-            m_mapNotes.m_pInternal->GetNext(pNode);
+            m_mapNotes.GetNext(pNode);
             if (pNode == 0)
                 return;
         }
@@ -894,7 +894,7 @@ CExoString CSWGuiMapHider::GetPrevMapNote()
 
     CExoLinkedListNode* pNote = m_pCurrentMapNote;
     unsigned long long nObjectId =
-        pNote != 0 ? *static_cast<unsigned long long*>(m_mapNotes.m_pInternal->GetAtPos(pNote)) : OBJECT_INVALID;
+        pNote != 0 ? *static_cast<unsigned long long*>(m_mapNotes.GetAtPos(pNote)) : OBJECT_INVALID;
 
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(nObjectId);
     if (pObject != 0 && pObject->AsSWSWaypoint() != 0)
@@ -902,7 +902,7 @@ CExoString CSWGuiMapHider::GetPrevMapNote()
             g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sResult, 0);
 
     if (pNote != 0)
-        m_mapNotes.m_pInternal->GetPrev(pNote);
+        m_mapNotes.GetPrev(pNote);
     if (pNote == 0)
         pNote = m_mapNotes.m_pInternal->m_pTail;
     if (pNote == 0)
@@ -911,7 +911,7 @@ CExoString CSWGuiMapHider::GetPrevMapNote()
     while (pNote != 0 && m_pCurrentMapNote != 0 && pNote != m_pCurrentMapNote)
     {
         unsigned long long nPrevId =
-            *static_cast<unsigned long long*>(m_mapNotes.m_pInternal->GetAtPos(pNote));
+            *static_cast<unsigned long long*>(m_mapNotes.GetAtPos(pNote));
         pPrev = g_pAppManager->m_pServerExoApp->GetGameObject(nPrevId);
         if (pPrev != 0 && pPrev->AsSWSWaypoint() != 0)
         {
@@ -934,7 +934,7 @@ CExoString CSWGuiMapHider::GetPrevMapNote()
                 }
             }
         }
-        m_mapNotes.m_pInternal->GetPrev(pNote);
+        m_mapNotes.GetPrev(pNote);
         if (pNote == 0)
             pNote = m_mapNotes.m_pInternal->m_pTail;
     }
@@ -951,7 +951,7 @@ CExoString CSWGuiMapHider::GetNextMapNote()
 
     CExoLinkedListNode* pNote = m_pCurrentMapNote;
     unsigned long long nObjectId =
-        pNote != 0 ? *static_cast<unsigned long long*>(m_mapNotes.m_pInternal->GetAtPos(pNote)) : OBJECT_INVALID;
+        pNote != 0 ? *static_cast<unsigned long long*>(m_mapNotes.GetAtPos(pNote)) : OBJECT_INVALID;
 
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(nObjectId);
     if (pObject != 0 && pObject->AsSWSWaypoint() != 0)
@@ -959,7 +959,7 @@ CExoString CSWGuiMapHider::GetNextMapNote()
             g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sResult, 0);
 
     if (pNote != 0)
-        m_mapNotes.m_pInternal->GetNext(pNote);
+        m_mapNotes.GetNext(pNote);
     if (pNote == 0)
         pNote = m_mapNotes.m_pInternal->m_pHead;
     if (pNote == 0)
@@ -968,7 +968,7 @@ CExoString CSWGuiMapHider::GetNextMapNote()
     while (pNote != 0 && m_pCurrentMapNote != 0 && pNote != m_pCurrentMapNote)
     {
         unsigned long long nNextId =
-            *static_cast<unsigned long long*>(m_mapNotes.m_pInternal->GetAtPos(pNote));
+            *static_cast<unsigned long long*>(m_mapNotes.GetAtPos(pNote));
         pNext = g_pAppManager->m_pServerExoApp->GetGameObject(nNextId);
         if (pNext != 0 && pNext->AsSWSWaypoint() != 0)
         {
@@ -991,7 +991,7 @@ CExoString CSWGuiMapHider::GetNextMapNote()
                 }
             }
         }
-        m_mapNotes.m_pInternal->GetNext(pNote);
+        m_mapNotes.GetNext(pNote);
         if (pNote == 0)
             pNote = m_mapNotes.m_pInternal->m_pHead;
     }
@@ -1023,7 +1023,7 @@ CExoString CSWGuiMapHider::InitializeMapNotes(int nArea)
             {
                 pNoteId = new unsigned long long;
                 *pNoteId = nObjectId;
-                m_mapNotes.m_pInternal->AddHead(pNoteId);
+                m_mapNotes.AddHead(pNoteId);
                 if (m_pCurrentMapNote == 0 && pWaypoint->m_bMapNoteEnabled != 0)
                 {
                     if (g_pAppManager->m_pServerExoApp->GetModule()->m_pAreaMap
@@ -1607,8 +1607,8 @@ CSWGuiInGameGalaxyMap::CSWGuiInGameGalaxyMap(CSWGuiManager* pGuiManager)
         g_pRules->m_p2DArrays->m_pPlanetary->GetCExoStringEntry(i, CExoString("Model"), &sModel);
         g_pRules->m_p2DArrays->m_pPlanetary->GetINTEntry(i, CExoString("Name"), &nName);
         g_pRules->m_p2DArrays->m_pPlanetary->GetINTEntry(i, CExoString("Description"), &nDesc);
-        m_aPlanetButtons[i].m_border.m_params.SetFillImage(CResRef(sIcon), 0);
-        m_aPlanetButtons[i].m_borderHilight.m_params.SetFillImage(CResRef(sIcon), 0);
+        m_aPlanetButtons[i].m_border.m_params.SetFillImage(CResRef(sIcon));
+        m_aPlanetButtons[i].m_borderHilight.m_params.SetFillImage(CResRef(sIcon));
         // Through a pointer: SetActive must go through the vtable here.
         CSWGuiButton* pButton = &m_aPlanetButtons[i];
         pButton->SetActive(0);

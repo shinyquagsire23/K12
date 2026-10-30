@@ -7,6 +7,7 @@
 
 // Complete types are needed for the by-value uses only.
 class CServerInfo;
+#include "k2stdint.h"
 #include "exostring.h"
 #include "exoresman.h"
 
@@ -159,7 +160,7 @@ public:
     int GetModulePreviouslyVisited(const CExoString& a);
     void HasEnoughDiskSpaceForSaveGame();
     void ExecuteLoadModule(const CExoString& a);
-    unsigned long long GetSystemTimeAsDWORD64();
+    uint64_ll_t GetSystemTimeAsDWORD64();
     void DebugValidatePath_Point(CSWSArea* a, const Vector& b);
     unsigned short GetServerMode();
     CSWSMessage* GetSWSMessage();

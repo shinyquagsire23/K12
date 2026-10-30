@@ -298,7 +298,7 @@ void CSWGuiUpgrade::UpdateItems()
         {
             rIcon = const_cast<char*>(SLOT_INFO[m_nMenuType - 1][i].m_szIcon);
         }
-        pLabel->m_border.m_params.SetFillImage(rIcon, 0);
+        pLabel->m_border.m_params.SetFillImage(rIcon);
     }
 
     CExoString rDesc = m_pItem->GetPropertyDescription();
@@ -2418,8 +2418,8 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
 
     CSWSItem* pItem;
     if (oidItem == OBJECT_INVALID) {
-        m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
-        m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
+        m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"));
+        m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"));
         m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NONE_LABEL));
         m_textCount.m_params = CSWGuiTextParams(CExoString(), CResRef("fnt_d16x16"),
                                                 CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2429,8 +2429,8 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
       CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
       pItem = pServerApp->GetItemByGameObjectID(oidItem);
       if (pItem == 0) {
-        m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
-        m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
+        m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"));
+        m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"));
         m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NONE_LABEL));
         m_textCount.m_params = CSWGuiTextParams(CExoString(), CResRef("fnt_d16x16"),
                                                 CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2447,16 +2447,16 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
         int nCount = pItem->m_stackCount;
         if (nCount >= 2) {
             if (nCount >= 100) {
-                m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_7"), 0);
-                m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_7"), 0);
+                m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_7"));
+                m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_7"));
             } else {
-                m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_6"), 0);
-                m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_6"), 0);
+                m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_6"));
+                m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_6"));
             }
             sCount.Format(const_cast<char*>("%d"), nCount);
         } else {
-            m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
-            m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
+            m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"));
+            m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"));
         }
         m_textCount.m_params = CSWGuiTextParams(sCount, CResRef("fnt_d16x16"),
                                                 CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2464,7 +2464,7 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
       }
     }
     m_borderIcon.m_params.m_flags.nFillStyle = 2;
-    m_borderIcon.m_params.SetFillImage(refIcon, 0);
+    m_borderIcon.m_params.SetFillImage(refIcon);
 }
 #else
 void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigned long long a,
@@ -4064,8 +4064,7 @@ void AspyrAddButtonIcon(CSWGuiButton* pButton, char nIcon);
 CSWGuiCreateMedicalItem::CSWGuiCreateMedicalItem(CSWGuiManager* pGuiManager, unsigned long long oidOwner)
     : CSWGuiPanel(pGuiManager)
 {
-    m_nReserved2 = 0;
-    m_nReserved3 = 0;
+    m_pReserved1 = 0;
 
     StartLoadFromLayout(CResRef("chemical_p"), 1, 1, 0);
 
@@ -5637,7 +5636,7 @@ void CSWGuiSwoopUpgrade::UpdateItems()
         {
             rIcon = const_cast<char*>(SWOOP_SLOT_INFO[i].m_szIcon);
         }
-        pLabel->m_border.m_params.SetFillImage(rIcon, 0);
+        pLabel->m_border.m_params.SetFillImage(rIcon);
     }
 }
 

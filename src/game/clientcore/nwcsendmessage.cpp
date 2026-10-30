@@ -15,6 +15,7 @@
 #include "nwccreaturestats.h"
 #include "nwsrules.h"
 #include "List.h"
+#include "exostringinline.h"
 
 extern CExoSound* g_pExoSound;
 
@@ -267,13 +268,8 @@ int CSWCMessage::SendPlayerToServerChat_Party(const CExoString& sText)
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sText.GetLength() + 4,
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString ? static_cast<unsigned int>(strlen(sText.m_sString)) : 0) + 4,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCExoString(sText, 32);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -287,13 +283,8 @@ int CSWCMessage::SendPlayerToServerChat_Shout(const CExoString& sText)
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sText.GetLength() + 4,
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString ? static_cast<unsigned int>(strlen(sText.m_sString)) : 0) + 4,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCExoString(sText, 32);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -307,13 +298,8 @@ int CSWCMessage::SendPlayerToServerChat_Talk(const CExoString& sText)
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sText.GetLength() + 4,
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString ? static_cast<unsigned int>(strlen(sText.m_sString)) : 0) + 4,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCExoString(sText, 32);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -327,13 +313,8 @@ int CSWCMessage::SendPlayerToServerChat_Whisper(const CExoString& sText)
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sText.GetLength() + 4,
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString ? static_cast<unsigned int>(strlen(sText.m_sString)) : 0) + 4,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCExoString(sText, 32);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -362,7 +343,7 @@ int CSWCMessage::SendPlayerToServerCheat_Kill(unsigned long long objId,
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(16, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(2 * OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteOBJECTIDClient(objId2);
 
@@ -464,9 +445,9 @@ int CSWCMessage::SendPlayerToServerGuiCharacterSheet_Status(char nStatus,
                                                             unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 9;
+    unsigned int nSize = OBJECTID_SIZE + 1;
 
-    CreateWriteMessage(9, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 1, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteCHAR(nStatus, 8);
     WriteOBJECTIDClient(objId);
 
@@ -496,9 +477,9 @@ int CSWCMessage::SendPlayerToServerInput_Attack(unsigned long long objId,
 {
 
     unsigned char* pMsg = 0;
-    unsigned int nSize = 10;
+    unsigned int nSize = OBJECTID_SIZE + 2;
 
-    CreateWriteMessage(10, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 2, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteWORD(a, 16);
 
@@ -512,9 +493,9 @@ int CSWCMessage::SendPlayerToServerInput_UseFeat(unsigned short nFeat, unsigned 
                                                  unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 22;
+    unsigned int nSize = OBJECTID_SIZE + 14;
 
-    CreateWriteMessage(22, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 14, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteWORD(nFeat, 16);
     WriteWORD(nSubFeat, 16);
     WriteOBJECTIDClient(objId);
@@ -528,9 +509,9 @@ int CSWCMessage::SendPlayerToServerInput_UseFeat(unsigned short nFeat, unsigned 
 int CSWCMessage::SendPlayerToServerInput_SwitchWeapons(unsigned long long objId, int bSwap)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 12;
+    unsigned int nSize = OBJECTID_SIZE + 4;
 
-    CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteBOOL(bSwap);
 
@@ -543,9 +524,9 @@ int CSWCMessage::SendPlayerToServerInput_SwitchWeapons(unsigned long long objId,
 int CSWCMessage::SendPlayerToServerInput_Stance(char nStance, unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 9;
+    unsigned int nSize = OBJECTID_SIZE + 1;
 
-    CreateWriteMessage(9, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 1, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteCHAR(nStance, 8);
     WriteOBJECTIDClient(objId);
 
@@ -575,9 +556,9 @@ int CSWCMessage::SendPlayerToServerInput_ToggleMode(unsigned char mode, unsigned
 int CSWCMessage::SendPlayerToServerInput_Examine(unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -589,9 +570,9 @@ int CSWCMessage::SendPlayerToServerInput_Examine(unsigned long long objId)
 int CSWCMessage::SendPlayerToServerInput_UseObject(unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -604,9 +585,9 @@ int CSWCMessage::SendPlayerToServerInput_ChangeDoorState(unsigned long long objI
                                                           unsigned short state)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 10;
+    unsigned int nSize = OBJECTID_SIZE + 2;
 
-    CreateWriteMessage(10, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 2, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteWORD(state, 16);
 
@@ -620,9 +601,9 @@ int CSWCMessage::SendPlayerToServerInput_UnlockObject(unsigned long long objId,
                                                        unsigned long long a)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 16;
+    unsigned int nSize = 2 * OBJECTID_SIZE;
 
-    CreateWriteMessage(16, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(2 * OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteOBJECTIDClient(a);
 
@@ -635,9 +616,9 @@ int CSWCMessage::SendPlayerToServerInput_UnlockObject(unsigned long long objId,
 int CSWCMessage::SendPlayerToServerInput_LockObject(unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -649,9 +630,9 @@ int CSWCMessage::SendPlayerToServerInput_LockObject(unsigned long long objId)
 int CSWCMessage::SendPlayerToServerInput_DoorSaber(unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -664,9 +645,9 @@ int CSWCMessage::SendPlayerToServerInventory_Equip(unsigned long long itemId,
                                                     unsigned int nSlot)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 12;
+    unsigned int nSize = OBJECTID_SIZE + 4;
 
-    CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId);
     WriteDWORD(nSlot, 32);
 
@@ -680,9 +661,9 @@ int CSWCMessage::SendPlayerToServerInventory_Pickup(unsigned long long objId,
                                                      unsigned long long objId2)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 16;
+    unsigned int nSize = 2 * OBJECTID_SIZE;
 
-    CreateWriteMessage(16, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(2 * OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteOBJECTIDClient(objId2);
 
@@ -696,9 +677,9 @@ int CSWCMessage::SendPlayerToServerInventory_Unequip(unsigned long long itemId,
                                                       unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 16;
+    unsigned int nSize = 2 * OBJECTID_SIZE;
 
-    CreateWriteMessage(16, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(2 * OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId);
     WriteOBJECTIDClient(objId);
 
@@ -711,9 +692,9 @@ int CSWCMessage::SendPlayerToServerInventory_Unequip(unsigned long long itemId,
 int CSWCMessage::SendPlayerToServerInventory_Use(unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -725,9 +706,9 @@ int CSWCMessage::SendPlayerToServerInventory_Use(unsigned long long objId)
 int CSWCMessage::SendPlayerToServerGuiContainer_Close(unsigned long long objId, int bCancel)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 12;
+    unsigned int nSize = OBJECTID_SIZE + 4;
 
-    CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteBOOL(bCancel);
 
@@ -741,9 +722,9 @@ int CSWCMessage::SendPlayerToServerInput_AssociateCommand(unsigned long long obj
                                                             int nCommand)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 12;
+    unsigned int nSize = OBJECTID_SIZE + 4;
 
-    CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteINT(nCommand, 32);
 
@@ -758,11 +739,7 @@ int CSWCMessage::SendPlayerToServerChat_Tell(unsigned int nPlayerId, const CExoS
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sText.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sText.m_sString ? static_cast<unsigned int>(strlen(sText.m_sString)) : 0) + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     // Zero here; Chat_TellName sets the "addressed by name" flag instead.
     WriteBOOL(0);
     WriteDWORD(nPlayerId, 32);
@@ -799,7 +776,7 @@ int CSWCMessage::SendPlayerToServerCheat_SummonNasty(unsigned long long objId,
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(25, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 17, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteBYTE(nType, 8);
     WriteCResRef(resRef, 16);
@@ -815,11 +792,7 @@ int CSWCMessage::SendPlayerToServerCheat_RunScript(const CExoString& sScript)
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sScript.GetLength() + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sScript.m_sString ? static_cast<unsigned int>(strlen(sScript.m_sString)) : 0) + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCExoString(sScript, 32);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -834,7 +807,7 @@ int CSWCMessage::SendPlayerToServerDialog_Reply(unsigned long long objId, unsign
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(13, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 5, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteDWORD(nReply, 32);
     WriteBYTE(a, 8);
@@ -850,9 +823,9 @@ int CSWCMessage::SendPlayerToServerInput_UseSkill(unsigned char skill, unsigned 
                                                   unsigned long long objId, const Vector& pos)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 22;
+    unsigned int nSize = OBJECTID_SIZE + 14;
 
-    CreateWriteMessage(22, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 14, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteBYTE(skill, 8);
     WriteBYTE(subType, 8);
     WriteOBJECTIDClient(objId);
@@ -941,7 +914,7 @@ int CSWCMessage::SendPlayerToServerInput_GetObjectDebugInfo(unsigned long long o
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -967,9 +940,9 @@ int CSWCMessage::SendPlayerToServerMapPinRemoved(int nPin)
 int CSWCMessage::SendPlayerToServerInventory_LearnScroll(unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 32;
+    unsigned int nSize = 3 * OBJECTID_SIZE + 8;
 
-    CreateWriteMessage(32, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(3 * OBJECTID_SIZE + 8, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -995,9 +968,9 @@ int CSWCMessage::SendPlayerToServerInput_SetPauseRequest(int bPause)
 int CSWCMessage::SendPlayerToServerInput_CancelDisguise(unsigned long long objId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -1028,9 +1001,9 @@ int CSWCMessage::SendPlayerToServerInput_MergeItem(unsigned long long itemId,
                                                    unsigned long long targetId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 16;
+    unsigned int nSize = 2 * OBJECTID_SIZE;
 
-    CreateWriteMessage(16, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(2 * OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId);
     WriteOBJECTIDClient(targetId);
 
@@ -1043,9 +1016,9 @@ int CSWCMessage::SendPlayerToServerInput_MergeItem(unsigned long long itemId,
 int CSWCMessage::SendPlayerToServerInput_SplitItem(unsigned long long itemId, int nCount)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 10;
+    unsigned int nSize = OBJECTID_SIZE + 2;
 
-    CreateWriteMessage(10, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 2, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId);
     WriteWORD(static_cast<unsigned short>(nCount), 16);
 
@@ -1165,9 +1138,9 @@ int CSWCMessage::SendPlayerToServerUpdate_AppearancePhenoType(unsigned long long
 int CSWCMessage::SendPlayerToServerStore_RequestSell(unsigned long long itemId)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -1203,9 +1176,9 @@ int CSWCMessage::SendPlayerToServerInput_Dialog(unsigned long long objId)
         return 1;
 
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -1273,7 +1246,7 @@ int CSWCMessage::SendPlayerToServerInput_GiveItem(unsigned long long giverId,
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(28, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(3 * OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(giverId);
     WriteOBJECTIDClient(itemId);
     WriteOBJECTIDClient(objId);
@@ -1378,9 +1351,9 @@ int CSWCMessage::SendPlayerToServerInventory_EquipToggle(unsigned long long item
                                                          unsigned long long itemId2)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId1);
 
     if (itemId2 == CGameObjectArray::INVALIDOBJID)
@@ -1449,9 +1422,9 @@ int CSWCMessage::SendPlayerToServerStore_RequestBuy(unsigned long long itemId,
                                                     unsigned char nStack, unsigned char nSlot)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 10;
+    unsigned int nSize = OBJECTID_SIZE + 2;
 
-    CreateWriteMessage(10, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 2, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId);
     WriteBYTE(nStack, 8);
     WriteBYTE(nSlot, 8);
@@ -1471,13 +1444,8 @@ int CSWCMessage::SendPlayerToServerJournalMessage_RequestAdd(const CExoString& s
                                                              const CExoString& sText)
 {
     unsigned char* pMsg;
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     unsigned int nTitle = sTitle.GetLength();
     unsigned int nText = sText.GetLength();
-#else
-    unsigned int nTitle = (sTitle.m_sString ? static_cast<unsigned int>(strlen(sTitle.m_sString)) : 0);
-    unsigned int nText = (sText.m_sString ? static_cast<unsigned int>(strlen(sText.m_sString)) : 0);
-#endif
     unsigned int nSize = nTitle + nText + 4;
 
     CreateWriteMessage(nSize, MSG_PLAYERID_ALL_CLIENTS, 1);
@@ -1497,15 +1465,9 @@ int CSWCMessage::SendPlayerToServerChat_TellName(const CExoString& sName, const 
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sName.GetLength() + 12
                        + sText.GetLength(),
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sName.m_sString ? static_cast<unsigned int>(strlen(sName.m_sString)) : 0) + 12
-                       + (sText.m_sString ? static_cast<unsigned int>(strlen(sText.m_sString)) : 0),
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteBOOL(1);
     WriteCExoString(sName, 32);
     WriteCExoString(sText, 32);
@@ -1524,7 +1486,7 @@ int CSWCMessage::SendPlayerToServerCheat_PlayVisualEffect(unsigned long long obj
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(23, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(2 * OBJECTID_SIZE + 7, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteWORD(nEffect, 16);
     WriteFLOAT(fDuration, 1.0f, 32);
@@ -1542,9 +1504,9 @@ int CSWCMessage::SendPlayerToServerInventory_Drop(unsigned long long itemId, flo
                                                   float z)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 20;
+    unsigned int nSize = OBJECTID_SIZE + 12;
 
-    CreateWriteMessage(20, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId);
     WriteFLOAT(x, 1.0f, 32);
     WriteFLOAT(y, 1.0f, 32);
@@ -1581,13 +1543,8 @@ int CSWCMessage::SendPlayerToServerMapPinAdded(const Vector& pos, const CExoStri
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sNote.GetLength() + 12,
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sNote.m_sString ? static_cast<unsigned int>(strlen(sNote.m_sString)) : 0) + 12,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteFLOAT(pos.x, 1.0f, 32);
     WriteFLOAT(pos.y, 1.0f, 32);
     WriteFLOAT(pos.z, 1.0f, 32);
@@ -1604,9 +1561,9 @@ int CSWCMessage::SendPlayerToServerInput_PlayAnimation(unsigned long long objId,
                                                        const Vector& pos, unsigned short nAnim)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 22;
+    unsigned int nSize = OBJECTID_SIZE + 14;
 
-    CreateWriteMessage(22, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 14, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteWORD(nAnim, 16);
     WriteOBJECTIDClient(objId);
     WriteFLOAT(pos.x, 1.0f, 32);
@@ -1650,7 +1607,7 @@ int CSWCMessage::SendPlayerToServerGuiQuickbar_SetButton_Item(unsigned char nBut
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(14, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 6, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteBYTE(nButton, 8);
     WriteBYTE(MSG_QUICKBAR_BUTTON_ITEM, 8);
     WriteOBJECTIDClient(itemId);
@@ -1673,13 +1630,13 @@ int CSWCMessage::SendPlayerToServerGuiQuickbar_SetButton_Item(unsigned char nBut
                                      nSize);
 }
 
-// The reserve itself is conditional, 26 bytes when the gold is dropped at a point and 14 when it is
-// handed to an object, and the same test gates the three floats at the end.
+// The reserve itself is conditional, three floats larger when the gold is dropped at a point than
+// when it is handed to an object, and the same test gates the three floats at the end.
 int CSWCMessage::SendPlayerToServerGold_TransferGold(unsigned long long objId, const Vector& pos,
                                                      int nAmount)
 {
     unsigned char* pMsg;
-    unsigned int nSize = (objId == OBJECT_INVALID) ? 26 : 14;
+    unsigned int nSize = (objId == OBJECT_INVALID) ? OBJECTID_SIZE + 18 : OBJECTID_SIZE + 6;
 
     CreateWriteMessage(nSize, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
@@ -1704,13 +1661,8 @@ int CSWCMessage::SendPlayerToServerMapPinChanged(const Vector& pos, const CExoSt
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
     CreateWriteMessage(sNote.GetLength() + 16,
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sNote.m_sString ? static_cast<unsigned int>(strlen(sNote.m_sString)) : 0) + 16,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteFLOAT(pos.x, 1.0f, 32);
     WriteFLOAT(pos.y, 1.0f, 32);
     WriteFLOAT(pos.z, 1.0f, 32);
@@ -1731,13 +1683,8 @@ int CSWCMessage::SendPlayerToServerCreature_Add(unsigned long long objId, const 
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
-    CreateWriteMessage(sResRef.GetLength() + 21,
+    CreateWriteMessage(sResRef.GetLength() + 1 + static_cast<int>(sizeof(objId)) + 12,
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sResRef.m_sString ? static_cast<unsigned int>(strlen(sResRef.m_sString)) : 0) + 21,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCHAR('C', 8);
     WriteOBJECTIDClient(objId);
     WriteFLOAT(pos.x, 1.0f, 32);
@@ -1758,13 +1705,8 @@ int CSWCMessage::SendPlayerToServerParty_Add(unsigned long long objId, const Vec
     unsigned char* pMsg;
     unsigned int nSize;
 
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
-    CreateWriteMessage(sResRef.GetLength() + 21,
+    CreateWriteMessage(sResRef.GetLength() + 1 + static_cast<int>(sizeof(objId)) + 12,
                        MSG_PLAYERID_ALL_CLIENTS, 1);
-#else
-    CreateWriteMessage((sResRef.m_sString ? static_cast<unsigned int>(strlen(sResRef.m_sString)) : 0) + 21,
-                       MSG_PLAYERID_ALL_CLIENTS, 1);
-#endif
     WriteCHAR('M', 8);
     WriteOBJECTIDClient(objId);
     WriteFLOAT(pos.x, 1.0f, 32);
@@ -1787,7 +1729,7 @@ int CSWCMessage::SendPlayerToServerItem_Add(unsigned long long objId, const Vect
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(40, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 32, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteCHAR('A', 8);
     WriteOBJECTIDClient(objId);
     WriteFLOAT(pos.x, 1.0f, 32);
@@ -1811,9 +1753,9 @@ int CSWCMessage::SendPlayerToServerInput_WalkToWayPoint(unsigned long long objId
                                                         unsigned char d, unsigned long long objId2)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 22;
+    unsigned int nSize = OBJECTID_SIZE + 14;
 
-    CreateWriteMessage(22, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 14, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
     WriteFLOAT(x, 1.0f, 32);
     WriteFLOAT(y, 1.0f, 32);
@@ -1841,7 +1783,7 @@ int CSWCMessage::SendPlayerToServerCheat_CastSpell(unsigned int nSpellId, const 
     unsigned char* pMsg;
     unsigned int nSize;
 
-    CreateWriteMessage(24, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 16, MSG_PLAYERID_ALL_CLIENTS, 1);
 
     float fDistSq = dot(pos, pos);
     unsigned char nMask = (objId != OBJECT_INVALID);
@@ -1948,9 +1890,9 @@ int CSWCMessage::SendPlayerToServerInput_UseItem(unsigned long long itemId, unsi
                                                  const Vector& pos)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 29;
+    unsigned int nSize = 2 * OBJECTID_SIZE + 13;
 
-    CreateWriteMessage(29, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(2 * OBJECTID_SIZE + 13, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(itemId);
     WriteBYTE(a, 8);
 
@@ -1998,9 +1940,9 @@ int CSWCMessage::SendPlayerToServerInput_UseItem(unsigned long long itemId, unsi
 int CSWCMessage::SendPlayerToServerParty_Action(unsigned long long objId, int nAction)
 {
     unsigned char* pMsg;
-    unsigned int nSize = 8;
+    unsigned int nSize = OBJECTID_SIZE;
 
-    CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDClient(objId);
 
     if (GetWriteMessage(&pMsg, &nSize) == 0)

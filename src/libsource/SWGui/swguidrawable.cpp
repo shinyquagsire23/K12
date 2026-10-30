@@ -791,7 +791,7 @@ void CSWGuiBorder::Load(CResGFF* pGFF, CResStruct& rStruct, const CExoString& sF
     int bSuccess;
     m_params.SetCornerImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("CORNER"), bSuccess, CResRef("")), 0);
     m_params.SetEdgeImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("EDGE"), bSuccess, CResRef("")), 0);
-    m_params.SetFillImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("FILL"), bSuccess, CResRef("")), 0);
+    m_params.SetFillImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("FILL"), bSuccess, CResRef("")));
     m_params.m_flags.nFillStyle = pGFF->ReadFieldINT(&subStruct, const_cast<char*>("FILLSTYLE"), bSuccess, 0);
     m_params.m_nBorderDim = pGFF->ReadFieldINT(&subStruct, const_cast<char*>("DIMENSION"), bSuccess, 0);
     m_params.m_nInnerOffset = pGFF->ReadFieldINT(&subStruct, const_cast<char*>("INNEROFFSET"), bSuccess, 0);

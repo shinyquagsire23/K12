@@ -119,7 +119,7 @@ int CERFFile::AddResource(CExoString& filePath)
     __memcpy_chk(pKey->m_sName, sName.CStr(), sName.GetLength(),
                  __builtin_object_size(pKey->m_sName, 0));  // idiom-exempt: a runtime byte count, not a sizeof
 #else
-    __memcpy_chk(pKey->m_sName, sName.CStr(), sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0,
+    __memcpy_chk(pKey->m_sName, sName.CStr(), sName.GetLength(),
                  __builtin_object_size(pKey->m_sName, 0));  // idiom-exempt: a runtime byte count, not a sizeof
 #endif
     pKey->m_nID = m_header.m_nKeyCount;
@@ -154,8 +154,8 @@ int CERFFile::AddResource(char* sName, unsigned short nType, CRes* pRes)
     pNew->m_pData = new unsigned char[nSize];
     memcpy(pNew->m_pData, pRes->GetData(), nSize);  // idiom-exempt: a runtime byte count, not a sizeof
 
-    m_lstKeys.m_pInternal->AddTail(pKey);
-    m_lstRes.m_pInternal->AddTail(pNew);
+    m_lstKeys.AddTail(pKey);
+    m_lstRes.AddTail(pNew);
     m_header.m_nKeyCount++;
     return 1;
 }
@@ -194,7 +194,7 @@ int CERFFile::AddString(CERFString* pString)
     pNew->m_nLanguageId = pString->m_nLanguageId;
     CExoString sText(pString->m_pString, pString->m_nLength);
     pNew->SetText(sText);
-    m_lstStrings.m_pInternal->AddTail(pNew);
+    m_lstStrings.AddTail(pNew);
     return 1;
 }
 
@@ -208,11 +208,11 @@ int CERFFile::ReadData(const CExoString& path)
     if (file.FileOpened() != 0) {
         CExoLinkedListNode* pNode = m_lstRes.m_pInternal->m_pHead;
         while (pNode != 0) {
-            CERFRes* pRes = static_cast<CERFRes*>(m_lstRes.m_pInternal->GetAtPos(pNode));
+            CERFRes* pRes = m_lstRes.GetAtPos(pNode);
             pRes->m_pData = new unsigned char[pRes->m_nSize];
             file.Seek(pRes->m_nOffset, 0);
             file.Read(pRes->m_pData, pRes->m_nSize, 1);
-            m_lstRes.m_pInternal->GetNext(pNode);
+            m_lstRes.GetNext(pNode);
         }
     }
     return 1;
@@ -256,10 +256,10 @@ int CERFFile::WriteStringTable()
     CExoLinkedListNode* pNode = m_lstStrings.m_pInternal->m_pHead;
 
     while (pNode != 0) {
-        CERFString* pString = static_cast<CERFString*>(m_lstStrings.m_pInternal->GetAtPos(pNode));
+        CERFString* pString = m_lstStrings.GetAtPos(pNode);
         nLastSize = pString->m_nLength + 8;
         pString->Write(*m_pFile);
-        m_lstStrings.m_pInternal->GetNext(pNode);
+        m_lstStrings.GetNext(pNode);
     }
 
     nEndOffset = m_pFile->GetOffset();
@@ -288,17 +288,17 @@ int CERFFile::ReadHeaderVariance(const CExoString& path)
         for (unsigned int i = 0; i < m_header.m_nStringCount; i++) {
             CERFString* pString = new CERFString();
             pString->Read(file);
-            m_lstStrings.m_pInternal->AddTail(pString);
+            m_lstStrings.AddTail(pString);
         }
         for (unsigned int i = 0; i < m_header.m_nKeyCount; i++) {
             CERFKey* pKey = new CERFKey();
             pKey->Read(file);
-            m_lstKeys.m_pInternal->AddTail(pKey);
+            m_lstKeys.AddTail(pKey);
         }
         for (unsigned int i = 0; i < m_header.m_nKeyCount; i++) {
             CERFRes* pRes = new CERFRes();
             pRes->Read(file);
-            m_lstRes.m_pInternal->AddTail(pRes);
+            m_lstRes.AddTail(pRes);
         }
     }
     return 1;
@@ -567,8 +567,8 @@ void CERFFile::RecalculateOffsets()
     unsigned int nStringTableSize = 0;
     CExoLinkedListNode* pNode = m_lstStrings.m_pInternal->m_pHead;
     while (pNode != 0) {
-        nStringTableSize += static_cast<CERFString*>(m_lstStrings.m_pInternal->GetAtPos(pNode))->m_nLength + 8;
-        m_lstStrings.m_pInternal->GetNext(pNode);
+        nStringTableSize += m_lstStrings.GetAtPos(pNode)->m_nLength + 8;
+        m_lstStrings.GetNext(pNode);
     }
 
     m_header.m_nStringTableSize = nStringTableSize;
@@ -826,12 +826,12 @@ void CERFKey::SetName(CExoString& name)
 #endif
 #elif defined(K2_FIX_ENGINE_BUGS)
     char* pszName = name.CStr();
-    int nLength = name.m_sString ? static_cast<int>(strlen(name.m_sString)) : 0;
+    int nLength = name.GetLength();
     if (nLength > static_cast<int>(sizeof(m_sName)))
         nLength = sizeof(m_sName);
     memcpy(m_sName, pszName, nLength);  // idiom-exempt: a runtime byte count, not a sizeof
 #else
-    memcpy(m_sName, name.CStr(), name.m_sString ? static_cast<int>(strlen(name.m_sString)) : 0);  // idiom-exempt: a runtime byte count, not a sizeof
+    memcpy(m_sName, name.CStr(), name.GetLength());  // idiom-exempt: a runtime byte count, not a sizeof
 #endif
 }
 

@@ -19,7 +19,6 @@ public:
     CAurRoom*  m_pAurRoom;
     Gob*       m_pRoomModel;
     int        m_nSceneRoomIndex;
-    char       _pad054[0x58-0x54];
 
     CAurRoom* GetAurRoom();
 

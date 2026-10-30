@@ -509,7 +509,7 @@ CExoFileThread::CExoFileThread()
     unsigned int nThreadId = 0;
     // The parameter and thread-id arguments are swapped; the thread id lands in m_nThreadId, and
     // the worker ignores the zeroed local it is handed.
-    m_hThread = CreateThread(0, 0, AsyncReadThreadProc, &nThreadId, 4, reinterpret_cast<unsigned int*>(&m_nThreadId));
+    m_hThread = CreateThread(0, 0, AsyncReadThreadProc, &nThreadId, 4, &m_nThreadId);
     SetThreadPriority(m_hThread, -2);
 }
 

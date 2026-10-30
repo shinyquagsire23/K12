@@ -35,7 +35,6 @@ public:
     Vector m_vSpreadVelocity;
     Vector m_vTrailPosition;
     bool   m_bLanded;
-    char   _pad75[0x78 - 0x75];
     float  m_fAge;
 };
 
@@ -175,7 +174,6 @@ public:
     Quaternion m_qInheritOrientation;
     Quaternion m_qWorldOrientation;
     Quaternion m_qPrevWorldOrientation;
-    char _pad1dc[0x1e0 - 0x1dc];
     SafePointer<WindManager> m_spWindManager;
     List<Particle*> m_lParticles;
     List<Particle*> m_lFreeParticles;
@@ -190,7 +188,6 @@ public:
 #if !KOTOR1  // K1 has no weather emitters
     bool m_bWeather;
     // Keeps the derived emitter classes' first members at their expected offsets.
-    char _pad235[0x238 - 0x235];
 #endif
 };
 

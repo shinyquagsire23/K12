@@ -813,7 +813,7 @@ void CSWSDialog::ReEquipItemsForDialog()
     while (pNode != 0)
     {
         unsigned long long* pId =
-            static_cast<unsigned long long*>(m_lstUnequippedItems.m_pInternal->GetAtPos(pNode));
+            static_cast<unsigned long long*>(m_lstUnequippedItems.GetAtPos(pNode));
         if (pId != 0)
         {
             unsigned long long nId = *pId;
@@ -822,7 +822,7 @@ void CSWSDialog::ReEquipItemsForDialog()
                 pObj->AsSWCCreature()->ShowEquippedItems();
             delete pId;
         }
-        m_lstUnequippedItems.m_pInternal->GetNext(pNode);
+        m_lstUnequippedItems.GetNext(pNode);
     }
 }
 
@@ -832,7 +832,7 @@ void CSWSDialog::ReEquipHItemForDialog()
     while (pNode != 0)
     {
         unsigned long long* pId =
-            static_cast<unsigned long long*>(m_lstUnequippedHItems.m_pInternal->GetAtPos(pNode));
+            static_cast<unsigned long long*>(m_lstUnequippedHItems.GetAtPos(pNode));
         if (pId != 0)
         {
             unsigned long long nId = *pId;
@@ -841,7 +841,7 @@ void CSWSDialog::ReEquipHItemForDialog()
                 pObj->AsSWCCreature()->ShowEquippedHeadItem();
             delete pId;
         }
-        m_lstUnequippedHItems.m_pInternal->GetNext(pNode);
+        m_lstUnequippedHItems.GetNext(pNode);
     }
 }
 
@@ -858,7 +858,7 @@ float CSWSDialog::SetDialogDelay(CSWSObject* pObj, CExoLocString& sLoc, unsigned
             fDelay = static_cast<float>(static_cast<int>(sText.GetLength())) * 0.15f * 0.75f;
 #else
         if (fDelay < 0.15f)
-            fDelay = static_cast<float>(static_cast<int>(sText.m_sString ? strlen(sText.m_sString) : 0)) * 0.15f * 0.75f;
+            fDelay = static_cast<float>(sText.GetLength()) * 0.15f * 0.75f;
 #endif
     }
 
@@ -1455,15 +1455,15 @@ void CSWSDialog::UnequipItemsForDialog(unsigned long long objectId)
         CExoLinkedListNode* pNode = m_lstUnequippedItems.m_pInternal->m_pHead;
         while (pNode != 0)
         {
-            if (*static_cast<unsigned long long*>(m_lstUnequippedItems.m_pInternal->GetAtPos(pNode))
+            if (*static_cast<unsigned long long*>(m_lstUnequippedItems.GetAtPos(pNode))
                 == pCreature->m_objectId)
                 return;
-            m_lstUnequippedItems.m_pInternal->GetNext(pNode);
+            m_lstUnequippedItems.GetNext(pNode);
         }
 
         unsigned long long* pId = new unsigned long long;
         *pId = pCreature->m_objectId;
-        m_lstUnequippedItems.m_pInternal->AddHead(pId);
+        m_lstUnequippedItems.AddHead(pId);
         pCreature->HideEquippedItems(CResRef(), CResRef());
     }
 }
@@ -1483,15 +1483,15 @@ void CSWSDialog::UnequipHItemForDialog(unsigned long long objectId)
         CExoLinkedListNode* pNode = m_lstUnequippedHItems.m_pInternal->m_pHead;
         while (pNode != 0)
         {
-            if (*static_cast<unsigned long long*>(m_lstUnequippedHItems.m_pInternal->GetAtPos(pNode))
+            if (*static_cast<unsigned long long*>(m_lstUnequippedHItems.GetAtPos(pNode))
                 == pCreature->m_objectId)
                 return;
-            m_lstUnequippedHItems.m_pInternal->GetNext(pNode);
+            m_lstUnequippedHItems.GetNext(pNode);
         }
 
         unsigned long long* pId = new unsigned long long;
         *pId = pCreature->m_objectId;
-        m_lstUnequippedHItems.m_pInternal->AddHead(pId);
+        m_lstUnequippedHItems.AddHead(pId);
         pCreature->HideEquippedHeadItem();
     }
 }
@@ -1616,7 +1616,7 @@ void CSWSDialog::Cleanup()
 
     while (m_lstParticipants.m_pInternal->m_pHead != 0)
     {
-        CSWSDialogPlayer* pPlayer = static_cast<CSWSDialogPlayer*>(m_lstParticipants.m_pInternal->RemoveHead());
+        CSWSDialogPlayer* pPlayer = m_lstParticipants.RemoveHead();
         g_pAppManager->m_pClientExoApp->GetInGameGui()->CloseDialog();
         ClearDialogOwnerInObject(pPlayer->m_objectId);
         delete pPlayer;

@@ -164,17 +164,14 @@ public:
     int           m_bShouldSpawn;
     Vector*       m_pGeomVerts;
     int           m_nGeomVertCount;
-    unsigned char _pad3b4[0x3b8 - 0x3b4];
     int*          m_pGeomIndices;
     int           m_nGeomIndexCount;
     float         m_fBBoxMinX;
     float         m_fBBoxMaxX;
     float         m_fBBoxMinY;
     float         m_fBBoxMaxY;
-    unsigned char _pad3d4[0x3d8 - 0x3d4];
     CEncounterSpawnPoint* m_paSpawnPoints;
     int           m_nSpawnPointCount;
-    unsigned char _pad3e4[0x3e8 - 0x3e4];
     CEncounterSpawnPointPos* m_paSpawnPointPositions;
     int           m_nSpawnPointPositionCount;
     int           m_nEncounterLevel;              // zeroed by the ctor, no other reader yet
@@ -198,7 +195,6 @@ public:
         unsigned int m_nSpawnPoolActiveBits;
         float        m_fSpawnPoolActive;
     };
-    unsigned char _pad414[0x418 - 0x414];
     unsigned long long m_enteredObjectId;
     unsigned long long m_exitObjectId;
     CExoString    m_scripts[5];            // indexed by EncounterScript

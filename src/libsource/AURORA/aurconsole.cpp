@@ -544,7 +544,11 @@ static char* getnextline_file(void* pResource) {
             if (!bEol) p->m_pData[i] = 0;
             bEol = true;
         } else if (bEol) {
+#ifdef K2_FIX_ENGINE_BUGS
+            SDL_RWseek(p->m_pFile, i - nRead, RW_SEEK_CUR);   // back to the next line's start
+#else
             SDL_RWseek(p->m_pFile, nRead - i, p->m_nSize > nRead ? RW_SEEK_END : RW_SEEK_CUR);
+#endif
             i = nRead;
             bEol = false;
         }
@@ -782,7 +786,7 @@ extern List<Gob*> gobs;
 static char szLogBase2Result[32];
 
 // Return the name of the first gob whose model matches the argument. A miss returns the
-// "nullptr" literal, so the interpreter always has a printable word.
+// NULL_NAME literal, so the interpreter always has a printable word.
 char* getgobfrommodel(char* pszArgs) {
     char* pszName = GetToken(&pszArgs);
     char* pszResult = const_cast<char*>(NULL_NAME);

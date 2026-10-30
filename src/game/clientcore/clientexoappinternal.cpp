@@ -1380,12 +1380,12 @@ void CClientExoAppInternal::UpdateDeathSequence()
 void CClientExoAppInternal::FadeAndStopStreamingSoundSource(
     CExoStreamingSoundSource* pSource, unsigned int nFadeMs)
 {
-    unsigned long long t0ms = g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000;
+    uint64_ll_t t0ms = g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000;
     pSource->FadeAndStop(nFadeMs);
     if (nFadeMs != 0) {
         do {
             g_pExoSound->Render();
-            unsigned long long tNowMs = g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000;
+            uint64_ll_t tNowMs = g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000;
             if (static_cast<unsigned int>(tNowMs - t0ms) >= nFadeMs)
                 break;
         } while (1);
@@ -1498,9 +1498,9 @@ int CClientExoAppInternal::IsOnExclusionList(unsigned long long oid)
     if (pNode == 0)
         return 0;
     do {
-        if (reinterpret_cast<unsigned long long>(m_pauseExclusionList->m_pInternal->GetAtPos(pNode)) == id)
+        if (reinterpret_cast<unsigned long long>(m_pauseExclusionList->GetAtPos(pNode)) == id)
             return 1;
-        m_pauseExclusionList->m_pInternal->GetNext(pNode);
+        m_pauseExclusionList->GetNext(pNode);
         if (pNode == 0)
             return 0;
     } while (1);
@@ -1513,7 +1513,7 @@ void CClientExoAppInternal::AddToPauseExclusionList(unsigned long long oid)
     if (pObj) {
         Gob* pModel = pObj->AsSWCObject()->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
         pModel->EnableForceAnimations();
-        m_pauseExclusionList->m_pInternal->AddTail(reinterpret_cast<void*>(oid));
+        m_pauseExclusionList->AddTail(reinterpret_cast<unsigned long long*>(oid));
         unsigned int nA, nB;
         GetActiveTimer(pObj->m_objectId)->GetWorldTime(&nA, &nB);
         pObj->ResetUpdateTimes(nA, nB);
@@ -1524,7 +1524,7 @@ void CClientExoAppInternal::ClearPauseExclusionList()
 {
     while (m_pauseExclusionList->m_pInternal->m_pHead != 0 &&
            m_pauseExclusionList->m_pInternal->m_pHead->m_pData != 0) {
-        unsigned long long oid = reinterpret_cast<unsigned long long>(m_pauseExclusionList->m_pInternal->RemoveHead());
+        unsigned long long oid = reinterpret_cast<unsigned long long>(m_pauseExclusionList->RemoveHead());
         CGameObject* pObj;
         m_pGameObjectArray->GetGameObject(oid, &pObj);
         if (pObj) {
@@ -1562,10 +1562,10 @@ void CClientExoAppInternal::AddObjectToHitcheckIgnoreList(unsigned long long oid
     while (node != 0) {
         if (pData != 0 && *pData == oid)
             return;
-        pData = static_cast<unsigned long long*>(m_hitCheckIgnoreList.m_pInternal->GetNext(node));
+        pData = static_cast<unsigned long long*>(m_hitCheckIgnoreList.GetNext(node));
     }
     unsigned long long* pNew = new unsigned long long(oid);
-    m_hitCheckIgnoreList.m_pInternal->AddTail(pNew);
+    m_hitCheckIgnoreList.AddTail(pNew);
 }
 
 void CClientExoAppInternal::RemoveObjectFromHitcheckIgnoreList(unsigned long long oid)
@@ -1577,11 +1577,11 @@ void CClientExoAppInternal::RemoveObjectFromHitcheckIgnoreList(unsigned long lon
         pData = static_cast<unsigned long long*>(internal->m_pHead->m_pData);
     while (node != 0) {
         if (pData != 0 && *pData == oid) {
-            m_hitCheckIgnoreList.m_pInternal->Remove(node);
+            m_hitCheckIgnoreList.Remove(node);
             operator delete(pData);
             break;
         }
-        pData = static_cast<unsigned long long*>(m_hitCheckIgnoreList.m_pInternal->GetNext(node));
+        pData = static_cast<unsigned long long*>(m_hitCheckIgnoreList.GetNext(node));
     }
 }
 
@@ -1748,8 +1748,8 @@ void CClientExoAppInternal::SetPauseState(unsigned char nPauseMask, int bPause,
     if (pPauseList) {
         CExoLinkedListNode* pNode = pPauseList->m_pInternal->m_pHead;
         while (pNode != 0) {
-            AddToPauseExclusionList(reinterpret_cast<unsigned long long>(pPauseList->m_pInternal->GetAtPos(pNode)));
-            pPauseList->m_pInternal->GetNext(pNode);
+            AddToPauseExclusionList(reinterpret_cast<unsigned long long>(pPauseList->GetAtPos(pNode)));
+            pPauseList->GetNext(pNode);
         }
         delete pPauseList;
     }
@@ -2030,14 +2030,14 @@ int CClientExoAppInternal::GetObjectName(unsigned long long objectId, CExoString
     if (!pGameObject) {
         pNode = m_playerList.m_pInternal->m_pHead;
         while (pNode) {
-            pPlayer = static_cast<CSWCPlayer*>(m_playerList.m_pInternal->GetAtPos(pNode));
+            pPlayer = m_playerList.GetAtPos(pNode);
             if (pPlayer) {
                 if (pPlayer->m_characterObjectId == objectId) {
                     outName = pPlayer->m_sCharacterName;
                     return 1;
                 }
             }
-            m_playerList.m_pInternal->GetNext(pNode);
+            m_playerList.GetNext(pNode);
         }
         outName = "";
         return 0;
@@ -2944,6 +2944,7 @@ int CClientExoAppInternal::PlayMovie(const CExoString& sMovie, int& nPlayingMovi
 }
 #endif
 
+#if !KOTOR1
 bool IsPsButtonIcons()
 {
     if (g_pExoInput == 0)
@@ -2951,6 +2952,7 @@ bool IsPsButtonIcons()
 
     return g_pExoInput->IsPsShowButtonsController() != 0;
 }
+#endif
 
 CSWCPlayer* CClientExoAppInternal::GetPlayerByPlayerID(unsigned int playerId)
 {
@@ -2960,7 +2962,7 @@ CSWCPlayer* CClientExoAppInternal::GetPlayerByPlayerID(unsigned int playerId)
         return 0;
     CSWCPlayer* pPlayer = static_cast<CSWCPlayer*>(pNode->m_pData);
     while (pPlayer != 0 && pPlayer->m_nPlayerId != playerId)
-        pPlayer = static_cast<CSWCPlayer*>(m_playerList.m_pInternal->GetNext(pPrevNode));
+        pPlayer = m_playerList.GetNext(pPrevNode);
     return pPlayer;
 }
 
@@ -2972,7 +2974,7 @@ CSWCPlayer* CClientExoAppInternal::GetPlayerByGameObjectID(unsigned long long ob
         return 0;
     CSWCPlayer* pPlayer = static_cast<CSWCPlayer*>(pNode->m_pData);
     while (pPlayer != 0 && pPlayer->m_gameObjectId != objectId)
-        pPlayer = static_cast<CSWCPlayer*>(m_playerList.m_pInternal->GetNext(pPrevNode));
+        pPlayer = m_playerList.GetNext(pPrevNode);
     return pPlayer;
 }
 
@@ -3085,7 +3087,7 @@ CSWCPlayer* CClientExoAppInternal::GetPlayerByPlayerName(const CExoString& name)
         while (pPlayer != 0) {
             if (pPlayer->m_sPlayerName == name)
                 break;
-            pPlayer = static_cast<CSWCPlayer*>(m_playerList.m_pInternal->GetNext(pPrevNode));
+            pPlayer = m_playerList.GetNext(pPrevNode);
         }
     }
     return pPlayer;
@@ -3100,7 +3102,7 @@ CSWCPlayer* CClientExoAppInternal::GetPlayerByCreatureName(const CExoString& nam
     while (pNode != 0) {
         if (pPlayer != 0 && pPlayer->m_sCharacterName == name)
             return pPlayer;
-        pPlayer = static_cast<CSWCPlayer*>(m_playerList.m_pInternal->GetNext(pNode));
+        pPlayer = m_playerList.GetNext(pNode);
     }
     return 0;
 }
@@ -4678,7 +4680,7 @@ void CClientExoAppInternal::SetCaptureEvents(const CExoString& sFile)
         m_pCaptureEventFile = new CExoFile(sPath, RESTYPE_TXT, CExoString("wb"));
         if (m_pCaptureEventFile != 0) {
             if (m_pCaptureEventFile->FileOpened()) {
-                unsigned long long nStartMs =
+                uint64_ll_t nStartMs =
                     g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000;
                 CExoString sStart;
                 sStart.Format(const_cast<char*>("Start: %d\n"), static_cast<int>(nStartMs));
@@ -4702,7 +4704,7 @@ void CClientExoAppInternal::SetCaptureEventPlayBack(const CExoString& sFile)
         delete m_pCaptureEventFile;
         m_pCaptureEventFile = 0;
         while (m_playbackEvents.m_pInternal->m_pHead != 0)
-            m_playbackEvents.m_pInternal->RemoveTail();
+            m_playbackEvents.RemoveTail();
     }
 
     CExoString sPath;
@@ -5695,7 +5697,8 @@ CClientExoAppInternal::CClientExoAppInternal()
     m_fEndGameDelay = 0;
     m_restoreMouseX = 0;
     m_restoreMouseY = 0;
-    m_nReserved15 = 0;
+    m_nReserved15[0] = 0;
+    m_nReserved15[1] = 0;
     m_nReserved14 = 0;
     m_videoEffectType = VIDEO_EFFECT_NONE;
     m_fMouseShowTimer = -1.0f;
@@ -6225,7 +6228,7 @@ void CClientExoAppInternal::Uninitialize()
 
     while (m_hitCheckIgnoreList.m_pInternal->m_pHead != 0) {
         unsigned long long* pId =
-            static_cast<unsigned long long*>(m_hitCheckIgnoreList.m_pInternal->RemoveHead());
+            static_cast<unsigned long long*>(m_hitCheckIgnoreList.RemoveHead());
         if (pId)
             delete pId;
     }
@@ -6258,7 +6261,7 @@ __attribute__((noinline))
 void CClientExoAppInternal::EmptyHitcheckIgnoreList()
 {
     while (m_hitCheckIgnoreList.m_pInternal->m_pHead != 0) {
-        unsigned long long* pId = static_cast<unsigned long long*>(m_hitCheckIgnoreList.m_pInternal->RemoveHead());
+        unsigned long long* pId = static_cast<unsigned long long*>(m_hitCheckIgnoreList.RemoveHead());
         if (pId)
             delete pId;
     }
@@ -7032,7 +7035,6 @@ public:
     char                _pad00[0x208];
     unsigned long long  m_nReserved1 = 0;
     int                 m_nReserved2 = 0;
-    char                _pad214[0x218-0x214];
     CExoString m_sReserved1;
     CExoString m_sReserved2;
     CExoString m_sReserved3;
@@ -7539,7 +7541,7 @@ void CClientExoAppInternal::StopServices()
     while (true) {
         if (m_playerList.m_pInternal->m_pHead == 0)
             break;
-        CSWCPlayer* pPlayer = static_cast<CSWCPlayer*>(m_playerList.m_pInternal->RemoveHead());
+        CSWCPlayer* pPlayer = m_playerList.RemoveHead();
         if (pPlayer == 0)
             continue;
         pPlayer->CSWCPlayer::~CSWCPlayer();   // a non-virtual destructor; nothing derives from it
@@ -7692,7 +7694,7 @@ const char* ClearLogCounters(char* a1);
 #if !KOTOR1
 static int g_nAnimMsgPos;
 #endif
-static unsigned long long g_starttime;
+static uint64_ll_t g_starttime;
 
 int CClientExoAppInternal::MainLoop()
 {
@@ -9931,8 +9933,8 @@ hilited:;
                     do {
                         if (pNode == 0)
                             break;
-                        pCreature->m_actionList.m_pInternal->GetAtPos(pNode);
-                        pCreature->m_actionList.m_pInternal->GetNext(pNode);
+                        pCreature->m_actionList.GetAtPos(pNode);
+                        pCreature->m_actionList.GetNext(pNode);
                     } while (i++ < 5 || pNode == 0);
                 }
                 pCreature->GetSpotCheckDistance();

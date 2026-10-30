@@ -29,7 +29,6 @@ public:
     CSWGuiButton m_btnBack;  // the page's commit button: SetState enables and colours it
     CSWGuiButton m_btnCancel;
     int          m_nCurrentRow;    // the row the page is currently on
-    char         _pad2bfc[0x2c00 - 0x2bfc];
 
     void SetParentPanel(CSWGuiPanel* pParentPanel);
 

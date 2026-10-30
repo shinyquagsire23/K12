@@ -4691,7 +4691,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetModuleName(int nCommand, int nAr
         sName = g_pAppManager->m_pServerExoApp->GetModule()->m_sModuleResourceName;
         int nColon = sName.Find(':', 0);
         if (nColon != -1)
-            sName = sName.Right((sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0) - nColon - 1);
+            sName = sName.Right(sName.GetLength() - nColon - 1);
     }
 #endif
 
@@ -10713,10 +10713,10 @@ int CSWVirtualMachineCommands::ExecuteCommandDeleteJournalWorldAllEntries(int nC
         return 0;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pPlayer != 0 && pPlayer->GetGameObject() != 0 && pMessage != 0)
             pMessage->SendServerToPlayerJournalDeleteWorldAll(pPlayer);
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
     return 0;
 }
@@ -10826,7 +10826,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetJournalEntry(int nCommand, int n
     nState = 0;
     pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
             pCreature = pPlayer->GetGameObject()->AsSWSCreature();
             if (pCreature != 0) {
@@ -10834,7 +10834,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetJournalEntry(int nCommand, int n
                 break;
             }
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
     if (!g_pVirtualMachine->StackPushInteger(nState))
         return VM_ERROR_PUSH_FAILED;
@@ -10857,13 +10857,13 @@ int CSWVirtualMachineCommands::ExecuteCommandRemoveJournalQuestEntry(int nComman
         return 1;
     pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
             pCreature = pPlayer->GetGameObject()->AsSWSCreature();
             if (pCreature != 0)
                 pCreature->GetJournal()->Destroy(sPlotId);
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
     return 0;
 }
@@ -11632,6 +11632,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetLightsaberPowered(int nCommand, 
     return 0;
 }
 
+#if !KOTOR1  // K2-only (no K1 counterpart)
 // ResetCreatureAILevel: re-applies the creature's own stored AI level to the AI master, undoing any
 // SetAILevel override.
 int CSWVirtualMachineCommands::ExecuteCommandResetCreatureAILevel(int nCommand, int nArgCount)
@@ -11650,6 +11651,7 @@ int CSWVirtualMachineCommands::ExecuteCommandResetCreatureAILevel(int nCommand, 
     }
     return 0;
 }
+#endif
 
 // GetHasSpell: whether the creature knows the given spell or power. Command 784 asks about the raw
 // known list; every other id routed here asks the filtered one.
@@ -14836,6 +14838,7 @@ int CSWVirtualMachineCommands::ExecuteCommandEffectForceShield(int nCommand, int
     return 0;
 }
 
+#if !KOTOR1  // K2-only (no K1 counterpart)
 // SetCreatureAILevel: re-buckets a creature in the AI master. The requested level is only honoured
 // below 5 -- anything else becomes 3 -- and the creature's own stored level, which ResetCreatureAILevel
 // restores, is refreshed from its current AI level first.
@@ -14859,6 +14862,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetCreatureAILevel(int nCommand, in
     }
     return 0;
 }
+#endif
 
 // SetGlobalLocation: the GetGlobalLocation writer. The location arrives as a heap-allocated structure
 // this command owns -- it is deleted and the slot cleared before returning. The name-pop failure answers
@@ -15636,10 +15640,10 @@ int CSWVirtualMachineCommands::ExecuteCommandDeleteJournalWorldEntry(int nComman
         return 0;
     pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pPlayer != 0 && pPlayer->GetGameObject() != 0 && pMessage != 0)
             pMessage->SendServerToPlayerJournalDeleteWorld(pPlayer, nEntry);
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
     return 0;
 }
@@ -15665,10 +15669,10 @@ int CSWVirtualMachineCommands::ExecuteCommandDeleteJournalWorldEntryStrref(int n
         return 0;
     pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pPlayer != 0 && pPlayer->GetGameObject() != 0 && pMessage != 0)
             pMessage->SendServerToPlayerJournalDeleteWorldStrref(pPlayer, nStrRef);
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
     return 0;
 }
@@ -15827,7 +15831,8 @@ int CSWVirtualMachineCommands::ExecuteCommandGetAlignment(int nCommand, int nArg
 
 // GetDamageDealtByType: how much of the last damage OBJECT_SELF took came in with the given damage flag.
 // Only creatures, placeables and doors keep the per-type breakdown, and the flag has to be a single real
-// damage bit -- the base-damage sentinel and anything above it are rejected before the lookup.
+// damage bit -- the base-damage sentinel and anything above it are rejected before the lookup (K1 stops
+// below sonic: sonic, ion, blaster and poison answer 0).
 int CSWVirtualMachineCommands::ExecuteCommandGetDamageDealtByType(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
@@ -15844,7 +15849,11 @@ int CSWVirtualMachineCommands::ExecuteCommandGetDamageDealtByType(int nCommand, 
         return VM_ERROR_POP_FAILED;
     int nDamage = 0;
     if (pObject != 0 && nDamageFlag >= 1
+#if KOTOR1
+        && nDamageFlag < CSWSEffectListHandler::DAMAGE_FLAG_SONIC
+#else
         && nDamageFlag < CSWSEffectListHandler::DAMAGE_FLAG_BASE_DAMAGE
+#endif
         && (pObject->m_objectType == GAME_OBJECT_TYPE_CREATURE || pObject->m_objectType == GAME_OBJECT_TYPE_PLACEABLE
             || pObject->m_objectType == GAME_OBJECT_TYPE_DOOR))
         nDamage = pObject->GetLastDamageAmountByFlags(nDamageFlag);
@@ -15986,10 +15995,10 @@ int CSWVirtualMachineCommands::ExecuteCommandSetMapPinEnabled(int nCommand, int 
             return 0;
         pNodePos = ppPlayers->m_pInternal->m_pHead;
         while (pNodePos != 0) {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
             if (pPlayer != 0 && pPlayer->GetGameObject() != 0 && pMessage != 0)
                 pMessage->SendServerToPlayerMapPinEnabled(pPlayer, oidWaypoint, bEnabled);
-            ppPlayers->m_pInternal->GetNext(pNodePos);
+            ppPlayers->GetNext(pNodePos);
         }
     }
     return 0;
@@ -17320,11 +17329,11 @@ int CSWVirtualMachineCommands::ExecuteCommandAddJournalWorldEntry(int nCommand, 
     if (ppPlayers != 0) {
         CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
         while (pNodePos != 0) {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
             if (pPlayer != 0 && pPlayer->GetGameObject() != 0 && pMessage != 0)
                 pMessage->SendServerToPlayerJournalAddWorld(pPlayer, nIndex, sName, sText, nDay,
                                                             nTime);
-            ppPlayers->m_pInternal->GetNext(pNodePos);
+            ppPlayers->GetNext(pNodePos);
         }
     }
     return 0;
@@ -17358,11 +17367,11 @@ int CSWVirtualMachineCommands::ExecuteCommandAddJournalWorldEntryStrref(int nCom
         return 0;
     pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pPlayer != 0 && pPlayer->GetGameObject() != 0 && pMessage != 0)
             pMessage->SendServerToPlayerJournalAddWorldStrref(pPlayer, nNameStrRef, nTextStrRef,
                                                               nDay, nTime);
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
     return 0;
 }
@@ -18528,7 +18537,7 @@ int CSWVirtualMachineCommands::ExecuteCommandAddJournalQuestEntry(int nCommand, 
         return 1;
     pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
             CSWSCreature* pCreature = pPlayer->GetGameObject()->AsSWSCreature();
             if (pCreature != 0
@@ -18540,7 +18549,7 @@ int CSWVirtualMachineCommands::ExecuteCommandAddJournalQuestEntry(int nCommand, 
                 nQuestXP = pCreature->GetJournal()->GetQuestEntryXP(sPlotId);
             }
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
     if (nQuestXP != 0 && g_pAppManager->m_pServerExoApp->GetPartyTable() != 0) {
         g_pAppManager->m_pServerExoApp->GetPartyTable()->DistributeExperience(nQuestXP, 1);

@@ -380,7 +380,7 @@ int CSWCMessage::HandleServerToPlayerArea(unsigned char nType)
             // Push one frame so the load screen is on screen before the load stalls.
             g_pAppManager->m_pClientExoApp->GetModule()->Update(1.0e-8f);
             SetClearColor(const_cast<char*>("0 0 0"));
-            uint64_t nStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+            uint64_ll_t nStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
             int64_t nDelta = g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTimeDifference();
             K2_UNUSED(nStart);
             K2_UNUSED(nDelta);
@@ -556,8 +556,8 @@ int CSWCMessage::HandleServerToPlayerChat(unsigned char nType)
     {
         // Talk-table token expansion runs twice, for the bubble copy with the gender bit forced on
         // and for the logged copy with it off.
-        g_pSWTlkTable->ParseStr(sBubbleText, pTargetObj, 1, 1);
-        g_pSWTlkTable->ParseStr(sText, pTargetObj, 1, 0);
+        g_pSWTlkTable->ParseStr(sBubbleText, pTargetObj, 0, 1);
+        g_pSWTlkTable->ParseStr(sText, pTargetObj, 0, 0);
 
         bHaveName = 1;
         fBubbleScale = 0.75f;

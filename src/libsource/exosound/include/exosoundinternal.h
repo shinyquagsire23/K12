@@ -34,7 +34,6 @@ struct C2DVoice {
     int  m_nChannel;
     int  m_bInUse;
     int  m_nReserved1;
-    char _pad14[0x18 - 0x14];
 #endif
 };
 struct C3DVoice {
@@ -47,7 +46,6 @@ struct C3DVoice {
     int  m_nChannel;
     int  m_bInUse;
     int  m_nReserved1;
-    char _pad14[0x18 - 0x14];
 #endif
 };
 
@@ -143,9 +141,7 @@ public:
     int           m_bMuted;
     unsigned char m_environment;
 #if KOTOR1
-    char          _pad15[3];
 #else
-    char          _pad15[0x18 - 0x15];
 #endif
     float         m_fAmbientScale;
     float         m_fAmbientScaleRampStart;
@@ -155,10 +151,7 @@ public:
     unsigned char m_nNumber2DVoices;
     unsigned char m_nNumber3DVoices;
     unsigned char m_maxGroup;
-#if KOTOR1  // K1: the tail here is padding
-    char          _pad2f[5];
-#else
-    char          _pad2f[0x30 - 0x2f];
+#if !KOTOR1
 #endif
     C2DVoice* m_pa2DVoices;
     C3DVoice* m_pa3DVoices;
@@ -184,7 +177,6 @@ public:
     Vector        m_vListenerOrientation;
     Vector        m_vListenerUp;
     Vector        m_vListenerPosition;
-    char          _padcc[0xd0 - 0xcc];
     CExoLinkedListNode* m_pOcclusionCursor;
     int           m_nOcclusionCursorList;
     unsigned int  m_nOcclusionIdleFrames;
@@ -196,18 +188,15 @@ public:
     unsigned int  m_nOcclusionTimeUsed;
     unsigned int  m_nObstructionTests;
     int           m_bDisplayOcclusionInfo;
-    int           m_nReserved1;
-    int           m_nReserved2;
+    void*         m_pReserved1;
     int           m_bHardwareSound;
     int           m_nEAX;
     int           m_nBestEAXAvailable;
-    char          _pad114[0x118 - 0x114];
     CExoArrayList<CAllowedSoundProvider*> m_aProviders;
     int           m_nLastRenderTime;
     int           m_aSoundModes[10];
     int           m_nSoundModeIndex;
     int           m_bLostFocusPaused;
-    char          _pad15c[0x160 - 0x15c];
     CExoStreamingSoundSource* m_pStreamingSoundSource;
     FModAudioSystem m_audioSystem;
 };

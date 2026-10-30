@@ -28,7 +28,6 @@ public:
     int           m_bLoaded;
     unsigned char m_nListState;
     unsigned char m_nPriorityGroup;
-    char          _pad42[0x48 - 0x42];
     C2DVoice*     m_p2DVoice;
     C3DVoice*     m_p3DVoice;
 #if !KOTOR1  // K1 has neither slot
@@ -53,7 +52,6 @@ public:
     Vector        m_vPosition;
     unsigned char m_nGroupVolume;
     unsigned char m_nVolume;
-    char          _padbe[0xc0 - 0xbe];
     int           m_nPlaybackPosition;
     Vector        m_vOcclusionPosition;
     unsigned int  m_nOcclusionTime;

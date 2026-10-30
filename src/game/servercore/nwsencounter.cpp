@@ -822,7 +822,7 @@ void CSWSEncounter::SpawnCreatureFromSpawnList() {
 // periodic signal event and runs queued actions.
 void CSWSEncounter::AIUpdate() {
     SpawnCreatureFromSpawnList();
-    unsigned long long timerSnapshot = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t timerSnapshot = g_pExoBase->m_pTimers->GetHighResolutionTimer();
 
     unsigned int day, tod;
     g_pAppManager->m_pServerExoApp->GetWorldTimer()->GetWorldTime(&day, &tod);

@@ -68,7 +68,6 @@ public:
     unsigned int m_nObjectType;
     unsigned int m_nObjectId;
     unsigned char m_bPendingDelete;
-    char _pad11[0x18 - 0x11];
     CExoString m_sName;
     SafePointer<CAurObject> m_spObject;
     CSWMGBullet m_bullet;

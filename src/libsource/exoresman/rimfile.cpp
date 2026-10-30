@@ -10,6 +10,7 @@
 #include "port/libcbase.h"
 #include "port/libcstring.h"
 #include "restype.h"
+#include "exostringinline.h"
 
 #define CRIM_MODE_READ  "rb"
 #define CRIM_MODE_WRITE "wb"
@@ -81,7 +82,7 @@ void CRIMRes::SetName(CExoString& sName)
         memcpy(m_szName, pszName, nLength);  // idiom-exempt: runtime length
 #endif
 #else
-    int nLength = sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0;
+    int nLength = sName.GetLength();
 #ifdef K2_FIX_ENGINE_BUGS
     if (nLength > static_cast<int>(sizeof(m_szName)))
         nLength = sizeof(m_szName);
@@ -166,7 +167,7 @@ int CRIMFile::Reset()
     // unlike in CRIMRes::Reset, because the record is about to be deleted.
     if (m_lResources.m_pInternal->m_pHead != 0)
     {
-        CRIMRes* pRes = static_cast<CRIMRes*>(m_lResources.m_pInternal->RemoveHead());
+        CRIMRes* pRes = m_lResources.RemoveHead();
         while (true)
         {
             if (pRes != 0)
@@ -186,7 +187,7 @@ int CRIMFile::Reset()
             }
             if (m_lResources.m_pInternal->m_pHead == 0)
                 break;
-            pRes = static_cast<CRIMRes*>(m_lResources.m_pInternal->RemoveHead());
+            pRes = m_lResources.RemoveHead();
         }
     }
     return 1;

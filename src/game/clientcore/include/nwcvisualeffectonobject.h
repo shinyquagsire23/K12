@@ -2,6 +2,7 @@
 
 #include "Vector.h"
 #include "exostring.h"
+#include "k2layout.h"
 
 class CAurObject;
 class CSWCObject;
@@ -157,11 +158,9 @@ public:
     Vector         m_vSelfIllum;
     Vector         m_vSelfIllumTarget;
     Vector         m_vSelfIllumBlend;
-    char           _pad024[0x28-0x24];
     CExoString     m_sSourceNode;
     CExoString     m_sTargetNode;
     Vector         m_vTargetPosition;
-    char           _pad054[4];
     unsigned long long m_gameObjectId;
     unsigned long long m_sourceObjectId;
     unsigned long long m_ownerObjectId;
@@ -170,7 +169,6 @@ public:
     char           _pad082[2];
     int            m_aReserved1[3];
     short          m_aReserved2[3];
-    char           _pad096[2];
     CAurObject*    m_apSlotEffect[3];
     CAurObject*    m_apReserved1[3];
     CAurObject*    m_pLight;
@@ -181,7 +179,6 @@ public:
     unsigned short m_nEffectId0;
     unsigned short m_nEffectId1;
     unsigned short m_nEffectId2;
-    char           _pad0e6[0xe8-0xe6];
     int            m_bShown;
     int            m_bEffect0Expired;
     int            m_bEffect1Expired;
@@ -204,14 +201,12 @@ public:
     int            m_bAttached;
     float          m_fSavedViewAngle;
     float          m_fSavedCameraDistance;
-    char           _pad12c[0x130-0x12c];
     CExoSoundSource* m_pSoundSource;
     int            m_bRumbleDone;
     int            m_bHardCodedApplied;
 #if !KOTOR1
     // K1 has no mask hook, so this field does not exist there.
     unsigned char  m_bOnHeadModel;
-    char           _pad141[0x148-0x141];
 #endif
 
     static unsigned short m_nMotionBlurVFXCount;

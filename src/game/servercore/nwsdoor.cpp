@@ -68,7 +68,7 @@ CResRef CSWSDoor::GetDialogResref() {
 // list and advances the action queue. The gate is on the time-of-day delta alone, so a heartbeat
 // straddling midnight is skipped, and a first tick after load only stamps the timestamps.
 void CSWSDoor::AIUpdate() {
-    unsigned long long timerSnapshot = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t timerSnapshot = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     unsigned int day, tod;
     g_pAppManager->m_pServerExoApp->GetWorldTimer()->GetWorldTime(&day, &tod);
     unsigned int elapsedDay, elapsedTod;
@@ -590,12 +590,12 @@ unsigned char CSWSDoor::GetDetectDC() {
 #endif // !KOTOR1
 
 Vector CSWSDoor::GetActionPoint(int state, unsigned char pointIndex) {
-    if (state == SERVER_ANIMATION_DOOR_OPEN2)
-        return m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN2]->GetOpenLocation(pointIndex);
-    if (state == SERVER_ANIMATION_DOOR_OPEN1)
-        return m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN1]->GetOpenLocation(pointIndex);
     if (state == SERVER_ANIMATION_CLOSED)
         return m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->GetOpenLocation(pointIndex);
+    if (state == SERVER_ANIMATION_DOOR_OPEN1)
+        return m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN1]->GetOpenLocation(pointIndex);
+    if (state == SERVER_ANIMATION_DOOR_OPEN2)
+        return m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN2]->GetOpenLocation(pointIndex);
     Vector v;
     v.x = -9999999.0f;
     v.y = -9999999.0f;

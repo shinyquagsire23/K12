@@ -49,8 +49,7 @@ int g_generalStreamingHandlesAvailable;
 
 CExoSoundInternal::CExoSoundInternal()
 {
-    m_nReserved1 = 0;
-    m_nReserved2 = 0;
+    m_pReserved1 = 0;
     m_bInitialized = 0;
     m_paGroups = 0;
     m_maxGroup = 0;

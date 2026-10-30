@@ -49,7 +49,6 @@ public:
     CSWGuiLabel        m_replyLabels[20];
     unsigned int       m_aReplyIds[20];
 #else
-    char               _padb4[0xb8-0xb4];
     CSWGuiLabel        m_replyLabels[30];
     // One id per reply, parallel to m_replyLabels.
     unsigned int       m_aReplyIds[30];
@@ -71,7 +70,6 @@ public:
         DIALOGMSG_DIALOG_ENDED = 0x04,
     };
     unsigned char      m_nMessageFlags;
-    char               _pad3af1[0x3af8-0x3af1];
 
     // Returns the reply's object id element, or -1 when the index is out of range.
     unsigned int GetReplyIndex(int index);
@@ -236,7 +234,6 @@ public:
     CSWGuiImage              m_imgPanLeft;
     CSWGuiImage              m_imgPanRight;
 #else
-    char                     _pad86c4[0x86c8 - 0x86c4];
 #endif
 };
 
@@ -376,7 +373,6 @@ public:
     CSWGuiButton      m_replyButtons[16];
     // Zeroed by SetReplies immediately before it re-extents the buttons.
     int               m_nReserved1;
-    char              _pad2aec[0x2af0 - 0x2aec];
     // The owning conversation panel. HandleButtonChoice forwards a reply-button click to its
     // SelectReply, and SetReplies reads its layout value.
     CSWGuiDialogCinematic* m_pDialog;

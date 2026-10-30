@@ -76,7 +76,6 @@ public:
 
     // The play thread's stop flag.
     int   m_bStopThread;
-    char  _pad04[0x08 - 0x04];
     // The play thread's handle, waited on by the play-thread procedure. The constructor leaves it.
     void* m_hThread;
     // The movie queue.
@@ -87,12 +86,12 @@ public:
     int   m_bDeactivated;
     int   m_nDeactivationArg;
     int   m_bShuttingDown;
-    char  _pad34[0x38 - 0x34];
     CExoString m_sReserved1;
     // True while a movie is playing.
     int   m_bMoviePlaying;
     int   m_nReserved2;
-    char  _pad50[0x60 - 0x50];
+    void* m_pReserved5;
+    void* m_pReserved6;
     CExoCriticalSection m_crit;
     // Owned; the destructor deletes it. Never assigned in this unit.
     CExoMovieReservedObject* m_pReserved3;
@@ -102,15 +101,13 @@ public:
     char  _pad80[0x90 - 0x80];
     // Nonzero gates the teardown of the field above.
     int   m_bPaused;
-    char  _pad94[0x98 - 0x94];
     CExoString m_sMoviePath;
     void* m_pReserved4;
-    char  _padB0[0xb8 - 0xb0];
+    void* m_pReserved7;
     int   m_nVertexPool;
     char  _padBC[0xcc - 0xbc];
     int   m_bLoop;
     CExoArrayList<int> m_aInts;
     // The per-movie chapter value, written by StartMovie from a bool and read by the play path.
     int   m_bSkippable;
-    char  _padE4[0xe8 - 0xe4];
 };

@@ -110,7 +110,6 @@ public:
     unsigned char m_bCursorShown;
     unsigned char m_bIpadLayout;
     unsigned char m_bNoBackground;
-    char _pad117[0x118 - 0x117];
     CAurGUIImageInternal* m_pBackgroundImage;
     CAurGUIImageInternal* m_pScrollbarImage;
     CAurGUIImageInternal* m_pReplyUpImage;

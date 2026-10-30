@@ -123,5 +123,4 @@ public:
     unsigned char m_nSortBy;
     unsigned char m_bModified : 1;
     unsigned char m_nReserved1 : 7;
-    char _pad22[0x28 - 0x22];
 };

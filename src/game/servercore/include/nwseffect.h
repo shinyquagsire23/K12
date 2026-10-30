@@ -1,5 +1,6 @@
 #pragma once
 
+#include "k2stdint.h"
 #include "exostring.h"
 
 class CResGFF;
@@ -39,7 +40,7 @@ enum {
 // them; do not rename either by bare identifier.
 class CGameEffect {
 public:
-    unsigned long long m_effectId;
+    uint64_ll_t    m_effectId;
     unsigned short m_subType;
     unsigned short m_durationTypeBits;
     float          m_fDuration;
@@ -49,22 +50,19 @@ public:
     int            m_spellId;
     int            m_bIsExposed;
     int            m_nCasterLevel;
-    char           _pad2c[0x30-0x2c];
     CGameEffect*   m_pLinkedEffect1;
     CGameEffect*   m_pLinkedEffect2;
 
     // The integer parameters are variable-length, a heap array of m_numIntegers ints, unlike the
     // three fixed slot runs below it.
     int            m_numIntegers;
-    char           _pad44[0x48-0x44];
     int*           m_pIntegers;
     float          m_fParams[4];
     CExoString     m_sParams[6];
     unsigned long long m_objectIds[4];
     int            m_bSkipOnLoad;
-    char           _pade4[0xe8-0xe4];
 
-    static unsigned long long m_nNextID;
+    static uint64_ll_t m_nNextID;
 
     static const unsigned short DURATION_TYPE_INSTANTANEOUS;
     static const unsigned short DURATION_TYPE_TEMPORARY;

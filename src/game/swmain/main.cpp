@@ -35,6 +35,7 @@
 #include "restype.h"
 #include "port/win32const.h"
 #include "port/sdlconst.h"
+#include "port/k2viewerapi.h"
 
 // The Xbox-era memory budgets XbxMem reports against, in bytes.
 enum {
@@ -143,6 +144,9 @@ extern "C" int SystemParametersInfoA(unsigned int uiAction, unsigned int uiParam
 int g_nMouseTrails;
 int g_nScreenSaverEnabled;
 HWND__* g_hWnd;
+#ifdef K2_HOST_BUILD
+K2HostViewer* g_pK2HostViewer;
+#endif
 
 static int sprintf_s(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
 {
@@ -535,8 +539,8 @@ HWND__* g_hRenderWnd;
 extern char g_GamePauseNeeded;
 extern int  Ios_escPress;
 extern int  g_bExitProgram;
-unsigned long long s_focusLostTime;
-unsigned long long g_nCurrentSessionStartFILETIME;
+uint64_ll_t s_focusLostTime;
+uint64_ll_t g_nCurrentSessionStartFILETIME;
 extern CExoSound* g_pExoSound;
 // The build and version strings. Only the build number has a literal; the rest are filled in at
 // startup.
@@ -615,9 +619,9 @@ void GameGainedFocus()
 {
 #if KOTOR1  // K1: only the session-time bookkeeping
     if (g_pAppManager->m_pClientExoApp != 0) {
-        unsigned long long nNow;
+        uint64_ll_t nNow;
         GetSystemTimeAsFileTime(&nNow);
-        unsigned long long nElapsed = nNow - s_focusLostTime;
+        uint64_ll_t nElapsed = nNow - s_focusLostTime;
         s_focusLostTime = nElapsed;
         g_nCurrentSessionStartFILETIME += nElapsed;
     }
@@ -626,9 +630,9 @@ void GameGainedFocus()
         if (g_nPauseStateOnDeactivate == 0)
             g_pAppManager->m_pClientExoApp->SetPauseState(2, 0, 0);
 
-        unsigned long long nNow;
+        uint64_ll_t nNow;
         GetSystemTimeAsFileTime(&nNow);
-        unsigned long long nElapsed = nNow - s_focusLostTime;
+        uint64_ll_t nElapsed = nNow - s_focusLostTime;
         s_focusLostTime = nElapsed;
         g_nCurrentSessionStartFILETIME += nElapsed;
     }
@@ -646,7 +650,7 @@ void GameLostFocus()
 {
 #if KOTOR1  // K1: no auto-pause; a running minigame only gets the escape press
     if (g_pAppManager->m_pClientExoApp != 0) {
-        unsigned long long nNow;
+        uint64_ll_t nNow;
         GetSystemTimeAsFileTime(&nNow);
         s_focusLostTime = nNow;
     }
@@ -664,7 +668,7 @@ void GameLostFocus()
             g_GamePauseNeeded = 1;
         }
 
-        unsigned long long nNow;
+        uint64_ll_t nNow;
         GetSystemTimeAsFileTime(&nNow);
         s_focusLostTime = nNow;
     }
@@ -2175,7 +2179,7 @@ unsigned int mac_starttime;
 unsigned int mac_endtime;
 int g_nResetPriority;
 int g_nPriorityClass;
-static unsigned long long g_starttime;
+static uint64_ll_t g_starttime;
 
 #if !KOTOR1  // K1's SDL port has its own entry point
 #ifndef K2_MOBILE_OPT
@@ -2194,9 +2198,9 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
 
     static int    s_framesSinceUpdate;
     static double s_displayFps;
-    static unsigned long long s_fpsWaitStamp;
+    static uint64_ll_t s_fpsWaitStamp;
 #ifndef K2_QOL_FRAME_PACING
-    static unsigned long long s_fpsLimitStamp;
+    static uint64_ll_t s_fpsLimitStamp;
 #endif
 
     ASLPlat_SetWorkingDirectoryToResources();
@@ -2269,12 +2273,20 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
     g_pAppManager->m_pClientExoApp->SetLoadStep(3, 23);
     g_pAppManager->m_pClientExoApp->SetLoadStep(4, 23);
 
+#ifdef K2_HOST_BUILD
+    if (g_pK2HostViewer == 0)
+#endif
     g_pAppManager->m_pClientExoApp->BeginIntro();
 
     CExoString sSaveDir;
     sSaveDir.Format(const_cast<char*>("SAVES:%06d - %s"), 0, "tempsave");
     g_pExoResMan->NukeDirectory(sSaveDir, 1, 1);
 
+#ifdef K2_HOST_BUILD
+    if (g_pK2HostViewer != 0)
+        g_pK2HostViewer->Start();
+    else
+#endif
     g_pAppManager->m_pClientExoApp->DisplayMainMenu(1);
 
     bool bFirstFrame = true;
@@ -2319,6 +2331,11 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
         AurDisableHeadLight();
 
         g_starttime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+#ifdef K2_HOST_BUILD
+        if (g_pK2HostViewer != 0)
+            g_bExitProgram |= g_pK2HostViewer->Frame();
+        else
+#endif
         g_bExitProgram |= g_pAppManager->m_pClientExoApp->MainLoop();
         g_ClientUpdateTime = static_cast<float>(g_pExoBase->m_pTimers->GetHighResolutionTimer() - g_starttime)
                              * 0.001f;
@@ -2423,7 +2440,7 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
 #if KOTOR1
 // K1's SDL frame entry points: SDL_main owns the loop and calls these in place of WinMain's
 // phases.
-static unsigned long long s_fpsWaitStamp;
+static uint64_ll_t s_fpsWaitStamp;
 float g_GameLoopTime;                        // last frame's total time in ms
 void MacCreateBinkShaders();
 
@@ -2471,10 +2488,16 @@ void GameInit()
     g_pAppManager->m_pClientExoApp->SetLoadStep(3, 23);
     g_pAppManager->m_pClientExoApp->SetLoadStep(4, 23);
 
-    if (s_playIntoMovies)
-        g_pAppManager->m_pClientExoApp->BeginIntro();
-
-    g_pAppManager->m_pClientExoApp->DisplayMainMenu(1);
+#ifdef K2_HOST_BUILD
+    if (g_pK2HostViewer != 0)
+        g_pK2HostViewer->Start();
+    else
+#endif
+    {
+        if (s_playIntoMovies)
+            g_pAppManager->m_pClientExoApp->BeginIntro();
+        g_pAppManager->m_pClientExoApp->DisplayMainMenu(1);
+    }
 
     if (g_nReInitializing != 0)
         ReInitAurora(g_nScreenWidth, g_nScreenHeight, g_nBitsPerPixel, g_nReInitializing == 2, 0);
@@ -2484,7 +2507,7 @@ void GameInit()
 // the swap, plus the frame-time stamp.
 void GameUpdate()
 {
-    unsigned long long nFrameStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t nFrameStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
 
     memoryused = static_cast<int>(262144.0f - memoryfree);
 
@@ -2511,6 +2534,11 @@ void GameUpdate()
     AurDisableHeadLight();
 
     g_starttime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+#ifdef K2_HOST_BUILD
+    if (g_pK2HostViewer != 0)
+        g_bExitProgram |= g_pK2HostViewer->Frame();
+    else
+#endif
     g_bExitProgram |= g_pAppManager->m_pClientExoApp->MainLoop();
     g_ClientUpdateTime = static_cast<float>(g_pExoBase->m_pTimers->GetHighResolutionTimer() - g_starttime)
                          * 0.001f;
@@ -2544,7 +2572,7 @@ void GameUpdate()
         float fFrameTime = 1000.0f / displayFPS;
         float fElapsed = static_cast<float>(g_pExoBase->m_pTimers->GetHighResolutionTimer() - s_fpsWaitStamp)
                          * 0.001f;
-        unsigned long long nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+        uint64_ll_t nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         while (fElapsed < fFrameTime) {
             fElapsed = static_cast<float>(g_pExoBase->m_pTimers->GetHighResolutionTimer() - s_fpsWaitStamp)
                        * 0.001f;

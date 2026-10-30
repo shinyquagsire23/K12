@@ -94,7 +94,6 @@ public:
     int           m_nEntryIndex;
     unsigned char m_bNewHilight : 1;
     unsigned char _rest26c      : 7;
-    char          _pad26d[0x270 - 0x26d];
 
 #if !KOTOR1  // K1 rows only ever take the purple highlight (PopulateItemListBox writes it out)
     // Turns the new-quest highlight on (a half-alpha bonus-coloured frame) or back to the plain

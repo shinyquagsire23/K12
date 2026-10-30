@@ -2730,8 +2730,8 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
     bNewItem = static_cast<unsigned char>(bIsNewItem);
 
     if (oidItem == OBJECT_INVALID) {
-        m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
-        m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
+        m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"));
+        m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"));
         m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_TEXT_NONE));
         m_textCount.m_params = CSWGuiTextParams(CExoString(), CResRef("fnt_d16x16"),
                                                 CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2742,8 +2742,8 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
         CSWSItem* pItem =
             pServer->GetItemByGameObjectID(pServer->ClientToServerObjectId(oidItem));
         if (pItem == 0) {
-            m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
-            m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
+            m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"));
+            m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"));
             m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_TEXT_NONE));
             m_textCount.m_params = CSWGuiTextParams(CExoString(), CResRef("fnt_d16x16"),
                                                     CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2771,17 +2771,17 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
             int nStack = pItem->m_stackCount;
             if (nStack >= 2) {
                 if (nStack >= 100) {
-                    m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_7"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_7"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_7"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_7"));
                     sCount.Format(const_cast<char*>("%d"), nStack);
                 } else {
-                    m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_6"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_6"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_6"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_6"));
                     sCount.Format(const_cast<char*>("%d"), nStack);
                 }
             } else {
-                m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
-                m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
+                m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"));
+                m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"));
             }
             m_textCount.m_params = CSWGuiTextParams(sCount, CResRef("fnt_d16x16"),
                                                     CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2790,7 +2790,7 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
     }
 
     m_borderIcon.m_params.m_flags.nFillStyle = 2;
-    m_borderIcon.m_params.SetFillImage(resRefIcon, 0);
+    m_borderIcon.m_params.SetFillImage(resRefIcon);
 #ifndef K2_UI_TOUCH
     // The new count takes the row's layout, right-aligned at the icon's corner, its font at the
     // layout's scale. This also applies to a row already laid out.
@@ -3820,16 +3820,16 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped, 
             nStack = pItem->m_stackCount;
             if (nStack >= 2) {
                 if (nStack >= 100) {
-                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"));
                 } else {
-                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"));
                 }
                 sCount.Format(const_cast<char*>("%d"), nStack);
             } else {
-                m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
-                m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
+                m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
+                m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
             }
             m_textCount.m_params = CSWGuiTextParams(sCount, CResRef("fnt_d16x16"),
                                                     m_text.m_params.m_color, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -3838,7 +3838,7 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped, 
     // A stretch fill on the icon border, then the item's own icon.
     CSWGuiBorderParams& iconParams = m_borderIcon.m_params;
     iconParams.m_flags.nFillStyle = 2;
-    iconParams.SetFillImage(resRefIcon, 0);
+    iconParams.SetFillImage(resRefIcon);
 }
 #endif
 

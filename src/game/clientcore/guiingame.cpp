@@ -1301,7 +1301,7 @@ CExoString CGuiInGame::DialogNodeSpanningTextParse(const CExoString& text)
 #else
     origBuf = text.m_sString ? new char[strlen(text.m_sString) + 1] : new char[1];
     strcpy(origBuf, text.CStr());
-    origBuf[text.m_sString ? static_cast<int>(strlen(text.m_sString)) : 0] = '\0';
+    origBuf[text.GetLength()] = '\0';
 #endif
 
     char* buf;
@@ -1384,7 +1384,7 @@ void CGuiInGame::SetLockObjectOrientationInDialog(unsigned long long objId, int 
                 if (*static_cast<unsigned long long*>(pData) == objId) return;
                 pData = m_orientExclusionList.m_pInternal->GetNext(pos);
             }
-            unsigned long long* pNew = static_cast<unsigned long long*>(operator new(8));
+            unsigned long long* pNew = static_cast<unsigned long long*>(operator new(sizeof(unsigned long long)));
             *pNew = objId;
             m_orientExclusionList.m_pInternal->AddHead(pNew);
         }
@@ -1416,7 +1416,7 @@ void CGuiInGame::SetLockHeadFollowInDialog(unsigned long long objId, int lock)
                 if (*static_cast<unsigned long long*>(pData) == objId) return;
                 pData = m_headFollowExclusionList.m_pInternal->GetNext(pos);
             }
-            unsigned long long* pNew = static_cast<unsigned long long*>(operator new(8));
+            unsigned long long* pNew = static_cast<unsigned long long*>(operator new(sizeof(unsigned long long)));
             *pNew = objId;
             m_headFollowExclusionList.m_pInternal->AddHead(pNew);
             if (pGameObj->AsSWCCreature() != 0) {
@@ -2291,7 +2291,7 @@ int CGuiInGame::CloseDialog()
 
     g_pAppManager->m_pClientExoApp->DisableVideoEffect();
     while (m_dialogNonDependantList.m_pInternal->m_pHead != 0) {
-        void* pData = m_dialogNonDependantList.m_pInternal->RemoveHead();
+        void* pData = m_dialogNonDependantList.RemoveHead();
         if (pData != 0) {
             static_cast<CExoString*>(pData)->~CExoString();
             operator delete(pData);
@@ -2697,7 +2697,7 @@ bool CGuiInGame::HandleDialogReplyChosen(unsigned int a1, unsigned int a2, unsig
         CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
         unsigned long long clientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
         CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
-        g_pSWTlkTable->ParseStr(localText, pGameObj, 1, 0);
+        g_pSWTlkTable->ParseStr(localText, pGameObj, 0, 0);
     }
     return true;
 }
@@ -2819,7 +2819,7 @@ bool CGuiInGame::HandleDialogEntry(unsigned int a1, unsigned long long objIdA, u
     CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerCreatureId);
     unsigned long long clientId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
     CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(clientId);
-    g_pSWTlkTable->ParseStr(localText, pGameObj, 1, 0);
+    g_pSWTlkTable->ParseStr(localText, pGameObj, 0, 0);
 
     localText = DialogNodeSpanningTextParse(localText);
     AppendToDialogBuffer(localText, objIdC);
@@ -3135,7 +3135,7 @@ void CGuiInGame::ClearDialogNonDependantList()
 {
     if (m_dialogNonDependantList.m_pInternal->m_pHead == 0) return;
     do {
-        void* data = m_dialogNonDependantList.m_pInternal->RemoveHead();
+        void* data = m_dialogNonDependantList.RemoveHead();
         if (data != 0) {
             static_cast<CExoString*>(data)->~CExoString();
             operator delete(data);
@@ -3932,7 +3932,7 @@ int CGuiInGame::IsOnDialogNonDependantList(const CExoString& text)
     do {
         const char* str = static_cast<CExoString*>(pData)->CStr();
         if (text.CompareNoCase(str) != 0) return true;
-        pData = m_dialogNonDependantList.m_pInternal->GetNext(pos);
+        pData = m_dialogNonDependantList.GetNext(pos);
     } while (pos != 0);
     return false;
 }
@@ -3943,7 +3943,7 @@ void CGuiInGame::AddToDialogNonDependantList(const CExoString& text)
         if (!IsOnDialogNonDependantList(text)) {
             CExoString* pNew = new CExoString();
             *pNew = text;
-            m_dialogNonDependantList.m_pInternal->AddHead(pNew);
+            m_dialogNonDependantList.AddHead(pNew);
         }
     }
 }
@@ -4325,7 +4325,7 @@ bool CGuiInGame::GetCanOrientInDialog(unsigned long long objId)
     void* pData = m_orientExclusionList.m_pInternal->m_pHead ? m_orientExclusionList.m_pInternal->m_pHead->m_pData : 0;
     while (pos != 0) {
         if (*static_cast<unsigned long long*>(pData) == objId) return false;
-        pData = m_orientExclusionList.m_pInternal->GetNext(pos);
+        pData = m_orientExclusionList.GetNext(pos);
     }
     return true;
 }
@@ -4337,7 +4337,7 @@ bool CGuiInGame::GetCanHeadFollowInDialog(unsigned long long objId)
     void* pData = m_headFollowExclusionList.m_pInternal->m_pHead ? m_headFollowExclusionList.m_pInternal->m_pHead->m_pData : 0;
     while (pos != 0) {
         if (*static_cast<unsigned long long*>(pData) == objId) return false;
-        pData = m_headFollowExclusionList.m_pInternal->GetNext(pos);
+        pData = m_headFollowExclusionList.GetNext(pos);
     }
     return true;
 }

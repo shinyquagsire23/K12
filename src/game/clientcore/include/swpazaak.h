@@ -117,8 +117,7 @@ public:
     };
 
     int m_nWager;
-    int _pad04;
-    long long m_oidOpponent;
+    unsigned long long m_oidOpponent;
     CPazaakPlayer m_players[2];
     CPazaakCard m_deck[40];
     int m_nDeckIndex;

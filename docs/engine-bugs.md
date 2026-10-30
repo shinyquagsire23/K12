@@ -4099,3 +4099,31 @@ code-identical) unless it says otherwise.
 - **Impact:** a reflective skin with a 2D reflection map (`CM_*` sphere maps on armour, mods) samples a
   `samplerCube` with a 2D texture on unit 2: the cube map last bound there, or black.
 - **Fixed under `K2_FIX_ENGINE_BUGS`:** `kPSEnvMapFog` makes the same cube/flat pick.
+
+## K1 `getnextline_file` — a text resource read through `SDL_RWops` never gets past its first line
+
+- **Where:** KOTOR 1's static `getnextline_file` (aurconsole.cpp, @0x5726b8, called from
+  `AurResGetNextLine`), the port's `fgets` for an `SDL_RWops`. It reads a whole buffer, cuts it at the
+  first CR/LF and seeks back to the next line's start with `SDL_RWseek(f, nRead - i, ...)`: a positive
+  offset, from the END when the buffer was larger than what was read. The next read starts past the end
+  of the file. The function also has no `return`; clang made the fall-off an endless loop.
+- **Impact:** every text resource opened from a file handle — a text model passed to
+  `NewCAurObject(.., SDL_RWops*, ..)`, which `IODispatcher::ReadSync` interprets line by line — never
+  loads. The shipped game only opens binary models that way, so nothing visible broke; the model
+  viewer's text light model (platforms/viewer) is what hit it.
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** the seek is `i - nRead` from the current position, and the line
+  is returned (0 at the end of the file).
+
+## K2 `NULL_NAME` — the port's "no name" sentinel is `"nullptr"`, the data's is `"NULL"`
+
+- **Where:** `src/include/nullname.h`, every comparison of a model, texture or node name against the
+  "no name" sentinel: `FindModel`, `LoadTexture`, `Material::InitializeTextures`, `Gob::PlayAnimation`,
+  `MdlNode::InternalParseField`'s `parent`, `AurSnapshot`, ... KOTOR II's Android build
+  spells it `"nullptr"` (the port's NULL → nullptr rename reached the string literal; the matching
+  build references `"nullptr"`), while the data, KOTOR 1 and the PC games spell it `"NULL"`.
+- **Impact:** a binary model's mesh with the texture `NULL` looks up a texture called `null` instead of
+  being untextured; a model named `NULL` (no supermodel, no reference) is searched for; a text model's
+  root node (`parent NULL`) never becomes the root, and `beginmodelgeom` then crashes in
+  `ReorderChildren` on the null tree.
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** `NULL_NAME` is `"NULL"` in both games. Every producer of the
+  sentinel in the engine goes through the macro, so they stay consistent with the comparisons.

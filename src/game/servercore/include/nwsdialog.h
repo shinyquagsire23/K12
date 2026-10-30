@@ -66,7 +66,6 @@ struct CSWSDialogLinkEntry {
     int     m_nParam5b;
     unsigned char m_bNot;   // inverts the first script's result
     unsigned char m_bNot2;  // inverts the second script's result
-    char    _pad4e[0x50 - 0x4e];
     int     m_nLogic;       // 0 combines the two results with AND, any other value with OR
     CExoString m_sParamStrA;  // the first script's string parameter
     CExoString m_sParamStrB;  // the second script's
@@ -336,7 +335,9 @@ public:
     CResRef            m_rCameraModel;
     // Set once the conversation is finished.
     int                m_bEnded;
+#if !KOTOR1  // K1 has no unskippable nodes
     int                m_bNodeUnskippable;
+#endif
     CExoLinkedList<CSWSDialogPlayer> m_lstParticipants;
     int                m_bRepliesPending;
     // Set when this conversation runs its own end script; raised by BarkOneLine only.
@@ -344,7 +345,6 @@ public:
     unsigned int       m_nCurrentEntry;
     unsigned int       m_nHandledReply;    // -1 until the current entry has been answered
     unsigned char      m_nPlayerGender;
-    char               _pad0a1[0xa8 - 0xa1];
     unsigned long long m_oidCurrentPlayer;
     unsigned long long m_ownerId;
     // Speaker cache, a heap array plus a count, with no capacity field.
@@ -352,7 +352,6 @@ public:
     unsigned int       m_nSpeakerCount;
     int                m_bFirstPlayerOnly;
     int                m_bPrivate;          // StartDialog's third parameter, never read back
-    char               _pad0cc[0xd0 - 0xcc];
     unsigned long long m_oidLastEntrySpeaker;
     unsigned long long m_oidLastReplySpeaker;
     // -- the pseudo-random camera-angle rotation state: seeded from a hash of the dialog's own

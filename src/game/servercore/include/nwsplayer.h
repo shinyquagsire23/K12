@@ -31,7 +31,6 @@ public:
     unsigned long long m_objectId;
     // The client's last character-sheet action byte, which also selects the fields re-diffed.
     char m_nAction;
-    char _pad9[0x10 - 0x9];
     // Owned; rebuilt on every display change.
     CSWCreatureStatsUpdate* m_pStatsUpdate;
     int m_nReserved1;
@@ -102,16 +101,14 @@ public:
     // Loading-screen selection; an id of 1 means m_sAreaTransitionBMP names a custom bitmap. -1 and 1
     // both mean "not chosen yet", 0 picks one at random.
     int        m_nAreaTransitionBMP;
-    char       _pad24[0x28 - 0x24];
     CExoString m_sAreaTransitionBMP;
     unsigned int m_bCheatToggle;
     // 1 while connecting, 2 once in game.
     unsigned char m_connectionState;
-    char _pad3d[0x40 - 0x3d];
     // The object this player is driving, kept in step with the area refcounts by SetGameObject.
     // Normally the same id as m_gameObjectId, but maintained separately.
     unsigned long long m_oidSWSObject;
-    unsigned long long m_lastGameObjUpdateTime;
+    uint64_ll_t        m_lastGameObjUpdateTime;
     unsigned long long m_lastKnownAreaId;
     unsigned long long m_gameObjectId;
     int  m_bIsPrimaryPlayer;
@@ -137,7 +134,6 @@ public:
     void SetFileName(const CResRef& resRef) { m_resRef = resRef; }
     int  m_characterLoaded;
     int  m_saveListIndex;
-    char _padbc[0xc0 - 0xbc];
 
     CSWSObject* GetGameObject();
     void  SetGameObject(CSWSObject* pObject);

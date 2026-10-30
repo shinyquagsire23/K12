@@ -214,8 +214,8 @@ CSWGuiSaveLoad::CSWGuiSaveLoad(CSWGuiManager* pGuiManager, int nSaveMode, int nE
     extentCloud.h = nCloudH;
     m_btnCloud.SetExtent(extentCloud);
     m_btnCloud.m_text.m_params.SetText(CExoString(""));
-    m_btnCloud.m_border.m_params.SetFillImage(CResRef("ipho_cloud"), 0);
-    m_btnCloud.m_borderHilight.m_params.SetFillImage(CResRef("ipho_cloud2"), 0);
+    m_btnCloud.m_border.m_params.SetFillImage(CResRef("ipho_cloud"));
+    m_btnCloud.m_borderHilight.m_params.SetFillImage(CResRef("ipho_cloud2"));
 
     m_btnCloud.AddEvent(INPUTEVENT_GUI_A, this,
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPanel::OnYButtonPressed));
@@ -696,10 +696,10 @@ void CSWGuiSaveLoad::PopulateGameLB()
     // The party-member panels lose their border images while the list is rebuilt.
     int i;
     for (i = 0; i < 3; i++)
-        m_aPMLabels[i].m_border.m_params.SetFillImage(CResRef(), 0);
+        m_aPMLabels[i].m_border.m_params.SetFillImage(CResRef());
 
     m_lblScreenshot.m_text.m_params.SetStrRef(STRREF_NEW_SLOT);
-    m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(), 0);
+    m_lblScreenshot.m_border.m_params.SetFillImage(CResRef());
 
     CSWGuiSaveLoadEntry* pEntry;
     for (i = 0; i < m_entries.m_count; i++)
@@ -741,9 +741,9 @@ void CSWGuiSaveLoad::PopulateGameLB()
                 pRow->m_moduleName == pCloudSave->m_moduleName &&
                 pRow->m_nSaveSlot != static_cast<unsigned int>(-2))
             {
-                pRow->m_border.m_params.SetFillImage(CResRef("ipho_mcloud"), 0);
+                pRow->m_border.m_params.SetFillImage(CResRef("ipho_mcloud"));
                 pRow->m_border.m_params.m_flags.nFillStyle |= 3;
-                pRow->m_borderHilight.m_params.SetFillImage(CResRef("ipho_mcloud"), 0);
+                pRow->m_borderHilight.m_params.SetFillImage(CResRef("ipho_mcloud"));
                 pRow->m_borderHilight.m_params.m_flags.nFillStyle |= 3;
             }
         }
@@ -1332,7 +1332,7 @@ CResRef CSWGuiSaveLoadEntry::GetPlayerPortrait(int nIndex)
 // Split the saved timestamp into its date and time fields and format each one.
 CExoString CSWGuiSaveLoadEntry::FormatTimeToString()
 {
-    unsigned long long timeStamp = m_timeStamp;
+    uint64_ll_t timeStamp = m_timeStamp;
     if (timeStamp == 0) {
         CServerExoApp* pServerExoApp = g_pAppManager->m_pServerExoApp;
         if (pServerExoApp == 0)
@@ -1930,7 +1930,7 @@ void CSWGuiSaveLoad::HandleSaveButton(CSWGuiControl* pControl)
     if (pEntry->m_bSaveExists != 0)
     {
         // The row already has a save: the free-space result is discarded.
-        unsigned long long nFree;
+        uint64_ll_t nFree;
         g_pExoResMan->GetFreeDiskSpace(CExoString("SAVES:"), &nFree);
 
         CSWGuiMessageBox* pMsgBox =
@@ -1944,7 +1944,7 @@ void CSWGuiSaveLoad::HandleSaveButton(CSWGuiControl* pControl)
         return;
     }
 
-    unsigned long long nFree;
+    uint64_ll_t nFree;
     g_pExoResMan->GetFreeDiskSpace(CExoString("SAVES:"), &nFree);
 
     if (nNeeded <= (nFree >> 14))
@@ -2023,12 +2023,12 @@ void CSWGuiSaveLoad::SortGamesByTimeStamp(CExoArrayList<CSWGuiControl*>& list)
     for (int i = 0; i < nCount - 1; i++)
     {
         CSWGuiControl* pBest = list[i];
-        unsigned long long nBest = static_cast<CSWGuiSaveLoadEntry*>(pBest)->m_timeStamp;
+        uint64_ll_t nBest = static_cast<CSWGuiSaveLoadEntry*>(pBest)->m_timeStamp;
         int nBestIdx = i;
 
         for (int k = i + 1; k < nCount; k++)
         {
-            unsigned long long nTime = static_cast<CSWGuiSaveLoadEntry*>(list[k])->m_timeStamp;
+            uint64_ll_t nTime = static_cast<CSWGuiSaveLoadEntry*>(list[k])->m_timeStamp;
             if (nTime > nBest)
             {
                 nBestIdx = k;

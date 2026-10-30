@@ -73,7 +73,6 @@ public:
     virtual int SetFog(float fNear, float fFar, const Vector& color);
 
     CResRef       m_areaResRef;
-    unsigned char m_aReserved1[0x158-0x151];
     CExoArrayList<unsigned long long> m_triggerIdList;  // ids of the area's triggers
     CSWCAreaVector2 m_vMoonAmbientRG;
     float         m_fMoonAmbientBlue;
@@ -86,7 +85,6 @@ public:
     float         m_fSunDiffuseBlue;
     Vector        m_vDayFogColor;
     Vector        m_vAmbientColor;
-    unsigned char _pad1bc[0x1c0-0x1bc];
     CExoString    m_areaName;
     CAurScene*    m_pScene;
     Gob*          m_pSunGob;              // the sun Gob
@@ -98,7 +96,6 @@ public:
     CSWCAreaInt2  m_v2iDawnDusk;            // day-night transition step
     int           m_bDayNightTransitioning;               // the transition-active latch
     int           m_bDayNightSwitchPending;               // set to 1 by the SetAs* family
-    unsigned char _pad234[0x238-0x234];
     CExoArrayList<CSWCMapPin*> m_mapPins;
     CExoArrayList<unsigned long long> m_soundObjectIdList;
     CSWCAmbientSound* m_pAmbientSound;
@@ -114,7 +111,6 @@ public:
     unsigned int  m_nLastUpdateTime;               // last world-time time seen by Update
     CExoLinkedList<CAurObject> m_hitCheckIgnoreList;
     int           m_nReserved1;
-    unsigned char _pad294[0x298-0x294];
     CExoArrayList<unsigned long long> m_objectIdList;  // ids of the objects in this area
     CExoArrayList<CSWCPlaceableObjectLight*> m_placeableObjectLights;
     CExoArrayList<unsigned long long> m_staticPlaceableIdList;  // ids of the static placeables
@@ -128,13 +124,11 @@ public:
     unsigned char _pad2fb;
     int           m_nReserved4;
     int           m_nRooms;
-    char          _pad304[0x308-0x304];
     CSWCRoom*     m_paRooms;                // the contiguous room array
     CSWMiniGame*  m_pMiniGame;
     unsigned long long m_aCorpseIds[4];
     unsigned char m_nOldestCorpse;               // corpse-ring oldest index
     unsigned char m_nNextCorpse;               // corpse-ring insert index
-    char          _pad33a[0x340-0x33a];
     CSWSArea*     m_pServerArea;
     CExoLinkedList<CSWBehaviorAttachSound> m_behaviorAttachSounds;
 #if !KOTOR1  // K1 deletes emitters at once, with no deferred list

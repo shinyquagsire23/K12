@@ -112,7 +112,6 @@ struct CSWGuiControlTail {
     int            nControlId;
     char           m_nClickSound;
     char           m_nActivateSound;
-    char           _pad92[6];
     unsigned long long m_nUserData;
 };
 
@@ -169,16 +168,11 @@ public:
     void Load(CSWGuiObject* pContainer, CResGFF* pGFF, CResStruct& resStruct, const CExoString& name);
     void Load(CSWGuiObject* pContainer, CResGFF* pGFF, CResList& resList, const CExoString& name);
 
-#if !KOTOR1
-    int                m_bCenterOnNativeRect;
-    int                m_nReserved2;
-#endif
     CSWGuiControl* m_pParent;
     CExoArrayList<CSWGuiControl*> m_childControls;
     unsigned long long m_nToolTipStrRef;
     CExoString     m_sToolTipText;
     int            m_nBoundInputEventId;
-    int            m_nReserved3;
     CSWGuiObject*  m_pContainer;
     CExoArrayList<CSWGuiControlEvent> m_events;
     CSWGuiControlTail m_tail;
@@ -503,7 +497,6 @@ public:
 #else
     unsigned char nReservedBits : 6;
 #endif
-    unsigned char _padad[0xb0 - 0xad];
     CSWGuiBorder m_border;
     CSWGuiImage  m_imageThumb;
     CSWGuiImage  m_imageDir;
@@ -619,7 +612,6 @@ public:
     int m_nHitLocalY;
     int   m_nRepeatEvent;
     float m_fRepeatTimer;
-    int m_nReserved6;
     CSWGuiBorder    m_border;
     CSWGuiScrollBar m_scrollBar;
     CSWGuiExtent m_innerExtent;
@@ -651,7 +643,6 @@ public:
     short m_nBottomRow;
     CSWGuiControl* m_pProtoItem;
     Vector m_vColor;
-    int   m_nReserved5;
     CSWGuiControl* m_pMouseOverControl;
     CSWGuiImage m_imageArrow;
     float m_fScrollHintTime;

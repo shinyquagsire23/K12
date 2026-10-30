@@ -82,10 +82,6 @@ public:
 private:
     friend class CGuiInGame;   // SetGuiInGameInventoryDirty sets m_bRebuildItemList
 
-    struct CInventoryLists {
-        CExoArrayList<CSWGuiInGameItemEntry*> m_aItemEntry;
-        CExoArrayList<unsigned long long>     m_aUsedOid;
-    };
 #if KOTOR1
     CSWGuiLabel   m_labelDescription;
     CSWGuiLabel   m_labelInv;
@@ -105,7 +101,8 @@ private:
     CSWGuiButton  m_btnChange2;
     CSWGuiButton  m_btnCharLeft;
     CSWGuiButton  m_btnCharRight;
-    CInventoryLists    m_lists;
+    CExoArrayList<CSWGuiInGameItemEntry*> m_aItemEntry;
+    CExoArrayList<unsigned long long>     m_aUsedOid;
     unsigned long long m_oidSelected;
     short              m_nSavedTopRow;
     short              m_nSavedSelectedIndex;
@@ -133,7 +130,8 @@ private:
     CSWGuiButton  m_btnUseable;
     CSWGuiButton  m_btnQuests;
     CSWGuiButton  m_btnMisc;
-    CInventoryLists                       m_lists;
+    CExoArrayList<CSWGuiInGameItemEntry*> m_aItemEntry;
+    CExoArrayList<unsigned long long>     m_aUsedOid;
     unsigned long long                    m_oidSelected;
     short                                 m_nSavedTopRow;
     short                                 m_nSavedSelectedIndex;

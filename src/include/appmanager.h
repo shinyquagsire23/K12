@@ -83,5 +83,4 @@ struct CLoadGameErrorInfo {
     int          m_nResType;     // the resource type of the save being loaded (0xbc1, 0x809, ...)
     char         _pad4c[0x50-0x4c];
     unsigned int m_errorCode;
-    char         _pad54[0x58-0x54];
 };

@@ -162,22 +162,22 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
                 while (pNode != 0)
                 {
                     CSWSPlayer* pAdmin = static_cast<CSWSPlayer*>(g_pAppManager->m_pServerExoApp
-                                                          ->GetPlayerList()->m_pInternal->GetAtPos(pNode));
+                                                          ->GetPlayerList()->GetAtPos(pNode));
                     CSWSMessage* pSWSMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
                     pSWSMessage->SendServerToPlayerChatMessage(5, OBJECT_INVALID, CExoString(sOut),
                                                                pAdmin->m_nPlayerId, CExoString(""));
-                    g_pAppManager->m_pServerExoApp->GetPlayerList()->m_pInternal->GetNext(pNode);
+                    g_pAppManager->m_pServerExoApp->GetPlayerList()->GetNext(pNode);
                 }
                 pNode = g_pAppManager->m_pServerExoApp
                              ->GetPlayerList()->m_pInternal->m_pHead;
                 while (pNode != 0)
                 {
                     CSWSPlayer* pAdmin = static_cast<CSWSPlayer*>(g_pAppManager->m_pServerExoApp
-                                                          ->GetPlayerList()->m_pInternal->GetAtPos(pNode));
+                                                          ->GetPlayerList()->GetAtPos(pNode));
                     CSWSMessage* pSWSMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
                     pSWSMessage->SendServerToPlayerChatMessage(5, OBJECT_INVALID, CExoString(sOut),
                                                                pAdmin->m_nPlayerId, CExoString(""));
-                    g_pAppManager->m_pServerExoApp->GetPlayerList()->m_pInternal->GetNext(pNode);
+                    g_pAppManager->m_pServerExoApp->GetPlayerList()->GetNext(pNode);
                 }
                 g_pAppManager->m_pServerExoApp->GetPlayerList();
             }

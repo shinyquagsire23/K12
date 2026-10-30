@@ -33,12 +33,8 @@ public:
     char* m_pszText;
     int m_nVisibleStart;
     int m_nVisibleLength;
-#if KOTOR1
     short m_nState;
     short m_nColor;
-#else
-    int m_nReserved1;
-#endif
     float m_fVisibleWidth;
     float m_fBottom;
     float m_fTop;
@@ -59,7 +55,6 @@ class CAurObject;
 class CAurPart;
 class CHitInfo;
 // Only ever handled by pointer here; defined by the concrete implementation, StringGob.
-struct SStringGobLine;
 struct SStringGobDisplayInfo;
 
 // The renderable-text interface, a pure interface with no data beyond the vptr and no
@@ -121,7 +116,7 @@ public:
     virtual int  MoveCaretTo(Vector v) = 0;
     virtual void SetCaretVisible(bool bVisible) = 0;
     virtual int  SuggestDeleteCurrentFont() = 0;
-    virtual SStringGobLine** GetStringsArray() = 0;
+    virtual CStringItem** GetStringsArray() = 0;
     virtual void SetColorSelected(float r, float g, float b, float a) = 0;
 
     // A plain member, not one of the interface's slots.
@@ -144,13 +139,6 @@ class CHitInfo;
 //
 // Modelled with real multiple inheritance: a Gob base, then a CAurString base. All of CAurString's
 // slots are overridden here, which is why that side of the vtable is a block of thunks.
-
-// One laid-out text line. Only the two shorts the state and colour accessors touch are modelled.
-struct SStringGobLine {
-    char  _pad00[0x18];
-    short nState;
-    short nColor;
-};
 
 struct SStringGobFont {
     int nIndex;
@@ -264,7 +252,7 @@ public:
     virtual int  SetCaretColumnPos(int nColumn);
     virtual int  ScrollToLine(int nLine);
     virtual int  ScrollToPixel(int nPixel);
-    virtual SStringGobLine** GetStringsArray();
+    virtual CStringItem** GetStringsArray();
     virtual int  MoveCaretTo(Vector v);
     virtual void SetCaretVisible(bool bVisible);
     virtual void SetColorSelected(float r, float g, float b, float a);
@@ -291,20 +279,18 @@ public:
     SStringGobDisplayInfo m_displayInfo;
 #else
     bool  m_bTextWrapping;
-    char  _pad299[0x2a0 - 0x299];
     SStringGobFont* m_pFont;
     CCaret m_caret;
     float m_fAlignment;
     float m_fAlignmentVertical;
-    SStringGobList<SStringGobLine*> m_lines;
+    SStringGobList<CStringItem*> m_lines;
     char  _pad2d8[0x2dc - 0x2d8];
     bool  m_bCaretVisible;
-    char  _pad2dd[0x2e0 - 0x2dd];
     SStringGobList<void*> m_colors;
     SStringGobDisplayInfo m_displayInfo;
     float m_fMaxWidth;
     float m_fMaxHeight;
-    char  _pad304[0x320 - 0x304];
+    char  _pad304[0x31c - 0x304];
 #endif
 };
 #if KOTOR1

@@ -15,6 +15,7 @@
 #include "twodimarray.h"
 #include "nwsrules.h"
 #include "twodimarrays.h"
+#include "exostringinline.h"
 
 int g_nJournalSortType;
 int g_bOverrideJournalSortType;
@@ -380,12 +381,7 @@ void CSWGuiInGameJournal::OnControlEntered(CSWGuiControl* pControl)
 #ifdef K2_QOL_IMPROVEMENTS
     K2QolFitText(*pText, 0x7fffffff);   // LBL_ITEM_DESCRIPTION scrolls its one row: no limit
 #endif
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     if (pText->m_params.m_sText.GetLength() >= 1)
-#else
-    if ((pText->m_params.m_sText.m_sString
-             ? static_cast<int>(strlen(pText->m_params.m_sText.m_sString)) : 0) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

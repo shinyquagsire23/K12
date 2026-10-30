@@ -57,7 +57,9 @@ CSWCCreatureAppearance::CSWCCreatureAppearance(CSWCCreature* pCreature)
     m_bRebuildHead = 0;
     m_bRebuildTail = 0;
     m_bRebuildWings = 0;
+    m_nReserved1 = 0;
     m_bAlignmentDirty = 0;
+    m_nReserved2 = 0;
     m_bCreatedWhilePaused = 0;
 }
 
@@ -505,14 +507,14 @@ int CSWCCreatureAppearance::CreateBTypeBody(unsigned char a, CCAppearanceInfo* p
         m_bRebuildHead = 1;
         m_bRebuildTail = 1;
         m_nAppearanceId = pInfo->core.m_nAppearanceId;
-        *reinterpret_cast<unsigned int*>(&m_bRebuildWings) = 1;
+        m_bRebuildWings = 1;
         SwitchWeaponEvent(nullptr, const_cast<char*>("AppearanceForceUpdate"), m_pCreature);
         if (pOldModel != nullptr)
         {
             Gob* pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
             pOldModel->AttachToObject(static_cast<CAurObject*>(pModel), const_cast<char*>("HeadHook"), 0);
         }
-        *reinterpret_cast<unsigned int*>(&m_bAlignmentDirty) = 1;
+        m_bAlignmentDirty = 1;
         m_bCreatedWhilePaused = g_pAppManager->m_pClientExoApp->GetPausedByCombat();
         nResult = 1;
     }
@@ -593,7 +595,7 @@ int CSWCCreatureAppearance::CreateSimple(unsigned char a, CCAppearanceInfo* pInf
         *reinterpret_cast<CCAppearanceCore*>(this) = pInfo->core;  // idiom-exempt: not a base-class relationship — CSWCCreatureAppearance's own 0x00-0x3f fields independently mirror CCAppearanceCore's layout (see the EFFECTIVE note above); the orig itself compiles this as one aggregate copy (paired NEON ldp/stp), confirmed via bltally/dump, not per-field stores
         m_bRebuildHead = 1;
         m_bRebuildTail = 1;
-        *reinterpret_cast<unsigned int*>(&m_bRebuildWings) = 1;
+        m_bRebuildWings = 1;
 
         CExoString sModelType;
         g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
@@ -863,7 +865,7 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
         m_pCreature->SetEnvMap(CSWCAnimBase::ANIM_MODEL_HEAD, 1, 1, sEnvMapResRef);
     else
         m_pCreature->SetEnvMap(CSWCAnimBase::ANIM_MODEL_HEAD, 0, 1, CResRef("DEFAULT"));
-    *reinterpret_cast<unsigned int*>(&m_bAlignmentDirty) = 1;
+    m_bAlignmentDirty = 1;
     m_bRebuildHead = 0;
     m_bCreatedWhilePaused = g_pAppManager->m_pClientExoApp->GetPausedByCombat();
     return 1;
@@ -920,7 +922,7 @@ int CSWCCreatureAppearance::HeadExists(CCAppearanceInfo* pInfo)
 void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
 {
 #if KOTOR1
-    if (static_cast<int>(m_bAlignmentDirty) == 0 && m_cachedAlignment == static_cast<unsigned short>(a))
+    if (m_bAlignmentDirty == 0 && m_cachedAlignment == static_cast<unsigned short>(a))
         return;
     m_cachedAlignment = static_cast<unsigned short>(a);
     if (m_pCreature == nullptr)
@@ -934,7 +936,7 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
     if (pAppearance == nullptr)
         return;
 
-    *reinterpret_cast<unsigned int*>(&m_bAlignmentDirty) = 0;
+    m_bAlignmentDirty = 0;
     unsigned int nRow;
     if (m_race != 0xff)
     {
@@ -1005,7 +1007,7 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
         }
     }
 #else
-    if (static_cast<int>(m_bAlignmentDirty) == 0 && m_cachedAlignment == static_cast<unsigned short>(a))
+    if (m_bAlignmentDirty == 0 && m_cachedAlignment == static_cast<unsigned short>(a))
         return;
     m_cachedAlignment = static_cast<unsigned short>(a);
     if (m_pCreature == nullptr)
@@ -1045,7 +1047,7 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
     if (pAppearance == nullptr)
         return;
 
-    *reinterpret_cast<unsigned int*>(&m_bAlignmentDirty) = 0;
+    m_bAlignmentDirty = 0;
     unsigned int nRow;
     if (m_race != 0xff)
     {

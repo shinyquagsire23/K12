@@ -109,7 +109,7 @@ extern int g_bShowIndicator;
 #include "exoresman.h"
 #include "nwcitem.h"
 
-void CSWSObject::RunActions(unsigned int nDay, unsigned int nTod, unsigned long long nSliceStart) {
+void CSWSObject::RunActions(unsigned int nDay, unsigned int nTod, uint64_ll_t nSliceStart) {
     int nResult = ACTION_FAILED;
     unsigned char nObjectType = m_objectType;
 
@@ -1994,7 +1994,7 @@ int CSWSObject::AIActionPlaySound(CSWSObjectActionNode* pNode) {
     while (pNodePos != 0) {
         float fMaxDistSq = CSWSArea::MAX_OBJECT_CHATTALK_DISTANCE *
                            CSWSArea::MAX_OBJECT_CHATTALK_DISTANCE;
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pPlayer->GetGameObject() != 0) {
             CSWSObject* pObject = pPlayer->GetGameObject();
             if (pObject != 0) {
@@ -2010,7 +2010,7 @@ int CSWSObject::AIActionPlaySound(CSWSObjectActionNode* pNode) {
                 }
             }
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
     return ACTION_COMPLETE;
 }

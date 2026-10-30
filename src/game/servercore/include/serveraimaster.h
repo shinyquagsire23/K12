@@ -163,7 +163,6 @@ struct CServerAIEventNode {
     unsigned long long m_oidCaller;
     unsigned long long m_oidObject;
     unsigned int       m_nType;
-    unsigned int       _pad1c;
     void*              m_pData;
 
     int SaveNode(CResGFF* pGFF, CResStruct* pStruct);

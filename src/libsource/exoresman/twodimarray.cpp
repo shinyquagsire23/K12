@@ -7,6 +7,7 @@
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
 #include "port/crtapi.h"
+#include "exostringinline.h"
 #if KOTOR1
 void ByteSwap(int* p);
 void ByteSwap(unsigned short* p);
@@ -312,8 +313,7 @@ int C2DA::GetINTEntry(int nRow, int nColumn, int* pnValue) {
         *pnValue = 0;
         return 0;
     }
-    if ((m_papasRows[nRow][nColumn].m_sString
-             ? static_cast<int>(strlen(m_papasRows[nRow][nColumn].m_sString)) : 0) >= 3
+    if (m_papasRows[nRow][nColumn].GetLength() >= 3
         && m_papasRows[nRow][nColumn].CStr()[0] == '0'
         && (m_papasRows[nRow][nColumn].CStr()[1] == 'x'
             || m_papasRows[nRow][nColumn].CStr()[1] == 'X')) {
@@ -894,8 +894,7 @@ int C2DA::GetINTEntry(int nRow, const CExoString& sColumn, int* pnValue) {
         *pnValue = 0;
         return 0;
     }
-    if ((m_papasRows[nRow][nColumn].m_sString
-             ? static_cast<int>(strlen(m_papasRows[nRow][nColumn].m_sString)) : 0) >= 3
+    if (m_papasRows[nRow][nColumn].GetLength() >= 3
         && m_papasRows[nRow][nColumn].CStr()[0] == '0'
         && (m_papasRows[nRow][nColumn].CStr()[1] == 'x'
             || m_papasRows[nRow][nColumn].CStr()[1] == 'X')) {
@@ -961,8 +960,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, int nColumn, int* pnValue) {
         *pnValue = 0;
         return 0;
     }
-    if ((m_papasRows[nRow][nColumn].m_sString
-             ? static_cast<int>(strlen(m_papasRows[nRow][nColumn].m_sString)) : 0) >= 3
+    if (m_papasRows[nRow][nColumn].GetLength() >= 3
         && m_papasRows[nRow][nColumn].CStr()[0] == '0'
         && (m_papasRows[nRow][nColumn].CStr()[1] == 'x'
             || m_papasRows[nRow][nColumn].CStr()[1] == 'X')) {
@@ -1030,8 +1028,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, const CExoString& sColumn, int* pn
         *pnValue = 0;
         return 0;
     }
-    if ((m_papasRows[nRow][nColumn].m_sString
-             ? static_cast<int>(strlen(m_papasRows[nRow][nColumn].m_sString)) : 0) >= 3
+    if (m_papasRows[nRow][nColumn].GetLength() >= 3
         && m_papasRows[nRow][nColumn].CStr()[0] == '0'
         && (m_papasRows[nRow][nColumn].CStr()[1] == 'x'
             || m_papasRows[nRow][nColumn].CStr()[1] == 'X')) {

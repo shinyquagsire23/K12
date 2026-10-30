@@ -89,7 +89,7 @@ void Material::PurgeBadTexture(SafePointer<CAurTexture>& spr) {
     }
 }
 
-// Looks a texture up by name; an empty name and the "nullptr" sentinel both give the sentinel.
+// Looks a texture up by name; an empty name and the NULL_NAME sentinel both give the sentinel.
 CAurTexture* LoadTexture(char* pszName)
 {
     if (pszName == 0 || pszName[0] == 0)

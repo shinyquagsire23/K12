@@ -42,7 +42,7 @@ CAurObject* NewCAurObject(char* pszResRef, char* pszParam2, FILE* pFile, FILE* p
 
 extern CExoSound* g_pExoSound;
 
-CExoLinkedList<CSWCVisualEffect> CSWCVisualEffect::m_lstCachedVFX;
+CExoLinkedList<CAurObject> CSWCVisualEffect::m_lstCachedVFX;
 
 CSWCVisualEffect::CSWCVisualEffect(int a) : CSWCObject(GAME_OBJECT_TYPE_AREA_OF_EFFECT) {
     unsigned int nDay;
@@ -193,7 +193,7 @@ void CSWCVisualEffect::Reset()
 void CSWCVisualEffect::UnloadCachedVFX()
 {
     while (m_lstCachedVFX.m_pInternal->m_pHead != 0)
-        delete static_cast<CSWCVisualEffect*>(m_lstCachedVFX.m_pInternal->RemoveHead());
+        delete m_lstCachedVFX.RemoveHead();
 }
 
 void CSWCVisualEffect::DoVFXRumble()
@@ -337,65 +337,65 @@ int CSWCVisualEffect::LoadEffect(unsigned int nEffect) {
 
 void CSWCVisualEffect::LoadCachedVFX() {
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Grn_M_Bone"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("GRN_M_Giblet"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("GRN_m_Rib"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("GRN_M_Thigh"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("GRN_s_Giblet"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_L_Bone"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_L_Giblet"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_L_Rib"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_L_Thigh"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_M_Bone"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_M_Giblet"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_M_Rib"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_M_Thigh"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_M_Torso"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_S_Bone"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_S_Giblet"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_S_Rib"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Red_s_Thigh"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Wht_M_Bone"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("WHT_M_head"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Wht_M_pelves"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("Wht_s_Bone"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("vwp_m_chunk_grn"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("vwp_m_chunk_red"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("vwp_M_chunk_wht"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("vwp_m_chunk_yel"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("vwp_s_chunk_red"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("vwp_s_chunk_grn"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("vwp_s_chunk_yel"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
     if (CAurObject* p = NewCAurObject(const_cast<char*>("vwp_L_chunk_red"), const_cast<char*>("cv"), 0, 0))
-        m_lstCachedVFX.m_pInternal->AddTail(p);
+        m_lstCachedVFX.AddTail(p);
 }
 
 // Counts the current animation down and, when it expires, either re-arms the effect (3 s) or

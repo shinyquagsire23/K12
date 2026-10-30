@@ -17,7 +17,6 @@ public:
     unsigned char  m_cachedBTypeVariant;
     unsigned char  m_cachedBTypeNumber;
     unsigned short m_aCachedBodyParts[6];
-    unsigned char  _pad0e[0x10-0x0e];
     unsigned long long m_oidHeadItem;
     unsigned int   m_bArmorEquipped;
     unsigned short m_nAppearanceId;
@@ -30,7 +29,6 @@ public:
     unsigned char  m_nTattooColor2;
     unsigned char  m_cachedTailVariant;
     unsigned char  m_cachedWingVariant;
-    unsigned char  _pad27;
     float          m_fPersonalSpace;
     float          m_fHeight;
     unsigned short m_cachedAlignment;
@@ -42,8 +40,10 @@ public:
     CSWCCreature*  m_pCreature;
     int            m_bRebuildHead;
     int            m_bRebuildTail;
-    unsigned long long m_bRebuildWings;
-    unsigned long long m_bAlignmentDirty;
+    int            m_bRebuildWings;
+    int            m_nReserved1;
+    int            m_bAlignmentDirty;
+    int            m_nReserved2;
     float          m_driveAccel;
     float          m_fDriveMaxSpeed;
     float          m_walkSpeed;

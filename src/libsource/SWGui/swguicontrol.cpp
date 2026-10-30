@@ -531,27 +531,7 @@ int CSWGuiControl::DisplayToolTip()
 }
 
 #if !KOTOR1  // K2 only: K1 exports no operator=
-CSWGuiControl& CSWGuiControl::operator=(const CSWGuiControl& other)
-{
-    m_extent = other.m_extent;
-    m_originalExtent = other.m_originalExtent;
-    m_bCenterOnNativeRect = other.m_bCenterOnNativeRect;
-    m_nReserved2 = other.m_nReserved2;
-    m_pParent = other.m_pParent;
-
-    m_childControls = other.m_childControls;
-
-    m_nToolTipStrRef = other.m_nToolTipStrRef;
-    m_sToolTipText = other.m_sToolTipText;
-    m_nBoundInputEventId = other.m_nBoundInputEventId;
-    m_nReserved3 = other.m_nReserved3;
-    m_pContainer = other.m_pContainer;
-
-    m_events = other.m_events;
-
-    m_tail = other.m_tail;
-    return *this;
-}
+CSWGuiControl& CSWGuiControl::operator=(const CSWGuiControl& other) = default;
 #endif
 
 CSWGuiLabel::CSWGuiLabel()
@@ -3470,7 +3450,7 @@ void CSWGuiEditbox::Draw(float fAlpha)
                 m_editText.SetExtent(extent);
 
                 savedFillImage = m_border.m_params.m_fillImage;
-                m_border.m_params.SetFillImage(CResRef("ios_edit_box"), 0);
+                m_border.m_params.SetFillImage(CResRef("ios_edit_box"));
             }
         }
     }
@@ -3480,7 +3460,7 @@ void CSWGuiEditbox::Draw(float fAlpha)
 
     if (nInset)
     {
-        m_border.m_params.SetFillImage(savedFillImage, 0);
+        m_border.m_params.SetFillImage(savedFillImage);
 
         extent = m_border.m_extent;
         extent.y += nInset;

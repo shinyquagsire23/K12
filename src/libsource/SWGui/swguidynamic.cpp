@@ -11,11 +11,11 @@ CSWGuiDynamic::CSWGuiDynamic(CSWGuiManager* pGuiManager, const CResRef& sLayout)
     StartLoadFromLayout(sLayout, 1, 1, 1);
 
     CResGFF* pGFF = m_pLayoutRes;
+    int bSuccess;
     CExoString sTag;
     int nCount = pGFF->GetListCount(&m_layoutList);
     for (int i = 0; i < nCount; i++)
     {
-        int bSuccess;
         CResStruct sStruct;
         unsigned int nControlType;
         CSWGuiControl* pControl;

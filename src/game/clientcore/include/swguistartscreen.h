@@ -25,7 +25,6 @@ public:
         STARTSCREEN_RESET_TIMER = 0x01,
     };
     unsigned char m_bResetTimer;
-    unsigned char _pad41d[3];
 };
 
 #if KOTOR1

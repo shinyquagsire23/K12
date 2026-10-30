@@ -68,7 +68,8 @@ const uint64_t CSWGuiInGameInventory::m_nFilterName[6] = {
 
 CSWGuiInGameInventory::CSWGuiInGameInventory(CSWGuiManager* pGuiManager)
     : CSWGuiPanel(pGuiManager)
-    , m_lists()
+    , m_aItemEntry()
+    , m_aUsedOid()
 {
     m_bRebuildItemList = 0;
     m_bRestoreListPosition = 0;
@@ -161,7 +162,8 @@ CSWGuiInGameInventory::CSWGuiInGameInventory(CSWGuiManager* pGuiManager)
 #else
 CSWGuiInGameInventory::CSWGuiInGameInventory(CSWGuiManager* pGuiManager)
     : CSWGuiPanel(pGuiManager)
-    , m_lists()
+    , m_aItemEntry()
+    , m_aUsedOid()
 {
     CSWGuiButton btnUnused;
 
@@ -501,12 +503,12 @@ CSWGuiInGameInventory::~CSWGuiInGameInventory()
 {
     m_lbDescription.ClearItems();
     m_lbItems.ClearItems();
-    for (int i = 0; i < m_lists.m_aItemEntry.m_count; i++) {
-        delete m_lists.m_aItemEntry.m_pArray[i];
-        m_lists.m_aItemEntry.m_pArray[i] = 0;
+    for (int i = 0; i < m_aItemEntry.m_count; i++) {
+        delete m_aItemEntry.m_pArray[i];
+        m_aItemEntry.m_pArray[i] = 0;
     }
 
-    m_lists.m_aItemEntry.m_count = 0;
+    m_aItemEntry.m_count = 0;
 }
 
 #if KOTOR1
@@ -780,13 +782,13 @@ void CSWGuiInGameInventory::OnPanelAdded()
 void CSWGuiInGameInventory::OnPanelRemoved()
 {
     m_lbItems.ClearItems();
-    for (int i = 0; i < m_lists.m_aItemEntry.m_count; i++) {
-        delete m_lists.m_aItemEntry.m_pArray[i];
-        m_lists.m_aItemEntry.m_pArray[i] = 0;
+    for (int i = 0; i < m_aItemEntry.m_count; i++) {
+        delete m_aItemEntry.m_pArray[i];
+        m_aItemEntry.m_pArray[i] = 0;
     }
-    m_lists.m_aItemEntry.RemoveAll(1);
+    m_aItemEntry.RemoveAll(1);
     g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems()->ClearNewItems(
-        m_lists.m_aUsedOid);
+        m_aUsedOid);
 }
 
 #if KOTOR1
@@ -801,9 +803,9 @@ void CSWGuiInGameInventory::CreateItemEntry(CSWCCreature* pCreature, int& nIndex
     static float s_fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
 #endif
     CSWGuiInGameItemEntry* pEntry;
-    if (m_lists.m_aItemEntry.m_count == nIndex) {
+    if (m_aItemEntry.m_count == nIndex) {
         pEntry = new CSWGuiInGameItemEntry();
-        m_lists.m_aItemEntry.Add(pEntry);
+        m_aItemEntry.Add(pEntry);
 
         CSWGuiButton* pProto = m_lbItems.m_pProtoItem->AsButton();
         pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
@@ -819,7 +821,7 @@ void CSWGuiInGameInventory::CreateItemEntry(CSWCCreature* pCreature, int& nIndex
         pEntry->AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
                                       &CSWGuiInGameInventory::OnControlEntered));
     } else {
-        pEntry = static_cast<CSWGuiInGameItemEntry*>(m_lists.m_aItemEntry.m_pArray[nIndex]);
+        pEntry = static_cast<CSWGuiInGameItemEntry*>(m_aItemEntry.m_pArray[nIndex]);
     }
 
     if (m_nNPC != -1 && g_pAppManager->m_pServerExoApp->GetServerInfo()->m_bTutorialModule) {
@@ -894,9 +896,9 @@ void CSWGuiInGameInventory::CreateItemEntry(CSWCCreature* pCreature, int& nIndex
                                             CSWSItem* pItem, int a, int b)
 {
     CSWGuiInGameItemEntry* pEntry;
-    if (m_lists.m_aItemEntry.m_count == nIndex) {
+    if (m_aItemEntry.m_count == nIndex) {
         pEntry = new CSWGuiInGameItemEntry();
-        m_lists.m_aItemEntry.Add(pEntry);
+        m_aItemEntry.Add(pEntry);
 
         CSWGuiButton* pProto = m_lbItems.m_pProtoItem->AsButton();
         pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
@@ -906,7 +908,7 @@ void CSWGuiInGameInventory::CreateItemEntry(CSWCCreature* pCreature, int& nIndex
         pEntry->AddEvent(SWGUIEVENT_UNFOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
                                       &CSWGuiInGameInventory::OnControlExited));
     } else {
-        pEntry = static_cast<CSWGuiInGameItemEntry*>(m_lists.m_aItemEntry.m_pArray[nIndex]);
+        pEntry = static_cast<CSWGuiInGameItemEntry*>(m_aItemEntry.m_pArray[nIndex]);
     }
 
     int bUsable = pCreature->IsLeaderUsableItem(pItem, a, USABLE_CHECK_ALL);
@@ -1359,8 +1361,8 @@ void CSWGuiInGameInventory::OnControlEntered(CSWGuiControl* pControl)
 #endif
 
         if (pItem->m_bits.m_bNewItem) {
-            if (m_lists.m_aUsedOid.Contains(oid) == 0)
-                m_lists.m_aUsedOid.Add(oid);
+            if (m_aUsedOid.Contains(oid) == 0)
+                m_aUsedOid.Add(oid);
         }
     }
 

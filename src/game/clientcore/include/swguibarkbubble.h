@@ -38,7 +38,8 @@ public:
     unsigned long long m_oidBark;
     int m_nPlayResult;
     unsigned char m_bIgnoreDistance : 1;
-    char _pad295[0x298 - 0x295];
+#if !KOTOR1  // K1 has no x/y override pair
     int m_nOverrideX;
     int m_nOverrideY;
+#endif
 };

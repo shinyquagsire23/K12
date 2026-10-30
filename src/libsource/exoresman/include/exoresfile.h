@@ -121,7 +121,6 @@ public:
     int            m_bAsyncFileOpened;
     int            m_bHeaderLoaded;
 
-    unsigned char  _pad44[4];
 
 };
 
@@ -173,8 +172,6 @@ public:
     ENCAPSULATED_RESLISTENTRY* m_pResListEntry;
 
     unsigned char  m_nFormatTag;
-
-    unsigned char  _gap69[0x70-0x69];
 };
 
 // An open-addressed, linear-probe hash table of CKeyTableEntry.
@@ -234,7 +231,6 @@ public:
 
     unsigned int m_nSourceType;
 
-    unsigned char _pad24[4];
     CExoString m_sFileName;
 
     unsigned int m_nRoutingTag;

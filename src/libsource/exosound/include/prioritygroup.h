@@ -16,7 +16,6 @@ public:
     float m_fMinDistance;
     float m_fPlaybackVariance;
     unsigned short m_nFadeTime;
-    char  _pad16[0x18 - 0x16];
 };
 
 K2_LAYOUT_ASSERT(sizeof(CPriorityGroup) == 0x18, "CPriorityGroup is the 0x18-byte soundprioritygroups.2da row");

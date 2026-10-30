@@ -16,7 +16,6 @@ class CSWGuiObject;
 // One menu row's payload, hung off the row button's CSWGuiControl::m_tail.m_nUserData slot.
 struct SDebugPartyMemberOption {
     int        m_nNpcId;
-    char       _pad04[4];
     CExoString m_sResRef;
 };
 

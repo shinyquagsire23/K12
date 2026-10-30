@@ -2061,14 +2061,13 @@ void CClientExoAppInternal::PlayBackInputEvents()
         m_pWorldTimer->SetFixedSnapshotRate(0, 30);
     } else {
         do {
-            CPlayBackEventNode* pEvt = static_cast<CPlayBackEventNode*>(
-                m_playbackEvents.m_pInternal->GetAtPos(m_playbackEvents.m_pInternal->m_pHead));
+            CPlayBackEventNode* pEvt = m_playbackEvents.GetAtPos(m_playbackEvents.m_pInternal->m_pHead);
             long long lTime = static_cast<long long>(pEvt->m_nTime);
             unsigned long long nSnap = static_cast<unsigned long long>(
                 g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime());
             if (nSnap / 1000 <= static_cast<unsigned long long>(lTime))
                 break;
-            pEvt = static_cast<CPlayBackEventNode*>(m_playbackEvents.m_pInternal->RemoveHead());
+            pEvt = m_playbackEvents.RemoveHead();
             if (pEvt->m_type == 'K') {
                 HandleWMKeyDownMessage(0, static_cast<unsigned long long>(pEvt->m_wmParam), 0);
             }

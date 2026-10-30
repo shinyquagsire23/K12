@@ -13,7 +13,6 @@ struct SETSection {
     CExoString m_name;
     SETEntry*  m_pEntries;
     int        m_nEntries;
-    unsigned char _pad1c[4];
 };
 
 // Animation/settings text-file (.set) resource wrapper.

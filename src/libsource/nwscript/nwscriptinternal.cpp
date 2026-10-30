@@ -13,6 +13,7 @@
 #include "port/libcstring.h"
 
 #include <stdio.h>
+#include "exostringinline.h"
 
 // Maps a constant's identifier class (TOKEN_INTEGER_IDENTIFIER ... TOKEN_STRING_IDENTIFIER) to the
 // literal token it stands for.
@@ -543,7 +544,7 @@ int CScriptCompilerInternal::CompileScriptChunk(const CExoString& sSource)
 #if KOTOR1
     unsigned int nLength = sSource.GetLength();
 #else
-    unsigned int nLength = sSource.m_sString ? static_cast<unsigned int>(strlen(sSource.m_sString)) : 0;
+    unsigned int nLength = sSource.GetLength();
 #endif
     int nWrappedLength = static_cast<int>(nLength) + CHUNK_WRAPPER_LENGTH;
     char* pCode = new char[nLength + 2 * CHUNK_WRAPPER_LENGTH];
@@ -577,7 +578,7 @@ int CScriptCompilerInternal::CompileScriptConditional(const CExoString& sSource)
 #if KOTOR1
     unsigned int nLength = sSource.GetLength();
 #else
-    unsigned int nLength = sSource.m_sString ? static_cast<unsigned int>(strlen(sSource.m_sString)) : 0;
+    unsigned int nLength = sSource.GetLength();
 #endif
     int nWrappedLength = static_cast<int>(nLength) + CONDITIONAL_WRAPPER_LENGTH;
     char* pCode = new char[nLength + 2 * CONDITIONAL_WRAPPER_LENGTH];
@@ -769,8 +770,7 @@ int CScriptCompilerInternal::TestIdentifierToken()
 #if KOTOR1
         if (m_nTokenLength != m_pEngineStructureNames[nIndex].GetLength())
 #else
-        if (m_nTokenLength != static_cast<int>(m_pEngineStructureNames[nIndex].m_sString
-                                     ? static_cast<int>(strlen(m_pEngineStructureNames[nIndex].m_sString)) : 0))
+        if (m_nTokenLength != m_pEngineStructureNames[nIndex].GetLength())
 #endif
             continue;
         if (strncmp(m_szTokenText, m_pEngineStructureNames[nIndex].CStr(), m_nTokenLength) != 0)
@@ -805,9 +805,7 @@ int CScriptCompilerInternal::TestIdentifierToken()
 #if KOTOR1
         int nNewLength = m_pIdentifierList[nIndex].m_sStringData.GetLength();
 #else
-        int nNewLength = m_pIdentifierList[nIndex].m_sStringData.m_sString
-                             ? static_cast<int>(strlen(m_pIdentifierList[nIndex].m_sStringData.m_sString))
-                             : 0;
+        int nNewLength = m_pIdentifierList[nIndex].m_sStringData.GetLength();
 #endif
         for (int k = 0; k < nNewLength; k++)
             m_szTokenText[k] = m_pIdentifierList[nIndex].m_sStringData.CStr()[k];
@@ -998,7 +996,7 @@ case GRAMMAR_FUNCTIONAL_UNIT:
 #if KOTOR1
         m_nTokenLength = pDecl->m_sName.GetLength();
 #else
-        m_nTokenLength = pDecl->m_sName.m_sString ? static_cast<int>(strlen(pDecl->m_sName.m_sString)) : 0;
+        m_nTokenLength = pDecl->m_sName.GetLength();
 #endif
         memcpy(m_szTokenText, pDecl->m_sName.CStr(), m_nTokenLength);  // idiom-exempt: runtime length (token length)
         int nResult = TestIdentifierToken();
@@ -2466,8 +2464,7 @@ int CScriptCompilerInternal::PreVisitGenerateCode(CScriptParseTreeNode* pNode)
 #if KOTOR1
             uint64_t nNameLen = m_sFunctionImpName.GetLength();
 #else
-            uint64_t nNameLen = m_sFunctionImpName.m_sString != 0
-                                   ? strlen(m_sFunctionImpName.m_sString) : 0;
+            uint64_t nNameLen = m_sFunctionImpName.GetLength();
 #endif
             m_nCompiledCodeLocation += static_cast<int>(nNameLen) + 5;
         }
@@ -2697,7 +2694,7 @@ int CScriptCompilerInternal::PreVisitGenerateCode(CScriptParseTreeNode* pNode)
 #if KOTOR1
                 uint64_t nStrLen = sValue.GetLength();
 #else
-                uint64_t nStrLen = sValue.m_sString != 0 ? strlen(sValue.m_sString) : 0;
+                uint64_t nStrLen = sValue.GetLength();
 #endif
                 if (m_bCompileSymbolicOutput != 0)
                 {
@@ -2729,7 +2726,7 @@ int CScriptCompilerInternal::PreVisitGenerateCode(CScriptParseTreeNode* pNode)
 
             if (m_pIdentifierList[nIndex].m_pParameterTypes[j] == KEYWORD_OBJECT)
             {
-                long long nObject = m_pIdentifierList[nIndex].m_pOptionalParameterObjectData[j];
+                unsigned long long nObject = m_pIdentifierList[nIndex].m_pOptionalParameterObjectData[j];
                 int nLen;
                 if (m_bCompileSymbolicOutput != 0)
                 {
@@ -4031,8 +4028,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
 #if KOTOR1
             int nStrLen = pNode->m_sName.GetLength();
 #else
-            int nStrLen = pNode->m_sName.m_sString
-                              ? static_cast<int>(strlen(pNode->m_sName.m_sString)) : 0;
+            int nStrLen = pNode->m_sName.GetLength();
 #endif
             if (m_bCompileSymbolicOutput != 0)
             {
@@ -6452,9 +6448,7 @@ int CScriptCompilerInternal::AddUserDefinedIdentifier(CScriptParseTreeNode* pNod
     m_pIdentifierList[m_nIdentifierCount].m_nNameLength = pNode->m_pLeft->m_pLeft->m_sName.GetLength();
 #else
     m_pIdentifierList[m_nIdentifierCount].m_nNameLength =
-        pNode->m_pLeft->m_pLeft->m_sName.m_sString
-            ? static_cast<int>(strlen(pNode->m_pLeft->m_pLeft->m_sName.m_sString))
-            : 0;
+        pNode->m_pLeft->m_pLeft->m_sName.GetLength();
 #endif
     m_pIdentifierList[m_nIdentifierCount].m_nIdentifierType = IDENTIFIER_TYPE_FUNCTION;
 
@@ -7873,7 +7867,7 @@ int CScriptCompilerInternal::GetIdentifierByName(const CExoString& sName)
 #if KOTOR1
     int nNameLength = sName.GetLength();
 #else
-    int nNameLength = sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0;
+    int nNameLength = sName.GetLength();
 #endif
 
     for (int64_t i = 0; i <= m_nIdentifierCount; i++) {
@@ -8058,7 +8052,7 @@ int CScriptCompilerInternal::ValidateLocationOfIdentifier(const CExoString& sNam
 #if KOTOR1
         int nSymbolLength = sSymbol.GetLength();
 #else
-        int nSymbolLength = sSymbol.m_sString ? static_cast<int>(strlen(sSymbol.m_sString)) : 0;
+        int nSymbolLength = sSymbol.GetLength();
 #endif
         sTarget = sSymbol.Right(nSymbolLength - 3);
         nResult = ValidateLocationOfIdentifier(sTarget);
@@ -8129,8 +8123,7 @@ lFoundLabel:
 #if KOTOR1
             sLabel = m_pSymbolQueryList[nQuery].m_sLabel.Right(m_pSymbolQueryList[nQuery].m_sLabel.GetLength() - 3);
 #else
-            int nSymbolLength = m_pSymbolQueryList[nQuery].m_sLabel.m_sString
-                    ? static_cast<int>(strlen(m_pSymbolQueryList[nQuery].m_sLabel.m_sString)) : 0;
+            int nSymbolLength = m_pSymbolQueryList[nQuery].m_sLabel.GetLength();
             sLabel = m_pSymbolQueryList[nQuery].m_sLabel.Right(nSymbolLength - 3);
 #endif
 
@@ -8156,8 +8149,7 @@ lMissingLabel:
 #if KOTOR1
             sLabel = m_pSymbolQueryList[nQuery].m_sLabel.Right(m_pSymbolQueryList[nQuery].m_sLabel.GetLength() - 3);
 #else
-            int nSymbolLength = m_pSymbolQueryList[nQuery].m_sLabel.m_sString
-                    ? static_cast<int>(strlen(m_pSymbolQueryList[nQuery].m_sLabel.m_sString)) : 0;
+            int nSymbolLength = m_pSymbolQueryList[nQuery].m_sLabel.GetLength();
             sLabel = m_pSymbolQueryList[nQuery].m_sLabel.Right(nSymbolLength - 3);
 #endif
         }
@@ -8807,7 +8799,7 @@ int CScriptCompilerIdListEntry::ExpandParameterSpace()
     int* paNew80 = new int[nNewCapacity];
     float* paNew88 = new float[nNewCapacity];
     CExoString* paNew90 = new CExoString[nNewCapacity];
-    long long* paNew98 = new long long[nNewCapacity];
+    unsigned long long* paNew98 = new unsigned long long[nNewCapacity];
     float* paNewa0 = new float[nNewCapacity * 3];
 
     if (m_nParameterSpace != 0) {

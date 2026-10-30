@@ -20,7 +20,6 @@ public:
     virtual void Control() = 0;
 
     char m_bDeactivated;
-    char _pad09[0x10 - 0x09];
     Animation* m_pAnimation;         // torn down as MaxTree
     AnimRun* m_pRun;                 // the live play-state record
 };

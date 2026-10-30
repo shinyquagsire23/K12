@@ -225,7 +225,6 @@ struct MaxTree32 {
     int  m_nFreeTokenCap;
     int  m_pMdlResource;
     char m_cType;
-    char _pad4d[3];
 };
 static_assert(sizeof(MaxTree32) == 0x50, "pinned by Model32/Animation32 starting at +0x50");
 

@@ -180,7 +180,7 @@ void ThreadHANDLE::AddPendingIO(MacPendingIO* pPendingIO)
     if (m_pPendingIOTail != 0)
         return;
     m_hPendingIOSem = CreateSemaphoreA(0, 0, 100, 0);
-    m_pPendingIOTail = operator new(16);
+    m_pPendingIOTail = operator new(2 * sizeof(void*));  // an SLIST_HEADER
     InitializeSListHead(m_pPendingIOTail);
 }
 

@@ -151,7 +151,6 @@ public:
     CSWGuiLabel m_aBarLabels[4];
     CExoArrayList<CSWGuiSaveLoadEntry*> m_entries;
     int  m_nFilterIndex;
-    char _pad277c[0x2780 - 0x277c];
     CExoArrayList<CExoString> m_filterNames;
     int  m_nReserved1;
     int  m_bEndGameMode;
@@ -164,7 +163,6 @@ public:
         CLOUD_SYNC_FINISHED = 3,
     };
     int  m_nCloudSyncState;
-    char _pad279c[0x27a0 - 0x279c];
 #endif
     CSWGuiButton m_btnCloud;
 };
@@ -219,7 +217,6 @@ public:
     unsigned char m_storyHints[1];
 #else
     unsigned char m_storyHints[10];
-    char          _pad287[0x1];
 #endif
     CExoString    m_saveGameName;
     CExoString    m_saveName;
@@ -231,7 +228,7 @@ public:
     CExoString    m_sTokenValue;
     CResRef       m_aPlayerPortrait[3];
 #if !KOTOR1  // K1 has no time stamp, PC name or save number
-    unsigned long long m_timeStamp;
+    uint64_ll_t   m_timeStamp;
     CExoString    m_pcName;
     int           m_nSaveNumber;
 #endif

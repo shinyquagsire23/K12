@@ -44,7 +44,6 @@ public:
     bool m_bDrawEnabled = false;
     bool m_bHologramRendering = false;
     bool m_bPerObjectIllumination = false;
-    char _pad37[0x38 - 0x37];
     Part** m_paChildren = 0;
     int  m_nChildren = 0;
     int  m_nCapacity = 0;
@@ -245,12 +244,10 @@ public:
     int m_nUVPool = -1;
     bool m_bHasColorPool = 0;
     bool m_bFog = 1;
-    char _pad9a[0xa0 - 0x9a];
     TileData* m_pTileData = 0;
     float m_fOpacity = 1.0f;
     char _padac[0xb0 - 0xac];
     int  m_nPartID;
-    char _padb4[0xb8 - 0xb4];
     float* m_pafBaseUVs;  // (u, v) per vertex, the first UV set
 
 #if KOTOR1  // K1 caches GetRenderPath() here
@@ -854,7 +851,6 @@ public:
     unsigned short m_nAlignmentValue;
     bool  m_bNonForceBlending;
     bool  m_bForceGlowEnabled;
-    char  _pad2e[0x30 - 0x2e];
     float m_fForceGlowR;
     float m_fForceGlowG;
     float m_fForceGlowB;
@@ -866,14 +862,13 @@ public:
     float m_fIlluminationG;
     float m_fIlluminationB;
     bool  m_bRenderingEnabled;
-    char  _pad51[0x58 - 0x51];
 #endif
 
     List<CAurRoom*> m_rooms;
     float m_fCheckEventTime;
     int   m_nImposterHandle;
     int   m_nImposters;
-    char  m_szName[0x98 - 0x74];
+    char  m_szName[32];
     Model* m_pModel;
     Model* m_pLodModelX;
     Model* m_pLodModelZ;
@@ -894,7 +889,6 @@ public:
     short m_nColorShifting;
     short m_nIllumination;
     short m_nRenderGobBBox;
-    char  _pad12e[0x130 - 0x12e];
     Vector m_vColorShift;
     float m_fColorShiftAmount;
     float m_fFadeAlpha;
@@ -904,7 +898,6 @@ public:
     float m_fViewDistance;
     float m_fPersonalRadius;
     float m_fCreatureRadius;
-    char  _pad17c[0x180 - 0x17c];
     CAurPathInfo m_pathInfo;
     float m_fBumpOutDistance;
     Vector m_vBoundingBoxMin;
@@ -923,7 +916,6 @@ public:
     char  m_bReserved1;
     bool  m_bHasGeometry;
     bool  m_bProcessFlag;
-    char  _pad1e4[0x1e8 - 0x1e4];
     Material* m_pSingleMaterial;
     PartTriMesh* m_pSingleLightPart;
     TileData* m_pTileData;
@@ -935,10 +927,8 @@ public:
     bool  m_bHasTransparency;
     float m_fMaxBlurLength;
     bool  m_bAnimateUV;
-    char  _pad219[0x220 - 0x219];
     CAurBehavior* m_pBehavior;
     int   m_nLastAnimateTick;
-    char  _pad22c[0x230 - 0x22c];
     List<CallBack*> m_callbacks;
     List<PartLight*>    m_partLights;
     SafePointer<CAurTexture> m_texWatch;
@@ -946,7 +936,6 @@ public:
     int   m_nExternalDataType;
     float m_fObjectScale;
     float m_fObjectScaleBase;
-    char  _pad26c[0x270 - 0x26c];
     List<Gob*> m_attachments;
     int   m_nReserved1;
 
@@ -956,7 +945,6 @@ public:
     int   m_nReserved2;
 #endif
     char  m_cHasSkin;
-    char  _pad28d[0x290 - 0x28d];
 };
 
 #if KOTOR1  // K1 Gob layout mirrors
@@ -1195,7 +1183,6 @@ public:
     unsigned long long m_pParent;
     Vector     m_vPosition;
     Quaternion m_qOrientation;
-    char _pad34[0x38 - 0x34];
     List<MdlNode*>     m_listChildren;
     List<NewController> m_listControllers;
     List<float>        m_listFloats;
@@ -1281,7 +1268,6 @@ public:
     char m_szName[32];
     MdlNode* m_pMdlNode;
     int  m_nNodeCount;
-    char _pad3c[0x40 - 0x3c];
     List<MdlNode*> m_freeList;
     List<unsigned int> m_freeTokens;
     void* m_pMdlResource;
@@ -1343,7 +1329,6 @@ public:
     int m_nTransparencyHint;
     char m_szTexture[0xec - 0xcc];
     char m_szLightmap[0x10c - 0xec];
-    char _pad10c[0x110 - 0x10c];
     List<unsigned int*> m_lVertexIndices;
     List<unsigned int> m_lLeftOverFaces;
     List<int> m_lVertexIndicesCount;
@@ -1445,7 +1430,6 @@ public:
     Face* Faces() { return reinterpret_cast<Face*>(m_faces.m_pData); }
 
     float m_fSamplePeriod;
-    char _pad1ec[0x1f0 - 0x1ec];
     List<Vector> m_lAnimVerts;
     List<Vector> m_lAnimTVerts;
     List<Vector> m_lAnimNormals;
@@ -1480,7 +1464,6 @@ public:
     float m_fDisplacement;
     float m_fTightness;
     float m_fPeriod;
-    char _pad204[0x208 - 0x204];
     void* m_pVertexSource;
     ~MdlNodeDanglyMesh();
     void InternalDestructor();
@@ -1511,7 +1494,6 @@ public:
     void BinaryInternalDestructor();
     void InternalDestructor();
     float m_fFlareRange;
-    char _pad6c[0x70 - 0x6c];
     List<SafePointer<CAurTexture>> m_lFlareTextures;
     List<float> m_lFlareSizes;
     List<float> m_lFlarePositions;
@@ -1623,11 +1605,10 @@ public:
     unsigned int m_nBoneIndicesOfs;
     float* m_paBoneMap;
     int m_nBoneCount;
-    int m_nReserved5;
     List<Quaternion> m_lQBoneRefInv;
     List<Vector> m_lTBoneRefInv;
     List<int> m_lBoneConstantIndices;
-    short m_aBoneNodeIndices[20];
+    short m_aBoneNodeIndices[17];
 };
 
 #endif
@@ -1685,7 +1666,6 @@ public:
     char m_bReserved1;
     char m_cAffectedByFog;
     int  m_nRefCount;
-    char _pad74[0x78 - 0x74];
     List<Animation*> m_animations;
     Model* m_pSuperModel;
     Vector m_vBoundsMin;
@@ -1731,14 +1711,12 @@ public:
     float  m_fOpacity;
     float  m_fBaseOpacity;
     int   m_nReserved1;
-    char  _pad7c[4];
     List<TileData*>    m_aNeighbors;
     List<void*>        m_aReserved1;
     List<PartTriMesh*> m_aNeighborMeshes;
     List<PartTriMesh*> m_aOwnMeshes;
     int   m_nFadeState;
     char  m_bFogged;
-    char  _padC5[3];
     float m_fFade;
 };
 
@@ -1761,7 +1739,7 @@ public:
     ~Animation();
     float m_fLength;
     float m_fTransTime;
-    char m_szAnimRoot[0x98 - 0x74];
+    char m_szAnimRoot[32];
     List<AnimationEvent> m_events;
     Model*   m_pModel;
 };

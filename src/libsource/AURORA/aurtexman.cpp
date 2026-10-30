@@ -1313,6 +1313,78 @@ int AurTextureSprintf(char* pszBuffer, uint64_t nSize, const char* pszFormat, ..
     return n;
 }
 
+#ifdef K2_QOL_FACE_CUBEMAPS
+// A cube map with no texture of its own whose six faces are textures <name>0..<name>5 (what a
+// `cube 1` / `filerange 6` TXI names): the faces are read one by one and laid out as a cube TPC is,
+// face after face, each with its whole mip chain, which is what Create(Processed)CubeTexture walks.
+static int QolFaceBytes(int nWidth, int nHeight, int nBPP, int nCompressedSize, int nMipMaps)
+{
+    int nBytes = 0;
+    if (nCompressedSize >= 1) {
+        int nBlock = (nBPP == 4) ? 16 : 8;
+        nBytes = nCompressedSize;
+        for (int nW = nWidth >> 1, nH = nHeight >> 1; (nW | nH) != 0; nW >>= 1, nH >>= 1)
+            nBytes += (((nW ? nW : 1) + 3) / 4) * nBlock * (((nH ? nH : 1) + 3) / 4);
+        return nBytes;
+    }
+    for (int i = 0; i < (nMipMaps > 1 ? nMipMaps : 1); i++)
+        nBytes += (nWidth >> i ? nWidth >> i : 1) * (nHeight >> i ? nHeight >> i : 1) * nBPP;
+    return nBytes;
+}
+
+static bool QolLoadFaceCubeMap(CAurTextureBasic* pTexture)
+{
+    void* apFaces[6] = {};
+    int nWidth = 0, nHeight = 0, nBPP = 0, nCompressedSize = 0, nRasterSize = 0, nTxiSize = 0;
+    Aurora::AuroraTextureFormats eFormat = static_cast<Aurora::AuroraTextureFormats>(0);
+    float fAlphaMean = 1.0f;
+    bool bProcessed = false;
+    short nMipMaps = 0;
+    bool bOk = true;
+    for (int i = 0; i < 6 && bOk; i++) {
+        char szFace[64];
+        AurTextureSprintf(szFace, sizeof(szFace), "%s%d", pTexture->m_szResRef, i);
+        int nW = 0, nH = 0, nB = 0, nC = 0;
+        bool bP = false;
+        short nM = 0;
+        apFaces[i] = AurGetImageWrapper(szFace, &nW, &nH, &nB, &nC, &nRasterSize, &nTxiSize, &eFormat,
+                                        &fAlphaMean, &bP, &nM, 0);
+        if (i == 0) {
+            nWidth = nW; nHeight = nH; nBPP = nB; nCompressedSize = nC; bProcessed = bP; nMipMaps = nM;
+        }
+        bOk = apFaces[i] != 0 && nW == nWidth && nH == nHeight && nB == nBPP && nC == nCompressedSize;
+    }
+    int nFace = QolFaceBytes(nWidth, nHeight, nBPP, nCompressedSize, nMipMaps);
+    unsigned char* pImage = bOk ? new unsigned char[static_cast<size_t>(nFace) * 6] : 0;
+    for (int i = 0; i < 6; i++) {
+        if (apFaces[i] == 0)
+            continue;
+        if (pImage != 0)
+            memcpy(pImage + static_cast<size_t>(nFace) * i, apFaces[i], nFace);
+        if (AurReleaseRaster)
+            AurReleaseRaster(apFaces[i], nWidth, nHeight, nBPP, 0, nRasterSize, nTxiSize, bProcessed);
+        else
+            delete[] static_cast<unsigned char*>(apFaces[i]);
+    }
+    if (pImage == 0)
+        return false;
+    pTexture->m_pImage = pImage;
+    pTexture->m_bReleaseRaster = 0;
+    pTexture->m_nWidth = nWidth;
+    pTexture->m_nHeight = nHeight * 6;
+    pTexture->m_nBPP = nBPP;
+    pTexture->m_nCompressedSize = nCompressedSize;
+    pTexture->m_nTextureFormat = eFormat;
+    pTexture->m_fAlphaMean = fAlphaMean;
+    pTexture->m_bProcessed = bProcessed;
+    pTexture->m_nNumMipMaps = nMipMaps;
+    pTexture->m_nRasterSize = 0;
+    pTexture->m_nTxiSize = 0;
+    pTexture->m_bCubeMap = 1;
+    return true;
+}
+#endif
+
 // Loads multiple faces, one raster per file range, concatenated into a single buffer.
 #if KOTOR1
 void CAurTextureBasic::LoadImage()
@@ -1336,6 +1408,10 @@ void CAurTextureBasic::LoadImageA()
                                       &m_nNumMipMaps, nFlags);
         m_bProcessed = bProcessed;
         m_bReleaseRaster = (AurReleaseRaster != 0) && (m_pImage != 0);
+#ifdef K2_QOL_FACE_CUBEMAPS
+        if (m_pImage == 0 && !m_bCubeMap)
+            QolLoadFaceCubeMap(this);
+#endif
         return;
     }
 
@@ -2868,7 +2944,7 @@ const char* addpalette(char* pszArg)
     return AurSetPalette(nIndex, szName) == -1 ? "ERROR: something didn't work" : "OK";
 }
 
-// Takes a screenshot and writes it out as a TGA. A null or "nullptr" filename takes the
+// Takes a screenshot and writes it out as a TGA. A null or NULL_NAME filename takes the
 // generated `snap<N>.tga` form; any other name gets ".tga" appended when it lacks it.
 #if KOTOR1
 char* snapshottest(char* pszArgs)

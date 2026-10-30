@@ -16,7 +16,6 @@ public:
     int  IsLoaded();
 
     int           m_bLoaded;
-    unsigned char _pad3c[0x4];
 };
 
 #endif

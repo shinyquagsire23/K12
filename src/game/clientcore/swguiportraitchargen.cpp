@@ -162,7 +162,7 @@ void CSWGuiPortraitCharGen::UpdatePortraitButton()
         }
     }
 
-    m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(0), 0);
+    m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(0));
 
     if (g_bDo3DGUIs) {
         m_pCreature->AttachToScene(m_view3DChar.m_scene.m_pScene);

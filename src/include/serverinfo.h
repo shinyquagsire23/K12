@@ -21,7 +21,6 @@ public:
 
     int   m_nUpdatedFlags;
     short m_nServerStatus;
-    char  _pad06[2];
     CExoString m_sModuleList;
     CExoString m_sPlayerList;
     CExoString m_sSavegameList;
@@ -85,7 +84,6 @@ public:
     int    m_nReserved2;
     int    m_nReserved3;
     int    m_nReserved4;
-    char   _pad124[4];
     CExoString m_sModuleName;          // GetModuleName returns a copy of this
     // SetModuleName sets the first of these three flags for the three tutorial modules.
     unsigned m_bTutorialModule : 1;

@@ -61,7 +61,7 @@ public:
     // Starts the game with the chosen class and module once char-gen finishes.
     void BeginPlayGame();
 
-    char m_aReserved1[8];
+    void* m_pReserved1;
 
     CSWCCreature* m_pSelectedCreature;
 

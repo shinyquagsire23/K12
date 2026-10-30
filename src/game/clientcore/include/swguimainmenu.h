@@ -85,15 +85,16 @@ public:
 #endif
 
 #if !KOTOR1  // K1 has no gap before the list box
-    char _padA8[0xb0 - 0xa8];
+    void* m_pReserved1;
 #endif
 
     CSWGuiListBox m_lbModules;
 
     CExoArrayList<CExoString> m_aModuleNames;
     int         m_nMenuMode;
+#if !KOTOR1  // K1's constructor sets no such field
     unsigned short m_nReserved1;
-    char        _pad50e[0x510 - 0x50e];
+#endif
 
     CExoArrayList<CErrorMessageData> m_errorMessages;
 
@@ -113,7 +114,6 @@ public:
     int m_bInputReady;
     int m_nDrawFrames;
     int m_bShowExit;
-    char _pad1a7c[0x1a80 - 0x1a7c];
     CSWGuiButton m_btnContinue;
     CSWGuiButton m_btnBlack;
     CSWGuiLabel m_lblBackground;
@@ -146,7 +146,6 @@ public:
     int m_bInputReady;
     int m_nDrawFrames;
     int m_bShowExit;
-    char _pad2924[0x2928 - 0x2924];
 
     CSWGuiButton m_btnContinue;
     CSWGuiButton m_btnGPlay;

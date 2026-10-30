@@ -30,13 +30,11 @@ public:
     int            m_bPlayerRace;
     // racialtypes.2da's own first-level bonus feat list, distinct from a class's granted feats.
     unsigned short  m_nNumFirstLevelGrantedFeats;
-    unsigned char   _pad26[0x28 - 0x26];
     unsigned short* m_paFirstLevelGrantedFeats;
     // racialtypes.2da "Age".
     int             m_nAge;
     // racialtypes.2da "Appearance", a row index into appearance.2da.
     unsigned short  m_nAppearance;
-    unsigned char  _pad36[0x38 - 0x36];
 
     CExoString GetNameText();
     CExoString GetNamePluralText();

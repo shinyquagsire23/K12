@@ -68,7 +68,6 @@ public:
     Vector       m_vSavedPlayerPos;
     Vector       m_vCameraPos;
     Vector       m_vCameraOffset;
-    float        m_fReserved1;
     unsigned long long m_oidCameraFollow;
     float        m_fCameraDist;
     float        m_fCameraYaw;
@@ -91,7 +90,8 @@ public:
     float        m_fHourLengthSec;
     unsigned char m_nDawnHour;
     unsigned char m_nDuskHour;
-    char         m_aReserved1[0xf8-0xee];
+    char         m_aReserved1[2];
+    void*        m_pReserved2;
     char         m_aReserved2[0x105-0xf8];
     unsigned char m_nLastCameraMode;
     char         m_aReserved3[2];
@@ -108,7 +108,6 @@ public:
     int          m_bCameraTurned;
     int          m_bCameraZoomed;
     int          m_nReserved1;
-    int          m_nReserved2;
     CCameraSettings m_cSavedCameraSettings;
     CAurObject*  m_pAnimatedCameraModel;
     CExoString   m_sAnimatedCameraAnim;

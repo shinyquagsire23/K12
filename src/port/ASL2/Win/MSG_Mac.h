@@ -43,7 +43,7 @@ public:
         void*              hwnd;
         unsigned int       message;
         unsigned long long wParam;
-        long long          lParam;
+        int64_t            lParam;
         bool               m_bUnicode;
         std::promise<int64_t> m_promise;
     };
@@ -55,10 +55,8 @@ private:
     unsigned int m_nMsgFlags;
     int          m_nMsgTime;
     int          m_nMsgPt;
-    // 4 reserved bytes ahead of the counter block; no member function touches them.
-    int          : 32;
-    int          m_nReserved1;
-    int          m_nReserved2;
+    // A pointer-width reserved slot ahead of the counter block; only the constructor touches it.
+    void*        m_pReserved1;
     int          m_nKeyCount;
     int          m_nMouseMoveCount;
     int          m_nMouseButtonCount;
@@ -72,8 +70,9 @@ private:
     std::deque<SendMsg> m_sendQueue;
     std::mutex          m_sendLock;
 
-    // Reserved bytes (0xf0 on 64-bit hosts) that no member function touches, nor the constructor.
-    uint64_t : 64; uint64_t : 64; uint64_t : 64; uint64_t : 64; uint64_t : 64;
+    // Five reserved pointer-width words (0xf0 on 64-bit hosts) that no member function touches, nor
+    // the constructor.
+    void*               m_aReserved1[5];
     std::promise<int64_t> m_promise;
 };
 

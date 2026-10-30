@@ -33,13 +33,11 @@ public:
     void Initialize();
 
     int         m_bValid;
-    char        _pad04[4];
     CExoString  m_sName;
     char        _pad18[0x10];
     int         m_isPlayerPermitted;
     int         m_isGameMasterPermitted;
     int         m_isAdminPermitted;
-    char        _pad34[4];
 };
 
 // The transport object. The frame buffer is a flat, double-sized ring buffer: the cursors always
@@ -97,16 +95,13 @@ public:
     CBaseExoApp*         m_pApp;
     CNetLayer*           m_pDestNetLayer;
     int                  m_bInitialized;
-    char                 _pad2001c[4];
     CNetLayerPlayerInfo  m_playerInfo;
     int                  m_bServerModeActive;
-    char                 _pad2005c[4];
     CExoString           m_sServerName;
     CExoString           m_sPlayerPassword;
     CExoString           m_sGameMasterPassword;
     CExoString           m_sServerAdminPassword;
     int                  m_bConnecting;
-    char                 _pad200a4[4];
     CExoString           m_sConnectTarget;
     int                  m_nConnectType;
     int                  m_bConnectResponseReceived;

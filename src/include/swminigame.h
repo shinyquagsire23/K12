@@ -90,7 +90,6 @@ public:
     unsigned char m_bUseInertia;
     unsigned char m_bDoBumping;
     CResRef m_resForfeitSound;
-    char   _padd6[0xd8-0xd6];
     CSWCRoom* m_pPlayerRoom;
     int    m_nPhysicsModel;
     Vector m_vSteerAxis;
@@ -104,7 +103,6 @@ public:
     C2DA*  m_pSwoopUpgrades;
     int    m_swoopUpgrades[6];
     float  m_jumpSpeed;
-    char   _pad154[0x158-0x154];
 #endif
 
     CSWMiniGame(CSWCArea* pArea);

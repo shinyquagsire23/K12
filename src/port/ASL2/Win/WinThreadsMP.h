@@ -128,7 +128,6 @@ public:
     unsigned int (*m_pFunc)(void*);
     void*       m_pArg;
     unsigned int m_nExitCode;
-    unsigned int m_nReserved1;
     void*       m_pPendingIOTail;
     void*       m_hPendingIOSem;
     CWin32MSGQueue m_msgQueue;

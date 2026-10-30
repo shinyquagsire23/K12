@@ -234,3 +234,6 @@ if(K2P_MSVC_WARN)
     endif()
   endforeach()
 endif()
+
+# ---- the model viewer (platforms/viewer/viewer.cmake): this executable plus its panel -----------
+k2p_add_viewer(${K2P_EXE})

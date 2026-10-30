@@ -19,7 +19,6 @@ struct CSWCCreatureStats_ClassInfo {
     unsigned short m_nReserved2;
     unsigned char m_nClass;
     unsigned char m_nLevel;
-    unsigned char _pad26[0x28 - 0x26];
 
     CSWCCreatureStats_ClassInfo();
     ~CSWCCreatureStats_ClassInfo();
@@ -67,7 +66,6 @@ public:
     CExoString    m_name;
     CExoString    m_sLastName;
     unsigned short m_nRace;
-    unsigned char _pad3a[0x40 - 0x3a];
     CExoString    m_raceString;
     unsigned char m_nSubraceIndex;
     unsigned char m_nGender;
@@ -79,7 +77,6 @@ public:
     // unsigned. Every reader narrows its sum to 8 bits, so the wrap cancels out.
     unsigned char m_nDEXArmorAdjust;
     signed char   m_abScoreBonuses[6];
-    unsigned char _pad67[0x68 - 0x67];
     short m_nHitPointsBase;
     short m_nHitPointBonus;
     short m_nCurrentHitPoints;
@@ -92,10 +89,8 @@ public:
     char          m_nFortSavingThrow;
     char          m_nWillSavingThrow;
     char          m_nReflexSavingThrow;
-    unsigned char _pad7f[0x80 - 0x7f];
     int           m_bUseMonkAttackTables;
     unsigned char m_nBaseAttackBonus;
-    unsigned char _pad85[0x88 - 0x85];
     CCombatInformation* m_pCombatInformation;
     int           m_bCombatInformationSet;
     CSWPortrait   m_portrait;
@@ -119,7 +114,6 @@ public:
     unsigned int  m_nUseBackupHead;
     unsigned char m_bTail;
     unsigned char m_bWings;
-    unsigned char _padda[0xe0 - 0xda];
     CExoString    m_sDescription;
     unsigned int  m_nAge;
     unsigned char m_nAbilityPointsRemaining;
@@ -135,7 +129,6 @@ public:
     unsigned short m_nForcePoints;
     unsigned short m_nCurrentForcePoints;
     unsigned short m_nTemporaryForcePoints;
-    unsigned char _pad192[0x198 - 0x192];
 #if KOTOR1  // K1 has no owner pointer
 #else
     CSWCCreature* m_pCreature;

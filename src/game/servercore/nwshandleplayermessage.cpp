@@ -14,6 +14,7 @@
 #include "nwseffectlist.h"
 #include <string.h>
 #include "CExoArrayListImpl.h"
+#include "exostringinline.h"
 
 const int CSWSMessage::GUI_PANEL_PLAYER_DEATH = 0;
 const int CSWSMessage::GUI_PANEL_PARTY_INVITATION_RECEIVED = 1;
@@ -261,11 +262,7 @@ int CSWSMessage::HandlePlayerToServerCheatMessage(CSWSPlayer* pPlayer, unsigned 
                     return 0;
                 }
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                 if (sAreaName.GetLength() < 1)
-#else
-                if (sAreaName.m_sString == 0 || strlen(sAreaName.m_sString) < 1)
-#endif
                     pArea = pObjArea;
                 else
                 {
@@ -4035,7 +4032,7 @@ int CSWSMessage::HandlePlayerToServerPlayModuleCharacterList_Start(CSWSPlayer* p
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
     if (pNode != 0) {
         do {
-            CSWSPlayer* pOther = static_cast<CSWSPlayer*>(pList->m_pInternal->GetAtPos(pNode));
+            CSWSPlayer* pOther = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
             if (pOther != 0 && pOther->GetGameObject() != 0) {
                 unsigned long long objectId = pOther->GetGameObject()->m_objectId;
                 if (objectId != CGameObjectArray::INVALIDOBJID) {
@@ -4045,7 +4042,7 @@ int CSWSMessage::HandlePlayerToServerPlayModuleCharacterList_Start(CSWSPlayer* p
                             pPlayer->m_nPlayerId, objectId, 1);
                 }
             }
-            pList->m_pInternal->GetNext(pNode);
+            pList->GetNext(pNode);
         } while (pNode != 0);
     }
 

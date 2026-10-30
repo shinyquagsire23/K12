@@ -9,7 +9,7 @@ void ByteSwap(float* p);
 // The res-helper info block holds the two common fields plus 16 bytes of attribute cache for this
 // wrapper.
 enum {
-    RESHELPERINFO_SIZE = 26,
+    RESHELPERINFO_SIZE = sizeof(CResHelperInfo) + 16,
 };
 
 CAurora16BitTexture::CAurora16BitTexture(CResRef resRef, int bRequest) {

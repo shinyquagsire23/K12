@@ -87,9 +87,7 @@ public:
     CResRef m_edgeImage;
     CResRef m_fillImage;
 #if KOTOR1
-    char _pad4d[0x50-0x4d];
 #else
-    char _pad52[0x58-0x52];
 #endif
     CSWGuiBorder* m_pBorder;
 };
@@ -243,7 +241,6 @@ public:
     unsigned char      bHilight     : 1;
     unsigned char      _bits44_7    : 1;
     char               m_szBaseFont[0x56 - 0x45];
-    char               _pad56[0x58 - 0x56];
     CSWGuiText*        m_pTextObject;
 };
 
@@ -283,7 +280,6 @@ public:
     CAurGUIStringInternal* m_pString;
     CSWGuiTextParams m_params;
     int m_nWrapWidth;
-    short m_nMaxLength;
 };
 
 #endif // CSWGUITEXT_H
@@ -306,6 +302,7 @@ public:
     void AddNewChar(char* sChar);
     void SetCaretVisible(int bVisible);
 
+    short m_nMaxLength;
     unsigned char m_bCaretVisible : 1;
     unsigned char : 7;
     CExoString m_sText;

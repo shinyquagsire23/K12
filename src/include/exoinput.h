@@ -245,7 +245,6 @@ struct CExoInputEvent {
     int m_nValue;
     int m_nTimeStamp;
     int m_nSequence;
-    int m_nReserved1;
     CExoInputEventDesc* m_pEvent;
 };
 
@@ -475,7 +474,9 @@ struct CExoInput {
     void GetJoystickRStick(float* a, float* b);
     int EventExists(unsigned int n);
     int CreateNewEventInClass(unsigned int a, int b, unsigned int c, int d, unsigned int e, unsigned int f);
+#if !KOTOR1
     int IsPsShowButtonsController() const;
+#endif
 };
 
 // The single global input object.

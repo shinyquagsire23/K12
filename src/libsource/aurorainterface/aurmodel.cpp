@@ -3,7 +3,7 @@
 
 // Info block this wrapper caches into, a 2-byte resource type then the helper pointer.
 enum {
-    RESHELPERINFO_SIZE = 10,
+    RESHELPERINFO_SIZE = sizeof(CResHelperInfo),
 };
 
 CAuroraModel::CAuroraModel(CResRef resRef, int bRequest) {

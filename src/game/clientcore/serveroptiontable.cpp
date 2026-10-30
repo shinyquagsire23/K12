@@ -10,7 +10,11 @@ CServerInfo::CServerInfo()
     m_nUpdatedFlags = 0;
     m_nServerStatus = 0;
     m_nMinCharacterLevel = 1;
+#if KOTOR1
+    m_nMaxCharacterLevel = 20;
+#else
     m_nMaxCharacterLevel = 50;
+#endif
     m_bPauseAndPlay = 1;
     m_bTutorialModule = 0;
     m_bReserved1 = 0;

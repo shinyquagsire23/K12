@@ -1779,7 +1779,7 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
 
 void CSWGuiMainMenu::OnPanelAdded()
 {
-    unsigned long long nFreeBytes;
+    uint64_ll_t nFreeBytes;
     g_pExoResMan->GetFreeDiskSpace(CExoString("SAVES:"), &nFreeBytes);
     unsigned long long nFreeKB = nFreeBytes >> 14;
 

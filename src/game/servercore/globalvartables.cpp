@@ -83,11 +83,7 @@ void CSWGlobalVariableTable::ClearValues()
 unsigned int CSWGlobalVariableTable::Hash(const CExoString& sName)
 {
     unsigned int nHash = 0;
-#if KOTOR1  // K1 calls the out-of-line CExoString::GetLength
     for (int i = 0; i < sName.GetLength(); i++)
-#else
-    for (int i = 0; i < static_cast<int>(sName.m_sString ? strlen(sName.m_sString) : 0); i++)
-#endif
         nHash = m_aHashTable[(toupper(sName[i]) ^ nHash) & 0xff] ^ (nHash >> 8);
     return nHash % NUM_IDENTIFIERS;
 }

@@ -54,7 +54,6 @@ struct CSWCFireForgetAnim {
 
     int            m_bActive;
     unsigned short m_nAnimation;
-    char           _pad6[0x08-0x06];
     unsigned int   m_nStartDay;
     unsigned int   m_nStartTime;
     unsigned int   m_nDuration;
@@ -92,7 +91,6 @@ public:
     int                  m_bBarkTexture;
     int                  m_bShadeTexture;
     int                  m_bNoProjectileAttach;
-    char                 _pad24[0x28-0x24];
     CExoLinkedListNode*  m_pAINode;
     CSWCArea*            m_pArea;
     Vector               m_position;
@@ -121,11 +119,9 @@ public:
     unsigned int         m_nFadeStartDelayMs;
     unsigned char        m_fadeState;
     unsigned char        m_desiredFadeState;
-    char                 _padb6[0xb8-0xb6];
     int                  m_bTimedFade;
     float                m_finalFadeAlpha;
     int                  m_bSnapPositionOnUpdate;
-    char                 _padc4[0xc8-0xc4];
     unsigned long long   m_nReserved9;
     float                m_fHeadHeight;
     CSWPortrait          m_portrait;
@@ -142,7 +138,6 @@ public:
     int                  m_bPendingRemoval;
     CExoString           m_feedbackInfo;
     int                  m_feedbackTimer;
-    char                 _pad134[0x138-0x134];
     CallBack*            m_pQuededAnimationCallback;
     CSWSObject*          m_pServerObject;
 
@@ -362,7 +357,6 @@ public:
 
     CExoString   m_sName;
     unsigned int m_nActionId;
-    unsigned int m_nReserved1;
     void (CSWCCreature::*m_pfnAction)(unsigned int, CSWCCreature*);
     unsigned long long m_nObjectId;
     CResRef      m_resRef;

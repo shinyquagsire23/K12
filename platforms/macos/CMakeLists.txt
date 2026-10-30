@@ -83,3 +83,6 @@ target_link_libraries(${K2P_EXE} PRIVATE
   "-Wl,-force_load,$<TARGET_FILE:k2_engine>"   # the whole engine, not just what main() reaches
   SDL2::SDL2
   ${OPENGL_FRAMEWORK})
+
+# ---- the model viewer (platforms/viewer/viewer.cmake): this executable plus its panel -----------
+k2p_add_viewer(${K2P_EXE})

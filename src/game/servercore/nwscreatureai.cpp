@@ -1340,10 +1340,10 @@ CSWSObjectActionNode* CSWSCreature::GetAction(unsigned int nAction)
         return 0;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
     do {
-        CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+        CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
         if (pAction->m_nActionId == static_cast<int>(nAction))
             return pAction;
-        m_actionList.m_pInternal->GetNext(pNode);
+        m_actionList.GetNext(pNode);
     } while (pNode != 0);
     return 0;
 }
@@ -1384,10 +1384,10 @@ int CSWSCreature::HasAction(unsigned int nActionId)
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
     do {
         CSWSObjectActionNode* pAction =
-            static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+            m_actionList.GetAtPos(pNode);
         if (pAction->m_nActionId == static_cast<int>(nActionId))
             return 1;
-        m_actionList.m_pInternal->GetNext(pNode);
+        m_actionList.GetNext(pNode);
     } while (pNode != 0);
     return 0;
 }
@@ -6999,8 +6999,7 @@ int CSWSCreature::GetUserActionsPending()
     CExoLinkedListNode* pNode = m_pCombatRound->m_pRoundActionList->m_pInternal->m_pHead;
     if (pNode == 0)
         return 0;
-    CSWSCombatRoundAction* pAction = static_cast<CSWSCombatRoundAction*>(
-        m_pCombatRound->m_pRoundActionList->m_pInternal->GetAtPos(pNode));
+    CSWSCombatRoundAction* pAction = m_pCombatRound->m_pRoundActionList->GetAtPos(pNode);
     while (pAction != 0) {
         CGameObject* pObject1 = 0;
         if (pAction->m_oidTarget != OBJECT_INVALID) {
@@ -7018,8 +7017,7 @@ int CSWSCreature::GetUserActionsPending()
         }
         if (pAction->m_bIsPC != 0 && pObject1 != 0 && pObject2 != 0)
             return 1;
-        pAction = static_cast<CSWSCombatRoundAction*>(
-            m_pCombatRound->m_pRoundActionList->m_pInternal->GetNext(pNode));
+        pAction = m_pCombatRound->m_pRoundActionList->GetNext(pNode);
     }
     return 0;
 }

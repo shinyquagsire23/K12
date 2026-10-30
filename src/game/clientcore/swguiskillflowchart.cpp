@@ -336,7 +336,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
 #endif
 
 #if KOTOR1
-// K1 has no secret icon: each slot takes the spell's own icon, or none.
+// K1 has no secret icon: each slot takes the spell's own icon, or none; the row is AddFeatSet's 242 wide.
 void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPowerB, unsigned int nPowerC) {
     CResRef resRef;
     CSWGuiSkillFlow* pFlow = new CSWGuiSkillFlow();
@@ -365,7 +365,7 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     CSWGuiExtent extent;
     extent.x = 0;
     extent.y = 0;
-    extent.w = 262;
+    extent.w = 242;
 #if !defined(K2_UI_TOUCH)
     extent.h = K1FlowRowHeight();
 #else

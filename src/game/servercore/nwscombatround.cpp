@@ -587,9 +587,9 @@ void CSWSCombatRound::AddParryAttack(unsigned long long oid) {
     pAction->m_oidTarget = oid;
 
     if (pNode != 0)
-        m_pRoundActionList->m_pInternal->AddBefore(pAction, pNode);
+        m_pRoundActionList->AddBefore(pAction, pNode);
     else
-        m_pRoundActionList->m_pInternal->AddTail(pAction);
+        m_pRoundActionList->AddTail(pAction);
 }
 
 void CSWSCombatRound::AddCleaveAttack(unsigned long long oid) {
@@ -611,9 +611,9 @@ void CSWSCombatRound::AddCleaveAttack(unsigned long long oid) {
     pAction->m_oidTarget = oid;
 
     if (pNode != 0)
-        m_pRoundActionList->m_pInternal->AddBefore(pAction, pNode);
+        m_pRoundActionList->AddBefore(pAction, pNode);
     else
-        m_pRoundActionList->m_pInternal->AddTail(pAction);
+        m_pRoundActionList->AddTail(pAction);
     m_nAdditAttacks++;
 }
 
@@ -638,9 +638,9 @@ void CSWSCombatRound::AddAttackOfOpportunity(unsigned long long oid) {
         pAction->m_oidTarget = oid;
 
         if (pNode != 0)
-            m_pRoundActionList->m_pInternal->AddBefore(pAction, pNode);
+            m_pRoundActionList->AddBefore(pAction, pNode);
         else
-            m_pRoundActionList->m_pInternal->AddTail(pAction);
+            m_pRoundActionList->AddTail(pAction);
     }
     m_nAdditAttacks++;
 }
@@ -663,9 +663,9 @@ void CSWSCombatRound::AddEquipAction(unsigned long long oidItem, unsigned int nS
 
     CExoLinkedListNode* pNode = m_pRoundActionList->m_pInternal->m_pHead;
     if (pNode != 0)
-        m_pRoundActionList->m_pInternal->AddBefore(pAction, pNode);
+        m_pRoundActionList->AddBefore(pAction, pNode);
     else
-        m_pRoundActionList->m_pInternal->AddTail(pAction);
+        m_pRoundActionList->AddTail(pAction);
 }
 
 void CSWSCombatRound::AddUnequipAction(unsigned long long oidItem, unsigned long long a2, int nSlot) {
@@ -686,9 +686,9 @@ void CSWSCombatRound::AddUnequipAction(unsigned long long oidItem, unsigned long
 
     CExoLinkedListNode* pNode = m_pRoundActionList->m_pInternal->m_pHead;
     if (pNode != 0)
-        m_pRoundActionList->m_pInternal->AddBefore(pAction, pNode);
+        m_pRoundActionList->AddBefore(pAction, pNode);
     else
-        m_pRoundActionList->m_pInternal->AddTail(pAction);
+        m_pRoundActionList->AddTail(pAction);
 }
 
 void CSWSCombatRound::AddSWItemSpellAction(unsigned long long oidItem, int a2, int a3, Vector vTarget,
@@ -1067,7 +1067,7 @@ CSWSCombatRound::~CSWSCombatRound() {
 
 int CSWSCombatRound::RemoveLastAction() {
     if (m_pRoundActionList != 0 && m_pRoundActionList->m_pInternal->m_pHead != 0) {
-        void* pAction = m_pRoundActionList->m_pInternal->RemoveTail();
+        void* pAction = m_pRoundActionList->RemoveTail();
         if (pAction != 0) {
             ::operator delete(pAction);
         }
@@ -1079,7 +1079,7 @@ int CSWSCombatRound::RemoveLastAction() {
 CSWSCombatRoundAction* CSWSCombatRound::GetAction() {
     if (m_pRoundActionList != 0) {
         CSWSCombatRoundAction* pAction =
-            static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->RemoveHead());
+            m_pRoundActionList->RemoveHead();
         if (pAction != 0 && m_nTimer >= pAction->m_nActionTimer) {
             return pAction;
         }
@@ -1089,8 +1089,7 @@ CSWSCombatRoundAction* CSWSCombatRound::GetAction() {
 
 int CSWSCombatRound::GetActionPending() {
     if (m_pRoundActionList != 0 && m_pRoundActionList->m_pInternal->m_pHead != 0) {
-        CSWSCombatRoundAction* pAction = static_cast<CSWSCombatRoundAction*>(
-            m_pRoundActionList->m_pInternal->GetAtPos(m_pRoundActionList->m_pInternal->m_pHead));
+        CSWSCombatRoundAction* pAction = m_pRoundActionList->GetAtPos(m_pRoundActionList->m_pInternal->m_pHead);
         if (m_nTimer >= pAction->m_nActionTimer) {
             return 1;
         }
@@ -1100,8 +1099,7 @@ int CSWSCombatRound::GetActionPending() {
 
 int CSWSCombatRound::GetAttackActionPending() {
     if (m_pRoundActionList != 0 && m_pRoundActionList->m_pInternal->m_pHead != 0) {
-        CSWSCombatRoundAction* pAction = static_cast<CSWSCombatRoundAction*>(
-            m_pRoundActionList->m_pInternal->GetAtPos(m_pRoundActionList->m_pInternal->m_pHead));
+        CSWSCombatRoundAction* pAction = m_pRoundActionList->GetAtPos(m_pRoundActionList->m_pInternal->m_pHead);
         if (m_nTimer >= pAction->m_nActionTimer
             && pAction->m_nActionType == CSWSCombatRoundAction::TYPE_ATTACK) {
             return 1;
@@ -1115,14 +1113,14 @@ int CSWSCombatRound::GetSpellActionPending() {
         CExoLinkedListNode* pNode = m_pRoundActionList->m_pInternal->m_pHead;
         if (pNode != 0) {
             CSWSCombatRoundAction* pAction =
-                static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->GetAtPos(pNode));
+                m_pRoundActionList->GetAtPos(pNode);
             while (pNode != 0) {
                 if (pAction != 0 && m_nTimer >= pAction->m_nActionTimer
                         && pAction->m_nActionType == CSWSCombatRoundAction::TYPE_SPELL) {
                     return 1;
                 }
                 pAction =
-                    static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->GetNext(pNode));
+                    m_pRoundActionList->GetNext(pNode);
             }
         }
     }
@@ -1134,12 +1132,12 @@ void CSWSCombatRound::UpdateAttackTargetForAllActions(unsigned long long objectI
         CExoLinkedListNode* pNode = m_pRoundActionList->m_pInternal->m_pHead;
         while (pNode != 0) {
             CSWSCombatRoundAction* pAction =
-                static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->GetAtPos(pNode));
+                m_pRoundActionList->GetAtPos(pNode);
             if (pAction->m_nActionType == CSWSCombatRoundAction::TYPE_ATTACK
                 && pAction->m_bRetargettable == 1) {
                 pAction->m_oidTarget = objectId;
             }
-            m_pRoundActionList->m_pInternal->GetNext(pNode);
+            m_pRoundActionList->GetNext(pNode);
         }
     }
 }
@@ -1149,14 +1147,14 @@ void CSWSCombatRound::RemoveSpellAction() {
         CExoLinkedListNode* pNode = m_pRoundActionList->m_pInternal->m_pHead;
         while (pNode != 0) {
             CSWSCombatRoundAction* pAction =
-                static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->GetAtPos(pNode));
+                m_pRoundActionList->GetAtPos(pNode);
             if (pAction != 0 && pAction->m_nActionType == CSWSCombatRoundAction::TYPE_SPELL) {
                 CExoLinkedListNode* pDoomed = pNode;
-                m_pRoundActionList->m_pInternal->GetNext(pNode);
-                m_pRoundActionList->m_pInternal->Remove(pDoomed);
+                m_pRoundActionList->GetNext(pNode);
+                m_pRoundActionList->Remove(pDoomed);
                 ::operator delete(pAction);
             } else {
-                m_pRoundActionList->m_pInternal->GetNext(pNode);
+                m_pRoundActionList->GetNext(pNode);
             }
         }
     }
@@ -1357,13 +1355,13 @@ void CSWSCombatRound::DecrementRoundLength(int nTime, int bAllowShorten)
     CExoLinkedListNode* pNode = m_pRoundActionList->m_pInternal->m_pHead;
     while (pNode != 0) {
         CSWSCombatRoundAction* pAction =
-            static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->GetAtPos(pNode));
+            m_pRoundActionList->GetAtPos(pNode);
         int nTimer = 0;
         if (m_nRoundLength > 0)
             nTimer = static_cast<int>(static_cast<float>(pAction->m_nActionTimer) / static_cast<float>(m_nRoundLength) *
                            static_cast<float>(m_nRoundLength - nTime));
         pAction->m_nActionTimer = nTimer;
-        m_pRoundActionList->m_pInternal->GetNext(pNode);
+        m_pRoundActionList->GetNext(pNode);
     }
 
     float fScale = 1.0f;
@@ -1384,9 +1382,9 @@ void CSWSCombatRound::DEBUGDumpCombatRoundToScreen(int nMode, const CExoString& 
     CExoLinkedListNode* pNode = m_pRoundActionList->m_pInternal->m_pHead;
     CSWSCombatRoundAction* pAction = 0;
     if (pNode != 0)
-        pAction = static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->GetAtPos(pNode));
+        pAction = m_pRoundActionList->GetAtPos(pNode);
     while (pAction != 0)
-        pAction = static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->GetNext(pNode));
+        pAction = m_pRoundActionList->GetNext(pNode);
 }
 
 int CSWSCombatRound::GetCombatStepRequired(unsigned long long objectId)
@@ -1484,12 +1482,12 @@ int CSWSCombatRound::SaveCombatRound(CResGFF* pGFF, CResStruct* pStruct)
     pNode = m_pRoundActionList->m_pInternal->m_pHead;
     while (pNode != 0) {
         CSWSCombatRoundAction* pAction =
-            static_cast<CSWSCombatRoundAction*>(m_pRoundActionList->m_pInternal->GetAtPos(pNode));
+            m_pRoundActionList->GetAtPos(pNode);
         if (pAction != 0) {
             pGFF->AddListElement(&elem, &list, GFF_STRUCT_ROUND_ACTION);
             pAction->SaveData(pGFF, &elem);
         }
-        m_pRoundActionList->m_pInternal->GetNext(pNode);
+        m_pRoundActionList->GetNext(pNode);
     }
     return 1;
 }
@@ -1572,7 +1570,7 @@ int CSWSCombatRound::LoadCombatRound(CResGFF* pGFF, CResStruct* pStruct)
             if (pGFF->GetListElement(&elem, &list, i) == 1) {
                 CSWSCombatRoundAction* pAction = new CSWSCombatRoundAction;
                 pAction->LoadData(pGFF, &elem);
-                m_pRoundActionList->m_pInternal->AddTail(pAction);
+                m_pRoundActionList->AddTail(pAction);
             }
         }
     }

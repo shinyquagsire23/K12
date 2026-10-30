@@ -88,7 +88,7 @@ public:
     int  m_nInputClass;               // from GetInputClass()
     CExoString m_sClassName;          // read by DetermineClass
     CExoString m_sName;               // written by SetNameString
-    char _pad3c40[8];                 // never written
+    void* m_pReserved1;               // never written
     unsigned long long m_oid;         // the constructor's second parameter
 };
 

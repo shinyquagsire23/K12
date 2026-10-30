@@ -16,14 +16,15 @@
 #include "aurvisibility.h"
 #include "CExoArrayListImpl.h"
 #include "aurfonttexture.h"
+#include "exostringinline.h"
 
 // A texture wrapper keeps its res-helper-info block either before its pixel payload or, for a
 // layered texture and a processed image, a fixed gap past the end of it.
 enum {
     LAYERED_BYTES_PER_PIXEL = 2,
     RES_TAG_CHARS = 4,
-    COMPRESSED_RESHELPERINFO_SIZE = 0x1e,
-    BIT16_RESHELPERINFO_SIZE = 0x1a
+    COMPRESSED_RESHELPERINFO_SIZE = sizeof(CResHelperInfo) + 20,
+    BIT16_RESHELPERINFO_SIZE = sizeof(CResHelperInfo) + 16
 };
 
 #include "port/libcstring.h"
@@ -89,7 +90,7 @@ CAuroraInterface::~CAuroraInterface()
 {
     while (m_lstRequestedModel.m_pInternal->m_pHead)
     {
-        CAuroraModel* pModel = static_cast<CAuroraModel*>(m_lstRequestedModel.m_pInternal->RemoveHead());
+        CAuroraModel* pModel = m_lstRequestedModel.RemoveHead();
         if (pModel)
         {
             pModel->Unload();
@@ -546,11 +547,7 @@ int CAuroraInterface::LoadTexturePack(unsigned char nPack, const CExoString& sPa
     if (nPack > 3)
         return 0;
 
-#if KOTOR1  // K1's CExoString::GetLength is out of line
     if (sPack.GetLength() == 0)
-#else
-    if (sPack.m_sString == 0 || static_cast<int>(strlen(sPack.m_sString)) == 0)
-#endif
         return 0;
 
     if (!g_pExoResMan->AddEncapsulatedResourceFile(sPack, 2))
@@ -568,11 +565,7 @@ int CAuroraInterface::UnloadTexturePack(unsigned char nPack)
         return 0;
 
     sPack = m_pCurrentTexturePack[nPack];
-#if KOTOR1  // K1's CExoString::GetLength is out of line
     if (sPack.GetLength() != 0)
-#else
-    if (sPack.m_sString != 0 && static_cast<int>(strlen(sPack.m_sString)) != 0)
-#endif
     {
         if (!g_pExoResMan->RemoveEncapsulatedResourceFile(sPack))
             return 0;
@@ -593,11 +586,7 @@ int CAuroraInterface::SetTexturePack(unsigned char nPack, const CExoString& sPac
     if (!UnloadTexturePack(nPack))
         return 0;
 
-#if KOTOR1  // K1's CExoString::GetLength is out of line
     if (sPack.GetLength() == 0)
-#else
-    if (sPack.m_sString == 0 || static_cast<int>(strlen(sPack.m_sString)) == 0)
-#endif
         return 0;
 
     if (!g_pExoResMan->AddEncapsulatedResourceFile(sPack, 2))
@@ -617,9 +606,9 @@ void CAuroraInterface::RequestModel(char* sName)
     if (pModel != 0 && bCreated != 0)
     {
         if (pNode != 0)
-            m_lstRequestedModel.m_pInternal->AddBefore(pModel, pNode);
+            m_lstRequestedModel.AddBefore(pModel, pNode);
         else
-            m_lstRequestedModel.m_pInternal->AddTail(pModel);
+            m_lstRequestedModel.AddTail(pModel);
     }
 }
 

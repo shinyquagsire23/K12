@@ -38,14 +38,11 @@ public:
     unsigned short     m_nActivityFlags;
     int                m_bCombatState;
     unsigned char      m_nStealthMode;
-    char               _pad85[0x88-0x85];
     int                m_oidAIStateTarget;
-    char               _pad8c[0x90-0x8c];
     unsigned long long m_oidLockOrientationTo;
     unsigned long long m_oidAttackTarget;
     CResRef            m_portrait;
     unsigned short     m_nPortraitId;
-    char               _padb2[0xb8-0xb2];
 
     CExoLocString      m_firstName;
     CExoLocString      m_lastName;
@@ -72,12 +69,10 @@ public:
     int                m_bLocked;
     int                m_bPlot;
     unsigned char      m_nReputation;
-    char               _pad135[0x138-0x135];
     int                m_bSeen;
     int                m_bHeard;
     int                m_bInvisible;
     unsigned short     m_nRace;
-    char               _pad146[0x148-0x146];
 
     CExoString         m_sSubrace;
     unsigned char      m_nSubraceIndex;
@@ -211,13 +206,11 @@ public:
     int            m_nLevel;
     int            m_nExperience;
     unsigned short m_nGuiSkills;
-    char _pad1e[0x20 - 0x1e];
 
     CExoArrayList<unsigned short> m_feats;
     CExoArrayList<unsigned short> m_bonusFeats;
     CExoArrayList<CSWSStats_FeatRemainingUses*> m_featRemainingUses;
     unsigned short m_nPlayerState;
-    char _pad52[0x58 - 0x52];
 
     CSWActionQueueEntry m_actionQueue[NUM_ACTION_QUEUE_ENTRIES];
 
@@ -228,7 +221,6 @@ public:
     CExoArrayList<unsigned int> m_spellAddList[2][1];
 
     unsigned char m_knownSpellUsesLeft[2];
-    unsigned char _pad20a[0x210 - 0x20a];
 
     CExoArrayList<CSWSStats_SpellLikeAbility>* m_pSpellLikeAbilityList;
 
@@ -274,7 +266,6 @@ public:
     unsigned char      m_nAIStateAction;
     char               _pad23[0x24 - 0x23];
     unsigned short     m_nActivityFlags;
-    char               _pad26[0x28 - 0x26];
     int                m_oidAIStateTarget;
 
     unsigned short     m_nCurrentHitPoints;
@@ -283,10 +274,8 @@ public:
     unsigned short     m_nMaxHitPoints;
 
     unsigned char      m_nAIStateReputation;
-    char               _pad35[0x38 - 0x35];
     int                m_bCombatState;
     unsigned char      m_nStealthMode;
-    char               _pad3d[0x40 - 0x3d];
 
     unsigned long long m_oidArea;
     // The writer refreshes x and y only, so z is compared against the origin rather than against the last

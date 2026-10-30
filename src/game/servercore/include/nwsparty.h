@@ -17,10 +17,8 @@ public:
     int          m_nFactionId;
     int          m_nParentFactionID;
     int          m_nMemberIterator;
-    char         _pad1c[0x04];
     CExoString   m_sName;
     int          m_nGlobal;
-    char         _pad34[0x04];
 
     // Fans the text out to every connected member's client as a party chat message.
     void SendChatMessage(unsigned long long speakerId, const CExoString& sText);

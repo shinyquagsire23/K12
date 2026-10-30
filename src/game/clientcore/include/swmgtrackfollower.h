@@ -152,7 +152,6 @@ public:
 #else
     CResRef m_scripts[13];
 #endif
-    char  _pad1a4[0x1a8 - 0x1a4];
     CExoSoundSource* m_pSounds[1];
     CResRef m_soundNames[1];
     TrackFollowerSound m_sounds[2];
@@ -274,7 +273,6 @@ public:
     Vector m_vTunnelInfinite;
     Vector m_vOrigin;
     Vector m_vTargetOffset;
-    char  _pad294[0x298-0x294];
     CAurObject* m_pCameraHook;
     unsigned char m_bCameraHook;
     char  _pad2a1[0x2a4-0x2a1];
@@ -287,7 +285,6 @@ public:
     unsigned long long m_nStartHookOrientationXY;
     int    m_nStartHookOrientationZ;
 #endif
-    char  _pad2cc[0x2d0-0x2cc];
 
     CSWMiniPlayer(CSWMiniGame* pMiniGame);
 

@@ -33,6 +33,7 @@
 #include "port/libcstring.h"
 #include "port/k2qolapi.h"
 #include "soundprioritygroup.h"
+#include "exostringinline.h"
 
 #if KOTOR1
 // K1's resolution factor: the screen height (g_SDL_mode +8) over the 768-pixel design height.
@@ -196,7 +197,7 @@ void CSWGuiBarkBubble::SetBark(unsigned long long objId, const CExoString& text,
 
     // Speak the bark through the talk table, so its tokens are expanded for that object.
     CExoString sSpeech(text);
-    g_pSWTlkTable->ParseStr(sSpeech, pSpeaker, 1, 0);
+    g_pSWTlkTable->ParseStr(sSpeech, pSpeaker, 0, 0);
 
     m_label.m_text.m_params.SetText(sSpeech.CStr());
     int nBorder = m_label.m_border.m_params.GetBorderDim();
@@ -226,7 +227,7 @@ void CSWGuiBarkBubble::SetBark(unsigned long long objId, const CExoString& text,
     m_stateFlags &= ~PANEL_REMOVE_STATE_MASK;
     m_bIgnoreDistance = flag;
 
-    m_fBarkTime = (sSpeech.m_sString ? static_cast<int>(strlen(sSpeech.m_sString)) : 0) * 0.11f + 1.0f;
+    m_fBarkTime = sSpeech.GetLength() * 0.11f + 1.0f;
 
     if (m_pSoundBark)
     {

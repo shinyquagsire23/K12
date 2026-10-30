@@ -81,7 +81,7 @@ public:
 
     int  m_nStartTime;                // latched timer stamp, the fade deadline's base
     unsigned int m_nDuration;        // tick count added to the stamp
-    char m_aReserved1[8];
+    void* m_pReserved1;
     CSWGuiLabel m_label;  // 'LBL_DEMOTEXT'
     int  m_bSuppressGlobalFade;  // nonzero suppresses the global fade
 };
@@ -134,7 +134,6 @@ struct CGuiInGameMessage {
     CExoString    m_text;
     unsigned int  m_param3;
     unsigned char m_param4;
-    char          _pad15[3];
 };
 struct CGuiInGameDialogMessage {
     CExoString m_text;

@@ -48,10 +48,10 @@ unsigned int CExoTimersInternal::GetLowResolutionTimer()
     return GetTickCount();
 }
 
-unsigned long long CExoTimersInternal::GetHighResolutionTimer()
+uint64_ll_t CExoTimersInternal::GetHighResolutionTimer()
 {
     if (m_bHighResAvailable != 1)
-        return static_cast<unsigned long long>(GetTickCount()) * 1000;
+        return static_cast<uint64_ll_t>(GetTickCount()) * 1000;
 
 #if KOTOR1
     long long counter = SDL_GetPerformanceCounter();

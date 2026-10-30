@@ -10,6 +10,9 @@
 class CSWMessage {
 public:
     static const unsigned int DEFAULT_WRITE_BUFFER_SIZE = 128;
+    // An object id's size on the wire: WriteOBJECTID* write the whole id, and the message sizes
+    // count it with this.
+    enum { OBJECTID_SIZE = sizeof(unsigned long long) };
 
     CSWMessage();
 
@@ -23,9 +26,7 @@ public:
     unsigned int   m_nWriteFragmentsPos;
     unsigned int   m_nBytesWritten;
     unsigned char  m_nWriteBitIndex;
-    unsigned char  _pad2d[0x30 - 0x2d];
     int            m_bWriteMessageOpen;
-    char           _pad34[0x38 - 0x34];
 
     unsigned char* m_pReadMessage;
     unsigned int   m_nReadMessageSize;
@@ -36,7 +37,6 @@ public:
     unsigned int   m_nReserved2;
     unsigned char  m_nReadBitIndex;
     unsigned char  m_nReadStartBitIndex;
-    unsigned char  _pad5e[0x60 - 0x5e];
 
     int            m_bGuaranteed;
     unsigned int   m_nPlayerId;
@@ -47,15 +47,15 @@ public:
     unsigned char ReadBit(unsigned char nBit);
     unsigned long long ReadBits(int nBits);
     void WriteBit(unsigned char nValue);
-    void WriteBits(unsigned long long nValue, int nBits);
-    void WriteUnsigned(unsigned long long nValue, int nBits);
+    void WriteBits(uint64_ll_t nValue, int nBits);
+    void WriteUnsigned(uint64_ll_t nValue, int nBits);
     // Empty in this class; a derived class must allocate the fragments buffer.
     void ExtendWriteFragmentsBuffer(unsigned int nExtra);
     void ExtendWriteBuffer(unsigned int nExtra);
 
     // Each fixed-width writer byte-swaps, grows the buffer when it needs to, stores the value and
     // advances both counters; each reader mirrors it, advancing its cursor on both arms.
-    void  WriteDWORD64(unsigned long long nValue, int nBits);
+    void  WriteDWORD64(uint64_ll_t nValue, int nBits);
     void  WriteDWORD(unsigned int nValue, int nBits);
     void  WriteWORD(unsigned short nValue, int nBits);
     void  WriteBYTE(unsigned char nValue, int nBits);
@@ -65,7 +65,7 @@ public:
     void  WriteSigned(long long nValue, int nBits);
 #endif
     unsigned long long ReadUnsigned(int nBits);
-    unsigned long long ReadDWORD64(int nBits);
+    uint64_ll_t ReadDWORD64(int nBits);
     unsigned int   ReadDWORD(int nBits);
     unsigned short ReadWORD(int nBits);
     unsigned char  ReadBYTE(int a);

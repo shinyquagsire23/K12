@@ -95,6 +95,9 @@ vec4 computeLighting(vec4 pos_es, vec3 nrm_es)
 // szNewSkinBumpyVPARB) in GLSL. The light block (v_lightColor) is kotor.vert's; on top, the bump
 // light's tangent-space direction and half vector and its attenuation, which the fragment stage
 // lights the bump map with.
+// USE_LMBUMP: the PC's lightmapped bump passes (cBumpMapDiffuseVP / cBumpMapSpecularVP, NV_vertex_program
+// text): the same light vectors and attenuation, the lightmap's coordinates, and fog by the eye
+// distance, as those programs' FOGC.
 // USE_BUMPYSHINY: the bumpy-shiny pass instead (szBumpyShinySetupVPARB / szBumpyShinySkinSetupVPARB
 // with the ATI tail): the tangent frame taken to world space as three rows, and the eye vector, for
 // the fragment stage's bump-perturbed reflection. No light block.
@@ -168,7 +171,14 @@ void main()
 
 	gl_Position = u_matrices[1] * pos_ms;
 	vec4 pos_es = u_matrices[0] * pos_ms;
+#if USE_LMBUMP
+	v_fogFactor = calcFogFactor(length(pos_es.xyz));
+#else
 	v_fogFactor = calcFogFactor(-pos_es.z);
+#endif
+#if USE_LIGHTMAP
+	v_texCoord1 = a_texCoord1;
+#endif
 #if USE_BUMPYSHINY
 	// The frame to eye space, then to world space by the camera's rows; the skinned rows are
 	// renormalised. The program takes the eye vector from the unskinned position, which leaves a

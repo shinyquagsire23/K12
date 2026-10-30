@@ -15,6 +15,7 @@
 #include "exotlktable.h"
 #include <stdio.h>
 #include "restype.h"
+#include "exostringinline.h"
 
 const char* GetOverridePath(int nIndex, bool bFlag);
 
@@ -130,13 +131,8 @@ CSWGuiLoadModuleDebugMenu::CSWGuiLoadModuleDebugMenu(CSWGuiManager* pGuiManager)
             sFile = CExoString("zzzzzzzz.zzz");
         }
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         sDir = sDir.SubString(0, sDir.GetLength() - 4);
         sFile = sFile.SubString(0, sFile.GetLength() - 4);
-#else
-        sDir = sDir.SubString(0, (sDir.m_sString ? static_cast<int>(strlen(sDir.m_sString)) : 0) - 4);
-        sFile = sFile.SubString(0, (sFile.m_sString ? static_cast<int>(strlen(sFile.m_sString)) : 0) - 4);
-#endif
 
         if (sDir.LowerCase() <= sFile.LowerCase())
         {

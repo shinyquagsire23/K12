@@ -8,7 +8,7 @@ void ByteSwap(float* p);
 
 // The res-helper info block, the two common fields plus this wrapper's attribute cache.
 enum {
-    RESHELPERINFO_SIZE = 30,
+    RESHELPERINFO_SIZE = sizeof(CResHelperInfo) + 20,
 };
 
 CAuroraCompressedTexture::CAuroraCompressedTexture(CResRef resRef, int bRequest) {

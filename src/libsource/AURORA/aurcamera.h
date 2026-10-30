@@ -135,7 +135,6 @@ public:
 
     // The camera's own fields, after Gob's.
     float  m_fViewAngle;
-    char   _pad29c[0x2a0 - 0x29c];
     void*  m_pViewAnimState;
     float  m_fViewAnimDefault;
     float  m_fClipNear;

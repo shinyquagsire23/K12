@@ -426,7 +426,7 @@ int CSWCAnimBase::ReplaceTexture(unsigned char which, CResRef const& sOld, CResR
         m_bModelTextureDataCached = nResult;
         m_nModelTextureCount = static_cast<unsigned char>(nCount);
         m_nModelTextureOffset = static_cast<unsigned char>(nOffset);
-        memcpy(&m_nModelTextureData1, paData + nOffset, nCount * sizeof(unsigned short));
+        memcpy(m_anModelTextureData, paData + nOffset, nCount * sizeof(unsigned short));
     }
     return nResult;
 }
@@ -451,7 +451,7 @@ int CSWCAnimBase::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, unsig
             m_bModelTextureDataCached = nResult;
             m_nModelTextureCount = static_cast<unsigned char>(nCount);
             m_nModelTextureOffset = static_cast<unsigned char>(nOffset);
-            memcpy(&m_nModelTextureData1, paData + nOffset, nCount * sizeof(unsigned short));
+            memcpy(m_anModelTextureData, paData + nOffset, nCount * sizeof(unsigned short));
         }
     }
     return nResult;
@@ -466,7 +466,7 @@ int CSWCAnimBase::RestoreTexture()
     if (m_bModelTextureDataCached)
     {
         CResRef cEmpty = "";
-        ReplaceTexture(ANIM_MODEL_BODY, cEmpty, m_resModelTexture, m_nModelTextureCount, reinterpret_cast<unsigned short*>(&m_nModelTextureData1), 0, m_nModelTextureOffset);
+        ReplaceTexture(ANIM_MODEL_BODY, cEmpty, m_resModelTexture, m_nModelTextureCount, m_anModelTextureData, 0, m_nModelTextureOffset);
     }
     return 1;
 }
@@ -478,7 +478,7 @@ int CSWCAnimBase::RestoreTexture(unsigned char which)
     if (m_bModelTextureDataCached)
     {
         CResRef cEmpty = "";
-        ReplaceTexture(which, cEmpty, m_resModelTexture, m_nModelTextureCount, reinterpret_cast<unsigned short*>(&m_nModelTextureData1), 0,
+        ReplaceTexture(which, cEmpty, m_resModelTexture, m_nModelTextureCount, m_anModelTextureData, 0,
                        m_nModelTextureOffset);
     }
     else
@@ -882,9 +882,8 @@ CSWCAnimBase::CSWCAnimBase()
     m_bModelTextureDataCached = 0;
     m_nModelTextureCount = 0;
     m_nModelTextureOffset = 0;
-    m_nModelTextureData1 = 0;
-    m_nModelTextureData2 = 0;
-    m_nModelTextureData3 = 0;
+    for (int i = 0; i < 10; i++)
+        m_anModelTextureData[i] = 0;
     for (int i = 0; i < 10; i++)
         m_anHiliteSlot[i] = 0;
     m_resModelEnvMap = const_cast<char*>("");

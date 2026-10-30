@@ -2878,7 +2878,6 @@ void GetCreatureRadius(CAurObject* pObject, char* pEvent, void* pData) {
 struct CGetPathData {
     char  _pad00[8];
     int   m_nPathFloats;
-    char  _pad0c[4];
     void* m_pPathFloats;
 };
 
@@ -6080,7 +6079,7 @@ void* CSWCCreature::GetCreatureLight(int a) {
             pEffect->m_bFinished == 0 && pEffect->m_bAttached != 0 &&
             (a == 0 || pEffect->m_bCastShadows != 0))
             return pEffect->m_pLight;
-        pEffect = static_cast<CSWCVisualEffectOnObject*>(m_visualEffects.m_pInternal->GetNext(pNode));
+        pEffect = m_visualEffects.GetNext(pNode);
     }
     return 0;
 }
@@ -8244,8 +8243,6 @@ void CSWCCreature::SaveCharGenCreature()
     delete pGFF;
 }
 
-static CExoString s_headTurnBoneOverride;
-
 // Starts or stops head tracking of a target: both model parts get the begin or end animation,
 // and a failed bone lookup or a zero arc clears the track. The bone name comes from the
 // head-turn-bone override when set, otherwise appearance.2da.
@@ -8280,8 +8277,8 @@ int CSWCCreature::LookAt(unsigned long long objId, float fRange) {
                     if (dx * dx + dy * dy + dz * dz > fRange * fRange) {
 // Out of range: a plain 0, with the tracking state untouched.
                     } else {
-                        if (s_headTurnBoneOverride != "") {
-                            sHeadBone = s_headTurnBoneOverride;
+                        if (g_sHeadTurnBoneOverride != "") {
+                            sHeadBone = g_sHeadTurnBoneOverride;
                         } else if (g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
                                        m_pCreatureAppearance->m_nAppearanceId,
                                        CTwoDimArrays::COL2DA_APPEARANCETABLE_HEADBONE,

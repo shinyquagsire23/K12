@@ -180,7 +180,7 @@ CSWSTrigger::~CSWSTrigger() {
 // Runs OnHeartbeat at most once every 6 seconds of world time, then, for a trap, refreshes the
 // mine's visibility animation before advancing the action queue.
 void CSWSTrigger::AIUpdate() {
-    unsigned long long timerSnapshot = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t timerSnapshot = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     unsigned int elapsedDay, elapsedTod;
     unsigned int day, tod;
     g_pAppManager->m_pServerExoApp->GetWorldTimer()->GetWorldTime(&day, &tod);

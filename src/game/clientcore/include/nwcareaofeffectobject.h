@@ -34,7 +34,6 @@ public:
     unsigned short* m_panInstanceState;
     CSWCVisualEffect* m_pVisualEffect;
     int            m_bVisualEffectAttached;
-    int            m_nReserved1;
     CExoSoundSource* m_pSoundSource;
     CResRef        m_sHitSound;
     int            m_nHitSoundChance;

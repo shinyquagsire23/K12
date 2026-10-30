@@ -39,6 +39,7 @@ const char* GetLocalizedGmenuString(int nIndex);
 
 class CSWGuiPanel;
 
+#if !KOTOR1  // K1's floating glyph is IosFloatingButtonIcon
 // Free-floating gamepad glyph, a button that carries a button-face character and draws it at an
 // offset from another control's extent.
 
@@ -63,7 +64,6 @@ public:
                     int nOffsetX, int nOffsetY);
 };
 
-#if !KOTOR1  // K1's GUI base classes are smaller
 K2_LAYOUT_ASSERT(sizeof(AspyrFloatingButtonIcon) == 0x268, "AspyrFloatingButtonIcon size drift");
 #endif
 
@@ -130,7 +130,6 @@ public:
     unsigned char m_bButtonsHidden  : 1;  // HideButtons latched it; ResetButtonMessage clears it
     unsigned char m_bHasIcon        : 1;  // SetIcon got a valid CResRef
 #if !KOTOR1  // K1 keeps the state byte and the callback in CSWGuiPanel's tail padding
-    char _pada9[0xb0 - 0xa9];
 #endif
     void (CSWGuiObject::*m_pfnCallback)(CSWGuiControl*);
     CSWGuiObject*  m_pCallbackObject;
@@ -529,11 +528,8 @@ public:
                                                // GetTogglePauseAtEndOfFrame, forced true while
                                                // CGuiInGame::m_bPaused is set; bits 1-7 preserved
 #if KOTOR1  // K1's labels start earlier
-    char _pad91[7];
 #else
-    char _padcd[0xd0-0xcd];
     int m_nAlignmentChanged;
-    char _padd4[0xd8-0xd4];
 #endif
     CSWGuiLabel  m_lblReserved1;  // layout-only, never InitControl'd
     CSWGuiLabel  m_lblReserved2;  // layout-only, never InitControl'd

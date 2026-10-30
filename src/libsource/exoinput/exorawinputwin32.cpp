@@ -1204,7 +1204,7 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
             {
                 unsigned char* pCur = reinterpret_cast<unsigned char*>(m_pJoystickState + deviceIndex);
 
-                unsigned long long timer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+                uint64_ll_t timer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
 
                 for (int off = DIJOFS_BUTTON0; off != DIJOFS_BUTTON_END; off++) {
                     unsigned char oldB = pCur[off];  // raw-offset: DirectInput state offsets are its DIJOFS event codes

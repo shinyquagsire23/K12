@@ -37,8 +37,7 @@ CWin32MSGQueue::CWin32MSGQueue()
     m_nMsgFlags = 0;
     m_nMsgTime = 0;
     m_nMsgPt = 0;
-    m_nReserved1 = 0;
-    m_nReserved2 = 0;
+    m_pReserved1 = 0;
     m_nKeyCount = 0;
     m_nMouseMoveCount = 0;
     m_nMouseButtonCount = 0;

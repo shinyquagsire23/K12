@@ -57,9 +57,6 @@ class CExoLinkedListInternal;
 struct CGuiInGameMessage;
 struct CGuiInGameDialogMessage;
 
-// Packed to 4 bytes because two 8-byte members sit at 4-mod-8 offsets and are written unaligned,
-// and changing the packing part-way through the class would not move the bases.
-#pragma pack(push, 4)
 class CGuiInGame {
 public:
     int                     m_compassEnabled;
@@ -69,7 +66,6 @@ public:
     int                     m_lastGuiPanel;
     int                     m_bInGameMenuShown;
     int                     m_swGuiToggleState;
-    char                    _pad05c[0x60-0x5c];
     CSWGuiManager*          m_pGuiManager;
     void*                   m_pActiveDialogPanel;
     CSWGuiDialogCinematic*  m_pDialogCinematicPanel;
@@ -110,7 +106,7 @@ public:
     CSWGuiPanel*            m_pControllerPausePanel;
     CSWGuiStatusSummary*      m_pStatusSummary;
 #if !KOTOR1  // K1 has no demo screen
-    char                    _pad168[0x170-0x168];
+    void*                   m_pReserved1;
     CSWGuiPanel*            m_pDemoScreenPanel;
 #endif
     CStatusSummary*         m_pStatusFallbackCache;
@@ -143,9 +139,6 @@ public:
     int                     m_levelUpMode;
     int                     m_toggledOff;
     unsigned int            m_repliesCount;
-#if !KOTOR1
-    char                    _pad1fc[4];
-#endif
     CExoString*             m_paReplyText;
     unsigned int*           m_paReplyLinkIndices;
     unsigned long long*     m_paReplyListenerIds;
@@ -166,7 +159,6 @@ public:
     void**                  m_paReplyAnimations;
     unsigned int            m_nWaitFlags;
     unsigned short          m_nCameraAnimation;
-    char                    _pad296[2];
     int                     m_nReserved1;
     int                     m_bDialogSoundPolled;
     unsigned long long      m_dialogParticipantIdA;
@@ -177,7 +169,6 @@ public:
     unsigned long long      m_oidDialogPlayer;
     unsigned long long      m_oidDialogOwner;    // a server object id (CSWSObject::StartDialog)
     unsigned int            m_stuntModelCount;
-    char                    _pad2dc[0x2e0-0x2dc];
     unsigned long long*     m_paStuntModelObjIds;
     CResRef*                m_paStuntModelResRefs;
     unsigned int            m_dialogAnimCount;
@@ -216,19 +207,17 @@ public:
     int                     m_dialogSpanCount;
     CExoString              m_dialogSpanNodes[8];
     int                     m_bHoldFadeInForDialog;
-    char                    _pad111c[0x1128-0x111c];
+    char                    _pad111c[0x1124-0x111c];
     unsigned long long      m_oidPostDialogCharacterSwitch;
 #if KOTOR1  // 6 bytes here against 33, and no credit-sequence flag
     unsigned char           m_tutorialWindowShown[6];
 #else
     unsigned char           m_tutorialWindowShown[33];
-    char                    _pad1151[0x1154-0x1151];
     int                     m_creditSequenceInProgress;
 #endif
     int                     m_bForceDialogText;
     int                     m_dialogScrollDoneFlag;
     float                   m_fCloseUpPullBackRange;
-    char                    _pad1164[0x1168-0x1164];
     CExoStreamingSoundSource* m_pAmbientSound;
     unsigned char           m_nAbilitiesMode;
     unsigned char           m_nInventoryFilter;
@@ -241,7 +230,6 @@ public:
     unsigned int            m_nNoClickTime;
     unsigned int            m_nNoClickDuration;
     int                     m_bConversationUseLeader;
-    char                    _pad1184[0x1188-0x1184];
     unsigned long long      m_dialogLipSyncObjId;
     CResRef                 m_dialogLipSyncResRef;
     unsigned long long      m_paLastPartyCharacterIds[3];
@@ -250,7 +238,6 @@ public:
     int                     m_bRunningGuiScript;
     int                     m_bInputActiveBeforeControllerPause;
     Vector                  m_areaTransitionPosition;
-    char                    _pad11d4[4];
     unsigned long long      m_areaTransitionObjId;
     int                     m_bAreaTransitionUseCameraFacing;
     int                     m_bDanceDanceMalak;
@@ -260,7 +247,6 @@ public:
 #endif
 #if !KOTOR1  // K1 has none of these three lists
     int                     m_bKeepStealthInDialog;
-    char                    _pad11f4[0x11f8-0x11f4];
     CExoArrayList<CExoLocString>   m_aReceivedItemNames;
     void AddReceivedItemToList(const CExoLocString& sName) { m_aReceivedItemNames.Add(sName); }
     CExoArrayList<unsigned short>  m_aSortedFeats;
@@ -618,7 +604,6 @@ public:
 
     void ToggleSWGui();
 };
-#pragma pack(pop)
 
 #if KOTOR1  // K1 size and field offsets
 K2_LAYOUT_ASSERT(sizeof(CGuiInGame) == 0xdc8, "CGuiInGame K1 size drift");

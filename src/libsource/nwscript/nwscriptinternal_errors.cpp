@@ -4,6 +4,7 @@
 #include "nwscriptinternal.h"
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 // Assembles the "file(line): message" line and returns the error code it was passed. A release build
 // prints nothing: the assembled string is discarded, though the CStr() call ahead of the destructor
@@ -20,19 +21,11 @@ int CScriptCompilerInternal::OutputError(int nType, const CExoString& sFile, int
     {
         if (nLine >= 1)
         {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             sMessage.Format(const_cast<char*>("%s(%d): %s\n"), sFile.Right(sFile.GetLength() - 1).CStr(), nLine, sMsg.CStr());
-#else
-            sMessage.Format(const_cast<char*>("%s(%d): %s\n"), sFile.Right((sFile.m_sString ? static_cast<int>(strlen(sFile.m_sString)) : 0) - 1).CStr(), nLine, sMsg.CStr());
-#endif
         }
         else
         {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
             sMessage.Format(const_cast<char*>("%s: %s\n"), sFile.Right(sFile.GetLength() - 1).CStr(), sMsg.CStr());
-#else
-            sMessage.Format(const_cast<char*>("%s: %s\n"), sFile.Right((sFile.m_sString ? static_cast<int>(strlen(sFile.m_sString)) : 0) - 1).CStr(), sMsg.CStr());
-#endif
         }
     }
     else

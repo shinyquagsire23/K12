@@ -1353,7 +1353,7 @@ void CSWGuiInGameSkillEntry::SetSkill(unsigned int nId, unsigned char nType)
     }
 
     m_borderIcon.m_params.m_flags.nFillStyle = 2;
-    m_borderIcon.m_params.SetFillImage(resRef, 0);
+    m_borderIcon.m_params.SetFillImage(resRef);
     m_text.m_params.SetStrRef(nStrRef);
 }
 

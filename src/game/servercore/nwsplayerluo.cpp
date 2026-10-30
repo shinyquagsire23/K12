@@ -45,19 +45,19 @@ void CSWSPlayerLUOInventory::ClearSlots()
 void CSWSPlayerLUOInventory::ClearRepository()
 {
     while (m_repository.m_pInternal->m_pHead != 0)
-        delete static_cast<CSWSPlayerLUOInventoryItem*>(m_repository.m_pInternal->RemoveHead());
+        delete m_repository.RemoveHead();
 }
 
 void CSWSPlayerLUOInventory::ClearContainer()
 {
     while (m_container.m_pInternal->m_pHead != 0)
-        delete static_cast<CSWSPlayerLUOInventoryItem*>(m_container.m_pInternal->RemoveHead());
+        delete m_container.RemoveHead();
 }
 
 void CSWSPlayerLUOInventory::ClearStore()
 {
     while (m_store.m_pInternal->m_pHead != 0)
-        delete static_cast<CSWSPlayerLUOInventoryItem*>(m_store.m_pInternal->RemoveHead());
+        delete m_store.RemoveHead();
 }
 
 unsigned long long CSWSPlayerLUOInventory::ItemListGetItemObjectID(CExoLinkedListNode* pNode,
@@ -70,11 +70,11 @@ unsigned long long CSWSPlayerLUOInventory::ItemListGetItemObjectID(CExoLinkedLis
 #endif
 
     if (nList == 0)
-        pItem = static_cast<CSWSPlayerLUOInventoryItem*>(m_container.m_pInternal->GetAtPos(pNode));
+        pItem = m_container.GetAtPos(pNode);
     else if (nList == 1)
-        pItem = static_cast<CSWSPlayerLUOInventoryItem*>(m_repository.m_pInternal->GetAtPos(pNode));
+        pItem = m_repository.GetAtPos(pNode);
     else if (nList == 2)
-        pItem = static_cast<CSWSPlayerLUOInventoryItem*>(m_store.m_pInternal->GetAtPos(pNode));
+        pItem = m_store.GetAtPos(pNode);
 
     if (pItem == 0)
         return CGameObjectArray::INVALIDOBJID;
@@ -86,11 +86,11 @@ CSWSPlayerLUOInventoryItem* CSWSPlayerLUOInventory::ItemListGetUpdateItem(CExoLi
                                                                           unsigned char nList)
 {
     if (nList == 0)
-        return static_cast<CSWSPlayerLUOInventoryItem*>(m_container.m_pInternal->GetAtPos(pNode));
+        return m_container.GetAtPos(pNode);
     if (nList == 1)
-        return static_cast<CSWSPlayerLUOInventoryItem*>(m_repository.m_pInternal->GetAtPos(pNode));
+        return m_repository.GetAtPos(pNode);
     if (nList == 2)
-        return static_cast<CSWSPlayerLUOInventoryItem*>(m_store.m_pInternal->GetAtPos(pNode));
+        return m_store.GetAtPos(pNode);
 
     return 0;
 }
@@ -130,21 +130,21 @@ void CSWSPlayerLUOInventory::ItemListSetEnd(CExoLinkedListNode*& pNode, unsigned
 void CSWSPlayerLUOInventory::ItemListGetNext(CExoLinkedListNode*& pNode, unsigned char nList)
 {
     if (nList == 0)
-        m_container.m_pInternal->GetNext(pNode);
+        m_container.GetNext(pNode);
     else if (nList == 1)
-        m_repository.m_pInternal->GetNext(pNode);
+        m_repository.GetNext(pNode);
     else if (nList == 2)
-        m_store.m_pInternal->GetNext(pNode);
+        m_store.GetNext(pNode);
 }
 
 void CSWSPlayerLUOInventory::ItemListGetPrev(CExoLinkedListNode*& pNode, unsigned char nList)
 {
     if (nList == 0)
-        m_container.m_pInternal->GetPrev(pNode);
+        m_container.GetPrev(pNode);
     else if (nList == 1)
-        m_repository.m_pInternal->GetPrev(pNode);
+        m_repository.GetPrev(pNode);
     else if (nList == 2)
-        m_store.m_pInternal->GetPrev(pNode);
+        m_store.GetPrev(pNode);
 }
 
 int CSWSPlayerLUOInventory::ItemListGetNumber(unsigned char nList)
@@ -166,11 +166,11 @@ int CSWSPlayerLUOInventory::ItemListGetNumber(unsigned char nList)
 void CSWSPlayerLUOInventory::ItemListRemove(CExoLinkedListNode* pNode, unsigned char nList)
 {
     if (nList == 0)
-        delete static_cast<CSWSPlayerLUOInventoryItem*>(m_container.m_pInternal->Remove(pNode));
+        delete m_container.Remove(pNode);
     else if (nList == 1)
-        delete static_cast<CSWSPlayerLUOInventoryItem*>(m_repository.m_pInternal->Remove(pNode));
+        delete m_repository.Remove(pNode);
     else if (nList == 2)
-        delete static_cast<CSWSPlayerLUOInventoryItem*>(m_store.m_pInternal->Remove(pNode));
+        delete m_store.Remove(pNode);
 }
 
 void CSWSPlayerLUOInventory::ItemListAddHead(unsigned long long objectId, unsigned char nList,
@@ -183,11 +183,11 @@ void CSWSPlayerLUOInventory::ItemListAddHead(unsigned long long objectId, unsign
 
     // One AddHead per arm rather than a list pointer, so the selector ladder stays flat here.
     if (nList == 0)
-        m_container.m_pInternal->AddHead(pItem);
+        m_container.AddHead(pItem);
     else if (nList == 1)
-        m_repository.m_pInternal->AddHead(pItem);
+        m_repository.AddHead(pItem);
     else if (nList == 2)
-        m_store.m_pInternal->AddHead(pItem);
+        m_store.AddHead(pItem);
     else
         delete pItem;
 }
@@ -202,11 +202,11 @@ CSWSItem* CSWSPlayerLUOInventory::ItemListGetItem(CExoLinkedListNode* pNode, uns
 #endif
 
     if (nList == 0)
-        pItem = static_cast<CSWSPlayerLUOInventoryItem*>(m_container.m_pInternal->GetAtPos(pNode));
+        pItem = m_container.GetAtPos(pNode);
     else if (nList == 1)
-        pItem = static_cast<CSWSPlayerLUOInventoryItem*>(m_repository.m_pInternal->GetAtPos(pNode));
+        pItem = m_repository.GetAtPos(pNode);
     else if (nList == 2)
-        pItem = static_cast<CSWSPlayerLUOInventoryItem*>(m_store.m_pInternal->GetAtPos(pNode));
+        pItem = m_store.GetAtPos(pNode);
 
     if (pItem == 0)
         return 0;
@@ -231,7 +231,7 @@ CSWSItem* CSWSPlayerLUOInventory::ItemListGetItem(CExoLinkedListNode* pNode, uns
         return 0;
 
     CSWSPlayerLUOInventoryItem* pItem =
-        static_cast<CSWSPlayerLUOInventoryItem*>(pList->m_pInternal->GetAtPos(pNode));
+        pList->GetAtPos(pNode);
     if (pItem == 0)
         return 0;
 

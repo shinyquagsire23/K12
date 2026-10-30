@@ -12,7 +12,6 @@ public:
     CExoArrayList<unsigned short> m_bonusFeats;
     unsigned long long m_objectId;
     int m_nSkillsChanged;
-    int m_nReserved1;
     CExoArrayList<CEffectIconObject*> m_effectIcons;
     unsigned char m_anAbilityStats[6];
     unsigned char m_anAbilityBases[6];

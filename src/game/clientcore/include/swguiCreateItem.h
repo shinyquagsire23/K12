@@ -120,7 +120,6 @@ public:
     float m_fReserved1;
     int m_nComponent;
     int m_nReserved3;
-    char _pad5564[0x5568 - 0x5564];
     unsigned long long m_oidStore;
     unsigned long long m_oidPlayer;
     // The panel's per-side component yield, the skill-derived factor that scales an item's cost
@@ -131,7 +130,6 @@ public:
     int m_nCreateFilter;             // indexes m_aCreateButtons
     int m_bCreateMode;                 // nonzero in shop/buy mode
     int m_nBreakdownFilter;          // indexes m_aBreakButtons
-    int m_nReserved4;
     CSWGuiUpgradeSelection* m_pUpgradeSelection;  // the panel this sheet was opened from
     CExoString m_sOverride2DA;
 };

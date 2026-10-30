@@ -150,6 +150,7 @@ CServerExoAppInternal::CServerExoAppInternal()
     m_autoSaveTimerLastTime = 0;
     m_pCachedArea = 0;
     m_nReserved2 = 0;
+    m_nReserved3 = 0;
 
     m_saveGameName = "";
 }
@@ -160,7 +161,7 @@ CServerExoAppInternal::~CServerExoAppInternal()
     {
         while (m_pPlayerList->m_pInternal->m_pHead)
         {
-            CSWSClient* pData = static_cast<CSWSClient*>(m_pPlayerList->m_pInternal->RemoveHead());
+            CSWSClient* pData = m_pPlayerList->RemoveHead();
             if (pData)
             {
                 delete pData;
@@ -172,7 +173,7 @@ CServerExoAppInternal::~CServerExoAppInternal()
     {
         while (m_pSysAdminList->m_pInternal->m_pHead)
         {
-            CSWSClient* pData = static_cast<CSWSClient*>(m_pSysAdminList->m_pInternal->RemoveHead());
+            CSWSClient* pData = m_pSysAdminList->RemoveHead();
             if (pData)
             {
                 delete pData;
@@ -249,7 +250,7 @@ int UpdateLoadScreen(int current, int total, int rangeStart, int rangeWidth)
 
 void CServerExoAppInternal::ClearLastModuleFound()
 {
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || !defined(__SIZEOF_INT128__)
     m_lastModuleFoundId = OBJECT_INVALID;
     m_pLastModuleFound = 0;
 #else
@@ -260,7 +261,7 @@ void CServerExoAppInternal::ClearLastModuleFound()
 
 void CServerExoAppInternal::ClearAreaCache()
 {
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || !defined(__SIZEOF_INT128__)
     m_areaCacheId = OBJECT_INVALID;
     m_pCachedArea = 0;
 #else
@@ -269,7 +270,7 @@ void CServerExoAppInternal::ClearAreaCache()
 #endif
 }
 
-void CServerExoAppInternal::StartShutdownTimer(unsigned long long a, unsigned long long b)
+void CServerExoAppInternal::StartShutdownTimer(uint64_ll_t a, uint64_ll_t b)
 {
     m_nShutdownTimeRemaining = b;
     m_nShutdownLastTick = a;
@@ -419,7 +420,7 @@ void CServerExoAppInternal::ForceRunAreaOnExitScripts()
     {
         do
         {
-            void* pElem = m_pPlayerList->m_pInternal->GetAtPos(pNode);
+            void* pElem = m_pPlayerList->GetAtPos(pNode);
             CSWSPlayer* pPlayer = static_cast<CSWSClient*>(pElem)->AsSWSPlayer();
             if (pPlayer != 0)
             {
@@ -438,7 +439,7 @@ void CServerExoAppInternal::ForceRunAreaOnExitScripts()
                     }
                 }
             }
-            m_pPlayerList->m_pInternal->GetNext(pNode);
+            m_pPlayerList->GetNext(pNode);
         } while (pNode != 0);
     }
 }
@@ -561,7 +562,7 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
 
     saveSlot.Format(const_cast<char*>("SAVES:%06d - %s"), saveNumber, name.CStr());
 
-    unsigned long long freeSpace;
+    uint64_ll_t freeSpace;
     int freeSpaceStatus;
     freeSpaceStatus = g_pExoResMan->GetFreeDiskSpace("SAVES:", &freeSpace);
     if (freeSpaceStatus == 1)
@@ -639,7 +640,7 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
 
     g_pExoResMan->CreateDirectory2("SAVES:");
 
-    unsigned long long freeSpace;
+    uint64_ll_t freeSpace;
     int freeSpaceStatus;
     CLoadGameErrorInfo* pInfo;
     CExoString tempName(name);
@@ -890,7 +891,7 @@ unsigned int CServerExoAppInternal::ResolvePlayerByFirstName(const CExoString& n
         {
             CGameObject* pGameObj;
             CSWSCreature* pCreature;
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode));
             if (pPlayer != 0)
             {
                 pGameObj = pPlayer->GetGameObject();
@@ -908,7 +909,7 @@ unsigned int CServerExoAppInternal::ResolvePlayerByFirstName(const CExoString& n
                     }
                 }
             }
-            m_pPlayerList->m_pInternal->GetNext(pNode);
+            m_pPlayerList->GetNext(pNode);
         } while (pNode != 0);
     }
     return static_cast<unsigned int>(CGameObjectArray::INVALIDOBJID);
@@ -1101,7 +1102,7 @@ unsigned int CServerExoAppInternal::GetPlayerIDByGameObjectID(unsigned long long
     return *p;
 }
 
-unsigned long long CServerExoAppInternal::GetSystemTimeAsDWORD64()
+uint64_ll_t CServerExoAppInternal::GetSystemTimeAsDWORD64()
 {
     SystemTimeWords st;
     unsigned long long ft;
@@ -1131,7 +1132,7 @@ int CServerExoAppInternal::ValidatePlayerLogin(void* a)
     return 1;
 }
 
-int CServerExoAppInternal::UpdateLogHeartbeatTimer(unsigned long long a)
+int CServerExoAppInternal::UpdateLogHeartbeatTimer(uint64_ll_t a)
 {
     unsigned long long prevTime = m_logHeartbeatLastTime;
     if (prevTime == 0)
@@ -1276,22 +1277,22 @@ void CServerExoAppInternal::AddToExclusionList(unsigned long long a, unsigned ch
         CExoLinkedListNode* pNode = m_exclusionList1->m_pInternal->m_pHead;
         while (pNode != 0)
         {
-            if (reinterpret_cast<unsigned long long>(m_exclusionList1->m_pInternal->GetAtPos(pNode)) == a)
+            if (reinterpret_cast<unsigned long long>(m_exclusionList1->GetAtPos(pNode)) == a)
                 return;
-            m_exclusionList1->m_pInternal->GetNext(pNode);
+            m_exclusionList1->GetNext(pNode);
         }
-        m_exclusionList1->m_pInternal->AddTail(reinterpret_cast<void*>(a));
+        m_exclusionList1->AddTail(reinterpret_cast<unsigned long long*>(a));
     }
     else if (b & 1)
     {
         CExoLinkedListNode* pNode = m_exclusionList2->m_pInternal->m_pHead;
         while (pNode != 0)
         {
-            if (reinterpret_cast<unsigned long long>(m_exclusionList2->m_pInternal->GetAtPos(pNode)) == a)
+            if (reinterpret_cast<unsigned long long>(m_exclusionList2->GetAtPos(pNode)) == a)
                 return;
-            m_exclusionList2->m_pInternal->GetNext(pNode);
+            m_exclusionList2->GetNext(pNode);
         }
-        m_exclusionList2->m_pInternal->AddTail(reinterpret_cast<void*>(a));
+        m_exclusionList2->AddTail(reinterpret_cast<unsigned long long*>(a));
     }
 }
 
@@ -1391,7 +1392,7 @@ void CServerExoAppInternal::ReprocessExclusionListActions(unsigned char pauseSta
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
     while (pNode != 0)
     {
-        unsigned long long id = reinterpret_cast<unsigned long long>(pList->m_pInternal->GetAtPos(pNode));
+        unsigned long long id = reinterpret_cast<unsigned long long>(pList->GetAtPos(pNode));
         CWorldTimer* pTimer = static_cast<CWorldTimer*>(GetActiveTimer(id));
         CGameObject* pObject;
         unsigned int a, b;
@@ -1400,7 +1401,7 @@ void CServerExoAppInternal::ReprocessExclusionListActions(unsigned char pauseSta
         if (pObject != 0)
             pObject->ResetUpdateTimes(a, b);
 
-        pList->m_pInternal->GetNext(pNode);
+        pList->GetNext(pNode);
     }
 }
 
@@ -1674,10 +1675,10 @@ unsigned int CServerExoAppInternal::GetPlayerLanguage(unsigned int playerId)
     {
         while (1)
         {
-            CSWSClient* p = static_cast<CSWSClient*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+            CSWSClient* p = m_pPlayerList->GetAtPos(pNode);
             if (p != 0 && p->m_nPlayerId == playerId)
                 return p->m_nLanguage;
-            m_pPlayerList->m_pInternal->GetNext(pNode);
+            m_pPlayerList->GetNext(pNode);
             if (pNode == 0)
                 break;
         }
@@ -1704,15 +1705,15 @@ int CServerExoAppInternal::HandleMessage(unsigned int playerId, unsigned char* p
 
 void CServerExoAppInternal::UpdateClientGameObjects(int nPlayerId)
 {
-    unsigned long long now = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t now = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     CExoLinkedListNode* pNode = m_pPlayerList->m_pInternal->m_pHead;
     if (pNode != 0)
     {
         do
         {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode));
             UpdateClientGameObjectsForPlayer(pPlayer, nPlayerId, now);
-            m_pPlayerList->m_pInternal->GetNext(pNode);
+            m_pPlayerList->GetNext(pNode);
         } while (pNode != 0);
     }
 }
@@ -1736,33 +1737,33 @@ void CServerExoAppInternal::UpdateClientsForObject(unsigned long long id)
     {
         do
         {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode));
             if (pPlayer->GetLastUpdateObject(id) != 0)
                 m_pSWSMessage->SendServerToPlayerGameObjUpdate(pPlayer, id);
-            m_pPlayerList->m_pInternal->GetNext(pNode);
+            m_pPlayerList->GetNext(pNode);
         } while (pNode != 0);
     }
 }
 
 void CServerExoAppInternal::MarkUpdateClientsForObject(unsigned long long id)
 {
-    unsigned long long now = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t now = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     CExoLinkedListNode* pNode = m_pPlayerList->m_pInternal->m_pHead;
     if (pNode != 0)
     {
         do
         {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode));
             if (pPlayer->GetLastUpdateObject(id) != 0)
                 UpdateClientGameObjectsForPlayer(pPlayer, 1, now);
-            m_pPlayerList->m_pInternal->GetNext(pNode);
+            m_pPlayerList->GetNext(pNode);
         } while (pNode != 0);
     }
 }
 
-void CServerExoAppInternal::UpdateClientGameObjectsForPlayer(CSWSPlayer* pPlayer, int nPlayerId, unsigned long long now)
+void CServerExoAppInternal::UpdateClientGameObjectsForPlayer(CSWSPlayer* pPlayer, int nPlayerId, uint64_ll_t now)
 {
-    unsigned long long updateTime = now;
+    uint64_ll_t updateTime = now;
     if (nPlayerId == 1 && now == 0)
         updateTime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
 
@@ -1954,7 +1955,7 @@ void CServerExoAppInternal::SetEstimatedSaveSize(const CExoString&, unsigned sho
 #if KOTOR1  // K1 calls GetLength()
             CExoString base = name.Left(name.GetLength() - 4);
 #else
-            int len = (name.m_sString != 0) ? static_cast<int>(strlen(name.m_sString)) : 0;
+            int len = name.GetLength();
             CExoString base = name.Left(len - 4);
 #endif
             path = prefix + base;
@@ -2142,17 +2143,17 @@ int CServerExoAppInternal::RunModule()
         {
             do
             {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode));
                 if (pPlayer->m_connectionState != 0)
                     MovePlayerToArea(pPlayer);
-                m_pPlayerList->m_pInternal->GetNext(pNode);
+                m_pPlayerList->GetNext(pNode);
             } while (pNode != 0);
         }
 
         if (GetModule()->m_bIsSaveGame != 0 && m_doingStartNewModule != 1)
         {
             pNode = m_pPlayerList->m_pInternal->m_pHead;
-            LoadPrimaryPlayer(static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode)));
+            LoadPrimaryPlayer(static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode)));
             m_partyTable.CreateParty();
         }
 
@@ -2415,10 +2416,10 @@ void* CServerExoAppInternal::GetClientObjectByPlayerId(unsigned int playerId, un
         {
             do
             {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode));
                 if (pPlayer->m_nPlayerId == playerId)
                     return pPlayer;
-                m_pPlayerList->m_pInternal->GetNext(pNode);
+                m_pPlayerList->GetNext(pNode);
             } while (pNode != 0);
         }
     }
@@ -2429,10 +2430,10 @@ void* CServerExoAppInternal::GetClientObjectByPlayerId(unsigned int playerId, un
         {
             do
             {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pSysAdminList->m_pInternal->GetAtPos(pNode));
+                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pSysAdminList->GetAtPos(pNode));
                 if (pPlayer->m_nPlayerId == playerId)
                     return pPlayer;
-                m_pSysAdminList->m_pInternal->GetNext(pNode);
+                m_pSysAdminList->GetNext(pNode);
             } while (pNode != 0);
         }
     }
@@ -2483,7 +2484,7 @@ int CServerExoAppInternal::StoreCurrentModule()
 #if KOTOR1  // K1 calls GetLength()
         tag = resourceName + tag.Right(tag.GetLength() - idx - 1);
 #else
-        int len = (tag.m_sString != 0) ? static_cast<int>(strlen(tag.m_sString)) : 0;
+        int len = tag.GetLength();
         CExoString subTag = tag.Right(len - idx - 1);
         tag = resourceName + subTag;
 #endif
@@ -2500,7 +2501,7 @@ int CServerExoAppInternal::StoreCurrentModule()
     return 1;
 }
 
-int CServerExoAppInternal::UpdateShutdownTimer(unsigned long long now)
+int CServerExoAppInternal::UpdateShutdownTimer(uint64_ll_t now)
 {
     if (m_nShutdownTimeRemaining == 0)
         return 0;
@@ -2605,7 +2606,7 @@ void CServerExoAppInternal::Shutdown(int a, int b)
         duration = 180000000;
     else
         duration = 1000000;
-    unsigned long long now = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t now = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     m_nShutdownTimeRemaining = duration;
     m_nShutdownLastTick = now;
 }
@@ -2665,12 +2666,12 @@ int CServerExoAppInternal::ExportAllPlayers()
     {
         do
         {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode));
             if (pPlayer->m_state == 3 || pPlayer->m_state == 4)
                 pPlayer->SaveServerCharacter();
             else if (pPlayer->m_state == 1)
                 m_pSWSMessage->SendServerToPlayerModule_ExportReply(pPlayer);
-            m_pPlayerList->m_pInternal->GetNext(pNode);
+            m_pPlayerList->GetNext(pNode);
         } while (pNode != 0);
     }
     return 1;
@@ -2686,14 +2687,14 @@ CSWSPlayer* CServerExoAppInternal::GetClientObjectByObjectId(unsigned long long 
         {
             while (1)
             {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->m_pInternal->GetAtPos(pNode));
+                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(m_pPlayerList->GetAtPos(pNode));
                 if (pPlayer != 0 && pPlayer->GetGameObject() != 0 &&
                     pPlayer->GetGameObject()->m_objectId == id)
                 {
                     pFound = pPlayer;
                     break;
                 }
-                m_pPlayerList->m_pInternal->GetNext(pNode);
+                m_pPlayerList->GetNext(pNode);
                 if (pNode == 0)
                     break;
             }
@@ -2726,7 +2727,7 @@ int CServerExoAppInternal::ChangePlayerGameObject(unsigned long long id)
 int CServerExoAppInternal::HasEnoughDiskSpaceForSaveGame()
 {
     CExoResMan* pResMan = g_pExoResMan;
-    unsigned long long freeSpace = 0;
+    uint64_ll_t freeSpace = 0;
     {
         CExoString path("SAVES:");
         pResMan->GetFreeDiskSpace(path, &freeSpace);
@@ -2746,7 +2747,7 @@ void CServerExoAppInternal::StartServices(int a)
     K2_UNUSED(a);
     CVirtualMachine* pVM;
     CSWVirtualMachineCommands* pCmdImpl;
-    unsigned long long hiResTimer;
+    uint64_ll_t hiResTimer;
     CExoString timestamp;
     g_pExoBase->m_pDebug->GetCurrentTimestamp(timestamp);
     timestamp.CStr();
@@ -3020,7 +3021,7 @@ CSWSArea* CServerExoAppInternal::GetAreaByGameObjectID(unsigned long long id)
 {
     if (m_areaCacheId != id)
     {
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || !defined(__SIZEOF_INT128__)
         m_areaCacheId = OBJECT_INVALID;
         m_pCachedArea = 0;
 #else
@@ -3737,7 +3738,7 @@ void CServerExoAppInternal::PlayerListChange(unsigned int playerId, int changeTy
         {
             CSWSSysAdmin* pAdmin = new CSWSSysAdmin(playerId);
             pAdmin->m_nLanguage = 0;
-            m_pSysAdminList->m_pInternal->AddHead(pAdmin);
+            m_pSysAdminList->AddHead(pAdmin);
             timestamp.CStr();
             name.CStr();
         }
@@ -3746,7 +3747,7 @@ void CServerExoAppInternal::PlayerListChange(unsigned int playerId, int changeTy
         {
             CSWSPlayer* pPlayer = new CSWSPlayer(playerId);
             pPlayer->m_nLanguage = 0;
-            m_pPlayerList->m_pInternal->AddHead(pPlayer);
+            m_pPlayerList->AddHead(pPlayer);
             timestamp.CStr();
             name.CStr();
         }
@@ -3828,11 +3829,7 @@ void CServerExoAppInternal::PlayerListChange(unsigned int playerId, int changeTy
 
 int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleName)
 {
-#if KOTOR1  // K1 calls GetLength()
     if (moduleName.GetLength() < 1)
-#else
-    if (moduleName.m_sString == 0 || static_cast<int>(strlen(moduleName.m_sString)) < 1)
-#endif
         return true;
 
     CExoString unused1;
@@ -4175,7 +4172,7 @@ int CServerExoAppInternal::MainLoop()
                             && pChar->GetServerCreature()->GetCurrentHitPoints(0) > 1))
 #endif
                     {
-                        unsigned long long freeSpace = 0;
+                        uint64_ll_t freeSpace = 0;
                         g_pExoResMan->GetFreeDiskSpace(CExoString("SAVES:"), &freeSpace);
                         if ((freeSpace >> 14) <= SAVE_MIN_FREE_SPACE_16K || m_serverMode != 2)
                         {
@@ -4228,7 +4225,7 @@ int CServerExoAppInternal::MainLoop()
 
 tail:
     {
-        unsigned long long hiResNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+        uint64_ll_t hiResNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         unsigned long long remaining = m_nShutdownTimeRemaining;
         if (remaining != 0)
         {
@@ -4257,7 +4254,7 @@ tail:
     }
 
     {
-        unsigned long long heartbeatNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+        uint64_ll_t heartbeatNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         unsigned long long interval;
         if (m_logHeartbeatLastTime != 0
             && m_logHeartbeatInterval > heartbeatNow - m_logHeartbeatLastTime)
@@ -4615,7 +4612,7 @@ int CServerExoAppInternal::LoadModule(const CExoString& moduleName, CSWSPlayer* 
 #if KOTOR1  // K1 calls GetLength()
         shortModuleName = moduleName.Right(moduleName.GetLength() - slashPos - 1);
 #else
-        int len = (moduleName.m_sString != 0) ? static_cast<int>(strlen(moduleName.m_sString)) : 0;
+        int len = moduleName.GetLength();
         shortModuleName = moduleName.Right(len - slashPos - 1);
 #endif
         copyDstPath = copyDstPath + shortModuleName;
@@ -4727,12 +4724,8 @@ LAB_NotSaved:
                 break;
             }
             scratch.Format(const_cast<char*>("LIVE%d"), i);
-#if KOTOR1  // K1 calls GetLength()
-            if (g_pExoBase->m_pAliasList->GetAliasPath(scratch, 0).GetLength() != 0)
-#else
             const CExoString& aliasPath = g_pExoBase->m_pAliasList->GetAliasPath(scratch, 0);
-            if (aliasPath.m_sString != 0 && static_cast<int>(strlen(aliasPath.m_sString)) != 0)
-#endif
+            if (aliasPath.GetLength() != 0)
             {
                 scratch = scratch + CExoString(":MODULES");
                 g_pExoResMan->AddResourceDirectory(scratch);
@@ -4855,7 +4848,7 @@ LAB_RimFromDir:
 
 LAB_HaveResult:
     {
-        unsigned long long freeSpace;
+        uint64_ll_t freeSpace;
         if (g_pExoResMan->GetFreeDiskSpace(CExoString("CURRENTGAME:"), &freeSpace) == 1)
         {
             CExoFile* pFile;

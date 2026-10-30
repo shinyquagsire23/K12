@@ -137,7 +137,9 @@ CSWSObject::CSWSObject(unsigned char objectType, unsigned long long objectId, in
     m_bDeadSelectable = 0;
     m_fAnimationSpeed = 1.0f;
     m_aiLevel = -1;
+#if !KOTOR1
     m_nSavedAILevel = SAVED_AI_LEVEL_NONE;
+#endif
     m_oidLastSpeaker = OBJECT_INVALID;
     m_dialogOwnerId = OBJECT_INVALID;
     m_killerId = OBJECT_INVALID;
@@ -261,7 +263,7 @@ CSWSObject::~CSWSObject()
     }
 
     while (m_actionList.m_pInternal->m_pHead != 0)
-        delete static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->RemoveHead());
+        delete m_actionList.RemoveHead();
 
     CSWCObject* pClient = m_pClientObject;
     if (pClient) {
@@ -407,7 +409,7 @@ void CSWSObject::SaveActionQueue(CResGFF* pGff, CResStruct* pStruct)
     pNode = m_actionList.m_pInternal->m_pHead;
     while (pNode != 0)
     {
-        CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+        CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
 
         pGff->AddListElement(&actionStruct, &actionList, 0);
         pGff->WriteFieldDWORD(&actionStruct, pAction->m_nActionId, const_cast<char*>("ActionId"));
@@ -446,7 +448,7 @@ void CSWSObject::SaveActionQueue(CResGFF* pGff, CResStruct* pStruct)
                 }
             }
         }
-        m_actionList.m_pInternal->GetNext(pNode);
+        m_actionList.GetNext(pNode);
     }
 }
 
@@ -1635,7 +1637,7 @@ int CSWSObject::IsDialogDelay()
 
 void CSWSObject::TimeStampCameraAnimation() {
     m_nReserved3 = 0;
-    unsigned long long nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     m_nCameraAnimStartMs = static_cast<unsigned int>(nNow / 1000);
 }
 
@@ -1655,7 +1657,7 @@ void CSWSObject::RemoveEffectBySpellId(unsigned int nSpellId) {
     }
 }
 
-int CSWSObject::RemoveEffectById(unsigned long long effectId)
+int CSWSObject::RemoveEffectById(uint64_ll_t effectId)
 {
     CServerAIMaster* pAIMaster = g_pAppManager->m_pServerExoApp->GetServerAIMaster();
     int i = 0;
@@ -1749,7 +1751,7 @@ void CSWSObject::DeleteCurrentAIAction() {
     // and the node stays queued.
     if (ClearAction(static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->m_pHead->m_pData), 1) != 1)
         return;
-    delete static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->RemoveHead());
+    delete m_actionList.RemoveHead();
 }
 
 void CSWSObject::TestActionList() {
@@ -1758,7 +1760,7 @@ void CSWSObject::TestActionList() {
         return;
     CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->m_pHead->m_pData);
     while (pAction != 0)
-        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetNext(pNode));
+        pAction = m_actionList.GetNext(pNode);
 }
 
 void CSWSObject::SetGroupInterruptable(unsigned short nGroupId, int bInterruptable) {
@@ -1769,7 +1771,7 @@ void CSWSObject::SetGroupInterruptable(unsigned short nGroupId, int bInterruptab
     while (pAction != 0) {
         if (pAction->m_nGroupId == nGroupId)
             pAction->m_bInterruptable = bInterruptable;
-        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetNext(pNode));
+        pAction = m_actionList.GetNext(pNode);
     }
 }
 
@@ -1777,11 +1779,11 @@ CSWSObjectActionNode* CSWSObject::GetNodeById(unsigned short nId) {
     if (m_actionList.m_pInternal->m_pHead == 0)
         return 0;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
-    CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+    CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
     while (1) {
         if (pAction->m_nActionId == nId)
             return pAction;
-        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetNext(pNode));
+        pAction = m_actionList.GetNext(pNode);
         if (pNode == 0)
             return 0;
     }
@@ -1791,11 +1793,11 @@ CSWSObjectActionNode* CSWSObject::GetNodeById(unsigned short nId, unsigned short
     if (m_actionList.m_pInternal->m_pHead == 0)
         return 0;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
-    CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+    CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
     while (1) {
         if (pAction->m_nActionId == nId && pAction->m_nGroupId == nGroupId)
             return pAction;
-        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetNext(pNode));
+        pAction = m_actionList.GetNext(pNode);
         if (pNode == 0)
             return 0;
     }
@@ -1805,12 +1807,12 @@ int CSWSObject::GetNumActionGroups() {
     if (m_actionList.m_pInternal->m_pHead == 0)
         return 0;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
-    CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+    CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
     // The head's group id is read before the head is tested for null.
     unsigned short nPrevGroup = pAction->m_nGroupId;
     int nGroups = (pAction != 0);
     while (1) {
-        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetNext(pNode));
+        pAction = m_actionList.GetNext(pNode);
         if (pNode == 0)
             break;
         if (pAction->m_nGroupId != nPrevGroup)
@@ -1852,7 +1854,7 @@ unsigned short CSWSObject::GetActionByGroupId(unsigned short nGroupId,
     if (m_actionList.m_pInternal->m_pHead == 0)
         return nActionId;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
-    CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+    CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
     if (pAction == 0)
         return nActionId;
     // The run is contiguous, so the first node past it ends the search, but only once the run has
@@ -1868,7 +1870,7 @@ unsigned short CSWSObject::GetActionByGroupId(unsigned short nGroupId,
         } else if (bInGroup == 1) {
             break;
         }
-        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetNext(pNode));
+        pAction = m_actionList.GetNext(pNode);
     }
     return nActionId;
 }
@@ -1896,16 +1898,16 @@ void CSWSObject::ClearAllActions(int bClearCombatRound) {
     // the dropped node is held separately and removed by position afterwards.
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
     while (pNode != 0) {
-        CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+        CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
         CExoLinkedListNode* pPos = pNode;
-        m_actionList.m_pInternal->GetNext(pNode);
+        m_actionList.GetNext(pNode);
         // The current action is the queue head, read straight off m_pHead rather than looked up
         // again.
         CSWSObjectActionNode* pCurrent = 0;
         if (m_actionList.m_pInternal->m_pHead != 0)
             pCurrent = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->m_pHead->m_pData);
         if (ClearAction(pAction, pCurrent == pAction) == 1) {
-            CSWSObjectActionNode* pRemoved = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->Remove(pPos));
+            CSWSObjectActionNode* pRemoved = m_actionList.Remove(pPos);
             if (pRemoved != 0)
                 delete pRemoved;
         }
@@ -2047,10 +2049,10 @@ void CSWSObject::PlaySoundSet(CSWSPlayer* pPlayer, unsigned char nSoundSet) {
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pEach != 0)
             pMessage->SendServerToPlayerVoiceChat_Play(pEach, m_objectId, nSoundSet);
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
 }
 
@@ -2266,7 +2268,7 @@ void CSWSObject::AddAction(unsigned int nActionId, unsigned short nGroupId,
         }
     }
 
-    m_actionList.m_pInternal->AddTail(pNode);
+    m_actionList.AddTail(pNode);
     TestActionList();
 }
 
@@ -2361,7 +2363,7 @@ void CSWSObject::AddActionToFront(unsigned int nActionId, unsigned short nGroupI
         }
     }
 
-    m_actionList.m_pInternal->AddHead(pNode);
+    m_actionList.AddHead(pNode);
     TestActionList();
 }
 
@@ -2465,14 +2467,13 @@ void CSWSObject::SetDeleteNoFade(int bDeleteNoFade)
         CExoLinkedListNode* pPos = pPlayer->m_pLastUpdateObjectList->m_pInternal->m_pHead;
         while (pPos != 0)
         {
-            CLastUpdateObject* pLast = static_cast<CLastUpdateObject*>(
-                pPlayer->m_pLastUpdateObjectList->m_pInternal->GetAtPos(pPos));
+            CLastUpdateObject* pLast = pPlayer->m_pLastUpdateObjectList->GetAtPos(pPos);
             if (pLast->m_objectId == m_objectId)
             {
                 pLast->m_bDeleteNoFade = bDeleteNoFade;
                 return;
             }
-            pPlayer->m_pLastUpdateObjectList->m_pInternal->GetNext(pPos);
+            pPlayer->m_pLastUpdateObjectList->GetNext(pPos);
         }
     }
     m_bDeleteNoFade = bDeleteNoFade;
@@ -2487,14 +2488,13 @@ void CSWSObject::SetKeepCorpse(int bKeepCorpse)
         CExoLinkedListNode* pPos = pPlayer->m_pLastUpdateObjectList->m_pInternal->m_pHead;
         while (pPos != 0)
         {
-            CLastUpdateObject* pLast = static_cast<CLastUpdateObject*>(
-                pPlayer->m_pLastUpdateObjectList->m_pInternal->GetAtPos(pPos));
+            CLastUpdateObject* pLast = pPlayer->m_pLastUpdateObjectList->GetAtPos(pPos);
             if (pLast->m_objectId == m_objectId)
             {
                 pLast->m_bKeepCorpse = bKeepCorpse;
                 return;
             }
-            pPlayer->m_pLastUpdateObjectList->m_pInternal->GetNext(pPos);
+            pPlayer->m_pLastUpdateObjectList->GetNext(pPos);
         }
     }
     m_bKeepCorpse = bKeepCorpse;
@@ -2509,14 +2509,13 @@ void CSWSObject::SetFadeOutTime(unsigned int nFadeOutTime)
         CExoLinkedListNode* pPos = pPlayer->m_pLastUpdateObjectList->m_pInternal->m_pHead;
         while (pPos != 0)
         {
-            CLastUpdateObject* pLast = static_cast<CLastUpdateObject*>(
-                pPlayer->m_pLastUpdateObjectList->m_pInternal->GetAtPos(pPos));
+            CLastUpdateObject* pLast = pPlayer->m_pLastUpdateObjectList->GetAtPos(pPos);
             if (pLast->m_objectId == m_objectId)
             {
                 pLast->m_nFadeOutTime = nFadeOutTime;
                 return;
             }
-            pPlayer->m_pLastUpdateObjectList->m_pInternal->GetNext(pPos);
+            pPlayer->m_pLastUpdateObjectList->GetNext(pPos);
         }
     }
     m_nFadeOutTime = nFadeOutTime;
@@ -2603,14 +2602,14 @@ void CSWSObject::RemoveGroup(unsigned short nGroupId) {
     if (m_actionList.m_pInternal->m_pHead == 0)
         return;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
-    CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+    CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
     while (1) {
         CExoLinkedListNode* pCurrentPos = pNode;
         CSWSObjectActionNode* pCurrent = pAction;
         unsigned short nId = pCurrent->m_nGroupId;
-        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetNext(pNode));
+        pAction = m_actionList.GetNext(pNode);
         if (nId == nGroupId) {
-            m_actionList.m_pInternal->Remove(pCurrentPos);
+            m_actionList.Remove(pCurrentPos);
             pCurrent->~CSWSObjectActionNode();
             operator delete(pCurrent);
         }

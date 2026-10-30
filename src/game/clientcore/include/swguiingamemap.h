@@ -164,7 +164,6 @@ public:
         TRANSIT_RETURN_ENABLED = 0x2,
     };
     unsigned char m_nTransitFlags;
-    char          _pad1b09[0x1b10 - 0x1b09];
 };
 
 #if !KOTOR1  // K1's GUI base classes are smaller

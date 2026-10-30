@@ -16,6 +16,13 @@ varying vec4 v_texCoord1;
 uniform sampler2D u_texture1Sampler;
 #endif
 
+// The one-pass reflection as an NVIDIA card drew it (the Mac's cEnvmapCubeFragmentShader): the
+// reflection added over the lit texture, weighted by one minus its alpha. 0 mixes the two by the alpha,
+// as ATI's program (cEnvmapFogFragmentShader) did.
+#ifndef USE_ENVMAP_ADD
+#define USE_ENVMAP_ADD 0
+#endif
+
 #if USE_CUBEMAP || USE_BUMPMAP
 #if USE_FLAT_CUBEMAP
 uniform sampler2D u_texture2Sampler;
@@ -54,6 +61,8 @@ void main()
 	#else
 		#if USE_LIGHTMAP
 			color += (1.0 - color.a) * cubecolor;
+		#elif USE_ENVMAP_ADD
+			color.rgb += (1.0 - color.a) * cubecolor.rgb;
 		#else
 			color = mix(cubecolor, color, color.a);
 		#endif

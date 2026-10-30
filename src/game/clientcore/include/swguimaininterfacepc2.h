@@ -62,7 +62,6 @@ public:
     char _pad1c9[0x1ca - 0x1c9];
     short              m_nScreenX;
     short              m_nScreenY;
-    char _pad1ce[0x1d0 - 0x1ce];
 };
 
 #if KOTOR1  // K1 adds no fields beyond the label
@@ -228,11 +227,9 @@ struct CSWGuiMainInterfaceAction {  // idiom-exempt: canonical (no other definit
     CSWGuiButton  m_btnDown;
     float         m_fPulseTimer;
     unsigned char m_nPulseSteps;
-    char          _pad9a5[0x9a8-0x9a5];
     unsigned int  m_nMode;
     unsigned char m_bSelected;
     unsigned char m_bEmpty;
-    char          _pad9ae[0x9b0-0x9ae];
 };
 
 // A flashing-status indicator, a label plus a flash timer.
@@ -322,7 +319,6 @@ public:
 #if KOTOR1
     char          _pad24ab[3];
 #else
-    char          _pad24ab[0x24b0-0x24ab];
 #endif
 };
 
@@ -382,7 +378,6 @@ public:
         CSWGuiMainInterface* m_pInterface;
         unsigned char m_bStealthCapable;
 #if !KOTOR1
-        char _padc1[0xc8-0xc1];
 #endif
     #if KOTOR1  // K1: six entries, with a label between each pair
         CSWGuiButton m_buttonBackground;
@@ -548,7 +543,6 @@ public:
     unsigned long long m_targetId;
     unsigned long long m_lastPlayerId;
     float         m_fChallengeRating;
-    char          _padbc[0x98-0x94];
     uint64_t m_nHintStrRef;
     CExoArrayList<CSWGuiInterfaceAction> m_personalActions[6];
     CSWGuiTargetActionMenu m_targetActionMenu;
@@ -560,12 +554,10 @@ public:
     CSWGuiMainInterfaceChar m_aCharacters[3];
     CSWGuiMainInterfaceChar m_charOffscreen;  // the portrait the party rotation slides in
     float         m_fRotationTimer;
-    char          _pad73c4[4];
     CSWGuiLabel   m_lblTargetIndicator;
     CSWGuiLabel   m_reticleLabel;
     unsigned long long m_mouseOverTargetId;
     float         m_fReticlePulseTimer;
-    char          _pad7744[4];
     CExoArrayList<CSWGuiFloatyText*> m_floatyTexts;
     CSWGuiLabel   m_miniMap;
     CSWGuiLabel   m_miniMapImage;
@@ -589,7 +581,6 @@ public:
     int           m_bToolTipMessageShown;
     float         m_fCombatMessageDuration;
     float         m_fCombatMessageTimer;
-    char          _pad99bc[4];
     uint64_t m_combatMessage;
     CSWGuiMainInterfaceAction m_personalActionWidgets[6];
     CSWGuiLabel   m_actionDescLabel;
@@ -597,7 +588,6 @@ public:
     int           m_nActionDescBottom;
     unsigned char m_interfaceOffset;
     unsigned char m_nInterfaceFlags;
-    char          _pade10e[2];
     CSWGuiMainInterfaceStatus m_statusIcons[9];
     CSWGuiButton  m_btnEquip;
     CSWGuiButton  m_btnInventory;
@@ -634,7 +624,6 @@ public:
     unsigned long long m_targetId;
     unsigned long long m_lastPlayerId;
     float         m_fChallengeRating;
-    char          _padbc[0xc0-0xbc];
     uint64_t m_nHintStrRef;
     CExoArrayList<CSWGuiInterfaceAction> m_personalActions[7];
     CSWGuiTargetActionMenu m_targetActionMenu;
@@ -647,12 +636,10 @@ public:
     CSWGuiMainInterfaceChar m_aCharacters[3];
     CSWGuiMainInterfaceChar m_charOffscreen;  // the portrait the party rotation slides in
     float         m_fRotationTimer;
-    char          _pad73c4[4];
     CSWGuiLabel   m_lblTargetIndicator;
     CSWGuiLabel   m_reticleLabel;
     unsigned long long m_mouseOverTargetId;
     float         m_fReticlePulseTimer;
-    char          _pad7744[0x7748-0x7744];
     CExoArrayList<CSWGuiFloatyText*> m_floatyTexts;
     CSWGuiLabel   m_miniMap;
     CSWGuiLabel   m_miniMapImage;
@@ -675,7 +662,6 @@ public:
     int           m_bToolTipMessageShown;
     float         m_fCombatMessageDuration;
     float         m_fCombatMessageTimer;
-    char          _pad99bc[0x99c0-0x99bc];
     uint64_t m_combatMessage;
     CSWGuiMainInterfaceAction m_personalActionWidgets[7];
     CSWGuiLabel   m_actionDescLabel;
@@ -683,7 +669,6 @@ public:
     int           m_nActionDescBottom;
     unsigned char m_interfaceOffset;
     unsigned char m_nInterfaceFlags;
-    char          _pade10e[0xe110-0xe10e];
     CSWGuiMainInterfaceStatus m_statusIcons[13];
     CSWGuiButton m_btnEquip;
     CSWGuiButton m_btnInventory;
@@ -729,7 +714,6 @@ public:
     float         m_feedbackTimer;
     int           m_feedbackStrRef;
     int           m_bActionMenuLatch;
-    char          _padEnd[0x1d110 - 0x1d10c];
 #endif
 };
 

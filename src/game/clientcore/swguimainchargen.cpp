@@ -128,7 +128,7 @@ CSWGuiMainCharGen::CSWGuiMainCharGen(CSWGuiManager* pGuiManager, CSWCCreature* p
     SetNameString(CExoString(""));
 
     // The portrait page's border image comes from the creature's own portrait.
-    m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(0), 0);
+    m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(0));
 
     if (g_bDo3DGUIs)
     {
@@ -380,7 +380,7 @@ void CSWGuiMainCharGen::Draw(float f)
 // the preview scene.
 void CSWGuiMainCharGen::PortraitChanged()
 {
-    m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(0), 0);
+    m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(0));
     m_lblPortrait.m_text.m_params.SetText(CExoString(""));
 
     CAurCamera* pCamera = m_sceneView.m_scene.m_pCamera;

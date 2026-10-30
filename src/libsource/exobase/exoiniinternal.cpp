@@ -32,9 +32,9 @@ CExoIniInternal::~CExoIniInternal()
 void CExoIniInternal::Destroy()
 {
     while (m_sections.m_pInternal->m_pHead != 0) {
-        CFileSection* pSection = static_cast<CFileSection*>(m_sections.m_pInternal->RemoveHead());
+        CFileSection* pSection = m_sections.RemoveHead();
         while (pSection->m_keys.m_pInternal->m_pHead != 0) {
-            CFileKey* pKey = static_cast<CFileKey*>(pSection->m_keys.m_pInternal->RemoveHead());
+            CFileKey* pKey = pSection->m_keys.RemoveHead();
             delete pKey;
         }
         delete pSection;
@@ -94,9 +94,9 @@ int CExoIniInternal::ReadIniEntry(CExoString& result, const CExoString& fileName
                         fseek(f, ~static_cast<long>(len), SEEK_CUR);
                         break;
                     }
-                    CExoString* pEntry = new CExoString();
-                    *pEntry = lineBuf;
-                    pSection->m_keys.m_pInternal->AddTail(pEntry);
+                    CFileKey* pEntry = new CFileKey;
+                    pEntry->m_line = lineBuf;
+                    pSection->m_keys.AddTail(pEntry);
                 }
             }
         }
@@ -124,15 +124,15 @@ int CExoIniInternal::ReadIniEntry(CExoString& result, const CExoString& fileName
             CExoLinkedListNode* entPos = pSection->m_keys.m_pInternal->m_pHead;
             if (entPos == 0 || entPos->m_pData == 0)
                 return 0;
-            CExoString* pEntry = static_cast<CExoString*>(entPos->m_pData);
+            CFileKey* pEntry = static_cast<CFileKey*>(entPos->m_pData);
             while (pEntry != 0) {
-                const char* entryLine = pEntry->CStr();
+                const char* entryLine = pEntry->m_line.CStr();
                 __strcpy_chk(lineBuf, entryLine, INI_LINE_SIZE);
                 char* pEq = __strchr_chk(lineBuf, '=', INI_LINE_SIZE);
                 if (pEq)
                     *pEq = 0;
                 if (strcmp(lineBuf, keyBuf) == 0) {
-                    const char* fullLine = pEntry->CStr();
+                    const char* fullLine = pEntry->m_line.CStr();
                     const char* pRealEq = strchr(fullLine, '=');
                     result = pRealEq + 1;
                     // sic: an unnamed temporary, destroyed before the comparison runs.
@@ -148,7 +148,7 @@ int CExoIniInternal::ReadIniEntry(CExoString& result, const CExoString& fileName
                     }
                     return 1;
                 }
-                pEntry = reinterpret_cast<CExoString*>(pSection->m_keys.GetNext(entPos));
+                pEntry = pSection->m_keys.GetNext(entPos);
             }
             return 0;
         }
@@ -203,9 +203,9 @@ int CExoIniInternal::WriteIniEntry(const CExoString& value, const CExoString& fi
                         fseek(f, ~static_cast<long>(len), SEEK_CUR);
                         break;
                     }
-                    CExoString* pEntry = new CExoString();
-                    *pEntry = lineBuf;
-                    pSection->m_keys.m_pInternal->AddTail(pEntry);
+                    CFileKey* pEntry = new CFileKey;
+                    pEntry->m_line = lineBuf;
+                    pSection->m_keys.AddTail(pEntry);
                 }
             }
         }
@@ -230,9 +230,9 @@ int CExoIniInternal::WriteIniEntry(const CExoString& value, const CExoString& fi
             pStart = lineBuf;
         if (strcmp(pStart + 1, keyBuf) == 0) {
             CExoLinkedListNode* entPos = pSection->m_keys.m_pInternal->m_pHead;
-            CExoString* pEntry = entPos ? static_cast<CExoString*>(entPos->m_pData) : 0;
+            CFileKey* pEntry = entPos ? static_cast<CFileKey*>(entPos->m_pData) : 0;
             while (pEntry != 0) {
-                const char* entryLine = pEntry->CStr();
+                const char* entryLine = pEntry->m_line.CStr();
                 __strcpy_chk(lineBuf, entryLine, INI_LINE_SIZE);
                 char* pEq = __strchr_chk(lineBuf, '=', INI_LINE_SIZE);
                 if (pEq)
@@ -245,18 +245,18 @@ int CExoIniInternal::WriteIniEntry(const CExoString& value, const CExoString& fi
                         strcpy(pEq + 1, valueBuf);
                         *pEq = '=';
                     }
-                    *pEntry = lineBuf;
-                    *pEntry = *pEntry + "\n";
+                    pEntry->m_line = lineBuf;
+                    pEntry->m_line = pEntry->m_line + "\n";
                     goto write_out;
                 }
-                pEntry = reinterpret_cast<CExoString*>(pSection->m_keys.GetNext(entPos));
+                pEntry = pSection->m_keys.GetNext(entPos);
             }
-            pEntry = new CExoString();
-            *pEntry = *pEntry + valBufSection;
-            *pEntry = *pEntry + "=";
-            *pEntry = *pEntry + valueBuf;
-            *pEntry = *pEntry + "\n";
-            pSection->m_keys.m_pInternal->AddHead(pEntry);
+            pEntry = new CFileKey;
+            pEntry->m_line = pEntry->m_line + valBufSection;
+            pEntry->m_line = pEntry->m_line + "=";
+            pEntry->m_line = pEntry->m_line + valueBuf;
+            pEntry->m_line = pEntry->m_line + "\n";
+            pSection->m_keys.AddHead(pEntry);
             goto write_out;
         }
         pSection = static_cast<CFileSection*>(m_sections.GetNext(secPos));
@@ -268,13 +268,13 @@ int CExoIniInternal::WriteIniEntry(const CExoString& value, const CExoString& fi
         pNewSection->m_line = pNewSection->m_line + keyBuf;
         pNewSection->m_line = pNewSection->m_line + "]\n";
 
-        CExoString* pEntry = new CExoString();
-        *pEntry = valBufSection;
-        *pEntry = *pEntry + "=";
-        *pEntry = *pEntry + valueBuf;
-        *pEntry = *pEntry + "\n";
+        CFileKey* pEntry = new CFileKey;
+        pEntry->m_line = valBufSection;
+        pEntry->m_line = pEntry->m_line + "=";
+        pEntry->m_line = pEntry->m_line + valueBuf;
+        pEntry->m_line = pEntry->m_line + "\n";
 
-        pNewSection->m_keys.m_pInternal->AddHead(pEntry);
+        pNewSection->m_keys.AddHead(pEntry);
         m_sections.AddTail(pNewSection);
     }
 
@@ -298,10 +298,10 @@ write_out:
         while (wSection != 0) {
             fputs(wSection->m_line.CStr(), f);
             CExoLinkedListNode* wEntPos = wSection->m_keys.m_pInternal->m_pHead;
-            CExoString* wEntry = wEntPos ? static_cast<CExoString*>(wEntPos->m_pData) : 0;
+            CFileKey* wEntry = wEntPos ? static_cast<CFileKey*>(wEntPos->m_pData) : 0;
             while (wEntry != 0) {
-                fputs(wEntry->CStr(), f);
-                wEntry = reinterpret_cast<CExoString*>(wSection->m_keys.GetNext(wEntPos));
+                fputs(wEntry->m_line.CStr(), f);
+                wEntry = wSection->m_keys.GetNext(wEntPos);
             }
             wSection = static_cast<CFileSection*>(m_sections.GetNext(wSecPos));
         }

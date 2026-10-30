@@ -1,4 +1,5 @@
 #pragma once
+#include "k2stdint.h"
 
 // Win32 CRITICAL_SECTION shim behind CExoCriticalSection, reachable only through it.
 
@@ -12,6 +13,15 @@ private:
 #if KOTOR1
     struct SDL_mutex* m_pMutex;
 #else
-    unsigned char m_criticalSection[0x28];
+    // Win32's CRITICAL_SECTION record, which the port layer initializes and locks.
+    struct CriticalSection {
+        void*     pDebugInfo;
+        int       nLockCount;
+        int       nRecursionCount;
+        void*     hOwningThread;
+        void*     hLockSemaphore;
+        uintptr_t nSpinCount;
+    };
+    CriticalSection m_criticalSection;
 #endif
 };

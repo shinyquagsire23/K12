@@ -1799,7 +1799,7 @@ void CSWCObject::KillAllVisualEffects()
     while (m_visualEffects.m_pInternal->m_pHead != 0)
     {
         CSWCVisualEffectOnObject* p =
-            static_cast<CSWCVisualEffectOnObject*>(m_visualEffects.m_pInternal->RemoveHead());
+            m_visualEffects.RemoveHead();
         if (p != 0)
         {
             p->KillVisualEffect();
@@ -1816,7 +1816,7 @@ void CSWCObject::StopAllVisualEffects()
     while (pData != 0)
     {
         static_cast<CSWCVisualEffectOnObject*>(pData)->StopVisualEffect(1);
-        pData = m_visualEffects.m_pInternal->GetNext(pos);
+        pData = m_visualEffects.GetNext(pos);
     }
 }
 
@@ -1830,7 +1830,7 @@ void CSWCObject::DetachVisualEffects()
         CSWCVisualEffectOnObject* p = static_cast<CSWCVisualEffectOnObject*>(pData);
         if (p->m_bFinished == 0 && p->m_bShown != 0)
             p->DetachVisualEffect();
-        pData = m_visualEffects.m_pInternal->GetNext(pos);
+        pData = m_visualEffects.GetNext(pos);
     }
 }
 
@@ -1844,7 +1844,7 @@ void CSWCObject::ReAttachVisualEffects()
         CSWCVisualEffectOnObject* p = static_cast<CSWCVisualEffectOnObject*>(pData);
         if (p->m_bFinished == 0 && p->m_bShown != 0)
             p->ReAttachVisualEffect();
-        pData = m_visualEffects.m_pInternal->GetNext(pos);
+        pData = m_visualEffects.GetNext(pos);
     }
 }
 
@@ -1862,7 +1862,7 @@ int CSWCObject::AddVisualEffect(unsigned short a, int b, unsigned long long c,
             operator delete(p);
             return 0;
         }
-        m_visualEffects.m_pInternal->AddTail(p);
+        m_visualEffects.AddTail(p);
         p->StartVisualEffect();
         p->ShowVisualEffect(0);
         p->DetachVisualEffect();
@@ -1963,7 +1963,7 @@ void CSWCObject::UpdateVisualEffectsList()
         ActivateHardCodedVisualWithHighestPriority(p->GetHardCodedEffectClass(), 0);
         if (!p->IsDone())
         {
-            pData = m_visualEffects.m_pInternal->GetNext(pos);
+            pData = m_visualEffects.GetNext(pos);
             continue;
         }
         if (p->m_bHasDuration == 0)
@@ -1972,8 +1972,8 @@ void CSWCObject::UpdateVisualEffectsList()
             ActivateHardCodedVisualWithHighestPriority(p->GetHardCodedEffectClass(), 0);
         }
         CExoLinkedListNode* posNext = pos;
-        pData = m_visualEffects.m_pInternal->GetNext(posNext);
-        m_visualEffects.m_pInternal->Remove(pos);
+        pData = m_visualEffects.GetNext(posNext);
+        m_visualEffects.Remove(pos);
         p->UnloadVisualEffect();
         p->~CSWCVisualEffectOnObject();
         operator delete(p);
@@ -1998,7 +1998,7 @@ int CSWCObject::DeleteVisualEffect(unsigned short a)
             ActivateHardCodedVisualWithHighestPriority(p->GetHardCodedEffectClass(), 0);
             return 1;
         }
-        pData = m_visualEffects.m_pInternal->GetNext(pos);
+        pData = m_visualEffects.GetNext(pos);
     }
     return 0;
 }
@@ -2025,7 +2025,7 @@ void CSWCObject::DetachVisualEffectsMatchingHardCodedClass(CSWCVisualEffectOnObj
                     break;
                 }
             }
-            p = static_cast<CSWCVisualEffectOnObject*>(m_visualEffects.m_pInternal->GetPrev(pos));
+            p = m_visualEffects.GetPrev(pos);
             if (pos == 0)
                 break;
         }
@@ -2047,7 +2047,7 @@ int CSWCObject::RefreshVisualEffects(int a)
             p->HideVisualEffect();
             p->ShowVisualEffect(0);
         }
-        pData = m_visualEffects.m_pInternal->GetNext(pos);
+        pData = m_visualEffects.GetNext(pos);
     }
     return 1;
 }
@@ -2069,7 +2069,7 @@ float CSWCObject::GetVisualEffectAlpha()
                 alpha = p->m_fAlpha;
                 best = p->m_nPriority;
             }
-            p = static_cast<CSWCVisualEffectOnObject*>(m_visualEffects.m_pInternal->GetPrev(pos));
+            p = m_visualEffects.GetPrev(pos);
             if (pos == 0)
                 break;
         }
@@ -2087,7 +2087,7 @@ int CSWCObject::HasVisualEffectApplied(unsigned int a)
         {
             if (p->m_effectId == a)
                 return 1;
-            p = static_cast<CSWCVisualEffectOnObject*>(m_visualEffects.m_pInternal->GetPrev(pos));
+            p = m_visualEffects.GetPrev(pos);
             if (pos == 0)
                 break;
         }

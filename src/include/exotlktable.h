@@ -72,17 +72,14 @@ public:
     CTlkFile*            m_pTlkFiles[7][2];
 
     unsigned char  m_gender;
-    char _padB9[0xc0 - 0xb9];
 
     CTlkTableToken* m_pStringTokens;
     unsigned int    m_nStringTokenCount;
-    char _padCC[0xd0 - 0xcc];
 
     CTlkTableCustomToken* m_pCustomTokens;
     unsigned int m_nCustomTokenCount;
     int  m_bSuppressText;
     int  m_bShowStringRefs;
-    char _pade4[0xe8 - 0xe4];
 
     CTlkTable();
     ~CTlkTable();

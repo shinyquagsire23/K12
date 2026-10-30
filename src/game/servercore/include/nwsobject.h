@@ -4,15 +4,14 @@
 class CLoopingVisualEffect {
 public:
     unsigned short     m_nVisualEffectId;
-    char               _pad02[0x08 - 0x02];
     unsigned long long m_targetId;
     unsigned char      m_nBodyPart;
-    char               _pad11[0x18 - 0x11];
 
     int GetIsBeam();
     static int GetIsBeam(unsigned short nVisualEffectId);
 };
 
+#include "k2stdint.h"
 #include "exostring.h"
 #include "exolocstring.h"
 
@@ -64,7 +63,6 @@ struct CScriptTalent {
     int                m_nType;
     int                m_nId;
     unsigned char      m_nMultiClass;
-    char               _pad09[0x10 - 0x09];
     unsigned long long m_oidItem;
     int                m_nItemPropertyIndex;
     unsigned char      m_nCasterLevel;
@@ -127,14 +125,12 @@ public:
     CExoLocString m_sName;
     unsigned short m_curGroupId;
     unsigned short m_prevGroupId;
-    unsigned char _pad02c[0x30 - 0x2c];
     CExoString    m_sTag;
     CResRef       m_portrait;
 
     // Tags are stored lower-cased.
     void SetTag(const CExoString& sTag) { m_sTag = sTag.LowerCase(); }
     unsigned short m_portraitId;
-    unsigned char _pad052[0x58 - 0x52];
     CSWSDialog*   m_pDialog;
     unsigned int  m_nDialogDelayDay;
     unsigned int  m_nDialogDelayTod;
@@ -143,7 +139,6 @@ public:
     int           m_bDialogSendPending;
     int           m_nPendingDialogEntry;
     int           m_bDialogPaused;
-    unsigned char _pad07c[0x80 - 0x7c];
     unsigned long long m_dialogOwnerId;
     int           m_nDialogAnimation;
 
@@ -155,10 +150,11 @@ public:
     int           m_nReserved3;
     int           m_bDialogStarted;
     int           m_aiLevel;
+#if !KOTOR1  // K1 keeps no saved AI level on the object
     unsigned char m_nSavedAILevel;
-    unsigned char _pad0ad[0xb8 - 0xad];
+#endif
+    void*         m_pReserved1;
     unsigned short m_nCurrentActionId;
-    unsigned char _pad0ba[0xc0 - 0xba];
     unsigned long long m_attackTargetId;
     unsigned long long m_nReserved4;
 
@@ -191,19 +187,16 @@ public:
     int           m_bDeadSelectable;
 
     int           m_bPlot;
-    unsigned char _pad144[0x148 - 0x144];
     CExoLinkedList<CSWSObjectActionNode> m_actionList;
     // Script-level local variable storage; the var table below is a separate type.
     CSWSScriptVarTable m_scriptVars;
     CSWVarTable   m_varTable;
-    unsigned char _pad19c[0x1a0 - 0x19c];
     CExoArrayList<CGameEffect*> m_effects;
     CExoArrayList<CLoopingVisualEffect*> m_visualEffects;
     CExoArrayList<unsigned long long> m_spellTargets;
     int           m_bApplyingLinkEffect;
     int           m_nImpactSpellId;
     int           m_nUserDefinedEventNumber;
-    unsigned char _pad1dc[0x1e0 - 0x1dc];
     unsigned long long m_killerId;
     unsigned long long m_lastHostileActorId;
     unsigned long long m_oidLastAttacker;
@@ -212,14 +205,11 @@ public:
     int*          m_paLastDamageAmounts;
     unsigned short m_nLastAttackFeatId;
     unsigned char  m_nLastAttackMode;
-    unsigned char _pad213[0x218 - 0x213];
     unsigned long long m_oidLastWeaponUsed;
     unsigned long long m_oidLastDisturbItem;
     int                m_nLastDisturbType;
-    unsigned char _pad22c[0x230 - 0x22c];
     unsigned long long m_oidLastSpeaker;
     int                m_bPrivateConversation;
-    unsigned char _pad23c[0x240 - 0x23c];
     CExoString     m_sLastConversation;
     CExoArrayList<CSWSExpression*> m_listenExpressions;
     int           m_nListenPatternNumber;
@@ -227,25 +217,21 @@ public:
     CExoArrayList<CExoString*> m_matchedExpressionStrings;
     signed char*  m_paDamageImmunity;
     Vector             m_castPosition;
-    unsigned char _pad28c[0x290 - 0x28c];
     unsigned long long m_castTargetId;
     unsigned int       m_castSpellId;
     unsigned char m_nCastDomainLevel;
-    unsigned char _pad29d[0x2a0 - 0x29d];
     int                m_castLevel;
     int                m_bCastBroadcastProjectile;
     int           m_bCastSkipCharge;
 
     unsigned char      m_nCastClassIndex;
     unsigned char      m_nCastMetaMagic;
-    unsigned char _pad2ae[0x2b0 - 0x2ae];
     unsigned long long m_oidLastSpellCaster;
     int                m_nLastSpellId;
     int                m_bLastSpellHarmful;
 
 #if !KOTOR1  // K1 has no cast-adjacent words here
     int                m_nLastSpellForcePointCost;
-    unsigned char _pad2c4[0x2c8 - 0x2c4];
 #endif
     CSWSObjectActionNode* m_pCurrentActionNode;
     unsigned short     m_nEffectIterator;
@@ -279,7 +265,6 @@ public:
     int           m_bDialogSoundStopped;
 #if !KOTOR1  // K1 has no "ForceAlwaysUpdate" GFF field
     int                m_bForceAlwaysUpdate;
-    unsigned char _pad324[0x328 - 0x324];
 #endif
     CSWCObject*   m_pClientObject;
 
@@ -358,7 +343,7 @@ public:
     void LoadActionQueue(CResGFF* pGff, CResStruct* pStruct);
     void SaveActionQueue(CResGFF* pGff, CResStruct* pStruct);
     void SaveObjectState(CResGFF* pGff, CResStruct* pStruct);
-    void RunActions(unsigned int day, unsigned int tod, unsigned long long timer);
+    void RunActions(unsigned int day, unsigned int tod, uint64_ll_t timer);
     void ClearAllActions(int a);
     void SetLastHostileActor(unsigned long long id, int a);
     void ClearSpellEffectsOnOthers();
@@ -399,7 +384,7 @@ public:
     int  DoSpellLevelAbsorption(CSWSObject* pAttacker);
     int  DoSpellImmunity(CSWSObject* pAttacker);
     void ApplyEffect(CGameEffect* pEffect, int a, int b);
-    int  RemoveEffectById(unsigned long long effectId);
+    int  RemoveEffectById(uint64_ll_t effectId);
     int ReplyDialog(unsigned int listenerId, unsigned int replyIndex, int isEndDialog,
                      unsigned int areaId, int flag);
     void CalculateLastSpellProjectileTime(unsigned char pathType);
@@ -531,7 +516,7 @@ union CSWSActionParam {
 // One entry of an object's pending-action queue. Everything after the action id is a tagged parameter
 // pack: the type array says how each slot is read, and which slots are live depends on the action id.
 // The argument union overlays the parameter array, so its named members are the readings each action id
-// gives the slots.
+// gives the slots. A slot is pointer-wide, so a reading with no pointer or object id in it is aligned to one.
 
 class CSWSObjectActionNode {
 public:
@@ -697,8 +682,7 @@ public:
         unsigned short m_attackFeatId;
     };
 
-    unsigned char  _pad6c[0x70 - 0x6c];
-    union {
+    union alignas(void*) {
         int   m_nMoveToClientPathId;
         float m_aqSpellPointY;
         float m_fJumpFacingY;
@@ -706,36 +690,30 @@ public:
         float m_castPointY;
         int   m_attackCutsceneAnimation;
     };
-    unsigned char  _pad74[0x78 - 0x74];
-    union {
+    union alignas(void*) {
         float        m_aqSpellPointZ;
         unsigned int m_nItemCastStartTod;
         float m_castPointZ;
         float m_moveToRequeueDelay;
         int   m_attackCutsceneResult;
     };
-    unsigned char  _pad7c[0x80 - 0x7c];
-    union {
+    union alignas(void*) {
     int            m_bItemCastHasAnim;
     unsigned int   m_castFlags;
     float          m_moveToOffsetX;
     int            m_attackCutsceneDamage;
     };
-    unsigned char  _pad84[0x88 - 0x84];
-    union {
+    union alignas(void*) {
     unsigned short m_nItemCastAnimation;
     int            m_castFeatId;
     float          m_moveToOffsetY;
     };
-    unsigned char  _pad8c[0x90 - 0x8c];
-    union {
+    union alignas(void*) {
     int            m_nItemCastAnimEnd;
     int            m_castReadyKind;
     unsigned int   m_moveToDeadlineDay;
     };
-    unsigned char  _pad94[0x98 - 0x94];
-    unsigned int   m_moveToDeadlineTod;
-    unsigned char  _pad9c[0xa0 - 0x9c];
+    alignas(void*) unsigned int m_moveToDeadlineTod;
 
     } m_args;
     };

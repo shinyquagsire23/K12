@@ -1721,9 +1721,9 @@ int CSWGuiPazaakGame::DoGameSequence()
     case GAME_STATE_PLAYER_TURN:
         if (m_pPazaak->m_players[0].m_bStanding == 0) {
             CResRef resOn("pz_playerliteon");
-            m_lbl6.m_border.m_params.SetFillImage(resOn, 0);
+            m_lbl6.m_border.m_params.SetFillImage(resOn);
             CResRef resOff("PZ_PLAYERLITEOFF");
-            m_lbl7.m_border.m_params.SetFillImage(resOff, 0);
+            m_lbl7.m_border.m_params.SetFillImage(resOff);
             g_pExoSound->PlayOneShotSound(CResRef(m_apszCueSounds[0]), PRIORITY_GROUP_GUI, 0, 0, 0.0f, 0.0f);
             m_nGameState = GAME_STATE_PLAYER_DRAW;
             m_fSequenceDelay = 0.1f;
@@ -1772,9 +1772,9 @@ int CSWGuiPazaakGame::DoGameSequence()
         }
         {
             CResRef resOff("pz_playerliteoff");
-            m_lbl6.m_border.m_params.SetFillImage(resOff, 0);
+            m_lbl6.m_border.m_params.SetFillImage(resOff);
             CResRef resOn("pz_playerliteon");
-            m_lbl7.m_border.m_params.SetFillImage(resOn, 0);
+            m_lbl7.m_border.m_params.SetFillImage(resOn);
             g_pExoSound->PlayOneShotSound(CResRef(m_apszCueSounds[0]), PRIORITY_GROUP_GUI, 0, 0, 0.0f, 0.0f);
         }
         m_nGameState = GAME_STATE_OPPONENT_PLAY;
@@ -2358,7 +2358,7 @@ int CSWGuiPazaakStart::RemoveChosenCard(int nSlot)
     rAvail.m_border.m_params.m_color = CSWGuiColor(1.0f, 1.0f, 1.0f);
     rAvail.m_bDragLatch = 1;
     CSWGuiPazaakCard& rChosen = m_aChosen[nSlot];
-    rChosen.m_border.m_params.SetFillImage(CResRef(""), 0);
+    rChosen.m_border.m_params.SetFillImage(CResRef(""));
     rChosen.m_label.m_text.m_params.SetText(CExoString(""));
     return 1;
 }
@@ -2411,7 +2411,7 @@ int CSWGuiPazaakStart::AddChosenCard(int nCard, int nSlotPref)
     CSWGuiPazaakCard& rChosen = m_aChosen[nSlot];
     CSWGuiPazaakCard& rAvail = m_aAvail[nCard];
     CResRef cFillImage(rAvail.m_border.m_params.m_fillImage);
-    rChosen.m_border.m_params.SetFillImage(cFillImage, 0);
+    rChosen.m_border.m_params.SetFillImage(cFillImage);
     if (m_anCopies[nCard] == 0) {
         rAvail.m_border.m_params.m_color = CSWGuiColor(0.666999996f, 0.666999996f, 0.666999996f);
         rAvail.m_bDragLatch = 0;

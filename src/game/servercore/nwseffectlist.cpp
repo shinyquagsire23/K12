@@ -2871,7 +2871,7 @@ int CSWSEffectListHandler::OnApplyDispelAllMagic(CSWSObject* pObject, CGameEffec
         return 1;
     int nCasterLevel = pCasterObject->AsSWSCreature()->m_pStats->GetLevel(0);
 
-    CExoArrayList<unsigned long long> l_removed;
+    CExoArrayList<uint64_ll_t> l_removed;
     CSWCCMessageData* pData = new CSWCCMessageData();
     pData->SetObjectID(0, pObject->m_objectId);
     int nCount = 0;
@@ -2882,7 +2882,7 @@ int CSWSEffectListHandler::OnApplyDispelAllMagic(CSWSObject* pObject, CGameEffec
                 ((pEf->m_durationTypeBits & 7) != CGameEffect::DURATION_TYPE_TEMPORARY &&
                  (pEf->m_durationTypeBits & 7) != CGameEffect::DURATION_TYPE_PERMANENT))
                 continue;
-            unsigned long long nEffectId = pEf->m_effectId;
+            uint64_ll_t nEffectId = pEf->m_effectId;
             int nSpellId = pEf->m_spellId;
             if (l_removed.Contains(nEffectId) != 0)
                 continue;
@@ -3034,7 +3034,7 @@ int CSWSEffectListHandler::OnApplyPoison(CSWSObject* pObject, CGameEffect* pEffe
         pFeedback->SetInteger(2, 0);
         pFeedback->SetObjectID(0, pEffect->m_creatorId);
         pCreature->ApplyEffect(pFeedback, 0, 0);
-        unsigned long long idEffect = pEffect->m_effectId;
+        uint64_ll_t idEffect = pEffect->m_effectId;
         pCreature->m_bPoisoned = 1;
         pCreature->m_idPoisonEffect = idEffect;
     }
@@ -6096,7 +6096,7 @@ int CSWSEffectListHandler::OnApplyDispelBestMagic(CSWSObject* pObject, CGameEffe
         return 1;
     int nCasterLevel = pCasterObject->AsSWSCreature()->m_pStats->GetLevel(0);
     int nBest = -1;
-    CExoArrayList<unsigned long long> l_removed;
+    CExoArrayList<uint64_ll_t> l_removed;
     if (pObject->m_effects.m_count >= 1) {
         do {
             int bFound = 0;

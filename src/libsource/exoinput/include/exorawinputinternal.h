@@ -292,9 +292,11 @@ public:
     int    m_bRumblePaused;
     int    m_nReserved1;
     int    m_nNumJoysticks;
+#if !KOTOR1  // K1 has no pad-type probe
     unsigned char m_nControllerTypeLo;
     unsigned char m_bIsDualShockLike;
     unsigned char m_aReserved2[0x20-0x1e];
+#endif
     IDirectInputA*        m_pDirectInput;
     IDirectInputDeviceA*  m_pKeyboardDevice;
     IDirectInputDeviceA*  m_pMouseDevice;

@@ -120,7 +120,6 @@ public:
     CExoSoundSource* m_pSoundSource;
     int           m_bStickToTarget;
     unsigned char m_nImpactMode;
-    char          _pad1b5[0x1b8-0x1b5];
     int           m_bUpdateEnabled;
     int           m_bFlightSoundStarted;
     int           m_bArrived;
@@ -139,12 +138,10 @@ public:
     char          _pad20a[0x20c-0x20a];
     int           m_bTargetFlinched;
     int           m_nReserved1;
-    char          _pad214[0x218-0x214];
     CAurObject*   m_pMuzzleFlash;
     Vector        m_vImpactPosition;
     int           m_nDeflectFlightTime;
     float         m_fShieldRadius;
-    char          _pad234[0x238-0x234];
     unsigned long long m_sourceObjectId;
 };
 

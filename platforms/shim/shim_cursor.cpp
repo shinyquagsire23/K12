@@ -327,7 +327,9 @@ void* k2shim_cursor_select(void* h)
 {
     uintptr_t prev = s_current;
     s_current = reinterpret_cast<uintptr_t>(h);
-    if (s_bEnabled && h) Apply();
+    // The engine selects its cursor again on every WM_SETCURSOR, one a mouse move; setting the
+    // same one again costs macOS a cursor-rect rebuild and a window-server round trip each time.
+    if (s_bEnabled && h && (prev & 0xffff) != (s_current & 0xffff)) Apply();
     return reinterpret_cast<void*>(prev);
 }
 

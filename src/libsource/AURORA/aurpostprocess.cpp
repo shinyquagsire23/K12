@@ -186,58 +186,35 @@ void MdlNode::ReorderChildren()
 extern int animationfootprint;
 
 // Bills (nDelta = +1) or recredits (nDelta = -1) animationfootprint for every byte the subtree
-// owns: two container counts at their element strides, one per-kind size term, and 8 bytes
-// per child.
+// owns: two container counts at their element strides, the node's own size, and a pointer per
+// child.
 void UpdateAnimFootprint(MdlNode* pNode, int nDelta)
 {
     animationfootprint += nDelta * pNode->m_listFloats.m_count * 4;
     animationfootprint += nDelta * pNode->m_listControllers.m_count * 16;
 
-#if KOTOR1  // K1's mesh kinds are 8 bytes smaller
     if (pNode->AsMdlNodeAABB())
-        animationfootprint += nDelta * 488;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeAABB));
     else if (pNode->AsMdlNodeAnimMesh())
-        animationfootprint += nDelta * 560;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeAnimMesh));
     else if (pNode->AsMdlNodeCamera())
-        animationfootprint += nDelta * 104;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeCamera));
     else if (pNode->AsMdlNodeDanglyMesh())
-        animationfootprint += nDelta * 520;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeDanglyMesh));
     else if (pNode->AsMdlNodeEmitter())
-        animationfootprint += nDelta * 328;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeEmitter));
     else if (pNode->AsMdlNodeLight())
-        animationfootprint += nDelta * 224;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeLight));
     else if (pNode->AsMdlNodeLightsaber())
-        animationfootprint += nDelta * 512;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeLightsaber));
     else if (pNode->AsMdlNodeReference())
-        animationfootprint += nDelta * 144;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeReference));
     else if (pNode->AsMdlNodeSkin())
-        animationfootprint += nDelta * 608;
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeSkin));
     else if (pNode->AsMdlNodeTriMesh())
-        animationfootprint += nDelta * 480;
-#else
-    if (pNode->AsMdlNodeAABB())
-        animationfootprint += nDelta * 496;
-    else if (pNode->AsMdlNodeAnimMesh())
-        animationfootprint += nDelta * 568;
-    else if (pNode->AsMdlNodeCamera())
-        animationfootprint += nDelta * 104;
-    else if (pNode->AsMdlNodeDanglyMesh())
-        animationfootprint += nDelta * 528;
-    else if (pNode->AsMdlNodeEmitter())
-        animationfootprint += nDelta * 328;
-    else if (pNode->AsMdlNodeLight())
-        animationfootprint += nDelta * 224;
-    else if (pNode->AsMdlNodeLightsaber())
-        animationfootprint += nDelta * 520;
-    else if (pNode->AsMdlNodeReference())
-        animationfootprint += nDelta * 144;
-    else if (pNode->AsMdlNodeSkin())
-        animationfootprint += nDelta * 616;
-    else if (pNode->AsMdlNodeTriMesh())
-        animationfootprint += nDelta * 488;
-#endif
+        animationfootprint += nDelta * static_cast<int>(sizeof(MdlNodeTriMesh));
 
-    animationfootprint += nDelta * pNode->m_listChildren.m_count * 8;
+    animationfootprint += nDelta * pNode->m_listChildren.m_count * static_cast<int>(sizeof(MdlNode*));
 
     for (int64_t i = 0; i < pNode->m_listChildren.m_count; i++)
         UpdateAnimFootprint(pNode->m_listChildren.m_pData[i], nDelta);
@@ -277,7 +254,7 @@ void MaxTree::SynchronizeTree(MaxTree* pOther)
     int nMaxID = GetMaxID(pOtherNode, -1) + 1;
     SynchronizeNodes(m_pMdlNode, pOtherNode, nMaxID);
     if (AsAnimation() != 0) {
-        animationfootprint += 184;
+        animationfootprint += static_cast<int>(sizeof(Animation) + sizeof(Animation*));
         animationfootprint += AsAnimation()->m_events.m_count * 36;
         UpdateAnimFootprint(m_pMdlNode, 1);
     }

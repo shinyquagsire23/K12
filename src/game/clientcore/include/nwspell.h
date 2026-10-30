@@ -88,7 +88,6 @@ public:
     CResRef       m_castSound;
     int           m_nCastRecoveryMS;
     unsigned short m_nCatchAnimation;
-    char          _pad126[0x128 - 0x126];
     int           m_bHasProjectile;
     CResRef       m_projectileResRef;
     int           m_nProjectileType;
@@ -194,7 +193,6 @@ K2_LAYOUT_ASSERT(sizeof(CSWSpell) == 0x1e8, "CSWSpell must be 0x1e8 (CSWSpellArr
 class CSWSpellArray {
 public:
     int       m_nCount;
-    char      _pad04[4];
     CSWSpell* m_paSpells;
 
     CSWSpellArray();

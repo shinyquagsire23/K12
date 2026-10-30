@@ -70,10 +70,66 @@ static const char kSoftShadowFragment[] =
     "}\n";
 #endif
 
+#ifdef K2_QOL_BUMPMAPS
+// The program types the port's translations of the PC's per-pixel passes take over (0: none): the bump
+// light, the bump-perturbed reflection and their force-sight variants, the fog pass, and the noise
+// modes -- four families of twelve (plain, desaturated, illuminated, both), each the plain, env-mapped,
+// lightmapped and env-mapped lightmapped arms in subtract, add and multiply.
+static int QolProgramFlags(int nType)
+{
+    int nLocal = 0;
+    if (nType & ProgramType::PROGRAM_QOL_NOISE_LOCAL) {
+        nType &= ~ProgramType::PROGRAM_QOL_NOISE_LOCAL;
+        nLocal = ProgramType::SHADER_QOL_NOISE_LOCAL;
+    }
+    switch (nType) {
+    case ProgramType::PROGRAM_FOG:
+        return ProgramType::SHADER_QOL_FOG;
+    case ProgramType::PROGRAM_BUMPMAP:
+        return ProgramType::SHADER_QOL_BUMP;
+    case ProgramType::PROGRAM_FGLOW_BUMPMAP:
+        return ProgramType::SHADER_QOL_BUMP | ProgramType::SHADER_DESAT | ProgramType::SHADER_FORCEGLOW;
+    case ProgramType::PROGRAM_DESAT_BUMPMAP:
+        return ProgramType::SHADER_QOL_BUMP | ProgramType::SHADER_DESAT;
+    case ProgramType::PROGRAM_BUMPY_SHINY:
+        return ProgramType::SHADER_QOL_BUMPYSHINY;
+    case ProgramType::PROGRAM_FGLOW_BUMPY_SHINY:
+        return ProgramType::SHADER_QOL_BUMPYSHINY | ProgramType::SHADER_DESAT | ProgramType::SHADER_FORCEGLOW;
+    case ProgramType::PROGRAM_DESAT_BUMPY_SHINY:
+        return ProgramType::SHADER_QOL_BUMPYSHINY | ProgramType::SHADER_DESAT;
+    default:
+        break;
+    }
+    static const int kNoiseFamilies[4] = { 38, 62, 80, 98 };   // kPSNoise / DesatNoise / IllumNoise / IllumDesatNoise
+    for (int i = 0; i < 4; i++) {
+        int n = nType - kNoiseFamilies[i];
+        if (n < 0 || n >= 12)
+            continue;
+        int nFlags = ProgramType::SHADER_QOL_NOISE | nLocal | ((n % 3) << ProgramType::SHADER_QOL_NOISE_FORMULA_SHIFT);
+        if ((n / 3) & 1)
+            nFlags |= ProgramType::SHADER_CUBEMAP;
+        if ((n / 3) & 2)
+            nFlags |= ProgramType::SHADER_LIGHTMAP;
+        if (i & 1)
+            nFlags |= ProgramType::SHADER_DESAT;
+        if (i & 2)
+            nFlags |= ProgramType::SHADER_ILLUM;
+        return nFlags;
+    }
+    return 0;
+}
+#endif
+
 ProgramType::ProgramType(int nType, bool bA, bool bB, bool bC, bool bD)
 {
     m_nFlags = 0;
 
+#ifdef K2_QOL_BUMPMAPS
+    int nQolFlags = QolProgramFlags(nType);
+    if (nQolFlags != 0)
+        m_nFlags = nQolFlags;
+    else
+#endif
     switch (nType) {
     case PROGRAM_NONE: case PROGRAM_FOG: case PROGRAM_STANDARD_FOG: case PROGRAM_NORMALMAP:
     case PROGRAM_BUMPMAP_OFF: case PROGRAM_ENV_MAP_LIGHTMAP_NV1X: case PROGRAM_BUMPY_SHINY_OFF:
@@ -207,6 +263,17 @@ void KotorProgram::Use()
         __strcat_chk(szSource, (nFlags & ProgramType::SHADER_DISTORTION_INPUT) ? "#define USE_DISTORTION_INPUT 1\n" : "#define USE_DISTORTION_INPUT 0\n", sizeof(szSource));
         __strcat_chk(szSource, (nFlags & ProgramType::SHADER_POST2) ? "#define USE_POST2 1\n" : "#define USE_POST2 0\n", sizeof(szSource));
         __strcat_chk(szSource, "#define USE_ANDROID 1\n", sizeof(szSource));
+#ifdef K2_QOL_BUMPMAPS
+        {
+            char szQol[160];
+            snprintf(szQol, sizeof(szQol),
+                     "#define USE_BUMPYSHINY %d\n#define USE_FOGPASS %d\n#define NOISE_FORMULA %d\n#define NOISE_LOCAL %d\n",
+                     (nFlags & ProgramType::SHADER_QOL_BUMPYSHINY) != 0, (nFlags & ProgramType::SHADER_QOL_FOG) != 0,
+                     (nFlags >> ProgramType::SHADER_QOL_NOISE_FORMULA_SHIFT) & 3,
+                     (nFlags & ProgramType::SHADER_QOL_NOISE_LOCAL) != 0);
+            __strcat_chk(szSource, szQol, sizeof(szSource));
+        }
+#endif
 
 #ifdef K2_QOL_SOFT_SHADOWS
         const char* pszVertexPath = (nFlags & ProgramType::SHADER_BLOOM) ? "kotorbloom.vert" : (nFlags & (ProgramType::SHADER_POST1 | ProgramType::SHADER_SOFT_SHADOW_COPY | ProgramType::SHADER_SOFT_SHADOW_BLUR)) ? "kotorpost1.vert" : "kotor.vert";
@@ -214,6 +281,15 @@ void KotorProgram::Use()
         const char* pszVertexPath = (nFlags & ProgramType::SHADER_BLOOM) ? "kotorbloom.vert" : (nFlags & ProgramType::SHADER_POST1) ? "kotorpost1.vert" : "kotor.vert";
 #endif
         const char* pszFragmentPath = (nFlags & ProgramType::SHADER_BLOOM) ? "kotorbloom.frag" : (nFlags & ProgramType::SHADER_POST1) ? "kotorpost1.frag" : "kotor.frag";
+#ifdef K2_QOL_BUMPMAPS
+        if (nFlags & (ProgramType::SHADER_QOL_BUMP | ProgramType::SHADER_QOL_BUMPYSHINY | ProgramType::SHADER_QOL_FOG)) {
+            pszVertexPath = "kotorbump.vert";
+            pszFragmentPath = "kotorbump.frag";
+        } else if (nFlags & ProgramType::SHADER_QOL_NOISE) {
+            pszVertexPath = "kotornoise.vert";
+            pszFragmentPath = "kotornoise.frag";
+        }
+#endif
         unsigned int nVertexShader = CompileShader(pszVertexPath, szSource, GL_VERTEX_SHADER);
 #ifdef K2_QOL_SOFT_SHADOWS
         unsigned int nFragmentShader = (nFlags & (ProgramType::SHADER_SOFT_SHADOW_COPY | ProgramType::SHADER_SOFT_SHADOW_BLUR))
@@ -260,6 +336,13 @@ void KotorProgram::Use()
         m_anLocations[5] = ASLgl::glGetAttribLocation(m_uProgram, "a_texCoord0");
         m_abAttributeQueried[6] = 1;
         m_anLocations[6] = ASLgl::glGetAttribLocation(m_uProgram, "a_texCoord1");
+
+#ifdef K2_QOL_BUMPMAPS
+        m_anBumpLocations[0] = ASLgl::glGetAttribLocation(m_uProgram, "a_bumpT");
+        m_anBumpLocations[1] = ASLgl::glGetAttribLocation(m_uProgram, "a_bumpB");
+        m_anBumpLocations[2] = ASLgl::glGetAttribLocation(m_uProgram, "a_bumpN");
+        m_nBumpUniform = ASLgl::glGetUniformLocation(m_uProgram, "u_bumpParams");
+#endif
 
         m_abSamplerQueried[0] = 1;
         m_anSamplerUniforms[0] = ASLgl::glGetUniformLocation(m_uProgram, "u_texture0Sampler");
@@ -533,3 +616,31 @@ void KotorProgram::SetVertexShaderParams(float* pfParams)
     if (m_vertexShaderCache.IsDifferentAndCache(pfParams))
         ASLgl::glUniform4fv(m_nVertexShaderUniform, 1, pfParams);
 }
+
+#ifdef K2_QOL_BUMPMAPS
+// The tangent frame's three streams (the ARB programs' attributes 12..14), for the bump programs only.
+void KotorProgram::SetBumpAttributes(AttributeData* pFrame)
+{
+    for (int i = 0; i < 3; i++) {
+        int nLocation = m_anBumpLocations[i];
+        if (nLocation < 0)
+            continue;
+        if (pFrame[i].m_bIsPointer) {
+            ASLgl::glVertexAttribPointer(nLocation, pFrame[i].m_nSize, pFrame[i].m_nType, 0, pFrame[i].m_nStride,
+                                         pFrame[i].m_pPointer);
+            ASLgl::glEnableVertexAttribArray(nLocation);
+        } else {
+            ASLgl::glDisableVertexAttribArray(nLocation);
+            ASLgl::glVertexAttrib3f(nLocation, 0.0f, 0.0f, 0.0f);
+        }
+    }
+}
+
+// The vertex env params 12..14: the bump light's position and the camera's in the part's frame, and
+// the light's attenuation polynomial.
+void KotorProgram::SetBumpParams(float* pfParams)
+{
+    if (m_nBumpUniform >= 0 && m_bumpCache.IsDifferentAndCache(pfParams))
+        ASLgl::glUniform4fv(m_nBumpUniform, 3, pfParams);
+}
+#endif

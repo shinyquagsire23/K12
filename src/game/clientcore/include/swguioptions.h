@@ -158,10 +158,10 @@ public:
     // Set by the resolution sub-panel when a new mode is applied and consumed by the Back
     // handler, which then re-initializes Aurora and clears it.
     int m_bResolutionChanged;
+#if !KOTOR1
     // Latches the first row hover only; OnEnterSlider re-arms it when the gamma slider takes
     // focus back.
     int m_bSlotDescriptionArmed;
-#if !KOTOR1
     // Set when the page was opened from inside a running game, which greys the resolution
     // buttons out.
     int m_bInGame;

@@ -71,7 +71,6 @@ public:
 
     char   m_szName[64];
     int    m_nAnimateTick;
-    char   _pad5c[0x04];
 
     // Ambient colour of the current area. Scene owns the storage, so the method reaches it through
     // a derived-class cast.
@@ -232,12 +231,10 @@ public:
     Vector m_vFogColor;
 #if !KOTOR1  // K1 has no force-sight grey fog colour
     Vector m_vFogColorGrey;
-    char   _pad9c[0x04];
 #endif
     LightManager* m_pLightManager;
     WindManager* m_pWindManager;
     Vector m_ambient;
-    char   _padbc[0x04];
 
     List<Gob*>& Objects() { return m_objects; }
 
@@ -253,7 +250,6 @@ public:
     float  m_fHighlightPhase;
     // The frame's scene-fade state.
     int    m_eFadeState;
-    char   _padf4[0x04];
     // The rooms the fog-of-war overlay draws a box for, a per-frame subset of m_rooms.
     List<BSPNode*> m_fogOfWarRooms;
     // The area's whole room table.
@@ -266,10 +262,8 @@ public:
     bool   m_bAnimating;
     // Set when a face is appended to a grass bin.
     bool   m_bHasBins;
-    char   _pad124[0x04];
     void*  m_pReserved1;
     float  m_fReserved1;
-    char   _pad134[0x04];
     // Post-process textures, acquired by name in the constructor.
     CAurTexture* m_pFilmNoiseTexture;
     CAurTexture* m_pDistortionTexture;
@@ -358,7 +352,6 @@ public:
     Vector m_hitPosition;
     Vector m_vLocalHitPosition;
     int m_nHitMaterialBit;
-    char _pad3c[0x40-0x3c];
     SafePointer<CAurObject> m_hitObject;
     int m_nHitFaceIndex;
     Vector m_vHitNormal;
@@ -371,7 +364,6 @@ public:
     unsigned char m_bHonorIgnoreHitCheck;
     unsigned char m_bSkipRooms;
     unsigned char m_bIncludeEffects;
-    char _pad79[0x80-0x79];
 
     // m_nMaterialMask and m_nHitMaterialBit hold one bit per walkmesh surface material; material
     // 30 is the trigger surface.

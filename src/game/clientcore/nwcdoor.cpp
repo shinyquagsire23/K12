@@ -118,8 +118,7 @@ CSWCDoor::CSWCDoor()
     m_nAppearance = APPEARANCE_NONE;
     m_nGenericType = APPEARANCE_NONE;
     m_sModelName = "";
-    m_nReserved1 = 0;
-    m_nReserved2 = 0;
+    m_pReserved1 = 0;
     m_bStatic = 0;
 }
 

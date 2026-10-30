@@ -26,6 +26,7 @@
 #include "port/k2qolapi.h"
 #include "exoinput.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 extern int g_bDo3DGUIs;
 
@@ -266,7 +267,7 @@ void CSWGuiLevelUpCharGen::DetermineClass()
 #if KOTOR1
     int nLen = m_sClassName.GetLength();  // K1: the out-of-line accessor
 #else
-    uint64_t nLen = m_sClassName.m_sString ? strlen(m_sClassName.m_sString) : 0;
+    uint64_t nLen = m_sClassName.GetLength();
 #endif
     m_sClassName = m_sClassName.Right(static_cast<int>(nLen - m_sClassName.Find('\n', 0) - 1));
     m_sClassName = m_sClassName.Left(m_sClassName.Find('(', 0));

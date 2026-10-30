@@ -3948,7 +3948,7 @@ CSWSCreatureStats::CSWSCreatureStats(CSWSCreature* pOwner) : m_pOwner(NULL)
     m_nVideoEffectType = 0;
 #endif
     memset(&m_nACNaturalBase, 0,
-           offsetof(CSWSCreatureStats, _pad154) - offsetof(CSWSCreatureStats, m_nACNaturalBase));
+           offsetof(CSWSCreatureStats, m_nEnemyAttackBonus) + 1 - offsetof(CSWSCreatureStats, m_nACNaturalBase));
     memset(&m_iFirstTempHitPoints, 0,
            offsetof(CSWSCreatureStats, m_aiState) - offsetof(CSWSCreatureStats, m_iFirstTempHitPoints));
     memset(&m_iFirstEffectIcon, 0,
@@ -5601,7 +5601,7 @@ unsigned char CSWSCreatureStats::GetEffectiveCRForPotentialLevel()
 }
 
 // The per-field-bitmask snapshot writer for the server-to-client last-update object.
-void CSWSCreatureStats::UpdateLastStatsObject(unsigned long long nUpdateFields,
+void CSWSCreatureStats::UpdateLastStatsObject(uint64_ll_t nUpdateFields,
                                               CSWCreatureStatsUpdate* pUpdate)
 {
     if (nUpdateFields & STATS_UPDATE_ABILITIES)

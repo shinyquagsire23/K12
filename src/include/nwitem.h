@@ -12,9 +12,7 @@ public:
     virtual ~CSWItem();
 
     unsigned char m_aModelParts[6];
-    unsigned char _pad0e[0x10 - 0x0e];
     int           m_baseItem;
-    unsigned char _pad14[0x18 - 0x14];
 
     CSWBaseItem* GetBaseItem();
 };
@@ -92,10 +90,8 @@ public:
     int            m_bContainer;
     int            m_bHasTextureVariation;
     unsigned char  m_nInvSoundType;
-    unsigned char  _pad79[0x80 - 0x79];
     unsigned short* m_pRequiredFeats;
     unsigned char  m_nRequiredFeats;
-    unsigned char  _pad89[0x90 - 0x89];
     int64_t           m_nBaseItemStatRef;
     unsigned char  m_bRotateOnGround;
     unsigned char  m_nTenthLbs;
@@ -104,9 +100,7 @@ public:
     unsigned char  m_bIsPC;
     unsigned char  m_nArmorCheckPen;
     unsigned char  m_nAmmunitionType;
-    unsigned char  _pad9f[0xa0 - 0x9f];
     int            m_bPoweredItem;
-    unsigned char  _pada4[0xa8 - 0xa4];
     CExoString     m_sPoweredSnd;
     CExoString     m_sPowerUpSnd;
     CExoString     m_sPowerDownSnd;
@@ -121,7 +115,6 @@ public:
     int            m_nDenySubrace;
     CExoString     m_sArmorType;
     float          m_costMultiplier;
-    unsigned char  _padfc[0x100 - 0xfc];
 
     unsigned short GetRequiredFeat(unsigned char nIndex);
     void           SetRequiredFeat(unsigned char nIndex, unsigned short value);
@@ -150,7 +143,6 @@ K2_LAYOUT_ASSERT(sizeof(CSWBaseItem) == 0x100, "CSWBaseItem stride is pinned at 
 class CSWBaseItemArray {
 public:
     int          m_count;
-    unsigned char _pad04[4];
     CSWBaseItem* m_pItems;
 
     CSWBaseItemArray();

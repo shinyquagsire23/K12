@@ -18,7 +18,6 @@ public:
     CExoString           m_sPlayerName;
     CSWPortrait          m_portrait;
     unsigned short       m_nPortraitId;
-    char                 _pad32[0x38-0x32];
     unsigned long long   m_gameObjectId;
     unsigned long long   m_characterObjectId;
     CExoString           m_sCharacterName;
@@ -144,7 +143,6 @@ struct CPlayBackEventNode {
 struct CHostileHilite {
     unsigned long long  m_dwObjectId;
     float               m_fHiliteSize;
-    char                _pad0c[0x10-0xc];
 };
 
 // One row of the per-frame visible-object table, holding the object id, a visibility cache that
@@ -154,7 +152,6 @@ struct CNearestStruct {
     unsigned long long  m_objectId;
     unsigned char       m_canSee;
     unsigned char       m_flags;
-    char                _pad0a[6];
 };
 
 // Client application object, the pimpl behind CClientExoApp. It holds the timer set, the
@@ -244,66 +241,60 @@ public:
     CGuiPanel*          m_pPlayModulePanel;
     CGuiPanel*          m_pLoadModulePanel;
     unsigned long long  m_containerOpened;
-    char                _padb8[0xc0-0xb8];
+    char                _padb8[0xbc-0xb8];
     unsigned long long  m_nReserved4;
-    char                _padc8[0xd0-0xc8];
+    char                _padc8[0xcc-0xc8];
     unsigned long long  m_nReserved5;
     CCharacterGenerationPanel* m_pCharGenPanel;
     int                 m_bPazaakIsRunning;
-    char                _pade4[0xe8-0xe4];
     CExoString          m_sPazaakEndScript;
     int                 m_pazaakResultB;
     int                 m_pazaakResultA;
     int                 m_nPazaakOpponentDeck;
-    char                _pad104[4];
     CExoFile*           m_pCaptureEventFile;
     int                 m_captureEvents;
     int                 m_captureEventPlayBack;
     int                 m_captureEventPlayBackRate;
-    char                _pad11c[0x120-0x11c];
     CExoLinkedList<CPlayBackEventNode> m_playbackEvents;
     int                 m_inputClass;
     char                _pad12c[0x130-0x12c];
     int                 m_hitCheckMaterialMask;
     unsigned char       m_moveTypeMode;
-    char                _pad135[0x138-0x135];
     float               m_fCameraCollision;
     int                 m_nReserved6;
     int                 m_nReserved7;
     unsigned int        m_aReserved1[6];
     int                 m_nScrollSpeedX;
     int                 m_nScrollSpeedY;
-    char                _pad164[0x170-0x164];
+    void*               m_pReserved1;
     int                 m_bClientImeUI;
-    char                _pad174[0x178-0x174];
     CImeUI*             m_pImeUI;
 #if !KOTOR1
-    char                _pad180[0x188-0x180];
+    char                _pad180[0x184-0x180];
 #endif
-    unsigned long long  m_nLastDriveTime;
+    long long           m_nLastDriveTime;
     long long           m_drivingTimerReset;
-    unsigned long long  m_nDriveKeyPressTime;   // only ever zeroed, in both games: UpdateDriveMode's tap test never passes
+    long long           m_nDriveKeyPressTime;   // only ever zeroed, in both games: UpdateDriveMode's tap test never passes
     int                 m_bForceDriveUpdate;
     int                 m_keyboardModalFlags[7];
-    unsigned long long  m_nReserved8;
-    unsigned long long  m_nReserved9;
+    long long           m_nReserved8;
+    long long           m_nReserved9;
     CExoMoviePlayer*    m_pMoviePlayer;
-    char                _pad1d8[0x1e8-0x1d8];
+    void*               m_pReserved2;
+    char                _pad1e0[0x1e8-0x1e0];
     CExoString          m_clientName;
     int                 m_clientLanguage;
     unsigned short      m_serverModeChange;
-    char                _pad1fe[0x200-0x1fe];
     CSWCMessage*        m_pSWCMessage;
     int                 m_bScreenShotPending;
 #if KOTOR1
     int                 m_nScreenShotIndex;
     char                m_sScreenShotFile[16];
 #else
-    char                m_sScreenShotFile[20];
+    char                m_sScreenShotFile[16];
 #endif
     CExoLinkedList<CQueuedAnim> m_queuedAnims;
     float               m_fQueuedAnimDelay;
-    char                _pad22c[0x230-0x22c];
     unsigned long long  m_oidReserved1;
     unsigned long long  m_nReserved10;
     unsigned char       m_nReserved11;
@@ -312,7 +303,7 @@ public:
     int                 m_loadBarState;
     CExoLinkedList<unsigned long long> m_hitCheckIgnoreList;
     int                 m_debugMode;
-    char                _pad26c[0x278-0x26c];
+    void*               m_pReserved3;
     int                 m_nReserved12;
     int                 m_currentVideoMode;
     unsigned char       m_currentTexturePack;
@@ -329,12 +320,11 @@ public:
     unsigned char       m_pauseFlags;
     CExoLinkedList<unsigned long long>* m_pauseExclusionList;
     int                 m_viewTriggers;
-    char                _pad2cc[0x2d0-0x2cc];
     CExoArrayList<CExoString> m_sCDKeys;
     CExoString          m_endMovie;
     int                 m_bStartMenuMusicOnMovieEnd;
     int                 m_bSendAreaLoadedAfterMovie;
-    char                _pad2f8[0x300-0x2f8];
+    void*               m_pReserved4;
     int                 m_bDisableMovies;
     int                 m_bDisableIntroMovies;
     int                 m_bShowMouseAtMovieEnd;
@@ -344,7 +334,6 @@ public:
     int                 m_nLastMoveTimer;
     int                 m_nLastMoveBusy;
     int                 m_inStartNewModule;
-    char                _pad32c[0x330-0x32c];
     unsigned long long  m_lastDialogSpeaker;
     int                 m_bCanSendDialog;
     int                 m_nCanSendDialogTime;
@@ -371,16 +360,12 @@ public:
     class CSWGuiMainMenu*    m_pMainMenuPanel;
     void*               m_pStartScreen;
     int                 m_bAreaNotReadyToDisplay;
-    char                _pad3c4[0x3c8-0x3c4];
     unsigned long long  m_sceneCreatureId;
     int                 m_playerCharacterSet;
-    char                _pad3d4[0x3d8-0x3d4];
     CExoString          m_playerCharacterName;
     int                 m_controlType;
-    char                _pad3ec[0x3f0-0x3ec];
     class CSWPlayerControl* m_pPlayerControl;
     float               m_fDriveInterruptDelay;
-    char                _pad3fc[4];
     CExoArrayList<CNearestStruct> m_visibleTable;
     unsigned long long  m_lastTarget;
     unsigned long long  m_lastClickedOnTarget;
@@ -406,7 +391,6 @@ public:
     CExoString          m_runScript;
     unsigned long long  m_futureLeader;
     int                 m_bLoadingSaveGame;
-    char                _pad4d4[0x4d8-0x4d4];
     CExoArrayList<CSWRumblePattern> m_rumblePatternList;
     CExoArrayList<SRumblePattern> m_rumblePatterns;
     CExoArrayList<CGuiStringStruct> m_stringStructs;
@@ -420,17 +404,14 @@ public:
     unsigned char       m_flags524_bit1      : 1;
     unsigned char       m_bTogglePauseAtEndOfFrame : 1;
     unsigned char       m_flags524Rest       : 5;
-    char                _pad525[0x528-0x525];
     int                 m_combatPauseRequest;
     unsigned char       m_bAutoPaused        : 1;
     unsigned char       m_flags52cRest       : 7;
     unsigned char       m_combatPauseMode;
-    char                _pad52e[0x530-0x52e];
     float               m_fEnemyAutoPauseDelay;
     float               m_fEnemyAutoPauseTimer;
     float               m_fEnemySightedTimer;
     unsigned char       m_nPendingAutoPauseReason;
-    char                _pad53d[0x540-0x53d];
     float               m_fPartyDownPauseCooldown;
     float               m_fTrapSightedTimer;
     unsigned int        m_nReserved14;
@@ -446,14 +427,13 @@ public:
     CExoStreamingSoundSource* m_pEvilEndingMusic;
     int                 m_restoreMouseX;
     int                 m_restoreMouseY;
-    unsigned long long  m_nReserved15;
+    unsigned int        m_nReserved15[2];
     int                 m_mouseHideMask;
     float               m_fMouseShowTimer;
     unsigned int        m_attackMashTutorialTimer;
     unsigned char       m_loadStep[8];
     int             m_actionKeyQueue[10];
     unsigned char   m_actionKeyCount;
-    char            _pad5cd[0x5d0-0x5cd];
     LiveContentEntry    m_liveContent[7];
     unsigned int        m_loadScreenHintUpdateTimer;
     unsigned int        m_nLoadScreenHintLastTime;

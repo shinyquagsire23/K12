@@ -2486,7 +2486,7 @@ void CSWGuiMainInterface::UpdateStickyTarget() {
     m_reticleLabel.SetExtent(sExtent);
     CResRef sFriendly("friendlyreticle");
     CResRef sHostile("hostilereticle");
-    m_reticleLabel.m_border.m_params.SetFillImage(nFriendly != 0 ? sFriendly : sHostile, 0);
+    m_reticleLabel.m_border.m_params.SetFillImage(nFriendly != 0 ? sFriendly : sHostile);
     m_reticleLabel.m_border.m_params.m_fAlpha = 0.5f;
 #if KOTOR1
     m_reticleLabel.m_border.m_params.m_flags.nFillStyle = 2;
@@ -3697,7 +3697,7 @@ void CSWGuiMainInterfaceStatus::Update(float fDelta) {
     }
 }
 
-#ifdef K2_UI_XBOX
+#if !KOTOR1 && defined(K2_UI_XBOX)
 static void InitStatusControl(CSWGuiMainInterface* pInterface, CSWGuiLabel& label,
                               const CExoString& sName, int bOffsetToEdge)
 {
@@ -3996,7 +3996,6 @@ HIDDEN int           g_nHelpPage;
 HIDDEN int           g_nHelpSavedInputClass;
 HIDDEN int           g_nHelpSavedPausedByCombat;
 #endif
-HIDDEN int           g_nGamepadMenuSuppressed;
 HIDDEN unsigned char g_bHelpSecondPagePending;
 
 
@@ -4144,7 +4143,7 @@ void CSWGuiMainInterface::PopupGamepadMenu() {
 #else
 void CSWGuiMainInterface::PopupGamepadMenu() {
     CGuiInGame* pInGameGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
-    if (pInGameGui->m_nGlobalDialogState || g_nGamepadMenuSuppressed)
+    if (pInGameGui->m_nGlobalDialogState || g_nOpenMapCountdown)
         return;
     if (g_pGuiMan->PanelExists(&m_gamepadMenu))
         return;
@@ -4270,7 +4269,7 @@ void CSWGuiMainInterface::InitializeMap() {
     int bHasMap;
     if (pAreaMap->m_nSize) {
         float fScale = pAreaMap->m_fMapScale;
-        m_miniMapImage.m_border.m_params.SetFillImage(CResRef(sMapImage), 0);
+        m_miniMapImage.m_border.m_params.SetFillImage(CResRef(sMapImage));
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)
         m_miniMapImage.m_border.m_params.m_flags.nFillStyle = 0;
 #else
@@ -4718,7 +4717,7 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::HandleInputEvent(int nType, int nVa
     switch (nType) {
     case INPUTEVENT_PAD_MENU:
         g_gameMenuCancelledActivateInGameGuiButton = 1;
-        g_nGamepadMenuSuppressed = 2;
+        g_nOpenMapCountdown = 2;
         // fallthrough
     case INPUTEVENT_GUI_B:
     case INPUTEVENT_GUI_Y:
@@ -4731,7 +4730,7 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::HandleInputEvent(int nType, int nVa
     case INPUTEVENT_GUI_A:
         switch (m_nSelectedEntry) {
         case GPAD_ENTRY_MAP:
-            g_nGamepadMenuSuppressed = 2;
+            g_nOpenMapCountdown = 2;
             break;
         case GPAD_ENTRY_PARTY:
             break;
@@ -7469,9 +7468,9 @@ void CSWGuiMainInterface::PopupActionMenu(int nIndex) {
     for (int64_t i = 0; i < 32; i++, ++pAction) {
         CSWGuiButton& slot = m_actionSlots[i];
         if (i < nCount) {
-            slot.m_border.m_params.SetFillImage(pAction->m_resRef, 0);
+            slot.m_border.m_params.SetFillImage(pAction->m_resRef);
             slot.m_border.m_params.m_flags.nFillStyle = 2;
-            slot.m_borderHilight.m_params.SetFillImage(pAction->m_resRef, 0);
+            slot.m_borderHilight.m_params.SetFillImage(pAction->m_resRef);
             slot.m_borderHilight.m_params.m_flags.nFillStyle = 2;
             CExoString strText;
             strText = pAction->m_sName;
@@ -8709,22 +8708,22 @@ void CSWGuiMainInterface::AddHelpPanel(int nPage, bool bGamepad) {
         g_fGamepadHelpTimer = 5.0f;
         {
             CResRef res(szImage);
-            m_btnGamepadHelp.m_border.m_params.SetFillImage(res, 0);
+            m_btnGamepadHelp.m_border.m_params.SetFillImage(res);
         }
         {
             CResRef res2(szImage);
-            m_btnGamepadHelp.m_borderHilight.m_params.SetFillImage(res2, 0);
+            m_btnGamepadHelp.m_borderHilight.m_params.SetFillImage(res2);
         }
         m_btnGamepadHelp.m_tail.bVisible = 1;
         m_btnGamepadHelp.SetExtent(sExtent);
     } else {
         {
             CResRef res(szImage);
-            m_btnHelpPage.m_border.m_params.SetFillImage(res, 0);
+            m_btnHelpPage.m_border.m_params.SetFillImage(res);
         }
         {
             CResRef res2(szImage);
-            m_btnHelpPage.m_borderHilight.m_params.SetFillImage(res2, 0);
+            m_btnHelpPage.m_borderHilight.m_params.SetFillImage(res2);
         }
         m_btnHelpPage.m_border.m_params.m_flags.nFillStyle = 2;
         m_btnHelpPage.m_borderHilight.m_params.m_flags.nFillStyle = 2;
@@ -9143,7 +9142,7 @@ void CSWGuiMainInterface::UpdatePortraits() {
             nEffB = 0;
             m_aCharacters[nSlot].m_sFirstName = pChar->m_pStats->m_name;
             m_aCharacters[nSlot].m_sLastName = pChar->m_pStats->m_sLastName;
-            m_aCharacters[nSlot].m_aLabels[5].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
+            m_aCharacters[nSlot].m_aLabels[5].m_border.m_params.SetFillImage(pChar->GetPortrait(1));
             m_aCharacters[nSlot].SetHealth(pServer->GetCurrentHitPoints(0), pServer->GetMaxHitPoints(1),
                                            pServer->m_bPoisoned);
             m_aCharacters[nSlot].SetForce(static_cast<short>(pServer->m_pStats->m_nTemporaryForcePoints
@@ -9189,7 +9188,7 @@ void CSWGuiMainInterface::UpdatePortraits() {
             if (nSlot == 0 && m_fRotationTimer > 0.0f) {
                 m_charOffscreen.m_sFirstName = pChar->m_pStats->m_name;
                 m_charOffscreen.m_sLastName = pChar->m_pStats->m_sLastName;
-                m_charOffscreen.m_aLabels[5].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
+                m_charOffscreen.m_aLabels[5].m_border.m_params.SetFillImage(pChar->GetPortrait(1));
                 m_charOffscreen.SetHealth(pServer->GetCurrentHitPoints(0), pServer->GetMaxHitPoints(1),
                                           pServer->m_bPoisoned);
                 m_charOffscreen.SetForce(static_cast<short>(pServer->m_pStats->m_nTemporaryForcePoints

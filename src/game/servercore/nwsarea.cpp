@@ -81,6 +81,13 @@ extern "C" void k2_fix_object_not_indexed(unsigned long long objectId, int nObje
 #include "nwssendplayermessage.h"
 #include "lyt.h"
 
+// One entry of an area's expansion list, a localized name plus the expansion id.
+struct NWAreaExpansion_st
+{
+    CExoLocString m_name;
+    int           m_nID;
+};
+
 int g_nBSPWidth = 40;
 int g_nBSPHeight = 40;
 
@@ -108,7 +115,7 @@ unsigned int BoxIntersect(const Vector& a, const Vector& b, const Vector& boxMin
 float GetObstructionFactor(Vector vFrom, Vector vTo)
 {
     Vector vZero = Vector(0.0f, 0.0f, 0.0f);
-    unsigned long long nStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t nStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     unsigned int nStartSec = static_cast<unsigned int>(nStart / 1000);
     float fFactor = 0.0f;
 
@@ -155,7 +162,7 @@ float GetObstructionFactor(Vector vFrom, Vector vTo)
 
                         unsigned long long nPrevHitId = nHitId;
                         nHitId = OBJECT_INVALID;
-                        unsigned long long nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+                        uint64_ll_t nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
                         int bClear = pArea->ClearLineOfSight(vFrom, vTo, &vHit, &nHitId,
                                                              nPrevHitId, OBJECT_INVALID, 0, 0);
                         if (static_cast<unsigned int>(nNow / 1000) - nStartSec > 99 || bClear != 0)
@@ -654,11 +661,7 @@ void CSWSArea::UnloadArea()
     m_pStaticObjectVertexCounts = 0;
 
     while (m_expansionList.m_pInternal->m_pHead)
-    {
-        CExoLocString* pExp = static_cast<CExoLocString*>(m_expansionList.m_pInternal->RemoveHead());
-        if (pExp)
-            delete pExp;
-    }
+        delete m_expansionList.RemoveHead();
 
     if (m_pHeaderIds)
         delete m_pHeaderIds;
@@ -1817,9 +1820,6 @@ int CSWSArea::LoadArea(int nFlags)
     return 1;
 }
 
-// One entry of an area's expansion list, a localized name plus the expansion id.
-struct CSWSAreaExpansion { CExoLocString m_strName; int m_nId; };
-
 // Reads the .are header: the reserved id block, the expansion list, the script slots, the area
 // fields, the room audio tables and the module map.
 // EFFECTIVE: the orig materializes the 708/354 map scales once per product (4 mov+fmov), ours once.
@@ -1853,10 +1853,10 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
         for (int i = 0; i < nCount; i++)
         {
             m_pRes->GetListElement(&stElem, &list, i);
-            CSWSAreaExpansion* pExp = new CSWSAreaExpansion;
-            pExp->m_strName = m_pRes->ReadFieldCExoLocString(&stElem, const_cast<char*>("Expansion_Name"), bSuccess, CExoLocString());
-            pExp->m_nId = m_pRes->ReadFieldINT(&stElem, const_cast<char*>("Expansion_ID"), bSuccess, 0);
-            m_expansionList.m_pInternal->AddTail(pExp);
+            NWAreaExpansion_st* pExp = new NWAreaExpansion_st;
+            pExp->m_name = m_pRes->ReadFieldCExoLocString(&stElem, const_cast<char*>("Expansion_Name"), bSuccess, CExoLocString());
+            pExp->m_nID = m_pRes->ReadFieldINT(&stElem, const_cast<char*>("Expansion_ID"), bSuccess, 0);
+            m_expansionList.AddTail(pExp);
         }
     }
 

@@ -36,7 +36,6 @@ public:
     unsigned int  m_nFadeDuration;
     int           m_nStreamingVoiceId;
     unsigned int  m_nFadeStartTime;
-    unsigned char _gap5c[0x60 - 0x5c];
     SDL_RWops*    m_pFile;
     int           m_nStreamOffset;
     int           m_nStreamLength;
@@ -65,7 +64,6 @@ public:
     int           m_bLooping;
     unsigned char m_nPriorityGroup;
     CResRef       m_resRef;
-    unsigned char _gap21[0x28 - 0x21];
     CExoLinkedListNode* m_pListNode;
     CExoSoundInternal*  m_pSound;
     CExoString    m_sStreamPath;
@@ -75,7 +73,6 @@ public:
     unsigned int  m_nFadeDuration;
     int           m_nStreamingVoiceId;
     unsigned int  m_nFadeStartTime;
-    unsigned char _gap15c[0x160 - 0x15c];
     FILE*         m_pFile;
     int           m_nStreamOffset;
     int           m_nStreamLength;
@@ -97,7 +94,6 @@ public:
     unsigned int  m_nOcclusionTime;
     float         m_fOcclusionFactor;
     int           m_bStreamingMusicForMovie;
-    unsigned char _gap1bc[0x1c0 - 0x1bc];
 #endif
 
     CExoStreamingSoundSourceInternal(CExoSoundInternal* pSound, int nType);

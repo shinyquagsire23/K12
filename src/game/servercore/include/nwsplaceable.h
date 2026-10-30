@@ -56,13 +56,14 @@ public:
     unsigned long long m_targetId;
     unsigned long long m_itemId;
     Vector             m_targetPosition{};
-    unsigned char _pad2c[0x30 - 0x2c];
     CExoString         m_sScript;
     unsigned long long m_areaId;
     // Read only for an EVENT_ITEM_ON_HIT_SPELL_IMPACT, which nothing posts (no code fills
     // CSWSCombatAttackData::m_onHitSpellImpacts); never written, saved or loaded.
     int                m_nCasterLevel;
+#if !KOTOR1  // K1's impact event carries no force cost
     int                m_nFinalForceCost;
+#endif
 
     bool LoadData(CResGFF* pGff, CResStruct* pStruct);
     bool SaveData(CResGFF* pGff, CResStruct* pStruct);
@@ -141,10 +142,8 @@ public:
     CExoLocString m_firstName;
 #if KOTOR1  // K1: a byte
     unsigned char m_appearanceType;
-    unsigned char _pad301[0x308 - 0x301];
 #else
     int           m_appearanceType;
-    unsigned char _pad344[0x348 - 0x344];
 #endif
     CExoLocString m_description;
     unsigned int  m_nFaction;
@@ -153,7 +152,6 @@ public:
     unsigned char _pad36c[0x370 - 0x36c];
     int           m_bGroundPile;
     unsigned char m_hardness;
-    unsigned char _pad375[0x378 - 0x375];
     float         m_bearing;
     int           m_bLocked;
     CExoString    m_keyName;
@@ -181,7 +179,6 @@ public:
     unsigned int  m_bTrapOneShot;
     unsigned int  m_bMineFlagged;
     unsigned char m_trapType;
-    unsigned char _pad3c5[0x3c8 - 0x3c5];
     enum EOnScriptSlot {
         ON_SCRIPT_CLOSED = 0, ON_SCRIPT_DAMAGED, ON_SCRIPT_DEATH, ON_SCRIPT_DISARM,
         ON_SCRIPT_HEARTBEAT, ON_SCRIPT_INV_DISTURBED, ON_SCRIPT_LOCK, ON_SCRIPT_MELEE_ATTACKED,
@@ -197,7 +194,6 @@ public:
     unsigned char m_fortSave;
     unsigned char m_willSave;
     unsigned char m_refSave;
-    unsigned char _pad4db[0x4e0 - 0x4db];
     CExoArrayList<unsigned long long> m_objectsOnPlaceable;
     int           m_bHasInventory;
     int           m_bUseable;
@@ -211,7 +207,6 @@ public:
     int           m_staticBBoxId;
     unsigned int  m_lastUpdateDay;
     unsigned int  m_lastUpdateTod;
-    unsigned char _pad51c[0x520 - 0x51c];
     unsigned long long m_oidLastOpenedBy;
     unsigned long long m_oidLastClosedBy;
     unsigned long long m_oidLastUsedBy;
@@ -222,7 +217,6 @@ public:
     class CItemRepository* m_pItemRepository;
     unsigned short m_nInventoryWalkIndex;
     unsigned short m_nInventoryWalkSubIndex;
-    unsigned char _pad564[0x568 - 0x564];
     unsigned long long m_oidInventoryWalkItem;
     CResRef       m_templateResRef;
     void SetTemplateResRef(const CResRef& cResRef) { m_templateResRef = cResRef; }
@@ -230,7 +224,6 @@ public:
     int           m_lightIsOn;
     int           m_bLightIsOnDirty;
     unsigned char m_bodyBagAppearanceRow;
-    unsigned char _pad58d[0x590 - 0x58d];
     int           m_bStatic;
     unsigned int  m_bPlaceholder;
     CSWPlaceableSurfaceMesh m_walkMesh;

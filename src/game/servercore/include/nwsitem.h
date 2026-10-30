@@ -20,7 +20,6 @@ public:
     // Set for the party-wide inventory, clear for a creature-, placeable- or store-owned one.
     unsigned char m_bPartyInventory : 1;
     unsigned char _pad0c_b1   : 7;
-    char _pad0d[0x10-0x0d];
     // The contents, as game-object ids.
     CExoArrayList<unsigned long long> m_aItems;
 
@@ -208,7 +207,6 @@ public:
     // multi-part model scheme. Purposes otherwise unknown.
     unsigned char m_nBodyVariation;
     unsigned char m_nTextureVar;
-    unsigned char _pad37f[0x380-0x37f];
     // The item's possessor.
     unsigned long long m_possessorId;
     // The item's own contents, for items that are containers.
@@ -262,7 +260,6 @@ public:
     int m_nUpgradeLevel;
     // One upgrade var per slot; -1 is the "no upgrade here" sentinel.
     int m_anUpgVars[6];
-    unsigned char _pad404[0x408-0x404];
 #endif
 
     CSWSItem(unsigned long long objectId);

@@ -309,12 +309,36 @@ endif()
 if(K2P_QOL_IMPROVEMENTS OR K2P_GAME STREQUAL "k1")
   add_compile_definitions(K2_QOL_STEADY_FILTERS=1)
 endif()
+# Both games: a cube map with no texture of its own but six face textures <name>0..<name>5 loads as a
+# cube from the faces, as a `cube 1` / `filerange 6` TXI would make it. The TXI for BioWare's QA cube
+# map (cm_qatest, the reflection of the QA room's environment-mapped and bumpy-shiny stations) never
+# shipped, so those stations reflected nothing (aurtexman.cpp LoadImageHeader).
+if(K2P_QOL_IMPROVEMENTS OR K2P_GAME STREQUAL "k1")
+  add_compile_definitions(K2_QOL_FACE_CUBEMAPS=1)
+endif()
 # KOTOR 1: per-pixel bump mapping near dynamic lights, the PC's NVIDIA passes, which no port ran:
 # the one-pass bump path for meshes without a lightmap and the skinned bump pass (Hutts, rancors,
 # Twi'lek lekku), through the GLSL translation of the Mac's ARB programs (resources/shaders/k1/
-# kotorbump.vert / .frag; k1/k1kotorgl.cpp feeds them the tangent frame and the bump light).
-if(K2P_GAME STREQUAL "k1")
+# kotorbump.vert / .frag; k1/k1kotorgl.cpp feeds them the tangent frame and the bump light); the
+# bumpy-shiny path (EMBM: Dantooine's floors, the water, the Sith base's windows) in the PC's two-pass
+# flow, and the lightmapped bump paths, their register-combiner programs translated
+# (docs/prep/lmbump_embm_v2263.md).
+# KOTOR II: the paths its PC chose and no port did (swkotor2.exe GetRenderPath): bumpy-shiny (EMBM:
+# water, polished floors), the one-pass bump for lightmapped and unlit meshes alike, the skinned bump
+# passes, and the noise ("dirt") path of 96 area rooms (Peragus, Telos, Nar Shaddaa, Onderon,
+# Malachor), through resources/shaders/k2/kotorbump.* / kotornoise.*; KotorProgram feeds them
+# (docs/prep/bump_k2pc_v2263.md, noise_k2pc_v2263.md).
+if(K2P_QOL_IMPROVEMENTS OR K2P_GAME STREQUAL "k1")
   add_compile_definitions(K2_QOL_BUMPMAPS=1)
+endif()
+# KOTOR 1: the one-pass reflections blended as an NVIDIA PC drew them, the reflection added over the lit
+# texture weighted by one minus its alpha (the register combiners' mode 19, the Mac's
+# cEnvmapCubeFragmentShader / cEnvmapFragmentShader). The port's GLSL mixed the two by the alpha, which
+# is ATI's program (cEnvmapFogFragmentShader, the skins' pass on an ATI card) and dims what the alpha
+# marks as mirror to a fraction of its own lighting: the black Sith troopers' plates (alpha 0.2) kept a
+# fifth. The port takes the ATI branch for skins, so their pass is blended the same way.
+if(K2P_GAME STREQUAL "k1")
+  add_compile_definitions(K2_QOL_NV_REFLECTIONS=1)
 endif()
 # KOTOR II: Advanced Graphics' Frame Buffer Effects, greyed out on the APK, whose post-process always
 # ran. Live, and off it leaves out the bloom and the Force Speed blur, as the PC's switch does
@@ -662,6 +686,7 @@ set(K2BINK_TOOLS OFF CACHE BOOL "" FORCE)   # binkcheck/binkplay/binkgl: build p
 add_subdirectory(platforms/video video)
 
 # ---- platform layer and the host executable -----------------------------------------------------
+include(${K2P_DIR}/viewer/viewer.cmake)   # k2p_add_viewer: the desktop platforms' model viewer
 if(ANDROID)
   add_subdirectory(platforms/android android)
 elseif(IOS)

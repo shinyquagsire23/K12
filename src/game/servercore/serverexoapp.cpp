@@ -454,7 +454,7 @@ void CServerExoApp::ExecuteLoadModule(const CExoString& a)
     m_pInternal->ExecuteLoadModule(a);
 }
 
-unsigned long long CServerExoApp::GetSystemTimeAsDWORD64()
+uint64_ll_t CServerExoApp::GetSystemTimeAsDWORD64()
 {
     return m_pInternal->GetSystemTimeAsDWORD64();
 }

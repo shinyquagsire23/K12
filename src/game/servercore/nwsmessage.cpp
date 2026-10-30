@@ -39,7 +39,7 @@ unsigned long long CSWSMessage::ReadOBJECTIDServer()
 
     memcpy(&nValue, &m_pReadMessage[m_nReadMessagePos], sizeof(nValue));
     ByteSwap(&nValue);
-    m_nReadMessagePos += 8;
+    m_nReadMessagePos += sizeof(nValue);
     nValue = nValue & 0x7fffffff;
     return nValue;
 }

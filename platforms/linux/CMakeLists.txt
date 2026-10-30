@@ -133,3 +133,6 @@ if(K2P_STATIC_LIBCXX)
   target_link_options(${K2P_EXE} PRIVATE -static-libstdc++)
   target_link_libraries(${K2P_EXE} PRIVATE -l:libc++abi.a -l:libunwind.a)
 endif()
+
+# ---- the model viewer (platforms/viewer/viewer.cmake): this executable plus its panel -----------
+k2p_add_viewer(${K2P_EXE})

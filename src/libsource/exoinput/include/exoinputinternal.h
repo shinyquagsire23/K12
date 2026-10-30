@@ -195,26 +195,19 @@ public:
 #endif
 
     int                    m_nKeyboardMode;
-    unsigned char          m_aReserved1[0x010-0x00c];
     CExoInputClass          m_aEventClass[6];
     CExoArrayList<CExoInputEventDesc*> m_aEvents;
     CExoLinkedList<CExoInputEventDesc*> m_cooldownList;
     CExoLinkedList<CExoInputRepeatEvent>    m_repeatList;
     int            m_nLastTimer;
-    unsigned char  m_aReserved2[0x248-0x244];
     CExoRawInputInternal*  m_pMainDevice;
     CExoArrayList<CExoInputEvent> m_eventQueue;
     int            m_nEventQueueCount;
     int            m_bActive;
     int            m_nDeviceCount;
-    unsigned char  m_aReserved3[0x270-0x26c];
     CExoCriticalSection m_critSection;
     int            m_nReserved6;
-#if KOTOR1
-    int            m_keyArray[(0x490-0x27c)/4];
-#else
-    int            m_keyArray[(0x498-0x27c)/4];
-#endif
+    int            m_keyArray[INPUTCONTROL_LAST + 1];
     CExoLinkedList<CExoInputEvent> m_mouseEventList;
     unsigned char  m_nMouseMode;
     unsigned char  m_aReserved4[0x4a4-0x4a1];
@@ -262,7 +255,9 @@ public:
     void UpdateJoysticks();
     void SetRumbleEnabled(int);
     int GetRumbleEnabled();
+#if !KOTOR1
     int IsPsShowButtonsController() const;
+#endif
     void PauseRumble();
     void UnpauseRumble();
     int GetRumblePaused();

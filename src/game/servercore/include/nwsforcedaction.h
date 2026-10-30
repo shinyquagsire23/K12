@@ -11,7 +11,6 @@ public:
     unsigned short     m_nGroupId;
     unsigned long long m_nTargetArea;
     Vector             m_vPoint;
-    int                _pad1c;
     unsigned long long m_nTargetObject;
 
     CSWSForcedAction();

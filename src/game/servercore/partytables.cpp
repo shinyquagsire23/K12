@@ -70,7 +70,7 @@ float DegToRad(float degrees);
 
 #include "appmanager.h"
 
-extern unsigned long long g_nCurrentSessionStartFILETIME;
+extern uint64_ll_t g_nCurrentSessionStartFILETIME;
 
 extern int g_nJournalSortType;
 
@@ -599,7 +599,7 @@ int CSWPartyTable::GetPUPID(unsigned long long id)
 
 void CSWPartyTable::ResetCurrentSessionStartTime()
 {
-    unsigned long long fileTime;
+    uint64_ll_t fileTime;
     GetSystemTimeAsFileTime(&fileTime);
     g_nCurrentSessionStartFILETIME = fileTime;
 }
@@ -626,7 +626,7 @@ unsigned char CSWPartyTable::GetNumNPCAvailable()
 
 int CSWPartyTable::GetTotalPlayedSeconds()
 {
-    unsigned long long now;
+    uint64_ll_t now;
     GetSystemTimeAsFileTime(&now);
     long long elapsed = static_cast<long long>(now - g_nCurrentSessionStartFILETIME);
     if (elapsed < 0)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "k2stdint.h"
 #include "nwarea.h"
 #include "CResHelper.h"
 #include "gameobjectarray.h"
@@ -149,7 +150,6 @@ public:
     unsigned int           m_nReserved1;
     unsigned int           m_lastUpdateDay;
     unsigned int           m_lastUpdateTod;
-    char                   _pad18c[0x190-0x18c];
     CExoLinkedList<NWAreaExpansion_st> m_expansionList;
     CExoString             m_sComments;
     CExoLocString          m_areaName;
@@ -163,10 +163,8 @@ public:
     int                    m_chanceFog;
     int                    m_modSpotCheck;
     int                    m_nListenModifier;
-    char                   _pad21c[0x220-0x21c];
     CExoArrayList<unsigned long long> m_aObjectsByX;
     int                    m_nObjectsByXIndex;
-    char                   _pad234[0x238-0x234];
     // The objects with a volume in the area (triggers, encounters, doors, areas of effect).
     CExoArrayList<unsigned long long> m_subAreas;
     void AddSubArea(CGameObject* pObject) { m_subAreas.Add(pObject->m_objectId); }
@@ -177,19 +175,18 @@ public:
                               int nExitB2);
     CPathfindInformation*  m_pSoundPathInfo;
     CSWSAreaGridTransEntry*  m_paGridDFSTransTable;
-    char                     _pad260[0x284-0x260];
+    void*                    m_apReserved1[4];
+    int                      m_nReserved2;
     // Grid-DFS expansion watchdog: the counter is incremented before every expansion and the flag
     // latches once it exceeds 63 (path-point search: 4095), aborting the search.
     int                      m_bGridDFSAborted;
     int                      m_nGridDFSExpansions;
-    char                     _pad28c[0x290-0x28c];
     unsigned long long     m_oidEnteringObject;
     unsigned long long     m_onExitScriptCallerId;
     int                    m_nUserDefinedEventNumber;
     int                    m_bTransitionTargetMarked;
     CSWSScriptVarTable     m_scriptVars;
     CSWVarTable            m_varTable;
-    char                   _pad2f4[0x2f8-0x2f4];
     CSWSAmbientSound*      m_pAmbientSound;
     unsigned char          m_nCurrentWeather;   // 0 none, 1 rain, 2 snow, 255 interior
     char                   _pad301[0x304-0x301];
@@ -203,17 +200,15 @@ public:
     unsigned char          m_nTileBitmapBytes;
     unsigned int           m_bAreaHeaderLoaded;
     unsigned short         m_nLoadScreenID;  // transition bitmap area id, passed to SetAreaTransitionBMP
-    char                   _pad31e[0x320-0x31e];
     int                    m_nRoomCount;
     CSWSRoom*              m_paRooms;
     int                    m_miniGame;
     unsigned int                m_nPathPointCount;             // path-point count, m_paPathPoints entries
     CSWSAreaPathPoint*           m_paPathPoints;
     unsigned int              m_nPathPointLinkCount;          // path-point link count
-    char                         _pad344[0x348-0x344];
     unsigned int*                m_paPathPointLinks;
     int                          m_bPathPointDFSAborted;            // PathPointDFSearch completion latch
-    char                         _pad354[0x358-0x354];
+    int                          m_nReserved3;
     CSWSAreaPathPointTransEntry* m_paPathPointDFSTransTable;
     int                          m_nPathPointDFSExpansions;
     int                          m_nPathPointStepCount;
@@ -249,7 +244,7 @@ public:
     int                    m_dirtyARGB[3];
     int                    m_dirtySize[3];
     int                    m_dirtyFormula[3];   // toggles 0<->1 on the way in
-    int                    m_dirtyFunction[4];
+    int                    m_dirtyFunction[3];
 #endif
     void*                  m_pPathfindContext;
     CSWCArea*              m_pClientArea;
@@ -362,14 +357,14 @@ public:
     // Full point-path plot state machine: drives the start-points, pathfind, grid-start, grid-end and
     // smooth states through pPathInfo->m_nPathState over multiple frames. Returns an action code.
     int       PlotPathPointPath(CPathfindInformation* pPathInfo,
-                                unsigned long long nTimeOut);
+                                uint64_ll_t nTimeOut);
     // Counts the area's transition triggers and linked doors over the m_aObjectsByX index, records
     // the survivors into pOut when it is non-null, and marks each target area as visited.
     int       CountAreaTransitionTriggers(unsigned long long* pOut, int nMax,
                                           unsigned long long* pExclude);
     // Dead stubs in this build: PlotPath returns 0 unconditionally, TestLineWalkable returns 1.
     int       PlotPath(CPathfindInformation* pPathInfo,
-                       unsigned long long nTimeOut);
+                       uint64_ll_t nTimeOut);
     int       TestLineWalkable(float fX1, float fY1, float fZ1, float fX2,
                                float fY2);
     // Path-point depth-first search, the core of the pathfind state.
@@ -377,7 +372,7 @@ public:
                                 unsigned int nCurrent, unsigned int nTarget);
     // Grid-based path search driver, the core of the grid-start and grid-end states.
     int       PlotGridPath(CPathfindInformation* pPathInfo,
-                           unsigned long long nTimeOut);
+                           uint64_ll_t nTimeOut);
     // One path-smoothing slice, the core of the smooth state.
     int       SmoothPointsOnPathRestartable();
     // 2D hash of a tile into the 256-entry DFS transition table (the same x*17+y*23+6000,

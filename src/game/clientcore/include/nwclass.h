@@ -21,7 +21,6 @@ struct CSWClassSpell {
     int            m_nLightRecommended;
     int            m_nDarkRecommended;
     unsigned char  m_nUserType;
-    unsigned char  _pad0d[0x10 - 0xd];
 };
 
 // One classes.2da granted-feat table row.
@@ -35,7 +34,6 @@ struct CSWClassGrantedFeat {
     int            m_nRecommendedOrder;
 #else
     unsigned char  m_bPCOnly;
-    unsigned char  _pad05[0x8 - 0x5];
     int            m_nRecommendedOrder;
 #endif
 };
@@ -136,7 +134,6 @@ public:
     unsigned char  m_aFortSaveBonus[60];
     unsigned char  m_aWillSaveBonus[60];
     unsigned char  m_aRefSaveBonus[60];
-    unsigned char  _pad113[0x118 - 0x113];
     unsigned char* m_pArmorBonusTable;
     unsigned char** m_paSpellsKnownPerLevel;
 #if KOTOR1
@@ -161,10 +158,8 @@ public:
     };
     CSWClassSkill* m_paClassSkills;
     unsigned short m_nNumClassSkills;
-    unsigned char  _pad1fa[0x200 - 0x1fa];
     CSWClassGrantedFeat* m_paGrantedFeats;
     unsigned short m_nNumGrantedFeats;
-    unsigned char  _pad20a[0x210 - 0x20a];
     CSWClassSpell* m_paRecommendedSpells;
     unsigned short m_nNumRecommendedSpells;
     unsigned char  m_nPrimaryAbility;
@@ -176,7 +171,6 @@ public:
     unsigned char  m_anEffCRByLevel[21];
 #else
     unsigned char  m_anEffCRByLevel[51];
-    unsigned char  _pad256[0x258 - 0x256];
 #endif
     int            m_bPlayerClass;           // nonzero for a selectable PC class
     int            m_bSpellCaster;           // classes.2da "SpellCaster"

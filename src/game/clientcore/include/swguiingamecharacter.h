@@ -146,12 +146,10 @@ public:
     CSWGui3DSceneView m_view3DChar;
     CSWGuiSpeedButton m_btn3DChar;
     int   m_nPartyCount;
-    char  _pad74c4[4];
     CSWCCreature* m_pCreature;
     CSWCCreature* m_pAppearanceCreature;
     int   m_nAppearanceAlignment;
     char  m_nCurrentNPC;
-    char  _pad74dd[3];
     CSWGuiScriptSelect* m_pScriptSelect;
     IosFloatingButtonIcon m_iconChange;
 #else
@@ -209,11 +207,10 @@ public:
     CSWGuiLabel m_lblTitle;
     CSWGuiLabel m_lblStatsBorder;
     int   m_nPartyCount;
-    char  _pad653c[4];
     CSWCCreature* m_pCreature;
     CSWCCreature* m_pAppearanceCreature;
     int   m_nAppearanceAlignment;
-    char  _pad6554[4];
+    int   m_nReserved1;
 #endif
 };
 

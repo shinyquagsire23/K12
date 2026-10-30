@@ -1205,7 +1205,7 @@ void GLRender::DrawElements(Aurora::AuroraPrimitiveTypes eType, unsigned int nCo
 unsigned int GLRender::GetFogArraysInfoRef()
 {
     unsigned int nPool = manRef->RequestPoolGeneric(
-        static_cast<Aurora::AuroraBufferRequestType>(0), 16, 2);
+        static_cast<Aurora::AuroraBufferRequestType>(0), sizeof(FogArraysInfo), 2);
     FogArraysInfo* pInfo = static_cast<FogArraysInfo*>(manRef->LockPool(nPool, 0, 0, 1));
     pInfo->m_pData = 0;
     pInfo->m_nCount = 0;
@@ -1216,7 +1216,7 @@ unsigned int GLRender::GetFogArraysInfoRef()
 unsigned int GLRender::GetVertexArraysInfoRef(void* pInfo)
 {
     unsigned int nPool = manRef->RequestPoolGeneric(
-        static_cast<Aurora::AuroraBufferRequestType>(0), 16, 2);
+        static_cast<Aurora::AuroraBufferRequestType>(0), sizeof(VertexArraysInfo), 2);
     VertexArraysInfo* pRecord = static_cast<VertexArraysInfo*>(manRef->LockPool(nPool, 0, 0, 1));
     pRecord->m_pData = pInfo;
     pRecord->m_nCount = 0;

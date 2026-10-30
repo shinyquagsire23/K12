@@ -16,7 +16,6 @@ struct PortDevMode {
 #endif
     char          _pad00[0x24];
     unsigned short m_size;
-    char          _pad26[0x28-0x26];
     unsigned int   m_fields;
     char          _pad2c[0x68-0x2c];
     unsigned int   m_bitsPerPel;

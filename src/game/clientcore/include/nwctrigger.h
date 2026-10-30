@@ -76,14 +76,11 @@ public:
     float         m_fHighlightHeight;   // handed to AurPartTriggerSetHighlight
     char          _pad174[0x184-0x174];
     unsigned short m_nCursorId;         // the cursors.2da "CursorID" row
-    char          _pad186[0x188-0x186];
     int           m_nVertices;          // signed
-    char          _pad18c[0x190-0x18c];
     Vector*       m_pVertices;          // the trigger's ground polygon
     PartTrigger*  m_pPartTrigger;       // the render part SpecialDisplayTrigger drives
     unsigned int  m_nFadeOutTimer;           // fade-out countdown in milliseconds, compared against the
                                         // elapsed delta as an unsigned value
-    char          _pad1a4[0x1a8-0x1a4];
     CExoString    m_transitionDestination;  // the GIT trigger schema's TransitionDestin
     unsigned char m_nTrapType;          // traps.2da row; 0xff means the object is not a trap
     // Sized to the allocation made in CSWCMessage::HandleServerToPlayerTriggerUpdate_Add.

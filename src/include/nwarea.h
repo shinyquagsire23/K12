@@ -57,7 +57,6 @@ public:
     int    m_nHeight;
     int    m_nStaticObjectCapacity;
     int    m_nStaticObjectCount;
-    unsigned char _pad1c[0x20 - 0x1c];
     unsigned long long* m_pStaticObjectIds;
     int*   m_pStaticObjectFirstTriangles;
     int*   m_pStaticObjectTriangleCounts;
@@ -91,7 +90,6 @@ public:
     float         m_sunFogNear;
     float         m_sunFogFar;
     unsigned char m_sunFogOn;
-    unsigned char _padc5[0xc8-0xc5];
     int           m_sunShadows;
     int           m_dayNightCycle;
     int           m_isNight;

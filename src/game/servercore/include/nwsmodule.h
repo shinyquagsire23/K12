@@ -29,7 +29,6 @@ struct NWPlayerCharacterList_st {
     CResRef        m_resRef;
     unsigned short m_nPortraitId;
     CResRef        m_portrait;
-    char           _pad44[4];
 
     CExoArrayList<NWPlayerCharacterListClass_st> m_classList;
 
@@ -117,7 +116,6 @@ public:
     // The alternating half-tick latch, set after the area's AI update runs and cleared before the
     // module's own.
     int        m_bModuleUpdateTurn;
-    char       _pad06c[0x70-0x6c];
     CExoLinkedList<NWPlayerListItem_st>  m_ifoPlayerList;
     CExoLocString m_sDescription;
     NWModuleID_st* m_pModuleID;
@@ -134,7 +132,6 @@ public:
     CSWSScriptVarTable m_scriptVarTable;
     // The module's own local-variable table, read by the module arm of GetLocalValue.
     CSWVarTable m_varTable;
-    char       _pad124[0x128-0x124];
 
     // The module script block holds fifteen scripts of the same shape, so it is an array rather
     // than fifteen members. Each slot's name is its IFO label.
@@ -169,7 +166,6 @@ public:
     // Whether the list is really "concealed creatures" or something broader is unsettled.
     CExoArrayList<unsigned long long> m_playerList;
     int        m_nUserDefinedEventNumber;
-    char       _pad244[0x248-0x244];
     unsigned long long m_oidEnteringClient;
     unsigned long long m_oidLeavingClient;
     unsigned long long m_oidAcquiredItem;
@@ -178,7 +174,6 @@ public:
     unsigned long long m_oidItemUnAcquirer;
     unsigned long long m_oidRestingPlayer;
     unsigned char      m_nRestEventType;
-    char       _pad281[0x288-0x281];
     unsigned long long m_oidDeadPlayer;
     unsigned long long m_oidDyingPlayer;
     unsigned long long m_oidSpawningPlayer;
@@ -189,7 +184,6 @@ public:
     float      m_fActivateTargetX;
     float      m_fActivateTargetY;
     float      m_fActivateTargetZ;
-    char       _pad2cc[0x2d0-0x2cc];
     unsigned long long m_oidLevelUpPlayer;
     // Seeded to the "no object" sentinel; nothing else touches it.
     unsigned long long m_oidReserved1;
@@ -205,7 +199,6 @@ public:
     unsigned char      m_nStartDay;
     unsigned char      m_nStartHour;
     unsigned char      m_nXPScale;
-    char       _pad2ef[0x2f0-0x2ef];
     // The last calendar stamp shipped to the clients, in year, month, day, hour order.
     unsigned int       m_nLastCalendarYear;
     unsigned int       m_nLastCalendarMonth;
@@ -216,7 +209,6 @@ public:
     unsigned int       m_nTimeOfDayElapsed;
     // The live world-clock period, as the day, night, dawn and dusk queries read it.
     unsigned char      m_nTimeOfDay;
-    char       _pad305[0x308-0x305];
     // AIUpdate's own world-clock stamp, in the same day and time-of-day order as the pair above.
     unsigned int       m_nLastTimeDay;
     unsigned int       m_nLastTimeTod;
@@ -224,12 +216,10 @@ public:
     // Nonzero gates the one-time primary-player load, the party creation, the saved-object-id
     // restore and the character-list packing.
     int        m_bIsSaveGame;
-    char       _pad314[0x318-0x314];
     // The module's world journal, the log the client asks the server to append to and drop from,
     // and the source of the strref list the journal screen shows.
     CExoArrayList<CWorldJournalEntry> m_worldJournal;
     int        m_bLoadFinished;
-    char       _pad32c[0x330-0x32c];
     // The limbo list holds objects parked out of any area, as a reverse-scanned id array.
     CExoArrayList<unsigned long long> m_limboList;
     // The save-game plumbing is four heap objects that SaveModuleStart builds and the save steps
@@ -242,16 +232,13 @@ public:
     void SetTag(const CExoString& sTag) { m_sTag = sTag.LowerCase(); }
     // Set when the pending module's resource type is a RIM archive.
     int        m_bIsNWMFile;
-    char       _pad374[0x378-0x374];
     CExoString m_sNWMResName;           // the module name, assigned on the same RIM branch
     // The IFO's GFF table count.
     int        m_nTableCount;
     // The cheat dispatcher's byte; no other reader known.
     unsigned char m_nCheatValue;
-    char        _pad38d[0x390-0x38d];
     // Only the constructor writes it; nothing reads it.
     int         m_nReserved1;
-    char        _pad394[0x398-0x394];
     CSWSAreaMap* m_pAreaMap;
     unsigned long long m_cachedAreaId;  // sentinel means no cached area
     CSWSArea*  m_pCachedArea;

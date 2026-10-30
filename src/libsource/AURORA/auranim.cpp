@@ -473,7 +473,7 @@ float Gob::SetAnimationPercentage(char* pszName, float fPercentage)
 // Plays, queues or stops an animation. The flag word's bits select the behaviour: keep the run's
 // existing blend fields, queued, adopt the next run's play time, queue priority, ignore an
 // already-playing run of this name, stop this name, and only set the flags without restarting. A
-// null or empty name, or the literal "nullptr", stops every animation instead. Runs with the same
+// null or empty name, or the NULL_NAME literal, stops every animation instead. Runs with the same
 // name are scanned from the end of the list, and runs are inserted so the oldest plays last.
 int Gob::PlayAnimation(char* pszName, float fSpeed, int nFlags, float fStart)
 {
@@ -2058,7 +2058,7 @@ void ProceduralAnimateHierarchy(Part* pPart)
         MdlNodeTriMesh* pNode = pMesh->m_pNode->AsMdlNodeTriMesh();
         if (pNode->m_nAnimateUV != 0 && pNode->m_nTex0Ofs != -1 && pMesh->m_nUVPool != -1)
         {
-#if KOTOR1
+#if KOTOR1 && defined(K2_MOBILE_OPT)
             if (static_cast<unsigned int>(pNode->m_pTree->AsModel()->m_nPoolSize) > g_nProceduralAnimateLimit)
                 return;
 #endif

@@ -686,6 +686,7 @@ void AspyrStripButtonIcon(CSWGuiButton* pButton, char nIcon)
     pButton->m_text.m_params.SetText(sText);
 }
 
+#if !KOTOR1
 AspyrFloatingButtonIcon::AspyrFloatingButtonIcon() {}
 
 bool IsJoystickConnected();
@@ -739,13 +740,14 @@ void AspyrFloatingButtonIcon::InitAndAdd(CSWGuiPanel* pPanel, char nIcon, CSWGui
     iconExtent.h = 48;
     SetExtent(iconExtent);
     m_text.m_params.SetText(CExoString(""));
-    m_border.m_params.SetFillImage(resRef, 0);
-    m_borderHilight.m_params.SetFillImage(resRef, 0);
+    m_border.m_params.SetFillImage(resRef);
+    m_borderHilight.m_params.SetFillImage(resRef);
     m_tail.bFocusOnHover = 0;
     SetEnabled(0);
     pPanel->AddControl(this);
     pPanel->BringControlToFront(this);
 }
+#endif
 
 void CSWGuiInGameMenu::Update(float f)
 {
@@ -1019,7 +1021,7 @@ CSWGuiMessageBox::CSWGuiMessageBox(CSWGuiManager* pGuiManager, int bDatapadStyle
 
     StartLoadFromLayout(CResRef("datapad_p"), 1, 1, 1);
     // The datapad skin paints its own background; drop the layout's fill so only the frame shows.
-    m_pBackground->m_params.SetFillImage(CResRef(""), 0);
+    m_pBackground->m_params.SetFillImage(CResRef(""));
     InitControl(m_btnOk, CExoString("BTN_OK"), 1, 1, 0, 0, 0);
     InitControl(m_btnCancel, CExoString("BTN_CANCEL"), 1, 1, 0, 0, 0);
     InitControl(m_lbMessage, CExoString("LB_MESSAGE"), 1, 1, 0, 0, 0);
@@ -1190,7 +1192,7 @@ void CSWGuiMessageBox::SetIcon(const CResRef& resRef)
     if (resRef.IsValid())
     {
         m_bHasIcon = 1;
-        m_lblIcon.m_border.m_params.SetFillImage(resRef, 0);
+        m_lblIcon.m_border.m_params.SetFillImage(resRef);
 #if !KOTOR1 || defined(K2_FIX_ENGINE_BUGS)  // K1 keeps a tiled fill; an invalid resref leaves the box as it was
         m_lblIcon.m_border.m_params.m_flags.nFillStyle = 2;
 #endif
@@ -1670,7 +1672,7 @@ void CSWGuiMessageBox::OnPanelAdded()
         SetActiveControl(&m_btnOk, 0);
 #else
     if (m_bDatapadStyle)
-        m_pBackground->m_params.SetFillImage(CResRef("pnl_datapad"), 0);
+        m_pBackground->m_params.SetFillImage(CResRef("pnl_datapad"));
 
     int nInputClass = g_pAppManager->m_pClientExoApp->GetInputClass();
     CSWGuiPanel::OnPanelAdded();
@@ -1719,7 +1721,7 @@ void CSWGuiMessageBox::OnPanelRemoved()
     m_pCallbackObject = 0;
     m_pCallbackControl = 0;
     if (m_bDatapadStyle)
-        m_pBackground->m_params.SetFillImage(CResRef("pnl_datapad"), 0);
+        m_pBackground->m_params.SetFillImage(CResRef("pnl_datapad"));
     m_lblMessage.m_text.m_params.SetAlignment(10);
     m_lblMessage.m_text.m_params.SetFont(CResRef("dialogfont16x16"));
     if (m_nSavedInputClass >= 0)

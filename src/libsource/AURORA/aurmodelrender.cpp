@@ -280,7 +280,6 @@ int renderdangly = 1;
 
 
 
-__attribute__((visibility("hidden"))) Vector currentcolor;
 
 
 bool AurNV2xLevelShadersAvailable();
@@ -314,7 +313,25 @@ float* Homogenize(const Vector& v, const float& w);
 
 #if defined(K2_QOL_BUMPMAPS) && KOTOR1
 bool AurBumpMapCardValidate();
+extern int enablebumpyshiny;
 bool AurNonRadeon8500Validate();
+#elif defined(K2_QOL_BUMPMAPS)
+bool AurBumpMapCardValidate();
+extern int enablebumpyshiny;
+
+bool AuroraUseARBShaders();
+
+// The noise path's cards. The PC asks for its frame-buffer modifications (render-to-texture and NV
+// combiners2 or ATI fragment shaders), which every port answered no; here the ARB shaders, as the
+// frame-buffer effects ask. A phone's GLES 2 has no 3D textures.
+static bool QolNoiseMapAvailable()
+{
+#ifdef K2P_MOBILE_HOST
+    return false;
+#else
+    return AuroraUseARBShaders();
+#endif
+}
 #endif
 
 // Picks the render pass id from the part's material maps, lightmap flag and env-map watcher.
@@ -324,7 +341,11 @@ int PartTriMesh::GetRenderPath()
 
     bool bBump = m_pMaterial->HasBumpMap();
     bool bNormal = m_pMaterial->HasNormalMap();
+#ifdef K2_QOL_BUMPMAPS
+    bool bBumpyShiny = m_pMaterial->HasBumpyShinyMap();
+#else
     m_pMaterial->HasBumpyShinyMap();
+#endif
     bool bTangent = mesh->HasTangentBases();
     bool bEnv = m_pMaterial->HasEnvMap();
 
@@ -336,14 +357,44 @@ int PartTriMesh::GetRenderPath()
     if (!bEnv)
         bEnv = m_pGob != 0 && m_pGob->m_texWatch.m_pObject != 0;
 
+#if defined(K2_QOL_BUMPMAPS) && KOTOR1
+    // The PC's bumpy-shiny path (swkotor.exe GetRenderPath), taken first and whatever the water
+    // alpha: the reflection is blended at that alpha (RenderEMBM).
+    if (bBumpyShiny && bBump && bTangent && enablebumpyshiny &&
+        AurNV2xLevelShadersAvailable() && AurBumpMapCardValidate() && AurNonRadeon8500Validate())
+        return RENDER_PATH_EMBM;
+#endif
+
+#if defined(K2_QOL_BUMPMAPS) && !KOTOR1
+    // The PC's order (swkotor2.exe GetRenderPath): the bumpy-shiny path first, whatever the water
+    // alpha; the noise ("dirt") path; then the one-pass bump path, for a lightmapped mesh too (the
+    // PC's lightmapped bump paths need NV vertex programs, which it never chose). No flat path for
+    // a water alpha below 1: only the bumpy-shiny path reads it.
+    if (bBumpyShiny && bBump && bTangent && enablebumpyshiny && AurNV2xLevelShadersAvailable())
+        return RENDER_PATH_EMBM;
+    if (mesh->m_bDirtEnabled && QolNoiseMapAvailable())
+        return RENDER_PATH_NOISE_MAPPED;
+    if (bBump && bTangent && enablebumpmap && AurNV2xLevelShadersAvailable())
+        return AurBumpMapCardValidate() ? RENDER_PATH_BUMPMAPPED : RENDER_PATH_BUMPMAP_FALLBACK;
+    K2_UNUSED(fAlpha);
+#else
     if (fAlpha < 1.0f)
         return RENDER_PATH_FLAT_VP;
+#endif
 
 #if defined(K2_QOL_BUMPMAPS) && KOTOR1
     // The Mac and PC's one-pass bump path for a mesh without a lightmap, which the APK took out.
     if (bBump && bTangent && !(nLightmap && enablelightmap) && enablebumpmap &&
         AurNV2xLevelShadersAvailable() && AurBumpMapCardValidate() && AurNonRadeon8500Validate())
         return RENDER_PATH_BUMPMAPPED;
+    // The PC's lightmapped bump paths (swkotor.exe GetRenderPath), the material's renderbmlmtype
+    // picking the specular one or the diffuse one. A bumpy-shiny mesh takes the PC's EMBM path
+    // instead, which is not here.
+    if (bBump && bTangent && nLightmap && enablelightmap && enablebumpmap &&
+        !bBumpyShiny &&
+        AurNV2xLevelShadersAvailable() && AurBumpMapCardValidate() && AurNonRadeon8500Validate())
+        return m_pMaterial->m_nRenderBMLMType != 0 ? RENDER_PATH_LIGHTMAPPED_BUMP_SPECULAR
+                                                   : RENDER_PATH_LIGHTMAPPED_BUMP_DIFFUSE;
 #endif
 
     if (bNormal && !bTangent && enablebumpmap && AurNV2xLevelShadersAvailable())
@@ -1911,7 +1962,7 @@ void PartLight::Draw(bool)
 void PartLight::Mat()
 {
     ASLgl::glColor4f(m_vLightColour.x, m_vLightColour.y, m_vLightColour.z, 1.0f);
-    currentcolor = m_vLightColour;
+    currentmat = m_vLightColour;
 }
 
 int ignoremat;
@@ -3726,7 +3777,9 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
             GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, part->m_pMaterial->Textures(0).m_pObject, 0, 0, 0);
             RenderFlat(vertices);
         }
+#ifndef K2_QOL_BUMPMAPS
         return;
+#endif
     }
 
     GLRender::Disable(Aurora::kCapAlphaTest);
@@ -3869,7 +3922,13 @@ void RenderEMBM(VertexPrimitiveFlat* vertices)
                 }
                 else
                 {
+#ifdef K2_QOL_BUMPMAPS
+                    // The PC's fixed-function texture-times-light, which only a program draws here.
+                    GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, part->m_pMaterial->Textures(0).m_pObject,
+                                                      0, 0, 0);
+#else
                     GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
+#endif
                 }
 // Only the non-force-sight path rebinds texture 0.
                 part->m_pMaterial->BindTexture0();
@@ -4006,10 +4065,18 @@ extern unsigned int* cStandardVP2Declaration;
 
 #if !KOTOR1  // K2 only
 // Renders the dirt pass with eight pixel-shader variants, one per dirt texture and space.
+#ifdef K2_QOL_BUMPMAPS
+extern bool g_bQolNoiseLocal;
+#endif
+
 void RenderNoiseMapped(VertexPrimitiveFlat* vertices, int nDirtTexture, int nDirtWorldspace)
 {
     PartTriMesh* part = vertices->m_pPart->AsPartTriMesh();
     Gob* pGob = part->m_pGob;
+#ifdef K2_QOL_BUMPMAPS
+    // Which vertex program below the shim's noise program stands for: world or model space.
+    g_bQolNoiseLocal = nDirtWorldspace != 1;
+#endif
 
     int nFormula = GLRender::GetNoiseFormula(nDirtTexture);
 

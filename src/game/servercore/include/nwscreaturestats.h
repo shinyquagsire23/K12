@@ -135,11 +135,9 @@ public:
     CExoLocString m_lastName;
     CResRef m_conversation;
     int  m_nInterruptable;
-    unsigned char _pad7c[0x80-0x7c];
     CExoLocString m_description;
     int  m_nAge;
     unsigned char m_nGender;
-    unsigned char _pad95[0x98-0x95];
     int  m_nExperience;
     int  m_bIsPC;
     int  m_nReserved1;
@@ -153,16 +151,10 @@ public:
     float m_fChallengeRating;
     unsigned char m_nStartingPackage;
     unsigned char m_numClasses;
-#if KOTOR1
-    unsigned char _padba[0xc0 - 0xba];
-#else
-    unsigned char _padbe[0xc0 - 0xbe];
-#endif
     // One entry per class, and KOTOR2 multiclassing tops out at two. An index past the bound aliases
     // a later member (index 2 lands on m_nCHAMod), so those reads are misnamed but harmless.
     CSWSCreatureStats_ClassInfo m_classInfo[2];
     unsigned short m_nRace;
-    unsigned char _pad122[0x128 - 0x122];
     CExoString m_sSubrace;
     unsigned char m_nSubraceIndex;
     unsigned char m_nSTRBase;
@@ -192,12 +184,11 @@ public:
     signed char   m_nACDodgeNeg;
     unsigned char m_nOverrideBaseAttackBonus;
     unsigned char m_nEnemyAttackBonus;
-    unsigned char _pad154[0x160 - 0x154];
+    void* m_pReserved1;
     int  m_nReserved3;
     int  m_nReserved4;
     int  m_nReserved5;
     unsigned char m_nReserved6;
-    unsigned char _pad16d[0x170 - 0x16d];
     CCombatInformation* m_pCombatInformation;
 #if !KOTOR1  // K1 has neither the "FuryDamageBonus" byte nor the video-effect word.
     signed char   m_nFuryDamageBonus;
@@ -213,7 +204,6 @@ public:
     unsigned short m_nBaseForcePoints;
     unsigned short m_nCurrentForcePoints;
     unsigned short m_nTemporaryForcePoints;
-    unsigned char _pad18c[0x190 - 0x18c];
     CExoArrayList<CSWSStats_SpellLikeAbility>* m_pSpellLikeAbilityList;
     unsigned short m_iFirstTempHitPoints;
     unsigned short m_iFirstACIncrease;
@@ -244,7 +234,6 @@ public:
     unsigned short m_iFirstLimitMovementSpeed;
     unsigned short m_iFirstMovementSpeedDecrease;
     unsigned short m_nSkillPoints;
-    unsigned char _pad1d2[0x1d8 - 0x1d2];
     char* m_pSkillRanks;
     unsigned short m_nArmorCheckPenalty;
     CResRef m_portrait;
@@ -264,7 +253,6 @@ public:
     unsigned char m_nAppearanceHead;
     signed char   m_bDuplicatingHead;
 #if KOTOR1
-    unsigned char _pad1f7[0x1f8 - 0x1f7];
 #else
     unsigned char _pad201[0x204 - 0x201];
 #endif
@@ -279,9 +267,7 @@ public:
     signed char   m_nWillSaveBonus;
     signed char   m_nReflexSaveBonus;
 #if KOTOR1
-    unsigned char _pad20f[0x210 - 0x20f];
 #else
-    unsigned char _pad21b[0x220 - 0x21b];
 #endif
     CExoString m_sDeity;
     float m_hpAccumulator;
@@ -347,7 +333,7 @@ public:
     void LevelDown(CSWLevelStats* pLevelStats);
     // Copies the stats groups named by the bits of nUpdateFields into the update object the
     // server ships to the client.
-    void UpdateLastStatsObject(unsigned long long nUpdateFields,
+    void UpdateLastStatsObject(uint64_ll_t nUpdateFields,
                                CSWCreatureStatsUpdate* pUpdate);
     void AutoLevelup(int a);
     unsigned char GetLevel(int a);

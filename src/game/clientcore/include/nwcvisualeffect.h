@@ -45,7 +45,7 @@ public:
     void SetAnimation(unsigned short n);
     void DoVFXRumble();
 
-    static CExoLinkedList<CSWCVisualEffect> m_lstCachedVFX;
+    static CExoLinkedList<CAurObject> m_lstCachedVFX;
 };
 
 #endif

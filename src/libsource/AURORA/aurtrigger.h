@@ -36,10 +36,8 @@ public:
     char _pade1[0xe4 - 0xe1];
     float m_color[4];
     bool m_bPulse;
-    char _padf5[0xf8 - 0xf5];
     float m_fPulseRate;
     bool m_bAdditive;
-    char _padfd[0x100 - 0xfd];
     List<Vector> m_listFillTriangles;
 
     void SetHighlighted(bool bFlag, float fHeight, bool bGroup);

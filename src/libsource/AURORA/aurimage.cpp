@@ -1060,7 +1060,7 @@ int ImageReadHeader(char* pszName, int* pWidth, int* pHeight, int* pBpp)
 // 0x20/0x28 (CResPLT's PLTHeader is the resource format's own six dwords).
 struct ImagePLTHeader
 {
-    char m_acReserved[32];
+    uint64_t m_anReserved[4];
     uint64_t m_nWidth;
     uint64_t m_nHeight;
 };
@@ -1075,7 +1075,7 @@ unsigned char* ImageReadPLT(char* pszName, int* pWidth, int* pHeight, int* pUnkn
         return 0;
 
     ImagePLTHeader header;
-    fread(&header, 48, 1, pFile);
+    fread(&header, sizeof(header), 1, pFile);
     *pWidth = static_cast<int>(header.m_nWidth);
     *pHeight = static_cast<int>(header.m_nHeight);
     uint64_t nSize = header.m_nWidth * header.m_nHeight * 2;

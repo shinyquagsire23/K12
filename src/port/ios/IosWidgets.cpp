@@ -1137,8 +1137,8 @@ void IosFloatingButtonIcon::InitAndAdd(CSWGuiPanel* pPanel, char nIcon, CSWGuiEx
 #endif
     SetExtent(iconExtent);
     m_text.m_params.SetText(CExoString(""));
-    m_border.m_params.SetFillImage(resRef, 0);
-    m_borderHilight.m_params.SetFillImage(resRef, 0);
+    m_border.m_params.SetFillImage(resRef);
+    m_borderHilight.m_params.SetFillImage(resRef);
     m_tail.bFocusOnHover = 0;
     SetEnabled(0);
     pPanel->AddControl(this);

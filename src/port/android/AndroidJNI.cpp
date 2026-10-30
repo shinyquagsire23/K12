@@ -453,7 +453,7 @@ std::string vformat(const char* pszFmt, va_list args)
         char* pszGrown = static_cast<char*>(realloc(pszBuf, nCap * 2 + 1));
         if (pszGrown == 0) {
             free(pszBuf);
-            return std::string("?");
+            return std::string("");
         }
         pszBuf = pszGrown;
 #else
@@ -468,7 +468,7 @@ std::string vformat(const char* pszFmt, va_list args)
     if (n == -1) {
 #endif
         free(pszBuf);
-        return std::string("?");
+        return std::string("");
     }
     pszBuf[n] = '\0';
     std::string strResult(pszBuf);

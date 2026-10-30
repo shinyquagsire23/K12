@@ -78,6 +78,10 @@ AttributeData s_weights;              // generic attribute 1
 AttributeData s_indices;              // generic attribute 4
 AttributeData s_unused;               // stands in for the shadows the built-ins replaced
 bool s_bSkinning;                     // glEnableVertexAttribArrayARB(1)
+#ifdef K2_QOL_BUMPMAPS
+AttributeData s_bumpFrame[3];         // generic attributes 12..14, the tangent frame's rows
+float s_bumpParams[3 * 4];            // vertex env params 12..14: bump light, camera, attenuation
+#endif
 bool s_bLightingDisabled;
 bool s_bFogDisabled;
 bool s_useAlphaTestShader;
@@ -105,7 +109,13 @@ void SetupShader(bool bColorArray)
     if (!p)
         return;
 
-    p->SetAttributes(s_unused, s_unused, s_unused, bColorArray && s_bLightingDisabled, s_unused,
+    bool bLightingDisabled = s_bLightingDisabled;
+#ifdef K2_QOL_BUMPMAPS
+    // The bump passes switch GL lighting off (their vertex programs light), and still light.
+    if (p->m_nFlags & (ProgramType::SHADER_QOL_BUMP | ProgramType::SHADER_QOL_NOISE))
+        bLightingDisabled = false;
+#endif
+    p->SetAttributes(s_unused, s_unused, s_unused, bColorArray && bLightingDisabled, s_unused,
                      s_unused, s_weights, s_indices);
 
     // u_matrices = { MV, MVP }.
@@ -169,10 +179,14 @@ void SetupShader(bool bColorArray)
         p->m_nCameraSerial = s_nCameraSerial;
     }
     p->SetSkinMatrices(s_boneMatrix);
+#ifdef K2_QOL_BUMPMAPS
+    p->SetBumpAttributes(s_bumpFrame);
+    p->SetBumpParams(s_bumpParams);
+#endif
     p->SetLightData(s_lightData);
     if (g_illumShader)
         memcpy(&s_lightMaterialData[12], &g_illumShaderValues, sizeof(g_illumShaderValues));
-    if (!s_bLightingDisabled)
+    if (!bLightingDisabled)
         p->SetLightMaterialData(s_lightMaterialData);
 #ifdef K2_QOL_IMPROVEMENTS
     // An additive draw (destination factor GL_ONE: light shafts, glows, blades) fogs toward black.
@@ -313,6 +327,10 @@ void glProgramEnvParameter4fARB(unsigned int target, unsigned int i, float x, fl
         dst = &s_lightData[(i - 0x49) * 4];
     } else if (i - 0x5d < 3) {
         dst = &s_lightMaterialData[(i - 0x5d) * 4];
+#ifdef K2_QOL_BUMPMAPS
+    } else if (i - 12 < 3) {
+        dst = &s_bumpParams[(i - 12) * 4];
+#endif
     } else {
         return;
     }
@@ -449,11 +467,16 @@ void glPopClientAttrib()
     }
 }
 
-// The ARB vertex programs' weight (1) and index (4) streams; KotorProgram binds them.
+// The ARB vertex programs' weight (1) and index (4) streams, and with the bump passes the tangent
+// frame's (12..14); KotorProgram binds them.
 void glVertexAttribPointerARB(unsigned int index, int size, unsigned int type, unsigned char,
                               int stride, void const* pointer)
 {
     AttributeData* a = index == 1 ? &s_weights : index == 4 ? &s_indices : 0;
+#ifdef K2_QOL_BUMPMAPS
+    if (index - 12 < 3)
+        a = &s_bumpFrame[index - 12];
+#endif
     if (!a)
         return;
     a->m_nSize = size;
@@ -467,12 +490,20 @@ void glEnableVertexAttribArrayARB(unsigned int index)
 {
     if (index == 1)
         s_bSkinning = s_weights.m_bIsPointer = s_indices.m_bIsPointer = true;
+#ifdef K2_QOL_BUMPMAPS
+    if (index - 12 < 3)
+        s_bumpFrame[index - 12].m_bIsPointer = true;
+#endif
 }
 
 void glDisableVertexAttribArrayARB(unsigned int index)
 {
     if (index == 1)
         s_bSkinning = s_weights.m_bIsPointer = s_indices.m_bIsPointer = false;
+#ifdef K2_QOL_BUMPMAPS
+    if (index - 12 < 3)
+        s_bumpFrame[index - 12].m_bIsPointer = false;
+#endif
 }
 
 // K2_GL_TRACE: one line per draw (the engine caller, the texture, colour and blend state) plus the

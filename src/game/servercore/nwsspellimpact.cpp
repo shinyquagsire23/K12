@@ -250,7 +250,7 @@ void CSWSAreaOfEffectObject::RemoveFromSubAreas(int a)
 // object's position is read directly, with no virtual call, and only for a round AoE.
 void CSWSAreaOfEffectObject::AIUpdate()
 {
-    unsigned long long nTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t nTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     unsigned int nDay;
     unsigned int nTod;
     g_pAppManager->m_pServerExoApp->GetWorldTimer()->GetWorldTime(&nDay, &nTod);

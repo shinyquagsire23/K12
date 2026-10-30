@@ -41,11 +41,9 @@ public:
     unsigned char m_aReserved2[0x400];
     unsigned char m_aTypeStack[1024];
     unsigned int  m_nTypeStackDepth;
-    char          _pad80c[0x810 - 0x80c];
     const char*   m_pLastFile;
     char          m_szLastComment[128];
     int           m_nLastLine;
-    char          _pad89c[0x8a0 - 0x89c];
     const char*   m_aFileNames[1000];
     char          m_aComments[40000][128];
     unsigned int  m_nCommentCount;

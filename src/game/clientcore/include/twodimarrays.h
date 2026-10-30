@@ -14,7 +14,6 @@ public:
     C2DA** m_paIPRPParamTables;
     unsigned char m_nIPRPCostTableCount;
     unsigned char m_nIPRPParamTableCount;
-    char _pad12[6];
 
     C2DA* m_pAppearance;
     C2DA* m_pGender;
@@ -93,10 +92,8 @@ public:
     // named after the 2DA it loads, never after the column a caller reads from it.
     C2DA** m_paIPRPCostTables;
     unsigned char m_nIPRPCostTableCount;
-    char _pad09[7];
     C2DA** m_paIPRPParamTables;
     unsigned char m_nIPRPParamTableCount;
-    char _pad19[7];
 
     C2DA* m_pAppearance;
     C2DA* m_pGender;

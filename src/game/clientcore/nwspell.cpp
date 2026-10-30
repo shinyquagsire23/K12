@@ -7,6 +7,7 @@
 #include "twodimarray.h"
 #include "exoresman.h"
 #include "nwscriptconst.h"
+#include "exostringinline.h"
 
 // The good-evil scale's light-side band (60 and up) and its midpoint: a power costs less on the
 // light side and more below the midpoint by the room's Force rating.
@@ -515,11 +516,7 @@ int CSWSpell::GetAdjustedForcePoints(unsigned int nAlignment, int bInParty, int 
 void CSWSpell::SetPrerequisites(const CExoString& sPrereq)
 {
     m_sPrerequisites = sPrereq;
-#if KOTOR1  // K1 calls the out-of-line CExoString::GetLength.
     int nLen = sPrereq.GetLength();
-#else
-    int nLen = sPrereq.m_sString != NULL ? static_cast<int>(strlen(sPrereq.m_sString)) : 0;
-#endif
     int i = 0;
     while (i < nLen && (sPrereq[i] == '_' || sPrereq[i] == ':'))
         i++;
@@ -543,11 +540,7 @@ void CSWSpell::SetPrerequisites(const CExoString& sPrereq)
 void CSWSpell::SetMasterSpells(const CExoString& sMaster)
 {
     m_sMasterSpells = sMaster;
-#if KOTOR1  // K1 calls the out-of-line CExoString::GetLength.
     int nLen = sMaster.GetLength();
-#else
-    int nLen = sMaster.m_sString != NULL ? static_cast<int>(strlen(sMaster.m_sString)) : 0;
-#endif
     int i = 0;
     while (i < nLen && (sMaster[i] == '_' || sMaster[i] == ':'))
         i++;

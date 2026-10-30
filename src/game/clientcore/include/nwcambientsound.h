@@ -115,7 +115,7 @@ public:
     int m_nMusicDelayCounter = 0;
     unsigned int m_nLastUpdateDay;
     unsigned int m_nLastUpdateTime;
-    unsigned char m_aReserved1[8];
+    void* m_pReserved1;
     CExoStreamingSoundSource* m_pMusicSource;
     CExoStreamingSoundSource* m_pAmbientSource;
     CSWCArea* m_pArea;

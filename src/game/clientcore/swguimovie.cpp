@@ -26,6 +26,7 @@
 #include "exoinput.h"
 #include "restype.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 #if KOTOR1 && !defined(K2_UI_TOUCH)
 #include "port/sdlapi.h"
@@ -284,7 +285,7 @@ void CSWGuiTitleMovies::PopulateMovies()
     for (int nDir = 0; nDir < nNumDirs; nDir++)
     {
         sName = aDirs.m_pArray[nDir];
-        sName = sName.SubString(0, (sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0) - 4);
+        sName = sName.SubString(0, sName.GetLength() - 4);
 
         int nAlwaysShow;
         g_pRules->m_p2DArrays->m_pMovies->GetINTEntry(

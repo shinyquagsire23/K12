@@ -16,7 +16,6 @@ public:
     ~FModAudioSystemSoundInfo();
 
     int           m_nRefCount;
-    int           _reserved04;
     FMOD::Sound*  m_pSound;
 };
 
@@ -27,7 +26,6 @@ public:
     ~FModAudioSystemStreamInfo();
 
     int           m_nStreamId;
-    int           _reserved04;
 #if KOTOR1  // K1: the stream handle is an SDL_RWops
     SDL_RWops*    m_pFile;
 #else

@@ -33,6 +33,7 @@
 #include "restype.h"
 #include "serverexoappinternal.h"
 #include "nwscriptconst.h"
+#include "exostringinline.h"
 
 extern CTlkTable* g_pTlkTable;
 
@@ -766,7 +767,7 @@ void CSWGuiClassSelection::BeginPlayGame()
 
     pClientExoApp->GetNetLayer()->SendMessageToPlayer(
         CNetLayer::PLAYERID_SERVER, reinterpret_cast<unsigned char*>(sLoadScreen.CStr()),
-        static_cast<unsigned int>(sLoadScreen.m_sString ? strlen(sLoadScreen.m_sString) : 0), 0);
+        static_cast<unsigned int>(sLoadScreen.GetLength()), 0);
 
     pClientExoApp->SetPlayerCharacterName(CExoString("temp"));
 

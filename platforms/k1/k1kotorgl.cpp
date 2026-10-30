@@ -91,11 +91,19 @@ struct ProgramType {
         case 0x103:        m_nFlags |= 0x800; break;  // the port's soft-shadow blur (kSoftShadowFragment)
         default:           break;
         }
+#ifdef K2_QOL_NV_REFLECTIONS
+        if (nType == 19 || nType == 20 || nType == 43)
+            m_nFlags |= 0x40000;                      // the reflection added: USE_ENVMAP_ADD
+#endif
 #ifdef K2_QOL_BUMPMAPS
         if (nType == 6)
             m_nFlags |= 0x1000;                       // the bump pass: kotorbump.vert / .frag
         else if (nType == 24)
             m_nFlags |= 0x2000;                       // the bumpy-shiny pass: the same, USE_BUMPYSHINY
+        else if (nType == 8)
+            m_nFlags |= 0x4000 | 0x2;                 // lightmapped bump, diffuse: USE_LMBUMP 1
+        else if (nType >= 9 && nType <= 12)           // lightmapped bump, specular: USE_LMBUMP 2, its
+            m_nFlags |= 0x8000 | 0x2 | ((nType - 9) << 16);   // exponent (1, 2, 4, 8) in bits 16..17
 #endif
     }
     int m_nFlags;
@@ -267,13 +275,19 @@ public:
                      (f & 1) != 0, (f & 0x20) != 0, (f & 2) != 0, (f & 0x40) != 0, (f & 8) != 0, (f & 4) != 0);
 #ifdef K2_QOL_BUMPMAPS
             size_t nDefines = strlen(s_szDefines);
-            snprintf(s_szDefines + nDefines, sizeof(s_szDefines) - nDefines, "#define USE_BUMPYSHINY %d\n",
-                     (f & 0x2000) != 0);
+            snprintf(s_szDefines + nDefines, sizeof(s_szDefines) - nDefines,
+                     "#define USE_BUMPYSHINY %d\n#define USE_LMBUMP %d\n#define LMBUMP_EXPONENT %d\n",
+                     (f & 0x2000) != 0, (f & 0x4000) ? 1 : (f & 0x8000) ? 2 : 0, 1 << ((f >> 16) & 3));
+#endif
+#ifdef K2_QOL_NV_REFLECTIONS
+            size_t nEnvDefines = strlen(s_szDefines);
+            snprintf(s_szDefines + nEnvDefines, sizeof(s_szDefines) - nEnvDefines, "#define USE_ENVMAP_ADD %d\n",
+                     (f & 0x40000) != 0);
 #endif
             const char* pszVertex = (f & 0x80) ? "kotorbloom.vert" : (f & 0xf10) ? "kotorpost1.vert" : "kotor.vert";
             const char* pszFragment = (f & 0x80) ? "kotorbloom.frag" : (f & 0x10) ? "kotorpost1.frag" : "kotor.frag";
 #ifdef K2_QOL_BUMPMAPS
-            if (f & 0x3000) {
+            if (f & 0xf000) {
                 pszVertex = "kotorbump.vert";
                 pszFragment = "kotorbump.frag";
             }
@@ -329,6 +343,7 @@ public:
             m_anSamplerUniforms[0] = k2gl::glGetUniformLocation(m_uProgram, "u_texture0Sampler");
             m_anSamplerUniforms[1] = k2gl::glGetUniformLocation(m_uProgram, "u_texture1Sampler");
             m_anSamplerUniforms[2] = k2gl::glGetUniformLocation(m_uProgram, "u_texture2Sampler");
+            m_anSamplerUniforms[3] = k2gl::glGetUniformLocation(m_uProgram, "u_texture3Sampler");
             m_nMatrixUniform = k2gl::glGetUniformLocation(m_uProgram, "u_matrices");
             m_nCameraUniform = k2gl::glGetUniformLocation(m_uProgram, "u_cameraMatrix");
             m_nSkinUniform = k2gl::glGetUniformLocation(m_uProgram, "u_boneMatrices");
@@ -341,7 +356,7 @@ public:
 #ifdef K2_QOL_BUMPMAPS
             m_nBumpUniform = k2gl::glGetUniformLocation(m_uProgram, "u_bumpParams");
 #endif
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
                 if (m_anSamplerUniforms[i] >= 0)
                     k2gl::glUniform1i(m_anSamplerUniforms[i], i);
         }
@@ -392,7 +407,7 @@ public:
     // The tangent frame's three streams, for the bump program only.
     void SetBumpAttributes(AttributeData* pFrame)
     {
-        if (!(m_nFlags & 0x3000))
+        if (!(m_nFlags & 0xf000))
             return;
         for (int i = 0; i < 3; i++)
             SetAttributeToLoc(pFrame[i], LOC_BUMP_T + i);
@@ -459,7 +474,7 @@ public:
 #endif
     unsigned int m_uProgram;
     int m_anLocations[LOC_COUNT];
-    int m_anSamplerUniforms[3];
+    int m_anSamplerUniforms[4];
     int m_nMatrixUniform;
     int m_nCameraUniform;
     int m_nSkinUniform;

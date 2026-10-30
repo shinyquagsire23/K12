@@ -2802,12 +2802,12 @@ void InsertModel(Model* pModel)
 // load is logged to AR_ERROR.LOG.
 //
 // currentmodel is zeroed across the load so the parser never sees the caller's model, then restored.
-// "nullptr" is a real string the callers pass to mean "no model", not a null test.
+// NULL_NAME is a real string the callers pass to mean "no model", not a null test.
 Model* FindModel(char* pszName)
 {
     if (pszName == 0)
         return 0;
-#if KOTOR1  // K1 spells the no-model sentinel "NULL", K2 "nullptr"
+#if KOTOR1  // K1 spells the no-model sentinel inline
     if (_stricmp(pszName, "NULL") == 0)
         return 0;
 #else

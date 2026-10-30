@@ -22,7 +22,6 @@ public:
     virtual void UnloadModel(unsigned char a);
 
     int                m_bActive;
-    char               _pad14c[0x150-0x14c];
     CExoString         m_sName;
     unsigned long long m_nPinId;
     int                m_nPinType;

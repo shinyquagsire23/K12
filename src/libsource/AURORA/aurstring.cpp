@@ -998,25 +998,25 @@ int StringGob::GetTextLineCount() { return m_lines.nCount; }
 #if KOTOR1
 int StringGob::GetLineState(int nLine) { return m_lines[nLine]->m_nState; }
 #else
-int StringGob::GetLineState(int nLine) { return m_lines.pa[nLine]->nState; }
+int StringGob::GetLineState(int nLine) { return m_lines.pa[nLine]->m_nState; }
 #endif
 
 #if KOTOR1
 void StringGob::SetLineState(int nLine, int nState) { m_lines[nLine]->m_nState = static_cast<short>(nState); }
 #else
-void StringGob::SetLineState(int nLine, int nState) { m_lines.pa[nLine]->nState = static_cast<short>(nState); }
+void StringGob::SetLineState(int nLine, int nState) { m_lines.pa[nLine]->m_nState = static_cast<short>(nState); }
 #endif
 
 #if KOTOR1
 void StringGob::SetLineColor(int nLine, int nColor) { m_lines[nLine]->m_nColor = static_cast<short>(nColor); }
 #else
-void StringGob::SetLineColor(int nLine, int nColor) { m_lines.pa[nLine]->nColor = static_cast<short>(nColor); }
+void StringGob::SetLineColor(int nLine, int nColor) { m_lines.pa[nLine]->m_nColor = static_cast<short>(nColor); }
 #endif
 
 #if KOTOR1
 int StringGob::GetLineColor(int nLine) { return m_lines[nLine]->m_nColor; }
 #else
-int StringGob::GetLineColor(int nLine) { return m_lines.pa[nLine]->nColor; }
+int StringGob::GetLineColor(int nLine) { return m_lines.pa[nLine]->m_nColor; }
 #endif
 
 #if KOTOR1
@@ -1034,9 +1034,9 @@ int StringGob::GetCaretLinePos() { return m_caret.nLine; }
 int StringGob::GetCaretColumnPos() { return m_caret.nColumn; }
 
 #if KOTOR1
-SStringGobLine** StringGob::GetStringsArray() { return reinterpret_cast<SStringGobLine**>(m_lines.m_pData); }
+CStringItem** StringGob::GetStringsArray() { return m_lines.m_pData; }
 #else
-SStringGobLine** StringGob::GetStringsArray() { return m_lines.pa; }
+CStringItem** StringGob::GetStringsArray() { return m_lines.pa; }
 #endif
 
 void StringGob::SetCaretVisible(bool bVisible) { m_bCaretVisible = bVisible; }

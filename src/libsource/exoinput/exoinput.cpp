@@ -424,10 +424,12 @@ unsigned char CExoInput::GetMouseMode()
     return m_pInternal->m_nMouseMode;
 }
 
+#if !KOTOR1
 int CExoInput::IsPsShowButtonsController() const
 {
     return m_pInternal->IsPsShowButtonsController();
 }
+#endif
 
 void CExoInput::SetCaptureKeyboardKeys(int a)
 {

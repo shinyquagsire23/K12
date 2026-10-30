@@ -4,6 +4,8 @@
 #ifndef CEXOTIMERS_H
 #define CEXOTIMERS_H
 
+#include "k2stdint.h"
+
 class CExoTimersInternal {
 public:
     CExoTimersInternal();
@@ -11,7 +13,7 @@ public:
 
     unsigned int GetLowResolutionTimer();
     // Microseconds, not nanoseconds.
-    unsigned long long GetHighResolutionTimer();
+    uint64_ll_t GetHighResolutionTimer();
 
 private:
     int m_bHighResAvailable;
@@ -27,7 +29,7 @@ public:
     ~CExoTimers();
 
     unsigned int GetLowResolutionTimer();
-    unsigned long long GetHighResolutionTimer();
+    uint64_ll_t GetHighResolutionTimer();
 
 private:
     CExoTimersInternal* m_pInternal;

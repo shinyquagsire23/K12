@@ -93,10 +93,8 @@ public:
     CSWBaseItemArray* m_pBaseItemArray;
 #if KOTOR1
     int            m_aExpTable[21];  // exptable.2da "EXPTABLE"; K1 caps levels at 20
-    unsigned char  _pad94[0x98 - 0x94];
 #else
     int            m_aExpTable[51];  // exptable.2da "EXPTABLE": XP required per level, entries 0-50
-    unsigned char  _pad10c[0x110 - 0x10c];
 #endif
     CSWSpellArray* m_pSpellArray;
     CSWFeat*       m_paFeats;      // one entry per feat.2da row
@@ -119,7 +117,6 @@ public:
     CTwoDimArrays* m_p2DArrays;    // every gameplay 2DA table
     // DiffSettings.2da, indexed [difficulty level][option].
     unsigned char  m_difficultyOptions[5][6];
-    unsigned char  _pad186[0x188 - 0x186];
 
     void    LoadFeatInfo();
     void    LoadSkillInfo();
@@ -190,7 +187,6 @@ public:
     int           m_bOffHandWeaponEquipped;             // off-hand attack flag: 1 means one off-hand attack
     unsigned char m_nCritRangeOffHand;
     unsigned char m_nCritMultiplierOffHand;
-    unsigned char _pad12[0x18 - 0x12];
     // Both lists are walked by count and also indexed by hand number: the first two entries double
     // as fixed per-hand records.
     CExoArrayList<CCombatInformationNode*> m_attackBonusMods;  // "AttackList"

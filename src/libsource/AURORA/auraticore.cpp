@@ -7,6 +7,7 @@
 #include "Vector.h"
 #include "aurglcore.h"
 #include "aurtexman.h"
+#include "aurtexcontrol.h"
 
 
 char cHoloSkinVPARB[] = "!!ARBvp1.0\nPARAM mvMatrix[4] = { state.matrix.modelview[0] };\nPARAM mvpMatrix[4] = { state.matrix.mvp };\nATTRIB vTex0 = vertex.texcoord[0];\nATTRIB vWght = vertex.attrib[1];\nPARAM boneArray[51] = {program.env[18..68] };\nPARAM fogParams = state.fog.params;\nADDRESS A0;\nTEMP vReg4, vReg5, vReg6, vReg7, vReg8, vReg9, vReg10;\nTEMP vReg0, vReg1, vReg2, vReg3;\nTEMP vNormalWorld;\nALIAS vFinalColour = vReg9;\nMUL   vReg0, vertex.attrib[4], program.env[16].zzzz;\nARL   A0.x, vReg0.x;\nDP4   vReg1.x, vertex.position, boneArray[A0.x + 0];\nDP4   vReg1.y, vertex.position, boneArray[A0.x + 1];\nDP4   vReg1.z, vertex.position, boneArray[A0.x + 2];\nDP3   vReg5.x, vertex.normal, boneArray[A0.x + 0];\nDP3   vReg5.y, vertex.normal, boneArray[A0.x + 1];\nDP3   vReg5.z, vertex.normal, boneArray[A0.x + 2];\nARL   A0.x, vReg0.y;\nDP4   vReg2.x, vertex.position, boneArray[A0.x + 0];\nDP4   vReg2.y, vertex.position, boneArray[A0.x + 1];\nDP4   vReg2.z, vertex.position, boneArray[A0.x + 2];\nDP3   vReg6.x, vertex.normal, boneArray[A0.x + 0];\nDP3   vReg6.y, vertex.normal, boneArray[A0.x + 1];\nDP3   vReg6.z, vertex.normal, boneArray[A0.x + 2];\nARL   A0.x, vReg0.z;\nDP4   vReg3.x, vertex.position, boneArray[A0.x + 0];\nDP4   vReg3.y, vertex.position, boneArray[A0.x + 1];\nDP4   vReg3.z, vertex.position, boneArray[A0.x + 2];\nDP3   vReg7.x, vertex.normal, boneArray[A0.x + 0];\nDP3   vReg7.y, vertex.normal, boneArray[A0.x + 1];\nDP3   vReg7.z, vertex.normal, boneArray[A0.x + 2];\nARL   A0.x, vReg0.w;\nDP4   vReg4.x, vertex.position, boneArray[A0.x + 0];\nDP4   vReg4.y, vertex.position, boneArray[A0.x + 1];\nDP4   vReg4.z, vertex.position, boneArray[A0.x + 2];\nDP3   vReg8.x, vertex.normal, boneArray[A0.x + 0];\nDP3   vReg8.y, vertex.normal, boneArray[A0.x + 1];\nDP3   vReg8.z, vertex.normal, boneArray[A0.x + 2];\nMUL   vReg9, vWght.x, vReg1;\nMAD   vReg9, vReg2, vWght.y, vReg9;\nMAD   vReg9, vReg3, vWght.z, vReg9;\nMAD   vReg9, vReg4, vWght.w, vReg9;\nMOV   vReg9.w, program.env[16].w;\nMUL   vReg10, vWght.x, vReg5;\nMAD   vReg10, vReg6, vWght.y, vReg10;\nMAD   vReg10, vReg7, vWght.z, vReg10;\nMAD   vReg10, vReg8, vWght.w, vReg10;\nDP4   result.position.x, mvpMatrix[0], vReg9;\nDP4   result.position.y, mvpMatrix[1], vReg9;\nDP4   result.position.z, mvpMatrix[2], vReg9;\nDP4   result.position.w, mvpMatrix[3], vReg9;\nDP3   vNormalWorld.x, mvMatrix[0], vReg10;\nDP3   vNormalWorld.y, mvMatrix[1], vReg10;\nDP3   vNormalWorld.z, mvMatrix[2], vReg10;\nDP3   vNormalWorld.w, vNormalWorld, vNormalWorld;\nRSQ   vNormalWorld.w, vNormalWorld.w;\nMUL   vNormalWorld, vNormalWorld, vNormalWorld.w;\nDP4   vReg10.x, mvMatrix[0], vReg9;\nDP4   vReg10.y, mvMatrix[1], vReg9;\nDP4   vReg10.z, mvMatrix[2], vReg9;\nMOV   vReg10.w, mvMatrix[3].w;\nDP3\tvReg0.x, vReg10, vReg10;\nRSQ\tvReg0.x, vReg0.x;\nRCP\tvReg0.x, vReg0.x;\nADD\tvReg1.x, -fogParams.y, vReg0.x;\nMUL\tresult.color.secondary.x, vReg1.x, state.fog.params.w;\nMOV\tresult.fogcoord.x, vReg0.x;\nDP4\tvReg0.x, vReg10, program.env[ 92 ];\nDP4\tvReg0.y, vReg10, program.env[ 91 ];\nDP4\tvReg0.z, vReg10, program.env[ 90 ];\nDP4\tvReg0.w, vReg10, program.env[ 89 ];\nMUL\tvReg10, vReg0, program.env[ 16 ].wxwx;\nDP3\tvReg10.w, vReg10, vReg10;\nRSQ\tvReg10.w, vReg10.w;\nRCP\tvReg10.w, vReg10.w;\nMOV\tresult.texcoord[ 1 ].x, vReg10.w;\nMOV\tresult.texcoord[ 1 ].y, vReg0.z;\nMOV   result.texcoord[0], vTex0;\n";
@@ -1381,6 +1382,74 @@ enum {
     kK2PSEnvMap = 117,
 };
 
+#if !KOTOR1 && !defined(K2_MOBILE_OPT)
+extern int enabletexturecontrollers;
+
+// CAurTexture::Bind's controller step (a cycle's frame, procedural water), which the TID-binding
+// family below skips. A controller that re-uploads its image binds it on the active unit, so it runs
+// on the unit the texture goes to, which the caller then binds afresh.
+static void RunTextureController(unsigned int nUnit, CAurTexture* pTex)
+{
+    if (pTex == 0 || !enabletexturecontrollers)
+        return;
+    CAurTextureBasic* pBasic = pTex->GetReferencedTexture()->AsCAurTextureBasic();
+    if (pBasic != 0 && pBasic->m_pController != 0) {
+        ASLgl::glActiveTexture(GL_TEXTURE0 + nUnit);
+        pBasic->m_pController->Control();
+    }
+}
+#endif
+
+#if !KOTOR1 && defined(K2_QOL_BUMPMAPS)
+// The noise ("dirt") modes, which the ARB installer below covers only five of: four families of
+// twelve (plain, desaturated, illuminated, both), each the plain, env-mapped, lightmapped and
+// env-mapped lightmapped arms in subtract, add and multiply. The textures go to units 0..3 in
+// argument order -- the base, then the lightmap and / or the environment map, then the 3D noise
+// texture -- and the program by its mode (kotornoise.* in the shim), 0x1000 added for a noise in model
+// space (RenderNoiseMapped's dirt_worldspace other than 1). False: not a noise mode.
+bool g_bQolNoiseLocal;
+
+static bool EnableNoiseShader(int nShaderID, CAurTexture* pTex0, CAurTexture* pTex1, CAurTexture* pTex2,
+                              CAurTexture* pTex3)
+{
+    static const int kFamilies[4] = { GLRender::kPSNoiseSubtract, GLRender::kPSDesatNoiseSubtract,
+                                      GLRender::kPSIllumNoiseSubtract, GLRender::kPSIllumDesatNoiseSubtract };
+    int nFamily = 0;
+    while (nFamily < 4 && !(nShaderID >= kFamilies[nFamily] && nShaderID < kFamilies[nFamily] + 12))
+        nFamily++;
+    if (nFamily == 4)
+        return false;
+    int nArm = (nShaderID - kFamilies[nFamily]) / 3;   // 0 plain, 1 env map, 2 lightmap, 3 both
+    CAurTexture* apTextures[4] = { pTex0, pTex1, pTex2, pTex3 };
+    int nNoiseUnit = 1 + ((nArm & 1) != 0) + ((nArm & 2) != 0);
+    if (apTextures[nNoiseUnit] == 0)
+        return true;
+    for (int i = 0; i <= nNoiseUnit; i++) {
+        GLRender::SetActiveTexture(i);
+        if (apTextures[i] != 0)
+            apTextures[i]->Bind();
+    }
+    ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+    ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    if (nFamily & 1) {
+        GLRender::PerInstanceColor vDesat = { 0.3f, 0.59f, 0.11f, g_DesatureFactor };
+        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 7, reinterpret_cast<const float*>(&vDesat));
+        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1,
+                                           reinterpret_cast<const float*>(&GLRender::m_ForceSightColor));
+    }
+    if (nFamily & 2) {
+        g_illumShader = true;
+        g_illumShaderValues = GLRender::m_PerInstanceIllumination;
+    }
+    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
+    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, nShaderID + (g_bQolNoiseLocal ? 0x1000 : 0));
+    return true;
+}
+#endif
+
 // ARB fragment-program entry point. One switch on the shader mode installs the whole
 // multi-texture state and a fragment program: which unit carries which texture, the env-map
 // texcoord generators, the cube-map wrap/filter parameters, the program environment constants the
@@ -1394,6 +1463,10 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, kK2PSDefault);
 
+#if !KOTOR1 && defined(K2_QOL_BUMPMAPS)
+    if (EnableNoiseShader(nShaderID, pTex0, pTex1, pTex2, pTex3))
+        return;
+#endif
     switch (nShaderID)
     {
     // Reset to fixed function: bind program 0, drop the ARB state.
@@ -1425,7 +1498,11 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
 
     case kPSFog:
         ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
+#ifdef K2_QOL_BUMPMAPS
+        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, kPSFog);
+#else
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, fogFragmentShaderID);
+#endif
         break;
 
     // One or two plain units, then a colour constant and a program.
@@ -1457,6 +1534,50 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, bumpmapFragmentShaderID);
         break;
 
+#ifdef K2_QOL_BUMPMAPS
+    // The force-sight bump passes, which this installer has no case for: kPSBumpmap's units, the
+    // desaturation constants, and the program by its mode (kotorbump.* in the shim).
+    case kPSFGlowBumpmap:
+    case kPSDesatBumpmap:
+    {
+        tex1on = 1;
+        SetActiveTexture(0);
+        pTex0->Bind();
+        SetActiveTexture(1);
+        pTex1->Bind();
+        SetActiveTexture(2);
+        pTex2->Bind();
+        SetActiveTexture(3);
+        pTex3->Bind();
+        SetActiveTexture(0);
+        PerInstanceColor vDesat = { 0.3f, 0.59f, 0.11f, nShaderID == kPSFGlowBumpmap ? 0.8f : g_DesatureFactor };
+        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 7, reinterpret_cast<const float*>(&vDesat));
+        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, reinterpret_cast<const float*>(&m_ForceSightColor));
+        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
+        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, nShaderID);
+        break;
+    }
+
+    // The force-sight bumpy-shiny passes: the bump map and the environment cube on units 0 and 2,
+    // where kPSBumpyShinyTextures puts them for the shim's program (the ARB program's normalization
+    // cubes on 1..4 and the cube on 5 are normalize() and one sampler there).
+    case kPSFGlowBumpyShiny:
+    case kPSDesatBumpyShiny:
+    {
+        SetActiveTexture(0);
+        pTex0->Bind();
+        SetActiveTexture(2);
+        pTex3->Bind();
+        SetActiveTexture(0);
+        PerInstanceColor vGlow = { 0.3f, 0.59f, 0.11f, nShaderID == kPSFGlowBumpyShiny ? 0.8f : g_DesatureFactor };
+        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 7, reinterpret_cast<const float*>(&vGlow));
+        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, reinterpret_cast<const float*>(&m_ForceSightColor));
+        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
+        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, nShaderID);
+        break;
+    }
+#endif
+
     case kPSNormalmap:
         tex1on = 1;
         ASLgl::glDisable(GL_LIGHTING);
@@ -1482,11 +1603,17 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
     case kPSEnvMapCube:
     case kPSEnvMapFog:
     {
+#if !KOTOR1 && !defined(K2_MOBILE_OPT)
+        RunTextureController(0, pTex0);
+#endif
         int nTID = AurTextureGetTID(pTex0);
         ASLgl::glActiveTexture(GL_TEXTURE0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         ASLgl::glBindTexture(pTex0->IsCubeMap() ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D, nTID);
         ASLgl::glGetError();
+#if !KOTOR1 && !defined(K2_MOBILE_OPT)
+        RunTextureController(2, pTex1);
+#endif
         nTID = AurTextureGetTID(pTex1);
         ASLgl::glActiveTexture(GL_TEXTURE2);
         ASLgl::glEnable(GL_TEXTURE_2D);
@@ -1499,11 +1626,17 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
 
     case kPSBumpyShinyTextures:
     {
+#if !KOTOR1 && !defined(K2_MOBILE_OPT)
+        RunTextureController(0, pTex0);
+#endif
         int nTID = AurTextureGetTID(pTex0);
         ASLgl::glActiveTexture(GL_TEXTURE0);
         ASLgl::glEnable(GL_TEXTURE_2D);
         ASLgl::glBindTexture(pTex0->IsCubeMap() ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D, nTID);
         ASLgl::glGetError();
+#if !KOTOR1 && !defined(K2_MOBILE_OPT)
+        RunTextureController(2, pTex3);
+#endif
         nTID = AurTextureGetTID(pTex3);
         ASLgl::glActiveTexture(GL_TEXTURE2);
         ASLgl::glEnable(GL_TEXTURE_2D);
@@ -2067,6 +2200,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         break;
     }
 
+#ifndef K2_QOL_BUMPMAPS
     case kPSFGlowBumpyShiny:
     {
         MakeLookUpTexture(5.0f);
@@ -2096,6 +2230,7 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, FGlowBumpyShinyFragmentShaderID);
         break;
     }
+#endif
 
     case kPSDesat:
     {
@@ -2204,9 +2339,27 @@ extern bool s_useAlphaTestShader;
 
 static int s_anFragmentStageTID[4];
 
+#ifndef K2_MOBILE_OPT
+extern int enabletexturecontrollers;
+#endif
+
 // Binds pTex on nUnit unless that unit already carries its TID.
 static inline void BindFragmentStage(unsigned int nUnit, CAurTexture* pTex)
 {
+#ifndef K2_MOBILE_OPT
+    // CAurTexture::Bind's controller step (a cycle's frame, procedural water), which this cache
+    // otherwise skips; the controller runs once a frame and moves the TID the bind below reads. A
+    // controller that re-uploads its image binds it on the active unit, so it runs on this stage's
+    // unit, which is then bound afresh.
+    if (pTex != 0 && enabletexturecontrollers) {
+        CAurTextureBasic* pBasic = pTex->GetReferencedTexture()->AsCAurTextureBasic();
+        if (pBasic != 0 && pBasic->m_pController != 0) {
+            ASLgl::glActiveTexture(GL_TEXTURE0 + nUnit);
+            pBasic->m_pController->Control();
+            s_anFragmentStageTID[nUnit] = -1;
+        }
+    }
+#endif
     int nTID = AurTextureGetTID(pTex);
     if (s_anFragmentStageTID[nUnit] != nTID) {
         ASLgl::glActiveTexture(GL_TEXTURE0 + nUnit);
@@ -2229,6 +2382,23 @@ void GLRender::EnableFragmentShaders(int nShaderID, CAurTexture* pTex0, CAurText
         ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
         ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, kPSStandardFog);
         break;
+#ifdef K2_QOL_BUMPMAPS
+    // The PC's lightmapped bump passes (its register-combiner modes 8..12): the bump map, the
+    // normalization cube, the lightmap and the diffuse map on units 0..3, the program by its id
+    // (kotorbump's USE_LMBUMP variant in the shim).
+    case kPSLightmapBumpDiffuse:
+    case kPSLightmapBumpSpecular1:
+    case kPSLightmapBumpSpecular2:
+    case kPSLightmapBumpSpecular4:
+    case kPSLightmapBumpSpecular8:
+        BindFragmentStage(0, pTex0);
+        BindFragmentStage(1, pTex1);
+        BindFragmentStage(2, pTex2);
+        BindFragmentStage(3, pTex3);
+        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
+        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, nShaderID);
+        break;
+#endif
     case kPSBumpmap:
         BindFragmentStage(0, pTex3);
         BindFragmentStage(1, pTex0);

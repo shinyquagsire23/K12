@@ -1,4 +1,5 @@
 #pragma once
+#include "k2stdint.h"
 #include "ClientExoAppInternal.h"
 #include "include/aurbehavior.h"
 #include "nwccreature.h"
@@ -272,7 +273,6 @@ public:
     float m_fStrafe;
     float m_fRoll;
     float m_fSmoothedRoll;
-    char  _pad3c[0x40-0x3c];
 };
 K2_LAYOUT_ASSERT(sizeof(CSWCameraNavigate) == 0x40, "CSWCameraNavigate size drift");
 
@@ -296,7 +296,7 @@ public:
 
     float m_fShakeYaw;
     float m_fShakePitch;
-    long long m_nReserved1;
+    int       m_nReserved1[2];
     int       m_nReserved2;
     float m_fMouseTurn;
     float m_fTurn;
@@ -418,19 +418,18 @@ public:
 
 class CServerExoAppInternal {
 public:
-    char _pad_10008[0x10008];
+    char _pad_10000[0x10000];
+    void*                                  m_pReserved1;
     CServerInfo*                           m_pServerInfo;
     unsigned short                         m_serverMode;
-    char _pad_10018[0x10018-0x10012];
     CVirtualMachineCmdImplementer*          m_pVirtualMachineCommands;
     CSWSMessage*                           m_pSWSMessage;
     int                                    m_forceUpdate;
-    char _pad_10030[0x10030-0x1002c];
     int*                                   m_pPendingAuthIds;
     CExoArrayList<unsigned long long>      m_aShutdownPlayerIds;
-    unsigned long long                     m_nShutdownTimeRemaining;
-    unsigned long long                     m_nShutdownLastTick;
-    unsigned long long                     m_nShutdownGracePeriod;
+    uint64_ll_t                            m_nShutdownTimeRemaining;
+    uint64_ll_t                            m_nShutdownLastTick;
+    uint64_ll_t                            m_nShutdownGracePeriod;
     CNetLayer*                             m_pNetLayer;
     CServerAIMaster*                       m_pServerAIMaster;
     CWorldTimer*                           m_pWorldTimer;
@@ -443,14 +442,12 @@ public:
     CExoLinkedList<CSWSClient>*   m_pPlayerList;
     CExoLinkedList<CSWSClient>*   m_pSysAdminList;
     int                                    m_debugMode;
-    char _pad_100c0[0x100c0-0x100bc];
     CExoLinkedList<unsigned long long>*    m_exclusionList1;
     CExoLinkedList<unsigned long long>*    m_exclusionList2;
     unsigned char                          m_pauseFlags;
     char _pad_100d4[0x100d4-0x100d1];
     int                                    m_doingStartNewModule;
     int                                    m_moveToModulePending;
-    char _pad_100e0[0x4];
     CExoString                             m_moveToModuleString;
     CExoString                             m_moveToModuleStartWaypoint;
     CExoString                             m_sReserved1;
@@ -475,8 +472,8 @@ public:
     unsigned int                           m_tempDeathCheckAccum;
     unsigned int                           m_tempDeathReviveAccum;
     int                                    m_buttonMashCheck;
-    unsigned long long                     m_logHeartbeatInterval;
-    unsigned long long                     m_logHeartbeatLastTime;
+    uint64_ll_t                            m_logHeartbeatInterval;
+    uint64_ll_t                            m_logHeartbeatLastTime;
     CExoArrayList<unsigned int>            m_aCharListRequests;
     CExoLinkedListNode*                    m_pcObjectIterPos;
     CSWGlobalVariableTable           m_globalVariableTable;
@@ -488,11 +485,11 @@ public:
     CSWSModule*                            m_pLastModuleFound;
     unsigned long long                     m_areaCacheId;
     unsigned long long                     m_pCachedArea;
-    unsigned long long                     m_nReserved2;
+    int                                    m_nReserved2;
+    int                                    m_nReserved3;
     unsigned int                           m_autoSaveTimerDay;
     unsigned int                           m_autoSaveTimerLastTime;
     int                                    m_autoSaveTimerFlag;
-    char _pad_1f470[0x4];
     CExoString                             m_saveGameName;
 
     static CServerExoAppInternal* s_pServerExoAppInternal;
@@ -612,7 +609,7 @@ public:
     void ExecuteLoadModule(const CExoString& a);
     int IncludeModuleInSave(const CExoString& moduleName);
     int StoreCurrentModule();
-    unsigned long long GetSystemTimeAsDWORD64();
+    uint64_ll_t GetSystemTimeAsDWORD64();
 #if KOTOR1
     int DebugValidatePath_Point(CSWSArea* a, const Vector& b);
 #else
@@ -620,17 +617,17 @@ public:
 #endif
     void DealWithLoadGameError(unsigned int a);
     int GetLoadMinGlobalRim();
-    void StartShutdownTimer(unsigned long long a, unsigned long long b);
-    int  UpdateShutdownTimer(unsigned long long now);
+    void StartShutdownTimer(uint64_ll_t a, uint64_ll_t b);
+    int  UpdateShutdownTimer(uint64_ll_t now);
     int SendEnteringStartNewModuleMessage();
     void SendStartStallEvent(unsigned int a);
     int SendExitingStartNewModuleMessage(int a);
     void UpdateWindowTitle();
-    int UpdateLogHeartbeatTimer(unsigned long long a);
+    int UpdateLogHeartbeatTimer(uint64_ll_t a);
     int AddPendingAuthorization(unsigned int a);
     int RemovePendingAuthorization(unsigned int a);
     void UpdateClientGameObjects(int a);
-    void UpdateClientGameObjectsForPlayer(CSWSPlayer* a, int b, unsigned long long c);
+    void UpdateClientGameObjectsForPlayer(CSWSPlayer* a, int b, uint64_ll_t c);
     void UpdateClientsForObject(unsigned long long a);
     void MarkUpdateClientsForObject(unsigned long long a);
     int CopyModuleToCurrentGame(const CExoString& src, const CExoString& dst, unsigned short unused);

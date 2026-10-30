@@ -25,9 +25,8 @@ CSWCAnimBaseHead::CSWCAnimBaseHead()
     m_bTextureDataCached = 0;
     m_nTextureCount = 0;
     m_nTextureOffset = 0;
-    m_nTextureData1 = 0;
-    m_nTextureData2 = 0;
-    m_nTextureData3 = 0;
+    for (int i = 0; i < 10; i++)
+        m_anTextureData[i] = 0;
     m_resEnvMap = const_cast<char*>("");
     m_bEnvMapEnabled = 0;
     m_headItemId = OBJECT_INVALID;
@@ -165,7 +164,7 @@ int CSWCAnimBaseHead::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, u
         m_bTextureDataCached = 1;
         m_nTextureCount = static_cast<unsigned char>(nCount);
         m_nTextureOffset = static_cast<unsigned char>(nOffset);
-        memcpy(&m_nTextureData1, paData + nOffset, nCount * sizeof(unsigned short));
+        memcpy(m_anTextureData, paData + nOffset, nCount * sizeof(unsigned short));
     }
     return CSWCAnimBaseTW::ReplaceTexture(sOld, sNew, nCount, paData, bCache, nOffset);
 }
@@ -193,7 +192,7 @@ int CSWCAnimBaseHead::ReplaceTexture(unsigned char which, CResRef const& sOld, C
                 m_bTextureDataCached = nResult;
                 m_nTextureCount = static_cast<unsigned char>(nCount);
                 m_nTextureOffset = static_cast<unsigned char>(nOffset);
-                memcpy(&m_nTextureData1, paData + nOffset, nCount * sizeof(unsigned short));
+                memcpy(m_anTextureData, paData + nOffset, nCount * sizeof(unsigned short));
             }
         }
     }
@@ -210,7 +209,7 @@ int CSWCAnimBaseHead::RestoreTexture()
         if (m_bTextureDataCached)
         {
             CResRef cEmpty = "";
-            ReplaceTexture(ANIM_MODEL_HEAD, cEmpty, m_resTexture, m_nTextureCount, reinterpret_cast<unsigned short*>(&m_nTextureData1), 0,
+            ReplaceTexture(ANIM_MODEL_HEAD, cEmpty, m_resTexture, m_nTextureCount, m_anTextureData, 0,
                            m_nTextureOffset);
         }
         else
@@ -228,7 +227,7 @@ int CSWCAnimBaseHead::RestoreTexture(unsigned char which)
     if (m_bTextureDataCached)
     {
         CResRef cEmpty = "";
-        ReplaceTexture(ANIM_MODEL_HEAD, cEmpty, m_resTexture, m_nTextureCount, reinterpret_cast<unsigned short*>(&m_nTextureData1), 0, m_nTextureOffset);
+        ReplaceTexture(ANIM_MODEL_HEAD, cEmpty, m_resTexture, m_nTextureCount, m_anTextureData, 0, m_nTextureOffset);
         return 1;
     }
     m_pHeadModel->RestoreTexture();

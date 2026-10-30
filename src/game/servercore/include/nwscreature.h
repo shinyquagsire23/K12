@@ -314,7 +314,6 @@ public:
     int                   m_nLastPerceptionTod;
     int                   m_nReserved7;
     int                   m_nReserved8;
-    char                  _pad56c[0x570-0x56c];
     unsigned long long    m_oidLastMineDetected;
     int                   m_nLastMineCheckDay;
     int                   m_nLastMineCheckTod;
@@ -329,17 +328,14 @@ public:
     int                   m_bSkipPartyAIStateUpdate;
     unsigned int          m_nActionQueueUpdateDay;
     unsigned int          m_nActionQueueUpdateTod;
-    char                  _pad5ac[0x5b0-0x5ac];
     CSWActionQueueEntry   m_actionQueue[NUM_ACTION_QUEUE_ENTRIES];
     CSWSCreaturePartyFollowInfo* m_pFollowInfo;
     unsigned char         m_ambientAnimationState;
-    char                  _pad6f9[0x700-0x6f9];
     CExoString            m_sModelType;
     unsigned char         m_detectMode;
     unsigned char         m_stealthMode;
     unsigned char         m_combatMode;
     unsigned char         m_pendingCombatMode;
-    char                  _pad714[0x718-0x714];
     unsigned long long    m_counterSpellTargetId;
     unsigned char         m_silentMoveCount;
     unsigned char         m_nReserved9;
@@ -362,7 +358,6 @@ public:
     unsigned long long    m_attemptedAttackTargetId;
     unsigned long long    m_oidPendingAttackTarget;
     Vector                m_vLastBlockedPos;
-    char                  _pad77c[0x780-0x77c];
     unsigned long long    m_oidGoingToBeAttackedBy;
     unsigned long long    m_oidAttemptedSpellTarget;
     unsigned long long    m_oidSpellTarget;
@@ -396,7 +391,6 @@ public:
     int                   m_aStackDecValue[108];
     int                   m_aStackIncSpell[108];
     int                   m_aStackDecSpell[108];
-    char                  _pade9c[0xea0-0xe9c];
     unsigned long long    m_aStackIncItem[108];
     unsigned long long    m_aStackDecItem[108];
 #endif
@@ -413,9 +407,7 @@ public:
     int                   m_bMovementSpeedLimited;
     unsigned char         m_nVisionFlags;
     unsigned char         m_nState;
-    char                  _pad1586[0x1588-0x1586];
     unsigned int          m_effectSpellId;
-    char                  _pad158c[0x1590-0x158c];
     CExoArrayList<CEffectIconObject*> m_effectIcons;
     unsigned long long    m_oidLastPerceived;
     int                   m_bLastPerceptionHeard;
@@ -428,7 +420,6 @@ public:
     unsigned char         m_nStealthMoveRoll;
     unsigned char         m_nSpotRoll;
     unsigned char         m_nListenRoll;
-    char                  _pad15c4[0x15c8-0x15c4];
     CExoArrayList<CSWVisibilityNode*> m_visibilityList;
     unsigned long long    m_oidInvitedToPartyBy;
     int                   m_bInvitedToParty;
@@ -440,7 +431,6 @@ public:
     int                   m_nLastCastSpellId;
     unsigned char         m_nLastSpellCastClass;
     unsigned char         m_nLastSpellCastMetaType;
-    char                  _pad160e[0x1610-0x160e];
     CExoArrayList<unsigned long long> m_aSpellCastBroadcastList;
     unsigned long long    m_lastSpellItemId;
     int                   m_bSpellChargeSpent;
@@ -468,7 +458,6 @@ public:
 #endif
     int                   m_anTimers[8];
 #if !KOTOR1
-    char                  _pad169c[0x16a0-0x169c];
 #endif
     CSWSCombatRound*      m_pCombatRound;
     CSWSJournal*          m_pJournal;
@@ -480,7 +469,7 @@ public:
     int                   m_inTransit;
     int                   m_bPoisoned;
     int                   m_bDiseased;
-    unsigned long long    m_idPoisonEffect;
+    uint64_ll_t           m_idPoisonEffect;
 #if !KOTOR1  // K1: no components, chemicals, posture byte or stance id
     int                   m_nComponent;
     int                   m_nChemical;
@@ -503,23 +492,20 @@ public:
     char                  _pad1701[0x1704-0x1701];
     int                   m_bDriving;
     int                   m_bJumpPending;
-    char                  _pad170c[0x1710-0x170c];
+    int                   m_nReserved16;
     CExoArrayList<int>*   m_pStandardFactionReputations;
     unsigned long long    m_oidEncounter;
     int                   m_bEncounterSlotReleased;
-    char                  _pad1724[0x1728-0x1724];
     CSWInventory*         m_pInventory;
     CItemRepository*      m_pItemRepository;
     unsigned short        m_nItemIteratorIndex;
     unsigned short        m_nContainerItemIteratorIndex;
-    char                  _pad173c[0x1740-0x173c];
     unsigned long long    m_oidItemIteratorContainer;
     int                   m_nEquippedWeight;
     int                   m_bForcePlayerUpdate;
     int                   m_nEncumbranceState;
     int                   m_bDisguised;
     unsigned short        m_nDisguiseAppearance;
-    char                  _pad175a[0x1760-0x175a];
     CSWSCreatureAppearanceInfo     m_appearance;
     CSWSCreatureStats*    m_pStats;
     int                   m_nReserved13;

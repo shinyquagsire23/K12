@@ -14,6 +14,7 @@
 #include "exoresman.h"
 #include "swguimaininterfacepc2.h"
 #include "clientexoapp.h"
+#include "exostringinline.h"
 
 const int CTlkTable::CUSTOMTOKEN_RESERVED_END = 9;
 const unsigned char CTlkTable::GENDER_MALE = 0;
@@ -555,7 +556,7 @@ int CTlkTable::OpenFile(const CExoString& sPath)
             pToken->m_sName.GetLength());
 #else
         pToken->m_nNameHash = CResGFFFieldIDHash::Hash(pToken->m_sName.CStr(),
-            static_cast<unsigned int>(pToken->m_sName.m_sString != 0 ? strlen(pToken->m_sName.m_sString) : 0));
+            static_cast<unsigned int>(pToken->m_sName.GetLength()));
 #endif
 
         // Insertion sort by name hash (the table is binary-searched).

@@ -74,7 +74,6 @@ struct NWPlayerListItem_st
     CExoLocString m_firstName;
     CExoLocString m_lastName;
     int           m_nIsPrimaryPlayer;
-    char          _pad34[0x38 - 0x34];
 };
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
@@ -182,7 +181,7 @@ CSWSModule::~CSWSModule()
         m_pRes->Release();
 
     while (m_ifoPlayerList.m_pInternal->m_pHead != 0)
-        delete static_cast<NWPlayerListItem_st*>(m_ifoPlayerList.m_pInternal->RemoveHead());
+        delete m_ifoPlayerList.RemoveHead();
 
     CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetAreaByGameObjectID(m_oidArea);
     if (pArea != 0) {
@@ -191,10 +190,10 @@ CSWSModule::~CSWSModule()
     }
 
     while (m_cutSceneList.m_pInternal->m_pHead != 0)
-        delete static_cast<NWModuleCutScene_st*>(m_cutSceneList.m_pInternal->RemoveHead());
+        delete m_cutSceneList.RemoveHead();
 
     while (m_expansionList.m_pInternal->m_pHead != 0)
-        delete static_cast<NWModuleExpansion_st*>(m_expansionList.m_pInternal->RemoveHead());
+        delete m_expansionList.RemoveHead();
 
     RemoveModuleResources(m_sModuleResourceName);
     m_sModuleResourceName = "";
@@ -290,13 +289,13 @@ void CSWSModule::UpdateTime(unsigned int nCalendarDay, unsigned int nTimeOfDay, 
     CExoLinkedList<CSWSClient>* ppPlayerList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pos = ppPlayerList->m_pInternal->m_pHead;
     while (pos != 0) {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayerList->m_pInternal->GetAtPos(pos));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppPlayerList->GetAtPos(pos));
         if (pPlayer != 0) {
             g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerModuleUpdate_Time(
                 pPlayer, nMask, nYear, nMonth, nDayOfMonth, nHour, m_nTimeOfDay,
                 m_nTimeOfDayElapsed);
         }
-        ppPlayerList->m_pInternal->GetNext(pos);
+        ppPlayerList->GetNext(pos);
     }
 }
 
@@ -865,7 +864,7 @@ void CSWSModule::TimeStopSanityCheck()
     CExoLinkedListNode* pos = pList->m_pInternal->m_pHead;
     int bFound = 0;
     while (pos != 0) {
-        unsigned long long objectId = reinterpret_cast<unsigned long long>(pList->m_pInternal->GetAtPos(pos));
+        unsigned long long objectId = reinterpret_cast<unsigned long long>(pList->GetAtPos(pos));
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(objectId);
         bFound = 0;
@@ -876,7 +875,7 @@ void CSWSModule::TimeStopSanityCheck()
                     bFound = 1;
             }
         }
-        pList->m_pInternal->GetNext(pos);
+        pList->GetNext(pos);
         if (pos == 0 || bFound != 0)
             break;
     }
@@ -1684,10 +1683,10 @@ int CSWSModule::GetPrimaryPlayerIndex()
     for (;;)
     {
         NWPlayerListItem_st* pItem =
-            static_cast<NWPlayerListItem_st*>(m_ifoPlayerList.m_pInternal->GetAtPos(pNode));
+            m_ifoPlayerList.GetAtPos(pNode);
         if (pItem->m_nIsPrimaryPlayer == 1)
             return nIndex;
-        m_ifoPlayerList.m_pInternal->GetNext(pNode);
+        m_ifoPlayerList.GetNext(pNode);
         nIndex++;
         if (pNode == 0)
             return -1;
@@ -1706,7 +1705,7 @@ int CSWSModule::GetPlayerIndexInPlayerList(CSWSPlayer* pPlayer)
     for (;;)
     {
         NWPlayerListItem_st* pItem =
-            static_cast<NWPlayerListItem_st*>(m_ifoPlayerList.m_pInternal->GetAtPos(pNode));
+            m_ifoPlayerList.GetAtPos(pNode);
         if (pItem->m_sCommunityName == pPlayer->GetPlayerName())
         {
             CSWSCreature* pCreature =
@@ -1715,7 +1714,7 @@ int CSWSModule::GetPlayerIndexInPlayerList(CSWSPlayer* pPlayer)
                 pItem->m_lastName == pCreature->m_pStats->m_lastName)
                 return nIndex;
         }
-        m_ifoPlayerList.m_pInternal->GetNext(pNode);
+        m_ifoPlayerList.GetNext(pNode);
         if (pNode == 0)
             return -1;
         nIndex++;
@@ -2086,12 +2085,12 @@ void CSWSModule::AddWorldJournalEntry(int nIndex, const CExoString& sName, const
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pEach != 0) {
             if (pEach->GetGameObject() != 0)
                 pMsg->SendServerToPlayerJournalAddWorld(pEach, nIndex, sName, sText, nDay, nTime);
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
 }
 
@@ -2120,13 +2119,13 @@ void CSWSModule::AddWorldJournalEntryStrref(uint64_t nNameStrRef, uint64_t nText
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pEach != 0) {
             if (pEach->GetGameObject() != 0)
                 pMsg->SendServerToPlayerJournalAddWorldStrref(pEach, static_cast<unsigned int>(nNameStrRef), static_cast<unsigned int>(nTextStrRef), nDay,
                                                               nTime);
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
 }
 
@@ -2153,12 +2152,12 @@ void CSWSModule::DeleteWorldJournalEntry(int nIndex)
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pEach != 0) {
             if (pEach->GetGameObject() != 0)
                 pMsg->SendServerToPlayerJournalDeleteWorld(pEach, nIndex);
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
 }
 
@@ -2182,12 +2181,12 @@ void CSWSModule::DeleteWorldJournalEntryStrref(uint64_t nStrRef)
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pEach != 0) {
             if (pEach->GetGameObject() != 0 && pMsg != 0)
                 pMsg->SendServerToPlayerJournalDeleteWorldStrref(pEach, static_cast<unsigned int>(nStrRef));
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
 }
 
@@ -2203,12 +2202,12 @@ void CSWSModule::DeleteWorldJournalAllEntries()
         return;
     CExoLinkedListNode* pNodePos = ppPlayers->m_pInternal->m_pHead;
     while (pNodePos != 0) {
-        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->m_pInternal->GetAtPos(pNodePos));
+        CSWSPlayer* pEach = static_cast<CSWSPlayer*>(ppPlayers->GetAtPos(pNodePos));
         if (pEach != 0) {
             if (pEach->GetGameObject() != 0 && pMsg != 0)
                 pMsg->SendServerToPlayerJournalDeleteWorldAll(pEach);
         }
-        ppPlayers->m_pInternal->GetNext(pNodePos);
+        ppPlayers->GetNext(pNodePos);
     }
 }
 
@@ -2658,11 +2657,11 @@ int CSWSModule::SaveModuleIFOStart(CResGFF* pGFF, CResStruct* pStruct)
     while (pNode != 0)
     {
         NWModuleExpansion_st* pExpansion =
-            static_cast<NWModuleExpansion_st*>(m_expansionList.m_pInternal->GetAtPos(pNode));
+            m_expansionList.GetAtPos(pNode);
         pGFF->AddListElement(&sElement, &list, 0);
         pGFF->WriteFieldCExoLocString(&sElement, pExpansion->m_name, const_cast<char*>("Expansion_Name"));
         pGFF->WriteFieldINT(&sElement, pExpansion->m_nID, const_cast<char*>("Expansion_ID"));
-        m_expansionList.m_pInternal->GetNext(pNode);
+        m_expansionList.GetNext(pNode);
     }
 
     // -- the IFO's own cutscene list --
@@ -2671,11 +2670,11 @@ int CSWSModule::SaveModuleIFOStart(CResGFF* pGFF, CResStruct* pStruct)
     while (pNode != 0)
     {
         NWModuleCutScene_st* pCutScene =
-            static_cast<NWModuleCutScene_st*>(m_cutSceneList.m_pInternal->GetAtPos(pNode));
+            m_cutSceneList.GetAtPos(pNode);
         pGFF->AddListElement(&sElement, &list, 1);
         pGFF->WriteFieldCResRef(&sElement, pCutScene->m_resName, const_cast<char*>("CutScene_Name"));
         pGFF->WriteFieldDWORD(&sElement, pCutScene->m_nID, const_cast<char*>("CutScene_ID"));
-        m_cutSceneList.m_pInternal->GetNext(pNode);
+        m_cutSceneList.GetNext(pNode);
     }
 
     // The fifteen module scripts, in non-monotonic order.

@@ -107,7 +107,7 @@ CSWCProjectile::~CSWCProjectile()
 void CSWCProjectile::ClearBehaviorList()
 {
     while (m_behaviorList.m_pInternal->m_pHead != 0) {
-        CProjectileBehavior* pBehavior = static_cast<CProjectileBehavior*>(m_behaviorList.m_pInternal->RemoveHead());
+        CProjectileBehavior* pBehavior = m_behaviorList.RemoveHead();
         if (pBehavior != 0)
             delete pBehavior;
     }
@@ -163,7 +163,7 @@ void CSWCProjectile::SetBehaviorListHoming()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 #if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
@@ -190,7 +190,7 @@ void CSWCProjectile::SetBehaviorListBallistic()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 #if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
@@ -217,7 +217,7 @@ void CSWCProjectile::SetBehaviorListBurstUp()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 #if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
@@ -244,7 +244,7 @@ void CSWCProjectile::SetBehaviorListBurst()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 #if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
@@ -271,7 +271,7 @@ void CSWCProjectile::SetBehaviorListAccelerating()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 #if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
@@ -298,7 +298,7 @@ void CSWCProjectile::SetBehaviorListLinkedBurstUp()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 #if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
@@ -325,7 +325,7 @@ void CSWCProjectile::SetBehaviorListLinked()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 void CSWCProjectile::SetBehaviorListBounce()
@@ -443,7 +443,7 @@ void CSWCProjectile::SetBehaviorListHighBallistic()
     pBehavior->m_oidTarget = CGameObjectArray::INVALIDOBJID;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 
     pBehavior = new CProjectileBehavior;
     pBehavior->m_nKind = CProjectileBehavior::KIND_HIGH_ARC;
@@ -456,7 +456,7 @@ void CSWCProjectile::SetBehaviorListHighBallistic()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 
     pBehavior = new CProjectileBehavior;
     pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
@@ -468,7 +468,7 @@ void CSWCProjectile::SetBehaviorListHighBallistic()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 void CSWCProjectile::SetBehaviorListTest()
@@ -490,7 +490,7 @@ void CSWCProjectile::SetBehaviorListTest()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 0;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 
     pBehavior = new CProjectileBehavior;
     pBehavior->m_nKind = CProjectileBehavior::KIND_BURST_UP;
@@ -502,7 +502,7 @@ void CSWCProjectile::SetBehaviorListTest()
     pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 9;
     pBehavior->m_fRate = -1.0f;
-    m_behaviorList.m_pInternal->AddTail(pBehavior);
+    m_behaviorList.AddTail(pBehavior);
 }
 
 #include "port/crtapi.h"
@@ -905,7 +905,7 @@ void CSWCProjectile::SetProjectileType(unsigned int nType)
     }
 
     while (m_behaviorList.m_pInternal->m_pHead != 0) {
-        CProjectileBehavior* pBehavior = static_cast<CProjectileBehavior*>(m_behaviorList.m_pInternal->RemoveHead());
+        CProjectileBehavior* pBehavior = m_behaviorList.RemoveHead();
         if (pBehavior != 0)
             delete pBehavior;
     }
@@ -931,7 +931,7 @@ void CSWCProjectile::SetProjectileType(unsigned int nType)
     default: return;
     }
 
-    m_pCurrentBehavior = static_cast<CProjectileBehavior*>(m_behaviorList.m_pInternal->RemoveHead());
+    m_pCurrentBehavior = m_behaviorList.RemoveHead();
     m_desiredPosTimer = m_pCurrentBehavior->m_nTimer;
     m_desiredPosTimer2 = m_pCurrentBehavior->m_nTimer;
     m_desiredPosition = m_pCurrentBehavior->m_vStart;

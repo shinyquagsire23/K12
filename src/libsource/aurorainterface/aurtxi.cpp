@@ -3,7 +3,7 @@
 
 // The helper info block holds a 2-byte resource type followed by the owning helper pointer.
 enum {
-    RESHELPERINFO_SIZE = 10,
+    RESHELPERINFO_SIZE = sizeof(CResHelperInfo),
 };
 
 CAuroraTXI::CAuroraTXI(CResRef resRef, int bRequest) {

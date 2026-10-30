@@ -140,7 +140,6 @@ public:
     int                m_nReserved1;
     int                m_bReturnClosestResult;
     int                m_nClientPathId;
-    char               _pad02c[0x30-0x2c];
     unsigned long long m_oidCreature;
     unsigned long long m_oidGoalObject;
     unsigned long long m_oidIgnoredBlocker;
@@ -154,15 +153,12 @@ public:
     int                m_nStepTolerance;
     unsigned long long m_oidGoalArea;
     CPathfindPos       m_vStartPoint;
-    char               _pad09c[0xa0-0x9c];
     unsigned long long m_oidStartArea;
     int                m_bPointsReversed;
     int                m_bPlotFinished;
     int                m_nWayPointFloats;
-    char               _pad0b4[0xb8-0xb4];
     float*             m_paWayPoints;
     int                m_nRawWayPointFloats;
-    char               _pad0c4[0xc8-0xc4];
     float*             m_paRawWayPoints;
     int                m_nWayPointCursor;
     int                m_bInterAreaPathFound;
@@ -171,7 +167,6 @@ public:
     unsigned long long* m_paInterAreaIds;
     unsigned long long* m_paInterAreaTransitionIds;
     int                m_nTraversedTransitions;
-    char               _pad0f4[0xf8-0xf4];
     unsigned long long* m_paTraversedTransitions;
     unsigned long long m_oidIgnoreDoor;
     int                m_nInterTileCount;
@@ -202,12 +197,10 @@ public:
     Vector             m_vGridTransformA;
     Vector             m_vGridTransformB;
     Vector             m_vGridTransformC;
-    char                 _pad1cc[0x1d0-0x1cc];
     int*                 m_pGridPath;
     int                  m_nGridPathLen;
     float                m_fGridSearchRadius;
     int                  m_nGridStep;
-    int                  m_nReserved9;
     void*                m_pGridSavedTable;
     Vector               m_vGridFrom;
     Vector               m_vGridTo;
@@ -221,7 +214,6 @@ public:
     char               _pad229[0x22c-0x229];
     int                m_nSourcePathPoint;
     int                m_nDestPathPoint;
-    char               _pad234[0x238-0x234];
     int*               m_pPathPointList;
     int                m_nPathPointCount;
     void*              m_pPathPointTable;
@@ -256,7 +248,6 @@ public:
     Vector             m_vWalkDestination;
     unsigned long long m_oidPathTarget;
     Vector             m_vPathTarget;
-    char               _pad324[0x328-0x324];
     unsigned long long m_oidFoundEnemy;
     int                m_nBumpCount;
     int                m_bForceMoveDeadline;

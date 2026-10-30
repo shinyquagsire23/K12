@@ -40,7 +40,6 @@ public:
     unsigned char m_nWeaponFocusBonus;
     signed char   m_nEffectAttackBonus;
     // Real padding: Clear() skips it, and the following int needs the alignment.
-    char  _pad16[0x18 - 0x16];
     int           m_bAutomaticHit;
     int           m_bAutomaticMiss;
 #if !KOTOR1  // K1's record ends here, with no battle-meditation or targeting fields
@@ -179,11 +178,9 @@ public:
     unsigned char m_nDeflectResult;
     unsigned char m_nBaseAttackBonus;
     unsigned char m_nArmourPenalty;
-    char  _pad0e[0x10 - 0x0e];
     int           m_nDeflectTotal;
     unsigned char m_nPowerBonus;
     unsigned char m_nPowerId;
-    char  _pad16[0x18 - 0x16];
     int           m_nStanceBonus;
     int           m_nStanceId;
     unsigned char m_nClassFeat;
@@ -218,7 +215,6 @@ public:
     Vector m_vMissLocation;
     int   m_nDischargeHand;
     short m_anDamage[15];
-    char  _pad4e[0x50 - 0x4e];
     // The same five record types as CSWSCombatAttackData, in the same order.
     CSWSCombatSubAttackAttack  m_attack;
     CSWSCombatSubAttackThreat  m_threat;
@@ -274,12 +270,10 @@ public:
     int   m_bAttackRolled;
     // The attack's scheduled time.
     unsigned short m_nAnimationLength;
-    char  _pad0a[0x10 - 0x0a];
     unsigned long long m_targetObjectId;
     unsigned short m_nReaxnDelay;
     unsigned short m_nReaxnAnimation;
     short m_nReaxnAnimLength;
-    char  _pad1e[0x20 - 0x1e];
     int   m_nMissedBy;
     // The per-damage-type breakdown. The last element is also the base, untyped, damage slot.
     short m_anDamage[15];
@@ -288,7 +282,6 @@ public:
     // Copied into the target's last-attack-mode byte by the on-melee-attacked handlers.
     unsigned char m_nAttackMode;
     unsigned char m_nConcealment;
-    char  _pad45[0x48 - 0x45];
     // Nonzero selects the ranged power-attack feat chains, zero the melee pairs.
     int   m_bRangedAttack;
     int   m_bSneakAttack;
@@ -297,17 +290,14 @@ public:
     int   m_bCoupDeGrace;
     int   m_bCriticalThreat;
     unsigned char m_nReserved1;
-    char  _pad5d[0x60 - 0x5d];
     int   m_bAttackDeflected;
     unsigned char m_nAttackResult;
-    char  _pad65[0x68 - 0x65];
     int   m_nReserved2;
     // The feats.2da row this attack was made with.
     unsigned short m_nFeatId;
     unsigned short m_nSpecialAttackId;
     // Where a missed ranged attack's projectile ends up.
     Vector m_vMissLocation;
-    char  _pad7c[0x80 - 0x7c];
     unsigned long long m_oidAmmoItem;
     CExoString m_sAttackDebugText;
     CExoString m_sDamageDebugText;
@@ -439,11 +429,9 @@ public:
     // Sort key; the queue is kept in ascending timer order.
     int m_nActionTimer;
     unsigned short m_nAnimation;
-    unsigned char _pad06[0x08 - 0x06];
     int  m_nAnimationTime;
     int  m_nNumAttacks;
     unsigned char m_nActionType;
-    unsigned char _pad11[0x18-0x11];
     unsigned long long m_oidTarget;
     int  m_bRetargettable;
     unsigned int  m_nInventorySlot;
@@ -464,7 +452,6 @@ public:
     int  m_nReserved1;
     int  m_nFeatId;
     unsigned char m_nReadyKind;
-    unsigned char _pad71[0x78-0x71];
     unsigned long long m_oidItem;
     // Two separate 4-byte fields.
     int  m_nActivePropertyIndex;
@@ -507,7 +494,6 @@ public:
     ~CSWSCombatRound();
     // Zeroed by the constructor; nothing else touches it.
     int  m_nReserved1;
-    char _pad004[0x008 - 0x004];
     // The round's attack slots. ClearAllAttacks walks only the first five.
     CSWSCombatAttackData m_attacks[7];
     // The feats.2da row ids of the special attacks still owed this round.
@@ -529,7 +515,6 @@ public:
     int  m_nBleedTimer;
     // Set while the round is paused by the object in the pause-source id.
     int  m_bRoundPaused;
-    char _pad_c5c[0xc60 - 0xc5c];
     unsigned long long m_oidPauseSource;
     int  m_nPauseTimer;
     int  m_bInfinitePause;
@@ -547,7 +532,6 @@ public:
     int  m_nParryIndex;
     int  m_nNumAOOs;
     int  m_nNumCleaves;
-    char _pad_c94[0xc98 - 0xc94];
     // A pending target swap: when this is not OBJECT_INVALID the physical-attack action is re-pointed
     // at that object before the swing resolves.
     unsigned long long m_oidPendingTargetSwap;
@@ -559,7 +543,6 @@ public:
     int  m_bonusEffectAttacks;
     // The parry allowance.
     unsigned char m_nParryActions;
-    char _pad_cb9[0xcc0 - 0xcb9];
     // The round's original target id, stamped from StartCombatRound's argument.
     unsigned long long m_oidDodgeTarget;
     CExoLinkedList<CSWSCombatRoundAction>* m_pRoundActionList;
@@ -574,7 +557,6 @@ public:
     // A verbatim copy of the executing entry's action type.
 #if !KOTOR1  // K1 has no copy of the executing action's type
     unsigned char m_nExecutingActionType;
-    char _pad_cf9[0xd00 - 0xcf9];
 #endif
     unsigned long long m_oidAttackTarget;
     unsigned char m_currentAction;

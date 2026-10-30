@@ -26,7 +26,6 @@ struct AttributeData {
     int           m_nSize;
     int           m_nType;
     int           m_nStride;
-    char          _pad0c[4];
     const void*   m_pPointer;
     bool          m_bIsPointer;
 };
@@ -54,6 +53,18 @@ public:
         SHADER_POST2 = 0x2000,
         SHADER_SOFT_SHADOW_COPY = 0x4000, // the port's soft-shadow programs, on kotorpost1.vert
         SHADER_SOFT_SHADOW_BLUR = 0x8000,
+#ifdef K2_QOL_BUMPMAPS
+        // The port's translations of the PC's per-pixel passes, which the port's shaders lacked: the
+        // bump light (kotorbump.vert / .frag), the bump-perturbed reflection (the same, USE_BUMPYSHINY),
+        // the fog laid over a pass drawn unfogged (USE_FOGPASS) and the noise ("dirt") modes
+        // (kotornoise.vert / .frag), their formula in bits 20..21.
+        SHADER_QOL_BUMP = 0x10000,
+        SHADER_QOL_BUMPYSHINY = 0x20000,
+        SHADER_QOL_FOG = 0x40000,
+        SHADER_QOL_NOISE = 0x80000,
+        SHADER_QOL_NOISE_FORMULA_SHIFT = 20,
+        SHADER_QOL_NOISE_LOCAL = 0x400000,   // the noise in model space, not world space
+#endif
     };
     // The program types: the fragment-program ids the engine binds, KOTOR II's GLRender::PixelShader
     // modes of the same number (BASE_LIGHTMAP is the mode between DEFAULT and POST_BLOOM_SOURCE that
@@ -104,6 +115,10 @@ public:
         PROGRAM_SOFT_SHADOW_COPY = 0x102,
         PROGRAM_SOFT_SHADOW_BLUR = 0x103,
     };
+#ifdef K2_QOL_BUMPMAPS
+    // A noise mode's id with this bit: its noise in model space (auraticore.cpp EnableNoiseShader).
+    enum { PROGRAM_QOL_NOISE_LOCAL = 0x1000 };
+#endif
 
     ProgramType(int nType, bool bA, bool bB, bool bC, bool bD);
 
@@ -152,6 +167,10 @@ public:
     void SetLightMaterialData(float* pfData);
     void SetFragmentShaderParams(float* pfParams);
     void SetVertexShaderParams(float* pfParams);
+#ifdef K2_QOL_BUMPMAPS
+    void SetBumpAttributes(AttributeData* pFrame);
+    void SetBumpParams(float* pfParams);
+#endif
 
     int         m_nCameraSerial;
     int         m_nFogSerial;
@@ -165,7 +184,6 @@ public:
     unsigned char m_abAttributeQueried[7];
     unsigned char m_abSamplerQueried[4];
     unsigned char m_abUniformQueried[10];
-    char        _pad1ad[3];
     int         m_anLocations[7];
     int         m_anSamplerUniforms[4];
     int         m_nMatrixUniform;
@@ -179,6 +197,11 @@ public:
     int         m_nVertexShaderUniform;
     int         m_nPreLitColorsUniform;
     int         m_nFlags;
+#ifdef K2_QOL_BUMPMAPS
+    int         m_anBumpLocations[3];   // a_bumpT / a_bumpB / a_bumpN: the tangent frame's rows
+    int         m_nBumpUniform;         // u_bumpParams: the bump light, the camera, the attenuation
+    KotorProgramCachedValue<12> m_bumpCache;
+#endif
 };
 
 template <int N>

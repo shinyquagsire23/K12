@@ -234,8 +234,8 @@ void CServerAIMaster::UpdateState()
             nSlice = nSlice * 60 / 100;
         }
         CServerAIList* pList = &m_lists[i];
-        unsigned long long nBegin = g_pExoBase->m_pTimers->GetHighResolutionTimer();
-        unsigned long long nNow = nBegin;
+        uint64_ll_t nBegin = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+        uint64_ll_t nNow = nBegin;
         int bFirstPass = 1;
         int bExhausted = 0;
         CSWSObject* pLastObject = 0;
@@ -391,17 +391,10 @@ int CServerAIMaster::SetAILevel(CSWSObject* pObj, int level)
 
 void CServerAIMaster::ClearEventQueue()
 {
-    CExoLinkedListInternal* pQueue = m_eventQueue.m_pInternal;
-    CExoLinkedListNode* pNode = pQueue->m_pHead;
-    while (pNode != 0) {
-        void* pEvent = pQueue->RemoveHead();
-        CServerAIEventNode* pEvt = static_cast<CServerAIEventNode*>(pEvent);
-        DeleteEventData(pEvt->m_nType, pEvt->m_pData);
-        if (pEvent != 0) {
-            operator delete(pEvent);
-        }
-        pQueue = m_eventQueue.m_pInternal;
-        pNode = pQueue->m_pHead;
+    while (m_eventQueue.m_pInternal->m_pHead != 0) {
+        CServerAIEventNode* pEvent = m_eventQueue.RemoveHead();
+        DeleteEventData(pEvent->m_nType, pEvent->m_pData);
+        delete pEvent;
     }
 }
 
@@ -411,19 +404,15 @@ int CServerAIMaster::GetPendingEvent(unsigned int* pA, unsigned int* pB, unsigne
     if (m_eventQueue.m_pInternal->m_pHead == 0) {
         return 0;
     }
-    unsigned int* pEvent = static_cast<unsigned int*>(m_eventQueue.m_pInternal->RemoveHead());
-    CServerAIEventNode* pEvt = reinterpret_cast<CServerAIEventNode*>(pEvent);
-    *pA = pEvent[0];
-    *pB = pEvent[1];
-    *pC = pEvt->m_oidCaller;
-    *pD = pEvt->m_oidObject;
-    *pType = pEvent[6];
-    *ppData = pEvt->m_pData;
-    pEvent[8] = 0;
-    pEvent[9] = 0;
-    if (pEvent != 0) {
-        operator delete(pEvent);
-    }
+    CServerAIEventNode* pEvent = m_eventQueue.RemoveHead();
+    *pA = pEvent->m_nTimeDay;
+    *pB = pEvent->m_nTimeOfDay;
+    *pC = pEvent->m_oidCaller;
+    *pD = pEvent->m_oidObject;
+    *pType = pEvent->m_nType;
+    *ppData = pEvent->m_pData;
+    pEvent->m_pData = 0;
+    delete pEvent;
     return 1;
 }
 
@@ -651,10 +640,10 @@ int CServerAIMaster::SaveEventQueue(CResGFF* pGFF, CResStruct* pStruct)
         CExoLinkedListNode* pNode = m_eventQueue.m_pInternal->m_pHead;
         while (pNode != 0) {
             CServerAIEventNode* pEvent =
-                static_cast<CServerAIEventNode*>(m_eventQueue.m_pInternal->GetAtPos(pNode));
+                m_eventQueue.GetAtPos(pNode);
             pGFF->AddListElement(&nodeStruct, &list, GFF_STRUCT_ID_EVENT_NODE);
             pEvent->SaveNode(pGFF, &nodeStruct);
-            m_eventQueue.m_pInternal->GetNext(pNode);
+            m_eventQueue.GetNext(pNode);
         }
     }
     return 1;
@@ -671,7 +660,7 @@ int CServerAIMaster::LoadEventQueue(CResGFF* pGFF, CResStruct* pStruct)
             CServerAIEventNode* pEvent = new CServerAIEventNode();
             pGFF->GetListElement(&nodeStruct, &list, i);
             if (pEvent->LoadNode(pGFF, &nodeStruct) != 0) {
-                m_eventQueue.m_pInternal->AddTail(pEvent);
+                m_eventQueue.AddTail(pEvent);
             } else {
                 operator delete(pEvent);
             }

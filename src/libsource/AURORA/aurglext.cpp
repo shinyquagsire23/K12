@@ -131,7 +131,7 @@ int AurBumpyShinyAvailable()
                           | GL_ARB_VERTEX_PROGRAM_BIT | ATI_FRAGMENT_SHADER_BIT) & existingextensions)
                         == (ARB_MULTITEXTURE_BIT | EXT_BGRA_BIT | EXT_TEXTURE_CUBE_MAP_BIT
                             | GL_ARB_VERTEX_PROGRAM_BIT | ATI_FRAGMENT_SHADER_BIT))
-                        & useatifragmentshaders & usearbvertexprograms;
+                        & usearbvertexprograms & useatifragmentshaders;
     }
     return returnval;
 }

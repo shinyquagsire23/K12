@@ -3,7 +3,7 @@
 
 // This wrapper caches nothing in the resource-helper block, so it is just <nResType:2><pResHelper:8>.
 enum {
-    RESHELPERINFO_SIZE = 10,
+    RESHELPERINFO_SIZE = sizeof(CResHelperInfo),
 };
 
 CAuroraModelX::CAuroraModelX(CResRef resRef, int bRequest) {

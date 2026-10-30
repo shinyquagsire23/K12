@@ -34,5 +34,4 @@ public:
 
     int  m_doorType;
     char m_doorState[8];
-    unsigned char _padb4[4];
 };

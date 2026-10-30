@@ -201,6 +201,11 @@ int main(int argc, char** argv)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+#ifdef K2_QOL_BUMPMAPS
+    // Destination alpha: the bumpy-shiny pass weights its reflection by 1 - the base pass's alpha
+    // (RenderEMBM's InvDstAlpha / One), as the PC's 32-bit modes had.
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+#endif
 
     char cmdline[1024] = "";
     for (int i = 1; i < argc; ++i) {

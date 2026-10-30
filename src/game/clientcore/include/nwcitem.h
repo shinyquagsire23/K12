@@ -25,7 +25,6 @@ public:
 
     int           m_nBaseArmorClass;
     unsigned char m_nMaterialClass;
-    unsigned char _pad165[0x168 - 0x165];
     int           m_bIdentified;
     int           m_bStolen;
     unsigned char m_nModelVariation;
@@ -49,17 +48,14 @@ public:
     int           m_bInContainer;
     unsigned short m_anPropertyUsesLeft[8];
     unsigned char  m_nSpellPropertyIndex;
-    unsigned char  _pad1dd[0x1e0 - 0x1dd];
     int           m_nCost;
     int           m_nStackSize;
     int           m_bCanUse;
-    unsigned char _pad1ec[0x1f0 - 0x1ec];
     CExoString    m_sDisplayName;
     Gob*          m_pVisualEffectGob;
     int           m_bVisualEffectLoaded;
     int           m_bPowered;
     int           m_nReserved5;
-    unsigned char _pad214[0x218 - 0x214];
     CExoSoundSource* m_pPropertySound;
 
     // nBaseItem is a baseitems.2da row index.

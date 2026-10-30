@@ -144,7 +144,7 @@ int CSWCArea::GetRoomIndex(const Vector& pos, int a)
 void CSWCArea::EmptyCAurObjectToHitCheckIgnoreList()
 {
     while (m_hitCheckIgnoreList.m_pInternal->m_pHead != 0)
-        m_hitCheckIgnoreList.m_pInternal->RemoveHead();
+        m_hitCheckIgnoreList.RemoveHead();
 }
 
 void CSWCArea::AddCAurObjectToHitCheckIgnoreList(CAurObject* pObject)

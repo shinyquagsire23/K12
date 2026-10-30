@@ -23,14 +23,11 @@ public:
 
     unsigned char       m_nDataType;
     unsigned char       m_nCastTargetType;
-    char                _pad02[0x8 - 0x2];
     unsigned long long  m_attackerObjectId;
     unsigned short      m_nAnimationLength;
     unsigned short      m_nTotalDamage;
     unsigned char       m_nAttackResult;
-    char                _pad15[0x18 - 0x15];
     unsigned int        m_nReserved1;
-    char                _pad1c[0x20 - 0x1c];
     unsigned long long  m_weaponObjectId;
     struct {
         unsigned short  m_nReaxnDelay;
@@ -53,7 +50,6 @@ public:
     }                   m_spellGroup;
     CSWCCombatAttackData* m_pNext;
     float               m_fAnimationSpeed;
-    char                _pad5c[0x60 - 0x5c];
 
     // Scalar members copy one at a time, the grouped runs as whole aggregates, in this order.
     CSWCCombatAttackData& operator=(const CSWCCombatAttackData& o) {
@@ -120,7 +116,6 @@ struct CCAppearanceCore {
     unsigned char  m_bTypeVariant;
     unsigned char  m_bTypeNumber;
     unsigned short m_aBodyParts[6];
-    unsigned char  _pad0e[0x10-0x0e];
     unsigned long long m_oidHeadItem;
     unsigned int   m_bArmorEquipped;
     unsigned short m_nAppearanceId;
@@ -136,7 +131,7 @@ struct CCAppearanceCore {
     unsigned char  _pad27[0x34-0x27];
     unsigned int   m_bUseBackupHead;
     unsigned char  m_race;
-    unsigned char  _pad39[0x40-0x39];
+    int            m_nReserved1;
 };
 struct CCAppearanceInfo { CCAppearanceCore core; };
 
@@ -201,7 +196,6 @@ public:
     int            m_nReserved2;
     int            m_nRoundTimer;
     int            m_nWeaponOverlayTimer;
-    char           _pad1ec[0x1f0-0x1ec];
     Gob*           m_pReserved3;
     Gob*           m_aSpecialAttackGobs[4];
     Gob*                m_pMonkVisuals;
@@ -210,7 +204,6 @@ public:
     CExoSoundSource* m_pLoopingCreatureSound;
     int            m_bLoopingSoundStarted;
     short          m_nReserved3;
-    char           _pad236[0x238-0x236];
     int            m_bPlot;
     int            m_nReserved4;
     int            m_bDetectMode;
@@ -224,7 +217,6 @@ public:
     int            m_bVisibilityEffectApplied;
     int            m_nPlayerInfoExtra;
     int            m_bMovementSpeedLimited;
-    char           _pad26c[0x270-0x26c];
     Vector*        m_pWayPoints;
     void*          m_pCurrentWayPoint;
     Vector         m_vMovingOrientation;
@@ -235,7 +227,6 @@ public:
     unsigned char  m_commandTag;
     unsigned char  m_appliedCommandTag;
     unsigned char  m_nClientPathId;
-    char           _pad2ad[0x2b0-0x2ad];
     int            m_bServerWayPoints;
     float          m_fMoveSpeedScale;
     float          m_fWayPointSpeed;
@@ -244,7 +235,6 @@ public:
     float          m_fRunRate;
     int            m_bHasWayPointSpeed;
     unsigned char  m_creatureType;
-    char           _pad2d5[0x2d8-0x2d5];
     CSWCCreatureAppearance* m_pCreatureAppearance;
 #if KOTOR1
     unsigned long long m_aEquippedItemIds[18];
@@ -266,13 +256,10 @@ public:
     int            m_blurWeapon;
     unsigned short m_nAIStateFlags;
     unsigned char  m_nAIStateAction;
-    char           _pad407[0x408-0x407];
     unsigned short m_nActivityFlags;
-    char           _pad40a[0x410-0x40a];
     unsigned long long m_oidCombatTarget;
     unsigned char  m_nReputation;
     CResRef        m_resReserved1;
-    char           _pad429[0x430-0x429];
     CSWCSpellCastVisual* m_pSpellCastVisual;
     unsigned long long m_lockOrientationObjectId;
     CSWCCreatureStats* m_pStats;
@@ -285,17 +272,14 @@ public:
     int            m_nAppearanceRequestTimer;
     int            m_bCameraReattachPending;
     int            m_bCameraFindClearView;
-    char           _pad46c[0x470-0x46c];
     CCAppearanceInfo m_appearanceInfo;
     CSWCAnimBase*  m_pNewAnimBase;
     float          m_fPendingMoveSpeedScale;
-    char           _pad4bc[0x4c0-0x4bc];
     CExoArrayList<CSWVisibilityNode*> m_visibilityList;
     CSoundSet*     m_pSoundSet;
     int            m_bDisguised;
     int            m_bCommandable;
     int            m_bExcited;
-    char           _pad4e4[0x4e8-0x4e4];
     unsigned long long m_aLookAtTargetIds[4];
     unsigned short m_nAppearanceId;
     char           _pad50a[0x50c-0x50a];
@@ -313,7 +297,6 @@ public:
     int            m_nSWAnimation;
     int            m_attackIndex;
     int            m_lastAttackIndex;
-    char           _pad54c[0x550-0x54c];
     unsigned long long m_thrownLightsaber;
     int            m_bEquippedItemsHidden;
     int            m_bHeadItemHidden;
@@ -322,10 +305,8 @@ public:
     int            m_bOverrideLightsaberState;
     unsigned long long m_oidBodyBag;
     unsigned char  m_bRunning;
-    char           _pad571[0x578-0x571];
     unsigned long long m_lookAtTargetId;
     int            m_nForcedAttackAnimation;
-    char           _pad584[0x588-0x584];
     CallBack*      m_aAnimationCallbacks[17];
     CExoSoundSource* m_pRollingFootstepSound;
     float          m_rollingFootstepVariance;
@@ -691,7 +672,6 @@ public:    int                m_bPlayerCharacter;
     int                m_bFactionLeader;
     int                m_bHasSelectable;
 
-    char               _pad14[0x18 - 0x14];
     unsigned long long m_objectId;
     CExoString         m_sName;
 

@@ -17,7 +17,6 @@ public:
 
     int m_nId;  // the id handed back to script when this pattern matches
 
-    unsigned char _pad04[0x08 - 0x04];
 
     // The substrings captured by the last successful match, owned here. Element 0 is the whole
     // match, which never reaches script.
@@ -25,7 +24,6 @@ public:
 
     // When clear, both the pattern and the subject text are lower-cased first.
     int           m_bCaseSensitive;
-    unsigned char _pad1c[0x20 - 0x1c];
 
     // The compiled match graph, allocated by ParseString and owned here.
     CSWSExpressionList* m_pList;
@@ -111,7 +109,6 @@ public:
     // The subject position the match had reached when it last left this node; restored on backtracking,
     // and read after a successful match to cut the subject into captures.
     int                 m_nPos;
-    char                _pad0c[0x10 - 0x0c];
     CSWSExpressionNode* m_pNext;
     CExoString          m_sText;      // the literal text, and the only non-trivial member
     CSWSExpressionNode* m_pAlternate; // head of the alternate chain, valid for NODE_ALTERNATION

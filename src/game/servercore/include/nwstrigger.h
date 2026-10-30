@@ -81,14 +81,11 @@ public:
     CExoString    m_linkedTo;
     CExoString    m_linkedToModule;
     unsigned char m_linkedToFlags;
-    unsigned char _pad361[0x368 - 0x361];
     CExoString    m_scriptSlots[7];
     CExoString    m_keyName;
     int           m_nGeomVertCount;
-    unsigned char _pad3ec[0x3f0 - 0x3ec];
     Vector*       m_pGeomVerts;
     int           m_nGeomVertCount2;
-    unsigned char _pad3fc[0x400 - 0x3fc];
     Vector*       m_pGeomVerts2;
     int           m_nGeomIndexCount;
     int*          m_pGeomIndices;
@@ -115,7 +112,6 @@ public:
 #endif
     float         m_fHighlightHeight;
 #if !KOTOR1
-    unsigned char _pad474[0x478 - 0x474];
 #endif
     unsigned long long m_creatorId;
     float m_fBoundsMinX;

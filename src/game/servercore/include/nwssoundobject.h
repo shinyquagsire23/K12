@@ -100,11 +100,9 @@ public:
     int   m_hours;
     float m_fixedVariance;
     unsigned char m_generatedType;
-    unsigned char _pad355[0x358 - 0x355];
     int   m_randomPosition;
     float m_randomRangeX;
     float m_randomRangeY;
-    unsigned char _pad364[0x368 - 0x364];
     CExoArrayList<CResRef> m_sounds;
     int   m_interval;
     int   m_intervalVrtn;

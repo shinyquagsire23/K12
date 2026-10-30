@@ -38,9 +38,7 @@ public:
     unsigned char     m_nFlags;
 #if KOTOR1  // K1's slot index is a single byte right after the flags
     unsigned char     m_nUpgradeRow;
-    char              _pad25e[2];
 #else
-    char              _pad27d[0x280 - 0x27d];
     int               m_nUpgradeRow;
 #endif
     CSWGuiBorder  m_borderFrame;
@@ -157,12 +155,10 @@ public:
     CSWGuiListBox m_lbInvItems;
     CSWGuiListBox m_lbDescription;
 
-    unsigned int m_nReserved2;
-    unsigned int m_nReserved3;
+    void* m_pReserved1;
     float m_fReserved1;
     int m_nComponent;
     int m_nReserved4;
-    char m_aReserved1[0x46f8 - 0x46f4];
     unsigned long long m_oidStore;
     unsigned long long m_oidPlayer;
     // min(GetSkillRank(Treat Injury) / 20.0f, 1.0f), computed by the constructor.
@@ -172,7 +168,7 @@ public:
     CSWSStore* m_pStore;
     int m_nCreateFilter;
     int m_bCreateMode;
-    char m_aReserved2[0x4730 - 0x4728];
+    char m_aReserved2[4];
 };
 
 #if !KOTOR1  // K1's GUI base classes are smaller, so the K1 size is not derived from this one
@@ -267,7 +263,7 @@ public:
     // Always 0: only the constructor and OnPanelRemoved write it, so the == 1 (3D_MODEL_LS) and
     // == 4 branches carried over from CSWGuiUpgrade::m_nMenuType never run.
     unsigned char m_nMenuType;
-    char          _pad5b4a[0x5b50 - 0x5b4a];
+    int           m_nReserved1;
     // m_pItemSlot is the owned in-flight copy of m_pItem.
     CSWSItem*     m_pItem;
     CSWSItem*     m_pItemSlot;
@@ -340,7 +336,7 @@ public:
     CSWGuiButton m_btnBack;
     unsigned char  m_bItemsOpen;
     unsigned char  m_nMenuType;
-    char           _pad3ea2[6];
+    int            m_nReserved1;
     CSWSItem*      m_pItem;
     CSWSItem*      m_pItemSlot;
     CExoArrayList<CSWSItem*> m_lstItemsAddedToRepo;
@@ -348,7 +344,6 @@ public:
     CSWSItem*      m_apaItems[4];
     CExoString     m_sCaption[4];
     unsigned char  m_anUpgradeRow[4];
-    char           _pad3f3c[4];
     C2DA*          m_pUpgradeC2DA;
     C2DA*          m_pUpgradeC2DA2;
     CSWGuiControl*         m_pActive;
@@ -389,7 +384,7 @@ public:
     unsigned char  m_bItemsOpen;
     // Selects which set of upgrade slots UpdateItems fills.
     unsigned char  m_nMenuType;
-    char           _pad530a[0x5310 - 0x530a];
+    int            m_nReserved1;
     // m_pItem is server-side and not owned; m_pItemSlot is owned and deleted by the destructor.
     CSWSItem*      m_pItem;
     CSWSItem*      m_pItemSlot;
@@ -517,12 +512,11 @@ public:
     // "it came from the second slot of the pair", bit 2 "the pair is the high one". FinishUpgrading
     // dispatches on bits 1-2.
     unsigned char m_nUnequipFlags;
-    char          _pad117a[0x1180 - 0x117a];
     // The item unequipped from the other slot of the pair, or the invalid id.
     unsigned long long m_otherItemObjId;
 #if !KOTOR1  // K1's m_pItem follows m_otherItemObjId directly
     int           m_bOpenedForItem;
-    char          _pad118c[0x1198 - 0x118c];
+    void*         m_pReserved1;
 #endif
     // The item being upgraded, NULL meaning none.
     CSWSItem*     m_pItem;
@@ -618,7 +612,6 @@ public:
     char          _pad21b8[0x21c8 - 0x21b8];
     // The selected filter index, compared against 0..4.
     int           m_nFilter;
-    char          _pad21cc[0x21d0 - 0x21cc];
     // Deleted by the destructor; its own constructor is handed the GUI manager only.
     CSWGuiUpgradeItemSelect* m_pUpgradeItemSelect;
     unsigned long long m_nReserved1;

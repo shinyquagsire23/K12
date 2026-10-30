@@ -5,6 +5,7 @@
 
 #include "port/libcstring.h"
 #include "port/crtapi.h"
+#include "exostringinline.h"
 
 // The initial capacity of each table InitializeForWriting allocates, and the first step each one
 // grows by when full.
@@ -346,7 +347,7 @@ unsigned int CResGFF::ByteSwap(unsigned int n)
     return n;
 }
 
-unsigned long long CResGFF::ByteSwap64(unsigned long long n)
+uint64_ll_t CResGFF::ByteSwap64(uint64_ll_t n)
 {
     ::ByteSwap(&n);
     return n;
@@ -1518,14 +1519,14 @@ float CResGFF::ReadFieldFLOAT(CResStruct* pStruct, char* sLabel, int& bSuccess, 
     return defValue;
 }
 
-unsigned long long CResGFF::ReadFieldDWORD64(CResStruct* pStruct, char* sLabel, int& bSuccess, unsigned long long defValue)
+uint64_ll_t CResGFF::ReadFieldDWORD64(CResStruct* pStruct, char* sLabel, int& bSuccess, uint64_ll_t defValue)
 {
     if (pStruct != 0 && sLabel != 0) {
         unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
         if (pFieldRef.m_p != 0) {
-            union { unsigned int nType; unsigned long long v; } tmp;
+            union { unsigned int nType; uint64_ll_t v; } tmp;
             CResGFFField field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
@@ -1533,13 +1534,13 @@ unsigned long long CResGFF::ReadFieldDWORD64(CResStruct* pStruct, char* sLabel, 
         if (pField != 0) {
 #endif
 #if !KOTOR1
-            union { unsigned int nType; unsigned long long v; } tmp;
+            union { unsigned int nType; uint64_ll_t v; } tmp;
 #endif
             tmp.nType = pField->nType;
             ::ByteSwap(&tmp.nType);
             if (tmp.nType == 6) {
                 unsigned int nSize;
-                unsigned long long* pData = static_cast<unsigned long long*>(GetDataField(pField, nSize));
+                uint64_ll_t* pData = static_cast<uint64_ll_t*>(GetDataField(pField, nSize));
                 if (pData != 0 && nSize > 7) {
                     bSuccess = 1;
                     tmp.v = *pData;
@@ -1554,7 +1555,7 @@ unsigned long long CResGFF::ReadFieldDWORD64(CResStruct* pStruct, char* sLabel, 
 }
 
 #if KOTOR1
-int64_t CResGFF::ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSuccess, int64_t defValue)
+int64_ll_t CResGFF::ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSuccess, int64_ll_t defValue)
 #else
 long long CResGFF::ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSuccess, long long defValue)
 #endif
@@ -1564,7 +1565,7 @@ long long CResGFF::ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSucce
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
         if (pFieldRef.m_p != 0) {
-            union { unsigned int nType; unsigned long long v; } tmp;
+            union { unsigned int nType; uint64_ll_t v; } tmp;
             CResGFFField field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
@@ -1572,13 +1573,13 @@ long long CResGFF::ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSucce
         if (pField != 0) {
 #endif
 #if !KOTOR1
-            union { unsigned int nType; unsigned long long v; } tmp;
+            union { unsigned int nType; uint64_ll_t v; } tmp;
 #endif
             tmp.nType = pField->nType;
             ::ByteSwap(&tmp.nType);
             if (tmp.nType == 7) {
                 unsigned int nSize;
-                unsigned long long* pData = static_cast<unsigned long long*>(GetDataField(pField, nSize));
+                uint64_ll_t* pData = static_cast<uint64_ll_t*>(GetDataField(pField, nSize));
                 if (pData != 0 && nSize > 7) {
                     bSuccess = 1;
                     tmp.v = *pData;
@@ -1599,7 +1600,7 @@ double CResGFF::ReadFieldDOUBLE(CResStruct* pStruct, char* sLabel, int& bSuccess
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
         if (pFieldRef.m_p != 0) {
-            union { unsigned int nType; unsigned long long v; double d; } tmp;
+            union { unsigned int nType; uint64_ll_t v; double d; } tmp;
             CResGFFField field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
@@ -1607,13 +1608,13 @@ double CResGFF::ReadFieldDOUBLE(CResStruct* pStruct, char* sLabel, int& bSuccess
         if (pField != 0) {
 #endif
 #if !KOTOR1
-            union { unsigned int nType; unsigned long long v; double d; } tmp;
+            union { unsigned int nType; uint64_ll_t v; double d; } tmp;
 #endif
             tmp.nType = pField->nType;
             ::ByteSwap(&tmp.nType);
             if (tmp.nType == 9) {
                 unsigned int nSize;
-                unsigned long long* pData = static_cast<unsigned long long*>(GetDataField(pField, nSize));
+                uint64_ll_t* pData = static_cast<uint64_ll_t*>(GetDataField(pField, nSize));
                 if (pData != 0 && nSize > 7) {
                     bSuccess = 1;
                     tmp.v = *pData;
@@ -2783,7 +2784,7 @@ int CResGFF::WriteFieldFLOAT(CResStruct* pStruct, float value, char* sLabel)
     return 0;
 }
 
-int CResGFF::WriteFieldDWORD64(CResStruct* pStruct, unsigned long long value, char* sLabel)
+int CResGFF::WriteFieldDWORD64(CResStruct* pStruct, uint64_ll_t value, char* sLabel)
 {
     if (pStruct != 0 && sLabel != 0) {
         if (m_bResourceBacked != 0) {
@@ -2798,12 +2799,12 @@ int CResGFF::WriteFieldDWORD64(CResStruct* pStruct, unsigned long long value, ch
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 6));
         if (pField != 0) {
 #endif
-            unsigned long long* pData = static_cast<unsigned long long*>(AddDataField(NEW_DATA_OFFSET, 0, 8));
+            uint64_ll_t* pData = static_cast<uint64_ll_t*>(AddDataField(NEW_DATA_OFFSET, 0, 8));
             if (pData != 0) {
                 union {
                     unsigned int nOff;
-                    unsigned long long v;
-                    volatile unsigned long long vv;
+                    uint64_ll_t v;
+                    volatile uint64_ll_t vv;
                 } tmp;
                 tmp.nOff = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData);
                 ::ByteSwap(&tmp.nOff);
@@ -2823,12 +2824,12 @@ int CResGFF::WriteFieldDWORD64(CResStruct* pStruct, unsigned long long value, ch
 }
 
 #if KOTOR1
-int CResGFF::WriteFieldINT64(CResStruct* pStruct, int64_t value, char* sLabel)
+int CResGFF::WriteFieldINT64(CResStruct* pStruct, int64_ll_t value, char* sLabel)
 #else
 int CResGFF::WriteFieldINT64(CResStruct* pStruct, long long value, char* sLabel)
 #endif
 {
-    union { unsigned int nOff; unsigned long long v; } tmp;
+    union { unsigned int nOff; uint64_ll_t v; } tmp;
     volatile long long nData __attribute__((unused)) = value;   // never read; the store is intentional
     if (pStruct != 0 && sLabel != 0) {
         if (m_bResourceBacked != 0) {
@@ -2843,7 +2844,7 @@ int CResGFF::WriteFieldINT64(CResStruct* pStruct, long long value, char* sLabel)
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 7));
         if (pField != 0) {
 #endif
-            unsigned long long* pData = static_cast<unsigned long long*>(AddDataField(NEW_DATA_OFFSET, 0, 8));
+            uint64_ll_t* pData = static_cast<uint64_ll_t*>(AddDataField(NEW_DATA_OFFSET, 0, 8));
             if (pData != 0) {
                 tmp.nOff = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData);
                 ::ByteSwap(&tmp.nOff);
@@ -2851,7 +2852,7 @@ int CResGFF::WriteFieldINT64(CResStruct* pStruct, long long value, char* sLabel)
 #if KOTOR1
                 pFieldRef.Set(field);
 #endif
-                tmp.v = static_cast<unsigned long long>(value);
+                tmp.v = static_cast<uint64_ll_t>(value);
                 ::ByteSwap(&tmp.v);
                 nData = static_cast<long long>(tmp.v);
                 *pData = tmp.v;
@@ -2877,16 +2878,16 @@ int CResGFF::WriteFieldDOUBLE(CResStruct* pStruct, double value, char* sLabel)
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 9));
         if (pField != 0) {
 #endif
-            unsigned long long* pData = static_cast<unsigned long long*>(AddDataField(NEW_DATA_OFFSET, 0, 8));
+            uint64_ll_t* pData = static_cast<uint64_ll_t*>(AddDataField(NEW_DATA_OFFSET, 0, 8));
             if (pData != 0) {
 #if KOTOR1
                 pField->nDataOrDataOffset = ByteSwap(static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData));
                 pFieldRef.Set(field);
-                union { unsigned long long v; double d; } tmp;
+                union { uint64_ll_t v; double d; } tmp;
                 tmp.d = value;
                 WriteAligned(pData, ByteSwap64(tmp.v));
 #else
-                union { unsigned int nOff; unsigned long long v; double d; } tmp;
+                union { unsigned int nOff; uint64_ll_t v; double d; } tmp;
                 tmp.nOff = static_cast<unsigned int>(reinterpret_cast<unsigned char*>(pData) - m_pFieldData);
                 ::ByteSwap(&tmp.nOff);
                 pField->nDataOrDataOffset = tmp.nOff;
@@ -2960,7 +2961,7 @@ int CResGFF::WriteFieldCExoString(CResStruct* pStruct, const CExoString& value, 
 #if KOTOR1
             unsigned int nLen = static_cast<unsigned int>(value.GetLength());
 #else
-            unsigned int nLen = value.m_sString != 0 ? static_cast<unsigned int>(strlen(value.m_sString)) : 0;
+            unsigned int nLen = value.GetLength();
 #endif
             unsigned int* pData = static_cast<unsigned int*>(AddDataField(NEW_DATA_OFFSET, 0, nLen + 4));
             if (pData != 0) {

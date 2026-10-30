@@ -40,13 +40,13 @@ CExoInputInternal::~CExoInputInternal()
     // The repeat-timer list nodes belong to the member's own destructor; the records do not.
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
     while (pNode != 0) {
-        CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+        CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
         if (pRec != 0)
             ::operator delete(pRec);
-        m_repeatList.m_pInternal->GetNext(pNode);
+        m_repeatList.GetNext(pNode);
     }
     while (m_mouseEventList.m_pInternal->m_pHead != 0) {
-        CExoInputEvent* pEvent = static_cast<CExoInputEvent*>(m_mouseEventList.m_pInternal->RemoveHead());
+        CExoInputEvent* pEvent = m_mouseEventList.RemoveHead();
         if (pEvent != 0) {
             if (pEvent->m_pEvent != 0)
                 ::operator delete(pEvent->m_pEvent);
@@ -61,7 +61,7 @@ CExoInputInternal::CExoInputInternal(void* hInst, void* hWnd)
 CExoInputInternal::CExoInputInternal(HINSTANCE__* hInst, HWND__* hWnd)
 #endif
 {
-    uint64_t nTimer;
+    uint64_ll_t nTimer;
     m_pMainDevice = 0;
     m_nKeyboardMode = 0;
     m_bCaptureKeyboardKeys = 0;
@@ -271,10 +271,12 @@ int CExoInputInternal::GetRumbleEnabled()
     return m_pMainDevice->m_bRumbleEnabled;
 }
 
+#if !KOTOR1
 int CExoInputInternal::IsPsShowButtonsController() const
 {
     return m_pMainDevice->m_bIsDualShockLike;
 }
+#endif
 
 void CExoInputInternal::SetRumbleEnabled(int a)
 {
@@ -311,7 +313,7 @@ void CExoInputInternal::ClearKeyboardEvents()
 void CExoInputInternal::ClearMouseEvents()
 {
     while (m_mouseEventList.m_pInternal->m_pHead != 0) {
-        void* p = m_mouseEventList.m_pInternal->RemoveHead();
+        void* p = m_mouseEventList.RemoveHead();
         if (p != 0)
             ::operator delete(p);
     }
@@ -547,12 +549,12 @@ void CExoInputInternal::ClearEventRepeat(unsigned int nEvent)
     if (m_aEvents.m_pArray[static_cast<int>(nEvent)] != 0 && m_aEvents.m_pArray[static_cast<int>(nEvent)]->m_nEventClass == INPUTKIND_BUTTON) {
         CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
         if (pNode != 0) {
-            CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+            CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
             while (pRec == 0 || static_cast<unsigned int>(pRec->m_nEventIndex) != nEvent) {
-                m_repeatList.m_pInternal->GetNext(pNode);
+                m_repeatList.GetNext(pNode);
                 if (pNode == 0)
                     return;
-                pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+                pRec = m_repeatList.GetAtPos(pNode);
             }
             pRec->m_nEmittedValue = 0;
             pRec->m_nRepeatCount = 0;
@@ -590,17 +592,17 @@ int CExoInputInternal::SetEventRepeatable(unsigned int nEvent, unsigned int p2, 
         return 0;
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
     if (pNode != 0) {
-        CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+        CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
         while (true) {
             if (pRec != 0 && static_cast<unsigned int>(pRec->m_nEventIndex) == nEvent) {
                 pRec->m_nRepeatWait = p2;
                 pRec->m_nRepeatRate = p3;
                 return 1;
             }
-            m_repeatList.m_pInternal->GetNext(pNode);
+            m_repeatList.GetNext(pNode);
             if (pNode == 0)
                 break;
-            pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+            pRec = m_repeatList.GetAtPos(pNode);
         }
     }
     CExoInputRepeatEvent* pNew = static_cast<CExoInputRepeatEvent*>(::operator new(sizeof(CExoInputRepeatEvent)));
@@ -611,7 +613,7 @@ int CExoInputInternal::SetEventRepeatable(unsigned int nEvent, unsigned int p2, 
     pNew->m_nRepeatCount = 0;
     pNew->m_nRepeatState = 0;
     pNew->m_nLatchedState = 0;
-    m_repeatList.m_pInternal->AddHead(pNew);
+    m_repeatList.AddHead(pNew);
     return 1;
 }
 
@@ -922,7 +924,7 @@ void CExoInputInternal::ClearAllInputEventDescriptions()
     for (int64_t nClass = 0; nClass < 6; nClass++) {
         for (int64_t nDevice = 0; nDevice < m_nDeviceCount; nDevice++) {
             while (m_aEventClass[nClass].m_apDeviceLists[nDevice].m_pInternal->m_pHead != 0)
-                m_aEventClass[nClass].m_apDeviceLists[nDevice].m_pInternal->RemoveHead();
+                m_aEventClass[nClass].m_apDeviceLists[nDevice].RemoveHead();
         }
         for (int64_t i = 0; i < m_aEventClass[nClass].m_aEventBits.m_count; i++)
             m_aEventClass[nClass].m_aEventBits.m_pArray[i] = 0;
@@ -1273,14 +1275,14 @@ void CExoInputInternal::ClearEvents()
 
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
     while (pNode != 0) {
-        CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(m_repeatList.m_pInternal->GetAtPos(pNode));
+        CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
         pRec->m_nRepeatState = 0;
         pRec->m_nRepeatCount = 0;
-        m_repeatList.m_pInternal->GetNext(pNode);
+        m_repeatList.GetNext(pNode);
     }
 
     while (m_mouseEventList.m_pInternal->m_pHead != 0) {
-        CExoInputEvent* pEvent = static_cast<CExoInputEvent*>(m_mouseEventList.m_pInternal->RemoveHead());
+        CExoInputEvent* pEvent = m_mouseEventList.RemoveHead();
         if (pEvent != 0) {
             if (pEvent->m_pEvent != 0)
                 ::operator delete(pEvent->m_pEvent);
@@ -1871,11 +1873,7 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
     if (m_pMainDevice != 0 && m_pMainDevice->m_bActive != 0) {
         if (m_nMouseX != -1) {
             CExoInputEvent* pEvent = static_cast<CExoInputEvent*>(::operator new(sizeof(CExoInputEvent)));
-            pEvent->m_nValue = 0;
-            pEvent->m_nTimeStamp = 0;
-            pEvent->m_nSequence = 0;
-            pEvent->m_nReserved1 = 0;
-            pEvent->m_pEvent = 0;
+            *pEvent = CExoInputEvent();
             pEvent->m_nValue = m_nMouseX;
             CExoInputEventDesc* pDesc = new CExoInputEventDesc(0, 0, CExoInput::INPUTDEVICE_MOUSE);
             pEvent->m_pEvent = pDesc;
@@ -1884,11 +1882,7 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
         }
         if (m_nMouseY != -1) {
             CExoInputEvent* pEvent = static_cast<CExoInputEvent*>(::operator new(sizeof(CExoInputEvent)));
-            pEvent->m_nValue = 0;
-            pEvent->m_nTimeStamp = 0;
-            pEvent->m_nSequence = 0;
-            pEvent->m_nReserved1 = 0;
-            pEvent->m_pEvent = 0;
+            *pEvent = CExoInputEvent();
             pEvent->m_nValue = m_nMouseY;
             CExoInputEventDesc* pDesc = new CExoInputEventDesc(0, 0, CExoInput::INPUTDEVICE_MOUSE);
             pEvent->m_pEvent = pDesc;

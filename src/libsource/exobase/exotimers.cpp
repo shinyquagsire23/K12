@@ -20,7 +20,7 @@ unsigned int CExoTimers::GetLowResolutionTimer()
     return m_pInternal->GetLowResolutionTimer();
 }
 
-unsigned long long CExoTimers::GetHighResolutionTimer()
+uint64_ll_t CExoTimers::GetHighResolutionTimer()
 {
     return m_pInternal->GetHighResolutionTimer();
 }

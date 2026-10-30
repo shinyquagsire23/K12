@@ -162,14 +162,14 @@ CLastUpdateObject* CSWSPlayer::GetLastUpdateObject(unsigned long long id)
     while (pNode != 0)
     {
         CLastUpdateObject* pLast =
-            static_cast<CLastUpdateObject*>(m_pLastUpdateObjectList->m_pInternal->GetAtPos(pNode));
+            m_pLastUpdateObjectList->GetAtPos(pNode);
 
         if (pLast->m_objectId == id)
         {
             return pLast;
         }
 
-        m_pLastUpdateObjectList->m_pInternal->GetNext(pNode);
+        m_pLastUpdateObjectList->GetNext(pNode);
     }
 
     return 0;
@@ -389,7 +389,7 @@ CSWSPlayer::~CSWSPlayer()
         while (m_pLastUpdateObjectList->m_pInternal->m_pHead != 0)
         {
             CLastUpdateObject* pLast =
-                static_cast<CLastUpdateObject*>(m_pLastUpdateObjectList->m_pInternal->RemoveHead());
+                m_pLastUpdateObjectList->RemoveHead();
 
             if (pLast != 0)
             {
@@ -557,7 +557,7 @@ void CSWSPlayer::ClearPlayerOnDestroyGame()
         while (m_pLastUpdateObjectList->m_pInternal->m_pHead != 0)
         {
             CLastUpdateObject* pLast =
-                static_cast<CLastUpdateObject*>(m_pLastUpdateObjectList->m_pInternal->RemoveHead());
+                m_pLastUpdateObjectList->RemoveHead();
 
             if (pLast != 0)
             {

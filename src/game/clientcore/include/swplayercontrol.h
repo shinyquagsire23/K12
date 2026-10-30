@@ -84,7 +84,10 @@ public:
             float m_fPrevStrafeSpeed;
         } m_prev;
     };
-    unsigned long long m_nReserved1;
+    union {
+        unsigned long long m_nReserved1;
+        unsigned int       m_anReserved1[2];
+    };
     // The per-axis move request the two input hooks accumulate: UpDown sets MOVE_FORWARD for a
     // negative value and MOVE_BACK for a positive one, LeftRight MOVE_STRAFE_LEFT for a negative
     // value and MOVE_STRAFE_RIGHT for a positive one. Control and Drive consume it.
@@ -151,7 +154,6 @@ public:
     Vector    m_vDriveVel;
     Vector    m_vDrivePos;
     Vector    m_vDriveTarget;
-    char      _pad8c[0x90 - 0x8c];
 
     Vector& DriveA()      { return m_vDriveA; }
     Vector& DriveB()      { return m_vDriveB; }

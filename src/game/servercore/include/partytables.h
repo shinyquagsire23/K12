@@ -148,7 +148,6 @@ public:
     // instead of 12.
     int                 m_nNumPartyMembers;
     int                 m_partyMemberIndex[2];
-    unsigned char       m_pad0c[4];
     unsigned long long  m_partyMemberID[9];
     int                 m_npcAvailable[9];
     unsigned char       m_npcSelectability[9];
@@ -183,7 +182,6 @@ public:
     int                 m_partyMemberIndex[2];
     int                 m_puppetIndex[2];
     int                 m_nThirdPuppetIndex;
-    unsigned char       m_pad1c[4];
     unsigned long long  m_partyMemberID[12];
     int                 m_npcAvailable[12];
     unsigned char       m_npcSelectability[12];
@@ -214,14 +212,12 @@ public:
     int                 m_bKeepSavedPositions;
     int                 m_bPartyCreated;
     int                 m_nTotalPlayedSecondsAccum;
-    unsigned char       m_pad1f4[4];
     CItemRepository*    m_pItemRepository;
     CSWSJournal*        m_pJournal;
     int                 m_pazaakCards[23];
     int                 m_pazaakSideDeck[10];
     int                 m_soloMode;
     unsigned int        m_cheatUsedFlags;
-    unsigned char       m_pad294[4];
     CExoString          m_saveTableName;
     int                 m_saveNumber;
     int                 m_forfeitViolations;

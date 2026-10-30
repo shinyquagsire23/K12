@@ -222,7 +222,7 @@ void* SetCapture(void* hWnd);
 int ClientToScreen(void* hWnd, tagPOINT* pPoint);
 
 // The tree's call shapes, forwarded to K1's signatures.
-inline void GetSystemTimeAsFileTime(unsigned long long* pTime)
+inline void GetSystemTimeAsFileTime(uint64_ll_t* pTime)
 {
     GetSystemTimeAsFileTime(reinterpret_cast<_FILETIME*>(pTime));
 }
@@ -254,7 +254,7 @@ inline void* CreateThread(void* pSecAttr, uint64_t nStackSize, uint64_t (*pStart
 K2_WIN32_API_BEGIN
 unsigned int GetTickCount();
 void Sleep(unsigned int dwMilliseconds);
-void GetSystemTimeAsFileTime(unsigned long long* pFileTime);
+void GetSystemTimeAsFileTime(uint64_ll_t* pFileTime);
 int FileTimeToSystemTime(const _FILETIME* pFileTime, _SYSTEMTIME* pSystemTime);
 
 void* CreateThread(void* pSecAttr, uint64_t nStackSize, uint64_t (*pStartAddr)(void*), void* pParam,

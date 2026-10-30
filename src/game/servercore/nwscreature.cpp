@@ -2989,7 +2989,7 @@ int CSWSCreature::GetCurrentlyFollowingLeader()
 {
     CExoLinkedListNode* pHead = m_actionList.m_pInternal->m_pHead;
     if (pHead != 0) {
-        CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pHead));
+        CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pHead);
         if (pAction != 0) {
             if (pAction->m_nActionId == AIACTION_PARTY_FOLLOW_LEADER)
                 return 1;
@@ -6672,12 +6672,12 @@ void CSWSCreature::ComputeAIState()
     m_oidAIStateTarget = OBJECT_INVALID;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
     while (pNode != 0) {
-        CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pNode));
+        CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
         unsigned long long oidTarget = OBJECT_INVALID;
         if (pAction->m_nActionId == AIACTION_PHYSICAL_ATTACKS)
             oidTarget = pAction->m_args.m_attackTargetId;
         ComputeAIStateOnAction(pAction->m_nActionId, oidTarget);
-        m_actionList.m_pInternal->GetNext(pNode);
+        m_actionList.GetNext(pNode);
     }
     ComputeAIStateOnAction(m_nCurrentActionId, m_attackTargetId);
 }
@@ -7600,7 +7600,7 @@ void CSWSCreature::ClearHostileActionsVersus(CSWSCreature* pCreature)
         CExoLinkedListNode* pPos = GetPositionByGroupIndex(i);
         if (pPos == 0)
             continue;
-        CSWSObjectActionNode* pGroupNode = static_cast<CSWSObjectActionNode*>(m_actionList.m_pInternal->GetAtPos(pPos));
+        CSWSObjectActionNode* pGroupNode = m_actionList.GetAtPos(pPos);
         if (pGroupNode == 0)
             continue;
         unsigned short nGroupId = pGroupNode->m_nGroupId;
@@ -8976,7 +8976,7 @@ void CSWSCreature::AIUpdate()
     }
 #endif
 
-    if ((RenderDEV | RenderQA) != 0 && m_objectId == oidPartyLeader
+    if ((RenderQA | RenderDEV) != 0 && m_objectId == oidPartyLeader
         && g_pAppManager->m_pClientExoApp->GetModule() != NULL) {
         g_pAppManager->m_pClientExoApp->GetModule()->m_sModuleName.CStr();
     }
@@ -10751,7 +10751,7 @@ void CSWSCreature::EventHandler(unsigned int nEventType, unsigned long long nCal
         }
     } else if (nEventType == static_cast<unsigned int>(CServerAIMaster::EVENT_REMOVE_EFFECT)) {
         if (pData != 0)
-            RemoveEffectById(*static_cast<unsigned long long*>(pData));
+            RemoveEffectById(*static_cast<uint64_ll_t*>(pData));
     } else if (nEventType == static_cast<unsigned int>(CServerAIMaster::EVENT_REMOVE_FROM_AREA)) {
         if (pData != 0)
             RemoveFromArea(static_cast<int>(reinterpret_cast<uintptr_t>(pData)));
@@ -11125,7 +11125,7 @@ void CSWSCreature::AddPazaakCard(CSWSItem* pItem)
 #if KOTOR1  // K1: 18 side-deck cards, no special cards
     unsigned int nIndex = (nCard + 11) % 18;
 #else
-    static const long long nPazaakCardMap[5] = { 22, 19, 18, 20, 21 };
+    static const int64_t nPazaakCardMap[5] = { 22, 19, 18, 20, 21 };
     long long nIndex;
     if (nCard >= 1 && nCard <= 18)
         nIndex = static_cast<unsigned char>(nCard + 11) % 18;

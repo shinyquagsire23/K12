@@ -45,7 +45,7 @@ void  MdlNodeSkinRemoveTemporaryArrays(void* pv);
 // The async-spawn queue's element, only ever held by pointer.
 class AsyncEntry {
 public:
-    char m_abPad00[24];
+    void* m_apReserved[3];
     void* m_pHandle;
 };
 
@@ -1447,7 +1447,7 @@ bool IODispatcher::Write(MaxTree* pTree, FILE* pFile, FILE* pOut) {
     if (pFile == 0)
         return false;
 
-    uint64_t nZero = 0;
+    uint64_ll_t nZero = 0;
 #if KOTOR1
     SDL_RWwrite(pFile, &nZero, 8, 1);
 #else

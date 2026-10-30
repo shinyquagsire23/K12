@@ -22,7 +22,7 @@ class CRes;
 struct CERFHeader {
     // Signature and version share one 8-byte word so the version is copied in one store; keep the
     // struct 8-byte aligned.
-    unsigned long long m_nSignature;
+    uint64_ll_t  m_nSignature;
     unsigned int m_nStringCount;
     unsigned int m_nStringTableSize;
     unsigned int m_nKeyCount;

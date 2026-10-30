@@ -1373,7 +1373,7 @@ int CSWSArea::SmoothSelectNodesRestartable(int nCount, float* pFloats, int* pOut
                                            float** ppOutFloats, int bSubdivide, int bReselect,
                                            float fSmoothThreshold)
 {
-    unsigned long long nStartTime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t nStartTime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     float fPersonalSpace = m_pActivePathfindInfo->m_fPersonalSpace + 0.001f;
     float fHeight = m_pActivePathfindInfo->m_fHeight;
 
@@ -1506,7 +1506,7 @@ int CSWSArea::SmoothSelectNodesRestartable(int nCount, float* pFloats, int* pOut
         (*ppOutFloats)[*pOutCount + 1] = fSelY;
         *pOutCount += 2;
 
-        if (g_pExoBase->m_pTimers->GetHighResolutionTimer() - nStartTime > static_cast<uint64_t>(SmoothTime))
+        if (g_pExoBase->m_pTimers->GetHighResolutionTimer() - nStartTime > static_cast<uint64_ll_t>(SmoothTime))
         {
             m_pActivePathfindInfo->m_nSmoothResumeSel = nSel;
             m_pActivePathfindInfo->m_nSmoothResumeIndex = i;
@@ -1707,12 +1707,12 @@ static inline float d2(const Vector& a, const Vector& b)
 // Drives a creature's walk path. Advances pPathInfo->m_nPathState through the startpoints,
 // pathfind, gridstart, gridend and smooth states, running one budgeted slice per call, and returns
 // an ACTION_* code. ACTION_IN_PROGRESS asks to be called again next tick.
-int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, unsigned long long nTimeOut)
+int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTimeOut)
 {
     Vector vFrom = pPathInfo->m_vStartPoint;
     Vector vTo = pPathInfo->m_goal.m_vPoint;
     int nState = pPathInfo->m_nPathState;
-    unsigned long long nTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t nTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     int nStartPathPoint;
     int nEndPathPoint;
     int nAction = nState;  // returned unchanged when no arm assigns an action
@@ -1849,7 +1849,7 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, unsigned long l
         nAction = CSWSObject::ACTION_IN_PROGRESS;
         // The clock is sampled once before the loop and re-sampled at the end of each body,
         // so every budget test reads the previous body's clock.
-        unsigned long long nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+        uint64_ll_t nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         int nLoopCount = 0;
         for (;;)
         {
@@ -1964,7 +1964,7 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, unsigned long l
         if (nGrid == CSWSObject::ACTION_COMPLETE)
         {
             // Only a complete leg advances and pays the budget check.
-            unsigned long long nGridTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+            uint64_ll_t nGridTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
             pPathInfo->m_nPathState = CPathfindInformation::PATH_POINT_GRIDEND;
             if (nGridTimer - nTimer > nTimeOut)
                 return CSWSObject::ACTION_IN_PROGRESS;
@@ -2037,7 +2037,7 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, unsigned long l
         pPathInfo->m_bIgnoreCrePath = 0;
         if (nGrid == CSWSObject::ACTION_COMPLETE)
         {
-            unsigned long long nGridTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+            uint64_ll_t nGridTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
             pPathInfo->m_nSmoothStep = CPathfindInformation::SMOOTHING_START;
             pPathInfo->m_nPathState = CPathfindInformation::PATH_POINT_SMOOTH;
             if (nGridTimer - nTimer > nTimeOut)
@@ -2069,7 +2069,7 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, unsigned long l
     {
         if (pPathInfo->m_nSmoothStep == CPathfindInformation::SMOOTHING_START)
         {
-            unsigned long long nSmoothTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+            uint64_ll_t nSmoothTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
             int nSegA = pPathInfo->m_nSegCountA - 2;
             int nPPCount = pPathInfo->m_nPathPointCount;
             int nSegB = pPathInfo->m_nSegCountB;
@@ -2103,7 +2103,7 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, unsigned long l
             pPathInfo->SetPathNodeEndPath(0, 0);
             pPathInfo->SetPathPointStepsArray(0);
             pPathInfo->m_nSmoothStep = CPathfindInformation::SMOOTHING_STEP_1;
-            if (g_pExoBase->m_pTimers->GetHighResolutionTimer() - nSmoothTimer > static_cast<uint64_t>(SmoothTime))
+            if (g_pExoBase->m_pTimers->GetHighResolutionTimer() - nSmoothTimer > static_cast<uint64_ll_t>(SmoothTime))
                 return 1;
         }
         if (SmoothPointsOnPathRestartable() == 0)
@@ -2128,10 +2128,10 @@ GridPointFail:
 // and the normalized from->to direction, then runs the ring-growing GridDFSearch loop under
 // the time budget. A partial search is parked for the next tick; a complete one is expanded to
 // world points and smoothed.
-int CSWSArea::PlotGridPath(CPathfindInformation* pPathInfo, unsigned long long nGoalDist)
+int CSWSArea::PlotGridPath(CPathfindInformation* pPathInfo, uint64_ll_t nGoalDist)
 {
     g_pAppManager->m_pServerExoApp->GetServerAIMaster()->m_bRanGridPath = 1;
-    unsigned long long nStartTime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t nStartTime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     m_pActivePathfindInfo = pPathInfo;
 
     Vector vFrom(pPathInfo->m_vStartPoint.x, pPathInfo->m_vStartPoint.y, 0.0f);
@@ -2182,8 +2182,8 @@ restart:
     nGridStep = nSteps;
 seedy:
     pPathInfo->m_fGridSearchRadius = 10.0f;
-    unsigned long long nTickTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
-    unsigned long long nElapsed = nTickTimer - nStartTime;
+    uint64_ll_t nTickTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t nElapsed = nTickTimer - nStartTime;
 
     int nAction = CSWSObject::ACTION_IN_PROGRESS;
     if (pPathInfo->m_bReturnClosestResult == 1 && pPathInfo->m_bPointsReversed == 1)
@@ -2243,9 +2243,9 @@ seedy:
         }
         if (nItr == 1)
         {
-            if (nElapsed >= static_cast<unsigned long long>(nGoalDist) * 40)
+            if (nElapsed >= static_cast<uint64_ll_t>(nGoalDist) * 40)
                 goto limitTail;
-            if (nElapsed >= static_cast<unsigned long long>(nGoalDist) * 10)
+            if (nElapsed >= static_cast<uint64_ll_t>(nGoalDist) * 10)
             {
                 if (nSavedDist == pPathInfo->m_nBestGridDist)
                     goto limitTail;
@@ -2259,9 +2259,9 @@ limitTail:
         // reaches the time and distance gates.
         if (nItr == 1)
         {
-            if (nElapsed >= static_cast<unsigned long long>(nGoalDist) * 40)
+            if (nElapsed >= static_cast<uint64_ll_t>(nGoalDist) * 40)
                 pPathInfo->HandlePathfindError(2, const_cast<char*>("Exceeded limits:Time limit"));
-            if (nElapsed >= static_cast<unsigned long long>(nGoalDist) * 10 &&
+            if (nElapsed >= static_cast<uint64_ll_t>(nGoalDist) * 10 &&
                 nSavedDist == pPathInfo->m_nBestGridDist)
                 pPathInfo->HandlePathfindError(2, const_cast<char*>("Exceeded limits:Distance to goal"));
         }
@@ -3181,7 +3181,7 @@ int CSWSArea::ShrinkLineByCreatures(const Vector& from, const Vector& to, Vector
     return nModified;
 }
 
-int CSWSArea::PlotPath(CPathfindInformation* pPathInfo, unsigned long long nTimeOut)
+int CSWSArea::PlotPath(CPathfindInformation* pPathInfo, uint64_ll_t nTimeOut)
 {
     K2_UNUSED(pPathInfo); K2_UNUSED(nTimeOut);
     return 0;

@@ -32,7 +32,6 @@ public:
     void* m_p2DAData;
     void* m_p2DAHeader;
     int   m_b2daBinary;
-    unsigned char _pad54[4];
 };
 
 #endif

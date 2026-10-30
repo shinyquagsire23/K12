@@ -80,6 +80,15 @@ typedef __UINTPTR_TYPE__ uintptr_t;
 #define K2_INT64_IS_LONG 1
 #endif
 
+// uint64_ll_t: an unsigned value the original keeps 64 bits wide in its armv7 build too, such as an
+// effect id. The tree's other `unsigned long long`s are object ids, which that build narrowed to 32
+// bits; tools/v7match.py's armv7 rewrite narrows every spelling but this typedef's. On arm64 it is
+// `unsigned long long` itself, so no object changes.
+typedef unsigned long long uint64_ll_t;
+// int64_ll_t: its signed counterpart where the source spells int64_t (K1's GFF INT64 field). It is
+// int64_t on every target; the armv7 rewrite, which narrows `int64_t` to `long`, leaves it 64-bit.
+typedef __INT64_TYPE__ int64_ll_t;
+
 // The engine's wide character is a 32-bit code unit. Win64's wchar_t is a 16-bit UTF-16 unit, so a
 // host spells it char32_t, which is 32 bits under every compiler; port/libcstring.h and
 // port/libcstdlib.h give it the wcs* functions the engine calls. The engine build keeps wchar_t. A

@@ -7,7 +7,8 @@
 //
 //   * macOS: a desktop GL 2.1 compatibility context (the engine's GL 1.x/ARB calls run natively)
 //     with an 8-bit back buffer and a 24-bit depth buffer, in a window. "Display mode 0" is the
-//     window size, K1_WINDOW=<w>x<h> (default 1280x720); K1_FULLSCREEN=1 keeps the fullscreen flag.
+//     window size, K1_WINDOW=<w>x<h> (default 1280x720); K1_FULLSCREEN=1 / 0 forces the fullscreen
+//     flag on / off.
 //     Graphics' Fullscreen row (swkotor.ini [Display Options] FullScreen=1) opens the next launch's
 //     window fullscreen instead, at the size a fullscreen window gets (shim_display.cpp).
 //   * Android and iOS: the GLES 2 context as asked; gl4es is told when it exists and before every
@@ -102,11 +103,11 @@ int IniDisplayOption(const char* pszKey, int nDefault)
     return nValue;
 }
 
-// Reads Graphics' Fullscreen row, [Display Options] FullScreen. K1_FULLSCREEN=1 forces it on.
+// Reads Graphics' Fullscreen row, [Display Options] FullScreen. K1_FULLSCREEN=1 forces it on, =0 off.
 bool IniFullscreen()
 {
     const char* p = getenv("K1_FULLSCREEN");
-    if (p && *p == '1') return true;
+    if (p && (*p == '1' || *p == '0')) return *p == '1';
     return IniDisplayOption("FullScreen", 0) != 0;
 }
 
@@ -241,6 +242,9 @@ extern "C" int SDL_GL_SetAttribute(SDL_GLattr attr, int value)
     case SDL_GL_BLUE_SIZE:
         value = 8;
         real(SDL_GL_DEPTH_SIZE, 24);
+        // Destination alpha: the bumpy-shiny pass weights its reflection by 1 - the base pass's
+        // alpha (RenderEMBM's InvDstAlpha / One), as the PC's 32-bit modes had.
+        real(SDL_GL_ALPHA_SIZE, 8);
         break;
     default:
         break;

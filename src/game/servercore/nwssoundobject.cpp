@@ -171,14 +171,14 @@ void CSWSSoundObject::ChangePosition(Vector newPos) {
             CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
             if (pNode != 0) {
                 do {
-                    CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->m_pInternal->GetAtPos(pNode));
+                    CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
                     if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
                         CGameObject* pGameObj = pPlayer->GetGameObject();
                         if (pGameObj->AsSWSCreature() != 0) {
                             pMsg->SendServerToPlayerSoundObject_ChangePosition(pPlayer, m_objectId, newPos);
                         }
                     }
-                    pList->m_pInternal->GetNext(pNode);
+                    pList->GetNext(pNode);
                 } while (pNode != 0);
             }
         }
@@ -195,14 +195,14 @@ void CSWSSoundObject::Play() {
         CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
         if (pNode != 0) {
             do {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->m_pInternal->GetAtPos(pNode));
+                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
                 if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
                     CGameObject* pGameObj = pPlayer->GetGameObject();
                     if (pGameObj->AsSWSCreature() != 0) {
                         pMsg->SendServerToPlayerSoundObject_Play(pPlayer, m_objectId);
                     }
                 }
-                pList->m_pInternal->GetNext(pNode);
+                pList->GetNext(pNode);
             } while (pNode != 0);
         }
     }
@@ -218,14 +218,14 @@ void CSWSSoundObject::Stop() {
         CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
         if (pNode != 0) {
             do {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->m_pInternal->GetAtPos(pNode));
+                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
                 if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
                     CGameObject* pGameObj = pPlayer->GetGameObject();
                     if (pGameObj->AsSWSCreature() != 0) {
                         pMsg->SendServerToPlayerSoundObject_Stop(pPlayer, m_objectId);
                     }
                 }
-                pList->m_pInternal->GetNext(pNode);
+                pList->GetNext(pNode);
             } while (pNode != 0);
         }
     }

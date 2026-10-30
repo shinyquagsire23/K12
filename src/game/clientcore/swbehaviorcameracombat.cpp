@@ -28,7 +28,7 @@ extern int g_bMouseCameraRotateToggleIos;
 
 CSWBehaviorCameraCombat::CSWBehaviorCameraCombat(CAurObject* pObject)
     : CAurBehavior(pObject)
-    , m_nReserved1(0)
+    , m_nReserved1()
     , m_nReserved2(0)
 {
     m_fShakeYaw = 0.0f;

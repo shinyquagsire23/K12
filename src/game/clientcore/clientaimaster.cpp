@@ -9,7 +9,7 @@ extern CAppManager* g_pAppManager;
 
 float g_AIModuleTime2;
 float g_AIObjectTime;
-static unsigned long long g_nAITimerSnapshot;
+static uint64_ll_t g_nAITimerSnapshot;
 
 CClientAIList::CClientAIList()
 {
@@ -35,17 +35,17 @@ int CClientAIList::AddObject(CSWCObject* pObject)
     for (;;) {
         if (pNode == 0) {
             m_nCount++;
-            pNode = m_list.m_pInternal->AddTail(reinterpret_cast<void*>(pObject->m_objectId));
+            pNode = m_list.AddTail(reinterpret_cast<unsigned long long*>(pObject->m_objectId));
             pObject->m_pAINode = pNode;
             if (m_pCursorNode == 0) {
                 m_pCursorNode = pNode;
             }
             return 1;
         }
-        if (reinterpret_cast<unsigned long long>(m_list.m_pInternal->GetAtPos(pNode)) == pObject->m_objectId) {
+        if (reinterpret_cast<unsigned long long>(m_list.GetAtPos(pNode)) == pObject->m_objectId) {
             return 0;
         }
-        m_list.m_pInternal->GetNext(pNode);
+        m_list.GetNext(pNode);
     }
 }
 
@@ -56,13 +56,13 @@ int CClientAIList::RemoveObject(CSWCObject* pObject)
         return 1;
     }
     if (m_pCursorNode == pNode) {
-        m_list.m_pInternal->GetNext(m_pCursorNode);
+        m_list.GetNext(m_pCursorNode);
         if (m_pCursorNode == 0) {
             m_pCursorNode = (m_list.m_pInternal->m_pHead != pNode) ? m_list.m_pInternal->m_pHead : 0;
         }
     }
     m_nCount--;
-    m_list.m_pInternal->Remove(pNode);
+    m_list.Remove(pNode);
     pObject->m_pAINode = 0;
     return 0;
 }

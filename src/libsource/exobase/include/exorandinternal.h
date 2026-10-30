@@ -1,5 +1,6 @@
 #pragma once
 #include "k2layout.h"
+#include "k2stdint.h"
 
 class CExoString;
 
@@ -32,7 +33,7 @@ private:
     unsigned int m_bSeeded;
     unsigned char* m_pEntropyRing;
     unsigned short m_nEntropyWritePos;
-    unsigned long long m_anLastPerfCounter[4];
+    uint64_ll_t m_anLastPerfCounter[4];
     unsigned int m_nLastEventTime;
 };
 

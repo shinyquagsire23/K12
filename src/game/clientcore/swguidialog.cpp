@@ -2205,8 +2205,8 @@ CSWGuiDialogTop::CSWGuiDialogTop(CSWGuiManager* pGuiManager, const CResRef& resR
         m_replyButtons[i].SetExtent(extent);
         m_replyButtons[i].m_text.m_params.SetText(CExoString(""));
         m_replyButtons[i].m_tail.m_nUserData = i;
-        m_replyButtons[i].m_border.m_params.SetFillImage(CResRef(sImage), 0);
-        m_replyButtons[i].m_borderHilight.m_params.SetFillImage(CResRef(sImage), 0);
+        m_replyButtons[i].m_border.m_params.SetFillImage(CResRef(sImage));
+        m_replyButtons[i].m_borderHilight.m_params.SetFillImage(CResRef(sImage));
         m_replyButtons[i].m_border.m_params.SetPulsingAlpha(1, 1, 1);
         m_replyButtons[i].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 1);
         AddControl(&m_replyButtons[i]);

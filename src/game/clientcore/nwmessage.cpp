@@ -6,13 +6,14 @@
 
 #include <string.h>
 #include "port/libcbase.h"
+#include "exostringinline.h"
 
 void ByteSwap(unsigned short* p);
 void ByteSwap(short* p);
 void ByteSwap(unsigned int* p);
 void ByteSwap(int* p);
 void ByteSwap(float* p);
-void ByteSwap(unsigned long long* p);
+void ByteSwap(uint64_ll_t* p);
 #if KOTOR1
 void ByteSwap(int64_t* p);
 #else
@@ -96,7 +97,7 @@ void CSWMessage::WriteBit(unsigned char nValue)
     m_pWriteFragments[m_nWriteFragmentsPos] |= (nValue << (7 - m_nWriteBitIndex));
 }
 
-void CSWMessage::WriteBits(unsigned long long nValue, int nBits)
+void CSWMessage::WriteBits(uint64_ll_t nValue, int nBits)
 {
     while (nBits > 0) {
         nBits--;
@@ -109,7 +110,7 @@ void CSWMessage::WriteBits(unsigned long long nValue, int nBits)
     }
 }
 
-void CSWMessage::WriteUnsigned(unsigned long long nValue, int nBits)
+void CSWMessage::WriteUnsigned(uint64_ll_t nValue, int nBits)
 {
     unsigned int nExtra = static_cast<unsigned short>(nBits >> 3);
     if (m_nWriteMessageSize + nExtra > m_nWriteMessageBufferSize)
@@ -158,7 +159,7 @@ void CSWMessage::ExtendWriteBuffer(unsigned int nExtra)
     m_nWriteMessageBufferSize = nNewSize;
 }
 
-void CSWMessage::WriteDWORD64(unsigned long long nValue, int nBits)
+void CSWMessage::WriteDWORD64(uint64_ll_t nValue, int nBits)
 {
     K2_UNUSED(nBits);
     ByteSwap(&nValue);
@@ -279,16 +280,16 @@ unsigned long long CSWMessage::ReadUnsigned(int nBits)
     return nValue;
 }
 
-unsigned long long CSWMessage::ReadDWORD64(int nBits)
+uint64_ll_t CSWMessage::ReadDWORD64(int nBits)
 {
     K2_UNUSED(nBits);
-    if (m_nReadMessagePos + sizeof(unsigned long long) > m_nReadMessageSize) {
-        m_nReadMessagePos += sizeof(unsigned long long);
+    if (m_nReadMessagePos + sizeof(uint64_ll_t) > m_nReadMessageSize) {
+        m_nReadMessagePos += sizeof(uint64_ll_t);
         return 0;
     }
 
-    unsigned long long nValue = *reinterpret_cast<unsigned long long*>(&m_pReadMessage[m_nReadMessagePos]);
-    m_nReadMessagePos += sizeof(unsigned long long);
+    uint64_ll_t nValue = *reinterpret_cast<uint64_ll_t*>(&m_pReadMessage[m_nReadMessagePos]);
+    m_nReadMessagePos += sizeof(uint64_ll_t);
     ByteSwap(&nValue);
     return nValue;
 }
@@ -714,11 +715,7 @@ void CSWMessage::WriteCResRef(CResRef resRef, int nSize)
 
 void CSWMessage::WriteCExoString(const CExoString& sValue, int nBits)
 {
-#if KOTOR1  // K1's GetLength is out of line
     int nLength = sValue.GetLength();
-#else
-    int nLength = sValue.m_sString != 0 ? static_cast<int>(strlen(sValue.m_sString)) : 0;
-#endif
     WriteINT(nLength, nBits);
 
     if (m_nWriteMessageSize + nLength > m_nWriteMessageBufferSize)

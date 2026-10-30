@@ -1448,7 +1448,7 @@ extern "C" int SDL_main(int argc, char** argv)
             }
             GameUpdate();
             if (g_RenderSkip == 0) {
-                unsigned long long nSwapStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+                uint64_ll_t nSwapStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
                 SDL_GL_SwapWindow(g_SDL_Window);
                 g_SwapTime = static_cast<float>(g_pExoBase->m_pTimers->GetHighResolutionTimer() - nSwapStart)
                              * 0.001f;

@@ -74,7 +74,7 @@ public:
     void ReleaseResource();
 
     unsigned int ByteSwap(unsigned int n);
-    unsigned long long ByteSwap64(unsigned long long n);
+    uint64_ll_t ByteSwap64(uint64_ll_t n);
 
     int  GetTopLevelStruct(CResStruct* pStruct);
     int  IsDataInPlace(unsigned int nType);
@@ -125,9 +125,9 @@ public:
     int ReadFieldINT(CResStruct* pStruct, char* sLabel, int& bSuccess, int defValue);
     unsigned int SetFieldINT(CResStruct* pStruct, char* sLabel, int& bSuccess, int value);
     float ReadFieldFLOAT(CResStruct* pStruct, char* sLabel, int& bSuccess, float defValue);
-    unsigned long long ReadFieldDWORD64(CResStruct* pStruct, char* sLabel, int& bSuccess, unsigned long long defValue);
+    uint64_ll_t ReadFieldDWORD64(CResStruct* pStruct, char* sLabel, int& bSuccess, uint64_ll_t defValue);
 #if KOTOR1
-    int64_t ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSuccess, int64_t defValue);
+    int64_ll_t ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSuccess, int64_ll_t defValue);
 #else
     long long ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSuccess, long long defValue);
 #endif
@@ -146,9 +146,9 @@ public:
     int WriteFieldSHORT(CResStruct* pStruct, short value, char* sLabel);
     int WriteFieldDWORD(CResStruct* pStruct, unsigned int value, char* sLabel);
     int WriteFieldINT(CResStruct* pStruct, int value, char* sLabel);
-    int WriteFieldDWORD64(CResStruct* pStruct, unsigned long long value, char* sLabel);
+    int WriteFieldDWORD64(CResStruct* pStruct, uint64_ll_t value, char* sLabel);
 #if KOTOR1
-    int WriteFieldINT64(CResStruct* pStruct, int64_t value, char* sLabel);
+    int WriteFieldINT64(CResStruct* pStruct, int64_ll_t value, char* sLabel);
 #else
     int WriteFieldINT64(CResStruct* pStruct, long long value, char* sLabel);
 #endif
@@ -265,7 +265,7 @@ void ByteSwap(short* p);
 void ByteSwap(unsigned int* p);
 void ByteSwap(int* p);
 void ByteSwap(float* p);
-void ByteSwap(unsigned long long* p);
+void ByteSwap(uint64_ll_t* p);
 #if KOTOR1
 void ByteSwap(int64_t* p);
 #else

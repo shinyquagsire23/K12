@@ -3,6 +3,7 @@
 #ifndef CEXORESMAN_H
 #define CEXORESMAN_H
 
+#include "k2stdint.h"
 #include "exostring.h"
 
 // The base-lib resource manager, the engine's virtual filesystem over every resource source
@@ -89,7 +90,7 @@ public:
 
     // Same alias-resolve and empty-check shape as CreateDirectory2, but queries free disk space
     // instead of creating a directory.
-    int GetFreeDiskSpace(const CExoString& path, unsigned long long* pFreeBytes);
+    int GetFreeDiskSpace(const CExoString& path, uint64_ll_t* pFreeBytes);
 
     // Whole-file copy through two CExoFile objects and a heap staging buffer sized to the source
     // file. A zero dstResType means "same as source".
@@ -238,7 +239,7 @@ public:
     int  m_nTotalPhysicalMemory;        // total physical memory, recorded once by the constructor
     int  m_nTotalResourceMemory;        // adjustable resource-cache budget
     int  m_nAvailableResourceMemory;    // remaining budget, adjusted on every allocation and free
-    char _pad0c[0x0c];
+    void* m_pReserved1;
 
     // Six by-value owning lists. Each eight-byte CExoLinkedList<T> wrapper allocates its backing
     // internal list on construction and deletes it on destruction.
@@ -258,11 +259,9 @@ public:
     unsigned char bChargenImageFileLoaded : 1;
     unsigned char bMainMenuImageFileLoaded : 1;
     unsigned char m_nReserved1 : 6;
-    char _pad5d[3];
 
     unsigned long long m_hAsyncThread;
     unsigned int        m_dwAsyncThreadId;
-    char                _pad6c[4];
 
     CExoCriticalSection m_critSection;
     char m_nAsyncLoadState;
@@ -380,7 +379,6 @@ public:
     unsigned int    m_dwResID;         // the owning key entry's resource id; its top bits carry the
                                        // source-list tag and dispatch the per-source-type read
     unsigned int    m_dwFlags;         // RESFLAG_* bits, only partly reproduced
-    unsigned char   _pad14[4];
     void*           m_pFileData;       // raw loaded-resource buffer
     CKeyTableEntry* m_pKeyEntry;       // owning key-table entry, set by SetResObject
     unsigned int    m_nSize;           // allocated size of m_pFileData

@@ -1309,6 +1309,48 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             GLRender::EnableClientState(Aurora::kClientStateNormal);
             ASLgl::glPopAttrib();
         } else {
+#ifdef K2_QOL_BUMPMAPS
+            // The PC's two passes: the reflection off the bump map (an opaque creature's, out of
+            // force sight), then the lit diffuse over it, the reflection showing through where the
+            // diffuse's alpha is below 1.
+            if (pGob != 0 && pGob->m_fFadeAlpha >= 1.0f && g_ForceSight == 0) {
+                GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
+                GLRender::DisableClientState(Aurora::kClientStateNormal);
+                GLRender::SetVertexShaderConstant(15, 1.0f, 0.0f, 1.0f, 0.0f);
+                g_pBumpyShinySkinPass1->Enable(part, false);
+                GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyTextures, pMat->Textures(4).m_pObject, 0, 0,
+                                                  pMat->Textures(5).m_pObject);
+                GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShiny, 0, 0, 0, 0);
+                RenderFlat(vertices);
+                GLRender::pfuncEnablePixelShaders(GLRender::kPSNone, 0, 0, 0, 0);
+                GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyOff, 0, 0, 0, 0);
+                GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmapOff, 0, 0, 0, 0);
+                GLRender::EnableClientState(Aurora::kClientStateNormal);
+            }
+            ASLgl::glPopAttrib();
+            GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 1.0f);
+            VertexProgram* pPass2 = (use3boneskinning != 0 && g_pBumpyShinySkinPass2_3bone != 0)
+                                        ? g_pBumpyShinySkinPass2_3bone : g_pBumpyShinySkinPass2;
+            pPass2->Enable(part, true);
+            if (enabledecal) {
+                GLRender::ActivateTextureStage(0);
+                GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendInvSrcAlpha);
+                if (g_ForceSight != 0) {
+                    SetupForceSightShader(pGob, GLRender::kPSFGlow, GLRender::kPSDesat, 0, 0, 0, 0, false);
+                } else {
+                    // The PC's fixed-function texture times light, which only a program draws here.
+                    GLRender::pfuncEnablePixelShaders(GLRender::kPSDefault, pMat->Textures(0).m_pObject, 0, 0, 0);
+                }
+                pMat->BindTexture0();
+                RenderFlat(vertices);
+                if (g_ForceSight != 0) {
+                    GLRender::pfuncEnablePixelShaders(GLRender::kPSDesatOff, 0, 0, 0, 0);
+                    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
+                    RenderInterface::SetDepthMask(1);
+                }
+            }
+            GLRender::Enable(Aurora::kCapAlphaTest);
+#else
             g_pBumpyShinySkinPass1->Enable(part, true);
             pMat->BindTexture0();
             GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpyShinyTextures, pMat->Textures(0).m_pObject, 0, 0,
@@ -1318,6 +1360,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             RenderFlat(vertices);
             GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendInvSrcAlpha);
             GLRender::Enable(Aurora::kCapAlphaTest);
+#endif
         }
         goto lbl_epilogue;
     }

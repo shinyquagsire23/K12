@@ -446,9 +446,7 @@ public:
     int UnHilite(unsigned char which);
     Vector GetCutsceneDummyPosition();
 
-    void*         m_nModelTextureData1;
-    void*         m_nModelTextureData2;
-    int           m_nModelTextureData3;
+    unsigned short m_anModelTextureData[10];
     unsigned char m_nModelTextureCount;
     unsigned char m_nModelTextureOffset;
     char          _pad2e[0x30 - 0x2e];
@@ -458,7 +456,6 @@ public:
     int           m_bModelEnvMapEnabled;
     CSWCAnimBaseHiliteColors m_hiliteColors;
     int           m_anHiliteSlot[10];
-    char          _padbc[0xc0 - 0xbc];
     CAurObject*   m_pModel;
     CAurObject*   m_pShadowBlob;
     float         m_alpha;

@@ -140,7 +140,6 @@ struct CSWPartyMemberData {
         int                m_bWaitForLeaderDistance;
         // The leader's world position when this member was last handed a fresh path.
         Vector             m_vLeaderPathOrigin;
-        unsigned char      _pad84[0x88 - 0x84];
         unsigned long long m_oidLastTarget;        // an object id, seeded to OBJECT_INVALID
         // Pending combat-feedback strref; the sentinel value means there is nothing to say.
         uint64_t      m_nCombatMessageStrRef;
@@ -185,7 +184,6 @@ struct CSWParty {
     int                m_bRosterDirty;
     float              m_fReserved1;
     float              m_fReserved2;
-    unsigned char      _pad24[0x28 - 0x24];
     CSWPartyMemberData m_members[3];       // the leader, then the two companions
     int                m_nFormation;
     float              m_followRangeBias;        // added to or subtracted from the follow range for

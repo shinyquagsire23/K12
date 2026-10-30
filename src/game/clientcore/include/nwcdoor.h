@@ -52,22 +52,13 @@ public:
     int           m_bHostileFaction;
     int           m_nDestroyedAnimVariant;
     unsigned char m_state;
-    char          _pad175[0x178-0x175];
     int           m_bHilightShown;
     unsigned char m_nAppearance;
     unsigned char m_nGenericType;
-#if KOTOR1
-    char          _pad17a[0x180-0x17a];
-#else
-    char          _pad17e[0x180-0x17e];
-#endif
-    int           m_nReserved1;
-    int           m_nReserved2;
+    void*         m_pReserved1;
     int           m_isAreaTransition;
-    char          _pad18c[0x190-0x18c];
     CExoString    m_sModelName;
     int           m_bStatic;
-    char          _pad1a4[0x1a8-0x1a4];
     CExoString    m_transitionDestination;
 
     CSWSDoor*     GetServerDoor();

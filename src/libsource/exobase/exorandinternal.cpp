@@ -217,7 +217,7 @@ void CExoRandInternal::SignalEvent()
     QueryPerformanceCounter(&llCounter);
 #endif
 
-    unsigned long long* pSlot = &m_anLastPerfCounter[0];
+    uint64_ll_t* pSlot = &m_anLastPerfCounter[0];
     unsigned int nDelta;
 #if KOTOR1
     unsigned short sDelta;

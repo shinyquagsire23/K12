@@ -69,7 +69,7 @@ CSWGuiQuestItem::~CSWGuiQuestItem()
     while (m_aItemEntries.m_pInternal->m_pHead != 0)
     {
         CSWGuiInGameItemEntry* pEntry =
-            static_cast<CSWGuiInGameItemEntry*>(m_aItemEntries.m_pInternal->RemoveHead());
+            m_aItemEntries.RemoveHead();
         if (pEntry != 0)
             delete pEntry;
     }

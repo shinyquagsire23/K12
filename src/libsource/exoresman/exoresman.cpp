@@ -431,7 +431,7 @@ bool CExoResMan::Request(CRes* pRes)
     }
     if (pRes->m_nRequestCount == 0) {
         pRes->m_nRequestCount = 0;
-        m_demandQueue.m_pInternal->AddTail(pRes);
+        m_demandQueue.AddTail(pRes);
     }
     pRes->m_nRequestCount = pRes->m_nRequestCount + 1;
     return true;
@@ -618,9 +618,9 @@ bool CExoResMan::UpdateFixedKeyTableFile(const CExoString& path)
     if (pNode == 0) {
         return false;
     }
-    CExoKeyTable* pTable = static_cast<CExoKeyTable*>(m_fixedKeyTables.m_pInternal->GetAtPos(pNode));
+    CExoKeyTable* pTable = m_fixedKeyTables.GetAtPos(pNode);
     while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
-        pTable = static_cast<CExoKeyTable*>(m_fixedKeyTables.m_pInternal->GetNext(pNode));
+        pTable = m_fixedKeyTables.GetNext(pNode);
         if (pNode == 0) return false;
     }
 
@@ -634,9 +634,9 @@ bool CExoResMan::UpdateResourceDirectory(const CExoString& path)
     if (pNode == 0) {
         return false;
     }
-    CExoKeyTable* pTable = static_cast<CExoKeyTable*>(m_resourceDirectories.m_pInternal->GetAtPos(pNode));
+    CExoKeyTable* pTable = m_resourceDirectories.GetAtPos(pNode);
     while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
-        pTable = static_cast<CExoKeyTable*>(m_resourceDirectories.m_pInternal->GetNext(pNode));
+        pTable = m_resourceDirectories.GetNext(pNode);
         if (pNode == 0) return false;
     }
 
@@ -650,9 +650,9 @@ bool CExoResMan::UpdateEncapsulatedResourceFile(const CExoString& path)
     if (pNode == 0) {
         return false;
     }
-    CExoKeyTable* pTable = static_cast<CExoKeyTable*>(m_encapsulatedFiles.m_pInternal->GetAtPos(pNode));
+    CExoKeyTable* pTable = m_encapsulatedFiles.GetAtPos(pNode);
     while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
-        pTable = static_cast<CExoKeyTable*>(m_encapsulatedFiles.m_pInternal->GetNext(pNode));
+        pTable = m_encapsulatedFiles.GetNext(pNode);
         if (pNode == 0) return false;
     }
 
@@ -666,9 +666,9 @@ bool CExoResMan::UpdateResourceImageFile(const CExoString& path)
     if (pNode == 0) {
         return false;
     }
-    CExoKeyTable* pTable = static_cast<CExoKeyTable*>(m_resourceImageFiles.m_pInternal->GetAtPos(pNode));
+    CExoKeyTable* pTable = m_resourceImageFiles.GetAtPos(pNode);
     while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
-        pTable = static_cast<CExoKeyTable*>(m_resourceImageFiles.m_pInternal->GetNext(pNode));
+        pTable = m_resourceImageFiles.GetNext(pNode);
         if (pNode == 0) return false;
     }
 
@@ -774,7 +774,7 @@ int CExoResMan::CreateDirectory2(const CExoString& path)
 #endif
 }
 
-int CExoResMan::GetFreeDiskSpace(const CExoString& path, unsigned long long* pFreeBytes)
+int CExoResMan::GetFreeDiskSpace(const CExoString& path, uint64_ll_t* pFreeBytes)
 {
     CExoString resolved;
     resolved = g_pExoBase->m_pAliasList->ResolveFileName(path, RESTYPE_INVALID);
@@ -910,7 +910,7 @@ CExoStringList* CExoResMan::GetResOfTypeFromTable(CExoLinkedList<CExoKeyTable>& 
     if (pNode == 0)
         return 0;
 
-    CExoKeyTable* pTable = static_cast<CExoKeyTable*>(list.m_pInternal->GetAtPos(pNode));
+    CExoKeyTable* pTable = list.GetAtPos(pNode);
     CExoStringList* pResult = 0;
     do {
         CExoStringList* pAccum = pResult;
@@ -927,7 +927,7 @@ CExoStringList* CExoResMan::GetResOfTypeFromTable(CExoLinkedList<CExoKeyTable>& 
                 }
             }
         }
-        pTable = static_cast<CExoKeyTable*>(list.m_pInternal->GetNext(pNode));
+        pTable = list.GetNext(pNode);
     } while (pNode != 0);
 
     return pResult;
@@ -1226,13 +1226,13 @@ int CExoResMan::Release(CRes* pRes)
     }
     pRes->m_nDemandCount = 0;
     if ((pRes->m_dwFlags & CRes::RESFLAG_FREE_PENDING) == 0) {
-        m_freeResources.m_pInternal->AddHead(pRes);
+        m_freeResources.AddHead(pRes);
         pRes->m_dwFlags |= CRes::RESFLAG_FREE_PENDING;
         return 0;
     }
     Dump(pRes, 0);
     if (pRes->m_pFileData != 0) {
-        m_freeResources.m_pInternal->AddHead(pRes);
+        m_freeResources.AddHead(pRes);
         Dump(pRes, 0);
     }
     pRes->m_dwFlags &= ~CRes::RESFLAG_FREE_PENDING;
@@ -1282,11 +1282,11 @@ int CExoResMan::CancelRequest(CRes* pRes)
     }
     if (pNode != 0) {
         while (pQueued != pRes) {
-            pQueued = static_cast<CRes*>(m_demandQueue.m_pInternal->GetNext(pNode));
+            pQueued = m_demandQueue.GetNext(pNode);
             if (pNode == 0) goto done;
         }
         if (pRes->m_nRequestCount == 0) {
-            m_demandQueue.m_pInternal->Remove(pNode);
+            m_demandQueue.Remove(pNode);
         }
     }
 done:
@@ -1340,7 +1340,7 @@ check:
     }
     pCur->m_nRequestCount = 0;
     int bServiced = pCur->OnResourceServiced();
-    m_demandQueue.m_pInternal->RemoveHead();
+    m_demandQueue.RemoveHead();
     m_pDemandQueueHeadCache = 0;
     m_pAsyncReadFile = 0;
     return bServiced;
@@ -1579,7 +1579,7 @@ void CExoResMan::Update(unsigned int nTimeSlice)
     }
     CRes* pRes = static_cast<CRes*>(m_pDemandQueueHeadCache);
     if (pRes->m_dwResID == RESID_INVALID || (pRes->m_dwFlags & CRes::RESFLAG_RESIDENT) != 0) {
-        m_demandQueue.m_pInternal->RemoveHead();
+        m_demandQueue.RemoveHead();
         m_pDemandQueueHeadCache = 0;
         m_pAsyncReadFile = 0;
         return;
@@ -2467,11 +2467,11 @@ CRes* CExoResMan::GetResObject(const CResRef& resRef, unsigned short resType)
                     CExoKeyTable* pScan;
                     CExoLinkedListNode* pNode = m_resourceImageFiles.m_pInternal->m_pHead;
                     if (pNode != 0) {
-                        pScan = static_cast<CExoKeyTable*>(m_resourceImageFiles.m_pInternal->GetAtPos(pNode));
+                        pScan = m_resourceImageFiles.GetAtPos(pNode);
                         while (1) {
                             if (pScan != 0 && pScan->m_bLookupDisabled == 0 && pScan->FindKey(resRef, resType) != 0)
                                 goto done;
-                            pScan = static_cast<CExoKeyTable*>(m_resourceImageFiles.m_pInternal->GetNext(pNode));
+                            pScan = m_resourceImageFiles.GetNext(pNode);
                             if (pNode == 0) break;
                         }
                     }
@@ -2525,7 +2525,7 @@ void CExoResMan::DumpTable(CExoLinkedList<CExoKeyTable>& list)
     if (pNode == 0)
         return;
 
-    CExoKeyTable* pTable = static_cast<CExoKeyTable*>(list.m_pInternal->GetAtPos(pNode));
+    CExoKeyTable* pTable = list.GetAtPos(pNode);
     while (1) {
         if (pTable != 0) {
             for (unsigned int i = 0; i < pTable->m_nTableSize; i++) {
@@ -2544,7 +2544,7 @@ void CExoResMan::DumpTable(CExoLinkedList<CExoKeyTable>& list)
                 Free(pRes);
             }
         }
-        pTable = static_cast<CExoKeyTable*>(list.m_pInternal->GetNext(pNode));
+        pTable = list.GetNext(pNode);
         if (pNode == 0)
             return;
     }
@@ -2582,7 +2582,7 @@ void ByteSwap(unsigned short* p) { K2_UNUSED(p); }
 void ByteSwap(short* p) { K2_UNUSED(p); }
 void ByteSwap(unsigned int* p) { K2_UNUSED(p); }
 void ByteSwap(int* p) { K2_UNUSED(p); }
-void ByteSwap(unsigned long long* p) { K2_UNUSED(p); }
+void ByteSwap(uint64_ll_t* p) { K2_UNUSED(p); }
 #if KOTOR1
 void ByteSwap(int64_t* p) { K2_UNUSED(p); }
 #else
@@ -2668,11 +2668,7 @@ CResRef::CResRef(const CExoString& s)
 __attribute__((noinline))
 CResRef CResRef::operator=(const CExoString& s)
 {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     unsigned int nLength = s.GetLength();
-#else
-    unsigned int nLength = (s.m_sString ? static_cast<unsigned int>(strlen(s.m_sString)) : 0);
-#endif
     *reinterpret_cast<ResRefBytes*>(m_sResRef) = ResRefBytes();  // raw-offset: a resref is 16 name bytes, compared as words
     if (nLength != 0)
     {
@@ -2810,11 +2806,7 @@ bool CResRef::operator==(const CExoString& s) const
     s.IsEmpty();
 #endif
     char* pStr = s.CStr();
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     size_t nLength = static_cast<unsigned int>(s.GetLength() + 1);
-#else
-    size_t nLength = static_cast<unsigned int>((s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0) + 1);
-#endif
     if (nLength > 15)
         nLength = 16;
     return memcmp(pStr, m_sResRef, nLength) == 0;
@@ -2827,11 +2819,7 @@ int CResRef::operator!=(const CExoString& s) const
     s.IsEmpty();
 #endif
     char* pStr = s.CStr();
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     size_t nLength = static_cast<unsigned int>(s.GetLength() + 1);
-#else
-    size_t nLength = static_cast<unsigned int>((s.m_sString ? static_cast<int>(strlen(s.m_sString)) : 0) + 1);
-#endif
     if (nLength > 15)
         nLength = 16;
     return memcmp(pStr, m_sResRef, nLength) != 0;

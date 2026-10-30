@@ -15,7 +15,7 @@ const unsigned short CGameEffect::DURATION_TYPE_EQUIPPED = 3;
 const unsigned short CGameEffect::DURATION_TYPE_TEMPORARY = 1;
 const unsigned short CGameEffect::DURATION_TYPE_PERMANENT = 2;
 const unsigned short CGameEffect::DURATION_TYPE_INNATE = 4;
-unsigned long long CGameEffect::m_nNextID = 1ULL;
+uint64_ll_t CGameEffect::m_nNextID = 1ULL;
 
 #include "port/libcstring.h"
 

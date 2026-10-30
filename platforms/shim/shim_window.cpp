@@ -139,6 +139,23 @@ void Post(HWND__* hwnd, unsigned int msg, unsigned long long wp, long long lp)
     m.pt_x = x;
     m.pt_y = y;
     std::lock_guard<std::mutex> g(g_qlock);
+    // Windows keeps at most one mouse move waiting: a move whose predecessor is still at the tail
+    // of the queue (behind it, at most the WM_SETCURSOR that came with it) takes its place, and
+    // that WM_SETCURSOR is not repeated. The engine's loop handles one message a pass, so a fast
+    // mouse's two messages an event would otherwise keep it from ever reaching the frame.
+    size_t n = g_queue.size();
+    if (msg == WM_SETCURSOR && n > 0) {
+        const MSG& last = g_queue[n - 1];
+        if (last.hwnd == hwnd && last.message == WM_SETCURSOR && last.wParam == wp && last.lParam == lp) return;
+    }
+    if (msg == WM_MOUSEMOVE && n > 0) {
+        size_t i = n - 1;
+        if (g_queue[i].hwnd == hwnd && g_queue[i].message == WM_SETCURSOR && i > 0) --i;
+        if (g_queue[i].hwnd == hwnd && g_queue[i].message == WM_MOUSEMOVE) {
+            g_queue[i] = m;
+            return;
+        }
+    }
     g_queue.push_back(m);
 }
 
@@ -565,9 +582,21 @@ int DestroyWindow(HWND__* hWnd);
 
 // messages.
 
-int PeekMessageA(MSG* pMsg, HWND__* hWnd, unsigned int nMin, unsigned int nMax, unsigned int wRemove)
+// SDL is pumped once a frame (and again after 8 ms in a loop that presents nothing): the engine's
+// loop draws only when PeekMessageA finds the queue empty, and while the mouse moves a pump nearly
+// always brings a new message -- and costs macOS a window-server round trip, so a fast mouse kept
+// the loop from ever reaching the frame. GetMessageA, which waits, always pumps.
+static bool s_bPumpedThisFrame;
+static uint32_t s_nLastPump;
+
+static int PeekMessageImpl(MSG* pMsg, HWND__* hWnd, unsigned int nMin, unsigned int nMax, unsigned int wRemove, bool bForcePump)
 {
-    PumpSdl();
+    uint32_t nNow = SDL_GetTicks();
+    if (bForcePump || !s_bPumpedThisFrame || nNow - s_nLastPump >= 8) {
+        PumpSdl();
+        s_bPumpedThisFrame = true;
+        s_nLastPump = nNow;
+    }
     std::lock_guard<std::mutex> g(g_qlock);
     for (auto it = g_queue.begin(); it != g_queue.end(); ++it) {
         if (!Matches(*it, hWnd, nMin, nMax)) continue;
@@ -578,10 +607,15 @@ int PeekMessageA(MSG* pMsg, HWND__* hWnd, unsigned int nMin, unsigned int nMax, 
     return 0;
 }
 
+int PeekMessageA(MSG* pMsg, HWND__* hWnd, unsigned int nMin, unsigned int nMax, unsigned int wRemove)
+{
+    return PeekMessageImpl(pMsg, hWnd, nMin, nMax, wRemove, false);
+}
+
 // GetMessageA is a PeekMessageA(PM_REMOVE) loop that sleeps on SDL between polls.
 int GetMessageA(MSG* pMsg, HWND__* hWnd, unsigned int nMin, unsigned int nMax)
 {
-    while (!PeekMessageA(pMsg, hWnd, nMin, nMax, 1))
+    while (!PeekMessageImpl(pMsg, hWnd, nMin, nMax, 1, true))
         SDL_WaitEventTimeout(0, 10);
     return pMsg->message != WM_QUIT;
 }
@@ -1574,6 +1608,7 @@ int SwapBuffers(void* hDC)
 #ifdef K2P_MOBILE_HOST
     k2android_gl_post_swap();
 #endif
+    s_bPumpedThisFrame = false;
     return 1;
 }
 

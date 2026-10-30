@@ -160,7 +160,7 @@ void CSWGuiLoadScreen::SetImage(const CResRef& resRef)
 #if !KOTOR1  // K1 does not override this slot
 void CSWGuiLoadScreen::OnPanelAdded()
 {
-    m_lblLogo.m_border.m_params.SetFillImage(m_resRefBackground, 0);
+    m_lblLogo.m_border.m_params.SetFillImage(m_resRefBackground);
 #ifdef K2_QOL_IMPROVEMENTS
     K2QolSizeLoadingLabel(this);
 #endif
@@ -171,7 +171,7 @@ void CSWGuiLoadScreen::OnPanelAdded()
 #if !KOTOR1  // K1 does not override this slot
 void CSWGuiLoadScreen::OnPanelRemoved()
 {
-    m_lblLogo.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_lblLogo.m_border.m_params.SetFillImage(CResRef(""));
     CSWGuiPanel::OnPanelRemoved();
 }
 #endif

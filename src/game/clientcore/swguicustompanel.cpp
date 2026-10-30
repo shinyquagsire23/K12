@@ -112,7 +112,11 @@ CSWGuiCustomPanel::CSWGuiCustomPanel(CSWGuiManager* pGuiManager, CSWCCreature* p
     SetState(0);
 
     AspyrAddButtonIcon(&m_btnBack, 'b');
+#if KOTOR1  // K1: the cancel button shows the B glyph too
+    AspyrAddButtonIcon(&m_btnCancel, 'b');
+#else
     AspyrAddButtonIcon(&m_btnCancel, 'x');
+#endif
 }
 
 // Selects a row and paints the whole family. nState is both the new row index, which also picks

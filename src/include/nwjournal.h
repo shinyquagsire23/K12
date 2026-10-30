@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exostring.h"
+#include "k2stdint.h"
 
 // idiom-exempt: canonical
 // One journal update deferred while the GUI was busy: a record of the arguments
@@ -28,7 +29,7 @@ public:
     CExoString    m_sText;
     unsigned int  m_nCalendarDay;
     unsigned int  m_nTimeOfDay;
-    long long     m_nTextStrRef;
+    uint64_t      m_nTextStrRef;
     unsigned int  m_nEntryId;
     unsigned char m_nEntryFlags;
 };

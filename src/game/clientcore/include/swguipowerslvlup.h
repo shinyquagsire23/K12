@@ -100,7 +100,6 @@ public:
         POWERS_GRANTED_BOX_PUSHED = 0x01,
     };
     unsigned char m_bGrantedPushed;
-    unsigned char _pad25d9[0x25e0 - 0x25d9];
 #endif
 
     CExoString m_sPowerAvailableText;

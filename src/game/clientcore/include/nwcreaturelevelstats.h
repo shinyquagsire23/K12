@@ -22,7 +22,6 @@ public:
     unsigned char  m_nHitPointGain;          // folded into CSWSObject::m_hitPoints
     unsigned char  m_nClass;                 // the class id the level was taken in
     unsigned char  m_nForcePointGain;        // accumulated into CSWSCreatureStats::m_nBaseForcePoints
-    unsigned char _pad3e[0x40 - 0x3e];       // sizeof is a guess here
 
     void ClearFeats();
     void SetSkillRankChange(unsigned short nSkill, char nRank);

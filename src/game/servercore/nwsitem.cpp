@@ -467,14 +467,14 @@ void CSWSItem::CloseItemForAllPlayers()
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
     if (pNode != 0) {
         do {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->m_pInternal->GetAtPos(pNode));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
             if (pPlayer != 0) {
                 CGameObject* pGameObj = pPlayer->GetGameObject();
                 if (pGameObj != 0 && pPlayer->m_pContainerGUI->m_objectId == m_objectId) {
                     CloseInventory(pGameObj->m_objectId, 1);
                 }
             }
-            pList->m_pInternal->GetNext(pNode);
+            pList->GetNext(pNode);
         } while (pNode != 0);
     }
 }
@@ -1857,11 +1857,7 @@ void CSWSItem::AddFeatRequirements(CExoString& sOut)
         if (nColon != -1)
         {
             sLeft = sName.Left(nColon);
-#if KOTOR1  // K1: CExoString::GetLength() instead of the raw string
             sRight = sName.Right(sName.GetLength() - nColon - 1);
-#else
-            sRight = sName.Right((sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0) - nColon - 1);
-#endif
             sName = CExoString(sLeft) + " - " + CExoString(sRight);
         }
         sOut = sOut + sName + "\n";
@@ -1889,11 +1885,7 @@ void CSWSItem::AddFeatRequirements(CExoString& sOut)
             if (nSubColon != -1)
             {
                 sLeft = sName.Left(nSubColon);
-#if KOTOR1  // K1: CExoString::GetLength() instead of the raw string
                 sRight = sName.Right(sName.GetLength() - nSubColon - 1);
-#else
-                sRight = sName.Right((sName.m_sString ? static_cast<int>(strlen(sName.m_sString)) : 0) - nSubColon - 1);
-#endif
                 sName = CExoString(sLeft) + " - " + CExoString(sRight);
             }
             sOut = sOut + sName + "\n";

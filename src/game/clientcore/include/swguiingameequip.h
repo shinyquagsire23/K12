@@ -37,7 +37,6 @@ public:
     unsigned char m_nState      : 2;
     unsigned char bGiveArmed    : 1;
     unsigned char m_nReserved1     : 5;
-    char m_aReserved1[0xb8 - 0xb2];
 
     CSWGuiLabel   m_lblMessage;
     CSWGuiLabel   m_lblButton;
@@ -273,7 +272,6 @@ public:
         float         m_fSwapWeaponsCooldown;      // the droid-override timer Draw counts down
         int           m_bNPCOverride;
         int           m_nOverrideNPC;
-        char          _pad9c[0xa0 - 0x9c];
     };
     K2_LAYOUT_ASSERT(sizeof(SlotState) == 0xa0, "SlotState size drift");
     SlotState     m_slot;

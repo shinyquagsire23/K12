@@ -52,7 +52,7 @@ int CSWSAmbientSound::GetPlayersInArea(CExoArrayList<unsigned long long>* pPlaye
     CExoLinkedListNode* pNode = ppList->m_pInternal->m_pHead;
     while (pNode != 0)
     {
-        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppList->m_pInternal->GetAtPos(pNode));
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(ppList->GetAtPos(pNode));
         if (pPlayer != 0 && pPlayer->GetGameObject() != 0)
         {
             CSWSCreature* pCreature = pPlayer->GetGameObject()->AsSWSCreature();
@@ -63,7 +63,7 @@ int CSWSAmbientSound::GetPlayersInArea(CExoArrayList<unsigned long long>* pPlaye
             }
         }
 
-        ppList->m_pInternal->GetNext(pNode);
+        ppList->GetNext(pNode);
     }
 
     return pPlayers->m_count;

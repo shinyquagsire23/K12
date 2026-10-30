@@ -17,7 +17,6 @@ struct SkinVertexWeight {
     int   m_nBoneIdx2;
     int   m_nBoneIdx3;
     int   m_nWeightCount;
-    int   m_nReserved1;
 };
 K2_LAYOUT_ASSERT(sizeof(SkinVertexWeight) == 0x48, "SkinVertexWeight must stay 0x48");
 

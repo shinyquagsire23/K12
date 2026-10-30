@@ -97,23 +97,18 @@ public:
 #if !KOTOR1  // K2-only: difficulty scaling fields and the tweak colour
     unsigned char m_openLockDiff;
     signed char   m_openLockDiffMod;
-    unsigned char _pad44e[0x450 - 0x44e];
     int           m_nOwnerDemolitionsSkill;
     unsigned char m_bUseTweakColor;
-    unsigned char _pad455[0x458 - 0x455];
     unsigned int  m_tweakColor;
 #endif
     unsigned char m_curOpenState;
     unsigned char m_pendingOpenState;
-    unsigned char _pad45e[0x460 - 0x45e];
     CExoString    m_keyName;
     int           m_bKeyRequired;
-    unsigned char _pad474[0x478 - 0x474];
     CExoArrayList<unsigned long long> m_objectsAtDoor;
     int           m_bTrapFlag;
     unsigned char m_baseDisarmDC;
     unsigned char m_baseDetectDC;
-    unsigned char _pad48e[0x490 - 0x48e];
     int           m_bAutoRemoveKey;
     int           m_bMineFlagged;
     unsigned char m_trapType;
@@ -124,7 +119,6 @@ public:
     int           m_bVisibleModel;
     unsigned int  m_lastUpdateDay;
     unsigned int  m_lastUpdateTod;
-    unsigned char _pad4b4[0x4b8 - 0x4b4];
     unsigned long long m_oidLastLockedBy;
     unsigned long long m_oidLastUnlockedBy;
     unsigned long long m_oidLastOpenedBy;
@@ -137,7 +131,6 @@ public:
     Vector        m_meshOutline[4];
     int           m_nMeshOutlinePoints;
     unsigned char m_linkedToFlags;
-    unsigned char _pad54d[0x550 - 0x54d];
     CExoString    m_linkedTo;
     CExoString    m_linkedToModule;
     unsigned long long m_cachedLinkedObjectId;
@@ -148,7 +141,6 @@ public:
     Quaternion    m_orientation;
     int           m_bStatic;
     int           m_bPreciseUse;
-    unsigned char _pad5b4[0x5b8 - 0x5b4];
     CExoLocString m_transitionDestination;
 #if !KOTOR1
     CSWSObject*   m_pMineTrigger;

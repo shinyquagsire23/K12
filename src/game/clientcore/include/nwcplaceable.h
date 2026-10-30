@@ -80,7 +80,6 @@ public:
     int           m_nReserved1;
     void*         m_pReserved1;
     int           m_bHilightShown;
-    char          _pad1a4[0x1a8-0x1a4];
     void*         m_pReserved2;
     CExoString    m_sModelName;
     CAurObject*   m_pLight;

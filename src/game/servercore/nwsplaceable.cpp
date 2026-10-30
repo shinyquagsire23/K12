@@ -551,14 +551,14 @@ void CSWSPlaceable::ClosePlaceableForAllPlayers() {
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
     if (pNode != 0) {
         do {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->m_pInternal->GetAtPos(pNode));
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
             if (pPlayer != 0) {
                 CGameObject* pGameObj = pPlayer->GetGameObject();
                 if (pGameObj != 0 && pPlayer->m_pContainerGUI->m_objectId == m_objectId) {
                     CloseInventory(pGameObj->m_objectId, 1);
                 }
             }
-            pList->m_pInternal->GetNext(pNode);
+            pList->GetNext(pNode);
         } while (pNode != 0);
     }
 }
@@ -883,7 +883,7 @@ int CSWSPlaceable::AIActionCastSpell(CSWSObjectActionNode* pAction) {
 }
 
 void CSWSPlaceable::AIUpdate() {
-    unsigned long long timerSnapshot = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    uint64_ll_t timerSnapshot = g_pExoBase->m_pTimers->GetHighResolutionTimer();
     unsigned int day, tod;
     static_cast<CWorldTimer*>(g_pAppManager->m_pServerExoApp->GetWorldTimer())->GetWorldTime(&day, &tod);
     unsigned int elapsedDay, elapsedTod;
@@ -1274,7 +1274,7 @@ void CSWSPlaceable::EventHandler(unsigned int nEventType, unsigned long long nCa
         }
     } else if (nEventType == static_cast<unsigned int>(CServerAIMaster::EVENT_REMOVE_EFFECT)) {
         if (pData != 0) {
-            RemoveEffectById(*static_cast<unsigned long long*>(pData));
+            RemoveEffectById(*static_cast<uint64_ll_t*>(pData));
         }
     } else if (nEventType == static_cast<unsigned int>(CServerAIMaster::EVENT_PLAY_ANIMATION)) {
         if (pData != 0 && GetDead() == 0) {
