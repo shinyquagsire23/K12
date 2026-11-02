@@ -271,7 +271,7 @@ void CExoDebugInternal::InitializeAssertFile()
 
 // strlen with an explicit declaration so the loop below keeps its shape: pure merges the per-iteration
 // length reads into one call.
-#if !defined(K2_HOST_BUILD)  // a host keeps its C library's declaration
+#if !defined(K2_HOST_BUILD) && !defined(_STRING_H)  // a host, or a TU that saw <string.h>, keeps the C library's
 extern "C" size_t strlen(const char* s) throw() __attribute__((pure));  // idiom-exempt: the loop's attributes
 #endif
 

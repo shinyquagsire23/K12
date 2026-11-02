@@ -21,7 +21,9 @@ extern int g_bShiftActionState;
 // K1 never calls it, but under cl.exe the MSVC <string> below calls a sprintf_s the engine CRT
 // does not declare, and binds to this one.
 #if !KOTOR1 || defined(_MSC_VER)
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...);
+#endif
 #endif
 void ChangeResolutionForMovie();
 void RestoreResolutionFromMovie();
@@ -1026,10 +1028,10 @@ void CClientExoAppInternal::ShutDownToMainMenu()
 #endif
 
         if (m_loadBarState) {
-            CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+            CSWReentrantServerStats* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
             pInfo->m_bStallFinished = 0;
             pInfo->m_flag = 0;
-            pInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
+            pInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_NONE;
             m_loadBarState = 0;
         }
     }
@@ -1040,24 +1042,27 @@ int CClientExoAppInternal::IsHostingServer()
     return 1;
 }
 
-void CClientExoAppInternal::SendSaveGameRequest(unsigned int nSlot, const CExoString& sName,
-                                                const CExoString& sDesc)
+int CClientExoAppInternal::SendSaveGameRequest(unsigned int nSlot, const CExoString& sName,
+                                               const CExoString& sDesc)
 {
     if (m_pSWCMessage)
-        m_pSWCMessage->SendPlayerToServerModule_SaveGame(nSlot, sName, sDesc);
+        return m_pSWCMessage->SendPlayerToServerModule_SaveGame(nSlot, sName, sDesc);
+    return 0;
 }
 
-void CClientExoAppInternal::SendLoadGameRequest(unsigned int nSlot, const CExoString& sName,
-                                                const CExoString& sDesc)
+int CClientExoAppInternal::SendLoadGameRequest(unsigned int nSlot, const CExoString& sName,
+                                               const CExoString& sDesc)
 {
     if (m_pSWCMessage)
-        m_pSWCMessage->SendPlayerToServerModule_LoadGame(nSlot, sName, sDesc);
+        return m_pSWCMessage->SendPlayerToServerModule_LoadGame(nSlot, sName, sDesc);
+    return 0;
 }
 
-void CClientExoAppInternal::SendCharacterResponse(int bAccept)
+int CClientExoAppInternal::SendCharacterResponse(int bAccept)
 {
     if (m_pSWCMessage)
-        m_pSWCMessage->SendPlayerToServerLogin_CharacterResponse(bAccept);
+        return m_pSWCMessage->SendPlayerToServerLogin_CharacterResponse(bAccept);
+    return 0;
 }
 
 void CClientExoAppInternal::ShowServerMem()
@@ -1203,13 +1208,13 @@ void CClientExoAppInternal::ClearCachedCreatures(CSWCCreature* pCreature)
 
 void CClientExoAppInternal::StallServerCode()
 {
-    CLoadGameErrorInfo* p = g_pAppManager->m_pLoadGameErrorInfo;
+    CSWReentrantServerStats* p = g_pAppManager->m_pLoadGameErrorInfo;
     if (p->m_bStallFirstFrame == 1)
         p->m_bStallFirstFrame = 0;
     else if (p->m_bStallFinished == 1) {
         p->m_bStallFinished = 0;
         p->m_flag = 0;
-        p->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
+        p->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_NONE;
         if (m_nLoadGameError)
             ShutDownToMainMenu();
         m_nLoadGameError = 0;
@@ -2450,6 +2455,7 @@ void CClientExoAppInternal::UpdateRoom(Vector const& vPos)
 extern const char* GetOverridePath(int index, bool flag);
 
 #if !KOTOR1 || defined(_MSC_VER)
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
@@ -2457,6 +2463,7 @@ static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 #endif
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
@@ -3254,7 +3261,7 @@ void CClientExoAppInternal::ShutDownLoadGameLoadBar()
     if (m_loadBarState) {
         g_pAppManager->m_pLoadGameErrorInfo->m_bStallFinished = 0;
         g_pAppManager->m_pLoadGameErrorInfo->m_flag = 0;
-        g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
+        g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_NONE;
         m_loadBarState = 0;
     }
 }
@@ -4747,7 +4754,6 @@ void CClientExoAppInternal::ReadAndSetVideoMode(int a, int b)
     unsigned char nBpp = 0;
     bool nResult;
     int nMode;
-    PortDevMode devMode;
     CExoString sString;
     CExoIni cIni;
     g_fullScreenDesired = 1;
@@ -4755,19 +4761,10 @@ void CClientExoAppInternal::ReadAndSetVideoMode(int a, int b)
     m_pClientOptions->SetFullScreenEnabled(1);
     nMode = CAuroraInterface::GetExactVideoMode(nWidth, nHeight, nBpp, nRefresh);
     if (nMode == -1 || nResult == 0) {
-        if (nResult != 0) {
-            nMode = CAuroraInterface::GetNearestVideoMode(1024, 768, 32, 60);
-            memset(&devMode, 0, sizeof(devMode));
-            devMode.m_size = sizeof(devMode);
-            if (EnumDisplaySettingsA(0, nMode, &devMode) == 0)
-                nMode = -1;
-        } else {
-            nMode = CAuroraInterface::GetNearestVideoMode(1600, 1200, 32, 60);
-            memset(&devMode, 0, sizeof(devMode));
-            devMode.m_size = sizeof(devMode);
-            if (EnumDisplaySettingsA(0, nMode, &devMode) == 0)
-                nMode = -1;
-        }
+        if (nResult != 0)
+            nMode = GetNearestVideoMode(1024, 768, 32, 60);
+        else
+            nMode = GetNearestVideoMode(1600, 1200, 32, 60);
     }
     SetVideoMode(nMode, VIDEO_SCREEN_FULLSCREEN);
 }
@@ -5313,7 +5310,7 @@ void rendertilepathnodes(char* pszArg)
 }
 
 // Console command.
-void GameCameraHitCheck(int a, int b, Vector* pvHit, CHitInfo* pInfo)
+int GameCameraHitCheck(int a, int b, Vector* pvHit, CHitInfo* pInfo)
 {
     CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
 
@@ -5321,7 +5318,8 @@ void GameCameraHitCheck(int a, int b, Vector* pvHit, CHitInfo* pInfo)
         pInfo->m_bHitBoundingBoxes = 1;
 
     if (pCamera)
-        pCamera->HitCheck(a, b, pvHit, pInfo);
+        return pCamera->HitCheck(a, b, pvHit, pInfo);
+    return 0;
 }
 
 // Console command.
@@ -5549,13 +5547,19 @@ CClientExoAppInternal::CClientExoAppInternal()
 
 CClientExoAppInternal::~CClientExoAppInternal()
 {
-    delete m_pParty;
-    *reinterpret_cast<void* volatile*>(&m_pParty) = 0;
+    if (m_pParty) {
+        delete m_pParty;
+        m_pParty = 0;
+    }
     delete m_pauseExclusionList;
-    delete m_pMGOArray;
-    *static_cast<CSWMiniGameObjectArray* volatile*>(&m_pMGOArray) = 0;
-    delete m_pEvilEndingMusic;
-    *reinterpret_cast<void* volatile*>(&m_pEvilEndingMusic) = 0;
+    if (m_pMGOArray) {
+        delete m_pMGOArray;
+        m_pMGOArray = 0;
+    }
+    if (m_pEvilEndingMusic) {
+        delete m_pEvilEndingMusic;
+        m_pEvilEndingMusic = 0;
+    }
 }
 
 int CClientExoAppInternal::GetClientMeleeAnimation(unsigned long long nObjId1, unsigned long long nObjId2,
@@ -7585,7 +7589,7 @@ update_phase:
         }
         StallServerCode();
 #if KOTOR1  // a load still in progress keeps the area hidden and ends the frame here
-        CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+        CSWReentrantServerStats* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
         if (pInfo->m_flag != 0 && (pInfo->m_nStallEvent | 2) == 3) {
             m_bAreaNotReadyToDisplay = 1;
             UpdateScreen(0.033333335f, 0, 1);

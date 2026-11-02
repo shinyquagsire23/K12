@@ -373,12 +373,9 @@ static const unsigned long long kOidInvalid = OBJECT_INVALID;
 
 unsigned long long CSWSFaction::GetWeakestMember(unsigned long long oidCreature, int bMustBeVisible)
 {
-    if (m_members.m_count < 1)
-        return kOidInvalid;
     int64_t i;
     unsigned long long oidResult = kOidInvalid;
     int nBest = 999;
-    int bCheck = (oidCreature != kOidInvalid) && (bMustBeVisible != 0);
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
@@ -387,7 +384,7 @@ unsigned long long CSWSFaction::GetWeakestMember(unsigned long long oidCreature,
         int nLevel = pCreature->m_pStats->GetLevel(0);
         if (nBest <= nLevel)
             continue;
-        if (bCheck) {
+        if (oidCreature != kOidInvalid && bMustBeVisible != 0) {
             unsigned long long oidHit;
             Vector vOut = { 0.0f, 0.0f, 0.0f };
             CSWSCreature* pOther =
@@ -411,12 +408,9 @@ unsigned long long CSWSFaction::GetWeakestMember(unsigned long long oidCreature,
 
 unsigned long long CSWSFaction::GetStrongestMember(unsigned long long oidCreature, int bMustBeVisible)
 {
-    if (m_members.m_count < 1)
-        return kOidInvalid;
     int64_t i;
     unsigned long long oidResult = kOidInvalid;
     int nBest = 0;
-    int bCheck = (oidCreature != kOidInvalid) && (bMustBeVisible != 0);
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
@@ -425,7 +419,7 @@ unsigned long long CSWSFaction::GetStrongestMember(unsigned long long oidCreatur
         int nLevel = pCreature->m_pStats->GetLevel(0);
         if (nBest >= nLevel)
             continue;
-        if (bCheck) {
+        if (oidCreature != kOidInvalid && bMustBeVisible != 0) {
             unsigned long long oidHit;
             Vector vOut = { 0.0f, 0.0f, 0.0f };
             CSWSCreature* pOther =
@@ -449,12 +443,9 @@ unsigned long long CSWSFaction::GetStrongestMember(unsigned long long oidCreatur
 
 unsigned long long CSWSFaction::GetBestAC(unsigned long long oidCreature, int bMustBeVisible)
 {
-    if (m_members.m_count < 1)
-        return kOidInvalid;
     int64_t i;
     unsigned long long oidResult = kOidInvalid;
     short nBest = 0;
-    int bCheck = (oidCreature != kOidInvalid) && (bMustBeVisible != 0);
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
@@ -463,7 +454,7 @@ unsigned long long CSWSFaction::GetBestAC(unsigned long long oidCreature, int bM
         short nAC = pCreature->m_pStats->GetArmorClassVersus(0, 0);
         if (nAC <= nBest)
             continue;
-        if (bCheck) {
+        if (oidCreature != kOidInvalid && bMustBeVisible != 0) {
             unsigned long long oidHit;
             Vector vOut = { 0.0f, 0.0f, 0.0f };
             CSWSCreature* pOther =
@@ -487,12 +478,9 @@ unsigned long long CSWSFaction::GetBestAC(unsigned long long oidCreature, int bM
 
 unsigned long long CSWSFaction::GetWorstAC(unsigned long long oidCreature, int bMustBeVisible)
 {
-    if (m_members.m_count < 1)
-        return kOidInvalid;
     int64_t i;
     unsigned long long oidResult = kOidInvalid;
     short nBest = 999;
-    int bCheck = (oidCreature != kOidInvalid) && (bMustBeVisible != 0);
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
@@ -501,7 +489,7 @@ unsigned long long CSWSFaction::GetWorstAC(unsigned long long oidCreature, int b
         short nAC = pCreature->m_pStats->GetArmorClassVersus(0, 0);
         if (nAC >= nBest)
             continue;
-        if (bCheck) {
+        if (oidCreature != kOidInvalid && bMustBeVisible != 0) {
             unsigned long long oidHit;
             Vector vOut = { 0.0f, 0.0f, 0.0f };
             CSWSCreature* pOther =
@@ -525,12 +513,9 @@ unsigned long long CSWSFaction::GetWorstAC(unsigned long long oidCreature, int b
 
 unsigned long long CSWSFaction::GetLeastDamagedMember(unsigned long long oidCreature, int bMustBeVisible)
 {
-    if (m_members.m_count < 1)
-        return kOidInvalid;
     int64_t i;
     unsigned long long oidResult = kOidInvalid;
     int nBest = 999;
-    int bCheck = (oidCreature != kOidInvalid) && (bMustBeVisible != 0);
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
@@ -541,7 +526,7 @@ unsigned long long CSWSFaction::GetLeastDamagedMember(unsigned long long oidCrea
         int nDamaged = pCreature->GetMaxHitPoints(1) - pCreature->GetCurrentHitPoints(0);
         if (nDamaged >= nBest)
             continue;
-        if (bCheck) {
+        if (oidCreature != kOidInvalid && bMustBeVisible != 0) {
             unsigned long long oidHit;
             Vector vOut = { 0.0f, 0.0f, 0.0f };
             CSWSCreature* pOther =
@@ -565,12 +550,9 @@ unsigned long long CSWSFaction::GetLeastDamagedMember(unsigned long long oidCrea
 
 unsigned long long CSWSFaction::GetMostDamagedMember(unsigned long long oidCreature, int bMustBeVisible)
 {
-    if (m_members.m_count < 1)
-        return kOidInvalid;
     int64_t i;
     unsigned long long oidResult = kOidInvalid;
     int nBest = -1;
-    int bCheck = (oidCreature != kOidInvalid) && (bMustBeVisible != 0);
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
@@ -583,7 +565,7 @@ unsigned long long CSWSFaction::GetMostDamagedMember(unsigned long long oidCreat
         int nDamaged = pCreature->GetMaxHitPoints(1) - pCreature->GetCurrentHitPoints(0);
         if (nDamaged <= nBest)
             continue;
-        if (bCheck) {
+        if (oidCreature != kOidInvalid && bMustBeVisible != 0) {
             unsigned long long oidHit;
             Vector vOut = { 0.0f, 0.0f, 0.0f };
             CSWSCreature* pOther =

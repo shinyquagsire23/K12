@@ -905,37 +905,46 @@ void CSWGuiPartySelection::OnDone(CSWGuiControl* pControl)
     if (pControl->m_tail.nCurrentEventType == INPUTEVENT_GUI_START || pControl->m_tail.nCurrentEventType == INPUTEVENT_GUI_A)
         m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
 
-    if (!m_bFromScript)
+    if (m_bFromScript)
+    {
+        unsigned char nNumSelected = 0;
+        unsigned char nNumForced = 0;
+        unsigned char nNumFilled = 0;
+        for (int i = 0; i < 9; i++)
+        {
+            if (m_aPartyData[i].m_bSelectable)
+                nNumFilled++;
+            if (m_aPartyData[i].m_bForced)
+                nNumForced++;
+            if (m_aPartyData[i].m_button.m_bSelected)
+                nNumSelected++;
+        }
+
+        if (nNumFilled == 0 || nNumForced == 2)
+        {
+            AcceptParty();
+            g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bInGameMenuShown = 0;
+            return;
+        }
+
+        if (nNumFilled > 0)
+        {
+            CSWGuiMessageBox* pBox =
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
+            pBox->SetAllowCancel(1);
+            if (nNumFilled > 1 && nNumSelected < 2)
+                pBox->SetMessage(STRREF_CONFIRM_SMALL_PARTY);
+            else
+                pBox->SetMessage(STRREF_CONFIRM_PARTY);
+            pBox->SetCallback(this,
+                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPartySelection::ConfirmPartySelection), 0);
+            m_pGuiManager->AddPanel(pBox, 1, 1);
+        }
+    }
+    else
     {
         AcceptParty();
-        return;
     }
-
-    unsigned char nNumFilled = 0;
-    unsigned char nNumForced = 0;
-    unsigned char nNumSelected = 0;
-    for (int i = 0; i < 9; i++)
-    {
-        nNumFilled += m_aPartyData[i].m_bSelectable;
-        nNumForced += m_aPartyData[i].m_bForced;
-        if (m_aPartyData[i].m_button.m_bSelected)
-            nNumSelected++;
-    }
-
-    if (nNumFilled == 0 || nNumForced == 2)
-    {
-        AcceptParty();
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bInGameMenuShown = 0;
-        return;
-    }
-
-    CSWGuiMessageBox* pBox =
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
-    pBox->SetAllowCancel(1);
-    pBox->SetMessage((nNumSelected < 2 && nNumFilled != 1) ? STRREF_CONFIRM_SMALL_PARTY : STRREF_CONFIRM_PARTY);
-    pBox->SetCallback(this,
-        static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPartySelection::ConfirmPartySelection), 0);
-    m_pGuiManager->AddPanel(pBox, 1, 1);
 }
 #else
 void CSWGuiPartySelection::OnDone(CSWGuiControl* pControl)

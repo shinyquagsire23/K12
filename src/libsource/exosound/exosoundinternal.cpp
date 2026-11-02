@@ -1254,7 +1254,7 @@ void CExoSoundInternal::SetMusicVolume(float fVolume, int a, int b)
         if (fScaled > 127.0f)
             fScaled = 127.0f;
 
-        pGroup->m_nVolume = static_cast<unsigned char>(static_cast<int>(fScaled));
+        pGroup->m_nVolume = static_cast<unsigned char>(fScaled);
 #endif
     }
 }

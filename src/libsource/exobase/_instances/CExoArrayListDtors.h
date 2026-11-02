@@ -8,7 +8,7 @@ public:
     int m_count;
     int m_capacity;
 
-    CExoArrayList() { __builtin_memset(&m_pArray, 0, sizeof(*this)); }
+    CExoArrayList() { m_count = 0; m_capacity = 0; m_pArray = 0; }
 
     CExoArrayList(const CExoArrayList& other);
 
@@ -70,8 +70,7 @@ public:
     }
 
     // Like Contains, but compares the pointees and stops at the first match.
-    template <class U>
-    int DerefContains(U v) const
+    int DerefContains(T v) const
     {
         for (int64_t i = 0; i < m_count; i++)
             if (*m_pArray[i] == *v)
@@ -81,10 +80,8 @@ public:
 
     void AddUnique(T v);
 
-    // Index of the first match, or -1. A member template, so the explicit instantiations in
-    // CExoArrayList.cpp do not emit it.
-    template <class U = T>
-    int IndexOf(U v) const
+    // Index of the first match, or -1.
+    int IndexOf(T v) const
     {
         for (int64_t i = 0; i < m_count; i++)
             if (m_pArray[i] == v)
@@ -93,8 +90,7 @@ public:
     }
 
     // Index of the first element the predicate accepts, or -1 (also for a null predicate).
-    template <class U = T>
-    int IndexOf(void* pData, int (*pfnTest)(void*, U)) const
+    int IndexOf(void* pData, int (*pfnTest)(void*, T)) const
     {
         if (pfnTest == 0)
             return -1;

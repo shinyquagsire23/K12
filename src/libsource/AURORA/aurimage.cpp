@@ -187,19 +187,15 @@ unsigned char ImageInterpolate(unsigned char* pData, float fX, float fY, int nWi
     return static_cast<unsigned char>(static_cast<int>((1.0f - fFracY) * fRow0 + fFracY * fRow1));
 }
 
-int ImageGetPerlinPixel(unsigned char** paNoise, int nX, int nY, int nSize, int nOctaves,
-                        int nScale)
+unsigned char ImageGetPerlinPixel(unsigned char** paNoise, int nX, int nY, int nSize, int nOctaves,
+                                  int nScale)
 {
-    if (nOctaves < 1)
-        return 127;
-
-    int nResult = 0;
     float fU = static_cast<float>(nX) / static_cast<float>(nScale);
     float fV = static_cast<float>(nY) / static_cast<float>(nScale);
-    // Counts down so the octave count is read once.
-    for (uint64_t i = static_cast<unsigned>(nOctaves); i != 0; i--)
+    int nResult = 0;
+    for (int i = 0; i < nOctaves; i++)
     {
-        nResult += ImageInterpolate(*paNoise++, fU * static_cast<float>(nSize), fV * static_cast<float>(nSize), nSize, nSize);
+        nResult += ImageInterpolate(paNoise[i], fU * static_cast<float>(nSize), fV * static_cast<float>(nSize), nSize, nSize);
         nResult -= 127;
         nSize <<= 1;
     }
@@ -433,20 +429,20 @@ void ImageLowpassLowQualityBlur(unsigned char* pDst, unsigned char* pSrc, int nW
         for (int x = 0; x < nWidth; x++)
         {
             pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<int>(static_cast<float>(pSrc[((nHeight - 1 + y) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
-                      0.1f));
+                static_cast<unsigned char>(static_cast<float>(pSrc[((nHeight - 1 + y) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
+                      0.1f);
             pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<int>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth - 1 + x) % nWidth]) *
-                      0.1f));
+                static_cast<unsigned char>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth - 1 + x) % nWidth]) *
+                      0.1f);
             pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<int>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
-                      0.5f));
+                static_cast<unsigned char>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
+                      0.5f);
             pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<int>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth + x + 1) % nWidth]) *
-                      0.1f));
+                static_cast<unsigned char>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth + x + 1) % nWidth]) *
+                      0.1f);
             pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<int>(static_cast<float>(pSrc[((nHeight - 1 + y + 2) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
-                      0.1f));
+                static_cast<unsigned char>(static_cast<float>(pSrc[((nHeight - 1 + y + 2) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
+                      0.1f);
         }
     }
 }
@@ -539,11 +535,11 @@ void ImageLowpassBlur(unsigned char* pData, int nWidth, int nHeight, int nBpp)
     delete[] pNew;
 }
 
-void ImageAddColorModulateAlpha(unsigned char* pData, int nWidth, int nHeight, int nBpp,
-                                unsigned char nR, unsigned char nG, unsigned char nB)
+unsigned char* ImageAddColorModulateAlpha(unsigned char* pData, int nWidth, int nHeight, int nBpp,
+                                          unsigned char nR, unsigned char nG, unsigned char nB)
 {
     if (nBpp < 4)
-        return;
+        return pData;
 
     float fR = nR;
     float fG = nG;
@@ -575,6 +571,7 @@ void ImageAddColorModulateAlpha(unsigned char* pData, int nWidth, int nHeight, i
             }
         }
     }
+    return pData;
 }
 
 unsigned char* ImageGetSubImage(unsigned char* pData, int nWidth, int nHeight, int nBpp,
@@ -610,9 +607,9 @@ void ImageFillAlpha(unsigned char* pData, int nWidth, int nHeight, int nBpp, con
             float fR = (static_cast<float>(pPixel[0]) / 255.0f * fA + vColor.x * (1.0f - fA)) * 255.0f;
             float fG = (static_cast<float>(pPixel[1]) / 255.0f * fA + vColor.y * (1.0f - fA)) * 255.0f;
             float fB = (static_cast<float>(pPixel[2]) / 255.0f * fA + vColor.z * (1.0f - fA)) * 255.0f;
-            pPixel[0] = static_cast<unsigned char>(fR);
-            pPixel[1] = static_cast<unsigned char>(fG);
-            pPixel[2] = static_cast<unsigned char>(fB);
+            pPixel[0] = static_cast<unsigned char>(static_cast<int>(fR));
+            pPixel[1] = static_cast<unsigned char>(static_cast<int>(fG));
+            pPixel[2] = static_cast<unsigned char>(static_cast<int>(fB));
             pPixel[3] = 255;
         }
     }
@@ -761,6 +758,9 @@ unsigned char* ImageConvert32to16bit(unsigned char* pData, int nWidth, int nHeig
 
 
 
+#if defined(K2_NO_FORTIFY)
+#define FormatName(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
 {
     __builtin_va_list ap;
@@ -769,6 +769,7 @@ static int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 int ImageReadS3TCHeader(FILE* pFile, int* pWidth, int* pHeight, int* pFormat, int* pUnknown,
                         float* pF)
@@ -828,7 +829,12 @@ int ImageReadS3TCHeader(char* pszName, int* pWidth, int* pHeight, int* pFormat, 
 
 struct TGATail
 {
-    unsigned short m_awReserved[6];
+    unsigned char m_nIDLength;
+    unsigned char m_nColorMapType;
+    unsigned char m_nImageType;
+    unsigned char m_anColorMapSpec[5];
+    unsigned short m_nXOrigin;
+    unsigned short m_nYOrigin;
     unsigned short m_nWidth;
     unsigned short m_nHeight;
     unsigned char m_nBpp;
@@ -1015,15 +1021,13 @@ unsigned char* ImageRead(FILE* pFile, int* pWidth, int* pHeight, int* pBpp)
 
 int ImageReadHeader(char* pszName, int* pWidth, int* pHeight, int* pBpp)
 {
-    char szPath[256];
-    if (!pszName)
-        return 0;
-    if (!*pszName)
+    if (!pszName || !*pszName)
         return 0;
 
     *pWidth = 0;
     *pHeight = 0;
     *pBpp = 0;
+    char szPath[256];
     FormatName(szPath, 256, "%s", pszName);
     FILE* pFile = fopen(szPath, "rb");
     if (!pFile)

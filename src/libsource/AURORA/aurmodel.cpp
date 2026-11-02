@@ -396,11 +396,8 @@ Gob::~Gob()
     m_callbacks.m_count = 0;
 
     {
-        SafePointer<CAurTexture>& watch = m_texWatch;
-        CAurTexture* p = watch.m_pObject;
-        if (p != 0)
-            p->Remove(&m_texWatch);
-        watch.m_pObject = 0;
+        CAurTexture* p = m_texWatch;
+        m_texWatch = 0;
         AurTextureRelease(p);
     }
 
@@ -440,11 +437,11 @@ void Gob::InheritExternal(CAurObject* a)
 }
 
 
-Vector Gob::SetPosition(Vector a) { m_vPosition = a; return a; }
+Vector Gob::SetPosition(Vector a) { m_vPosition = a; return m_vPosition; }
 
 inline Vector Gob::GetPosition() { return m_vPosition; }
 
-void Gob::SetOrientation(Quaternion a) { m_qOrientation = a; }
+Quaternion Gob::SetOrientation(Quaternion a) { m_qOrientation = a; return m_qOrientation; }
 
 inline Quaternion Gob::GetOrientation() { return m_qOrientation; }
 
@@ -2893,14 +2890,10 @@ void MdlNodeLight::InternalDestructor()
         int64_t l = i;
         do {
             l--;
-            CAurTexture** pSlot = &FlareTextures()[l];
-            CAurTexture* pTexture = *pSlot;
-            if (pTexture) {
-                pTexture->Remove(reinterpret_cast<SafePointer<CAurTexture>*>(pSlot));
-            }
-            *pSlot = 0;
+            CAurTexture* pTexture = m_lFlareTextures.m_pData[l];
+            m_lFlareTextures.m_pData[l] = 0;
             AurTextureRelease(pTexture);
-            FlareCount()--;
+            m_lFlareTextures.m_count--;
         } while (l);
     }
     for (int64_t i = m_listChildren.m_count - 1; i != -1; i--)
@@ -4675,11 +4668,11 @@ struct TriMeshPoolPair {
 };
 
 PartTriMesh::PartTriMesh(MdlNode* node)
+    : Part(node)
 {
-    m_pNode = node;
-    countpart++;
-
     m_pMaterial = new Material();
+    m_bHasColorPool = 0;
+    m_bFog = 1;
 
     m_nPartID = m_nNextPartID++;
 
@@ -4691,19 +4684,16 @@ PartTriMesh::PartTriMesh(MdlNode* node)
     MdlNodeTriMesh* pMesh = node->AsMdlNodeTriMesh();
     if (pMesh->m_nAnimateUV != 0)
     {
-        TriMeshPoolPair* pDst = new TriMeshPoolPair[static_cast<short>(pMesh->m_nVertexCount)];
-        m_pafBaseUVs = reinterpret_cast<float*>(pDst);
+        m_pafBaseUVs = reinterpret_cast<float*>(new TriMeshPoolPair[static_cast<short>(pMesh->m_nVertexCount)]);
 
 #if KOTOR1  // K1 inlines the downcast here
-        Model* pModel = K1AsModelInline(pMesh->m_pTree);
+        char* pPool = static_cast<char*>(GLRender::LockPool(K1AsModelInline(pMesh->m_pTree)->m_nPool, 0, 0, 8));
 #else
-        Model* pModel = pMesh->m_pTree->AsModel();
+        char* pPool = static_cast<char*>(GLRender::LockPool(pMesh->m_pTree->AsModel()->m_nPool, 0, 0, 8));
 #endif
-        unsigned int nPool = pModel->m_nPool;
-        const int* pSrc;
-        char* pPool = static_cast<char*>(GLRender::LockPool(nPool, 0, 0, 8));
 
-        pSrc = reinterpret_cast<const int*>(pPool + pMesh->m_nTex0Ofs + pMesh->m_nGeomBase);
+        TriMeshPoolPair* pDst = reinterpret_cast<TriMeshPoolPair*>(m_pafBaseUVs);
+        const int* pSrc = reinterpret_cast<const int*>(pPool + pMesh->m_nTex0Ofs + pMesh->m_nGeomBase);
         for (int64_t i = 0; i < static_cast<short>(pMesh->m_nVertexCount); i++)
         {
             pDst[i].a = static_cast<unsigned int>(pSrc[0]);
@@ -4711,7 +4701,11 @@ PartTriMesh::PartTriMesh(MdlNode* node)
             pSrc = reinterpret_cast<const int*>(reinterpret_cast<const char*>(pSrc) + pMesh->m_nVertexStride);
         }
 
-        GLRender::UnlockPool(nPool);
+#if KOTOR1
+        GLRender::UnlockPool(K1AsModelInline(pMesh->m_pTree)->m_nPool);
+#else
+        GLRender::UnlockPool(pMesh->m_pTree->AsModel()->m_nPool);
+#endif
     }
     else
     {
@@ -5069,12 +5063,9 @@ MdlNodeSkin::~MdlNodeSkin()
 PartLightsaber::PartLightsaber(MdlNode* node)
     : PartTriMesh(node)
 {
-    for (int i = 0; i < 25; i++)
-        m_aqSegmentOrient[i] = Quaternion(1.0f, 0.0f, 0.0f, 0.0f);
-
-    m_nOrientIndex = 0;
-    m_nLifeIndex = 0;
     m_nSegmentCount = 0;
+    m_nLifeIndex = 0;
+    m_nOrientIndex = 0;
 }
 
 PartLightsaber::~PartLightsaber()
@@ -5121,13 +5112,10 @@ void MdlNodeLight::BinaryInternalDestructor()
         int64_t l = i;
         do {
             l--;
-            CAurTexture** pSlot = &FlareTextures()[l];
-            CAurTexture* pTexture = *pSlot;
-            if (pTexture)
-                pTexture->Remove(reinterpret_cast<SafePointer<CAurTexture>*>(pSlot));
-            *pSlot = 0;
+            CAurTexture* pTexture = m_lFlareTextures.m_pData[l];
+            m_lFlareTextures.m_pData[l] = 0;
             AurTextureRelease(pTexture);
-            FlareCount()--;
+            m_lFlareTextures.m_count--;
         } while (l);
     }
     m_lFlareTextures.SetSize(0);
@@ -5463,7 +5451,11 @@ MaxFace::MaxFace()
 
 MaxFace_PostProcess::MaxFace_PostProcess()
 {
-    __builtin_memset(static_cast<void*>(this), 0, sizeof(*this));
+    m_paVertIndices = 0;
+    m_paTVertIndices = 0;
+    m_paNormalIndices = 0;
+    m_nSmoothGroup = 0;
+    m_nMaterial = 0;
 }
 
 List<Vector> MaxFace_PostProcess::texindices1;

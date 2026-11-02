@@ -15,7 +15,7 @@ void ByteSwap(int* p);
 void ByteSwap(float* p);
 void ByteSwap(uint64_ll_t* p);
 #if KOTOR1
-void ByteSwap(int64_t* p);
+void ByteSwap(int64_ll_t* p);
 #else
 void ByteSwap(long long* p);
 #endif
@@ -73,9 +73,9 @@ unsigned char CSWMessage::ReadBit(unsigned char nBit)
     return nValue >> (7 - nBit);
 }
 
-unsigned long long CSWMessage::ReadBits(int nBits)
+uint64_ll_t CSWMessage::ReadBits(int nBits)
 {
-    unsigned long long nValue = 0;
+    uint64_ll_t nValue = 0;
 
     if (nBits > 0) {
         do {
@@ -211,7 +211,7 @@ void CSWMessage::WriteBYTE(unsigned char nValue, int nBits)
 
 // Sign bit in the fragments stream, magnitude through WriteUnsigned with one fewer bit.
 #if KOTOR1
-void CSWMessage::WriteSigned(int64_t nValue, int nBits)
+void CSWMessage::WriteSigned(int64_ll_t nValue, int nBits)
 #else
 void CSWMessage::WriteSigned(long long nValue, int nBits)
 #endif
@@ -226,12 +226,12 @@ void CSWMessage::WriteSigned(long long nValue, int nBits)
     WriteUnsigned(nValue, nBits - 1);
 }
 
-unsigned long long CSWMessage::ReadUnsigned(int nBits)
+uint64_ll_t CSWMessage::ReadUnsigned(int nBits)
 {
     if (nBits == 64)
         return ReadDWORD64(nBits);
 
-    unsigned long long nValue = 0;
+    uint64_ll_t nValue = 0;
 
     while (nBits >= 32) {
         if (m_nReadMessagePos + sizeof(unsigned int) > m_nReadMessageSize) {
@@ -406,7 +406,7 @@ long long CSWMessage::ReadINT64(int nBits)
     }
 
 #if KOTOR1  // K1's 64-bit ints are long
-    int64_t nValue = *reinterpret_cast<int64_t*>(&m_pReadMessage[m_nReadMessagePos]);
+    int64_ll_t nValue = *reinterpret_cast<int64_ll_t*>(&m_pReadMessage[m_nReadMessagePos]);
 #else
     long long nValue = *reinterpret_cast<long long*>(&m_pReadMessage[m_nReadMessagePos]);
 #endif
@@ -611,7 +611,7 @@ void CSWMessage::WriteINT(int nValue, int nBits)
 }
 
 #if KOTOR1
-void CSWMessage::WriteINT64(int64_t nValue, int nBits)
+void CSWMessage::WriteINT64(int64_ll_t nValue, int nBits)
 #else
 void CSWMessage::WriteINT64(long long nValue, int nBits)
 #endif

@@ -29,13 +29,17 @@ inline int wctomb(char* pDst, char32_t c)
 
 #if !defined(_STDLIB_H)
 extern "C" {
+#if !defined(__ANDROID_API__) || __ANDROID_API__ >= 21  // below 21, port/libcbase.h's inline
 double atof(const char* s) throw();
+#endif
 unsigned long strtoul(const char* s, char** ppEnd, int nBase) throw();
 void*  malloc(size_t n) throw();
 void*  calloc(size_t nCount, size_t nSize) throw();
 void*  realloc(void* p, size_t n) throw();
 void   free(void* p) throw();
+#if !defined(__ANDROID_API__) || __ANDROID_API__ >= 19  // below 19, port/libcbase.h's inline
 int    abs(int n) throw() __attribute__((const));
+#endif
 char*  getenv(const char* pszName) throw();
 int    wctomb(char* pDst, wchar_t c) throw();
 void   exit(int nCode) throw() __attribute__((noreturn));

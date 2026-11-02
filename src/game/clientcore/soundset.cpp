@@ -50,9 +50,9 @@ int CSoundSet::GetStrres(unsigned short nStrres, STR_RES& strRes)
 CSoundSetList::CSoundSetList()
 {
     m_paResRefs = 0;
-    m_nCount = 0;
     m_panGenders = 0;
     m_panNameStrRefs = 0;
+    m_nCount = 0;
 
     C2DA* p2daSoundSet = new C2DA(CResRef("SoundSet"), 0);
     if (p2daSoundSet->Load2DArray()) {

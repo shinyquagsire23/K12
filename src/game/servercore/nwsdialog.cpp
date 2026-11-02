@@ -797,7 +797,7 @@ void CSWSDialog::ClearAllPlayerHostileActions()
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetModule()->GetArea();
 
-    for (long long i = 0; i < pArea->m_aObjectsByX.m_count; i++)
+    for (int64_t i = 0; i < pArea->m_aObjectsByX.m_count; i++)
     {
         CGameObject* pObject;
         if (pObjectArray->GetGameObject(pArea->m_aObjectsByX.m_pArray[i], &pObject)
@@ -918,47 +918,48 @@ void CSWSDialog::RunScript(CSWSObject* pObj, const CResRef& rScript)
 
 void CSWSDialog::RunEndConversationScript(CSWSObject* pObj, int bBark)
 {
-    if (m_bBark == 0 || m_bRanEndScript != 0)
+    if (m_bBark != 0 && m_bRanEndScript == 0)
     {
-        RunScript(pObj, m_rScriptEndConverAbort);
-        return;
-    }
+        m_bRanEndScript = 1;
+        RunScript(pObj, m_rScriptEndConversation);
 
-    m_bRanEndScript = 1;
-    RunScript(pObj, m_rScriptEndConversation);
-
-    CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
-    CGameObject* pGameObject;
-    pObjectArray->GetGameObject(m_ownerId, &pGameObject);
-    if (pGameObject == 0)
-        return;
-
-    // The dialog owner is the object that speaks; it is also what OnEndDialog is handed as its
-    // speaker argument below.
-    CSWSObject* pSwsObject = pGameObject->AsSWSObject();
-    if (pSwsObject == 0)
-        return;
-
-    CSWSArea* pArea = static_cast<CSWSArea*>(pSwsObject->GetArea());
-    if (bBark != 0)
-    {
-        if (pSwsObject->AsSWSCreature() != 0)
-            pSwsObject->AsSWSCreature()->OnEndDialog(pSwsObject);
-        else if (pSwsObject->AsSWSPlaceable() != 0)
-            pSwsObject->AsSWSPlaceable()->OnEndDialog(pSwsObject);
+        CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
+        CGameObject* pGameObject;
+        pObjectArray->GetGameObject(m_ownerId, &pGameObject);
+        if (pGameObject != 0)
+        {
+            // The dialog owner is the object that speaks; it is also what OnEndDialog is handed as its
+            // speaker argument below.
+            CSWSObject* pSwsObject = pGameObject->AsSWSObject();
+            if (pSwsObject != 0)
+            {
+                CSWSArea* pArea = static_cast<CSWSArea*>(pSwsObject->GetArea());
+                if (bBark == 0)
+                {
+                    for (int i = 0; i < pArea->m_aObjectsByX.m_count; )
+                    {
+                        pObjectArray->GetGameObject(pArea->m_aObjectsByX.m_pArray[i++], &pGameObject);
+                        if (pGameObject == 0)
+                            continue;
+                        if (pGameObject->AsSWSCreature() != 0)
+                            pGameObject->AsSWSCreature()->OnEndDialog(pSwsObject);
+                        else if (pGameObject->AsSWSPlaceable() != 0)
+                            pGameObject->AsSWSPlaceable()->OnEndDialog(pSwsObject);
+                    }
+                }
+                else
+                {
+                    if (pSwsObject->AsSWSCreature() != 0)
+                        pSwsObject->AsSWSCreature()->OnEndDialog(pSwsObject);
+                    else if (pSwsObject->AsSWSPlaceable() != 0)
+                        pSwsObject->AsSWSPlaceable()->OnEndDialog(pSwsObject);
+                }
+            }
+        }
     }
     else
     {
-        for (long long i = 0; i < pArea->m_aObjectsByX.m_count; )
-        {
-            pObjectArray->GetGameObject(pArea->m_aObjectsByX.m_pArray[i++], &pGameObject);
-            if (pGameObject == 0)
-                continue;
-            if (pGameObject->AsSWSCreature() != 0)
-                pGameObject->AsSWSCreature()->OnEndDialog(pSwsObject);
-            else if (pGameObject->AsSWSPlaceable() != 0)
-                pGameObject->AsSWSPlaceable()->OnEndDialog(pSwsObject);
-        }
+        RunScript(pObj, m_rScriptEndConverAbort);
     }
 }
 

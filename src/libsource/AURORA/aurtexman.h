@@ -86,7 +86,7 @@ public:
     virtual void SetTxiData(unsigned char*, int);
     virtual void SetTxiLoaded(bool);
     virtual void IncrementTIDIndex(int);
-    virtual void glImage(bool, unsigned char*);
+    virtual int glImage(bool, unsigned char*);
     virtual void FreeImage();
     virtual void Bind();
 

@@ -1720,7 +1720,7 @@ void CSWGuiInGameGalaxyMap::OnPlanetClicked(CSWGuiControl* pControl)
     int nSelected = pPartyTable->m_selectedPlanet;
     if (nSelected != -1)
     {
-        if (pControl->m_tail.m_nUserData == static_cast<unsigned long long>(nSelected))
+        if (static_cast<unsigned long long>(nSelected) == pControl->m_tail.m_nUserData)
             return;
         // Through a pointer: SetActive must go through the vtable here.
         CSWGuiButton* pButton = &m_aPlanetButtons[nSelected];

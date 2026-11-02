@@ -1346,29 +1346,23 @@ void CGuiInGame::SetLockObjectOrientationInDialog(unsigned long long objId, int 
     if (lock == 1) {
         CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(objId);
         if (pGameObj != 0 && pGameObj->AsSWCObject() != 0) {
-            CExoLinkedListNode* pos = m_orientExclusionList.m_pInternal->m_pHead;
-            void* pData = m_orientExclusionList.m_pInternal->m_pHead ?
-                          m_orientExclusionList.m_pInternal->m_pHead->m_pData : 0;
+            CExoLinkedListNode* pos = m_orientExclusionList.GetHeadPos();
+            unsigned long long* pData = m_orientExclusionList.GetHead();
             while (pos != 0) {
-                if (*static_cast<unsigned long long*>(pData) == objId) return;
-                pData = m_orientExclusionList.m_pInternal->GetNext(pos);
+                if (*pData == objId) return;
+                pData = m_orientExclusionList.GetNext(pos);
             }
-            unsigned long long* pNew = static_cast<unsigned long long*>(operator new(sizeof(unsigned long long)));
-            *pNew = objId;
-            m_orientExclusionList.m_pInternal->AddHead(pNew);
+            m_orientExclusionList.AddHead(new unsigned long long(objId));
         }
     } else {
-        CExoLinkedListNode* pos = m_orientExclusionList.m_pInternal->m_pHead;
-        void* pData = m_orientExclusionList.m_pInternal->m_pHead ?
-                      m_orientExclusionList.m_pInternal->m_pHead->m_pData : 0;
-        if (pos != 0) {
-            unsigned long long val = *static_cast<unsigned long long*>(pData);
-            while (val != objId) {
-                pData = m_orientExclusionList.m_pInternal->GetNext(pos);
-                if (pos == 0) return;
-                val = *static_cast<unsigned long long*>(pData);
+        CExoLinkedListNode* pos = m_orientExclusionList.GetHeadPos();
+        unsigned long long* pData = m_orientExclusionList.GetHead();
+        while (pos != 0) {
+            if (*pData == objId) {
+                m_orientExclusionList.Remove(pos);
+                return;
             }
-            m_orientExclusionList.m_pInternal->Remove(pos);
+            pData = m_orientExclusionList.GetNext(pos);
         }
     }
 }
@@ -1378,32 +1372,26 @@ void CGuiInGame::SetLockHeadFollowInDialog(unsigned long long objId, int lock)
     if (lock == 1) {
         CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(objId);
         if (pGameObj != 0 && pGameObj->AsSWCObject() != 0) {
-            CExoLinkedListNode* pos = m_headFollowExclusionList.m_pInternal->m_pHead;
-            void* pData = m_headFollowExclusionList.m_pInternal->m_pHead ?
-                          m_headFollowExclusionList.m_pInternal->m_pHead->m_pData : 0;
+            CExoLinkedListNode* pos = m_headFollowExclusionList.GetHeadPos();
+            unsigned long long* pData = m_headFollowExclusionList.GetHead();
             while (pos != 0) {
-                if (*static_cast<unsigned long long*>(pData) == objId) return;
-                pData = m_headFollowExclusionList.m_pInternal->GetNext(pos);
+                if (*pData == objId) return;
+                pData = m_headFollowExclusionList.GetNext(pos);
             }
-            unsigned long long* pNew = static_cast<unsigned long long*>(operator new(sizeof(unsigned long long)));
-            *pNew = objId;
-            m_headFollowExclusionList.m_pInternal->AddHead(pNew);
+            m_headFollowExclusionList.AddHead(new unsigned long long(objId));
             if (pGameObj->AsSWCCreature() != 0) {
                 static_cast<CSWCCreature*>(pGameObj->AsSWCCreature())->LookAt(OBJECT_INVALID, 0.0f);
             }
         }
     } else {
-        CExoLinkedListNode* pos = m_headFollowExclusionList.m_pInternal->m_pHead;
-        void* pData = m_headFollowExclusionList.m_pInternal->m_pHead ?
-                      m_headFollowExclusionList.m_pInternal->m_pHead->m_pData : 0;
-        if (pos != 0) {
-            unsigned long long val = *static_cast<unsigned long long*>(pData);
-            while (val != objId) {
-                pData = m_headFollowExclusionList.m_pInternal->GetNext(pos);
-                if (pos == 0) return;
-                val = *static_cast<unsigned long long*>(pData);
+        CExoLinkedListNode* pos = m_headFollowExclusionList.GetHeadPos();
+        unsigned long long* pData = m_headFollowExclusionList.GetHead();
+        while (pos != 0) {
+            if (*pData == objId) {
+                m_headFollowExclusionList.Remove(pos);
+                return;
             }
-            m_headFollowExclusionList.m_pInternal->Remove(pos);
+            pData = m_headFollowExclusionList.GetNext(pos);
         }
     }
 }
@@ -3327,12 +3315,12 @@ void CGuiInGame::StoreLastDialogAnimationData()
     unsigned int count = m_dialogAnimCount;
     m_lastDialogAnimCount = count;
     if (count != 0) {
-        m_paLastDialogAnimData = static_cast<unsigned long long*>(operator new[](static_cast<uint64_t>(count) << 3));
-        m_paLastDialogAnimFlags = static_cast<unsigned short*>(operator new[](static_cast<uint64_t>(count) << 1));
-        for (int i = 0; i < static_cast<int>(count); i++) {
-            m_paLastDialogAnimData[i] = m_paDialogAnimData[i];
-            m_paLastDialogAnimFlags[i] = m_paDialogAnimFlags[i];
-        }
+        m_paLastDialogAnimData = new unsigned long long[count];
+        m_paLastDialogAnimFlags = new unsigned short[count];
+    }
+    for (int i = 0; i < static_cast<int>(m_dialogAnimCount); i++) {
+        m_paLastDialogAnimData[i] = m_paDialogAnimData[i];
+        m_paLastDialogAnimFlags[i] = m_paDialogAnimFlags[i];
     }
 }
 
@@ -3344,8 +3332,9 @@ bool CGuiInGame::InitializeDialogAnimationData(unsigned int count)
         return false;
     }
     m_dialogAnimCount = count;
-    m_paDialogAnimData = static_cast<unsigned long long*>(operator new[](static_cast<uint64_t>(count) << 3));
-    m_paDialogAnimFlags = static_cast<unsigned short*>(operator new[](static_cast<uint64_t>(count) << 1));
+    size_t nBytes;
+    m_paDialogAnimData = static_cast<unsigned long long*>(operator new[](__builtin_mul_overflow(count, sizeof(unsigned long long), &nBytes) ? SIZE_MAX : nBytes));
+    m_paDialogAnimFlags = static_cast<unsigned short*>(operator new[](__builtin_mul_overflow(count, sizeof(unsigned short), &nBytes) ? SIZE_MAX : nBytes));
     return true;
 }
 
@@ -3971,31 +3960,23 @@ int CGuiInGame::InitializeRepliesData(unsigned int count)
     ClearRepliesData();
     m_repliesCount = count;
     m_paReplyText = new CExoString[count];
-    unsigned int n = m_repliesCount;
-    uint64_t sz4 = static_cast<uint64_t>(n) << 2;
-    m_paReplyLinkIndices = static_cast<unsigned int*>(operator new[](sz4));
-    uint64_t sz8 = static_cast<uint64_t>(n) << 3;
-    m_paReplyListenerIds = static_cast<unsigned long long*>(operator new[](sz8));
-    m_paReplyCameraAngles = static_cast<unsigned int*>(operator new[](sz4));
-    m_paReplyCameraIds = static_cast<int*>(operator new[](sz4));
-    m_paReplyHeightOffsets = static_cast<float*>(operator new[](sz4));
-    m_paReplyTargetHeightOffsets = static_cast<float*>(operator new[](sz4));
-    m_paReplyWaitFlags = static_cast<unsigned int*>(operator new[](sz4));
-    m_paReplyCameraAnimations = static_cast<unsigned short*>(operator new[](static_cast<uint64_t>(n) << 1));
-    m_paReplyFOVs = static_cast<float*>(operator new[](sz4));
-    m_paReplyCamVidEffects = static_cast<int*>(operator new[](sz4));
-    m_paReplyFadeTypes = static_cast<unsigned char*>(operator new[](static_cast<uint64_t>(n)));
-    uint64_t szVec = static_cast<uint64_t>(n) * sizeof(Vector);
-    Vector* pVecArr = static_cast<Vector*>(operator new[](szVec));
-    if (n != 0) {
-        memset(pVecArr, 0, ((szVec - sizeof(Vector)) / sizeof(Vector)) * sizeof(Vector) + sizeof(Vector));
-    }
-    m_paReplyPositions = pVecArr;
-    m_paReplyFadeDelays = static_cast<float*>(operator new[](sz4));
-    m_paReplyFadeLengths = static_cast<float*>(operator new[](sz4));
-    m_paReplyFlags = static_cast<unsigned int*>(operator new[](sz4));
-    m_paReplyAnimObjectIds = static_cast<void**>(operator new[](sz8));
-    m_paReplyAnimations = static_cast<void**>(operator new[](sz8));
+    m_paReplyLinkIndices = new unsigned int[m_repliesCount];
+    m_paReplyListenerIds = new unsigned long long[m_repliesCount];
+    m_paReplyCameraAngles = new unsigned int[m_repliesCount];
+    m_paReplyCameraIds = new int[m_repliesCount];
+    m_paReplyHeightOffsets = new float[m_repliesCount];
+    m_paReplyTargetHeightOffsets = new float[m_repliesCount];
+    m_paReplyWaitFlags = new unsigned int[m_repliesCount];
+    m_paReplyCameraAnimations = new unsigned short[m_repliesCount];
+    m_paReplyFOVs = new float[m_repliesCount];
+    m_paReplyCamVidEffects = new int[m_repliesCount];
+    m_paReplyFadeTypes = new unsigned char[m_repliesCount];
+    m_paReplyPositions = new Vector[m_repliesCount];
+    m_paReplyFadeDelays = new float[m_repliesCount];
+    m_paReplyFadeLengths = new float[m_repliesCount];
+    m_paReplyFlags = new unsigned int[m_repliesCount];
+    m_paReplyAnimObjectIds = reinterpret_cast<void**>(new unsigned long long*[m_repliesCount]);
+    m_paReplyAnimations = reinterpret_cast<void**>(new unsigned short*[m_repliesCount]);
     return 0;
 }
 
@@ -4021,16 +4002,16 @@ void CGuiInGame::SetReplyData(unsigned int index, const CExoString& text, unsign
         m_paReplyFadeDelays[index] = m;
         m_paReplyFadeLengths[index] = n;
         m_paReplyFlags[index] = count;
-        if (count == 0) {
+        if (count != 0) {
+            m_paReplyAnimObjectIds[index] = new unsigned long long[count];
+            m_paReplyAnimations[index] = new unsigned short[count];
+        } else {
             m_paReplyAnimObjectIds[index] = 0;
             m_paReplyAnimations[index] = 0;
-        } else {
-            m_paReplyAnimObjectIds[index] = operator new[](static_cast<uint64_t>(count) << 3);
-            m_paReplyAnimations[index] = operator new[](static_cast<uint64_t>(count) << 1);
-            for (int idx2 = 0; idx2 < static_cast<int>(count); idx2++) {
-                static_cast<unsigned long long*>(m_paReplyAnimObjectIds[index])[idx2] = paU[idx2];
-                static_cast<unsigned short*>(m_paReplyAnimations[index])[idx2] = paT[idx2];
-            }
+        }
+        for (int idx2 = 0; idx2 < static_cast<int>(count); idx2++) {
+            static_cast<unsigned long long*>(m_paReplyAnimObjectIds[index])[idx2] = paU[idx2];
+            static_cast<unsigned short*>(m_paReplyAnimations[index])[idx2] = paT[idx2];
         }
     }
 }
@@ -4199,23 +4180,16 @@ void CGuiInGame::AppendToCombatBuffer(const CExoString& text, unsigned int a, un
 void CGuiInGame::AppendToMsgBuffer(const CExoString& text, unsigned int a, unsigned char b)
 {
     if (text != "") {
-        unsigned int size = m_messageBufferSize;
-        if (size > MESSAGE_BUFFER_SIZE - 1) {
+        if (m_messageBufferSize >= MESSAGE_BUFFER_SIZE) {
             m_messageBufferSize = MESSAGE_BUFFER_SIZE - 1;
-            unsigned short i = 0;
-            do {
-                CGuiInGameMessage* dest = &m_pMessageBuffer[i];
-                unsigned int next = i + 1;
-                CGuiInGameMessage* src = &m_pMessageBuffer[next];
-                *dest = *src;
-                i = static_cast<unsigned short>(next);
-                size = m_messageBufferSize;
-            } while (i < size);
+            for (unsigned short i = 0; i < m_messageBufferSize; i++) {
+                m_pMessageBuffer[i] = m_pMessageBuffer[i + 1];
+            }
         }
-        m_pMessageBuffer[size].m_text = text;
-        m_pMessageBuffer[static_cast<unsigned int>(m_messageBufferSize)].m_param3 = a;
-        m_pMessageBuffer[static_cast<unsigned int>(m_messageBufferSize)].m_param4 = b;
-        m_messageBufferSize = m_messageBufferSize + 1;
+        m_pMessageBuffer[m_messageBufferSize].m_text = text;
+        m_pMessageBuffer[m_messageBufferSize].m_param3 = a;
+        m_pMessageBuffer[m_messageBufferSize].m_param4 = b;
+        m_messageBufferSize++;
     }
 }
 
@@ -4545,17 +4519,17 @@ void CGuiInGame::NextSWInGameGui()
     if (m_bInitialized == 0) return;
 
     CSWGuiManager* pGuiManager = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
-    if (g_bCreateAllGUIs != 0 && pGuiManager != 0 && m_bInGameMenuShown != 0) {
+    if (g_bCreateAllGUIs != 0 && m_bInGameMenuShown != 0 && pGuiManager != 0) {
         pGuiManager->RemovePanel(m_apScreenPanels[m_lastGuiPanel]);
     }
 
     int oldPanel = m_lastGuiPanel;
-    int newPanel = (oldPanel > 6) ? 0 : oldPanel + 1;
-    int updateArg = (m_bInGameMenuShown == 0 || pGuiManager == 0) ? -1 : newPanel;
-    m_lastGuiPanel = newPanel;
-    UpdateCreatedInGameGUI(oldPanel, updateArg);
+    if (++m_lastGuiPanel >= 8) {
+        m_lastGuiPanel = 0;
+    }
+    UpdateCreatedInGameGUI(oldPanel, (m_bInGameMenuShown != 0 && pGuiManager != 0) ? m_lastGuiPanel : -1);
 
-    if (pGuiManager != 0 && m_bInGameMenuShown != 0) {
+    if (m_bInGameMenuShown != 0 && pGuiManager != 0) {
         pGuiManager->AddPanel(m_apScreenPanels[m_lastGuiPanel], 2, 1);
         pGuiManager->SendPanelToBack(m_apScreenPanels[m_lastGuiPanel]);
         m_pInGameMenu->SetActiveControlID(m_lastGuiPanel, 1);
@@ -4571,17 +4545,17 @@ void CGuiInGame::PrevSWInGameGui()
     if (m_bInitialized == 0) return;
 
     CSWGuiManager* pGuiManager = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
-    if (g_bCreateAllGUIs != 0 && pGuiManager != 0 && m_bInGameMenuShown != 0) {
+    if (g_bCreateAllGUIs != 0 && m_bInGameMenuShown != 0 && pGuiManager != 0) {
         pGuiManager->RemovePanel(m_apScreenPanels[m_lastGuiPanel]);
     }
 
     int oldPanel = m_lastGuiPanel;
-    int newPanel = (oldPanel < 1) ? 7 : oldPanel - 1;
-    int updateArg = (m_bInGameMenuShown == 0 || pGuiManager == 0) ? -1 : newPanel;
-    m_lastGuiPanel = newPanel;
-    UpdateCreatedInGameGUI(oldPanel, updateArg);
+    if (--m_lastGuiPanel < 0) {
+        m_lastGuiPanel = 7;
+    }
+    UpdateCreatedInGameGUI(oldPanel, (m_bInGameMenuShown != 0 && pGuiManager != 0) ? m_lastGuiPanel : -1);
 
-    if (pGuiManager != 0 && m_bInGameMenuShown != 0) {
+    if (m_bInGameMenuShown != 0 && pGuiManager != 0) {
         pGuiManager->AddPanel(m_apScreenPanels[m_lastGuiPanel], 2, 1);
         pGuiManager->SendPanelToBack(m_apScreenPanels[m_lastGuiPanel]);
         m_pInGameMenu->SetActiveControlID(m_lastGuiPanel, 1);
@@ -4594,22 +4568,17 @@ void CGuiInGame::PrevSWInGameGui()
 
 void CGuiInGame::SwitchToSWInGameGui(int newPanel)
 {
-    if (static_cast<unsigned int>(newPanel) >= 8) return;
-    if (m_lastGuiPanel == newPanel) return;
-    if (m_bInitialized == 0) return;
+    if (newPanel < 0 || newPanel >= 8 || newPanel == m_lastGuiPanel || m_bInitialized == 0) return;
 
     CSWGuiManager* pGuiManager = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
-    if (g_bCreateAllGUIs != 0 && pGuiManager != 0 && m_bInGameMenuShown != 0) {
-        K2_ASSUME(static_cast<unsigned int>(m_lastGuiPanel) < 8);   // only ever set to a panel index 0..7
+    if (g_bCreateAllGUIs != 0 && m_bInGameMenuShown != 0 && pGuiManager != 0) {
         pGuiManager->RemovePanel(m_apScreenPanels[m_lastGuiPanel]);
     }
 
-    int oldPanel = m_lastGuiPanel;
-    int updateArg = (m_bInGameMenuShown == 0 || pGuiManager == 0) ? -1 : newPanel;
-    UpdateCreatedInGameGUI(oldPanel, updateArg);
+    UpdateCreatedInGameGUI(m_lastGuiPanel, (m_bInGameMenuShown != 0 && pGuiManager != 0) ? newPanel : -1);
     m_lastGuiPanel = newPanel;
 
-    if (pGuiManager != 0 && m_bInGameMenuShown != 0) {
+    if (m_bInGameMenuShown != 0 && pGuiManager != 0) {
         pGuiManager->AddPanel(m_apScreenPanels[newPanel], 2, 1);
         pGuiManager->SendPanelToBack(m_apScreenPanels[m_lastGuiPanel]);
         m_pInGameMenu->SetActiveControlID(m_lastGuiPanel, 1);
@@ -4647,25 +4616,18 @@ void CGuiInGame::ToggleSWGui()
     }
     SetSWGuiStatus(state, 1);
 #else
-    if (state == SWGUI_STATE_COVERED) {
-        state = SWGUI_UNCOVER;
-    }
-    else if (state != SWGUI_STATE_TOGGLED_OFF) {
-        if (state == SWGUI_STATE_SHOWN) {
-            m_swGuiToggleState = SWGUI_STATE_TOGGLED_OFF;
-            if (m_bInitialized != 0 && m_pGuiManager != 0) {
-                if (m_pGuiManager->PanelExists(static_cast<CSWGuiPanel*>(m_pMainInterface))) {
-                    m_pGuiManager->RemovePanel(m_pMainInterface);
-                }
-                if (m_pGuiManager->PanelExists(m_pPauseGuiPanel)) {
-                    m_pPauseGuiPanel->SetToBeRemoved(0);
-                }
-            }
-        }
-        return;
-    }
-    else {
+    switch (state) {
+    case SWGUI_STATE_SHOWN:
+        state = SWGUI_TOGGLE_OFF;
+        break;
+    case SWGUI_STATE_TOGGLED_OFF:
         state = SWGUI_TOGGLE_ON;
+        break;
+    case SWGUI_STATE_COVERED:
+        state = SWGUI_UNCOVER;
+        break;
+    default:
+        return;
     }
     SetSWGuiStatus(state, 1);
 #endif

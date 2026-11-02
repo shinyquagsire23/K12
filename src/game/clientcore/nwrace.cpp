@@ -18,12 +18,18 @@ const unsigned short CSWRace::CRACE_PLACEABLE_MASK = 4;
 
 CSWRace::CSWRace()
 {
-    m_paFirstLevelGrantedFeats = 0;
     m_nNameStrRef = -1;
     m_nNamePluralStrRef = -1;
     m_nDescriptionStrRef = -1;
     m_nDefaultBiographyStrRef = -1;
-    memset(&m_anAbilityAdjust, 0, 7);  // idiom-exempt: 7 == the six ability bytes + the +0x1e pad
+    m_anAbilityAdjust[0] = 0;
+    m_anAbilityAdjust[1] = 0;
+    m_anAbilityAdjust[2] = 0;
+    m_anAbilityAdjust[3] = 0;
+    m_anAbilityAdjust[4] = 0;
+    m_anAbilityAdjust[5] = 0;
+    m_nEndurance = 0;
+    m_paFirstLevelGrantedFeats = 0;
     m_nFavoredClass = CLASS_TYPE_INVALID;
     m_bPlayerRace = 0;
 }
@@ -80,10 +86,10 @@ CExoString CSWRace::GetNamePluralText()
 
 int CSWRace::IsFirstLevelGrantedFeat(unsigned short nFeat)
 {
-    if (!m_paFirstLevelGrantedFeats || !m_nNumFirstLevelGrantedFeats)
+    if (!m_paFirstLevelGrantedFeats)
         return 0;
 
-    for (unsigned int i = 0; i < m_nNumFirstLevelGrantedFeats; i++) {
+    for (unsigned short i = 0; i < m_nNumFirstLevelGrantedFeats; i++) {
         if (m_paFirstLevelGrantedFeats[i] == nFeat)
             return 1;
     }

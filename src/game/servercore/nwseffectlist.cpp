@@ -1003,9 +1003,9 @@ int CSWSEffectListHandler::OnRemoveDarkness(CSWSObject* pObject, CGameEffect* pE
 // A miss chance outside 1..100 percent is rejected.
 int CSWSEffectListHandler::OnApplyMissChance(CSWSObject* pObject, CGameEffect* pEffect, int a) {
     K2_UNUSED(pObject); K2_UNUSED(a);
-    if (pEffect->GetInteger(0) > 100)
+    if (pEffect->GetInteger(0) > 100 || pEffect->GetInteger(0) < 1)
         return 1;
-    return pEffect->GetInteger(0) < 1;
+    return 0;
 }
 
 int CSWSEffectListHandler::OnRemoveMissChance(CSWSObject* pObject, CGameEffect* pEffect) {
@@ -1015,9 +1015,9 @@ int CSWSEffectListHandler::OnRemoveMissChance(CSWSObject* pObject, CGameEffect* 
 
 int CSWSEffectListHandler::OnApplyConcealment(CSWSObject* pObject, CGameEffect* pEffect, int a) {
     K2_UNUSED(pObject); K2_UNUSED(a);
-    if (pEffect->GetInteger(0) > 100)
+    if (pEffect->GetInteger(0) > 100 || pEffect->GetInteger(0) < 1)
         return 1;
-    return pEffect->GetInteger(0) < 1;
+    return 0;
 }
 
 int CSWSEffectListHandler::OnRemoveConcealment(CSWSObject* pObject, CGameEffect* pEffect) {

@@ -3095,72 +3095,60 @@ void CSWGuiTargetActionMenu::UpdateTimers(float fDelta) {
 
 void CSWGuiTargetActionMenu::SelectNextAction(int nIndex)
 {
-    if (static_cast<unsigned int>(nIndex) > 2)
-        return;
-    if (m_actions[nIndex].m_count == 0)
-        return;
-
-    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-
-    int* pCurrentId = &m_actionIds[static_cast<signed char>(m_actionRow)][nIndex];
-    int nId = *pCurrentId;
-
-    CSWGuiInterfaceAction* pNext = 0;
-    if (nId != -1) {
-        for (int i = 0; i < m_actions[nIndex].m_count; i++) {
-            if (static_cast<int>(m_actions[nIndex].m_pArray[i].m_nActionId) == nId) {
-                pNext = m_actions[nIndex].m_pArray;
-                if (i + 1 < m_actions[nIndex].m_count)
-                    pNext = &m_actions[nIndex].m_pArray[i + 1];
-                break;
+    if (nIndex >= 0 && nIndex < 3) {
+        CExoArrayList<CSWGuiInterfaceAction>* pList = &m_actions[nIndex];
+        if (pList->m_count != 0) {
+            g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            int& nSelected = m_actionIds[static_cast<signed char>(m_actionRow)][nIndex];
+            CSWGuiInterfaceAction* pNext = 0;
+            if (nSelected != -1) {
+                for (int i = 0; i < pList->m_count; i++) {
+                    if (static_cast<int>(pList->m_pArray[i].m_nActionId) == nSelected) {
+                        if (i + 1 < pList->m_count)
+                            pNext = &pList->m_pArray[i + 1];
+                        else
+                            pNext = pList->m_pArray;
+                        break;
+                    }
+                }
+            }
+            if (pList->m_count > 1) {
+                if (pNext == 0)
+                    pNext = &pList->m_pArray[1];
+                nSelected = static_cast<int>(pNext->m_nActionId);
+                g_pAppManager->m_pClientExoApp->GetSWGuiManager()->PlayGuiSound(GUISOUND_ACTION_MENU_SCROLL);
             }
         }
     }
-
-    if (m_actions[nIndex].m_count < 2)
-        return;
-    if (pNext == 0)
-        pNext = &m_actions[nIndex].m_pArray[1];
-
-    *pCurrentId = static_cast<int>(pNext->m_nActionId);
-
-    g_pAppManager->m_pClientExoApp->GetSWGuiManager()->PlayGuiSound(GUISOUND_ACTION_MENU_SCROLL);
 }
 
 void CSWGuiTargetActionMenu::SelectPrevAction(int nIndex)
 {
-    if (static_cast<unsigned int>(nIndex) > 2)
-        return;
-    if (m_actions[nIndex].m_count == 0)
-        return;
-
-    g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-
-    int* pCurrentId = &m_actionIds[static_cast<signed char>(m_actionRow)][nIndex];
-    int nId = *pCurrentId;
-
-    int64_t nCount = m_actions[nIndex].m_count;
-    CSWGuiInterfaceAction* pPrev = 0;
-    if (nId != -1) {
-        for (int i = 0; i < nCount; i++) {
-            if (static_cast<int>(m_actions[nIndex].m_pArray[i].m_nActionId) == nId) {
-                if (i == 0)
-                    pPrev = &m_actions[nIndex].m_pArray[nCount - 1];
-                else
-                    pPrev = &m_actions[nIndex].m_pArray[i - 1];
-                break;
+    if (nIndex >= 0 && nIndex < 3) {
+        CExoArrayList<CSWGuiInterfaceAction>* pList = &m_actions[nIndex];
+        if (pList->m_count != 0) {
+            g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
+            int& nSelected = m_actionIds[static_cast<signed char>(m_actionRow)][nIndex];
+            CSWGuiInterfaceAction* pPrev = 0;
+            if (nSelected != -1) {
+                for (int i = 0; i < pList->m_count; i++) {
+                    if (static_cast<int>(pList->m_pArray[i].m_nActionId) == nSelected) {
+                        if (i > 0)
+                            pPrev = &pList->m_pArray[i - 1];
+                        else
+                            pPrev = &pList->m_pArray[pList->m_count - 1];
+                        break;
+                    }
+                }
+            }
+            if (pList->m_count > 1) {
+                if (pPrev == 0)
+                    pPrev = &pList->m_pArray[pList->m_count - 1];
+                nSelected = static_cast<int>(pPrev->m_nActionId);
+                g_pAppManager->m_pClientExoApp->GetSWGuiManager()->PlayGuiSound(GUISOUND_ACTION_MENU_SCROLL);
             }
         }
     }
-
-    if (m_actions[nIndex].m_count < 2)
-        return;
-    if (pPrev == 0)
-        pPrev = &m_actions[nIndex].m_pArray[m_actions[nIndex].m_count - 1];
-
-    *pCurrentId = static_cast<int>(pPrev->m_nActionId);
-
-    g_pAppManager->m_pClientExoApp->GetSWGuiManager()->PlayGuiSound(GUISOUND_ACTION_MENU_SCROLL);
 }
 
 CSWGuiControl* CSWGuiTargetActionMenu::HitCheckMouse(int x, int y)
@@ -3447,19 +3435,19 @@ void CSWGuiMainInterface::GetActionIcon(CSWSCombatRound* pCombatRound, CSWSObjec
             resIcon = const_cast<char*>("i_unequip");
             resFallback = const_cast<char*>("i_equipm");
             break;
-        case CSWSCombatRoundAction::TYPE_CAST_SPELL: {
-            CSWSpell* pSpell = g_pRules->GetSpell(pRoundAction->m_nSpellId);
-            if (pSpell) {
-                resIcon = pSpell->m_iconResRef;
-                resFallback = const_cast<char*>("i_powerm");
-            }
-            break;
-        }
         case CSWSCombatRoundAction::TYPE_ITEM_SPELL: {
             CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pRoundAction->m_oidItem);
             if (pItem) {
                 resIcon = pItem->GetIcon();
                 resFallback = const_cast<char*>("i_useitemm");
+            }
+            break;
+        }
+        case CSWSCombatRoundAction::TYPE_CAST_SPELL: {
+            CSWSpell* pSpell = g_pRules->GetSpell(pRoundAction->m_nSpellId);
+            if (pSpell) {
+                resIcon = pSpell->m_iconResRef;
+                resFallback = const_cast<char*>("i_powerm");
             }
             break;
         }
@@ -3473,7 +3461,56 @@ void CSWGuiMainInterface::GetActionIcon(CSWSCombatRound* pCombatRound, CSWSObjec
         }
         }
     } else if (nId == AIACTION_COMBAT) {
-        if (!pRoundAction) {
+        if (pRoundAction) {
+            switch (pRoundAction->m_nActionType) {
+            case CSWSCombatRoundAction::TYPE_ATTACK:
+                resIcon = const_cast<char*>("i_attack");
+                resFallback = const_cast<char*>("i_attackm");
+                break;
+            case CSWSCombatRoundAction::TYPE_EQUIP:
+                resIcon = const_cast<char*>("i_equip");
+                resFallback = const_cast<char*>("i_equipm");
+                break;
+            case CSWSCombatRoundAction::TYPE_UNEQUIP:
+                resIcon = const_cast<char*>("i_unequip");
+                resFallback = const_cast<char*>("i_equipm");
+                break;
+            case CSWSCombatRoundAction::TYPE_ITEM_SPELL: {
+                CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pRoundAction->m_oidItem);
+                if (pItem) {
+                    resIcon = pItem->GetIcon();
+                    resFallback = const_cast<char*>("i_useitemm");
+                }
+                break;
+            }
+            case CSWSCombatRoundAction::TYPE_CAST_SPELL: {
+                CSWSpell* pSpell = g_pRules->GetSpell(pRoundAction->m_nSpellId);
+                if (pSpell) {
+                    resIcon = pSpell->m_iconResRef;
+                    resFallback = const_cast<char*>("i_powerm");
+                }
+                break;
+            }
+            case CSWSCombatRoundAction::TYPE_FEAT_ATTACK: {
+                CSWFeat* pFeat = g_pRules->GetFeat(static_cast<unsigned short>(pRoundAction->m_nFeatId));
+                if (pFeat) {
+                    resIcon = pFeat->m_icon;
+                    resFallback = const_cast<char*>("i_featm");
+                }
+                break;
+            }
+#if !KOTOR1  // K1: no stance / weapon-swap round actions
+            case CSWSCombatRoundAction::TYPE_STANCE:
+                resIcon = const_cast<char*>("i_stancedef");
+                resFallback = const_cast<char*>("i_stancedefm");
+                break;
+            case CSWSCombatRoundAction::TYPE_SWITCH_WEAPONS:
+                resIcon = const_cast<char*>("i_swtchwpn");
+                resFallback = const_cast<char*>("i_swtchwpn");
+                break;
+#endif
+            }
+        } else {
 #if KOTOR1
             resIcon = const_cast<char*>("i_attack");
             resFallback = const_cast<char*>("i_attackm");
@@ -3488,65 +3525,16 @@ void CSWGuiMainInterface::GetActionIcon(CSWSCombatRound* pCombatRound, CSWSObjec
                 resFallback = const_cast<char*>("i_attackm");
             }
 #endif
-            return;
         }
-        switch (pRoundAction->m_nActionType) {
-        case CSWSCombatRoundAction::TYPE_ATTACK:
-            resIcon = const_cast<char*>("i_attack");
-            resFallback = const_cast<char*>("i_attackm");
-            break;
-        case CSWSCombatRoundAction::TYPE_EQUIP:
-            resIcon = const_cast<char*>("i_equip");
-            resFallback = const_cast<char*>("i_equipm");
-            break;
-        case CSWSCombatRoundAction::TYPE_UNEQUIP:
-            resIcon = const_cast<char*>("i_unequip");
-            resFallback = const_cast<char*>("i_equipm");
-            break;
-        case CSWSCombatRoundAction::TYPE_CAST_SPELL: {
-            CSWSpell* pSpell = g_pRules->GetSpell(pRoundAction->m_nSpellId);
-            if (pSpell) {
-                resIcon = pSpell->m_iconResRef;
-                resFallback = const_cast<char*>("i_powerm");
-            }
-            break;
-        }
-        case CSWSCombatRoundAction::TYPE_ITEM_SPELL: {
-            CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pRoundAction->m_oidItem);
-            if (pItem) {
-                resIcon = pItem->GetIcon();
-                resFallback = const_cast<char*>("i_useitemm");
-            }
-            break;
-        }
-        case CSWSCombatRoundAction::TYPE_FEAT_ATTACK: {
-            CSWFeat* pFeat = g_pRules->GetFeat(static_cast<unsigned short>(pRoundAction->m_nFeatId));
-            if (pFeat) {
-                resIcon = pFeat->m_icon;
-                resFallback = const_cast<char*>("i_featm");
-            }
-            break;
-        }
-#if !KOTOR1  // K1: no stance / weapon-swap round actions
-        case CSWSCombatRoundAction::TYPE_STANCE:
-            resIcon = const_cast<char*>("i_stancedef");
-            resFallback = const_cast<char*>("i_stancedefm");
-            break;
-        case CSWSCombatRoundAction::TYPE_SWITCH_WEAPONS:
-            resIcon = const_cast<char*>("i_swtchwpn");
-            resFallback = const_cast<char*>("i_swtchwpn");
-            break;
-#endif
-        }
-    } else if (nId == AIACTION_CAST_SPELL) {
-        resIcon = g_pRules->GetSpell(pActionNode->m_args.m_spellId)->m_iconResRef;
-        resFallback = const_cast<char*>("i_powerm");
     } else if (nId == AIACTION_ITEM_CAST_SPELL) {
         CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(static_cast<unsigned int>(pActionNode->m_args.m_useItemPropItemId));
         if (pItem) {
             resIcon = pItem->GetIcon();
             resFallback = const_cast<char*>("i_useitemm");
         }
+    } else if (nId == AIACTION_CAST_SPELL) {
+        resIcon = g_pRules->GetSpell(pActionNode->m_args.m_spellId)->m_iconResRef;
+        resFallback = const_cast<char*>("i_powerm");
     }
 }
 
@@ -7028,7 +7016,7 @@ static void ConsoleUsableItems(CSWGuiMainInterface* pInterface, CSWCCreature* pP
 #endif
 
 void CSWGuiTargetActionMenu::PopulateMenus(CSWCCreature* pPC, int bDimmed, CSWCObject* pTarget) {
-    m_actionRow = static_cast<char>(pPC->GetTargetInterfaceTargetType(pTarget));
+    m_actionRow = pPC->GetTargetInterfaceTargetType(pTarget);
 
     for (int64_t i = 0; i < m_actions[0].m_count; i++)
         m_actions[0].m_pArray[i].Clear();
@@ -9558,8 +9546,80 @@ void CSWGuiMainInterfaceChar::DrawStack(float f, int a, int b)
 #if KOTOR1
     CSWGuiExtent plateExtent = m_aLabels[5].m_extent;
     AurGUIStartLayer();
-    if (!AurGUISetupViewport(plateExtent.x, plateExtent.y, plateExtent.w, plateExtent.h,
-                             CSWGuiDrawable::NO_COLOURING, false, 1.0f)) {
+    if (AurGUISetupViewport(plateExtent.x, plateExtent.y, plateExtent.w, plateExtent.h,
+                            CSWGuiDrawable::NO_COLOURING, false, 1.0f)) {
+        unsigned char nFlag = b ? m_nGoodEffectCount : m_nBadEffectCount;
+        unsigned char nCount;
+        if (a) {
+            nCount = nFlag < 9 ? nFlag : 9;
+        } else {
+            nCount = nFlag;
+            if (nFlag >= 5)
+                nCount = 5;
+        }
+        CSWGuiLabel* pLabel = b ? &m_lblCombatEffectInc : &m_lblCombatEffectRed;
+        CSWGuiExtent original = pLabel->m_extent;
+        CSWGuiExtent extent = original;
+#ifdef K2_FIX_ENGINE_BUGS
+        // The arrows are drawn at the HUD's scale, so their steps and their start inside the plate are
+        // too (at 2160 lines a 5-pixel step stacked three arrows into one).
+        float fStackScale = AndroidHudScaleFactor();
+#else
+        unsigned char nHeight = a ? 16 : 8;
+#endif
+        unsigned char nStep;
+        if (nCount < 5) {
+            nStep = a ? 10 : 5;
+#ifdef K2_FIX_ENGINE_BUGS
+            nStep = static_cast<unsigned char>(static_cast<float>(nStep) * fStackScale);
+#endif
+            if (b)
+                extent.y -= (nStep >> 1) * (nCount - 1);
+            else
+                extent.y += (nStep >> 1) * (nCount - 1);
+        } else {
+#ifdef K2_FIX_ENGINE_BUGS
+            extent.y = b ? static_cast<int>(fStackScale) : (plateExtent.h - static_cast<int>((a ? 17.0f : 9.0f) * fStackScale));
+#else
+            if (b)
+                extent.y = 1;
+            else
+                extent.y = plateExtent.h - nHeight - 1;
+#endif
+            if (a) {
+                switch (nCount) {
+                case 5: nStep = 10; break;
+                case 6: nStep = 8; break;
+                case 7: nStep = 7; break;
+                case 8: nStep = 6; break;
+                case 9: nStep = 5; break;
+                default: nStep = 0; break;
+                }
+            } else {
+                nStep = 5;
+            }
+#ifdef K2_FIX_ENGINE_BUGS
+            nStep = static_cast<unsigned char>(static_cast<float>(nStep) * fStackScale);
+#endif
+        }
+        for (int i = 0; i < nCount; i++) {
+            pLabel->SetExtent(extent);
+            pLabel->Draw(f);
+            if (b)
+                extent.y += nStep;
+            else
+                extent.y -= nStep;
+            if ((nCount == 7 || nCount == 8) && (i == 0 || i == 2)) {
+                if (b)
+                    extent.y--;
+                else
+                    extent.y++;
+            }
+        }
+        pLabel->SetExtent(original);
+        AurGUICloseViewport();
+    }
+    AurGUIStopLayer();
 #else
     CSWGuiExtent plateExtent = m_aLabels[4].m_extent;
     bool bCenterOnNative = m_aLabels[4].m_bCenterOnNativeRect;
@@ -9568,7 +9628,6 @@ void CSWGuiMainInterfaceChar::DrawStack(float f, int a, int b)
                              (bCenterOnNative ? g_nScreenTopOffset : 0) + plateExtent.y,
                              plateExtent.w, plateExtent.h,
                              CSWGuiDrawable::NO_COLOURING, false, 1.0f)) {
-#endif
         AurGUIStopLayer();
         return;
     }
@@ -9581,43 +9640,8 @@ void CSWGuiMainInterfaceChar::DrawStack(float f, int a, int b)
     CSWGuiExtent extent = label.m_extent;
 
     int nStep;
-#if KOTOR1
-#ifdef K2_FIX_ENGINE_BUGS
-    // The arrows are drawn at the HUD's scale, so their steps and their start inside the plate are
-    // too (at 2160 lines a 5-pixel step stacked three arrows into one).
-    float fStackScale = AndroidHudScaleFactor();
-#endif
     if (nCount < 5) {
-        nStep = a ? 10 : 5;
-#ifdef K2_FIX_ENGINE_BUGS
-        nStep = static_cast<int>(static_cast<float>(nStep) * fStackScale);
-#endif
-        int nSpan = (nCount - 1) * (static_cast<unsigned>(nStep) >> 1);
-        extent.y = original.y + (b ? -nSpan : nSpan);
-    } else {
-#ifdef K2_FIX_ENGINE_BUGS
-        extent.y = b ? static_cast<int>(fStackScale) : (plateExtent.h - static_cast<int>((a ? 17.0f : 9.0f) * fStackScale));
-#else
-        extent.y = b ? 1 : (plateExtent.h + (a ? -17 : -9));
-#endif
-        nStep = 5;
-        if (a) {
-            switch (nCount) {
-            case 5: nStep = 10; break;
-            case 6: nStep = 8; break;
-            case 7: nStep = 7; break;
-            case 8: nStep = 6; break;
-            case 9: break;
-            default: nStep = 0; break;
-            }
-        }
-#ifdef K2_FIX_ENGINE_BUGS
-        nStep = static_cast<int>(static_cast<float>(nStep) * fStackScale);
-#endif
-    }
-#else
-    if (nCount < 5) {
-        nStep = static_cast<int>(GetResolutionTextScalar() * (a ? 10.0f : 5.0f));
+        nStep = static_cast<unsigned int>(GetResolutionTextScalar() * (a ? 10.0f : 5.0f));
         int nSpan = (nCount - 1) * (static_cast<unsigned>(nStep) >> 1);
         extent.y = original.y + (b ? -nSpan : nSpan);
     } else {
@@ -9633,9 +9657,8 @@ void CSWGuiMainInterfaceChar::DrawStack(float f, int a, int b)
             default: fy = 0.0f; break;
             }
         }
-        nStep = static_cast<int>(fy * GetResolutionTextScalar());
+        nStep = static_cast<unsigned int>(fy * GetResolutionTextScalar());
     }
-#endif
 
     unsigned char nSeven = static_cast<unsigned char>(nCount - 7);
 
@@ -9650,6 +9673,7 @@ void CSWGuiMainInterfaceChar::DrawStack(float f, int a, int b)
     label.SetExtent(original);
     AurGUICloseViewport();
     AurGUIStopLayer();
+#endif
 }
 
 

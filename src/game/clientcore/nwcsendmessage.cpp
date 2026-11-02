@@ -1411,11 +1411,10 @@ int CSWCMessage::SendPlayerToServerLogin_LoginLocalCharacter(unsigned char* pDat
     if (GetWriteMessage(&pMsg, &nSize) == 0)
         return 0;
 
-    if (bJoin)
-        return SendPlayerToServerMessage(MSG_MAJOR_LOGIN, MSG_LOGIN_LOCAL_CHARACTER_JOIN, pMsg,
-                                         nSize);
+    if (!bJoin)
+        return SendPlayerToServerMessage(MSG_MAJOR_LOGIN, MSG_LOGIN_LOCAL_CHARACTER, pMsg, nSize);
 
-    return SendPlayerToServerMessage(MSG_MAJOR_LOGIN, MSG_LOGIN_LOCAL_CHARACTER, pMsg, nSize);
+    return SendPlayerToServerMessage(MSG_MAJOR_LOGIN, MSG_LOGIN_LOCAL_CHARACTER_JOIN, pMsg, nSize);
 }
 
 
@@ -2065,6 +2064,7 @@ enum {
 
 static char szResult[256];
 
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
@@ -2072,6 +2072,7 @@ static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 // `spawnitem <resref> [<x> <y> <z>]`: the first space terminates the template resref and the rest
 // is an optional offset from the player, added to the player's position after the direction part is

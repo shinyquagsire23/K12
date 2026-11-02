@@ -218,6 +218,10 @@ struct AurGenericKey {
 };
 #include "AURORA/aurmodel.h"
 
+#if !defined(__arm__) && !defined(K2_FIX_ENGINE_BUGS)
+// Both arm64 images ship these two as an empty `ret`, so a keyed or bezier-keyed controller in an ASCII
+// model is dropped there. Both armv7 images carry the real bodies (defined below, after the key-list
+// helpers), and so does the bug-fixed build.
 void AddGenericController(char* pszName, char* pszType, List<NewController>& controllers,
                           List<float>& floats, void* pA, void* pB)
 {
@@ -229,6 +233,7 @@ void AddBezierController(char* pszName, char* pszType, List<NewController>& cont
 {
     K2_UNUSED(pszName); K2_UNUSED(pszType); K2_UNUSED(controllers); K2_UNUSED(floats); K2_UNUSED(pA); K2_UNUSED(pB);
 }
+#endif
 
 void Parse(char* pszLine, MaxFace& value)
 {
@@ -608,6 +613,103 @@ static const unsigned long long g_anControllerKinds[4] = {
 
 int countnewcontrollers;
 
+#if defined(__arm__) || defined(K2_FIX_ENGINE_BUGS)
+extern int cullunnecessary;
+extern int compressquaternions;
+extern Model* currentmodel;
+
+// Packs a keyed controller: a `<name>key` list, one key per line (a time, then the values). Each key's
+// time goes to the node's float list as one run, then every key's values as a second run, and the
+// controller record points at both. A quaternion list is thinned (CullUnnecessaryKeys) and, unless the
+// model is marked sensitive, packed to one word per key (CompressQuaternionKey).
+// EFFECTIVE (K2 armv7): the second key loop's element pointer and the kind swap r4/fp; K1 armv7 is
+// longer by the inlined List<float>::Add, as in AddGenericControllerSingle.
+void AddGenericController(char* pszName, char* pszType, List<NewController>& controllers,
+                          List<float>& floats, void* pOffset, void* pDefaultOffset)
+{
+    K2_UNUSED(pszName);
+    List<AurGenericKey> keys;
+    Parse(pszType, keys);
+    int nKeys = keys.m_count;
+    if (nKeys == 0)
+        return;
+
+    int nKind;
+    if (keys.m_pData[0].m_nCount == 4) {
+        nKind = NewController::kKeyVector;
+    } else if (keys.m_pData[0].m_nCount == 5) {
+        if (cullunnecessary) {
+            CullUnnecessaryKeys(keys);
+            nKeys = keys.m_count;
+        }
+        if (compressquaternions && (currentmodel->m_nFlags & Model::kModelSensitive) == 0) {
+            CompressQuaternionKey(keys);
+            nKind = NewController::kKeyPackedQuaternion;
+        } else {
+            nKind = NewController::kKeyQuaternion;
+        }
+    } else {
+        nKind = NewController::kKeyFloat;
+    }
+
+    unsigned short nTimeIndex = static_cast<unsigned short>(floats.m_count);
+    for (int i = 0; i < keys.m_count; i++)
+        floats.Add(keys.m_pData[i].m_afValues[0]);
+    unsigned short nValueIndex = static_cast<unsigned short>(floats.m_count);
+    for (int i = 0; i < keys.m_count; i++)
+        for (int j = 1; j < keys.m_pData[i].m_nCount; j++)
+            floats.Add(keys.m_pData[i].m_afValues[j]);
+    countnewcontrollers += keys.m_count;
+
+    NewController c;
+    c.m_target.m_nOffset = static_cast<int>(reinterpret_cast<uintptr_t>(pOffset));
+    c.m_target.m_nDefaultOffset = static_cast<short>(reinterpret_cast<uintptr_t>(pDefaultOffset));
+    c.m_target.m_nKeyCount = static_cast<unsigned short>(nKeys);
+    c.m_keys.m_nTimeIndex = nTimeIndex;
+    c.m_keys.m_nValueIndex = nValueIndex;
+    c.m_keys.m_nKind = static_cast<unsigned char>(nKind);
+    c.m_keys.m_nReserved1 = 0;
+    c.m_keys.m_nReserved2 = 0;
+    controllers.Add(c);
+}
+
+// The same for a `<name>bezierkey` list: three values per channel (the point and its two tangents), so
+// the kind is the channel count with the bezier flag.
+// EFFECTIVE: ours sinks the kind's `orr #0x10; uxtb` past the key loops (K2 armv7 +8 B); filling the
+// record before the loops does not move it. K1 armv7 as AddGenericController.
+void AddBezierController(char* pszName, char* pszType, List<NewController>& controllers,
+                         List<float>& floats, void* pOffset, void* pDefaultOffset)
+{
+    K2_UNUSED(pszName);
+    List<AurGenericKey> keys;
+    Parse(pszType, keys);
+    int nKeys = keys.m_count;
+    if (nKeys == 0)
+        return;
+
+    unsigned char nKind = static_cast<unsigned char>(((keys.m_pData[0].m_nCount - 1) / 3) | NewController::kKeyBezier);
+    unsigned short nTimeIndex = static_cast<unsigned short>(floats.m_count);
+    for (int i = 0; i < keys.m_count; i++)
+        floats.Add(keys.m_pData[i].m_afValues[0]);
+    unsigned short nValueIndex = static_cast<unsigned short>(floats.m_count);
+    for (int i = 0; i < keys.m_count; i++)
+        for (int j = 1; j < keys.m_pData[i].m_nCount; j++)
+            floats.Add(keys.m_pData[i].m_afValues[j]);
+    countnewcontrollers += keys.m_count;
+
+    NewController c;
+    c.m_target.m_nOffset = static_cast<int>(reinterpret_cast<uintptr_t>(pOffset));
+    c.m_target.m_nDefaultOffset = static_cast<short>(reinterpret_cast<uintptr_t>(pDefaultOffset));
+    c.m_target.m_nKeyCount = static_cast<unsigned short>(nKeys);
+    c.m_keys.m_nTimeIndex = nTimeIndex;
+    c.m_keys.m_nValueIndex = nValueIndex;
+    c.m_keys.m_nKind = nKind;
+    c.m_keys.m_nReserved1 = 0;
+    c.m_keys.m_nReserved2 = 0;
+    controllers.Add(c);
+}
+#endif
+
 // Packs a single-key controller. It turns one parsed key line into a controller record and appends
 // the key's value run to the node's parallel float list.
 void AddGenericControllerSingle(char* pszName, char* pszType, List<NewController>& controllers,
@@ -648,8 +750,6 @@ void AddGenericControllerSingle(char* pszName, char* pszType, List<NewController
     c.m_nKeysPacked |= static_cast<unsigned long long>(static_cast<unsigned short>(floats.m_count)) << 16;
     for (int i = 1; i < key.m_nCount; i++)
         floats.Add(key.m_afValues[i]);
-    // The first word is built last, so the two pointer arguments do not stay live across the float
-    // loop below.
     // The first word is built last, so the two pointer arguments do not stay live across the float
     // loop below.
     c.m_nTargetPacked = static_cast<unsigned long long>(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pOffset)))

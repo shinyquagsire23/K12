@@ -99,10 +99,12 @@ public:
 #ifndef CERFKEY_H
 #define CERFKEY_H
 
-// One entry of the archive's key table: the resource name to offset/type record. Non-polymorphic.
+// One entry of the archive's key table: the resource name to offset/type record. Non-polymorphic;
+// byte-aligned (the armv7 images clear the name with vst1.8), with no padding to lose.
 
 class CExoFile;
 
+#pragma pack(push, 1)
 class CERFKey {
 public:
     CERFKey();
@@ -122,6 +124,7 @@ public:
     unsigned short m_nType;
     unsigned short m_nReserved1;
 };
+#pragma pack(pop)
 
 #endif // CERFKEY_H
 

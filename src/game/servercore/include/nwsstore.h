@@ -55,7 +55,7 @@ public:
 #if KOTOR1  // K1: no flag argument
     int            AddItemToInventory(CSWSItem** ppItem);
 #endif
-    void           SellItem(CSWSItem* pItem, CSWSCreature* pCreature);
+    int            SellItem(CSWSItem* pItem, CSWSCreature* pCreature);
     int            LoadFromTemplate(const CResRef& resRef, int flag);
     int            AcquireItem(CSWSItem* pItem, int flag);
 #if KOTOR1  // K1: no flag argument

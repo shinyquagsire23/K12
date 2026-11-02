@@ -29,7 +29,7 @@ public:
     AsyncEntry* PreSpawnAsync(char* pszName);
     MaxTree* RetreiveAsync(void* pHandle);
 
-    List<AsyncEntry*> m_asyncList;
+    List<void*> m_asyncList;
 };
 
 #endif

@@ -5,6 +5,7 @@
 #include "aurvertexcache.h"
 
 VertexCache::VertexCache() {
+    VertexCache(16);
 }
 
 VertexCache::VertexCache(int size) {

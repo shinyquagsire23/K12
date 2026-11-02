@@ -130,10 +130,7 @@ int CScriptCompilerInternal::ParseCharacterAlphabet(int nChar)
         m_nTokenLength = 2;
         return 0;
     } else if (m_nTokenType == TOKEN_HEX_NUMBER) {
-        unsigned int nIndex = static_cast<unsigned int>(nChar - 'A');
-        if (nIndex > 'f' - 'A')
-            return -SCRIPT_ERROR_UNEXPECTED_CHARACTER;
-        if (((1LL << nIndex) & HEX_LETTER_MASK) == 0)
+        if (!((nChar >= 'a' && nChar <= 'f') || (nChar >= 'A' && nChar <= 'F')))
             return -SCRIPT_ERROR_UNEXPECTED_CHARACTER;
         m_szTokenText[m_nTokenLength] = static_cast<char>(nChar < 'G' ? nChar + ('a' - 'A') : nChar);
     } else {
@@ -143,7 +140,9 @@ int CScriptCompilerInternal::ParseCharacterAlphabet(int nChar)
     }
     int nLength = m_nTokenLength;
     m_nTokenLength = nLength + 1;
-    return nLength > MAX_TOKEN_LENGTH - 2 ? -SCRIPT_ERROR_TOKEN_TOO_LONG : 0;
+    if (nLength > MAX_TOKEN_LENGTH - 2)
+        return -SCRIPT_ERROR_TOKEN_TOO_LONG;
+    return 0;
 }
 
 // Handles '/', the only family member with an arm that does not run through the shared token

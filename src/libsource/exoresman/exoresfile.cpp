@@ -900,17 +900,23 @@ int CExoResourceImageFile::OpenFile()
     unsigned int nFileSize = m_pFile->GetSize();
     m_nFileSize = nFileSize;
     m_pHeader = reinterpret_cast<CResourceImageHeader*>(new char[nFileSize]);
-    if (m_pFile->Read(m_pHeader, nFileSize, 1) == nFileSize)
+    if (m_pHeader == NULL)
     {
-        m_bFileOpened = 1;
         delete m_pFile;
         m_pFile = NULL;
-        return 1;
+        return 0;
+    }
+    if (m_pFile->Read(m_pHeader, nFileSize, 1) != nFileSize)
+    {
+        delete m_pFile;
+        m_pFile = NULL;
+        return 0;
     }
 
+    m_bFileOpened = 1;
     delete m_pFile;
     m_pFile = NULL;
-    return 0;
+    return 1;
 }
 
 int CExoResourceImageFile::ReadResource(unsigned int resId, void* pBuffer, unsigned int nSize,
@@ -967,11 +973,19 @@ int CExoResourceImageFile::LoadHeader(unsigned char a)
     return 0;
 }
 
-// DestroyTable's sprintf call goes through the __builtin___sprintf_chk builtin directly: no
-// <stdio.h> may be included here, because CExoFile.h forward-declares its own opaque file type,
-// which conflicts with the real typedef.
+#if !defined(K2_NO_FORTIFY)
+static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...)
+{
+    __builtin_va_list ap;
+    __builtin_va_start(ap, fmt);
+    int nResult = __vsprintf_chk(buf, 0, n, fmt, ap);
+    __builtin_va_end(ap);
+    return nResult;
+}
+#endif
 
-// Placement new, declared by hand for the same reason (<new> pulls in <cstdio>).
+// Placement new, declared by hand: <new> pulls in <cstdio>, and CExoFile.h forward-declares its own
+// opaque file type, which conflicts with the real typedef.
 inline void* operator new(size_t, void* p) throw() { return p; }
 
 
@@ -1153,7 +1167,7 @@ CExoStringList* CExoKeyTable::GetKeysOfType(unsigned short resType)
     for (unsigned int i = 0; i < m_nTableSize; i++) {
         CKeyTableEntry* pEntry = &m_paEntries[i];
         if (pEntry->m_resType == resType) {
-            char buf[20];
+            char buf[17];
             pEntry->m_resRef.CopyToString(buf);
             CExoString* pStr = new CExoString(buf);
             pList->Add(pStr);
@@ -1639,53 +1653,47 @@ int CExoKeyTable::BuildNewTable(unsigned int routingType, const CExoString& name
 
 void CExoKeyTable::DestroyTable()
 {
+    CExoKeyTable* pFoundTable = NULL;
+    CKeyTableEntry* pFoundEntry = NULL;
     m_bLookupDisabled = 1;
-    if (m_nTableSize == 0) {
-        return;
-    }
     for (unsigned int i = 0; i < m_nTableSize; i++) {
-        CKeyTableEntry* pEntry = &m_paEntries[i];
-        if (pEntry->m_pRes == NULL) {
+        if (m_paEntries[i].m_pRes == NULL) {
             continue;
         }
 
-        CRes* pRes;
-        if ((pEntry->m_dwResID >> RESID_SOURCE_SHIFT) == RESSOURCE_IMAGE) {
-            pRes = pEntry->m_pRes;
+        if ((m_paEntries[i].m_dwResID >> RESID_SOURCE_SHIFT) != RESSOURCE_IMAGE) {
+            g_pExoResMan->GetKeyEntry(m_paEntries[i].m_resRef, m_paEntries[i].m_resType, &pFoundTable,
+                                      &pFoundEntry);
         } else {
-            CExoKeyTable* pFoundTable = NULL;
-            CKeyTableEntry* pFoundEntry = NULL;
-            g_pExoResMan->GetKeyEntry(pEntry->m_resRef, pEntry->m_resType, &pFoundTable, &pFoundEntry);
-            pRes = pEntry->m_pRes;
-            if (pFoundEntry != NULL) {
-                pFoundEntry->m_pRes = pRes;
-                pRes->m_dwResID = pFoundEntry->m_dwResID;
-                pRes->m_pKeyEntry = pFoundEntry;
-                pEntry->m_pRes = NULL;
-                pRes = pFoundEntry->m_pRes;
-                if (pRes->m_nDemandCount != 0) {
-                    pRes->m_dwFlags |= CRes::RESFLAG_FREE_PENDING;
-                } else {
-                    pRes->Dump(0);
-                }
-                continue;
+            pFoundEntry = NULL;
+            pFoundTable = NULL;
+        }
+
+        if (pFoundEntry == NULL) {
+            if (m_paEntries[i].m_pRes->m_nDemandCount != 0) {
+                CExoString msg;
+                char buf[256];
+                m_paEntries[i].m_resRef.CopyToString(msg);
+                sprintf_s(buf, sizeof(buf),
+                    "CExoKeyTable::DestroyTable: Resource %s still in demand during table deletion",
+                    msg.CStr());
+                m_paEntries[i].m_pRes->m_dwFlags |= CRes::RESFLAG_ORPHANED;
+            } else {
+                m_paEntries[i].m_pRes->Dump(0);
+                m_paEntries[i].m_pRes->m_pKeyEntry = NULL;
+                m_paEntries[i].m_pRes->m_dwResID = RESID_INVALID;
+            }
+        } else {
+            pFoundEntry->m_pRes = m_paEntries[i].m_pRes;
+            pFoundEntry->m_pRes->m_dwResID = pFoundEntry->m_dwResID;
+            m_paEntries[i].m_pRes->m_pKeyEntry = pFoundEntry;
+            m_paEntries[i].m_pRes = NULL;
+            if (pFoundEntry->m_pRes->m_nDemandCount != 0) {
+                pFoundEntry->m_pRes->m_dwFlags |= CRes::RESFLAG_FREE_PENDING;
+            } else {
+                pFoundEntry->m_pRes->Dump(0);
             }
         }
-
-        if (pRes->m_nDemandCount == 0) {
-            pRes->Dump(0);
-            pEntry->m_pRes->m_pKeyEntry = NULL;
-            pEntry->m_pRes->m_dwResID = RESID_INVALID;
-            continue;
-        }
-
-        CExoString msg;
-        pEntry->m_resRef.CopyToString(msg);
-        char buf[256];
-        __builtin___sprintf_chk(buf, 0, sizeof(buf),
-            "CExoKeyTable::DestroyTable: Resource %s still in demand during table deletion",
-            msg.CStr());
-        pRes->m_dwFlags |= CRes::RESFLAG_ORPHANED;
     }
 }
 void CExoKeyTable::RebuildTable()

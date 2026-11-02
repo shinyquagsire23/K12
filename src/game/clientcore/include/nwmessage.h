@@ -45,7 +45,7 @@ public:
                         unsigned int a3, int a4);
     void ClearReadMessage();
     unsigned char ReadBit(unsigned char nBit);
-    unsigned long long ReadBits(int nBits);
+    uint64_ll_t ReadBits(int nBits);
     void WriteBit(unsigned char nValue);
     void WriteBits(uint64_ll_t nValue, int nBits);
     void WriteUnsigned(uint64_ll_t nValue, int nBits);
@@ -60,11 +60,11 @@ public:
     void  WriteWORD(unsigned short nValue, int nBits);
     void  WriteBYTE(unsigned char nValue, int nBits);
 #if KOTOR1  // K1: `long` in place of `long long`
-    void  WriteSigned(int64_t nValue, int nBits);
+    void  WriteSigned(int64_ll_t nValue, int nBits);
 #else
     void  WriteSigned(long long nValue, int nBits);
 #endif
-    unsigned long long ReadUnsigned(int nBits);
+    uint64_ll_t ReadUnsigned(int nBits);
     uint64_ll_t ReadDWORD64(int nBits);
     unsigned int   ReadDWORD(int nBits);
     unsigned short ReadWORD(int nBits);
@@ -92,7 +92,7 @@ public:
     void  WriteSHORT(short nValue, int nBits);
     void  WriteINT(int nValue, int nBits);
 #if KOTOR1  // K1: `long` in place of `long long`
-    void  WriteINT64(int64_t nValue, int nBits);
+    void  WriteINT64(int64_ll_t nValue, int nBits);
 #else
     void  WriteINT64(long long nValue, int nBits);
 #endif

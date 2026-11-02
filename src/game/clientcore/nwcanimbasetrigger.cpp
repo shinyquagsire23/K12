@@ -26,7 +26,7 @@ CSWCAnimBaseTrigger::~CSWCAnimBaseTrigger()
 int CSWCAnimBaseTrigger::LoadModel(const CResRef& resRef, unsigned char which)
 {
     K2_UNUSED(which);
-    char szName[20];
+    char szName[17];
     resRef.CopyToString(szName);
     m_pModel = NewCAurObject(szName, const_cast<char*>("trigger"), 0, 0);
     if (m_pModel == 0)

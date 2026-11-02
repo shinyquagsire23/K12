@@ -1665,7 +1665,10 @@ int CSWSCreature::IsDebilitated(int a)
 #if KOTOR1
 int CSWSCreature::IsDebilitated()
 {
-    return m_nState != EFFECT_STATE_NONE || GetDeadTemp() != 0;
+    int bDebilitated = 0;
+    if (m_nState != EFFECT_STATE_NONE || GetDeadTemp())
+        bDebilitated = 1;
+    return bDebilitated;
 }
 #endif
 
@@ -1848,9 +1851,11 @@ CGameEffect* CSWSCreature::CreateLinkedEffect(int nSubType1, int nValue1, int nS
 
 void CSWSCreature::ResolveSafeProjectile(int nAttack, int nLevel, int bUseAttackPathCount, int nProjectileType)
 {
-    unsigned int nSlot = CSWInventory::SLOT_RIGHTWEAPON;
-    if (nProjectileType != 0)
-        nSlot = (nProjectileType == 1) << 5;
+    unsigned int nSlot = 0;
+    if (nProjectileType == 0)
+        nSlot = CSWInventory::SLOT_RIGHTWEAPON;
+    else if (nProjectileType == 1)
+        nSlot = CSWInventory::SLOT_LEFTWEAPON;
     CSWSItem* pItem = static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(nSlot));
     if (pItem != 0) {
         CSWSCombatAttackData* pAttackData = m_pCombatRound->GetAttack(nAttack);
@@ -2129,6 +2134,24 @@ void CSWSCreature::SetAttackSummaryFeedbackEffectData(int nAttack, unsigned long
     CSWSCombatAttackData* pAttack =
         m_pCombatRound->GetAttack(m_pCombatRound->m_currentAttack);
     switch (pAttack->m_effect.m_nFeedbackEffectType) {
+    case EFFECT_STATE_SLEEP:
+        if (pTarget->m_pStats->GetEffectImmunity(
+                static_cast<unsigned char>(CSWSEffectListHandler::IMMUNITY_TYPE_SLEEP), this) != 0)
+            pAttack->m_effect.m_bFeedbackEffectData = 1;
+        break;
+    case EFFECT_STATE_PARALYZED:
+        if (pTarget->m_pStats->GetEffectImmunity(
+                static_cast<unsigned char>(CSWSEffectListHandler::IMMUNITY_TYPE_PARALYSIS), this) != 0 ||
+            pTarget->m_pStats->HasFeat(CSWSCreatureStats::FEAT_FORCE_IMMUNITY_PARALYSIS) != 0)
+            pAttack->m_effect.m_bFeedbackEffectData = 1;
+        break;
+    case EFFECT_STATE_STUNNED:
+        if (pTarget->m_pStats->GetEffectImmunity(
+                static_cast<unsigned char>(CSWSEffectListHandler::IMMUNITY_TYPE_STUN), this) != 0 ||
+            pTarget->m_pStats->HasFeat(CSWSCreatureStats::FEAT_FORCE_IMMUNITY_STUN) != 0 ||
+            pTarget->m_pStats->HasFeat(CSWSCreatureStats::FEAT_FORCE_IMMUNITY_PARALYSIS) != 0)
+            pAttack->m_effect.m_bFeedbackEffectData = 1;
+        break;
     case EFFECT_STATE_CONFUSED:
         if (pTarget->m_pStats->GetEffectImmunity(
                 static_cast<unsigned char>(CSWSEffectListHandler::IMMUNITY_TYPE_CONFUSED), this) != 0)
@@ -2145,24 +2168,6 @@ void CSWSCreature::SetAttackSummaryFeedbackEffectData(int nAttack, unsigned long
             pTarget->m_pStats->HasFeat(CSWSCreatureStats::FEAT_FORCE_IMMUNITY_PARALYSIS) != 0 ||
             pTarget->m_pStats->HasFeat(FEAT_MANDALORIAN_COURAGE) != 0)
 #endif
-            pAttack->m_effect.m_bFeedbackEffectData = 1;
-        break;
-    case EFFECT_STATE_STUNNED:
-        if (pTarget->m_pStats->GetEffectImmunity(
-                static_cast<unsigned char>(CSWSEffectListHandler::IMMUNITY_TYPE_STUN), this) != 0 ||
-            pTarget->m_pStats->HasFeat(CSWSCreatureStats::FEAT_FORCE_IMMUNITY_STUN) != 0 ||
-            pTarget->m_pStats->HasFeat(CSWSCreatureStats::FEAT_FORCE_IMMUNITY_PARALYSIS) != 0)
-            pAttack->m_effect.m_bFeedbackEffectData = 1;
-        break;
-    case EFFECT_STATE_PARALYZED:
-        if (pTarget->m_pStats->GetEffectImmunity(
-                static_cast<unsigned char>(CSWSEffectListHandler::IMMUNITY_TYPE_PARALYSIS), this) != 0 ||
-            pTarget->m_pStats->HasFeat(CSWSCreatureStats::FEAT_FORCE_IMMUNITY_PARALYSIS) != 0)
-            pAttack->m_effect.m_bFeedbackEffectData = 1;
-        break;
-    case EFFECT_STATE_SLEEP:
-        if (pTarget->m_pStats->GetEffectImmunity(
-                static_cast<unsigned char>(CSWSEffectListHandler::IMMUNITY_TYPE_SLEEP), this) != 0)
             pAttack->m_effect.m_bFeedbackEffectData = 1;
         break;
 #if !KOTOR1

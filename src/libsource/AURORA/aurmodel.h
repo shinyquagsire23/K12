@@ -248,8 +248,8 @@ public:
     VertexPrimitive* m_pVertexPrimitive = 0;
     int m_nColorPool = -1;
     int m_nUVPool = -1;
-    bool m_bHasColorPool = 0;
-    bool m_bFog = 1;
+    bool m_bHasColorPool;
+    char m_bFog;
     TileData* m_pTileData = 0;
     float m_fOpacity = 1.0f;
     char _padac[0xb0 - 0xac];
@@ -516,7 +516,7 @@ public:
     virtual void* AttachToPart(CAurObject* a, CAurPart* b, int c) = 0;
     virtual void  SetBehavior(CAurBehavior* a) = 0;
     virtual Vector SetPosition(Vector a) = 0;   // on Win64 a Vector return is a hidden first argument
-    virtual void  SetOrientation(Quaternion a) = 0;
+    virtual Quaternion SetOrientation(Quaternion a) = 0;
     virtual Vector GetPosition() = 0;
     virtual Quaternion GetOrientation() = 0;
     virtual Vector GetPreviousPosition() = 0;
@@ -717,7 +717,7 @@ public:
     virtual void* AttachToPart(CAurObject* a, CAurPart* b, int c);
     virtual void SetBehavior(CAurBehavior* a);
     virtual Vector SetPosition(Vector a);
-    virtual void SetOrientation(Quaternion a);
+    virtual Quaternion SetOrientation(Quaternion a);
     virtual Vector GetPosition();
     virtual Quaternion GetOrientation();
     virtual Vector GetPreviousPosition();
@@ -1719,7 +1719,7 @@ public:
     float  m_fBaseOpacity;
     int   m_nReserved1;
     List<TileData*>    m_aNeighbors;
-    List<void*>        m_aReserved1;
+    List<PartTriMesh*> m_aReserved1;
     List<PartTriMesh*> m_aNeighborMeshes;
     List<PartTriMesh*> m_aOwnMeshes;
     int   m_nFadeState;

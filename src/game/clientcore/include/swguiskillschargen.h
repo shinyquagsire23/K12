@@ -73,8 +73,7 @@ public:
     CSWGuiButton m_aPlusButtons[8];
     CSWGuiButton m_aMinusButtons[8];
 #if !KOTOR1  // K2-only: K1 keeps the minus buttons and the description strings adjacent
-    CSWGuiLabel  m_lblBar1;
-    CSWGuiLabel  m_lblBar2;
+    CSWGuiLabel  m_aBarLabels[2];  // LBL_BAR1, LBL_BAR2
 #endif
 
     // One resolved description string per skill, in the same order as m_aSkillLabels. Filled once,

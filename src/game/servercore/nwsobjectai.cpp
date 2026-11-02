@@ -1879,45 +1879,7 @@ int CSWSObject::AIActionGiveItem(CSWSObjectActionNode* pNode) {
     CGameObject* pTarget = g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget);
     if (pTarget == 0)
         return ACTION_FAILED;
-    if (AsSWSCreature() == 0 || AsSWSCreature()->GetIsInUseRange(oidTarget, 0.0f, 0, 0) != 0) {
-        pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidItem);
-        if (pItem == 0)
-            return ACTION_FAILED;
-        if (static_cast<CSWItem*>(pItem)->GetBaseItem()->m_nItemType == ITEM_TYPE_CREDITS) {
-            if (AsSWSCreature() != 0)
-                AsSWSCreature()->RemoveGold(pItem->m_stackCount, 1);
-        } else if (static_cast<CSWItem*>(pItem)->GetBaseItem()->m_nItemType == ITEM_TYPE_PAZAAK_CARD) {
-            if (AsSWSCreature() != 0)
-                AsSWSCreature()->RemovePazaakCard(pItem);
-        }
-        int bNotGold = static_cast<CSWItem*>(pItem)->GetBaseItem()->m_nItemType != ITEM_TYPE_CREDITS;
-        if (nStackSize != -1) {
-            CSWSItem* pSplit = pItem->SplitItem(nStackSize);
-            if (pSplit != 0)
-                pItem = pSplit;
-        }
-        if (pTarget->m_objectType == GAME_OBJECT_TYPE_CREATURE) {
-#if !KOTOR1  // K1: no received-item name list (no CExoLocString copy)
-            CExoLocString sName;
-            if (pItem != 0)
-                sName = pItem->m_localizedName;
-#endif
-            pTarget->AsSWSCreature()->AcquireItem(&pItem, pItem->m_possessorId, OBJECT_INVALID, bNotGold);
-            if (bNotify != 0 && pTarget->AsSWSCreature()->m_bInParty != 0) {
-#if !KOTOR1
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->AddReceivedItemToList(sName);
-#endif
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_RECEIVED, 0);
-            }
-        } else if (pTarget->m_objectType == GAME_OBJECT_TYPE_ITEM) {  // a container item
-            CSWRules* pRules = g_pRules;
-            int nBaseItem = pTarget->AsSWSItem()->m_baseItem;
-            if (pRules->GetBaseItem(nBaseItem)->m_bContainer == 1)
-                pTarget->AsSWSItem()->AcquireItem(&pItem, pItem->m_possessorId, bNotGold);
-        } else if (pTarget->m_objectType == GAME_OBJECT_TYPE_PLACEABLE) {
-            pTarget->AsSWSPlaceable()->AcquireItem(&pItem, pItem->m_possessorId, bNotGold);
-        }
-    } else {
+    if (AsSWSCreature() != 0 && AsSWSCreature()->GetIsInUseRange(oidTarget, 0.0f, 0, 0) == 0) {
         Vector vPos;
         float fRange;
         int bOutOfRange = 0;
@@ -1943,6 +1905,44 @@ int CSWSObject::AIActionGiveItem(CSWSObjectActionNode* pNode) {
         AsSWSCreature()->AddMoveToPointActionToFront(pNode->m_nGroupId, vPos, m_cachedAreaId,
                                                     oidTarget, bOutOfRange, fRange, 0.0f,
                                                     0, 0, 0, 0, 0, 0, Vector{}, 0, 0, 0);
+        return ACTION_COMPLETE;
+    }
+    pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidItem);
+    if (pItem == 0)
+        return ACTION_FAILED;
+    if (static_cast<CSWItem*>(pItem)->GetBaseItem()->m_nItemType == ITEM_TYPE_CREDITS) {
+        if (AsSWSCreature() != 0)
+            AsSWSCreature()->RemoveGold(pItem->m_stackCount, 1);
+    } else if (static_cast<CSWItem*>(pItem)->GetBaseItem()->m_nItemType == ITEM_TYPE_PAZAAK_CARD) {
+        if (AsSWSCreature() != 0)
+            AsSWSCreature()->RemovePazaakCard(pItem);
+    }
+    int bNotGold = static_cast<CSWItem*>(pItem)->GetBaseItem()->m_nItemType != ITEM_TYPE_CREDITS;
+    if (nStackSize != -1) {
+        CSWSItem* pSplit = pItem->SplitItem(nStackSize);
+        if (pSplit != 0)
+            pItem = pSplit;
+    }
+    if (pTarget->m_objectType == GAME_OBJECT_TYPE_CREATURE) {
+#if !KOTOR1  // K1: no received-item name list (no CExoLocString copy)
+        CExoLocString sName;
+        if (pItem != 0)
+            sName = pItem->m_localizedName;
+#endif
+        pTarget->AsSWSCreature()->AcquireItem(&pItem, pItem->m_possessorId, OBJECT_INVALID, bNotGold);
+        if (bNotify != 0 && pTarget->AsSWSCreature()->m_bInParty != 0) {
+#if !KOTOR1
+            g_pAppManager->m_pClientExoApp->GetInGameGui()->AddReceivedItemToList(sName);
+#endif
+            g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_RECEIVED, 0);
+        }
+    } else if (pTarget->m_objectType == GAME_OBJECT_TYPE_ITEM) {  // a container item
+        CSWRules* pRules = g_pRules;
+        int nBaseItem = pTarget->AsSWSItem()->m_baseItem;
+        if (pRules->GetBaseItem(nBaseItem)->m_bContainer == 1)
+            pTarget->AsSWSItem()->AcquireItem(&pItem, pItem->m_possessorId, bNotGold);
+    } else if (pTarget->m_objectType == GAME_OBJECT_TYPE_PLACEABLE) {
+        pTarget->AsSWSPlaceable()->AcquireItem(&pItem, pItem->m_possessorId, bNotGold);
     }
     return ACTION_COMPLETE;
 }

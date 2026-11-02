@@ -33,7 +33,7 @@ public:
 
     // The level's per-skill rank delta; both LevelUp and LevelDown call it twice per skill, once
     // as the gate and once for the delta itself.
-    unsigned char GetSkillRankChange(unsigned short nSkill);
+    char GetSkillRankChange(unsigned short nSkill);
 
     // Defined outside this header: CSWSCreatureStats allocates one per level.
     CSWLevelStats();

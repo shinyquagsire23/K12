@@ -66,4 +66,9 @@ char*  __strchr_chk(const char* s, int c, size_t nObjSize) throw();
 
 #endif  // K2_HOST_BUILD
 
+#if !defined(K2_HOST_BUILD) && !defined(_FORTIFY_SOURCE)
+// port/libcbase.h's plain calls for the checked entry points.
+#include "port/libcbase.h"
+#endif
+
 #endif // LIBCSTRING_H

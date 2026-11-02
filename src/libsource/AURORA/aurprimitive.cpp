@@ -183,21 +183,14 @@ void VertexPrimitiveFlat::BuildVertexArrays()
         return;
 
     PartTriMesh* pTriMesh = m_pPart->AsPartTriMesh();
-    unsigned int* paColors = static_cast<unsigned int*>(GLRender::LockPool(pTriMesh->m_nUVPool, 0, 0, 1));
+    float* paUVs = static_cast<float*>(GLRender::LockPool(pTriMesh->m_nUVPool, 0, 0, 1));
     char* paRows = static_cast<char*>(GLRender::LockPool(m_pNode->m_pTree->AsModel()->m_nPool, 0, 0, 8));
 
     MdlNodeTriMesh* pNode = static_cast<MdlNodeTriMesh*>(m_pNode);
-    char* paSrc = paRows + pNode->m_nTex0Ofs + pNode->m_nGeomBase;
-    int nStride = pNode->m_nVertexStride;
-    int nCount = static_cast<short>(pNode->m_nVertexCount);
-
-    int nOffset = 0;
-    for (int i = 0; i < nCount; i++) {
-        unsigned int* pSrc = reinterpret_cast<unsigned int*>(paSrc + nOffset);
-        paColors[0] = pSrc[0];
-        paColors[1] = pSrc[1];
-        paColors += 2;
-        nOffset += nStride;
+    for (int64_t i = 0; i < static_cast<short>(pNode->m_nVertexCount); i++) {
+        float* pSrc = reinterpret_cast<float*>(paRows + static_cast<int>(pNode->m_nVertexStride * i) + pNode->m_nTex0Ofs + pNode->m_nGeomBase);
+        paUVs[i * 2] = pSrc[0];
+        paUVs[i * 2 + 1] = pSrc[1];
     }
 
     GLRender::UnlockPool(pTriMesh->m_nUVPool);

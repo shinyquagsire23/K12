@@ -748,39 +748,39 @@ void CSWCProjectile::SetBehaviorListReflected()
 void CSWCProjectile::SetBehaviorListSpiral()
 {
     Vector vPitch;
-    float fDeltaX = m_desiredPosition.x - m_position.x;
-    float fDeltaY = m_desiredPosition.y - m_position.y;
+    Vector vDelta = m_desiredPosition - m_position;
     m_bSpiralCounterClockwise = static_cast<unsigned char>(rand_wincompatible() % 2);
-    if (m_bSpiralCounterClockwise != 0)
-        fDeltaY = -fDeltaY;
-    else
-        fDeltaX = -fDeltaX;
-    vPitch.x = fDeltaY;
-    vPitch.y = fDeltaX;
-
-    if (vPitch.x * vPitch.x + vPitch.y * vPitch.y <= 1.0e-5f)
+    if (m_bSpiralCounterClockwise != 0) {
+        vPitch.x = -vDelta.y;
+        vPitch.y = vDelta.x;
+    } else {
+        vPitch.x = vDelta.y;
+        vPitch.y = -vDelta.x;
+    }
+    vPitch.z = 0.0f;
+    if (vPitch.y * vPitch.y + vPitch.x * vPitch.x + vPitch.z * vPitch.z <= 1.0e-5f)
         vPitch = Vector(0.0f, 1.0f, 0.0f);
-
-    Vector vUnit = normalize(vPitch);
-    vPitch.x = vUnit.x * 2.0f;
-    vPitch.y = vUnit.y * 2.0f;
-    vPitch.z = vUnit.z * 2.0f;
-
+    vPitch = normalize(vPitch) * 2.0f;
     if (m_oidTarget == CGameObjectArray::INVALIDOBJID) {
-        vPitch.x += m_desiredPosition.x;
-        vPitch.y += m_desiredPosition.y;
+        vPitch = vPitch + m_desiredPosition;
         vPitch.z = m_position.z;
     }
 
-    Vector vGoal;
-    if (m_oidTarget == CGameObjectArray::INVALIDOBJID)
-        vGoal = m_desiredPosition;
-
-    int nLeadTime = m_desiredPosTimer2 - 2500;
-    if (nLeadTime != 0) {
-        CProjectileBehavior* pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_SPIRAL, vPitch, vGoal, m_oidTarget, nLeadTime, 0, 2.0f,
-        0);
-    pBehavior->m_nSubProjectileType = 0;
+    CProjectileBehavior* pBehavior;
+    if (m_desiredPosTimer2 - 2500 != 0) {
+        pBehavior = new CProjectileBehavior;
+        pBehavior->m_nKind = CProjectileBehavior::KIND_SPIRAL;
+        pBehavior->m_vStart = vPitch;
+        if (m_oidTarget == CGameObjectArray::INVALIDOBJID)
+            pBehavior->m_vEnd = m_desiredPosition;
+        else
+            pBehavior->m_vEnd = Vector(0.0f, 0.0f, 0.0f);
+        pBehavior->m_nSubProjectileType = 0;
+        pBehavior->m_nTimer = m_desiredPosTimer2 - 2500;
+        pBehavior->m_nHandoffTimer = 0;
+        pBehavior->m_oidTarget = m_oidTarget;
+        pBehavior->m_nSpawnCount = 0;
+        pBehavior->m_fRate = 2.0f;
         m_behaviorList.AddTail(pBehavior);
     } else if (m_oidTarget == CGameObjectArray::INVALIDOBJID) {
         SetPosition(vPitch);
@@ -788,17 +788,28 @@ void CSWCProjectile::SetBehaviorListSpiral()
         CGameObject* pTarget;
         if (g_pAppManager->m_pClientExoApp->GetGameObjectArray()->GetGameObject(
                 m_oidTarget, &pTarget) == CGameObjectArray::SUCCESS) {
-            CSWCObject* pTargetObject = static_cast<CSWCObject*>(pTarget);
-            Vector vPos(pTargetObject->m_position.x + vPitch.x,
-                        pTargetObject->m_position.y + vPitch.y, m_position.z);
+            Vector vPos = static_cast<CSWCObject*>(pTarget)->m_position + vPitch;
+            vPos.z = m_position.z;
             SetPosition(vPos);
         }
     }
 
-    CProjectileBehavior* pTail = new CProjectileBehavior(CProjectileBehavior::KIND_SPIRAL_TAIL, vGoal, vGoal, m_oidTarget, 2500, 0, -1.0f,
-        0);
-    pTail->m_nSubProjectileType = 0;
-    m_behaviorList.AddTail(pTail);
+    pBehavior = new CProjectileBehavior;
+    pBehavior->m_nKind = CProjectileBehavior::KIND_SPIRAL_TAIL;
+    if (m_oidTarget == CGameObjectArray::INVALIDOBJID) {
+        pBehavior->m_vStart = m_desiredPosition;
+        pBehavior->m_vEnd = m_desiredPosition;
+    } else {
+        pBehavior->m_vStart = Vector(0.0f, 0.0f, 0.0f);
+        pBehavior->m_vEnd = Vector(0.0f, 0.0f, 0.0f);
+    }
+    pBehavior->m_nSubProjectileType = 0;
+    pBehavior->m_nTimer = 2500;
+    pBehavior->m_nHandoffTimer = 0;
+    pBehavior->m_oidTarget = m_oidTarget;
+    pBehavior->m_nSpawnCount = 0;
+    pBehavior->m_fRate = -1.0f;
+    m_behaviorList.AddTail(pBehavior);
 }
 
 void CSWCProjectile::UnloadModel()

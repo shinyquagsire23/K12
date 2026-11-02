@@ -734,10 +734,11 @@ void CExoSoundSource::Stop()
         m_pInternal->Stop();
 }
 
-void CExoSoundSource::SetFixedVariance(float fVariance)
+int CExoSoundSource::SetFixedVariance(float fVariance)
 {
     if (m_pInternal)
-        m_pInternal->SetFixedVariance(fVariance);
+        return m_pInternal->SetFixedVariance(fVariance);
+    return 0;
 }
 
 float CExoSoundSource::GetFixedVariance()

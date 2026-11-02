@@ -224,16 +224,14 @@ CSWSObject* CSWCObject::GetServerObject()
     if (!m_pServerObject) {
         if (m_bPendingRemoval)
             return 0;
-        if (g_pAppManager->m_pServerExoApp) {
-            unsigned long long sid =
-                g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_objectId);
-            CGameObject* pObj = g_pAppManager->m_pServerExoApp->GetGameObject(static_cast<unsigned int>(sid));
-            if (pObj) {
-                CSWSObject* pServerObject = pObj->AsSWSObject();
-                m_pServerObject = pServerObject;
-                if (pServerObject)
-                    pServerObject->AttachmentFromClientObject(this);
-            }
+        if (!g_pAppManager->m_pServerExoApp)
+            return 0;
+        unsigned long long sid = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_objectId);
+        CGameObject* pObj = g_pAppManager->m_pServerExoApp->GetGameObject(static_cast<unsigned int>(sid));
+        if (pObj) {
+            m_pServerObject = pObj->AsSWSObject();
+            if (m_pServerObject)
+                m_pServerObject->AttachmentFromClientObject(this);
         }
     }
     return m_pServerObject;
@@ -395,36 +393,38 @@ int CSWCObject::GetTopFireForgetAnimation(unsigned short* pAnimation, float* pSp
     int nElapsed = g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetTimeDifferenceFromWorldTime(
         nStartDay, nStartTime);
 
-    if (m_paFireForgetAnims->m_bActive != 0)
+    if (m_paFireForgetAnims->m_bActive == 0)
     {
-        int bValid = 1;
-        if (nElapsed == 0)
+        *pAnimation = SERVER_ANIMATION_PAUSE;
+        *ppPayload = 0;
+        *pSpeed = 1.0f;
+        *pDuration = 500;
+        return 0;
+    }
+    if (nElapsed == 0)
+    {
+        unsigned int nDay;
+        unsigned int nTime;
+        g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetWorldTime(&nDay, &nTime);
+        if (g_pAppManager->m_pClientExoApp->GetWorldTimer()->CompareWorldTimes(
+                nDay, nTime, nStartDay, nStartTime) == -1)
         {
-            unsigned int nDay;
-            unsigned int nTime;
-            g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetWorldTime(&nDay, &nTime);
-            bValid = g_pAppManager->m_pClientExoApp->GetWorldTimer()->CompareWorldTimes(
-                    nDay, nTime, nStartDay, nStartTime) != -1;
-        }
-        if (bValid)
-        {
-            *pAnimation = m_paFireForgetAnims->m_nAnimation;
-            *ppPayload = m_paFireForgetAnims->m_pPayload;
-            unsigned int nTotal = m_paFireForgetAnims->m_nDuration;
-            int nRemaining = nTotal - nElapsed;
-            if (nRemaining < 50)
-                nRemaining = 50;
-            *pDuration = nRemaining;
-            *pSpeed = m_paFireForgetAnims->m_fSpeed * nTotal / nRemaining;
-            return 1;
+            *pAnimation = SERVER_ANIMATION_PAUSE;
+            *ppPayload = 0;
+            *pSpeed = 1.0f;
+            *pDuration = 500;
+            return 0;
         }
     }
-
-    *pAnimation = SERVER_ANIMATION_PAUSE;
-    *ppPayload = 0;
-    *pSpeed = 1.0f;
-    *pDuration = 500;
-    return 0;
+    *pAnimation = m_paFireForgetAnims->m_nAnimation;
+    *ppPayload = m_paFireForgetAnims->m_pPayload;
+    unsigned int nTotal = m_paFireForgetAnims->m_nDuration;
+    int nRemaining = nTotal - nElapsed;
+    if (nRemaining < 50)
+        nRemaining = 50;
+    *pDuration = nRemaining;
+    *pSpeed = m_paFireForgetAnims->m_fSpeed * nTotal / nRemaining;
+    return 1;
 }
 
 void CSWCObject::AbortFireForgetAnimation(int a)
@@ -683,42 +683,48 @@ Gob* CSWCObject::GetModel(unsigned char a, int b)
     return 0;
 }
 
-void CSWCObject::ReplaceTexture(unsigned char a, const CResRef& r1, const CResRef& r2, int b)
+int CSWCObject::ReplaceTexture(unsigned char a, const CResRef& r1, const CResRef& r2, int b)
 {
     if (m_pModel)
-        m_pModel->ReplaceTexture(a, r1, r2, b);
+        return m_pModel->ReplaceTexture(a, r1, r2, b);
+    return 0;
 }
 
-void CSWCObject::ReplaceTexture(const CResRef& r1, const CResRef& r2, int b)
+int CSWCObject::ReplaceTexture(const CResRef& r1, const CResRef& r2, int b)
 {
     if (m_pModel)
-        m_pModel->ReplaceTexture(r1, r2, b);
+        return m_pModel->ReplaceTexture(r1, r2, b);
+    return 0;
 }
 
-void CSWCObject::ReplaceTexture(unsigned char a, const CResRef& r1, const CResRef& r2,
+int CSWCObject::ReplaceTexture(unsigned char a, const CResRef& r1, const CResRef& r2,
                                 unsigned int c, unsigned short* p, int d, unsigned int e)
 {
     if (m_pModel)
-        m_pModel->ReplaceTexture(a, r1, r2, c, p, d, e);
+        return m_pModel->ReplaceTexture(a, r1, r2, c, p, d, e);
+    return 0;
 }
 
-void CSWCObject::ReplaceTexture(const CResRef& r1, const CResRef& r2, unsigned int c,
+int CSWCObject::ReplaceTexture(const CResRef& r1, const CResRef& r2, unsigned int c,
                                 unsigned short* p, int d, unsigned int e)
 {
     if (m_pModel)
-        m_pModel->ReplaceTexture(r1, r2, c, p, d, e);
+        return m_pModel->ReplaceTexture(r1, r2, c, p, d, e);
+    return 0;
 }
 
-void CSWCObject::RestoreTexture()
+int CSWCObject::RestoreTexture()
 {
     if (m_pModel)
-        m_pModel->RestoreTexture();
+        return m_pModel->RestoreTexture();
+    return 0;
 }
 
-void CSWCObject::RestoreTexture(unsigned char a)
+int CSWCObject::RestoreTexture(unsigned char a)
 {
     if (m_pModel)
-        m_pModel->RestoreTexture(a);
+        return m_pModel->RestoreTexture(a);
+    return 0;
 }
 
 // Take over pSource's aurora model: tear down our own, move theirs over, and re-point the moved
@@ -736,22 +742,25 @@ void CSWCObject::AcquireAnimationBase(CSWCObject* pSource)
     pSource->m_pModel = 0;
 }
 
-void CSWCObject::EnableBumpedOutShell(CResRef r, float f)
+int CSWCObject::EnableBumpedOutShell(CResRef r, float f)
 {
     if (m_pModel)
-        m_pModel->EnableBumpedOutShell(r, f);
+        return m_pModel->EnableBumpedOutShell(r, f);
+    return 0;
 }
 
-void CSWCObject::DisableBumpedOutShell()
+int CSWCObject::DisableBumpedOutShell()
 {
     if (m_pModel)
-        m_pModel->DisableBumpedOutShell();
+        return m_pModel->DisableBumpedOutShell();
+    return 0;
 }
 
-void CSWCObject::SetMotionBlur(int a)
+int CSWCObject::SetMotionBlur(int a)
 {
     if (m_pModel)
-        m_pModel->SetMotionBlur(a);
+        return m_pModel->SetMotionBlur(a);
+    return 0;
 }
 
 float CSWCObject::GetAnimationLength(unsigned short a)
@@ -761,10 +770,11 @@ float CSWCObject::GetAnimationLength(unsigned short a)
     return 1.0f;
 }
 
-void CSWCObject::SetAlpha(float alpha, unsigned char a)
+int CSWCObject::SetAlpha(float alpha, unsigned char a)
 {
     if (m_pModel)
-        m_pModel->SetAlpha(alpha, a);
+        return m_pModel->SetAlpha(alpha, a);
+    return 0;
 }
 
 // Projects the model's "lookathook" part into screen space and reports which side of the camera
@@ -1146,10 +1156,11 @@ int CSWCObject::SetEnvMap(unsigned char a, int b, int c, const CResRef& r)
     return m_pModel->SetEnvMap(a, b, c, CResRef(envName));
 }
 
-void CSWCObject::RestoreEnvMap()
+int CSWCObject::RestoreEnvMap()
 {
     if (m_pModel)
-        m_pModel->RestoreEnvMap();
+        return m_pModel->RestoreEnvMap();
+    return 0;
 }
 
 // Server-side animation change: records the new playback speed and, when the animation really
@@ -1173,17 +1184,19 @@ float CSWCObject::GetAlpha()
     return 0.0f;
 }
 
-void CSWCObject::Hilite(const Vector& v, unsigned char a, float f, int b)
+int CSWCObject::Hilite(const Vector& v, unsigned char a, float f, int b)
 {
     K2_UNUSED(f);
     if (m_pModel)
-        m_pModel->Hilite(v, a, b);
+        return m_pModel->Hilite(v, a, b);
+    return 0;
 }
 
-void CSWCObject::UnHilite(unsigned char a)
+int CSWCObject::UnHilite(unsigned char a)
 {
     if (m_pModel)
-        m_pModel->UnHilite(a);
+        return m_pModel->UnHilite(a);
+    return 0;
 }
 
 void CSWCObject::EnableDistortion()
@@ -1610,7 +1623,7 @@ int CSWCObject::SetAnimation(unsigned short nAnimation, int b, int nForce)
                     float fLength = 1.0f;
                     if (m_pModel != 0)
                         fLength = m_pModel->GetAnimationLength(static_cast<unsigned short>(nSoundId));
-                    pData->m_reaxnGroup.m_nReaxnDelay = static_cast<unsigned short>(static_cast<int>(fLength));
+                    pData->m_reaxnGroup.m_nReaxnDelay = static_cast<unsigned short>(fLength);
                     pData->m_fAnimationSpeed = m_animationSpeed;
                     AddFireForgetAnimation(static_cast<unsigned short>(nSoundId), pData);
                     SetLoopingAnimation(nAnimation);

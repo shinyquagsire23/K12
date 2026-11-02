@@ -176,7 +176,7 @@ public:
         m_characterFileSubDir = 0;
     }
     // A joystick is attached and joystick input is enabled.
-    bool GetIsJoystickConnected();
+    int  GetIsJoystickConnected();
     // The item-drop sound table's entry, or the empty resref before the table is loaded.
     CResRef GetItemDropSound(unsigned char nSound)
     {
@@ -596,12 +596,12 @@ public:
     int  Initialize();
     int  MainLoop();
     void OnCDChange();
-    void SendCharacterResponse(int a);
+    int  SendCharacterResponse(int a);
     CSWCPlayer* GetPlayerByPlayerID(unsigned int playerId);
     CSWCPlayer* GetPlayerByPlayerName(const CExoString& name);
     void SetPauseState(unsigned char state, int a, CExoLinkedList<unsigned long long>* pList);
-    void SendSaveGameRequest(unsigned int a, const CExoString& b, const CExoString& c);
-    void SendLoadGameRequest(unsigned int a, const CExoString& b, const CExoString& c);
+    int SendSaveGameRequest(unsigned int a, const CExoString& b, const CExoString& c);
+    int SendLoadGameRequest(unsigned int a, const CExoString& b, const CExoString& c);
     void JournalUpdated(int a, int b, const CExoString& s);
     int GetObjectName(unsigned long long id, CExoString& out);
     void SetCharacterFile(unsigned int a, unsigned char* pData, int size);

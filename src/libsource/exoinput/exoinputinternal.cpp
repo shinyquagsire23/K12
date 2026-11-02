@@ -546,21 +546,20 @@ CExoString CExoInputInternal::GetDisplayCharacterForKey(int key)
 
 void CExoInputInternal::ClearEventRepeat(unsigned int nEvent)
 {
-    if (m_aEvents.m_pArray[static_cast<int>(nEvent)] != 0 && m_aEvents.m_pArray[static_cast<int>(nEvent)]->m_nEventClass == INPUTKIND_BUTTON) {
-        CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
-        if (pNode != 0) {
-            CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
-            while (pRec == 0 || static_cast<unsigned int>(pRec->m_nEventIndex) != nEvent) {
-                m_repeatList.GetNext(pNode);
-                if (pNode == 0)
-                    return;
-                pRec = m_repeatList.GetAtPos(pNode);
-            }
-            pRec->m_nEmittedValue = 0;
-            pRec->m_nRepeatCount = 0;
+    CExoInputEventDesc* pDesc = m_aEvents.m_pArray[static_cast<int>(nEvent)];
+    if (pDesc == 0 || pDesc->m_nEventClass != INPUTKIND_BUTTON)
+        return;
+    CExoLinkedListNode* pNode = m_repeatList.GetHeadPos();
+    while (pNode != 0) {
+        CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
+        if (pRec != 0 && static_cast<unsigned int>(pRec->m_nEventIndex) == nEvent) {
             pRec->m_nRepeatState = 0;
+            pRec->m_nRepeatCount = 0;
             pRec->m_nLatchedState = 0;
+            pRec->m_nEmittedValue = 0;
+            return;
         }
+        m_repeatList.GetNext(pNode);
     }
 }
 
@@ -591,19 +590,14 @@ int CExoInputInternal::SetEventRepeatable(unsigned int nEvent, unsigned int p2, 
     if (m_aEvents.m_pArray[static_cast<int>(nEvent)] == 0 || m_aEvents.m_pArray[static_cast<int>(nEvent)]->m_nEventClass != INPUTKIND_BUTTON)
         return 0;
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
-    if (pNode != 0) {
+    while (pNode != 0) {
         CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
-        while (true) {
-            if (pRec != 0 && static_cast<unsigned int>(pRec->m_nEventIndex) == nEvent) {
-                pRec->m_nRepeatWait = p2;
-                pRec->m_nRepeatRate = p3;
-                return 1;
-            }
-            m_repeatList.GetNext(pNode);
-            if (pNode == 0)
-                break;
-            pRec = m_repeatList.GetAtPos(pNode);
+        if (pRec != 0 && static_cast<unsigned int>(pRec->m_nEventIndex) == nEvent) {
+            pRec->m_nRepeatWait = p2;
+            pRec->m_nRepeatRate = p3;
+            return 1;
         }
+        m_repeatList.GetNext(pNode);
     }
     CExoInputRepeatEvent* pNew = static_cast<CExoInputRepeatEvent*>(::operator new(sizeof(CExoInputRepeatEvent)));
     pNew->m_nEventIndex = nEvent;
@@ -801,12 +795,12 @@ int CExoInputInternal::IsEventInClass(unsigned int nEvent, int nType)
         int nWord = static_cast<int>(nEvent) / 32;
         if (nWord >= nCount) {
             int nOld = m_aEventClass[nType].m_aEventBits.m_count;
-            int nSize = nWord * 2 + 1;
-            m_aEventClass[nType].m_aEventBits.SetSize(nSize);
+            m_aEventClass[nType].m_aEventBits.SetSize(nWord * 2 + 1);
+            int nSize = m_aEventClass[nType].m_aEventBits.m_count;
             for (int i = nOld; i < nSize; i++)
                 m_aEventClass[nType].m_aEventBits.m_pArray[i] = 0;
         }
-        if (m_aEventClass[nType].m_aEventBits.m_pArray[nWord] & (1 << nEvent))
+        if (m_aEventClass[nType].m_aEventBits.m_pArray[nWord] & (1 << (nEvent % 32)))
             return 1;
     }
     return 0;
@@ -1040,11 +1034,11 @@ int CExoInputInternal::AddEvent(unsigned int nEvent, unsigned int nEventClass)
 
     pDesc->m_nClassCount++;
     if (pDesc->m_nDevice == CExoInput::INPUTDEVICE_NONE) {
-        m_aEventClass[nEventClass].m_unboundList.m_pInternal->AddHead(&pDesc->m_nId);
+        m_aEventClass[nEventClass].m_unboundList.AddHead(reinterpret_cast<uint32_t*>(&pDesc->m_nId));
     } else {
-        m_aEventClass[nEventClass].m_apDeviceLists[pDesc->m_nDevice].m_pInternal->AddHead(&pDesc->m_nId);
+        m_aEventClass[nEventClass].m_apDeviceLists[pDesc->m_nDevice].AddHead(reinterpret_cast<uint32_t*>(&pDesc->m_nId));
         int nWord = static_cast<int>(nEvent) / 32;
-        m_aEventClass[nEventClass].m_aEventBits.m_pArray[nWord] |= 1 << nEvent;
+        m_aEventClass[nEventClass].m_aEventBits.m_pArray[nWord] |= 1 << (nEvent % 32);
     }
     return 1;
 }
@@ -1291,17 +1285,16 @@ void CExoInputInternal::GetJoystickNStick(int nStick, float* pfX, float* pfY)
 
             int nRawX = (nStick == 1) ? pState[i].m_lRx : pState[i].m_lX;
             int nRawY = (nStick == 1) ? pState[i].m_lRy : pState[i].m_lY;
-            float fRawX = static_cast<float>(nRawX);
-            float fRawY = static_cast<float>(nRawY);
 
             if (nStick == 1) {
                 if (!s_enabledInfo[i].m_bHaveRest) {
-                    s_enabledInfo[i].m_fRestX = fRawX;
-                    s_enabledInfo[i].m_fRestY = fRawY;
+                    s_enabledInfo[i].m_fRestX = static_cast<float>(nRawX);
+                    s_enabledInfo[i].m_fRestY = static_cast<float>(nRawY);
                     s_enabledInfo[i].m_bHaveRest = true;
                 }
                 if (!s_enabledInfo[i].m_bEnabled) {
-                    if (s_enabledInfo[i].m_fRestX != fRawX || s_enabledInfo[i].m_fRestY != fRawY)
+                    if (s_enabledInfo[i].m_fRestX != static_cast<float>(nRawX) ||
+                        s_enabledInfo[i].m_fRestY != static_cast<float>(nRawY))
                         s_enabledInfo[i].m_bEnabled = true;
                     else
                         continue;
@@ -1310,10 +1303,10 @@ void CExoInputInternal::GetJoystickNStick(int nStick, float* pfX, float* pfY)
 
             float fAddX = 0.0f;
             float fAddY = 0.0f;
-            if (fRawX > 6553.0f || fRawX < -6553.0f)
-                fAddX = fRawX / 32768.0f;
-            if (fRawY > 6553.0f || fRawY < -6553.0f)
-                fAddY = fRawY / 32768.0f;
+            if (nRawX > 6553 || nRawX < -6553)
+                fAddX = static_cast<float>(nRawX) / 32768.0f;
+            if (nRawY > 6553 || nRawY < -6553)
+                fAddY = static_cast<float>(nRawY) / 32768.0f;
 
             fX += fAddX;
             fY += fAddY;
@@ -1700,7 +1693,7 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
                     continue;
                 if (!bFound) {
                     if (aConsumed[i] < aBuffers[i].m_nCount) {
-                        CExoLinkedList<int*>& rList = m_aEventClass[nInputClass].m_apDeviceLists[i];
+                        CExoLinkedList<uint32_t>& rList = m_aEventClass[nInputClass].m_apDeviceLists[i];
                         bool bMatch;
                         do {
                             bMatch = false;

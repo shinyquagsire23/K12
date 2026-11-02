@@ -507,9 +507,9 @@ void CSWSArea::AwardStealthXP(unsigned long long objectId)
 
 // Counts the mines/traps currently planted in the area by the player party: only triggers
 // that are traps and player-set count.
-int CSWSArea::GetNumMinesSetByPlayerParty()
+unsigned char CSWSArea::GetNumMinesSetByPlayerParty()
 {
-    int nMines = 0;
+    unsigned char nMines = 0;
     for (int i = 0; i < m_mineObjects.m_count; i++)
     {
         CSWSTrigger* pTrigger = g_pAppManager->m_pServerExoApp->GetTriggerByGameObjectID(
@@ -523,7 +523,7 @@ int CSWSArea::GetNumMinesSetByPlayerParty()
 // True while the party is still under the mine cap of 15.
 int CSWSArea::GetPlayerCanSetMines()
 {
-    return static_cast<unsigned char>(GetNumMinesSetByPlayerParty()) < MAX_PLAYER_PARTY_MINES;
+    return GetNumMinesSetByPlayerParty() < MAX_PLAYER_PARTY_MINES;
 }
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
@@ -1205,10 +1205,7 @@ int CSWSArea::LoadAreaEffects(CResGFF* pGff, CResStruct* pStruct, int nFlags, in
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("AreaEffectList")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1245,7 +1242,7 @@ int CSWSArea::LoadAreaEffects(CResGFF* pGff, CResStruct* pStruct, int nFlags, in
         float fPY = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("PositionY"), bSuccess, 0.0f);
         float fPZ = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("PositionZ"), bSuccess, 0.0f);
         pEffect->AddToArea(this, fPX, fPY, fPZ, !nFlags);
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1801,9 +1798,9 @@ int CSWSArea::LoadArea(int nFlags)
     g_pAppManager->m_pServerExoApp->GetModule()->AddObjectToLookupTable(m_sDebugName,
         m_objectId);
 #if KOTOR1
-    m_nTileBitmapBytes = static_cast<unsigned char>(__builtin_ceilf(static_cast<float>(m_nHeight * m_nWidth) * 0.125f));
+    m_nTileBitmapBytes = static_cast<unsigned char>(static_cast<int>(__builtin_ceilf(static_cast<float>(m_nHeight * m_nWidth) * 0.125f)));
 #else
-    m_nTileBitmapBytes = static_cast<unsigned char>(__builtin_ceilf(static_cast<float>(m_nWidth * m_nHeight) * 0.125f));
+    m_nTileBitmapBytes = static_cast<unsigned char>(static_cast<int>(__builtin_ceilf(static_cast<float>(m_nWidth * m_nHeight) * 0.125f)));
 #endif
     return 1;
 }
@@ -2706,6 +2703,7 @@ int CSWSArea::AIUpdate()
             int nRoll = rand_wincompatible() % 100;
 #endif
 
+            int bChanged = 0;
             if (m_chanceRain != 0)
             {
                 if (nRoll < m_chanceRain)
@@ -2714,14 +2712,14 @@ int CSWSArea::AIUpdate()
                     {
                         m_nCurrentWeather = CSWCArea::WEATHER_RAIN;
                         m_bWeatherOn = 1;
-                        SetCurrentWeather(CSWCArea::WEATHER_RAIN, 1);
+                        bChanged = 1;
                     }
                 }
                 else if (m_bWeatherOn != 0)
                 {
                     m_nCurrentWeather = CSWCArea::WEATHER_RAIN;
                     m_bWeatherOn = 0;
-                    SetCurrentWeather(CSWCArea::WEATHER_RAIN, 0);
+                    bChanged = 1;
                 }
             }
             else if (m_chanceSnow != 0)
@@ -2732,14 +2730,14 @@ int CSWSArea::AIUpdate()
                     {
                         m_nCurrentWeather = CSWCArea::WEATHER_SNOW;
                         m_bWeatherOn = 1;
-                        SetCurrentWeather(CSWCArea::WEATHER_SNOW, 1);
+                        bChanged = 1;
                     }
                 }
                 else if (m_bWeatherOn != 0)
                 {
                     m_nCurrentWeather = CSWCArea::WEATHER_SNOW;
                     m_bWeatherOn = 0;
-                    SetCurrentWeather(CSWCArea::WEATHER_SNOW, 0);
+                    bChanged = 1;
                 }
             }
 #if !KOTOR1
@@ -2751,18 +2749,19 @@ int CSWSArea::AIUpdate()
                     {
                         m_nCurrentWeather = CSWCArea::WEATHER_RAIN;
                         m_bWeatherOn = 1;
-                        SetCurrentWeather(CSWCArea::WEATHER_RAIN, 1);
+                        bChanged = 1;
                     }
                 }
                 else if (m_bWeatherOn != 0)
                 {
                     m_nCurrentWeather = CSWCArea::WEATHER_RAIN;
                     m_bWeatherOn = 0;
-                    SetCurrentWeather(CSWCArea::WEATHER_RAIN, 0);
+                    bChanged = 1;
                 }
             }
 #endif
-
+            if (bChanged)
+                SetCurrentWeather(m_nCurrentWeather, m_bWeatherOn);
             m_nWeatherTimer = 300000;
         }
     }
@@ -3086,14 +3085,25 @@ int CSWSArea::NoNonWalkPolysInDoors(const Vector& a, const Vector& b, float z, f
     if (m_nStaticBBoxCount < 1)
         return 1;
 
-    float fXMin = (a.x < b.x) ? a.x : b.x;
-    float fXMax = (a.x < b.x) ? b.x : a.x;
-    float fYMin = (a.y < b.y) ? a.y : b.y;
-    float fYMax = (a.y < b.y) ? b.y : a.y;
+    float fXMin, fXMax, fYMin, fYMax;
+    if (a.x < b.x) {
+        fXMin = a.x;
+        fXMax = b.x;
+    } else {
+        fXMin = b.x;
+        fXMax = a.x;
+    }
+    if (a.y < b.y) {
+        fYMin = a.y;
+        fYMax = b.y;
+    } else {
+        fYMin = b.y;
+        fYMax = a.y;
+    }
 
     fXMin -= radius;
-    fXMax += radius;
     fYMin -= radius;
+    fXMax += radius;
     fYMax += radius;
 
     for (int i = 0; i < m_nStaticBBoxCount; i++)
@@ -3131,25 +3141,18 @@ int CSWSArea::NoNonWalkPolysInDoors(const Vector& a, const Vector& b, float z, f
         if (flag2 != 1)
             return 0;
 
-        CExoArrayList<CGameObject*>* pList;
-        int bOwned;
-
-        if (pHits != 0)
+        int bOwned = 0;
+        if (pHits == 0)
         {
-            pList = pHits;
-            bOwned = 0;
-        }
-        else
-        {
-            pList = new CExoArrayList<CGameObject*>;
+            pHits = new CExoArrayList<CGameObject*>;
             bOwned = 1;
         }
 
         int nResult = HandleTransparentDoors(a, b, z, height, radius, oidIgnore, oidHit,
-                                                    flag1, pList, 1);
+                                                    flag1, pHits, 1);
 
-        if (bOwned)
-            delete pList;
+        if (bOwned && pHits)
+            delete pHits;
 
         return nResult;
     }

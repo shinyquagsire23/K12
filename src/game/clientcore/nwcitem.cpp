@@ -188,7 +188,7 @@ CSWItemProperty* CSWCItem::GetActivePropertyByType(unsigned short nType, unsigne
 {
 #if KOTOR1
     CSWItemProperty* pProperty = m_paActiveProperties;
-    for (long long i = 0; i < m_nNumActiveProperties; i++, pProperty++)
+    for (int64_t i = 0; i < m_nNumActiveProperties; i++, pProperty++)
     {
         if (pProperty->m_type == nType && (nSubType == 0 || pProperty->m_subType == nSubType))
             return pProperty;
@@ -652,15 +652,7 @@ void CSWCItem::PowerItem(int nPowered, int b, int c, int d)
         }
         if (c != 0)
         {
-            if (m_bPowered != 0)
-            {
-                // Re-powering after a switch: the blade's own one-shot.
-                if (d == 0)
-                    g_pExoSound->Play3DOneShotSound(
-                        CResRef(g_pRules->GetBaseItem(m_baseItem)->m_sPowerDownSnd),
-                        vPos, 0.0f, PRIORITY_GROUP_SINGLE_SHOT_GLOBAL, 0, 0, 0.0f, 0.0f);
-            }
-            else
+            if (m_bPowered == 0)
             {
                 // First power-up: the model plays its placeholder animation and the other resref is
                 // the one-shot.
@@ -670,6 +662,14 @@ void CSWCItem::PowerItem(int nPowered, int b, int c, int d)
                 if (d == 0)
                     g_pExoSound->Play3DOneShotSound(
                         CResRef(g_pRules->GetBaseItem(m_baseItem)->m_sPowerUpSnd),
+                        vPos, 0.0f, PRIORITY_GROUP_SINGLE_SHOT_GLOBAL, 0, 0, 0.0f, 0.0f);
+            }
+            else
+            {
+                // Re-powering after a switch: the blade's own one-shot.
+                if (d == 0)
+                    g_pExoSound->Play3DOneShotSound(
+                        CResRef(g_pRules->GetBaseItem(m_baseItem)->m_sPowerDownSnd),
                         vPos, 0.0f, PRIORITY_GROUP_SINGLE_SHOT_GLOBAL, 0, 0, 0.0f, 0.0f);
             }
             m_pModel->SetAnimation(nAnimPowered, 1.0f, 1, 0.0f);

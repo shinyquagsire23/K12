@@ -2050,12 +2050,8 @@ void CSWGuiListBox::HandleMouseMove()
     if (!m_tail.bEnabled)
         return;
 
-#ifdef K2_UI_TOUCH
-    CSWGuiControl* pControl = HitCheckMouseLocal(0);
-#else
     int nIndex;
     CSWGuiControl* pControl = HitCheckMouseLocal(&nIndex);
-#endif
     CSWGuiControl* pWasOver = m_pMouseOverControl;
     if (pControl != pWasOver)
     {

@@ -695,11 +695,8 @@ void CTlkTable::SetCustomToken(int nId, const CExoString& sValue)
 
 void CTlkTable::ClearCustomTokens()
 {
-    if (m_pCustomTokens != 0)
-    {
-        delete[] m_pCustomTokens;
-        m_pCustomTokens = 0;
-    }
+    delete[] m_pCustomTokens;
+    m_pCustomTokens = 0;
     m_nCustomTokenCount = 0;
 }
 

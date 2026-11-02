@@ -47,6 +47,16 @@ extern float projectionalpha;
 #include "port/libcbase.h"
 #include "port/libcstdlib.h"
 
+#if !defined(K2_NO_FORTIFY)
+static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
+    __builtin_va_list ap;
+    __builtin_va_start(ap, fmt);
+    int nResult = __vsprintf_chk(buf, 0, n, fmt, ap);
+    __builtin_va_end(ap);
+    return nResult;
+}
+#endif
+
 // The rows of surfacemat.2da the grass setup walks.
 enum {
     SURFACE_MATERIAL_ROWS = 32,
@@ -403,7 +413,8 @@ void CSWCArea::SetAsDawn()
     projectionalpha = 0.0f;
     *reinterpret_cast<float*>(&shadowalpha) = static_cast<float>(m_shadowOpacity) / 100.0f;
     m_bDayNightSwitchPending = 1;
-    *reinterpret_cast<CSWCAreaV2si*>(&m_v2iDawnDusk) = CSWCAreaV2si{1, 0};
+    m_v2iDawnDusk.x = 1;
+    m_v2iDawnDusk.y = 0;
     m_isNight = 1;
     UpdateShadowingLights();
 }
@@ -435,7 +446,8 @@ void CSWCArea::SetAsDay()
     projectionalpha = 0.05f;
     *reinterpret_cast<float*>(&shadowalpha) = static_cast<float>(m_shadowOpacity) / 100.0f;
     m_bDayNightSwitchPending = 1;
-    *reinterpret_cast<CSWCAreaV2si*>(&m_v2iDawnDusk) = CSWCAreaV2si{0, 0};
+    m_v2iDawnDusk.x = 0;
+    m_v2iDawnDusk.y = 0;
     m_isNight = 0;
     SetFog(m_sunFogNear, m_sunFogFar, m_vDayFogColor);
     SetGlobalLightAmbient(1, Vector{m_vSunAmbientRG.x, m_vSunAmbientRG.y, m_fSunAmbientBlue});
@@ -452,7 +464,8 @@ void CSWCArea::SetAsNight()
     projectionalpha = 0.0f;
     *reinterpret_cast<float*>(&shadowalpha) = static_cast<float>(m_shadowOpacity) / 100.0f;
     m_bDayNightSwitchPending = 1;
-    *reinterpret_cast<CSWCAreaV2si*>(&m_v2iDawnDusk) = CSWCAreaV2si{0, 0};
+    m_v2iDawnDusk.x = 0;
+    m_v2iDawnDusk.y = 0;
     m_isNight = 1;
     SetFog(m_moonFogNear, m_moonFogFar, m_vNightFogColor);
     SetGlobalLightAmbient(1, Vector{m_vMoonAmbientRG.x, m_vMoonAmbientRG.y, m_fMoonAmbientBlue});
@@ -1047,15 +1060,15 @@ void CSWCArea::UpdateDayNightCycle(float deltaTime)
             *reinterpret_cast<float*>(&shadowalpha) = (fTime / fHalf + -1.0f) * (static_cast<float>(m_shadowOpacity) / 100.0f) + 0.0f;
     }
     char buf[128];
-    snprintf(buf, sizeof(buf), "sun gidy_sun_amb color %f %f %f", vSunAmb.x, vSunAmb.y, vSunAmb.z);
+    sprintf_s(buf, sizeof(buf), "sun gidy_sun_amb color %f %f %f", vSunAmb.x, vSunAmb.y, vSunAmb.z);
     AurControlPart(buf);
-    snprintf(buf, sizeof(buf), "sun gidy_sun_diff color %f %f %f", vSunDiff.x, vSunDiff.y, vSunDiff.z);
+    sprintf_s(buf, sizeof(buf), "sun gidy_sun_diff color %f %f %f", vSunDiff.x, vSunDiff.y, vSunDiff.z);
     AurControlPart(buf);
     m_fogNear = vFog.x;
     m_fogFar = vFog.y;
     m_pScene->SetFogRange(vFog.x, vFog.y);
     m_pScene->SetFogColor(vFogColor);
-    snprintf(buf, sizeof(buf), "%f %f %f", vFogColor.x, vFogColor.y, vFogColor.z);
+    sprintf_s(buf, sizeof(buf), "%f %f %f", vFogColor.x, vFogColor.y, vFogColor.z);
     SetClearColor(buf);
     UpdateSoundObjectsTimeOfDay();
     m_pAmbientSound->UpdateTimeOfDay();
@@ -1173,7 +1186,7 @@ void CSWCArea::Update(float deltaTime)
                         vStrike.z = fZ;
                         m_pLightningGob->SetPosition(vStrike);
                         char buf[16];
-                        snprintf(buf, sizeof(buf), "flash0%i", rand_wincompatible() % 3 + 1);
+                        sprintf_s(buf, sizeof(buf), "flash0%i", rand_wincompatible() % 3 + 1);
                         float fParam, fDuration;
                         m_pLightningGob->GetAnimation(buf, &fParam, &fDuration);
                         m_fLightningFlashTime = fDuration;
@@ -1288,7 +1301,7 @@ void CSWCArea::Update(float deltaTime)
                         vStrike.z = fZ;
                         m_pLightningGob->SetPosition(vStrike);
                         char buf[16];
-                        snprintf(buf, sizeof(buf), "flash0%i", rand_wincompatible() % 3 + 1);
+                        sprintf_s(buf, sizeof(buf), "flash0%i", rand_wincompatible() % 3 + 1);
                         float fParam, fDuration;
                         m_pLightningGob->GetAnimation(buf, &fParam, &fDuration);
                         m_fLightningFlashTime = fDuration;
@@ -1432,30 +1445,38 @@ void CSWCArea::HiliteAreaObjects(int bHilite)
         switch (pCObj->m_objectType) {
         case GAME_OBJECT_TYPE_CREATURE: {
             CSWCCreature* pCreature = pCObj->AsSWCCreature();
-            if (bHilite == 0) {
+            if (bHilite != 0) {
+                if (pCreature == g_pAppManager->m_pClientExoApp->GetPlayerCreature())
+                    pCObj->Hilite(Vector{1.0f, 1.0f, 1.0f}, 2, 0.0f, 1);
+                else if (pCreature->m_nReputation == 1)
+                    pCObj->Hilite(Vector{0.3f, 1.0f, 0.3f}, 2, 0.0f, 1);
+                else if (pCreature->m_nReputation == 0)
+                    pCObj->Hilite(Vector{0.4f, 0.4f, 1.0f}, 2, 0.0f, 1);
+                else
+                    pCObj->Hilite(Vector{1.0f, 0.1f, 0.1f}, 2, 0.0f, 1);
+            } else {
                 pCreature->SetPopUpBubbleDecayTime(0.0f);
                 pCObj->UnHilite(2);
-                break;
             }
-            Vector color;
-            if (pCreature == g_pAppManager->m_pClientExoApp->GetPlayerCreature())
-                color = Vector{1.0f, 1.0f, 1.0f};
-            else if (pCreature->m_nReputation == 0)
-                color = Vector{0.4f, 0.4f, 1.0f};
-            else if (pCreature->m_nReputation == 1)
-                color = Vector{0.3f, 1.0f, 0.3f};
-            else
-                color = Vector{1.0f, 0.1f, 0.1f};
-            pCObj->Hilite(color, 2, 0.0f, 1);
             break;
         }
         case GAME_OBJECT_TYPE_ITEM:
-        case GAME_OBJECT_TYPE_PLACEABLE:
-        case GAME_OBJECT_TYPE_DOOR:
-            if (bHilite == 0)
-                pCObj->UnHilite(2);
-            else
+            if (bHilite != 0)
                 pCObj->Hilite(Vector{0.3f, 1.0f, 1.0f}, 2, 0.0f, 1);
+            else
+                pCObj->UnHilite(2);
+            break;
+        case GAME_OBJECT_TYPE_PLACEABLE:
+            if (bHilite != 0)
+                pCObj->Hilite(Vector{0.3f, 1.0f, 1.0f}, 2, 0.0f, 1);
+            else
+                pCObj->UnHilite(2);
+            break;
+        case GAME_OBJECT_TYPE_DOOR:
+            if (bHilite != 0)
+                pCObj->Hilite(Vector{0.3f, 1.0f, 1.0f}, 2, 0.0f, 1);
+            else
+                pCObj->UnHilite(2);
             break;
         }
     }
@@ -1483,7 +1504,7 @@ int CSWCArea::SetGlobalLightAmbient(int a, Vector color)
     if (m_pScene == 0)
         return 0;
     char buf[128];
-    snprintf(buf, sizeof(buf), "sun gidy_sun_amb color %f %f %f", color.x, color.y, color.z);
+    sprintf_s(buf, sizeof(buf), "sun gidy_sun_amb color %f %f %f", color.x, color.y, color.z);
     AurControlPart(buf);
     return 1;
 }
@@ -1601,7 +1622,7 @@ int CSWCArea::SetGlobalLightDiffuse(int b, Vector color)
         return 0;
     if (b != 0) {
         char buf[128];
-        snprintf(buf, sizeof(buf), "sun gidy_sun_diff color %f %f %f", color.x, color.y, color.z);
+        sprintf_s(buf, sizeof(buf), "sun gidy_sun_diff color %f %f %f", color.x, color.y, color.z);
         AurControlPart(buf);
     } else {
         m_pSunGob->AttachToScene(0);

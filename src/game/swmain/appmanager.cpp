@@ -15,10 +15,6 @@ class CClientExoAppInternal;
 // The classes CAppManager owns pointers to are declared here rather than in CAppManager.h, so that
 // header stays includable from units with their own view of them.
 
-CLoadGameErrorInfo::CLoadGameErrorInfo() {
-    __builtin_memset(&m_flag, 0, offsetof(CLoadGameErrorInfo, m_saveDirectory));
-}
-
 CAppManager::CAppManager() {
     m_pServerExoApp = 0;
     m_pClientExoApp = 0;
@@ -26,13 +22,13 @@ CAppManager::CAppManager() {
 
     m_pClientExoApp = new CClientExoApp();
 
-    m_pLoadGameErrorInfo = new CLoadGameErrorInfo();
+    m_pLoadGameErrorInfo = new CSWReentrantServerStats();
 
     m_pObjectTableManager1 = new CObjectTableManager();
     m_pObjectTableManager2 = new CObjectTableManager();
 
     m_pLargeTempBuffer = 0;
-    m_pLargeTempBuffer = new unsigned char[CAppManager::LARGE_TEMP_BUFFER_SIZE];
+    AllocLargeTempBuffer();
 }
 
 CAppManager::~CAppManager() {
@@ -43,17 +39,7 @@ CAppManager::~CAppManager() {
         m_pClientExoApp = 0;
     }
 
-    if (m_pServerExoApp) {
-        m_pServerExoApp->Uninitialize();
-        m_pServerExoApp->StopServices();
-        CServerExoApp* pServer = m_pServerExoApp;
-        if (pServer) {
-            pServer->CServerExoApp::~CServerExoApp();
-            operator delete(pServer);
-        }
-        m_pServerExoApp = 0;
-    }
-    SetWindowTitle();
+    DestroyServer();
 
     CObjectTableManager* pOTM1 = m_pObjectTableManager1;
     if (pOTM1) {
@@ -69,22 +55,14 @@ CAppManager::~CAppManager() {
         m_pObjectTableManager2 = 0;
     }
 
-    CLoadGameErrorInfo* pErr = m_pLoadGameErrorInfo;
+    CSWReentrantServerStats* pErr = m_pLoadGameErrorInfo;
     if (pErr) {
-        pErr->~CLoadGameErrorInfo();
+        pErr->~CSWReentrantServerStats();
         operator delete(pErr);
         m_pLoadGameErrorInfo = 0;
     }
 
-    if (m_pLargeTempBuffer) {
-        // A new[] buffer released with scalar delete.
-#ifdef K2_FIX_ENGINE_BUGS
-        delete[] m_pLargeTempBuffer;
-#else
-        delete m_pLargeTempBuffer;
-#endif
-        m_pLargeTempBuffer = 0;
-    }
+    FreeLargeTempBuffer();
 }
 
 void CAppManager::AllocLargeTempBuffer() {
@@ -96,7 +74,12 @@ void CAppManager::AllocLargeTempBuffer() {
 void CAppManager::FreeLargeTempBuffer() {
     unsigned char* p = m_pLargeTempBuffer;
     if (p) {
+        // A new[] buffer released with scalar delete.
+#ifdef K2_FIX_ENGINE_BUGS
+        delete[] p;
+#else
         delete p;
+#endif
         m_pLargeTempBuffer = 0;
     }
 }

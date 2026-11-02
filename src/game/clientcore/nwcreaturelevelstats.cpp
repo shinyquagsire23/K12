@@ -33,7 +33,7 @@ void CSWLevelStats::ClearFeats()
     m_featsGained.SetSize(0);
 }
 
-unsigned char CSWLevelStats::GetSkillRankChange(unsigned short nSkill)
+char CSWLevelStats::GetSkillRankChange(unsigned short nSkill)
 {
     if (nSkill < g_pRules->m_nNumSkills)
         return m_paSkillRankChanges[nSkill];

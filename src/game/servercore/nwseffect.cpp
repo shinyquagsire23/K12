@@ -42,22 +42,21 @@ CGameEffect::CGameEffect(int bIsExposed)
         m_effectId = m_nNextID++;
     else
         m_effectId = 0;
+    m_bIsExposed = bIsExposed;
+    m_bSkipOnLoad = 0;
     m_subType = 0;
     m_durationTypeBits = 0;
     m_fDuration = 0.0f;
     m_expireDay = 0;
-    m_bSkipOnLoad = 0;
-    m_bIsExposed = bIsExposed;
-    m_spellId = -1;
     m_expireTime = 0;
     m_creatorId = OBJECT_INVALID;
     m_pLinkedEffect1 = 0;
     m_pLinkedEffect2 = 0;
-    m_pIntegers = 0;
     m_nCasterLevel = -1;
+    m_spellId = -1;
+    m_pIntegers = 0;
     SetNumIntegers(8);
-    for (int i = 0; i < 4; i++)
-        m_fParams[i] = 0.0f;
+    __builtin_memset(static_cast<void*>(&m_fParams), 0, sizeof(m_fParams));
     for (int i = 0; i < 6; i++)
         m_sParams[i] = "";
     for (int i = 0; i < 4; i++)
@@ -72,21 +71,20 @@ CGameEffect::CGameEffect(int bIsExposed)
 CGameEffect::CGameEffect(CGameEffect* pOther)
 {
     m_effectId = 0;
+    m_bIsExposed = 0;
     m_subType = 0;
     m_durationTypeBits = 0;
     m_fDuration = 0.0f;
     m_expireDay = 0;
     m_expireTime = 0;
     m_creatorId = OBJECT_INVALID;
-    m_pIntegers = 0;
     m_pLinkedEffect1 = 0;
     m_pLinkedEffect2 = 0;
+    m_pIntegers = 0;
     m_spellId = -1;
-    m_bIsExposed = 0;
     m_nCasterLevel = 0;
     SetNumIntegers(pOther->m_numIntegers);
-    for (int i = 0; i < 4; i++)
-        m_fParams[i] = 0.0f;
+    __builtin_memset(static_cast<void*>(&m_fParams), 0, sizeof(m_fParams));
     for (int i = 0; i < 6; i++)
         m_sParams[i] = "";
     for (int i = 0; i < 4; i++)
@@ -214,12 +212,12 @@ void CGameEffect::CopyEffect(CGameEffect* pSource, int bHeaderOnly)
         m_effectId = pSource->m_effectId;
     m_subType = pSource->m_subType;
     m_durationTypeBits = pSource->m_durationTypeBits;
+    m_bIsExposed = pSource->m_bIsExposed;
     m_fDuration = pSource->m_fDuration;
     m_expireDay = pSource->m_expireDay;
     m_expireTime = pSource->m_expireTime;
     m_creatorId = pSource->m_creatorId;
     m_spellId = pSource->m_spellId;
-    m_bIsExposed = pSource->m_bIsExposed;
     m_nCasterLevel = pSource->m_nCasterLevel;
 
     if (pSource->m_pLinkedEffect1)

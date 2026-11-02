@@ -3814,12 +3814,8 @@ int CSWSItem::CompareItem(CSWSItem* pOther) {
         return 0;
 
     for (int i = 0; i < m_nActiveProperties; i++) {
-        CSWItemProperty* pProp = &m_pActiveProperties[i];
-        CSWItemProperty* pOtherProp;
-        if (i < pOther->m_nActiveProperties)
-            pOtherProp = &pOther->m_pActiveProperties[i];
-        else
-            pOtherProp = 0;
+        CSWItemProperty* pProp = GetActiveProperty(i);
+        CSWItemProperty* pOtherProp = pOther->GetActiveProperty(i);
 #ifdef K2_FIX_ENGINE_BUGS
         if (pOtherProp == 0)
             return 0;
@@ -3842,12 +3838,8 @@ int CSWSItem::CompareItem(CSWSItem* pOther) {
             return 0;
     }
     for (int i = 0; i < m_nPassiveProperties; i++) {
-        CSWItemProperty* pProp = &m_pPassiveProperties[i];
-        CSWItemProperty* pOtherProp;
-        if (i < pOther->m_nPassiveProperties)
-            pOtherProp = &pOther->m_pPassiveProperties[i];
-        else
-            pOtherProp = 0;
+        CSWItemProperty* pProp = GetPassiveProperty(i);
+        CSWItemProperty* pOtherProp = pOther->GetPassiveProperty(i);
 #ifdef K2_FIX_ENGINE_BUGS
         if (pOtherProp == 0)
             return 0;
@@ -3870,12 +3862,8 @@ int CSWSItem::CompareItem(CSWSItem* pOther) {
             return 0;
     }
     for (int i = 0; i < m_nPassiveProperties; i++) {
-        CSWItemProperty* pProp = &m_pPassiveProperties[i];
-        CSWItemProperty* pOtherProp;
-        if (i < pOther->m_nPassiveProperties)
-            pOtherProp = &pOther->m_pPassiveProperties[i];
-        else
-            pOtherProp = 0;
+        CSWItemProperty* pProp = GetPassiveProperty(i);
+        CSWItemProperty* pOtherProp = pOther->GetPassiveProperty(i);
 #ifdef K2_FIX_ENGINE_BUGS
         if (pOtherProp == 0)
             return 0;

@@ -715,39 +715,39 @@ void AnimateEvents(Gob* pGob, Animation* pAnim, float fStart, float fEnd, int nF
 {
     if (nFlags & 2)
     {
-        fStart = -1000000000.0f;
-        fEnd = 1000000000.0f;
         nFlags &= ~2;
+        AnimateEvents(pGob, pAnim, -1000000000.0f, 1000000000.0f, nFlags);
+        return;
     }
 
     if (nFlags & 1)
     {
-        while (fStart < fEnd)
+        if (fStart < fEnd)
         {
             AnimateEvents(pGob, pAnim, fStart, -1000000000.0f, nFlags);
-            fStart = 1000000000.0f;
+            AnimateEvents(pGob, pAnim, 1000000000.0f, fEnd, nFlags);
+            return;
         }
 
         for (int i = pAnim->m_events.m_count - 1; i >= 0; i--)
         {
-            AurKey<char[32]>* pEvent = &pAnim->m_events.m_pData[i];
-            if (pEvent->m_fTime >= fEnd && pEvent->m_fTime < fStart)
-                pGob->DoEvent(pEvent->m_value, 0);
+            if (pAnim->m_events.m_pData[i].m_fTime >= fEnd && pAnim->m_events.m_pData[i].m_fTime < fStart)
+                pGob->DoEvent(pAnim->m_events.m_pData[i].m_value, 0);
         }
     }
     else
     {
-        while (fStart > fEnd)
+        if (fStart > fEnd)
         {
             AnimateEvents(pGob, pAnim, fStart, 1000000000.0f, nFlags);
-            fStart = -1000000000.0f;
+            AnimateEvents(pGob, pAnim, -1000000000.0f, fEnd, nFlags);
+            return;
         }
 
         for (int i = 0; i < pAnim->m_events.m_count; i++)
         {
-            AurKey<char[32]>* pEvent = &pAnim->m_events.m_pData[i];
-            if (pEvent->m_fTime > fStart && pEvent->m_fTime <= fEnd)
-                pGob->DoEvent(pEvent->m_value, 0);
+            if (pAnim->m_events.m_pData[i].m_fTime <= fEnd && pAnim->m_events.m_pData[i].m_fTime > fStart)
+                pGob->DoEvent(pAnim->m_events.m_pData[i].m_value, 0);
         }
     }
 }
@@ -777,12 +777,12 @@ AnimRun::AnimRun(Animation* pAnimation)
     m_pAnimation = pAnimation;
     m_fSpeed = 1.0f;
     m_nFlags = 0;
-    m_fPrevTime = 0.0f;
     m_fTime = 0.0f;
+    m_fPrevTime = 0.0f;
     m_fBlendAlpha = 1.0f;
     m_fBlendDuration = 0.0f;
-    m_fScale = 1.0f;
     m_nFinished = 0;
+    m_fScale = 1.0f;
 }
 
 // The deactivated flag and the two pointers are this class's own members; the animation and run
@@ -2635,7 +2635,8 @@ void NewController::ReportKey(Part* pPart, MdlNode* pNode, int nKey, float fAlph
 // 1 a scalar and 3 a vector. All three arms share one shape:
 //
 // 1. resolve the offset; when its top nibble is set the field lives behind a 64-bit lookup keyed on the
-//    node's kind word
+//    node's kind word (the 64-bit port's step: both armv7 images use the loaded offset as it is, and their
+//    loader never sets the nibble)
 // 2. hold the destination's current value as the blend's "from"
 // 3. sample the controller at the current time and, unless the previous time is below the "no previous
 //    frame" sentinel the gob passes, sample again there and use that as the "from"
@@ -2654,23 +2655,25 @@ void NewController::Control(Part* pPart, MdlNode* pNode, float fPrevTime, float 
     switch (m_keys.m_nKind & kKeyLayoutMask) {
         case kKeyPackedQuaternion:
         case kKeyQuaternion: {
+            Quaternion qFrom;
             Quaternion qPrev(1.0f, 0.0f, 0.0f, 0.0f);
             Quaternion qValue(1.0f, 0.0f, 0.0f, 0.0f);
+#if !defined(__arm__)
             if (m_target.m_nOffset & kTargetUnconverted) {
                 short nKind = pPart->m_pNode->m_nFlags;
                 m_target.m_nOffset &= kTargetOffsetMask;
                 m_target.m_nOffset = GetOffset64(m_target.m_nOffset, nKind);
             }
+#endif
             Quaternion* pDest = reinterpret_cast<Quaternion*>(reinterpret_cast<char*>(pPart) + m_target.m_nOffset);  // raw-offset: the controller's target offset comes from the animation data
-            // The destination's current value lives in its own local and the sampled previous value is copied
-            // into it, never the reverse.
-            Quaternion qFrom = *pDest;
+            qFrom = *pDest;
             GetQuaternionValue(fTime, pNode, qValue);
-            if (!(fPrevTime < -95.0f)) {
+            if (fPrevTime < -95.0f) {
+                *pDest = Interpolate(qFrom, qValue, fAlpha);
+            } else {
                 GetQuaternionValue(fPrevTime, pNode, qPrev);
-                qFrom = qPrev;
+                *pDest = Interpolate(qPrev, qValue, fAlpha);
             }
-            *pDest = Interpolate(qFrom, qValue, fAlpha);
             break;
         }
         case kKeyFloat: {
@@ -2678,11 +2681,13 @@ void NewController::Control(Part* pPart, MdlNode* pNode, float fPrevTime, float 
             static float value_old;
             static float value0;
             static float value;
+#if !defined(__arm__)
             if (m_target.m_nOffset & kTargetUnconverted) {
                 short nKind = pPart->m_pNode->m_nFlags;
                 m_target.m_nOffset &= kTargetOffsetMask;
                 m_target.m_nOffset = GetOffset64(m_target.m_nOffset, nKind);
             }
+#endif
             float* pDest = reinterpret_cast<float*>(reinterpret_cast<char*>(pPart) + m_target.m_nOffset);  // raw-offset: the controller's target offset comes from the animation data
             value_old = *pDest;
             GetFloatValue(fTime, pNode, value);
@@ -2697,11 +2702,13 @@ void NewController::Control(Part* pPart, MdlNode* pNode, float fPrevTime, float 
             }
             *pDest = (1.0f - fAlpha) * *pFrom + fAlpha * value;
 #if !KOTOR1  // K1: no re-resolve and no mesh render-flag update after the store
+#if !defined(__arm__)
             if (m_target.m_nOffset & kTargetUnconverted) {
                 short nKind = pPart->m_pNode->m_nFlags;
                 m_target.m_nOffset &= kTargetOffsetMask;
                 m_target.m_nOffset = GetOffset64(m_target.m_nOffset, nKind);
             }
+#endif
             if (m_target.m_nOffset == kTargetScale) {
                 MdlNodeTriMesh* pTriMesh = pPart->m_pNode->AsMdlNodeTriMesh();
                 if (pTriMesh != 0) {
@@ -2716,11 +2723,13 @@ void NewController::Control(Part* pPart, MdlNode* pNode, float fPrevTime, float 
         case kKeyVector: {
             Vector vPrev(0.0f, 0.0f, 0.0f);
             Vector vValue(0.0f, 0.0f, 0.0f);
+#if !defined(__arm__)
             if (m_target.m_nOffset & kTargetUnconverted) {
                 short nKind = pPart->m_pNode->m_nFlags;
                 m_target.m_nOffset &= kTargetOffsetMask;
                 m_target.m_nOffset = GetOffset64(m_target.m_nOffset, nKind);
             }
+#endif
             Vector* pDest = reinterpret_cast<Vector*>(reinterpret_cast<char*>(pPart) + m_target.m_nOffset);  // raw-offset: the controller's target offset comes from the animation data
             Vector vOld = *pDest;
             GetVectorValue(fTime, pNode, vValue);

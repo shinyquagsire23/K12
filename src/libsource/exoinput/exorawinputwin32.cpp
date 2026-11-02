@@ -1426,6 +1426,8 @@ CExoDeviceBuffer::CExoDeviceBuffer()
 
 CExoDeviceBuffer::~CExoDeviceBuffer()
 {
-    delete[] m_pEntries;
-    m_pEntries = 0;
+    if (m_pEntries) {
+        delete[] m_pEntries;
+        m_pEntries = 0;
+    }
 }

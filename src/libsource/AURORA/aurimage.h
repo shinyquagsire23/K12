@@ -26,8 +26,8 @@ float ImageGetAlphaMean(unsigned char* pData, int nWidth, int nHeight, int nBpp)
 unsigned char* ImageBuildPerlin(int nSize, float fScale);
 unsigned char* ImageBuildParameterPerlin(int nSize, float fScale, int nMod, int nBase);
 unsigned char ImageInterpolate(unsigned char* pData, float fX, float fY, int nWidth, int nHeight);
-int ImageGetPerlinPixel(unsigned char** paNoise, int nX, int nY, int nSize, int nOctaves,
-                        int nScale);
+unsigned char ImageGetPerlinPixel(unsigned char** paNoise, int nX, int nY, int nSize, int nOctaves,
+                                  int nScale);
 
 unsigned char* ImageDownSampleToRequiredSize(int nWidth, int nHeight, unsigned char* pData,
                                              int nBox);
@@ -94,8 +94,8 @@ void ImageMandel(int nWidth, int nHeight, int nBpp, unsigned char* pData, float 
                  float fYCenter, float fScale);
 void ImageJulia(int nWidth, int nHeight, int nBpp, unsigned char* pData, float fRe, float fIm);
 
-void ImageAddColorModulateAlpha(unsigned char* pData, int nWidth, int nHeight, int nBpp,
-                                unsigned char nR, unsigned char nG, unsigned char nB);
+unsigned char* ImageAddColorModulateAlpha(unsigned char* pData, int nWidth, int nHeight, int nBpp,
+                                          unsigned char nR, unsigned char nG, unsigned char nB);
 
 unsigned char* ImageGetSubImage(unsigned char* pData, int nWidth, int nHeight, int nBpp,
                                 int nX, int nY, int nSubWidth, int nSubHeight);

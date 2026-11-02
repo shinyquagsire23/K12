@@ -932,8 +932,8 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
     unsigned int nRow;
     if (m_race != 0xff)
     {
-        m_bRebuildHead = 1;
         nRow = m_race;
+        m_bRebuildHead = 1;
     }
     else if (m_bUseBackupHead == 0)
     {
@@ -946,19 +946,16 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
 
     int bHeadTexFound = 0;
     int bFoundA = 0;
-    if (a <= 40)
-    {
-        if (a <= 10)
-            bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXVVVE"), &sHeadTexCol);
-        else if (a <= 20)
-            bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXVVE"), &sHeadTexCol);
-        else if (a <= 30)
-            bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXVE"), &sHeadTexCol);
-        else
-            bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXE"), &sHeadTexCol);
-        if (m_bArmorEquipped == 0)
-            bFoundA = pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXAEVIL"), &sTexA);
-    }
+    if (a <= 10)
+        bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXVVVE"), &sHeadTexCol);
+    else if (a <= 20)
+        bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXVVE"), &sHeadTexCol);
+    else if (a <= 30)
+        bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXVE"), &sHeadTexCol);
+    else if (a <= 40)
+        bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXE"), &sHeadTexCol);
+    if (m_bArmorEquipped == 0 && a <= 30)
+        bFoundA = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXAEVIL"), &sTexA);
 
     if (bHeadTexFound)
     {
@@ -1203,37 +1200,47 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
 void CSWCCreatureAppearance::ForceAnimate() {
     if (!m_bCreatedWhilePaused) return;
 
-    auto forceAnim = [](Gob* pGob) {
-        if (!pGob) return;
-        pGob->EnableForceAnimations();
-        pGob->CAurObject::AnimateExternal(1.0f);
-        pGob->DisableForceAnimations();
-    };
-
-    forceAnim(m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1));
+    Gob* pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+    if (pModel) {
+        pModel->EnableForceAnimations();
+        pModel->CAurObject::AnimateExternal(1.0f);
+        pModel->DisableForceAnimations();
+    }
 
     Gob* pHead = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD, 1);
     CSWCItem* pItem;
     if (pHead) {
-        forceAnim(pHead);
+        pHead->EnableForceAnimations();
+        pHead->CAurObject::AnimateExternal(1.0f);
+        pHead->DisableForceAnimations();
 
         pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_oidHeadItem);
         if (pItem) {
             CSWCObject* pItemObj = static_cast<CSWCObject*>(pItem);
-            forceAnim(pItemObj->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1));
+            pModel = pItemObj->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+            if (pModel) {
+                pModel->EnableForceAnimations();
+                pModel->CAurObject::AnimateExternal(1.0f);
+                pModel->DisableForceAnimations();
+            }
         }
     }
 
     pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON));
     if (pItem) {
         CSWCObject* pItemObj = static_cast<CSWCObject*>(pItem);
-        forceAnim(pItemObj->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1));
+        pModel = pItemObj->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+        if (pModel) {
+            pModel->EnableForceAnimations();
+            pModel->CAurObject::AnimateExternal(1.0f);
+            pModel->DisableForceAnimations();
+        }
     }
 
     pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_pCreature->GetEquippedItemID(MSG_SLOT_LEFT_WEAPON));
     if (pItem) {
         CSWCObject* pItemObj = static_cast<CSWCObject*>(pItem);
-        Gob* pModel = pItemObj->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+        pModel = pItemObj->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
         if (pModel) {
             pModel->EnableForceAnimations();
             pModel->CAurObject::AnimateExternal(1.0f);

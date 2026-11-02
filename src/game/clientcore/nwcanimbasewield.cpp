@@ -24,8 +24,12 @@ CSWCAnimBaseWield::CSWCAnimBaseWield()
     m_bWieldLimited = 0;
     m_resDummyRight = const_cast<char*>("");
     m_resDummyLeft = const_cast<char*>("");
-    memset(&m_pDummyRight, 0, sizeof(m_pDummyRight) + sizeof(m_pDummyLeft));
-    memset(&m_bWieldedItemsHidden, 0, sizeof(m_bWieldedItemsHidden) + sizeof(m_bHeadItemHidden) + sizeof(m_bTorchLit) + sizeof(m_pTorchSound));
+    m_pDummyRight = 0;
+    m_pDummyLeft = 0;
+    m_bWieldedItemsHidden = 0;
+    m_bHeadItemHidden = 0;
+    m_bTorchLit = 0;
+    m_pTorchSound = 0;
 }
 
 CSWCAnimBaseWield::~CSWCAnimBaseWield()

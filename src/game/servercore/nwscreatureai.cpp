@@ -123,29 +123,32 @@ extern float g_fInjuredLevel;
 
 #if KOTOR1
 int CSWSCreature::CheckItemRaceRestrictions(CSWSItem* pItem) {
-    int bRestrictionActive;
+    int bRestrictionActive = 1;
     if (pItem->GetPropertyByTypeExists(ITEM_PROPERTY_ACTIVATE_ITEM, 0) != 0) {
         CSWItemProperty* pOverride = 0;
         pItem->GetPropertyByType(&pOverride, ITEM_PROPERTY_ACTIVATE_ITEM, SPELL_ITEM_ABILITY_RECOVERY_STIM);
-        bRestrictionActive = (pOverride == 0);
-    } else {
-        bRestrictionActive = 1;
+        if (pOverride != 0)
+            bRestrictionActive = 0;
     }
 
-    CSWBaseItem* pBaseItem = pItem->GetBaseItem();
-    if (bRestrictionActive != 0 && pBaseItem->m_nRaceRestriction != 0) {
-        if (pBaseItem->m_nRaceRestriction == 2) {
-            if (m_pStats->m_nRace != CSWRace::CRACE_DROID)
-                return 0;
-        } else if (pBaseItem->m_nRaceRestriction == 1) {
+    unsigned char nRaceRestriction = pItem->GetBaseItem()->m_nRaceRestriction;
+    if (nRaceRestriction != 0 && bRestrictionActive != 0) {
+        switch (nRaceRestriction) {
+        case 1:
             if (m_pStats->m_nRace != CSWRace::CRACE_HUMAN)
                 return 0;
-        } else {
+            break;
+        case 2:
+            if (m_pStats->m_nRace != CSWRace::CRACE_DROID)
+                return 0;
+            break;
+        default:
             return 0;
         }
     }
 
-    if ((pItem->GetBaseItem()->m_nDenySubrace & (1 << m_pStats->m_nSubraceIndex)) != 0)
+    int nSubraceBit = 1 << m_pStats->m_nSubraceIndex;
+    if ((pItem->GetBaseItem()->m_nDenySubrace & nSubraceBit) != 0)
         return 0;
 
     if (pItem->GetPropertyByTypeExists(ITEM_PROPERTY_USE_LIMITATION_RACIAL_TYPE, 0) == 0)
@@ -675,8 +678,9 @@ int CSWSCreature::RemoveItem(CSWSItem* pItem, int a, int b, CSWSItem** ppOut)
 // slot. bForce == 1 skips the mid-round deferral and the no-op check.
 void CSWSCreature::SetCombatMode(unsigned char nMode, int bForce)
 {
-    unsigned char nOldMode = m_combatMode;
+    unsigned char nOldMode;
     if (bForce == 1) {
+        nOldMode = m_combatMode;
         if (nMode == CREATURE_COMBAT_MODE_PARRY || nMode == CREATURE_COMBAT_MODE_POWER_ATTACK ||
             nMode == CREATURE_COMBAT_MODE_IMPROVED_POWER_ATTACK) {
             CSWSItem* pItem =
@@ -700,15 +704,26 @@ void CSWSCreature::SetCombatMode(unsigned char nMode, int bForce)
                 return;
             }
         }
-    } else if (nMode != CREATURE_COMBAT_MODE_COUNTERSPELL ||
-               nOldMode == CREATURE_COMBAT_MODE_COUNTERSPELL) {
-        if (nOldMode == nMode)
+    } else if (nMode == CREATURE_COMBAT_MODE_COUNTERSPELL &&
+               m_combatMode != CREATURE_COMBAT_MODE_COUNTERSPELL) {
+        nOldMode = m_combatMode;
+    } else {
+        if (nMode == m_combatMode)
             return;
         if (m_pCombatRound->m_bRoundStarted == 1) {
             m_pendingCombatMode = nMode;
             return;
         }
-        if (nMode == CREATURE_COMBAT_MODE_RAPID_SHOT) {
+        if (nMode == CREATURE_COMBAT_MODE_PARRY || nMode == CREATURE_COMBAT_MODE_POWER_ATTACK ||
+            nMode == CREATURE_COMBAT_MODE_IMPROVED_POWER_ATTACK) {
+            CSWSItem* pItem =
+                    static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
+            if (pItem != 0
+                    && g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0) {
+                SendFeedbackMessage(FEEDBACK_COMBAT_MODE_WRONG_WEAPON, 0);
+                return;
+            }
+        } else if (nMode == CREATURE_COMBAT_MODE_RAPID_SHOT) {
             CSWSItem* pItem =
                     static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
             if (pItem == 0
@@ -1437,7 +1452,7 @@ int CSWSCreature::GetCreatureReputation(unsigned long long objectId, int nReputa
     int nFaction = m_pStats->m_factionId;
     CSWSCreature* pCreature =
         g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(objectId);
-    if (pCreature != 0 && m_bInParty != 0 && pCreature->m_bInParty != 0)
+    if (m_bInParty != 0 && pCreature != 0 && pCreature->m_bInParty != 0)
         return 100;
     if (m_bInParty != 0)
         nFaction = 0;

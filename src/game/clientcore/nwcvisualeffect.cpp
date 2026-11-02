@@ -449,7 +449,7 @@ void CSWCVisualEffect::AIUpdate() {
         }
         if (m_bDetachWhenFinished)
             AttachToScene(0);
-        m_bFinishing = 0;
         m_bFinished = 1;
+        m_bFinishing = 0;
     }
 }

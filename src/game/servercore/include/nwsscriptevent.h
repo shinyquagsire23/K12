@@ -57,14 +57,12 @@ class CExoString;
 class CResGFF;
 struct CResStruct;
 
-// The four parameter families as one aggregate, so the ctor can zero the whole block at once.
+// The four parameter families as one aggregate.
 struct CScriptEventParams {
     CExoArrayList<int>                m_aIntegers;
     CExoArrayList<float>              m_aFloats;
     CExoArrayList<CExoString>         m_aStrings;
     CExoArrayList<unsigned long long> m_aObjects;
-
-    CScriptEventParams() { __builtin_memset(static_cast<void*>(this), 0, sizeof(*this)); }
 };
 
 class CScriptEvent {

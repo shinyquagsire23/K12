@@ -4154,14 +4154,14 @@ void GLRender::Shutdown(int nFlag)
 // The full-screen pause tint, drawn under an orthographic projection.
 void GLRender::RenderPausePlane()
 {
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glEnable(GL_BLEND);
     gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
 
     ASLgl::glBegin(7);
@@ -4183,23 +4183,14 @@ void GLRender::RenderOverlayOverbrighten(unsigned int nTexture)
     K2_UNUSED(nTexture);
     GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f, 1.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f, 1.0f);
+    }
     ASLgl::glEnd();
 #if !KOTOR1 // K1: the texture stays bound
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
@@ -4224,11 +4215,11 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
     GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
     GLRender::Enable(Aurora::kCapBlend);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4248,9 +4239,9 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #else
     if (AuroraUseARBShaders())
@@ -4266,11 +4257,11 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
     GLRender::Disable(Aurora::kCapLighting);
     RenderInterface::SetDepthMask(0);
     GLRender::Enable(Aurora::kCapBlend);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4290,9 +4281,9 @@ void GLRender::FrameBufferModificationsATI2(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
     RenderInterface::SetDepthMask(1);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -4310,11 +4301,11 @@ void GLRender::FrameBufferModificationsARB2(uint64_t nFlags)
     GLRender::Disable(Aurora::kCapLighting);
     RenderInterface::SetDepthMask(0);
     GLRender::Enable(Aurora::kCapBlend);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4333,9 +4324,9 @@ void GLRender::FrameBufferModificationsARB2(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
     RenderInterface::SetDepthMask(1);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -4361,11 +4352,11 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
     GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
     GLRender::Enable(Aurora::kCapBlend);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4382,9 +4373,9 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #else
     if (!doframebuffer || !cm_bPBuffersAllocated || !cm_bSetUpFrameBuffer)
@@ -4404,11 +4395,11 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
     GLRender::Disable(Aurora::kCapLighting);
     RenderInterface::SetDepthMask(0);
     GLRender::Enable(Aurora::kCapBlend);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4425,9 +4416,9 @@ void GLRender::FrameBufferModifications2(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapLighting);
     RenderInterface::SetDepthMask(1);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -4449,11 +4440,11 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         return;
     }
 
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4561,9 +4552,9 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
     cm_bFirstFrameBufferFrame = 0;
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #else
     GLRender::Disable(Aurora::kCapFog);
@@ -4578,11 +4569,11 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
         return;
     }
 
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4728,9 +4719,9 @@ void GLRender::FrameBufferModifications(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
     cm_bFirstFrameBufferFrame = 0;
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -4748,11 +4739,11 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
     GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
     GLRender::Disable(Aurora::kCapBlend);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -4884,11 +4875,11 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     cm_bFirstFrameBufferFrame = 0;
 #endif
 }
@@ -4911,11 +4902,11 @@ void GLRender::FrameBufferModificationsATI(uint64_t nFlags)
     GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glDepthMask(0);
     GLRender::Disable(Aurora::kCapBlend);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -5059,11 +5050,11 @@ void GLRender::FrameBufferModificationsATI(uint64_t nFlags)
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapLighting);
     ASLgl::glDepthMask(1);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     cm_bFirstFrameBufferFrame = 0;
 #endif
 }
@@ -5121,10 +5112,10 @@ void GLRender::RenderAccumulationBlurATI(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
 #if !KOTOR1 // K1: an empty body
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -5150,35 +5141,16 @@ void GLRender::RenderAccumulationBlurATI(unsigned int nTexture)
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE1);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, 0.0f, fV);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 0.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE1);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, 0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 1.0f, 0.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE1);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, fU, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE1);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, fU, fV);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
+        ASLgl::glActiveTextureARB(GL_TEXTURE0);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, (i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glActiveTextureARB(GL_TEXTURE1);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, (i < 2) ? 0.0f : fU, (i == 0 || i == 3) ? fV : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
@@ -5209,23 +5181,14 @@ void GLRender::RenderSaturationAdjustment(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
@@ -5240,11 +5203,11 @@ void GLRender::RenderFrameToTexture(unsigned int nTexture)
 #endif
 #if !KOTOR1 // K1: an empty body
     wglMakeCurrent(cm_hAccumulationHDC, cm_hAccumulationHGLRC);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 128.0, 0.0, 128.0, -1.0, 1.0);
     ASLgl::glViewport(0, 0, 128, 128);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
@@ -5253,23 +5216,13 @@ void GLRender::RenderFrameToTexture(unsigned int nTexture)
     ASLgl::glEnable(GL_BLEND);
     GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, 128.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(128.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(128.0f, 128.0f, 0.0f);
-
+    for (int i = 0; i < 4; i++) {
+        bool bTop = i == 0 || i == 3;
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f(i < 2 ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            bTop ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f(i < 2 ? 0.0f : 128.0f, bTop ? 128.0f : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glFlush();
     wglMakeCurrent(m_hDC, m_hGLRC);
@@ -5327,11 +5280,11 @@ void GLRender::RenderSaturationAdjustmentATI(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #endif
 #if !KOTOR1 // K1: an empty body
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_BLEND);
@@ -5345,33 +5298,22 @@ void GLRender::RenderSaturationAdjustmentATI(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     FrameBufferModificationPixelShadersATI(kFBShaderSaturation,  0, 0, 0, 0);
     ASLgl::glBegin(7);
-
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, fV);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, fV);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : fU, (i == 0 || i == 3) ? fV : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -5388,10 +5330,10 @@ void GLRender::RenderFrameToTextureATI(unsigned int nTexture)
     wglMakeContextCurrentARB(cm_hAccumulationHDC, cm_hAccumulationHDC, cm_hAccumulationHGLRC);
     ASLgl::glDrawBuffer(GL_FRONT);
     ASLgl::glViewport(0, 0, 128, 128);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 128.0, 0.0, 128.0, -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     FrameBufferModificationPixelShadersATI(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -5403,23 +5345,12 @@ void GLRender::RenderFrameToTextureATI(unsigned int nTexture)
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, fV);
-    ASLgl::glVertex3f(0.0f, 128.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, 0.0f);
-    ASLgl::glVertex3f(128.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, fV);
-    ASLgl::glVertex3f(128.0f, 128.0f, 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : fU, (i == 0 || i == 3) ? fV : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : 128.0f, (i == 0 || i == 3) ? 128.0f : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glFlush();
@@ -5438,23 +5369,13 @@ void GLRender::RenderOverlayOverbrightenATI(unsigned int nTexture)
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, fV);
-    ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, 0.0f);
-    ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f, 1.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, fV);
-    ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : fU, (i == 0 || i == 3) ? fV : 0.0f);
+        ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f, 1.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
 #if !KOTOR1 // K1: the texture stays bound
@@ -5470,11 +5391,11 @@ void GLRender::RenderOverlayFilmNoiseATI(unsigned int nTexture, bool bScanNoise)
     K2_UNUSED(nTexture); K2_UNUSED(bScanNoise);
 #endif
 #if !KOTOR1 // K1: an empty body
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
@@ -5496,44 +5417,25 @@ void GLRender::RenderOverlayFilmNoiseATI(unsigned int nTexture, bool bScanNoise)
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
     ASLgl::glBegin(7);
     float fOffset = bScanNoise ? 0.0f : 7.5f;
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, fV);
-    ASLgl::glActiveTextureARB(GL_TEXTURE1);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, fOffset, 0.0f);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 0.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE1);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, fOffset, 7.5f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, fU, 0.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE1);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, 0.0f, 7.5f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, fU, fV);
-    ASLgl::glActiveTextureARB(GL_TEXTURE1);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, 0.0f, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glActiveTextureARB(GL_TEXTURE0);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, (i < 2) ? 0.0f : fU, (i == 0 || i == 3) ? fV : 0.0f);
+        ASLgl::glActiveTextureARB(GL_TEXTURE1);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, (i < 2) ? fOffset : 0.0f, (i == 0 || i == 3) ? 0.0f : 7.5f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
     GLRender::SetActiveTexture(0);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glFlush();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -5548,10 +5450,10 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
     GLRender::Enable(Aurora::kCapBlend);
     wglMakeCurrent(cm_hConvolutionHDC[3], cm_hConvolutionHGLRC[3]);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -5560,23 +5462,13 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
     ASLgl::glDisable(GL_DEPTH_TEST);
     GLRender::Disable(Aurora::kCapLighting);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, 512.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(512.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(512.0f, 512.0f, 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : 512.0f, (i == 0 || i == 3) ? 512.0f : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glFlush();
 
@@ -5597,11 +5489,11 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
 
     wglMakeCurrent(m_hDC, m_hGLRC);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -5614,27 +5506,17 @@ void GLRender::RenderOverlayConvolution(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 1.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
 #endif
@@ -5659,10 +5541,10 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
     wglMakeContextCurrentARB(cm_hConvolutionHDC[3], cm_hConvolutionHDC[3], cm_hConvolutionHGLRC[3]);
     ASLgl::glDrawBuffer(GL_FRONT);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -5675,23 +5557,12 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, fV);
-    ASLgl::glVertex3f(0.0f, 512.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, fU, 0.0f);
-    ASLgl::glVertex3f(512.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, fU, fV);
-    ASLgl::glVertex3f(512.0f, 512.0f, 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, (i < 2) ? 0.0f : fU, (i == 0 || i == 3) ? fV : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : 512.0f, (i == 0 || i == 3) ? 512.0f : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glFlush();
@@ -5714,11 +5585,11 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
 
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -5732,27 +5603,17 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     FrameBufferModificationPixelShadersATI(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 1.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
@@ -5775,10 +5636,10 @@ void GLRender::MipmapFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHei
     wglMakeCurrent(hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -5793,23 +5654,12 @@ void GLRender::MipmapFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHei
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, fHeight, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 0.0f);
-    ASLgl::glVertex3f(fWidth, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 1.0f);
-    ASLgl::glVertex3f(fWidth, fHeight, 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : fWidth, (i == 0 || i == 3) ? fHeight : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
@@ -5831,10 +5681,10 @@ void GLRender::MipmapFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -5851,23 +5701,12 @@ void GLRender::MipmapFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     FrameBufferModificationPixelShadersATI(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, fHeight, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 1.0f, 0.0f);
-    ASLgl::glVertex3f(fWidth, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 1.0f, 1.0f);
-    ASLgl::glVertex3f(fWidth, fHeight, 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, (i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : fWidth, (i == 0 || i == 3) ? fHeight : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
@@ -5890,10 +5729,10 @@ void GLRender::BloomFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     wglMakeContextCurrentARB(hDC, hDC, hGLRC);
     ASLgl::glEnable(GL_BLEND);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6012,10 +5851,10 @@ void GLRender::BloomFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeig
 #endif
     wglMakeCurrent(hDC, hGLRC);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6345,10 +6184,10 @@ void GLRender::BloomFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6527,11 +6366,11 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #endif
 #if !KOTOR1 // K1: an empty body
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -6591,9 +6430,9 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, 0);
     GLRender::SetActiveTexture(0);
     ASLgl::glFlush();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -6746,10 +6585,10 @@ void GLRender::RenderFury(unsigned int nTexture)
 void GLRender::RenderDreamDistortionATI(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -6830,10 +6669,10 @@ void GLRender::RenderDreamDistortionATI(unsigned int nTexture)
 void GLRender::RenderFuryATI(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -7703,11 +7542,11 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nTargetTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -7716,22 +7555,17 @@ void GLRender::FinishSoftShadowsATI()
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, fV);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, fV);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : fU, (i == 0 || i == 3) ? fV : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     wglMakeContextCurrentARB(m_hDC, m_hDC, m_hGLRC);
     ASLgl::glDrawBuffer(GL_BACK);
@@ -7739,43 +7573,38 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nBufferRegionTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDepthMask(0);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, fV);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(fU, fV);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : fU, (i == 0 || i == 3) ? fV : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
     wglMakeContextCurrentARB(cm_hSoftShadowTargetHDC, cm_hSoftShadowTargetHDC,
                              cm_hSoftShadowTargetHGLRC);
     ASLgl::glDrawBuffer(GL_FRONT);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
@@ -7784,20 +7613,20 @@ void GLRender::FinishSoftShadowsATI()
     BloomFilterATI(reinterpret_cast<HDC__*>(cm_hSoftShadowTargetPBuffer), cm_hSoftShadowTargetHGLRC, 512.0f,
                    512.0f, cm_hSoftShadowPBuffer, cm_nSoftShadowRenderTexture, 512.0f, 1);
     FrameBufferModificationPixelShadersATI(kFBShaderOff,  0, 0, 0, 0);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     ASLgl::glFlush();
     wglMakeContextCurrentARB(m_hDC, m_hDC, m_hGLRC);
     ASLgl::glDrawBuffer(GL_BACK);
     ASLgl::glEnable(GL_BLEND);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -7806,25 +7635,20 @@ void GLRender::FinishSoftShadowsATI()
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nSoftShadowTargetRenderTexture);
     wglBindTexImageARB(cm_hSoftShadowTargetPBuffer, WGL_FRONT_LEFT_ARB);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 1.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glPopAttrib();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     GLRender::Enable(Aurora::kCapDepthTest);
     ASLgl::glDisable(GL_STENCIL_TEST);
@@ -7851,33 +7675,29 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, cm_nTargetTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDepthMask(0);
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
@@ -7886,43 +7706,39 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, cm_nBufferRegionTexture);
     ASLgl::glDisable(GL_LIGHTING);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDepthMask(0);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
     glBindFramebuffer(GL_FRAMEBUFFER, s_ShadowBlurFBO);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
@@ -7939,18 +7755,18 @@ void GLRender::FinishSoftShadowsARB()
 #endif
     BloomFilterARB(hDC, hGLRC, 512.0f, 512.0f, pPBuffer, cm_nSoftShadowRenderTexture, 512.0f, 1);
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     ASLgl::glEnable(GL_BLEND);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -7958,25 +7774,20 @@ void GLRender::FinishSoftShadowsARB()
     ASLgl::glEnable(GL_TEXTURE_2D);
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nSoftShadowTargetRenderTexture);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 1.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glPopAttrib();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     GLRender::Enable(Aurora::kCapDepthTest);
     ASLgl::glDisable(GL_STENCIL_TEST);
@@ -8014,33 +7825,29 @@ void GLRender::FinishSoftShadows()
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDisable(GL_STENCIL_TEST);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_COLOR_BUFFER_BIT);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     wglMakeCurrent(m_hDC, m_hGLRC);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
@@ -8050,29 +7857,25 @@ void GLRender::FinishSoftShadows()
     GLRender::Enable(Aurora::kCapBlend);
     GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glDisable(GL_STENCIL_TEST);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDepthMask(0);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glEnable(GL_DEPTH_TEST);
     ASLgl::glDepthMask(1);
@@ -8081,11 +7884,11 @@ void GLRender::FinishSoftShadows()
     ASLgl::glDepthMask(0);
     ASLgl::glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
     wglMakeCurrent(cm_hSoftShadowHDC, cm_hSoftShadowHGLRC);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
     ASLgl::glViewport(0, 0, 512, 512);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -8100,25 +7903,20 @@ void GLRender::FinishSoftShadows()
     ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nSoftShadowRenderTexture);
     wglBindTexImageARB(cm_hSoftShadowPBuffer, WGL_FRONT_LEFT_ARB);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 1.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glPopAttrib();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     GLRender::Enable(Aurora::kCapDepthTest);
     ASLgl::glDisable(GL_STENCIL_TEST);
@@ -8473,20 +8271,12 @@ void RenderModificationQuad()
     GLRender::SetActiveTexture(0);
 
     ASLgl::glBegin(7);
+    for (int i = 0; i < 4; i++)
     {
-        float fOpaque = 1.0f;
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(0.0f, 1.0f);
-        ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(0.0f, 0.0f);
-        ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(1.0f, 0.0f);
-        ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(1.0f, 1.0f);
-        ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f, 1.0f);
     }
     ASLgl::glEnd();
 
@@ -8530,20 +8320,12 @@ void RenderModificationQuad()
     GLRender::SetActiveTexture(0);
 
     ASLgl::glBegin(7);
+    for (int i = 0; i < 4; i++)
     {
-        float fOpaque = 1.0f;
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(0.0f, 1.0f);
-        ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(0.0f, 0.0f);
-        ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(1.0f, 0.0f);
-        ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(1.0f, 1.0f);
-        ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f, 1.0f);
     }
     ASLgl::glEnd();
 
@@ -8818,7 +8600,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
     if (!s_frameBufferModificationsStarted)
         return;
     s_frameBufferModificationsStarted = false;
-    GLRender::GetViewPort(anViewport);
+    ASLgl::glGetIntegerv(GL_VIEWPORT, anViewport);
 
     if (GLRender::m_bDreamDistortEnabled)
         RenderDistortIos(GLRender::cm_pForceDistortionTexture, GLRender::m_pDreamDistortTexture);
@@ -8836,20 +8618,12 @@ void FrameBufferModificationsEndIos(bool bEnable)
         ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);   // GL_TEXTURE_MIN_FILTER = GL_LINEAR
 
         ASLgl::glBegin(7);
+        for (int i = 0; i < 4; i++)
         {
-            float fOpaque = 1.0f;
-            ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-            ASLgl::glTexCoord2f(0.0f, 1.0f);
-            ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-            ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-            ASLgl::glTexCoord2f(0.0f, 0.0f);
-            ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-            ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-            ASLgl::glTexCoord2f(1.0f, 0.0f);
-            ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f, 1.0f);
-            ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-            ASLgl::glTexCoord2f(1.0f, 1.0f);
-            ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
+            ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+            ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+            ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                              (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f, 1.0f);
         }
         ASLgl::glEnd();
         RenderDistortIos(GLRender::cm_pForceDistortionTexture, GLRender::m_pFuryTexture);
@@ -8975,18 +8749,13 @@ void FrameBufferModificationsEndIos(bool bEnable)
             GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
 
             ASLgl::glBegin(7);
-            ASLgl::glColor4f(1.0f, 1.0f, 1.0f, GLRender::m_fAccumulationRatio);
-            ASLgl::glTexCoord2f(-0.0f, 1.0f);
-            ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-            ASLgl::glColor4f(1.0f, 1.0f, 1.0f, GLRender::m_fAccumulationRatio);
-            ASLgl::glTexCoord2f(-0.0f, 0.0f);
-            ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-            ASLgl::glColor4f(1.0f, 1.0f, 1.0f, GLRender::m_fAccumulationRatio);
-            ASLgl::glTexCoord2f(1.0f, 0.0f);
-            ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f, 1.0f);
-            ASLgl::glColor4f(1.0f, 1.0f, 1.0f, GLRender::m_fAccumulationRatio);
-            ASLgl::glTexCoord2f(1.0f, 1.0f);
-            ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
+            for (int i = 0; i < 4; i++)
+            {
+                ASLgl::glColor4f(1.0f, 1.0f, 1.0f, GLRender::m_fAccumulationRatio);
+                ASLgl::glTexCoord2f((i < 2) ? -0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+                ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                                  (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f, 1.0f);
+            }
             ASLgl::glEnd();
         }
 #ifdef K2_QOL_IMPROVEMENTS
@@ -9116,20 +8885,12 @@ void RenderDistortIos(CAurTexture* pSrc, CAurTexture* pDst)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);   // GL_TEXTURE_MIN_FILTER = GL_LINEAR
 
     ASLgl::glBegin(7);
+    for (int i = 0; i < 4; i++)
     {
-        float fOpaque = 1.0f;
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(0.0f, 1.0f);
-        ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(0.0f, 0.0f);
-        ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(1.0f, 0.0f);
-        ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f, 1.0f);
-        ASLgl::glColor4f(fOpaque, fOpaque, fOpaque, fOpaque);
-        ASLgl::glTexCoord2f(1.0f, 1.0f);
-        ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f, 1.0f);
     }
     ASLgl::glEnd();
 
@@ -9143,10 +8904,10 @@ void GLRender::RenderAccumulationBlurARB(unsigned int nTexture)
 {
     K2_UNUSED(nTexture);
 #if !KOTOR1 // K1: an empty body
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -9177,27 +8938,15 @@ void GLRender::RenderAccumulationBlurARB(unsigned int nTexture)
     FrameBufferModificationPixelShadersARB(kFBShaderAccumulationBlur,  0, 0, 0, 0);
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, 0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 0.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, 0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 1.0f, 0.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 0.0f, 1.0f, 1.0f);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, (i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1, (i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                                    (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
@@ -9215,10 +8964,10 @@ void GLRender::RenderAccumulationBlurARB(unsigned int nTexture)
 void GLRender::RenderDreamDistortionARB(unsigned int nTexture, bool bFury)
 {
     K2_UNUSED(nTexture);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -9532,10 +9281,10 @@ void GLRender::RenderFrameToTextureARB(unsigned int nTexture)
     glBindFramebuffer(GL_FRAMEBUFFER, s_AccumulationFBO);
 #endif
     ASLgl::glViewport(0, 0, 128, 128);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 128.0, 0.0, 128.0, -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     FrameBufferModificationPixelShadersARB(kFBShaderDecalRect,  0, 0, 0, 0);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -9550,18 +9299,13 @@ void GLRender::RenderFrameToTextureARB(unsigned int nTexture)
 #endif
     GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, 128.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(128.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(128.0f, 128.0f, 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : 128.0f, (i == 0 || i == 3) ? 128.0f : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
 #if KOTOR1
     ASLgl::glDisable(GL_TEXTURE_2D);
@@ -9584,11 +9328,11 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     K2_UNUSED(nTexture);
 #endif
 #if !KOTOR1 // K1: an empty body
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -9641,9 +9385,9 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     ASLgl::glDisable(GL_VERTEX_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_VERTEX_PROGRAM_ARB, 0);
     GLRender::SetActiveTexture(0);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -9652,11 +9396,11 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
 // env parameters.
 void GLRender::RenderSaturationAdjustmentARB(unsigned int nTexture)
 {
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glEnable(GL_BLEND);
@@ -9705,23 +9449,14 @@ void GLRender::RenderSaturationAdjustmentARB(unsigned int nTexture)
     ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, Homogenize(vColumn1, 0.0f));
     ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 2, Homogenize(vColumn2, 0.0f));
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
 #if KOTOR1
@@ -9731,9 +9466,9 @@ void GLRender::RenderSaturationAdjustmentARB(unsigned int nTexture)
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
 #endif
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 }
 
@@ -9745,18 +9480,13 @@ void GLRender::RenderOverlayOverbrightenARB(unsigned int nTexture)
     FrameBufferModificationPixelShadersARB(kFBShaderOverbrighten,  nTexture, cm_nOverbrightenRed,
                                            cm_nOverbrightenGreen, cm_nOverbrightenBlue);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 1.0f);
-    ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight) * 0.25f, 0.0f, 1.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 0.0f);
-    ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth) * 0.25f, 0.0f, 0.0f, 1.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 1.0f);
-    ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth) * 0.25f, static_cast<float>(g_nScreenHeight) * 0.25f, 0.0f, 1.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth) * 0.25f,
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) * 0.25f : 0.0f, 0.0f, 1.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
@@ -9766,18 +9496,14 @@ void GLRender::RenderOverlayOverbrightenARB(unsigned int nTexture)
     FrameBufferModificationPixelShadersARB(kFBShaderOverbrighten,  nTexture, cm_nOverbrightenRed,
                                            cm_nOverbrightenGreen, cm_nOverbrightenBlue);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex4f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex4f(0.0f, 0.0f, 0.0f, 1.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenHeight), 0.0f);
-    ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f, 1.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(static_cast<float>(g_nScreenHeight), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex4f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f, 1.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : static_cast<float>(g_nScreenHeight),
+                            (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex4f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f, 1.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
@@ -9801,10 +9527,10 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
     GLRender::Enable(Aurora::kCapBlend);
     glBindFramebuffer(GL_FRAMEBUFFER, s_ConvolutionFBOs[3]);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, 512.0, 0.0, 512.0, -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, 512, 512);
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -9814,23 +9540,13 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
     FrameBufferModificationPixelShadersARB(kFBShaderFlare,  nTexture, cm_nRedTexture, cm_nGreenTexture,
                                           cm_nBlueTexture);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(0.0f, 512.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, static_cast<float>(g_nScreenWidth), 0.0f);
-    ASLgl::glVertex3f(512.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight));
-    ASLgl::glVertex3f(512.0f, 512.0f, 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, (i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                                    (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : 512.0f, (i == 0 || i == 3) ? 512.0f : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
 
@@ -9860,11 +9576,11 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, g_nScreenWidth, g_nScreenHeight);
@@ -9877,27 +9593,17 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     FrameBufferModificationPixelShadersARB(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glBegin(7);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, static_cast<float>(g_nScreenHeight), 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 0.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), 0.0f, 0.0f);
-
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glTexCoord2f(1.0f, 1.0f);
-    ASLgl::glVertex3f(static_cast<float>(g_nScreenWidth), static_cast<float>(g_nScreenHeight), 0.0f);
-
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glTexCoord2f((i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : static_cast<float>(g_nScreenWidth),
+                          (i == 0 || i == 3) ? static_cast<float>(g_nScreenHeight) : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
     FrameBufferModificationPixelShadersARB(kFBShaderOff,  0, 0, 0, 0);
@@ -9918,10 +9624,10 @@ void GLRender::MipmapFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(pPBuffer); K2_UNUSED(fSize);
     ASLgl::glEnable(GL_BLEND);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(fWidth), 0.0, static_cast<double>(fHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     ASLgl::glViewport(0, 0, static_cast<int>(fWidth), static_cast<int>(fHeight));
     ASLgl::glDisable(GL_DEPTH_TEST);
@@ -9937,18 +9643,12 @@ void GLRender::MipmapFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     FrameBufferModificationPixelShadersARB(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBegin(7);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 1.0f);
-    ASLgl::glVertex3f(0.0f, fHeight, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 0.0f, 0.0f);
-    ASLgl::glVertex3f(0.0f, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 1.0f, 0.0f);
-    ASLgl::glVertex3f(fWidth, 0.0f, 0.0f);
-    ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, 1.0f, 1.0f);
-    ASLgl::glVertex3f(fWidth, fHeight, 0.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0, (i < 2) ? 0.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : 0.0f);
+        ASLgl::glVertex3f((i < 2) ? 0.0f : fWidth, (i == 0 || i == 3) ? fHeight : 0.0f, 0.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
@@ -9962,11 +9662,11 @@ void GLRender::RenderOverlayFilmNoiseARB(unsigned int nTexture, bool bScanNoise)
     K2_UNUSED(nTexture); K2_UNUSED(bScanNoise);
 #endif
 #if !KOTOR1 // K1: an empty body
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
@@ -10002,9 +9702,9 @@ void GLRender::RenderOverlayFilmNoiseARB(unsigned int nTexture, bool bScanNoise)
     GLRender::SetActiveTexture(0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
 #endif
 }
@@ -10056,11 +9756,11 @@ void GLRender::DrawSphereBound(float fRadius, Vector& vCenter, const Vector& vCo
         afMatrix[9] = fTemp;
 
 #if KOTOR1  // K1 selects the modelview stack before it pushes
-        GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+        ASLgl::glMatrixMode(GL_MODELVIEW);
         ASLgl::glPushMatrix();
 #else
         ASLgl::glPushMatrix();
-        GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+        ASLgl::glMatrixMode(GL_MODELVIEW);
 #endif
         ASLgl::glMultMatrixf(afMatrix);
     }
@@ -10212,14 +9912,14 @@ void GLRender::RenderGammaCorrection()
         return;
 
     float fGamma = 1.0f / g_fGammaExponent;
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glLoadIdentity();
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glDisable(GL_TEXTURE_2D);
     ASLgl::glEnable(GL_BLEND);
     gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glLoadIdentity();
     if (fGamma > 1.0f)
     {
@@ -10232,10 +9932,10 @@ void GLRender::RenderGammaCorrection()
         ASLgl::glColor3f(fGamma, fGamma, fGamma);
     }
     ASLgl::glBegin(7);
-    ASLgl::glVertex2f(-1.0f, 1.0f);
-    ASLgl::glVertex2f(-1.0f, -1.0f);
-    ASLgl::glVertex2f(1.0f, -1.0f);
-    ASLgl::glVertex2f(1.0f, 1.0f);
+    for (int i = 0; i < 4; i++)
+    {
+        ASLgl::glVertex2f((i < 2) ? -1.0f : 1.0f, (i == 0 || i == 3) ? 1.0f : -1.0f);
+    }
     ASLgl::glEnd();
     ASLgl::glEnable(GL_DEPTH_TEST);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -10289,11 +9989,11 @@ void GLRender::RenderGammaCorrection()
 
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glDisable(GL_LIGHTING);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
     ASLgl::glOrtho(0.0, static_cast<double>(g_nScreenWidth), 0.0, static_cast<double>(g_nScreenHeight), -1.0, 1.0);
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
@@ -10310,9 +10010,9 @@ void GLRender::RenderGammaCorrection()
 
     ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
-    GLRender::SetMatrixMode(Aurora::kMatrixProjection);
+    ASLgl::glMatrixMode(GL_PROJECTION);
     ASLgl::glPopMatrix();
-    GLRender::SetMatrixMode(Aurora::kMatrixModelView);
+    ASLgl::glMatrixMode(GL_MODELVIEW);
     ASLgl::glPopMatrix();
     ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
@@ -11072,11 +10772,11 @@ void GLRender::MakeLookUpTexture(float fGamma)
     unsigned char* pRow = pData;
     for (int i = 0; i < 256; i++)
     {
-        int nValue = static_cast<int>(pow(dValue / 255.0, fGamma) * 255.99);
+        unsigned char nValue = static_cast<unsigned char>(pow(dValue / 255.0, fGamma) * 255.99);
         for (int j = 0; j < 256; j++, pRow += 2)
         {
             pRow[0] = static_cast<unsigned char>(static_cast<unsigned int>(static_cast<float>(j) / 255.0f * 255.99f));
-            pRow[1] = static_cast<unsigned char>(nValue);
+            pRow[1] = nValue;
         }
         dValue += 1.0;
     }

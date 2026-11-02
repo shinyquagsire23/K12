@@ -9,6 +9,9 @@ struct GFFHeader;
 
 // bionic's fortified strncpy (port/libcbase.h), for CResGFF::SetFileType.
 extern "C" char* __strncpy_chk2(char* dst, const char* src, size_t n, size_t nDstSize, size_t nSrcSize);  // idiom-exempt: bionic declaration
+#if !defined(K2_HOST_BUILD) && !defined(_FORTIFY_SOURCE)
+#include "port/libcbase.h"
+#endif
 #if defined(_MSC_VER) && !defined(__clang__)
 // k2_compiler.h maps SetFileType's checked strncpy to the plain one. Not in k2_compiler.h itself:
 // K1's platforms/k1/k1crt.cpp must see no CRT header (its _strlwr/_strupr have C++ linkage).
@@ -267,7 +270,7 @@ void ByteSwap(int* p);
 void ByteSwap(float* p);
 void ByteSwap(uint64_ll_t* p);
 #if KOTOR1
-void ByteSwap(int64_t* p);
+void ByteSwap(int64_ll_t* p);
 #else
 void ByteSwap(long long* p);
 #endif

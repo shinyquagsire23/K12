@@ -3849,15 +3849,12 @@ void CSWGuiCreateItem::OnControlEntered(CSWGuiControl* pControl)
             {
                 int nStock = pRepo->GetMatchingItemCount(pItem);
                 int nEquipped = 0;
-                CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
-                if (pChar != NULL)
-                    nEquipped = pChar->GetMatchingEquippedItemCount(pItem);
-                pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
-                if (pChar != NULL)
-                    nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
-                pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
-                if (pChar != NULL)
-                    nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
+                for (int i = 0; i < 3; i++)
+                {
+                    CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
+                    if (pChar != NULL)
+                        nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
+                }
 
                 if (nStock == -1)
 #ifdef K2_FIX_ENGINE_BUGS
@@ -4932,15 +4929,12 @@ void CSWGuiCreateMedicalItem::OnControlEntered(CSWGuiControl* pControl)
             {
                 int nStock = pRepo->GetMatchingItemCount(pItem);
                 int nEquipped = 0;
-                CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
-                if (pChar != NULL)
-                    nEquipped = pChar->GetMatchingEquippedItemCount(pItem);
-                pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
-                if (pChar != NULL)
-                    nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
-                pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
-                if (pChar != NULL)
-                    nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
+                for (int i = 0; i < 3; i++)
+                {
+                    CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
+                    if (pChar != NULL)
+                        nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
+                }
 
                 if (nStock == -1)
 #ifdef K2_FIX_ENGINE_BUGS

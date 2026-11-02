@@ -2105,7 +2105,7 @@ int CSWPartyTable::AddPuppet(int index, unsigned long long id)
     long long numPuppets = m_nNumPuppets;
     if (numPuppets >= 1)
     {
-        for (long long i = 0; i < numPuppets; i++)
+        for (int64_t i = 0; i < numPuppets; i++)
         {
             if (m_puppetIndex[i] == index)
                 return 0;

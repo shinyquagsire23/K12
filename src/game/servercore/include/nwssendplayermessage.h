@@ -163,7 +163,7 @@ public:
     // twice with the same argument and ORs the results, which is a bug kept as-is.
     int ComputeLastUpdate_GuiSkills(CSWSCreature* pCreature);
     // The player-state word the client GUI mirrors.
-    int ComputeLastUpdate_PlayerState(CSWSCreature* pCreature);
+    unsigned short ComputeLastUpdate_PlayerState(CSWSCreature* pCreature);
     int ComputeLastUpdate_GuiMemorizedSpells(CSWSCreature* pCreature,
                                              CSWSPlayerLastUpdateObject* pLast);
     int ComputeLastUpdate_GuiNumberMemorizedSpells(CSWSCreature* pCreature,

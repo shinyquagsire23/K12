@@ -14,6 +14,7 @@
 #include "swguiingame.h"
 #include "swguidrawable.h"
 #include "swpazaak.h"
+#include <stdlib.h>
 #include "exostring.h"
 #include "exoresman.h"
 #include "appmanager.h"
@@ -1164,7 +1165,7 @@ void CSWGuiPazaakGame::RefreshDisplay() {
             }
         }
     }
-#ifndef K2_UI_XBOX  // console: m_bLabels are the always-shown legend badges
+#ifndef K2_UI_XBOX  // console: m_lblLText and m_lblHelp are the always-shown legend badges
     m_blbl0.m_tail.bVisible = bHandAction;
     m_blbl1.m_tail.bVisible = bHandAction;
 #if !KOTOR1
@@ -1978,7 +1979,7 @@ CSWGuiPazaakStart::CSWGuiPazaakStart(CSWGuiManager* pManager, int nWager, int nO
     IosAddButtonIcon(&m_btnAccept, 'a');
 #endif
 #endif
-    CSWGuiPanel::InitControl(m_bLabels[0], CExoString("LBL_LTEXT"), 1, 1, 0, 0, 0);
+    CSWGuiPanel::InitControl(m_lblLText, CExoString("LBL_LTEXT"), 1, 1, 0, 0, 0);
     CSWGuiPanel::InitControl(m_lblRText, CExoString("LBL_RTEXT"), 1, 1, 0, 0, 0);
 #ifdef K2_UI_XBOX
     CSWGuiPanel::InitControl(pLegend[LEGEND_YTEXT], CExoString("LBL_YTEXT"), 1, 1, 0, 0, 0);
@@ -2036,7 +2037,7 @@ CSWGuiPazaakStart::CSWGuiPazaakStart(CSWGuiManager* pManager, int nWager, int nO
     }
 
 #if !KOTOR1
-    CSWGuiPanel::InitControl(m_bLabels[1], CExoString("LBL_HELP"), 1, 1, 0, 0, 0);
+    CSWGuiPanel::InitControl(m_lblHelp, CExoString("LBL_HELP"), 1, 1, 0, 0, 0);
 #endif
     StopLoadFromLayout();
 #if KOTOR1  // K1: rescale to the window, then hang the two side panels beside the 4:3 screen
@@ -2085,7 +2086,7 @@ CSWGuiPazaakStart::CSWGuiPazaakStart(CSWGuiManager* pManager, int nWager, int nO
     // Fit the title and the pane captions into their layout boxes; the two button captions fit
     // themselves and LBL_HELP is fitted by UpdateHelpText.
     K2QolFitText(m_lblTitle.m_text, m_lblTitle.m_text.m_extent.h);
-    K2QolFitText(m_bLabels[0].m_text, m_bLabels[0].m_text.m_extent.h);
+    K2QolFitText(m_lblLText.m_text, m_lblLText.m_text.m_extent.h);
     K2QolFitText(m_lblRText.m_text, m_lblRText.m_text.m_extent.h);
 #ifdef K2_UI_XBOX
     K2QolFitText(pLegend[LEGEND_YTEXT].m_text, pLegend[LEGEND_YTEXT].m_text.m_extent.h);
@@ -2618,7 +2619,7 @@ void CSWGuiPazaakStart::UpdateHelpText(int nId)
     if (static_cast<unsigned>(nActive) <= 23 && pActive == &m_aAvail[nActive] && m_anCopies[nId] == -1)
 #endif
         nStr = -1;
-    CSWGuiTextParams& rHelp = m_bLabels[1].m_text.m_params;
+    CSWGuiTextParams& rHelp = m_lblHelp.m_text.m_params;
     if ((static_cast<unsigned>(nActive) <= 9 && pActive == &m_aChosen[nActive]) || nStr == -1) {
         rHelp.SetText(CExoString(""));
     } else {
@@ -2626,7 +2627,7 @@ void CSWGuiPazaakStart::UpdateHelpText(int nId)
     }
 #ifdef K2_QOL_IMPROVEMENTS
     // Fit the card description into LBL_HELP's box.
-    K2QolFitText(m_bLabels[1].m_text, m_bLabels[1].m_text.m_extent.h);
+    K2QolFitText(m_lblHelp.m_text, m_lblHelp.m_text.m_extent.h);
 #endif
 #ifdef K2_UI_XBOX
     // Console: the Y caption follows the focused pane (the Add card / Remove card strrefs).
@@ -3095,25 +3096,20 @@ void CSWGuiPazaakCard::HandleInputEvent(int type, int val) {
 }
 
 void CSWGuiPazaakCard::HandleLMouseDown() {
-    m_dragStartPos = g_pGuiMan->m_currentMousePos;
+    m_dragStartPos.x = g_pGuiMan->m_currentMousePos.x;
+    m_dragStartPos.y = g_pGuiMan->m_currentMousePos.y;
     CSWGuiControl::HandleLMouseDown();
 }
 
 int CSWGuiPazaakCard::HandleMouseCapturedMovement(int x, int y) {
-    if (!m_bDragLatch)
-        return 0;
-    if (g_pGuiMan->m_nCaptureFlags != 1)
-        return 0;
-    if (g_pGuiMan->m_pDragDropControl == this)
-        return 0;
-    // No fill image yet => nothing to drag (an unskinned card).
-    if (m_border.m_params.m_fillImage.GetResRef()[0] == 0)
-        return 0;
-    // Latch as the drag ghost once the pointer leaves the dead zone.
-    int dx = x - m_dragStartPos.x;
-    int dy = y - m_dragStartPos.y;
-    if ((dx < 0 ? -dx : dx) > 12 || (dy < 0 ? -dy : dy) >= 13)
-        g_pGuiMan->m_pDragDropControl = this;
+    if (m_bDragLatch && g_pGuiMan->m_nCaptureFlags == 1 && g_pGuiMan->m_pDragDropControl != this) {
+        // No fill image yet => nothing to drag (an unskinned card).
+        if (m_border.m_params.m_fillImage.GetResRef()[0] != 0) {
+            // Latch as the drag ghost once the pointer leaves the dead zone.
+            if (abs(x - m_dragStartPos.x) > 12 || abs(y - m_dragStartPos.y) > 12)
+                g_pGuiMan->m_pDragDropControl = this;
+        }
+    }
     return 0;
 }
 

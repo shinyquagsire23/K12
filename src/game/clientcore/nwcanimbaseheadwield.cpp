@@ -295,13 +295,17 @@ Gob* CSWCAnimBaseHeadWield::GetModel(unsigned char which)
 
 int CSWCAnimBaseHeadWield::LoadModel(CResRef const& resRef, unsigned char which)
 {
-    int bLoaded = (which == ANIM_MODEL_HEAD)
-        ? CSWCAnimBaseHead::LoadModel(resRef, ANIM_MODEL_HEAD)
-        : CSWCAnimBaseWield::LoadModel(resRef, which);
-    if (!bLoaded)
-        return 0;
-    CSWCAnimBaseWield::ReAttachWieldedObjects();
-    return 1;
+    if (which == ANIM_MODEL_HEAD) {
+        if (!CSWCAnimBaseHead::LoadModel(resRef, ANIM_MODEL_HEAD))
+            return 0;
+        CSWCAnimBaseWield::ReAttachWieldedObjects();
+        return 1;
+    }
+    if (CSWCAnimBaseWield::LoadModel(resRef, which)) {
+        CSWCAnimBaseWield::ReAttachWieldedObjects();
+        return 1;
+    }
+    return 0;
 }
 
 void CSWCAnimBaseHeadWield::EnableDistortion()

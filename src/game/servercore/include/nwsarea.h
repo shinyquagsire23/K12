@@ -395,7 +395,7 @@ public:
     int       GetRoomForceRating(const Vector& v);
     // Per-room weather-disable query.
     char      GetRoomDisableWeather(const Vector& v);
-    int       GetNumMinesSetByPlayerParty();
+    unsigned char GetNumMinesSetByPlayerParty();
     int       GetPlayerCanSetMines();
 #if KOTOR1
     // K1 has no room-index hint; the four-argument K2 spelling is a K1-only forwarder.

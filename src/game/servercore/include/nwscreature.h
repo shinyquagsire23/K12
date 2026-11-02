@@ -753,7 +753,7 @@ public:
     // The creature's weapon damage-type family (0 bludgeoning, 1 piercing, 2 slashing).
     int  GetDamageFlags();
     // The attacker's damage power against pObject.
-    int  CalculateDamagePower(CSWSObject* pObject);
+    unsigned char CalculateDamagePower(CSWSObject* pObject);
     // Shoves nearby friendly creatures off the mover's line. Returns nonzero when the
     // line was cleared.
     int  BumpFriends(CSWSCreature* pOther, const Vector& pos, const Vector& target);

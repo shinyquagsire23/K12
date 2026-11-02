@@ -1036,15 +1036,12 @@ void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
         if ((pItem->m_nFlagsLow & 4) == 0)
         {
             int nEquipped = 0;
-            CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
-            if (pChar != NULL)
-                nEquipped = pChar->GetMatchingEquippedItemCount(pItem);
-            pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
-            if (pChar != NULL)
-                nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
-            pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
-            if (pChar != NULL)
-                nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
+            for (int i = 0; i < 3; i++)
+            {
+                CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
+                if (pChar != NULL)
+                    nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
+            }
 
             // The copy being sold is still in the box, so it is not counted on hand twice.
             if (pEntry->m_nEquippedBy != -1)
@@ -1066,15 +1063,12 @@ void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
 
         int nOnHand = pPlayerRepo->GetMatchingItemCount(pItem);
         int nEquipped = 0;
-        CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
-        if (pChar != NULL)
-            nEquipped = pChar->GetMatchingEquippedItemCount(pItem);
-        pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
-        if (pChar != NULL)
-            nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
-        pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
-        if (pChar != NULL)
-            nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
+        for (int i = 0; i < 3; i++)
+        {
+            CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
+            if (pChar != NULL)
+                nEquipped += pChar->GetMatchingEquippedItemCount(pItem);
+        }
 
         if (nOnHand == -1)
             m_lblOnHandValue.m_text.m_params.SetStrRef(STRREF_INFINITE);

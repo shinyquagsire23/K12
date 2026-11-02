@@ -52,22 +52,13 @@ void* g_pDialogIconModel;
 
 extern char* g_asMouseCursorNames[];
 
-// Ids a frame acts on only once: ProcessInput keeps the first of them in a frame and drops the rest.
-enum : unsigned long long {
-    kOncePerFrameEvents = (1ull << INPUTEVENT_PAD_FREELOOK) | (1ull << INPUTEVENT_PAD_PAUSE) |
-                          (1ull << INPUTEVENT_PAD_PARTY_ACTIVE) | (1ull << INPUTEVENT_PAD_MENU) |
-                          (1ull << INPUTEVENT_GUI_A) | (1ull << INPUTEVENT_GUI_B) |
-                          (1ull << INPUTEVENT_GUI_X) | (1ull << INPUTEVENT_GUI_Y) |
-                          (1ull << INPUTEVENT_GUI_BLACK) | (1ull << INPUTEVENT_GUI_WHITE) |
-                          (1ull << INPUTEVENT_GUI_START) | (1ull << INPUTEVENT_GUI_BACK) |
-                          (1ull << INPUTEVENT_GUI_LEFT_SHOULDER) |
-                          (1ull << INPUTEVENT_GUI_RIGHT_SHOULDER),
 #if KOTOR1
-    // The vertical moves KOTOR 1 reorders after the horizontal ones.
+// The vertical moves KOTOR 1 reorders after the horizontal ones.
+enum : unsigned long long {
     kVerticalMoveEvents = (1ull << INPUTEVENT_GUI_DPAD_UP) | (1ull << INPUTEVENT_GUI_DPAD_DOWN) |
                           (1ull << INPUTEVENT_GUI_KEY_UP) | (1ull << INPUTEVENT_GUI_KEY_DOWN),
-#endif
 };
+#endif
 
 // The hit check's material bit for trigger geometry.
 enum { HITMATERIAL_TRIGGER = 0x40000000 };
@@ -169,7 +160,9 @@ extern float ios_gamepad_analog0X;
 #ifdef _MSC_VER   // the UCRT's sprintf_s stays the MSVC STL's
 #define sprintf_s k1_input_sprintf_s
 #endif
+#if !defined(K2_NO_FORTIFY)
 static void sprintf_s(char* buf, uint64_t n, const char* fmt, ...);
+#endif
 #endif
 bool IsCursorCurrentlyVisible();
 float GetIosControl(bool b, float f1, float f2);
@@ -326,8 +319,22 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
                         m_actionKeyQueue[k] = m_actionKeyQueue[k + 1];
                     m_actionKeyQueue[9] = nId;
                 }
-                if (static_cast<unsigned>(nId) < INPUTEVENT_GUI_RIGHT_SHOULDER + 1 &&
-                    ((1ull << (static_cast<unsigned>(nId) & 63)) & kOncePerFrameEvents) != 0) {
+                // Ids a frame acts on only once: keep the first of them in a frame and drop the rest.
+                switch (nId) {
+                case INPUTEVENT_PAD_FREELOOK:
+                case INPUTEVENT_PAD_PAUSE:
+                case INPUTEVENT_PAD_PARTY_ACTIVE:
+                case INPUTEVENT_PAD_MENU:
+                case INPUTEVENT_GUI_A:
+                case INPUTEVENT_GUI_B:
+                case INPUTEVENT_GUI_X:
+                case INPUTEVENT_GUI_Y:
+                case INPUTEVENT_GUI_BLACK:
+                case INPUTEVENT_GUI_WHITE:
+                case INPUTEVENT_GUI_START:
+                case INPUTEVENT_GUI_BACK:
+                case INPUTEVENT_GUI_LEFT_SHOULDER:
+                case INPUTEVENT_GUI_RIGHT_SHOULDER:
                     if (bWasDown) {
                         events.DelIndex(i);
                         nEvents--;
@@ -335,6 +342,9 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
                         continue;
                     }
                     bWasDown = true;
+                    break;
+                default:
+                    break;
                 }
 #if KOTOR1  // K1 also reorders the arrow keys' up and down
                 if (static_cast<unsigned>(nId) < INPUTEVENT_GUI_KEY_DOWN + 1 &&
@@ -2378,11 +2388,11 @@ waypoint_else:
         double dFacing = atan2(static_cast<double>(vFacing.y), static_cast<double>(vFacing.x)) * 57.295776f;
         if (dFacing < 0.0)
             dFacing = dFacing + 360.0;
-        int nHeading = static_cast<int>(dFacing * 10.0);
+        int nHeading = static_cast<unsigned short>(static_cast<int>(dFacing * 10.0));
         m_pSWCMessage->SendPlayerToServerInput_DriveControl(pPlayer->m_position,
                                                             static_cast<unsigned short>(nHeading),
                                                             nTag, static_cast<unsigned char>(nMoveBits));
-        double dAngle = static_cast<double>(static_cast<unsigned short>(nHeading)) / 10.0 * 0.017453292f;
+        double dAngle = static_cast<double>(nHeading) / 10.0 * 0.017453292f;
         vFacing.x = static_cast<float>(cos(dAngle));
         vFacing.y = static_cast<float>(sin(dAngle));
         vFacing.z = 0.0f;
@@ -2843,6 +2853,7 @@ void CClientExoAppInternal::PerformRButtonUpAction()
 }
 
 #if KOTOR1
+#if !defined(K2_NO_FORTIFY)
 static void sprintf_s(char* buf, uint64_t n, const char* fmt, ...)
 {
     __builtin_va_list ap;
@@ -2850,6 +2861,7 @@ static void sprintf_s(char* buf, uint64_t n, const char* fmt, ...)
     __vsprintf_chk(buf, 0, n, fmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 #endif
 
 void CClientExoAppInternal::PerformMButtonDownAction()

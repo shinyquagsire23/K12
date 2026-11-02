@@ -24,8 +24,18 @@ CAurObject* NewCAurObject(char* pszResRef, char* pszParam2, FILE* pFile, FILE* p
 
 CSWCSpellCastVisual::CSWCSpellCastVisual()
 {
-    // The whole object is zeroed as one unit.
-    __builtin_memset(static_cast<void*>(this), 0, sizeof(CSWCSpellCastVisual));
+    m_pConjureHeadVisual = 0;
+    m_pConjureHandVisual = 0;
+    m_pConjureGroundVisual = 0;
+    m_pCastHeadVisual = 0;
+    m_pCastHandVisual = 0;
+    m_pCastGroundVisual = 0;
+    m_aUnloadDelay[0] = 0;
+    m_aUnloadDelay[1] = 0;
+    m_bCastStarted = 0;
+    m_bConjureHeadDone = 0;
+    m_bConjureHandDone = 0;
+    m_bConjureGroundDone = 0;
 }
 
 CSWCSpellCastVisual::~CSWCSpellCastVisual()

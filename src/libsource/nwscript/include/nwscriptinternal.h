@@ -113,12 +113,6 @@ enum ScriptTokenType {
 // The identifier file declares at most this many engine structures.
 enum { ENGINE_STRUCTURE_COUNT = 10 };
 
-// Bits 'A'..'F' and 'a'..'f' of a bit set indexed by (character - 'A').
-enum : long long {
-    HEX_LETTER_BITS = (1LL << ('F' - 'A' + 1)) - 1,
-    HEX_LETTER_MASK = HEX_LETTER_BITS | (HEX_LETTER_BITS << ('a' - 'A')),
-};
-
 // The size of the token buffer, m_szTokenText.
 enum { MAX_TOKEN_LENGTH = 512 };
 

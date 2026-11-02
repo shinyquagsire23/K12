@@ -144,7 +144,7 @@ int CSWSCombatRound::GetActualBonusEffectAttacks() {
     return m_bonusEffectAttacks;
 }
 
-int CSWSCombatRound::GetTotalAttacks() {
+unsigned char CSWSCombatRound::GetTotalAttacks() {
     return m_nOnHandAttacks + m_nOffHandAttacks;
 }
 
@@ -1574,30 +1574,28 @@ void CSWSCombatAttackData::ClearAttackData()
     m_nAttackGroup = 0xff;
     m_bAttackRolled = 0;
     m_nAnimationLength = 0;
+    m_nMissedBy = 0;
+    for (int i = 0; i < 15; i++)
+        m_anDamage[i] = -1;
+    m_nAttackResult = 0;
+    m_nReserved2 = 0;
     m_targetObjectId = OBJECT_INVALID;
     m_nReaxnDelay = 0;
     m_nReaxnAnimation = SERVER_ANIMATION_READY;
     m_nReaxnAnimLength = 0;
-    m_nMissedBy = 0;
-    for (int i = 0; i < 15; i++)
-        m_anDamage[i] = -1;
-    m_nWeaponAttackType = CSWSCombatRound::WEAPON_ATTACK_TYPE_NONE;
-    m_nAttackMode = CSWSCreature::CREATURE_COMBAT_MODE_NONE;
     m_nConcealment = 0;
-    m_bRangedAttack = 0;
+    m_nFeatId = 0;
+    m_nAttackMode = CSWSCreature::CREATURE_COMBAT_MODE_NONE;
+    m_nSpecialAttackId = 0xff;
+    m_vMissLocation = Vector();
+    m_nWeaponAttackType = CSWSCombatRound::WEAPON_ATTACK_TYPE_NONE;
     m_bSneakAttack = 0;
+    m_bRangedAttack = 0;
     m_bKillingBlow = 0;
     m_bCoupDeGrace = 0;
     m_bCriticalThreat = 0;
     m_nReserved1 = 0;
     m_bAttackDeflected = 0;
-    m_nAttackResult = 0;
-    m_vMissLocation.x = 0.0f;
-    m_vMissLocation.y = 0.0f;
-    m_vMissLocation.z = 0.0f;
-    m_nReserved2 = 0;
-    m_nFeatId = 0;
-    m_nSpecialAttackId = 0xff;
     m_oidAmmoItem = OBJECT_INVALID;
     m_sAttackDebugText = "";
     m_sDamageDebugText = "";

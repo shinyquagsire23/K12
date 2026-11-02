@@ -14,6 +14,16 @@
 #include "nwjournal.h"
 
 
+// DerefContains compares pointees: no by-value element type has one.
+template <> int CExoArrayList<unsigned long long>::DerefContains(unsigned long long) const = delete;
+template <> int CExoArrayList<unsigned int>::DerefContains(unsigned int) const = delete;
+template <> int CExoArrayList<int>::DerefContains(int) const = delete;
+template <> int CExoArrayList<float>::DerefContains(float) const = delete;
+template <> int CExoArrayList<unsigned short>::DerefContains(unsigned short) const = delete;
+template <> int CExoArrayList<CExoString>::DerefContains(CExoString) const = delete;
+template <> int CExoArrayList<CResRef>::DerefContains(CResRef) const = delete;
+template <> int CExoArrayList<CExoLocString>::DerefContains(CExoLocString) const = delete;
+
 // Every element type the rest of the engine instantiates.
 template class CExoArrayList<unsigned long long>;
 

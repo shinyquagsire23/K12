@@ -225,53 +225,66 @@ void CSWGuiDialog::HandleInputEvent(int type, int val)
     if (val == 0)
         return;
 
-    int nReply = type - INPUTEVENT_DIALOG_1;
-    if (static_cast<unsigned>(nReply) < 9)
+    switch (type)
     {
-        if (nReply < m_nReplyCount)
-        {
-            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            SelectReply(nReply);
-        }
-    }
-    else if (type == INPUTEVENT_GUI_A || type == INPUTEVENT_GUI_START)
-    {
+    case INPUTEVENT_GUI_A:
+    case INPUTEVENT_GUI_START:
         // With the line already up, confirm fast-forwards the dialog instead of picking a reply.
         if ((m_nMessageFlags & DIALOGMSG_SHOWING_LINE) != 0)
         {
             if ((m_nMessageFlags & DIALOGMSG_LINE_PENDING) == 0)
-                g_pAppManager->m_pServerExoApp->SkipPastDialog(
-                    g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_ownerId));
+            {
+                unsigned long long oid = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_ownerId);
+                g_pAppManager->m_pServerExoApp->SkipPastDialog(oid);
+            }
         }
         else
         {
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             SelectReply(m_listBox.m_nSelectedIndex);
         }
-    }
-    else if (type == INPUTEVENT_GUI_DPAD_UP || type == INPUTEVENT_GUI_KEY_UP)
-    {
+        break;
+    case INPUTEVENT_GUI_DPAD_UP:
+    case INPUTEVENT_GUI_KEY_UP:
         if (m_nSelectedReply >= 1)
             m_nSelectedReply--;
-    }
-    else if (type == INPUTEVENT_GUI_DPAD_DOWN || type == INPUTEVENT_GUI_KEY_DOWN)
-    {
+        break;
+    case INPUTEVENT_GUI_DPAD_DOWN:
+    case INPUTEVENT_GUI_KEY_DOWN:
         if (m_nSelectedReply < m_nReplyCount - 1)
             m_nSelectedReply++;
-    }
-    else if (type == SWGUIEVENT_DOUBLE_CLICK)
+        break;
+    case INPUTEVENT_DIALOG_1:
+    case INPUTEVENT_DIALOG_1 + 1:
+    case INPUTEVENT_DIALOG_1 + 2:
+    case INPUTEVENT_DIALOG_1 + 3:
+    case INPUTEVENT_DIALOG_1 + 4:
+    case INPUTEVENT_DIALOG_1 + 5:
+    case INPUTEVENT_DIALOG_1 + 6:
+    case INPUTEVENT_DIALOG_1 + 7:
+    case INPUTEVENT_DIALOG_9:
     {
+        int nReply = type - INPUTEVENT_DIALOG_1;
+        if (nReply < m_nReplyCount)
+        {
+            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
+            SelectReply(nReply);
+        }
+        break;
+    }
+    case SWGUIEVENT_DOUBLE_CLICK:
         if ((m_nMessageFlags & (DIALOGMSG_SHOWING_LINE | DIALOGMSG_LINE_PENDING)) == DIALOGMSG_SHOWING_LINE)
-            g_pAppManager->m_pServerExoApp->SkipPastDialog(
-                g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_ownerId));
+        {
+            unsigned long long oid = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_ownerId);
+            g_pAppManager->m_pServerExoApp->SkipPastDialog(oid);
+        }
+        break;
     }
 
     if (type == INPUTEVENT_GUI_A || type == INPUTEVENT_GUI_START)
         return;
-    if (static_cast<unsigned int>(type) >= 2 && (m_nMessageFlags & DIALOGMSG_SHOWING_LINE) != 0)
-        return;
-
-    CSWGuiPanel::HandleInputEvent(type, val);
+    if ((m_nMessageFlags & DIALOGMSG_SHOWING_LINE) == 0 || type == 0 || type == 1)
+        CSWGuiPanel::HandleInputEvent(type, val);
 }
 
 // Lays out a fresh reply set from n strings and their parallel id array. d re-lays out the list and

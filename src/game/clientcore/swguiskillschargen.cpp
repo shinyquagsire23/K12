@@ -299,8 +299,8 @@ CSWGuiSkillsCharGen::CSWGuiSkillsCharGen(CSWGuiManager* pGuiManager, CSWCCreatur
     InitControl(m_btnAccept,       CExoString("BTN_ACCEPT"), 1, 1, 0, 0, 0);
     InitControl(m_btnRecommended,  CExoString("BTN_RECOMMENDED"), 1, 1, 0, 0, 0);
     InitControl(m_btnBack,         CExoString("BTN_BACK"), 1, 1, 0, 0, 0);
-    InitControl(m_lblBar1,         CExoString("LBL_BAR1"), 1, 1, 0, 0, 0);
-    InitControl(m_lblBar2,         CExoString("LBL_BAR2"), 1, 1, 0, 0, 0);
+    InitControl(m_aBarLabels[0],    CExoString("LBL_BAR1"), 1, 1, 0, 0, 0);
+    InitControl(m_aBarLabels[1],    CExoString("LBL_BAR2"), 1, 1, 0, 0, 0);
     AspyrAddButtonIcon(&m_btnAccept, 'a');
     AspyrAddButtonIcon(&m_btnBack, 'b');
     AspyrAddButtonIcon(&m_btnRecommended, 'y');

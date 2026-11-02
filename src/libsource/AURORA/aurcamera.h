@@ -28,7 +28,7 @@ public:
     virtual int  PlayAnimation(const char* a, float b, int c, float d) = 0;
     virtual int  AttachToScene(CAurScene* a) = 0;
     virtual Vector SetPosition(Vector vPos) = 0;
-    virtual void SetOrientation(Quaternion a) = 0;
+    virtual Quaternion SetOrientation(Quaternion a) = 0;
     virtual Vector GetPosition() = 0;
     virtual Quaternion GetOrientation() = 0;
     virtual Vector MapToScreen(Vector, bool) = 0;
@@ -94,7 +94,7 @@ public:
     virtual int  PlayAnimation(const char* a, float b, int c, float d) override; // always returns 0
     virtual int  AttachToScene(CAurScene* a) override;
     virtual Vector SetPosition(Vector a) override;
-    virtual void  SetOrientation(Quaternion a) override;
+    virtual Quaternion SetOrientation(Quaternion a) override;
     virtual Vector GetPosition() override;
     virtual Quaternion GetOrientation() override;
     virtual Vector MapToScreen(Vector, bool) override;
@@ -147,7 +147,7 @@ public:
     struct ViewState {
         // Six view-frustum planes, near, far, then the four sides.
         List<Plane> m_aViewVolumes;
-        float  m_aFadePlane[4];
+        Plane  m_fadePlane;
         Plane  m_fadeNear;
         Plane  m_fadeFar;
     } m_viewState;

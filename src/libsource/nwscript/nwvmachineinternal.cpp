@@ -126,66 +126,59 @@ int CVirtualMachineInternal::RunScript(CExoString* pScriptName, unsigned long lo
         m_nInstructionPtr = 0;
     }
 
-    int nResult = ReadScriptFile(pScriptName);
-    if (nResult != 0) {
+    if (ReadScriptFile(pScriptName) == 0) {
+        K2_ASSUME(m_nSituationCount >= 0 && m_nSituationCount < SCRIPT_SITUATION_COUNT);   // ReadScriptFile pushed a slot, refusing an 8th
+        m_aScriptSituations[m_nSituationCount].m_nCRC = 0;
+        m_anScriptParam[m_nSituationCount] = nParam;
+        m_anScriptOid[m_nSituationCount] = objectId;
+        if (m_pCmdImplementer != 0) {
+            m_pCmdImplementer->RunScriptCallback(*pScriptName);
+            m_pCmdImplementer->m_nScriptRunArg = m_anScriptParam[m_nSituationCount];
+            m_pCmdImplementer->m_oidSelf = m_anScriptOid[m_nSituationCount];
+        }
+
+        int nSpBefore = static_cast<int>(m_sStack.m_nStackPointer);
+        int nResult = RunScriptFile(0);
+        DeleteScript(&m_aScriptSituations[m_nSituationCount]);
+        m_nSituationCount--;
+        // Restore the frame the script was entered with, now that the finished one is gone.
+        if (m_nSituationCount != -1 && m_pCmdImplementer != 0) {
+            K2_ASSUME(m_nSituationCount >= 0 && m_nSituationCount < SCRIPT_SITUATION_COUNT - 1);   // the popped slot was 1..7
+            m_pCmdImplementer->m_nScriptRunArg = m_anScriptParam[m_nSituationCount];
+            m_pCmdImplementer->m_oidSelf = m_anScriptOid[m_nSituationCount];
+        }
+        if (nResult == 0) {
+            if (m_nSituationCount != -1)
+                pScriptName->CStr();
+            // Exactly one value left above where the script started is its return value; a stack
+            // that came back level means it produced nothing, and anything else is a runaway,
+            // trimmed away without being read.
+            if (static_cast<int>(m_sStack.m_nStackPointer) == nSpBefore + 1) {
+                if (m_sStack.m_pTypeData[nSpBefore] == NCS_TYPE_INTEGER) {
+                    m_nReturnValueType = NCS_TYPE_INTEGER;
+                    m_pReturnValue = m_sStack.m_pValueData[nSpBefore];
+                }
+                m_sStack.SetStackPointer(nSpBefore);
+                if (m_nSituationCount == -1)
+                    m_sStack.ClearStack();
+                return 1;
+            }
+            if (static_cast<int>(m_sStack.m_nStackPointer) == nSpBefore) {
+                if (m_nSituationCount == -1)
+                    m_sStack.ClearStack();
+                return 1;
+            }
+            m_sStack.SetStackPointer(nSpBefore);
+            if (m_nSituationCount == -1)
+                m_sStack.ClearStack();
+            return 0;
+        }
         if (m_nSituationCount != -1)
             pScriptName->CStr();
         return 0;
     }
-
-    K2_ASSUME(m_nSituationCount >= 0 && m_nSituationCount < SCRIPT_SITUATION_COUNT);   // ReadScriptFile pushed a slot, refusing an 8th
-    m_aScriptSituations[m_nSituationCount].m_nCRC = 0;
-    m_anScriptParam[m_nSituationCount] = nParam;
-    m_anScriptOid[m_nSituationCount] = objectId;
-    if (m_pCmdImplementer != 0) {
-        m_pCmdImplementer->RunScriptCallback(*pScriptName);
-        m_pCmdImplementer->m_nScriptRunArg = m_anScriptParam[m_nSituationCount];
-        m_pCmdImplementer->m_oidSelf = m_anScriptOid[m_nSituationCount];
-    }
-
-    unsigned long long nSpBefore = m_sStack.m_nStackPointer;
-    nResult = RunScriptFile(0);
-    DeleteScript(&m_aScriptSituations[m_nSituationCount]);
-    int nOldCount = m_nSituationCount;
-    m_nSituationCount--;
-    // Restore the frame the script was entered with, now that the finished one is gone. This is the
-    // same publish RunScript does on entry, but from the slot that is now on top again.
-    if (nOldCount != 0 && m_pCmdImplementer != 0) {
-        K2_ASSUME(m_nSituationCount >= 0 && m_nSituationCount < SCRIPT_SITUATION_COUNT - 1);   // the popped slot was 1..7
-        m_pCmdImplementer->m_nScriptRunArg = m_anScriptParam[m_nSituationCount];
-        m_pCmdImplementer->m_oidSelf = m_anScriptOid[m_nSituationCount];
-    }
-    // The name is fetched and discarded for a nested script on both outcomes.
-    if (nResult != 0) {
-        if (nOldCount != 0)
-            pScriptName->CStr();
-        return 0;
-    }
-    if (nOldCount != 0)
+    if (m_nSituationCount != -1)
         pScriptName->CStr();
-
-    // Exactly one value left above where the script started is its return value; a stack that came
-    // back level means it produced nothing, and anything else is a runaway, trimmed away without
-    // being read.
-    int nSp = static_cast<int>(m_sStack.m_nStackPointer);
-    if (nSp == static_cast<int>(nSpBefore) + 1) {
-        if (m_sStack.m_pTypeData[static_cast<int>(nSpBefore)] == NCS_TYPE_INTEGER) {
-            m_nReturnValueType = NCS_TYPE_INTEGER;
-            m_pReturnValue = m_sStack.m_pValueData[static_cast<int>(nSpBefore)];
-        }
-        m_sStack.SetStackPointer(static_cast<int>(nSpBefore));
-        if (m_nSituationCount == -1)
-            m_sStack.ClearStack();
-        return 1;
-    }
-    if (nSp == static_cast<int>(nSpBefore)) {
-        if (m_nSituationCount == -1)
-            m_sStack.ClearStack();
-        return 1;
-    }
-    m_sStack.SetStackPointer(static_cast<int>(nSpBefore));
-    if (m_nSituationCount == -1)
-        m_sStack.ClearStack();
     return 0;
 }
 
@@ -1596,16 +1589,14 @@ int CVirtualMachineInternal::SaveScriptSituation(CVirtualMachineScript* pSituati
     if (pSituation->m_sData != 0 && pSituation->m_nDataSize != 0) {
         pGff->WriteFieldINT(pStruct, pSituation->m_nDataSize, const_cast<char*>("CodeSize"));
         pGff->WriteFieldVOID(pStruct, pSituation->m_sData, pSituation->m_nDataSize, const_cast<char*>("Code"));
+    } else if (ReadScriptFile(&pSituation->m_sName) == 0) {
+        pGff->WriteFieldINT(pStruct, m_aScriptSituations[m_nSituationCount].m_nDataSize, const_cast<char*>("CodeSize"));
+        pGff->WriteFieldVOID(pStruct, m_aScriptSituations[m_nSituationCount].m_sData,
+                             m_aScriptSituations[m_nSituationCount].m_nDataSize, const_cast<char*>("Code"));
+        DeleteScript(&m_aScriptSituations[m_nSituationCount]);
+        m_nSituationCount--;
     } else {
-        if (ReadScriptFile(&pSituation->m_sName) != 0) {
-            pGff->WriteFieldINT(pStruct, 0, const_cast<char*>("CodeSize"));
-        } else {
-            pGff->WriteFieldINT(pStruct, m_aScriptSituations[m_nSituationCount].m_nDataSize, const_cast<char*>("CodeSize"));
-            pGff->WriteFieldVOID(pStruct, m_aScriptSituations[m_nSituationCount].m_sData,
-                                 m_aScriptSituations[m_nSituationCount].m_nDataSize, const_cast<char*>("Code"));
-            DeleteScript(&m_aScriptSituations[m_nSituationCount]);
-            m_nSituationCount--;
-        }
+        pGff->WriteFieldINT(pStruct, 0, const_cast<char*>("CodeSize"));
     }
     pSituation->m_nCRC = 0;
     pGff->WriteFieldDWORD(pStruct, 0, const_cast<char*>("CRC"));

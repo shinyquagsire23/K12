@@ -308,7 +308,7 @@ void GetSystemInfo(_SYSTEM_INFO* pInfo);
 unsigned int timeGetTime();
 void GetSystemTime(_SYSTEMTIME* pSystemTime);
 void GetLocalTime(_SYSTEMTIME* pSystemTime);
-int SystemTimeToFileTime(const _SYSTEMTIME* pSystemTime, unsigned long long* pFileTime);
+int SystemTimeToFileTime(const _SYSTEMTIME* pSystemTime, uint64_ll_t* pFileTime);
 int CompareFileTime(const _FILETIME* pFileTime1, const _FILETIME* pFileTime2);
 
 int GetDiskFreeSpaceExA(const char* pPath, unsigned long long* pFreeBytesAvailable,

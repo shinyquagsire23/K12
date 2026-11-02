@@ -1090,7 +1090,7 @@ void CSWSModule::GetTime(unsigned int* pDate, unsigned int* pHour, unsigned int*
 // Tests membership in the limbo list with a reverse scan of the id array, newest entries first.
 int CSWSModule::IsObjectInLimbo(unsigned long long objectId)
 {
-    for (long long n = m_limboList.m_count; n > 0; n--)
+    for (int64_t n = m_limboList.m_count; n > 0; n--)
         if (m_limboList.m_pArray[n - 1] == objectId)
             return 1;
     return 0;
@@ -1506,7 +1506,7 @@ unsigned int CSWSModule::LoadModuleStart(const CExoString& sModuleName, int bFro
         }
     }
 
-    CLoadGameErrorInfo* pLoadInfo;
+    CSWReentrantServerStats* pLoadInfo;
     LoadLimboCreatures(m_pRes, &sStruct, 1);
     pLoadInfo = g_pAppManager->m_pLoadGameErrorInfo;
     pLoadInfo->m_loadBar.m_total = 0;
@@ -1558,7 +1558,7 @@ unsigned int CSWSModule::LoadModuleFinish()
     CResStruct sStruct;
     m_pRes->GetTopLevelStruct(&sStruct);
 
-    CLoadGameErrorInfo* pLoadInfo = g_pAppManager->m_pLoadGameErrorInfo;
+    CSWReentrantServerStats* pLoadInfo = g_pAppManager->m_pLoadGameErrorInfo;
     int nProgress = pLoadInfo->m_loadBar.m_progress;
     pLoadInfo->m_loadBar.m_total = nProgress;
     g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerLoadBar_UpdateStallEvent(
@@ -2196,12 +2196,10 @@ void CSWSModule::DeleteWorldJournalAllEntries()
 // Removes an object id from the limbo list.
 void CSWSModule::RemoveObjectFromLimbo(unsigned long long objectId)
 {
-    int i = m_limboList.m_count;
-    while (i > 0) {
-        i--;
-        if (m_limboList.m_pArray[i] == objectId) {
+    for (int i = m_limboList.m_count - 1; i >= 0; i--) {
+        if (objectId == m_limboList.m_pArray[i]) {
             m_limboList.DelIndex(i);
-            break;
+            return;
         }
     }
 }
@@ -2311,7 +2309,7 @@ int CSWSModule::SaveModuleInProgress()
     sFileName = sTmpGit;
     pArea->SaveGIT(m_pSaveFile, sFileName, *m_pSavedObjectIds);
     // A local here avoids re-reading g_pAppManager->m_pLoadGameErrorInfo for the second access.
-    CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+    CSWReentrantServerStats* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
     pInfo->m_loadBar.m_total = 1;
     nProgress = pInfo->m_loadBar.m_progress;
     g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerLoadBar_UpdateStallEvent(

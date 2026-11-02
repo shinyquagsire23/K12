@@ -996,6 +996,7 @@ JOINOUT:
 // BehaviorMessage and store the parsed float into the matching clip tunable.
 // Wraps __vsprintf_chk with an explicit size, since the call sites disagree on both the buffer and
 // the size.
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
@@ -1003,6 +1004,7 @@ static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 // Shared result buffer for the view* commands' empty-argument case.
 static char g_szViewResult[256];
@@ -1342,18 +1344,18 @@ void CSWCModule::UpdateCameraBumpAndShake(float fDeltaTime) {
             m_nBumpParam = 0;
             m_bBumpReset = 1;
         } else if (m_nShakeTimeLeftMs > 0) {
-            m_nShakeDelayMs = 0;
             m_nShakeTimeLeftMs = 0;
+            m_nShakeDelayMs = 0;
             m_nShakeIntervalMs = 0;
             m_bShakeReset = 1;
         }
     }
 
-    if (m_nShakeTimeLeftMs <= 0) {
+    int nElapsedMs = static_cast<int>(fDeltaTime * 1000.0f);
+    int nTimeLeftMs = m_nShakeTimeLeftMs;
+    if (nTimeLeftMs <= 0) {
         return;
     }
-
-    int nElapsedMs = static_cast<int>(fDeltaTime * 1000.0f);
     if (m_nShakeDelayMs > 0) {
         if (m_nShakeDelayMs <= nElapsedMs) {
             nElapsedMs -= m_nShakeDelayMs;
@@ -1368,30 +1370,30 @@ void CSWCModule::UpdateCameraBumpAndShake(float fDeltaTime) {
 
     float fShakeYaw;
     float fShakePitch;
-    if (m_nShakeTimeLeftMs > nElapsedMs) {
-        double dPhase = m_nShakeTimeLeftMs * 6.2831852;
+    if (nTimeLeftMs <= nElapsedMs) {
+        fShakePitch = 0.0f;
+        m_nShakeTimeLeftMs = 0;
+        fShakeYaw = 0.0f;
+    } else {
+        double dPhase = nTimeLeftMs * 6.2831852;
         float fEnvelope = fShakeMag * (static_cast<float>(cos(dPhase / m_nShakePeriodMs)) + 1.0f);
         float fAmplitude = fEnvelope * static_cast<float>(sin(dPhase / fShakePeriod)) * 0.017453292f;
         fShakeYaw   = fAmplitude * ((rand_wincompatible() + 1) % 2 - 1);
         fShakePitch = fAmplitude * ((rand_wincompatible() + 1) % 2 - 1);
-    } else {
-        m_nShakeTimeLeftMs = 0;
-        fShakeYaw = 0.0f;
-        fShakePitch = 0.0f;
     }
 
     if (pOnAStick != 0) {
-        pOnAStick->m_fShakeYaw = fShakeYaw;
         pOnAStick->m_fShakePitch = fShakePitch;
+        pOnAStick->m_fShakeYaw = fShakeYaw;
     } else if (pCombat != 0) {
-        pCombat->m_fShakeYaw = fShakeYaw;
         pCombat->m_fShakePitch = fShakePitch;
+        pCombat->m_fShakeYaw = fShakeYaw;
     } else if (pDialog != 0) {
-        pDialog->m_fShakeYaw = fShakeYaw;
         pDialog->m_fShakePitch = fShakePitch;
+        pDialog->m_fShakeYaw = fShakeYaw;
     } else if (pFreeLook != 0) {
-        pFreeLook->m_fShakeYaw = fShakeYaw;
         pFreeLook->m_fShakePitch = fShakePitch;
+        pFreeLook->m_fShakeYaw = fShakeYaw;
     }
     m_nShakeTimeLeftMs -= nElapsedMs;
 }

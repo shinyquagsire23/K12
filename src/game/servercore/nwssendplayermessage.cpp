@@ -3600,7 +3600,7 @@ int CSWSMessage::SendServerToPlayerChat_ServerTell(unsigned int nPlayerId, const
 int CSWSMessage::SendServerToPlayerChat_Talk(unsigned int nPlayerId, unsigned long long speakerId,
                                              const CExoString& sText)
 {
-    CreateWriteMessage(sText.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(sText.GetLength() + OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDServer(speakerId);
     WriteCExoString(sText, 32);
 
@@ -3616,7 +3616,7 @@ int CSWSMessage::SendServerToPlayerChat_Whisper(unsigned int nPlayerId,
                                                 unsigned long long speakerId,
                                                 const CExoString& sText)
 {
-    CreateWriteMessage(sText.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(sText.GetLength() + OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDServer(speakerId);
     WriteCExoString(sText, 32);
 
@@ -3632,7 +3632,7 @@ int CSWSMessage::SendServerToPlayerAIActionPlaySound(unsigned int nPlayerId,
                                                      unsigned long long objectId,
                                                      const CExoString& sSound)
 {
-    CreateWriteMessage(sSound.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(sSound.GetLength() + OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDServer(objectId);
     WriteCExoString(sSound, 32);
 
@@ -3774,6 +3774,8 @@ int CSWSMessage::SendServerToPlayerJournalAddWorldStrref(CSWSPlayer* pPlayer, un
 
 int CSWSMessage::SendServerToPlayerDebugInfo_Area(CSWSPlayer* pPlayer, unsigned long long objectId)
 {
+    unsigned char* pMsg;
+    unsigned int nSize;
     CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetAreaByGameObjectID(objectId);
     if (pArea == 0)
         return 0;
@@ -3782,8 +3784,6 @@ int CSWSMessage::SendServerToPlayerDebugInfo_Area(CSWSPlayer* pPlayer, unsigned 
     WriteOBJECTIDServer(objectId);
     WriteCExoString(pArea->m_sDebugName, 32);
 
-    unsigned char* pMsg;
-    unsigned int nSize;
     if (GetWriteMessage(&pMsg, &nSize) == 0)
         return 0;
 
@@ -4627,14 +4627,13 @@ int CSWSMessage::SendServerToPlayerLogin_CharacterQuery(CSWSPlayer* pPlayer, uns
 // with two separate calls.
 int CSWSMessage::SendServerToPlayerModule_Info(unsigned int nPlayerId)
 {
+    unsigned char* pMsg;
+    unsigned int nSize;
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
 
     if ((g_pAppManager->m_pServerExoApp->GetServerMode() == 1 ||
          g_pAppManager->m_pServerExoApp->GetServerMode() == 2) && pModule != 0)
     {
-        unsigned char* pMsg;
-        unsigned int nSize;
-
         CreateWriteMessage(128, MSG_PLAYERID_ALL_CLIENTS, 1);
         pModule->PackModuleIntoMessage(nPlayerId);
 
@@ -4649,12 +4648,14 @@ int CSWSMessage::SendServerToPlayerModule_Info(unsigned int nPlayerId)
 int CSWSMessage::SendServerToPlayerChat_Tell(unsigned int nPlayerId, unsigned long long speakerId,
                                              const CExoString& sText)
 {
+    unsigned char* pMsg;
+    unsigned int nSize;
     CSWSCreature* pCreature =
         g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(speakerId);
     if (pCreature == 0)
         return 0;
 
-    CreateWriteMessage(sText.GetLength() + 24, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(sText.GetLength() + OBJECTID_SIZE + 16, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDServer(speakerId);
     WriteCExoString(sText, 32);
     WriteFLOAT(pCreature->m_position.x, 1.0f, 32);
@@ -4663,8 +4664,6 @@ int CSWSMessage::SendServerToPlayerChat_Tell(unsigned int nPlayerId, unsigned lo
     WriteCExoLocStringServer(pCreature->GetFirstName(), 0);
     WriteCExoLocStringServer(pCreature->GetLastName(), 0);
 
-    unsigned char* pMsg;
-    unsigned int nSize;
     if (GetWriteMessage(&pMsg, &nSize) == 0)
         return 0;
 
@@ -4674,13 +4673,15 @@ int CSWSMessage::SendServerToPlayerChat_Tell(unsigned int nPlayerId, unsigned lo
 int CSWSMessage::SendServerToPlayerChat_Party(unsigned int nPlayerId, unsigned long long speakerId,
                                               const CExoString& sText)
 {
+    unsigned char* pMsg;
+    unsigned int nSize;
     CSWSCreature* pCreature =
         g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(speakerId);
     if (pCreature == 0)
         return 0;
 
     // The size addend here is smaller than Chat_Tell's.
-    CreateWriteMessage(sText.GetLength() + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(sText.GetLength() + OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDServer(speakerId);
     WriteCExoString(sText, 32);
     WriteFLOAT(pCreature->m_position.x, 1.0f, 32);
@@ -4689,8 +4690,6 @@ int CSWSMessage::SendServerToPlayerChat_Party(unsigned int nPlayerId, unsigned l
     WriteCExoLocStringServer(pCreature->GetFirstName(), 0);
     WriteCExoLocStringServer(pCreature->GetLastName(), 0);
 
-    unsigned char* pMsg;
-    unsigned int nSize;
     if (GetWriteMessage(&pMsg, &nSize) == 0)
         return 0;
 
@@ -4702,9 +4701,12 @@ int CSWSMessage::SendServerToPlayerParty_List(unsigned int nPlayerId, int nCount
                                               unsigned long long* pIds, unsigned char nSubOpcode,
                                               unsigned long long excludeId)
 {
+    unsigned char* pMsg;
+    unsigned int nSize;
     int nSend = 0;
+    int i;
 
-    for (int i = 0; i < nCount; i++)
+    for (i = 0; i < nCount; i++)
     {
         if (pIds[i] != excludeId)
             nSend++;
@@ -4713,14 +4715,12 @@ int CSWSMessage::SendServerToPlayerParty_List(unsigned int nPlayerId, int nCount
     CreateWriteMessage(128, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteINT(nSend, 32);
 
-    for (int i = 0; i < nCount; i++)
+    for (i = 0; i < nCount; i++)
     {
         if (pIds[i] != excludeId)
             WriteOBJECTIDServer(pIds[i]);
     }
 
-    unsigned char* pMsg;
-    unsigned int nSize;
     if (GetWriteMessage(&pMsg, &nSize) == 0)
         return 0;
 
@@ -6007,7 +6007,7 @@ void CSWSMessage::UpdateLastUpdateVisibilityList(CSWSCreature* pCreature,
 
 // Packs the player-state word the client's GUI mirrors: detect mode, the solo latch, one bit
 // per reported combat mode and five loose flags.
-int CSWSMessage::ComputeLastUpdate_PlayerState(CSWSCreature* pCreature)
+unsigned short CSWSMessage::ComputeLastUpdate_PlayerState(CSWSCreature* pCreature)
 {
     int nState = 0;
 
@@ -6080,49 +6080,33 @@ int CSWSMessage::SendServerToPlayerChatMultiLangMessage(unsigned char nLanguage,
     }
 
     pNode = pList->GetHeadPos();
-    while (bSent == 1 && pNode != 0)
+    while (pNode != 0 && bSent == 1)
     {
         CSWSPlayer* pOther = reinterpret_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-        bSent = 1;   // keep looping by default; a send's result below may kill the loop
         if (pOther->GetGameObject() != 0)
         {
-            int bFound = 0;
+            int bOnList = 0;
+            int bShoutScope = bShout;
             for (unsigned int i = 0; i < nNumPlayers; i++)
             {
                 if (pnPlayers[i] == pOther->m_nPlayerId)
                 {
-                    bFound = 1;
+                    bOnList = 1;
+                    bShoutScope = 0;
                     break;
                 }
             }
 
-            int bOnList;
-            int bShoutScope;
-            if (bFound)
+            Vector vDelta = pOther->GetGameObject()->m_position - srcPos;
+            if (bShoutScope == 0 && pSrcArea == pOther->GetGameObject()->GetArea())
             {
-                bShoutScope = 0;
-                bOnList = 1;
-            }
-            else
-            {
-                bOnList = 0;
-                bShoutScope = bShout;
-            }
-
-            CSWSObject* pOtherObject = pOther->GetGameObject();
-            if (bShoutScope == 0)
-            {
-                Vector vDelta = pOtherObject->m_position - srcPos;
-                if (pSrcArea == pOther->GetGameObject()->GetArea())
-                {
-                    float fDistSq = vDelta.x * vDelta.x + vDelta.y * vDelta.y
-                                    + vDelta.z * vDelta.z;
-                    if (fDistSq <= CSWSArea::MAX_OBJECT_CHATTALK_DISTANCE
-                                       * CSWSArea::MAX_OBJECT_CHATTALK_DISTANCE)
-                        bSent = SendServerToPlayerChatMultiLang_Helper(
-                                    pOther->m_nPlayerId, 8, speakerId, sText, targetId,
-                                    nLang, bOnList, rSound, soundId, nVolume);
-                }
+                float fDistSq = vDelta.x * vDelta.x + vDelta.y * vDelta.y
+                                + vDelta.z * vDelta.z;
+                if (fDistSq <= CSWSArea::MAX_OBJECT_CHATTALK_DISTANCE
+                                   * CSWSArea::MAX_OBJECT_CHATTALK_DISTANCE)
+                    bSent = SendServerToPlayerChatMultiLang_Helper(
+                                pOther->m_nPlayerId, 8, speakerId, sText, targetId,
+                                nLang, bOnList, rSound, soundId, nVolume);
             }
         }
         pList->GetNext(pNode);
@@ -6233,9 +6217,12 @@ extern CTlkTable* g_pTlkTable;
 // entries are all reserved, sends nothing and reports success.
 int CSWSMessage::SendServerToPlayerSetCustomTokenList(unsigned int nPlayerId)
 {
+    unsigned char* pMsg;
+    unsigned int nSize;
     unsigned int nCount = g_pTlkTable->m_nCustomTokenCount;
     int nSend = nCount;
-    for (unsigned int i = 0; i < nCount; i++)
+    unsigned int i;
+    for (i = 0; i < nCount; i++)
     {
         if (g_pTlkTable->m_pCustomTokens[i].m_nId <= CTlkTable::CUSTOMTOKEN_RESERVED_END)
             nSend--;
@@ -6244,13 +6231,12 @@ int CSWSMessage::SendServerToPlayerSetCustomTokenList(unsigned int nPlayerId)
     if (nSend == 0)
         return 1;
 
-    unsigned char* pMsg;
-    unsigned int nSize = 4 + nSend * 8;
+    nSize = 4 + nSend * 8;
 
     CreateWriteMessage(nSize, nPlayerId, 1);
     WriteDWORD(nSend, 32);
 
-    for (unsigned int i = 0; i < nCount; i++)
+    for (i = 0; i < nCount; i++)
     {
         if (g_pTlkTable->m_pCustomTokens[i].m_nId > CTlkTable::CUSTOMTOKEN_RESERVED_END)
         {
@@ -6277,7 +6263,7 @@ int CSWSMessage::SendServerToPlayerChat_Shout(unsigned int nPlayerId, unsigned l
     CSWSCreature* pCreature =
         g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(speakerId);
 
-    CreateWriteMessage(sText.GetLength() + 24, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(sText.GetLength() + OBJECTID_SIZE + 16, MSG_PLAYERID_ALL_CLIENTS, 1);
 
     if (pCreature != 0)
     {
@@ -6424,6 +6410,8 @@ int CSWSMessage::SendServerToPlayerGameObjUpdateVisEffect(CSWSPlayer* pPlayer,
                                                           unsigned char nA, unsigned char nB,
                                                           Vector vPos, float fValue)
 {
+    unsigned char* pMsg;
+    unsigned int nSize;
     CGameObject* pGameObjSource = g_pAppManager->m_pServerExoApp->GetGameObject(sourceId);
     CGameObject* pGameObjTarget = g_pAppManager->m_pServerExoApp->GetGameObject(targetId);
 
@@ -6472,8 +6460,6 @@ int CSWSMessage::SendServerToPlayerGameObjUpdateVisEffect(CSWSPlayer* pPlayer,
             WriteFLOAT(fValue, 1.0f, 32);
     }
 
-    unsigned char* pMsg;
-    unsigned int nSize;
     if (GetWriteMessage(&pMsg, &nSize) == 0)
         return 0;
 

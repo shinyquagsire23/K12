@@ -163,8 +163,8 @@ public:
     // Returns whether the animation was accepted.
     virtual int SetAnimation(unsigned short a, int b, int c);
     virtual void AddFireForgetAnimation(unsigned short a, void* p);
-    virtual void Hilite(const Vector& v, unsigned char a, float f, int b);
-    virtual void UnHilite(unsigned char a);
+    virtual int Hilite(const Vector& v, unsigned char a, float f, int b);
+    virtual int UnHilite(unsigned char a);
     virtual int SetEnvMap(int a, int b, const CResRef& r);
     virtual int SetEnvMap(unsigned char a, int b, int c, const CResRef& r);
     virtual int AddVisualEffect(unsigned short a, int b, unsigned long long c, unsigned long long d, unsigned char e, unsigned char f, const Vector& v);
@@ -273,21 +273,21 @@ public:
     CSWCAnimBase*  GetAnimationBase();
     unsigned short GetLoopingAnimation();
 
-    void  ReplaceTexture(unsigned char a, const CResRef& r1,
+    int   ReplaceTexture(unsigned char a, const CResRef& r1,
                          const CResRef& r2, int b);
-    void  ReplaceTexture(const CResRef& r1, const CResRef& r2, int b);
-    void  ReplaceTexture(unsigned char a, const CResRef& r1, const CResRef& r2,
+    int   ReplaceTexture(const CResRef& r1, const CResRef& r2, int b);
+    int   ReplaceTexture(unsigned char a, const CResRef& r1, const CResRef& r2,
                          unsigned int c, unsigned short* p, int d, unsigned int e);
-    void  ReplaceTexture(const CResRef& r1, const CResRef& r2, unsigned int c,
+    int   ReplaceTexture(const CResRef& r1, const CResRef& r2, unsigned int c,
                          unsigned short* p, int d, unsigned int e);
-    void  RestoreTexture();
-    void  RestoreTexture(unsigned char a);
-    void  EnableBumpedOutShell(CResRef r, float f);
-    void  DisableBumpedOutShell();
-    void  SetMotionBlur(int a);
+    int   RestoreTexture();
+    int   RestoreTexture(unsigned char a);
+    int   EnableBumpedOutShell(CResRef r, float f);
+    int   DisableBumpedOutShell();
+    int   SetMotionBlur(int a);
     float GetAnimationLength(unsigned short a);
-    void  SetAlpha(float alpha, unsigned char a);
-    void  RestoreEnvMap();
+    int   SetAlpha(float alpha, unsigned char a);
+    int   RestoreEnvMap();
     float GetAlpha();
     void  EnableDistortion();
     void  DisableDistortion();

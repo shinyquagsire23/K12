@@ -801,7 +801,7 @@ void ASLAnalyticsTrackScreen(const char* pszScreen)
 }
 
 #if !KOTOR1  // K1's is in Achievements.cpp
-void SubmitScore(const char* pszLeaderboard, int64_t nScore)
+void SubmitScore(const char* pszLeaderboard, int64_ll_t nScore)
 {
     JNIEnv* env = Android_JNI_GetEnv();
     jclass cls = env->FindClass("com/aspyr/base/ASPYR");

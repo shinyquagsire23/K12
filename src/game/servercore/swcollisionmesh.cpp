@@ -1194,7 +1194,20 @@ void CSWCollisionMesh::ComputeMeshNormals()
 void CSWCollisionMesh::RenderMesh(int flag, unsigned int color1, unsigned int color2)
 {
     K2_UNUSED(flag); K2_UNUSED(color1); K2_UNUSED(color2);
+    Vector v0, v1, v2;
     GetWalkableMaterialMask();
+    if (m_nTriangleCount == 0)
+        return;
+    for (int i = 0; i < m_nTriangleCount; i++) {
+        int n0 = m_paTriVertIndices[i * 3];
+        int n1 = m_paTriVertIndices[i * 3 + 1];
+        int n2 = m_paTriVertIndices[i * 3 + 2];
+        if (n0 != -1 && n1 != -1 && n2 != -1) {
+            GetVertex(n0, &v0);
+            GetVertex(n1, &v1);
+            GetVertex(n2, &v2);
+        }
+    }
 }
 
 // The three walkmesh-conversion console commands. Each splits its argument on the first space into a

@@ -23,15 +23,6 @@ enum { SYMBOL_LIST_GROWTH = 32 };
 enum { CODE_BUFFER_SIZE = 256 * 1024 };
 enum { CODE_BUFFER_SLACK = 200 };
 
-// The argument types an action call accepts, as bits indexed by (type - KEYWORD_INT).
-enum : unsigned long long {
-    ACTION_ARGUMENT_TYPE_MASK =
-          ((1ULL << (KEYWORD_OBJECT - KEYWORD_INT + 1)) - 1)       // int, float, string, object
-        | (1ULL << (KEYWORD_ACTION - KEYWORD_INT))
-        | (1ULL << (KEYWORD_STRUCT - KEYWORD_INT))
-        | (((1ULL << ENGINE_STRUCTURE_COUNT) - 1) << (KEYWORD_ENGINE_STRUCTURE0 - KEYWORD_INT)),
-};
-
 // The symbolic listing (m_bCompileSymbolicOutput): each instruction line opens with its byte
 // offset, "  %08x   ", and the header line is "NCS V1.0T %08x\n".
 enum { SYMBOLIC_ADDRESS_WIDTH = 13 };
@@ -4443,10 +4434,29 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             CScriptParseTreeNode* pLeft = pNode->m_pLeft;
             while (pLeft != 0)
             {
-                if (static_cast<unsigned int>(pLeft->m_nResultType - KEYWORD_INT) > KEYWORD_ENGINE_STRUCTURE9 - KEYWORD_INT
-                    || (ACTION_ARGUMENT_TYPE_MASK
-                        & (1ULL << static_cast<unsigned int>(pLeft->m_nResultType - KEYWORD_INT))) == 0)
+                // The argument types an action call accepts.
+                switch (pLeft->m_nResultType)
+                {
+                case KEYWORD_INT:
+                case KEYWORD_FLOAT:
+                case KEYWORD_STRING:
+                case KEYWORD_OBJECT:
+                case KEYWORD_ACTION:
+                case KEYWORD_STRUCT:
+                case KEYWORD_ENGINE_STRUCTURE0:
+                case KEYWORD_ENGINE_STRUCTURE0 + 1:
+                case KEYWORD_ENGINE_STRUCTURE0 + 2:
+                case KEYWORD_ENGINE_STRUCTURE0 + 3:
+                case KEYWORD_ENGINE_STRUCTURE0 + 4:
+                case KEYWORD_ENGINE_STRUCTURE0 + 5:
+                case KEYWORD_ENGINE_STRUCTURE0 + 6:
+                case KEYWORD_ENGINE_STRUCTURE0 + 7:
+                case KEYWORD_ENGINE_STRUCTURE0 + 8:
+                case KEYWORD_ENGINE_STRUCTURE9:
+                    break;
+                default:
                     return OutputWalkTreeError(-SCRIPT_ERROR_UNKNOWN_STATE_IN_COMPILER, pNode);
+                }
 
                 m_aArgumentTypes[nDepth] = static_cast<unsigned char>(pLeft->m_nResultType);
                 if (pLeft->m_nResultType != KEYWORD_ACTION)

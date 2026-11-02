@@ -495,6 +495,8 @@ CExoInput::CExoInput()
 
 CExoInput::~CExoInput()
 {
-    delete m_pInternal;
-    m_pInternal = 0;
+    if (m_pInternal) {
+        delete m_pInternal;
+        m_pInternal = 0;
+    }
 }

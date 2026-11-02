@@ -160,8 +160,8 @@ struct CExoInputClass {
     CExoInputClass();
     ~CExoInputClass();
     CExoString                     m_sName;
-    CExoLinkedList<int*>           m_unboundList;
-    CExoLinkedList<int*>           m_apDeviceLists[6];
+    CExoLinkedList<uint32_t>       m_unboundList;
+    CExoLinkedList<uint32_t>       m_apDeviceLists[6];
     CExoArrayList<unsigned int>   m_aEventBits;
 };
 

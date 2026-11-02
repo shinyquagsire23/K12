@@ -98,16 +98,15 @@ struct CameraViewAnim {
 Camera::Camera(char* pszName)
     : CAurCamera(), Gob(pszName)
 {
-    __builtin_memset(static_cast<void*>(&m_viewState), 0, sizeof(m_viewState));
     m_fViewAngle = 45.0f;
-    m_fClipFar = 100.0f;
-    m_pViewAnimState = 0;
-    m_fViewAnimDefault = 1.0f;
     m_fClipNear = 0.1f;
-    m_nViewX = 0;
-    m_nViewY = 0;
-    m_nViewW = 0;
+    m_fClipFar = 100.0f;
+    m_fViewAnimDefault = 1.0f;
+    m_pViewAnimState = 0;
     m_nViewH = 0;
+    m_nViewW = 0;
+    m_nViewY = 0;
+    m_nViewX = 0;
     m_viewState.m_aViewVolumes.SetSize(6);
 }
 
@@ -130,12 +129,13 @@ int Camera::AttachToScene(CAurScene* pScene)
 Vector Camera::SetPosition(Vector vPos)
 {
     m_vPosition = vPos;
-    return vPos;
+    return m_vPosition;
 }
 
-void Camera::SetOrientation(Quaternion qOri)
+Quaternion Camera::SetOrientation(Quaternion qOri)
 {
     m_qOrientation = qOri;
+    return m_qOrientation;
 }
 
 void Camera::SetClipDist(float fMin, float fMax)

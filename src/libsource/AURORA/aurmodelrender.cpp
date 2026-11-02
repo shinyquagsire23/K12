@@ -1333,23 +1333,12 @@ void Part::Draw(bool)
 
 void PartTriMesh::TransformTextureMatrix()
 {
-    float fTextureAngle = m_fTextureAngle;
-    if (fTextureAngle == 0.0f)
-        return;
-    ASLgl::glMatrixMode(GL_TEXTURE);
-    ASLgl::glPushMatrix();
-    ASLgl::glLoadIdentity();
-    ASLgl::glRotatef(fTextureAngle, 0.0f, 0.0f, 1.0f);
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::TransformTextureMatrix(m_fTextureAngle);
 }
 
 void PartTriMesh::RestoreTextureMatrix()
 {
-    if (m_fTextureAngle == 0.0f)
-        return;
-    ASLgl::glMatrixMode(GL_TEXTURE);
-    ASLgl::glPopMatrix();
-    ASLgl::glMatrixMode(GL_MODELVIEW);
+    GLRender::RestoreTextureMatrix(m_fTextureAngle);
 }
 
 void PartTriMesh::TransformModelviewMatrix()

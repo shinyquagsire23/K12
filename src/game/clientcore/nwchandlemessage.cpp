@@ -1464,7 +1464,7 @@ int CSWCMessage::HandleServerToPlayerUpdate_Appearance()
     if (MessageReadOverflow(1))
         return 0;
 
-    if (CGameObject::OBJECT_TYPE_CREATURE != nObjectType)
+    if (nObjectType != CGameObject::OBJECT_TYPE_CREATURE)
         return 0;
 
     return HandleServerToPlayerCreatureUpdate_Appearance();
@@ -3579,17 +3579,17 @@ int CSWCMessage::HandleServerToPlayerUpdate_Add()
     if (MessageReadOverflow(1))
         return 0;
 
-    if (CGameObject::OBJECT_TYPE_CREATURE == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_CREATURE)
         return HandleServerToPlayerCreatureUpdate_Add();
-    if (CGameObject::OBJECT_TYPE_ITEM == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_ITEM)
         return HandleServerToPlayerItemUpdate_Add(0, 0);
-    if (CGameObject::OBJECT_TYPE_TRIGGER == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_TRIGGER)
         return HandleServerToPlayerTriggerUpdate_Add();
-    if (CGameObject::OBJECT_TYPE_DOOR == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_DOOR)
         return HandleServerToPlayerDoorUpdate_Add();
-    if (CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT)
         return HandleServerToPlayerAreaOfEffectUpdate_Add();
-    if (CGameObject::OBJECT_TYPE_PLACEABLE == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_PLACEABLE)
         return HandleServerToPlayerPlaceableUpdate_Add();
 
     return 0;
@@ -3604,21 +3604,21 @@ int CSWCMessage::HandleServerToPlayerUpdate_Update()
     if (MessageReadOverflow(1))
         return 0;
 
-    if (CGameObject::OBJECT_TYPE_CREATURE == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_CREATURE)
         return HandleServerToPlayerCreatureUpdate_Update(objId, nSize);
 
     if (HandleServerToPlayerGenericObjectUpdate_Update(objId, nSize) == 0)
         return 0;
 
-    if (CGameObject::OBJECT_TYPE_ITEM == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_ITEM)
         return HandleServerToPlayerItemUpdate_Update(objId, nSize);
-    if (CGameObject::OBJECT_TYPE_TRIGGER == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_TRIGGER)
         return HandleServerToPlayerTriggerUpdate_Update(objId, nSize);
-    if (CGameObject::OBJECT_TYPE_DOOR == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_DOOR)
         return HandleServerToPlayerDoorUpdate_Update(objId, nSize);
-    if (CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT)
         return HandleServerToPlayerAreaOfEffectUpdate_Update(objId, nSize);
-    if (CGameObject::OBJECT_TYPE_PLACEABLE == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_PLACEABLE)
         return HandleServerToPlayerPlaceableUpdate_Update(objId, nSize);
 
     return 0;
@@ -3631,17 +3631,17 @@ int CSWCMessage::HandleServerToPlayerUpdate_Delete()
     if (MessageReadOverflow(1))
         return 0;
 
-    if (CGameObject::OBJECT_TYPE_CREATURE == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_CREATURE)
         return HandleServerToPlayerCreatureUpdate_Delete();
-    if (CGameObject::OBJECT_TYPE_ITEM == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_ITEM)
         return HandleServerToPlayerItemUpdate_Delete();
-    if (CGameObject::OBJECT_TYPE_TRIGGER == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_TRIGGER)
         return HandleServerToPlayerTriggerUpdate_Delete();
-    if (CGameObject::OBJECT_TYPE_DOOR == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_DOOR)
         return HandleServerToPlayerDoorUpdate_Delete();
-    if (CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT)
         return HandleServerToPlayerAreaOfEffectUpdate_Delete();
-    if (CGameObject::OBJECT_TYPE_PLACEABLE == nObjectType)
+    if (nObjectType == CGameObject::OBJECT_TYPE_PLACEABLE)
         return HandleServerToPlayerPlaceableUpdate_Delete();
 
     return 0;
@@ -3670,10 +3670,10 @@ int CSWCMessage::HandleServerToPlayerUpdate_GuiQuickbarItemUseCount()
         if (pItem)
         {
             CSWItemProperty* pProperty = pItem->GetActiveProperty(nProperty);
-            if (pProperty == 0 || pProperty->m_costTableValue == IPRP_CHARGECOST_SINGLE_USE)
-                pItem->SetStackSize(nUsesLeft);
-            else
+            if (pProperty && pProperty->m_costTableValue != IPRP_CHARGECOST_SINGLE_USE)
                 pItem->SetItemPropertyUsesLeft(nProperty, nUsesLeft);
+            else
+                pItem->SetStackSize(nUsesLeft);
         }
     }
 
@@ -3682,38 +3682,30 @@ int CSWCMessage::HandleServerToPlayerUpdate_GuiQuickbarItemUseCount()
 
 int CSWCMessage::HandleServerToPlayerPopUpGUIPanel(unsigned char nType)
 {
-    if (nType == MSG_POPUP_GUI_PANEL_SHOW)
+    switch (nType)
+    {
+    case MSG_POPUP_GUI_PANEL_SHOW:
     {
         CExoString sMessage;
-
         if (MessageReadOverflow(1))
             return 0;
-
         ReadBOOL();
         ReadBOOL();
         ReadINT(32);
         sMessage = ReadCExoString(32);
-
-        if (MessageReadOverflow(1))
+        if (MessageReadOverflow(1) || MessageReadUnderflow(1))
             return 0;
-        if (MessageReadUnderflow(1))
-            return 0;
-
-        return 1;
+        break;
     }
-
-    if (nType == MSG_POPUP_GUI_PANEL_DESTROY_DEATH)
-    {
+    case MSG_POPUP_GUI_PANEL_DESTROY_DEATH:
         g_pAppManager->m_pClientExoApp->GetInGameGui()->DestroyDeathMenuGUI();
         return 1;
-    }
-
-    if (nType == MSG_POPUP_GUI_PANEL_MESSAGE)
+    case MSG_POPUP_GUI_PANEL_MESSAGE:
     {
         CExoString sMessage = ReadCExoString(32);
         return 1;
     }
-
+    }
     return 1;
 }
 
@@ -4184,54 +4176,33 @@ int CSWCMessage::HandleServerToPlayerGuiTimingEvent_Info()
     return pGui->m_bInitialized != 0;
 }
 
+static inline char GuiSkillRankBase(CSWCCreatureStats* pStats, unsigned short nSkill)
+{
+    if (nSkill >= g_pRules->m_nNumSkills)
+        return 0;
+    return pStats->m_pSkillRanksBase[nSkill];
+}
+
+static inline void SetGuiSkillRankBase(CSWCCreatureStats* pStats, unsigned short nSkill, unsigned char nRank)
+{
+    if (nSkill < g_pRules->m_nNumSkills)
+        pStats->m_pSkillRanksBase[nSkill] = nRank;
+}
+
 // Applies a skill rank to the creature, reading it as a signed char out of an unsigned char array.
 void CSWCMessage::SetGuiSkillRank(CSWCCreature* pCreature, unsigned short nMaskA,
                                   unsigned short nMaskB, unsigned short nSkill)
 {
-#if KOTOR1  // K1 reads the stats pointer once, up front
-    CSWCCreatureStats* pStats = pCreature->m_pStats;
-    char nRank = nSkill < g_pRules->m_nNumSkills
-                     ? pStats->m_pSkillRanksBase[nSkill]
-                     : 0;
-
     if (nMaskA & nMaskB)
     {
-        if (nRank <= 0)
-        {
-            if (nSkill < g_pRules->m_nNumSkills)
-                pStats->m_pSkillRanksBase[nSkill] = 1;
-        }
+        if (GuiSkillRankBase(pCreature->m_pStats, nSkill) <= 0)
+            SetGuiSkillRankBase(pCreature->m_pStats, nSkill, 1);
     }
     else
     {
-        if (nRank >= 1)
-        {
-            if (nSkill < g_pRules->m_nNumSkills)
-                pStats->m_pSkillRanksBase[nSkill] = 0;
-        }
+        if (GuiSkillRankBase(pCreature->m_pStats, nSkill) > 0)
+            SetGuiSkillRankBase(pCreature->m_pStats, nSkill, 0);
     }
-#else
-    char nRank = nSkill < g_pRules->m_nNumSkills
-                     ? pCreature->m_pStats->m_pSkillRanksBase[nSkill]
-                     : 0;
-
-    if (nMaskA & nMaskB)
-    {
-        if (nRank <= 0)
-        {
-            if (nSkill < g_pRules->m_nNumSkills)
-                pCreature->m_pStats->m_pSkillRanksBase[nSkill] = 1;
-        }
-    }
-    else
-    {
-        if (nRank >= 1)
-        {
-            if (nSkill < g_pRules->m_nNumSkills)
-                pCreature->m_pStats->m_pSkillRanksBase[nSkill] = 0;
-        }
-    }
-#endif
 }
 
 // Game-object update fan-out. Sub-opcode 1 walks the rest of the message one tag byte at a time
@@ -4844,7 +4815,7 @@ int CSWCMessage::HandleServerToPlayerLoadBar(unsigned char nType)
 
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
 
-        if (nStep == CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME && pApp->m_pInternal->m_pLoadGameLoadBar)
+        if (nStep == CSWReentrantServerStats::STALL_EVENT_SAVE_GAME && pApp->m_pInternal->m_pLoadGameLoadBar)
         {
             pApp->m_pInternal->m_bLoadGameLoadBarActive = 1;
             return 1;
@@ -4853,7 +4824,7 @@ int CSWCMessage::HandleServerToPlayerLoadBar(unsigned char nType)
         if (g_pAppManager->m_pServerExoApp)
             return 1;
 
-        if (nStep == CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME)
+        if (nStep == CSWReentrantServerStats::STALL_EVENT_SAVE_GAME)
             pApp->AddFeedbackMessage(FEEDBACK_STALL_EVENT_STARTED, 0, CExoString(""));
 
         g_pAppManager->m_pLoadGameErrorInfo->m_flag = 1;
@@ -4879,7 +4850,7 @@ int CSWCMessage::HandleServerToPlayerLoadBar(unsigned char nType)
         if (g_pAppManager->m_pServerExoApp)
             return 1;
 
-        CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+        CSWReentrantServerStats* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
 
         pInfo->m_loadBar.m_total = nTotal;
         if (nProgress == 0xffffffff)

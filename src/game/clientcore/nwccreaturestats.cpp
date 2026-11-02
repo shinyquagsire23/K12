@@ -224,12 +224,15 @@ int CSWCCreatureStats::CalculateCriticalHitRange()
     return 1;
 }
 
-int CSWCCreatureStats::GetArmorClass(int nType)
-{
 #if KOTOR1
+short CSWCCreatureStats::GetArmorClass(int nType)
+{
     K2_UNUSED(nType);
     return m_nArmorClass;
+}
 #else
+short CSWCCreatureStats::GetArmorClass(int nType)
+{
     signed char nBonus = 0;
     if (nType == 1 && HasSpell(0, FORCE_POWER_BATTLE_PRECOGNITION)) {
         CSWSCreature* pServer = m_pCreature->GetServerCreature();
@@ -242,8 +245,8 @@ int CSWCCreatureStats::GetArmorClass(int nType)
         }
     }
     return m_nArmorClass + static_cast<unsigned char>(nBonus);
-#endif
 }
+#endif
 
 int CSWCCreatureStats::GetMenuInfoCount(unsigned int nType)
 {
@@ -323,7 +326,7 @@ int CSWCCreatureStats::CalculateUnarmedDamageDie()
 
 signed char CSWCCreatureStats::CalcStatModifier(unsigned char nStat)
 {
-    return static_cast<signed char>(static_cast<int>(floor(nStat * 0.5)) - 5);
+    return static_cast<signed char>(static_cast<unsigned char>(floor(nStat * 0.5)) - 5);
 }
 
 int CSWCCreatureStats::CalculateAttackModifier()
@@ -394,7 +397,7 @@ int CSWCCreatureStats::HasClassSkillFeat(unsigned short nSkill)
     return FeatAcquired(nFeat);
 }
 
-int CSWCCreatureStats::GetFeatRemainingUses(unsigned short nFeat)
+unsigned char CSWCCreatureStats::GetFeatRemainingUses(unsigned short nFeat)
 {
     for (int64_t i = 0; i < m_lstFeatUses.m_count; i++)
         if (m_lstFeatUses.m_pArray[i]->m_nFeat == nFeat)
@@ -470,20 +473,23 @@ int CSWCCreatureStats::GetAlignmentStringRef(int nAlignment)
 
 void CSWCCreatureStats::PayoutPowerAchievements()
 {
-    static const int aLightPowers[] = { 17, 137, 180, 36, 134, 175, 44, 13, -1 };
-    static const int aDarkPowers[]  = { 155, 11, 31, 177, 161, 25, 38, 32, -1 };
+    const int aLightPowers[] = { 17, 137, 180, 36, 134, 175, 44, 13, -1 };
+    const int aDarkPowers[]  = { 155, 11, 31, 177, 161, 25, 38, 32, -1 };
     const int* apPowers[2] = { aLightPowers, aDarkPowers };
 
     // An achievement pays out when either class slot knows every power on its list.
     for (int nList = 0; nList < 2; nList++) {
+        int bAllKnown = 1;
         const int* pPowers = apPowers[nList];
-        int i;
-        for (i = 0; pPowers[i] != -1; i++) {
-            if (!m_classes[0].m_spellLevels[0].ContainsFast(static_cast<unsigned int>(pPowers[i])) &&
-                !m_classes[1].m_spellLevels[0].ContainsFast(static_cast<unsigned int>(pPowers[i])))
+        for (int i = 0; pPowers[i] != -1; i++) {
+            unsigned int nPower = static_cast<unsigned int>(pPowers[i]);
+            if (!m_classes[0].m_spellLevels[0].ContainsFast(nPower) &&
+                !m_classes[1].m_spellLevels[0].ContainsFast(nPower)) {
+                bAllKnown = 0;
                 break;
+            }
         }
-        if (pPowers[i] == -1) {
+        if (bAllKnown) {
             switch (nList) {
             case 0:
                 Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_ALL_LIGHT_SIDE_POWERS);
@@ -656,26 +662,30 @@ CResRef CSWCCreatureStats::GetPortrait(int nType)
 {
     CExoString sVariant;
     C2DA* pPortraits = g_pRules->m_p2DArrays->m_pPortrait;
-    if (pPortraits != 0 && nType != 0) {
-        int bFound = 0;
-        sVariant = "";
-        short nAlignment = m_alignmentGoodEvil;
-        if (nAlignment <= 10) {
-            bFound = pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVVVE"), &sVariant);
-        } else if (nAlignment <= 20) {
-            bFound = pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVVE"), &sVariant);
-        } else if (nAlignment <= 30) {
-            bFound = pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVE"), &sVariant);
-        } else if (nAlignment <= 40) {
-            bFound = pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefE"), &sVariant);
-        }
-        if (bFound)
-            return sVariant;
+    if (pPortraits == 0)
+        return m_portrait.m_baseResRef;
+    if (nType == 0)
+        return m_portrait.m_baseResRef;
+    sVariant = "";
+    if (m_alignmentGoodEvil <= 10) {
+        if (!pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVVVE"), &sVariant))
+            return m_portrait.m_baseResRef;
+    } else if (m_alignmentGoodEvil <= 20) {
+        if (!pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVVE"), &sVariant))
+            return m_portrait.m_baseResRef;
+    } else if (m_alignmentGoodEvil <= 30) {
+        if (!pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVE"), &sVariant))
+            return m_portrait.m_baseResRef;
+    } else if (m_alignmentGoodEvil <= 40) {
+        if (!pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefE"), &sVariant))
+            return m_portrait.m_baseResRef;
+    } else {
+        return m_portrait.m_baseResRef;
     }
-    return m_portrait.m_baseResRef;
+    return sVariant;
 }
 
-int CSWCCreatureStats::GetBaseAttackBonus()
+unsigned char CSWCCreatureStats::GetBaseAttackBonus()
 {
     if (m_bCombatInformationSet == 1)
         return m_nBaseAttackBonus;
@@ -1309,9 +1319,9 @@ int CSWCCreatureStats::HasSpell(unsigned char nSpellLevel, unsigned int nSpellId
     return 0;
 }
 
-int CSWCCreatureStats::GetSkillRank(unsigned short nSkill)
+signed char CSWCCreatureStats::GetSkillRank(unsigned short nSkill)
 {
-    if (g_pRules->m_nNumSkills <= nSkill)
+    if (nSkill >= g_pRules->m_nNumSkills)
         return 0;
     return m_pSkillRanks[nSkill];
 }
@@ -2081,7 +2091,7 @@ void CSWCLevelUpStats::AddDefaultPackageSkills(int nClassId, int bSkipFlagCheck)
     } while (nOrder++ < nNumSkills && nPoints > 0);
 }
 
-int CSWCLevelUpStats::AddDefaultPackageFeats(int nClassId, CExoArrayList<unsigned short>* pFeats,
+unsigned char CSWCLevelUpStats::AddDefaultPackageFeats(int nClassId, CExoArrayList<unsigned short>* pFeats,
                                               int bAllowNormal, int bAllowBonus)
 {
     unsigned char nNormalCount, nBonusCount;

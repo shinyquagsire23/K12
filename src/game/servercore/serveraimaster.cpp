@@ -156,36 +156,20 @@ CServerAIMaster::~CServerAIMaster()
         m_pItemPropertyHandler = 0;
     }
 
-    CExoArrayList<int>* pRepAdjustAttack = m_pRepAdjustAttack;
-    if (pRepAdjustAttack != 0) {
-        if (pRepAdjustAttack->m_pArray != 0) {
-            operator delete[](pRepAdjustAttack->m_pArray);
-        }
-        operator delete(pRepAdjustAttack);
+    if (m_pRepAdjustAttack != 0) {
+        delete m_pRepAdjustAttack;
         m_pRepAdjustAttack = 0;
     }
-    CExoArrayList<int>* pRepAdjustTheft = m_pRepAdjustTheft;
-    if (pRepAdjustTheft != 0) {
-        if (pRepAdjustTheft->m_pArray != 0) {
-            operator delete[](pRepAdjustTheft->m_pArray);
-        }
-        operator delete(pRepAdjustTheft);
+    if (m_pRepAdjustTheft != 0) {
+        delete m_pRepAdjustTheft;
         m_pRepAdjustTheft = 0;
     }
-    CExoArrayList<int>* pRepAdjustKill = m_pRepAdjustKill;
-    if (pRepAdjustKill != 0) {
-        if (pRepAdjustKill->m_pArray != 0) {
-            operator delete[](pRepAdjustKill->m_pArray);
-        }
-        operator delete(pRepAdjustKill);
+    if (m_pRepAdjustKill != 0) {
+        delete m_pRepAdjustKill;
         m_pRepAdjustKill = 0;
     }
-    CExoArrayList<int>* pRepAdjustHelp = m_pRepAdjustHelp;
-    if (pRepAdjustHelp != 0) {
-        if (pRepAdjustHelp->m_pArray != 0) {
-            operator delete[](pRepAdjustHelp->m_pArray);
-        }
-        operator delete(pRepAdjustHelp);
+    if (m_pRepAdjustHelp != 0) {
+        delete m_pRepAdjustHelp;
         m_pRepAdjustHelp = 0;
     }
     // The remaining members destruct implicitly from here.
@@ -411,28 +395,25 @@ void CServerAIMaster::DeleteEventData(unsigned int type, void* pData)
         return;
     }
     switch (type) {
-    case EVENT_TIMED_EVENT:
-        g_pVirtualMachine->DeleteScriptSituation(pData);
-        return;
+    case EVENT_BROADCAST_SAFE_PROJECTILE:
+        delete static_cast<CSWSCombatAttackData*>(pData);
+        break;
+    case EVENT_FEEDBACK_MESSAGE:
+        delete static_cast<CSWCCMessageData*>(pData);
+        break;
     case EVENT_SPELL_IMPACT:
     case EVENT_ITEM_ON_HIT_SPELL_IMPACT:
-        static_cast<CSWSSpellScriptData*>(pData)->~CSWSSpellScriptData();
+        delete static_cast<CSWSSpellScriptData*>(pData);
+        break;
+    case EVENT_TIMED_EVENT:
+        g_pVirtualMachine->DeleteScriptSituation(pData);
         break;
     case EVENT_SIGNAL_EVENT:
     case EVENT_SUMMON_CREATURE:
     case EVENT_AREA_TRANSITION:
-        static_cast<CScriptEvent*>(pData)->~CScriptEvent();
+        delete static_cast<CScriptEvent*>(pData);
         break;
-    case EVENT_BROADCAST_SAFE_PROJECTILE:
-        static_cast<CSWSCombatAttackData*>(pData)->~CSWSCombatAttackData();
-        break;
-    case EVENT_FEEDBACK_MESSAGE:
-        static_cast<CSWCCMessageData*>(pData)->~CSWCCMessageData();
-        break;
-    default:
-        return;
     }
-    operator delete(pData);
 }
 
 int CServerAIMaster::OnEffectApplied(CSWSObject* pObj, CGameEffect* pEffect, int a)
@@ -968,16 +949,6 @@ int CServerAIEventNode::SaveNode(CResGFF* pGFF, CResStruct* pStruct)
 
     CResStruct dataStruct;
     switch (m_nType) {
-    case CServerAIMaster::EVENT_TIMED_EVENT:
-        pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_SITUATION);
-        g_pVirtualMachine->SaveScriptSituation(m_pData, pGFF, &dataStruct);
-        break;
-    case CServerAIMaster::EVENT_REMOVE_FROM_AREA:
-        if (m_pData != 0) {
-            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_AREA_FLAG);
-            pGFF->WriteFieldBYTE(&dataStruct, static_cast<unsigned char>(reinterpret_cast<unsigned long long>(m_pData)), const_cast<char*>("Value"));
-        }
-        break;
     case CServerAIMaster::EVENT_APPLY_EFFECT:
     case CServerAIMaster::EVENT_REMOVE_EFFECT:
         if (m_pData != 0) {
@@ -985,11 +956,29 @@ int CServerAIEventNode::SaveNode(CResGFF* pGFF, CResStruct* pStruct)
             static_cast<CGameEffect*>(m_pData)->SaveGameEffect(pGFF, &dataStruct);
         }
         break;
-    case CServerAIMaster::EVENT_SPELL_IMPACT:
-    case CServerAIMaster::EVENT_ITEM_ON_HIT_SPELL_IMPACT:
+    case CServerAIMaster::EVENT_ON_MELEE_ATTACKED:
+    case CServerAIMaster::EVENT_BROADCAST_SAFE_PROJECTILE:
         if (m_pData != 0) {
-            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_SPELL);
-            static_cast<CSWSSpellScriptData*>(m_pData)->SaveData(pGFF, &dataStruct);
+            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_ATTACK);
+            static_cast<CSWSCombatAttackData*>(m_pData)->SaveData(pGFF, &dataStruct);
+        }
+        break;
+    case CServerAIMaster::EVENT_REMOVE_FROM_AREA:
+        if (m_pData != 0) {
+            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_AREA_FLAG);
+            pGFF->WriteFieldBYTE(&dataStruct, static_cast<unsigned char>(reinterpret_cast<unsigned long long>(m_pData)), const_cast<char*>("Value"));
+        }
+        break;
+    case CServerAIMaster::EVENT_BROADCAST_AOO:
+        if (m_pData != 0) {
+            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_VALUE);
+            pGFF->WriteFieldDWORD(&dataStruct, static_cast<unsigned int>(reinterpret_cast<unsigned long long>(m_pData)), const_cast<char*>("Value"));
+        }
+        break;
+    case CServerAIMaster::EVENT_FEEDBACK_MESSAGE:
+        if (m_pData != 0) {
+            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_FEEDBACK);
+            static_cast<CSWCCMessageData*>(m_pData)->SaveData(pGFF, &dataStruct);
         }
         break;
     case CServerAIMaster::EVENT_PLAY_ANIMATION:
@@ -1004,11 +993,10 @@ int CServerAIEventNode::SaveNode(CResGFF* pGFF, CResStruct* pStruct)
             static_cast<CScriptEvent*>(m_pData)->SaveEvent(pGFF, &dataStruct);
         }
         break;
-    case CServerAIMaster::EVENT_ON_MELEE_ATTACKED:
-    case CServerAIMaster::EVENT_BROADCAST_SAFE_PROJECTILE:
+    case CServerAIMaster::EVENT_FORCED_ACTION:
         if (m_pData != 0) {
-            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_ATTACK);
-            static_cast<CSWSCombatAttackData*>(m_pData)->SaveData(pGFF, &dataStruct);
+            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_FORCED);
+            static_cast<CSWSForcedAction*>(m_pData)->SaveForcedAction(pGFF, &dataStruct);
         }
         break;
     case CServerAIMaster::EVENT_SPAWN_BODY_BAG:
@@ -1017,23 +1005,16 @@ int CServerAIEventNode::SaveNode(CResGFF* pGFF, CResStruct* pStruct)
             static_cast<CServerAIBodyBagInfo*>(m_pData)->SaveBodyBag(pGFF, &dataStruct);
         }
         break;
-    case CServerAIMaster::EVENT_FORCED_ACTION:
+    case CServerAIMaster::EVENT_SPELL_IMPACT:
+    case CServerAIMaster::EVENT_ITEM_ON_HIT_SPELL_IMPACT:
         if (m_pData != 0) {
-            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_FORCED);
-            static_cast<CSWSForcedAction*>(m_pData)->SaveForcedAction(pGFF, &dataStruct);
+            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_SPELL);
+            static_cast<CSWSSpellScriptData*>(m_pData)->SaveData(pGFF, &dataStruct);
         }
         break;
-    case CServerAIMaster::EVENT_BROADCAST_AOO:
-        if (m_pData != 0) {
-            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_VALUE);
-            pGFF->WriteFieldDWORD(&dataStruct, static_cast<unsigned int>(reinterpret_cast<unsigned long long>(m_pData)), const_cast<char*>("Value"));
-        }
-        break;
-    case CServerAIMaster::EVENT_FEEDBACK_MESSAGE:
-        if (m_pData != 0) {
-            pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_FEEDBACK);
-            static_cast<CSWCCMessageData*>(m_pData)->SaveData(pGFF, &dataStruct);
-        }
+    case CServerAIMaster::EVENT_TIMED_EVENT:
+        pGFF->AddStructToStruct(&dataStruct, pStruct, const_cast<char*>("EventData"), GFF_STRUCT_ID_EVENT_DATA_SITUATION);
+        g_pVirtualMachine->SaveScriptSituation(m_pData, pGFF, &dataStruct);
         break;
     case CServerAIMaster::EVENT_SUMMON_CREATURE:
         if (m_pData != 0) {

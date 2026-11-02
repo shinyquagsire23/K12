@@ -330,7 +330,7 @@ void UnlockAchievement(const char* pszName)
 #endif
 }
 
-void SubmitScore(const char* pszLeaderboard, int64_t nScore)
+void SubmitScore(const char* pszLeaderboard, int64_ll_t nScore)
 {
     JNIEnv* env = Android_JNI_GetEnv();
     jclass cls = env->FindClass("com/aspyr/kotor/KOTOR");

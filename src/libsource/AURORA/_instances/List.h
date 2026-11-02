@@ -36,7 +36,7 @@ public:
     void Add(T item);
     T& operator[](int nIndex) { return m_pData[nIndex]; }
     // Counts the matching elements; the whole list is scanned rather than stopping at the first.
-    template <class U = T> int Contains(U item) const
+    int Contains(T item)
     {
         int nFound = 0;
         for (int64_t i = 0; i < m_count; i++)
@@ -46,7 +46,7 @@ public:
     }
 
     // Index of the first match, or -1.
-    template <class U = T> int IndexOf(U item) const
+    int IndexOf(T item)
     {
         for (int i = 0; i < m_count; i++)
             if (m_pData[i] == item)
@@ -65,7 +65,7 @@ public:
     void Insert(T item, int nIndex);
     // Erases the element at nIndex and shifts the tail down; no bounds check.
     void DelIndex(int nIndex);
-    template <class U = T> void Remove(U item);
+    void Remove(T item);
     List<T>& operator=(List<T>& rhs);
 
     T* m_pData;
@@ -96,8 +96,7 @@ List<T>::List(List<T>& rhs) : m_pData(0), m_count(0), m_capacity(0) {
 // Erase the last matching element: a backwards scan, then the shift is delegated to DelIndex,
 // which is also what hands it -1 when nothing matched.
 template <class T>
-template <class U>
-void List<T>::Remove(U item) {
+void List<T>::Remove(T item) {
     int i = m_count - 1;
     while (i >= 0 && m_pData[i] != item)
         i--;

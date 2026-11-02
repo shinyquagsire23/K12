@@ -494,6 +494,7 @@ float g_fFPS = 1.0f;
 static float fFPSWindowTime = 2.0f;
 
 // Bounded sprintf.
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
@@ -501,6 +502,7 @@ static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 // Turns the frame's elapsed time into a rate on g_fFPS and keeps a rolling two-second window whose
 // mean frame time becomes the bracketed figure. The parenthesised values are low-water marks.

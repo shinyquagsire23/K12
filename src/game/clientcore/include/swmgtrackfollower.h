@@ -294,13 +294,8 @@ public:
 
     Vector SetOffset(const Vector& v);
     Vector SetOrigin(const Vector& v);
-#if KOTOR1  // K1 returns the kept value, like SetMaxSpeed
     float SetMinSpeed(float speed);
     float SetAPS(float aps);
-#else
-    void SetMinSpeed(float speed);
-    void SetAPS(float aps);
-#endif
     float SetMaxSpeed(float speed);
     void Fire();
     CSWMGGunBank* CreateGunBank(int nBankId, const CResRef& resBulletModel,

@@ -130,7 +130,7 @@ public:
 #if !KOTOR1  // K1 has no combat message log
     CGuiInGameMessage*       m_pCombatMessageBuffer;
 #endif
-    int                     m_messageBufferSize;
+    unsigned int            m_messageBufferSize;
     int                     m_dialogMessageBufferSize;
 #if !KOTOR1
     int                     m_combatMessageBufferSize;

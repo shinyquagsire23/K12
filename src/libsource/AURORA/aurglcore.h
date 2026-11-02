@@ -293,6 +293,26 @@ public:
         ASLgl::glMatrixMode(transformTranslationTable[eMode]);
     }
     static void GetViewPort(int* pnViewport) { ASLgl::glGetIntegerv(GL_VIEWPORT, pnViewport); }
+    // A texture rotation about the z axis, pushed on the texture stack; an angle of 0 leaves the stack
+    // alone, so Restore pops only when Transform pushed.
+    static void TransformTextureMatrix(float fAngle)
+    {
+        if (fAngle == 0.0f)
+            return;
+        ASLgl::glMatrixMode(GL_TEXTURE);
+        ASLgl::glPushMatrix();
+        ASLgl::glLoadIdentity();
+        ASLgl::glRotatef(fAngle, 0.0f, 0.0f, 1.0f);
+        ASLgl::glMatrixMode(GL_MODELVIEW);
+    }
+    static void RestoreTextureMatrix(float fAngle)
+    {
+        if (fAngle == 0.0f)
+            return;
+        ASLgl::glMatrixMode(GL_TEXTURE);
+        ASLgl::glPopMatrix();
+        ASLgl::glMatrixMode(GL_MODELVIEW);
+    }
     // Reads back GL_UNSIGNED_BYTE texels in the given format.
     static void ReadPixelsFromBuffer(int nX, int nY, int nWidth, int nHeight, Aurora::AuroraTextureFormats eFormat,
                                      void* pData)

@@ -337,8 +337,8 @@ public:
     virtual void AttachToScene(CAurScene* pScene);
     virtual Gob* GetModel(unsigned char a, int b);
     virtual void AddFireForgetAnimation(unsigned short a, void* p);
-    virtual void Hilite(const Vector& v, unsigned char a, float f, int b);
-    virtual void UnHilite(unsigned char a);
+    virtual int Hilite(const Vector& v, unsigned char a, float f, int b);
+    virtual int UnHilite(unsigned char a);
     virtual void* GetCameraFollowPart();
     virtual int GetFollowingBody();
     virtual float GetHeadHeightOffset();
@@ -511,7 +511,7 @@ public:
     void SetSpecialWalkAnimation(unsigned char a);
     int  GetLastInstant(unsigned int nInstant);
     void SetLastInstant(unsigned int nInstant, int value);
-    int  GetTargetInterfaceTargetType(CSWCObject* pTarget);
+    char GetTargetInterfaceTargetType(CSWCObject* pTarget);
     int  IsRangedWeapon(unsigned char type);
     void SetDisableLookAt(int disable);
     void StopRollingFootstepSound();

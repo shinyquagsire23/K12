@@ -148,6 +148,7 @@ HWND__* g_hWnd;
 K2HostViewer* g_pK2HostViewer;
 #endif
 
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
 {
     __builtin_va_list ap;
@@ -156,6 +157,7 @@ static int sprintf_s(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 // The memory-report counters, engine-wide BSS globals the resource manager maintains.
 extern int usedtexturememory;
@@ -2056,7 +2058,7 @@ void GameEnteredBackground()
             && g_pAppManager->m_pClientExoApp->GetInGameGui()->m_swGuiToggleState == CGuiInGame::SWGUI_STATE_SHOWN
             && g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface != 0
             && (g_pAppManager->m_pLoadGameErrorInfo == 0
-                || g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent != CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME)) {
+                || g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent != CSWReentrantServerStats::STALL_EVENT_SAVE_GAME)) {
             g_IosTakeScreenShot = 0;
             g_pAppManager->m_pServerExoApp->SaveGame(0, CExoString("BACKUPSAVE"),
                                                      static_cast<CSWSPlayer*>(pPlayer), 0);
@@ -2066,7 +2068,7 @@ void GameEnteredBackground()
             K2_ASSUME(g_pAppManager->m_pLoadGameErrorInfo != 0);   // CAppManager's own, ctor to dtor
             g_pAppManager->m_pLoadGameErrorInfo->m_bStallFinished = 0;
             g_pAppManager->m_pLoadGameErrorInfo->m_flag = 0;
-            g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
+            g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_NONE;
 
             // Drain the app-lifecycle events the save let pile up, keeping the newest eight, then
             // re-post the last "did enter background" and the (up to) two events after it, unless
@@ -2107,7 +2109,7 @@ void GameEnteredBackground()
             && g_pAppManager->m_pClientExoApp->GetInGameGui()->m_swGuiToggleState == CGuiInGame::SWGUI_STATE_SHOWN
             && g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface != 0
             && (g_pAppManager->m_pLoadGameErrorInfo == 0
-                || g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent != CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME)
+                || g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent != CSWReentrantServerStats::STALL_EVENT_SAVE_GAME)
             && g_pAppManager->m_pClientExoApp->m_pInternal->m_pPlayerControl != 0) {
             g_DuringSuspendSave = 1;
             g_pAppManager->m_pServerExoApp->SaveGame(0, CExoString("QUICKSAVE"),
@@ -2118,7 +2120,7 @@ void GameEnteredBackground()
             K2_ASSUME(g_pAppManager->m_pLoadGameErrorInfo != 0);   // CAppManager's own, ctor to dtor
             g_pAppManager->m_pLoadGameErrorInfo->m_bStallFinished = 0;
             g_pAppManager->m_pLoadGameErrorInfo->m_flag = 0;
-            g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
+            g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_NONE;
 
             CExoString sSaveDir;
             sSaveDir = g_pExoBase->m_pAliasList->ResolveFileName(CExoString("SAVES:"), RESTYPE_INVALID);

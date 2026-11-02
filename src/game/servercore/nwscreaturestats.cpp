@@ -187,7 +187,7 @@ void CSWSCreatureStats::ModifyAlignment(short nDelta)
     UpdateCombatInformation();
 }
 
-int CSWSCreatureStats::GetSimpleAlignmentGoodEvil()
+unsigned char CSWSCreatureStats::GetSimpleAlignmentGoodEvil()
 {
     if (m_nAlignment < 41)
         return 3;
@@ -1020,8 +1020,8 @@ unsigned int CSWSCreatureStats::ComputeNumberKnownSpellsLeft(unsigned char class
 {
 #if KOTOR1
     // K1: a Jedi class learns 2 powers at class level 1, else 1.
+    CSWClass* pClass = &g_pRules->m_paClasses[GetClass(classIndex)];
     unsigned char nClassId = GetClass(classIndex);
-    CSWClass* pClass = &g_pRules->m_paClasses[nClassId];
     if (pClass && CSWClass::IsJedi(nClassId))
         return (GetClassLevel(classIndex, 0) == 1) ? 2 : 1;
     return 0;
@@ -1900,7 +1900,7 @@ int CSWSCreatureStats::GetUnarmedDamageRoll(CSWSObject* pObject)
 }
 
 // Returns the D&D ability modifier, floor((nStat - 10) / 2).
-int CSWSCreatureStats::CalcStatModifier(unsigned char nStat)
+char CSWSCreatureStats::CalcStatModifier(unsigned char nStat)
 {
     int nDiff = nStat - 10;
     if (nStat < 10)
@@ -3643,19 +3643,19 @@ int CSWSCreatureStats::GetWeaponFinesse(CSWSItem* pItem)
 // Sorted-list immunity scan; it stops once the subtype passes the immunity sentinel.
 int CSWSCreatureStats::GetEffectImmunity(unsigned char nImmunity, CSWSCreature* pCreature)
 {
-    int nAlignment;
     int nRace;
+    int nAlignment;
     if (pCreature != NULL)
     {
-        short nAlignValue = pCreature->m_pStats->m_nAlignment;
         nRace = pCreature->m_pStats->m_nRace;
+        short nAlignValue = pCreature->m_pStats->m_nAlignment;
         nAlignment = (nAlignValue < 41) ? ALIGNMENT_DARK_SIDE
                      : ((nAlignValue > 59) ? ALIGNMENT_LIGHT_SIDE : ALIGNMENT_NEUTRAL);
     }
     else
     {
-        nAlignment = -1;
         nRace = g_pRules->m_nNumRaces;
+        nAlignment = -1;
     }
     CSWSCreature* pOwner = m_pOwner;
     for (int i = m_iFirstImmunity; i < pOwner->m_effects.m_count; i++)
@@ -3667,8 +3667,8 @@ int CSWSCreatureStats::GetEffectImmunity(unsigned char nImmunity, CSWSCreature* 
         int nSubType = pEffect->GetInteger(1);
         int nEffectAlign = pEffect->GetInteger(2);
         if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_IMMUNITY &&
-            (nType == nImmunity || nType == CSWSEffectListHandler::IMMUNITY_TYPE_ALL) &&
-            (nSubType == nRace || nSubType == g_pRules->m_nNumRaces) &&
+            (nType == CSWSEffectListHandler::IMMUNITY_TYPE_ALL || nType == nImmunity) &&
+            (nSubType == g_pRules->m_nNumRaces || nSubType == nRace) &&
             (nEffectAlign == ALIGNMENT_ALL || nEffectAlign == nAlignment))
             return 1;
     }
@@ -4553,20 +4553,12 @@ void CSWSCreatureStats::AddExperience(unsigned int nExp)
 #if KOTOR1
 // K1: the highest level of the first three class slots.
             unsigned char nBest = 0;
-            unsigned char nBestLvl = m_classInfo[0].m_level;
-#ifdef K2_FIX_ENGINE_BUGS
-            for (unsigned char i = 1; i < 2; i++)
-#else
-            for (unsigned char i = 1; i < 3; i++)
+            if (GetClassLevel(nBest, 0) < GetClassLevel(1, 0))
+                nBest = 1;
+#ifndef K2_FIX_ENGINE_BUGS
+            if (GetClassLevel(nBest, 0) < GetClassLevel(2, 0))
+                nBest = 2;
 #endif
-            {
-                unsigned char nLvl = GetClassLevel(i, 0);
-                if (nBestLvl < nLvl)
-                {
-                    nBest = i;
-                    nBestLvl = nLvl;
-                }
-            }
             nFavored = GetClass(nBest);
 #else
             unsigned char nBest = (GetClassLevel(0, 0) < GetClassLevel(1, 0)) ? 1 : 0;
@@ -5126,9 +5118,9 @@ void CSWSCreatureStats::SetStatById(int nStatId, float fValue)
     {
     case 0:  m_nAge = static_cast<int>(fValue); break;
     case 1:  m_fChallengeRating = fValue; break;
-    case 2:  m_nFortSaveBonus = static_cast<signed char>(fValue); break;
-    case 3:  m_nReflexSaveBonus = static_cast<signed char>(fValue); break;
-    case 4:  m_nWillSaveBonus = static_cast<signed char>(fValue); break;
+    case 2:  m_nFortSaveBonus = static_cast<unsigned char>(fValue); break;
+    case 3:  m_nReflexSaveBonus = static_cast<unsigned char>(fValue); break;
+    case 4:  m_nWillSaveBonus = static_cast<unsigned char>(fValue); break;
     case 5:
         m_nSTRBase = static_cast<unsigned char>(fValue);
         UpdateSTRModifier();
@@ -5479,7 +5471,7 @@ unsigned char CSWSCreatureStats::GetLevel(int bApplyNegativeLevels)
             g_pAppManager->m_pServerExoApp->GetGlobalVariableTable()->GetValueNumber(
                 CExoString("G_PC_LEVEL"), nAutoBalanceLevel);
         }
-        nLevel += static_cast<int>(fMult * static_cast<float>((nAutoBalanceLevel > 1) ? nAutoBalanceLevel : 1)) - 1;
+        nLevel += static_cast<int>(fMult * static_cast<float>(static_cast<unsigned char>((nAutoBalanceLevel > 1) ? nAutoBalanceLevel : 1))) - 1;
         if (nLevel < 0)
             nLevel = 1;
     }
@@ -6194,13 +6186,17 @@ int CSWSCreatureStats::HasSpell(unsigned char nSpellLevel, unsigned int nSpellId
     }
 #if KOTOR1
 // K1: the affordability test is the plain alignment and party cost.
-    if (a != 0 && nFound != 0) {
+    if (a != 0) {
+        if (nFound == 0)
+            return 0;
         CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         int nCost = pSpell->GetAdjustedForcePoints(m_nAlignment, m_pOwner->m_bInParty, 0, 0, 0);
         return nCost <= static_cast<short>(m_nCurrentForcePoints + m_nTemporaryForcePoints);
     }
 #else
-    if (a != 0 && nFound != 0) {
+    if (a != 0) {
+        if (nFound == 0)
+            return 0;
         CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
         int nForceRating = 0;
         CSWSArea* pArea = static_cast<CSWSArea*>(m_pOwner->GetArea());

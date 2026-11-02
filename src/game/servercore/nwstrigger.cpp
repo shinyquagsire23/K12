@@ -432,22 +432,12 @@ int CSWSTrigger::GetDetectDC() {
 
 void CSWSTrigger::SetCreator(unsigned long long objectId) {
     m_creatorId = objectId;
-    int result;
-    if (objectId != OBJECT_INVALID) {
-        if (g_pAppManager->m_pServerExoApp->GetPlayerCreatureId() == objectId) {
-            goto isCreator;
-        }
-        CSWPartyTable* pTable = g_pAppManager->m_pServerExoApp->GetPartyTable();
-        if (pTable->GetIsMember(objectId) != 0) {
-            goto isCreator;
-        }
-    }
-    result = 0;
-    goto store;
-isCreator:
-    result = 1;
-store:
-    m_bSetByPlayerParty = result;
+    if (objectId != OBJECT_INVALID &&
+        (objectId == g_pAppManager->m_pServerExoApp->GetPlayerCreatureId() ||
+         g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsMember(objectId)))
+        m_bSetByPlayerParty = 1;
+    else
+        m_bSetByPlayerParty = 0;
 }
 
 // Rebuilds the polygon as a square of half-extent fHalfExtent centred on m_position; the position
@@ -512,16 +502,14 @@ int CSWSTrigger::LoadFromTemplate(const CResRef& resRef) {
 }
 
 int CSWSTrigger::LineSegmentIntersectTrigger(const Vector& p1, const Vector& p2) {
+    float outT1, outT2;
     CSWArea* pArea = GetArea();
     if (pArea == 0) return 0;
     for (int i = 0; i < m_nGeomIndexCount; i++) {
-        int next = (i == m_nGeomIndexCount - 1) ? 0 : i + 1;
         int idxA = m_pGeomIndices[i];
-        int idxB = m_pGeomIndices[next];
-        Vector& a = m_pGeomVerts[idxA];
-        Vector& b = m_pGeomVerts[idxB];
-        float outT1, outT2;
-        if (pArea->IntersectLineSegments(p1.x, p1.y, p2.x, p2.y, a.x, a.y, b.x, b.y, &outT1, &outT2) == 1) {
+        int idxB = m_pGeomIndices[i != m_nGeomIndexCount - 1 ? i + 1 : 0];
+        if (pArea->IntersectLineSegments(p1.x, p1.y, p2.x, p2.y, m_pGeomVerts[idxA].x, m_pGeomVerts[idxA].y,
+                                         m_pGeomVerts[idxB].x, m_pGeomVerts[idxB].y, &outT1, &outT2) == 1) {
             return 1;
         }
     }
@@ -607,14 +595,16 @@ void CSWSTrigger::OnEnterMine(int nParam)
         }
         m_oidDisarmedBy = m_oidEnteringObject;
         g_pVirtualMachine->RunScript(&m_scriptSlots[5], m_objectId, 1);
+        g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+            0, 0, m_objectId, m_objectId, CServerAIMaster::EVENT_DESTROY_OBJECT, 0);
     } else {
         pEnterer->SendFeedbackMessage(FEEDBACK_TRIGGERED_MINE, 0);
         g_pVirtualMachine->RunScript(&m_scriptSlots[4], m_objectId, 1);
         g_pVirtualMachine->RunScript(&m_scriptSlots[1], m_objectId, 1);
-        if (m_bTrapOneShot == 0) return;
+        if (m_bTrapOneShot != 0)
+            g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                0, 0, m_objectId, m_objectId, CServerAIMaster::EVENT_DESTROY_OBJECT, 0);
     }
-    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
-        0, 0, m_objectId, m_objectId, CServerAIMaster::EVENT_DESTROY_OBJECT, 0);
 }
 
 // Trap scripts and the two trap DCs come from traps.2da when the trigger's own fields are unset or

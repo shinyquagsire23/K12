@@ -121,12 +121,14 @@ int CScriptEvent::operator!=(const CScriptEvent& other) const
 
 int CScriptEvent::SaveEvent(CResGFF* pGff, CResStruct* pStruct)
 {
+    CResList list;
+    int i;
+
     pGff->WriteFieldWORD(pStruct, m_eventType, const_cast<char*>("EventType"));
 
     if (m_params.m_aIntegers.m_count >= 1) {
-        CResList list;
         pGff->AddList(&list, pStruct, const_cast<char*>("IntList"));
-        for (int64_t i = 0; i < m_params.m_aIntegers.m_count; i++) {
+        for (i = 0; i < m_params.m_aIntegers.m_count; i++) {
             CResStruct elem;
             pGff->AddListElement(&elem, &list, GFF_STRUCT_ID_EVENT_PARAMETER);
             pGff->WriteFieldINT(&elem, m_params.m_aIntegers.m_pArray[i], const_cast<char*>("Parameter"));
@@ -134,9 +136,8 @@ int CScriptEvent::SaveEvent(CResGFF* pGff, CResStruct* pStruct)
     }
 
     if (m_params.m_aFloats.m_count >= 1) {
-        CResList list;
         pGff->AddList(&list, pStruct, const_cast<char*>("FloatList"));
-        for (int64_t i = 0; i < m_params.m_aFloats.m_count; i++) {
+        for (i = 0; i < m_params.m_aFloats.m_count; i++) {
             CResStruct elem;
             pGff->AddListElement(&elem, &list, GFF_STRUCT_ID_EVENT_PARAMETER);
             pGff->WriteFieldFLOAT(&elem, m_params.m_aFloats.m_pArray[i], const_cast<char*>("Parameter"));
@@ -144,9 +145,8 @@ int CScriptEvent::SaveEvent(CResGFF* pGff, CResStruct* pStruct)
     }
 
     if (m_params.m_aStrings.m_count >= 1) {
-        CResList list;
         pGff->AddList(&list, pStruct, const_cast<char*>("StringList"));
-        for (int64_t i = 0; i < m_params.m_aStrings.m_count; i++) {
+        for (i = 0; i < m_params.m_aStrings.m_count; i++) {
             CResStruct elem;
             pGff->AddListElement(&elem, &list, GFF_STRUCT_ID_EVENT_PARAMETER);
             pGff->WriteFieldCExoString(&elem, m_params.m_aStrings.m_pArray[i], const_cast<char*>("Parameter"));
@@ -154,9 +154,8 @@ int CScriptEvent::SaveEvent(CResGFF* pGff, CResStruct* pStruct)
     }
 
     if (m_params.m_aObjects.m_count >= 1) {
-        CResList list;
         pGff->AddList(&list, pStruct, const_cast<char*>("ObjectList"));
-        for (int64_t i = 0; i < m_params.m_aObjects.m_count; i++) {
+        for (i = 0; i < m_params.m_aObjects.m_count; i++) {
             CResStruct elem;
             pGff->AddListElement(&elem, &list, GFF_STRUCT_ID_EVENT_PARAMETER);
             pGff->WriteFieldDWORD(&elem, static_cast<unsigned int>(m_params.m_aObjects.m_pArray[i]), const_cast<char*>("Parameter"));
@@ -168,25 +167,26 @@ int CScriptEvent::SaveEvent(CResGFF* pGff, CResStruct* pStruct)
 
 void CScriptEvent::CopyScriptEvent(CScriptEvent* pSource)
 {
+    int i;
     if (!pSource)
         return;
 
     m_eventType = pSource->m_eventType;
 
     m_params.m_aIntegers.SetSize(pSource->m_params.m_aIntegers.m_count);
-    for (int i = 0; i < pSource->m_params.m_aIntegers.m_count; i++)
+    for (i = 0; i < pSource->m_params.m_aIntegers.m_count; i++)
         m_params.m_aIntegers.m_pArray[i] = pSource->m_params.m_aIntegers.m_pArray[i];
 
     m_params.m_aFloats.SetSize(pSource->m_params.m_aFloats.m_count);
-    for (int i = 0; i < pSource->m_params.m_aFloats.m_count; i++)
+    for (i = 0; i < pSource->m_params.m_aFloats.m_count; i++)
         m_params.m_aFloats.m_pArray[i] = pSource->m_params.m_aFloats.m_pArray[i];
 
     m_params.m_aObjects.SetSize(pSource->m_params.m_aObjects.m_count);
-    for (int i = 0; i < pSource->m_params.m_aObjects.m_count; i++)
+    for (i = 0; i < pSource->m_params.m_aObjects.m_count; i++)
         m_params.m_aObjects.m_pArray[i] = pSource->m_params.m_aObjects.m_pArray[i];
 
     m_params.m_aStrings.SetSize(pSource->m_params.m_aStrings.m_count);
-    for (int i = 0; i < pSource->m_params.m_aStrings.m_count; i++)
+    for (i = 0; i < pSource->m_params.m_aStrings.m_count; i++)
         m_params.m_aStrings.m_pArray[i] = pSource->m_params.m_aStrings.m_pArray[i];
 }
 

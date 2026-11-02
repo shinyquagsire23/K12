@@ -77,7 +77,7 @@ public:
     unsigned char GetFortSaveBonus(unsigned char nLevel);
     unsigned char GetRefSaveBonus(unsigned char nLevel);
     unsigned char GetWillSaveBonus(unsigned char nLevel);
-    unsigned char GetArmorBonus(int nLevel);
+    char GetArmorBonus(int nLevel);
     // The four text accessors, one per strref field at the head of the row; each returns the fetched
     // string by value.
     CExoString GetNameText();

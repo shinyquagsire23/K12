@@ -78,6 +78,7 @@ static char s_szOverridePath[64];
 // the builtin's (dst, fmt, ...) because the size passed here is not a literal.
 #include "port/libcbase.h"
 #include "port/crtapi.h"
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
@@ -85,6 +86,7 @@ static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 IODispatcher::IODispatcher() {
 }
@@ -918,7 +920,9 @@ void InputBinary::ResetMdlNodeParts(MdlNode* pNode, unsigned char* pBase)
     // m_pData is reloaded after the or-assign.
     for (int64_t i = 0; i < pNode->m_listControllers.m_count; i++) {
         NewController* pController = &pNode->m_listControllers.m_pData[i];
+#if !defined(__arm__)
         pController->m_target.m_nOffset |= NewController::kTargetUnconverted;
+#endif
         pNode->m_listControllers.m_pData[i].m_target.m_nDefaultOffset = static_cast<short>(Part::GetDefaultOffset64(pController->m_target.m_nDefaultOffset));
     }
     RelocateList(pNode->m_listFloats, pBase);

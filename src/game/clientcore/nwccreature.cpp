@@ -1181,9 +1181,9 @@ void CSWCCreature::SetLastInstant(unsigned int nInstant, int value) {
 // Classifies a radial-menu target as no target, hostile creature (or any creature while the reticle
 // is changing), non-hostile creature or non-inventory placeable, door or inventory placeable,
 // trigger, or anything else.
-int CSWCCreature::GetTargetInterfaceTargetType(CSWCObject* pTarget) {
+char CSWCCreature::GetTargetInterfaceTargetType(CSWCObject* pTarget) {
     if (pTarget == 0)
-        return TARGET_INTERFACE_NONE;
+        return static_cast<char>(TARGET_INTERFACE_NONE);
     if (pTarget->AsSWCCreature() != 0) {
         if (pTarget->AsSWCCreature()->IsHostile() != 0)
             return TARGET_INTERFACE_HOSTILE;
@@ -1382,9 +1382,8 @@ int CSWCCreature::TestAIStateActionGroup(int group) {
 void CSWCCreature::ResolveAttackIndex(unsigned short anim, int a, int exclude) {
     int idx;
     if (anim == SERVER_ANIMATION_ATTACK_2 && a == 0) {
-        do {
-            idx = rand_wincompatible() % 5;
-        } while (idx == exclude || idx == m_lastAttackIndex);
+        for (idx = m_lastAttackIndex; idx == m_lastAttackIndex || idx == exclude; idx = rand_wincompatible() % 5) {
+        }
     } else {
         idx = rand_wincompatible() % 2;
     }
@@ -1743,14 +1742,14 @@ void CSWCCreature::GetWayPoints(unsigned short* pCount, Vector** ppPoints,
                                 unsigned short* pCurrent) {
     *pCount = m_wayPointCount;
     *ppPoints = m_pWayPoints;
-    unsigned short i = 0;
-    if (m_wayPointCount != 0) {
-        while (&m_pWayPoints[i] != static_cast<Vector*>(m_pCurrentWayPoint) && i < m_wayPointCount)
-            i++;
-        if (i >= m_wayPointCount)
-            i = 0;
+    for (int i = 0; i < m_wayPointCount; i++) {
+        if (&m_pWayPoints[i] == static_cast<Vector*>(m_pCurrentWayPoint)) {
+            *pCurrent = static_cast<unsigned short>(i);
+            return;
+        }
     }
-    *pCurrent = i;}
+    *pCurrent = 0;
+}
 
 int CSWCCreature::ResetAnimationState() {
     if (static_cast<CSWCObject*>(this)->CSWCObject::GetLoopingAnimation() == SERVER_ANIMATION_READY)  // idiom-exempt: the header models these classes flat.
@@ -1782,7 +1781,7 @@ void CSWCCreature::PerformEmote(int emote) {
     if (pMsg) {
         pMsg->SendPlayerToServerInput_PlayAnimation(m_objectId, m_position,
                                                     CCREATURE_EMOTE_ANIMATION[emote]);
-        if ((0x1f90LL >> emote) & 1)
+        if ((static_cast<uintptr_t>(0x1f90) >> emote) & 1)
             pMsg->SendPlayerToServerQuickChat(CCREATURE_EMOTE_SOUNDID[emote]);
     }
 }
@@ -5858,15 +5857,17 @@ void CSWCCreature::SetCreatureType(unsigned char type) {
     m_pModel->m_creatureType = type;
 }
 
-void CSWCCreature::Hilite(const Vector& v, unsigned char a, float f, int b) {
+int CSWCCreature::Hilite(const Vector& v, unsigned char a, float f, int b) {
     K2_UNUSED(f);
     if (m_pModel)
-        m_pModel->Hilite(v, a, b);
+        return m_pModel->Hilite(v, a, b);
+    return 0;
 }
 
-void CSWCCreature::UnHilite(unsigned char a) {
+int CSWCCreature::UnHilite(unsigned char a) {
     if (m_pModel)
-        m_pModel->UnHilite(a);
+        return m_pModel->UnHilite(a);
+    return 0;
 }
 
 CSWCCreature* CSWCCreature::AsSWCCreature() {

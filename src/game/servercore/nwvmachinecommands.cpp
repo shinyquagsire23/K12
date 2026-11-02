@@ -3841,36 +3841,32 @@ int CSWVirtualMachineCommands::ExecuteCommandGetLastHostileActor(int nCommand, i
     if (pObject != 0 && pObject->AsSWSObject() != 0)
         pSelf = pObject->AsSWSObject();
     if (pSelf != 0) {
-        oidActor = pSelf->m_lastHostileActorId;
-        int bStillValid = 0;
         if (pSelf->m_bPlot == 1) {
-            if (oidActor == OBJECT_INVALID)
-                bStillValid = 1;
+            if (pSelf->m_lastHostileActorId != OBJECT_INVALID)
+                pSelf->SetLastHostileActor(OBJECT_INVALID, 1);
+            oidActor = OBJECT_INVALID;
         } else {
+            oidActor = pSelf->m_lastHostileActorId;
             CGameObject* pActor = g_pAppManager->m_pServerExoApp->GetGameObject(oidActor);
+            CSWSCreature* pActorCreature = 0;
             if (pActor != 0) {
-                unsigned char nType = pActor->m_objectType;
-                if (nType == CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT)
+                if (pActor->m_objectType == CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT) {
                     oidActor = pActor->AsSWSAreaOfEffectObject()->m_oidCreator;
-                if (nType == CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT
-                        || nType == CGameObject::OBJECT_TYPE_CREATURE) {
-                    CSWSCreature* pActorCreature =
-                        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidActor);
-#if KOTOR1  // K1 uses GetIsPCDying() and GetDeadTemp()
-                    if (pActorCreature != 0 && pActorCreature->GetDead() != 1 &&
-                        pActorCreature->GetIsPCDying() != 1 && pActorCreature->GetDeadTemp() == 0)
-                        bStillValid = 1;
-#else
-                    if (pActorCreature != 0 && pActorCreature->GetDead() != 1 &&
-                        pActorCreature->GetDeadTemp() == 0)
-                        bStillValid = 1;
-#endif
+                    pActorCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidActor);
+                } else if (pActor->m_objectType == CGameObject::OBJECT_TYPE_CREATURE) {
+                    pActorCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidActor);
                 }
             }
-        }
-        if (!bStillValid) {
-            oidActor = OBJECT_INVALID;
-            pSelf->SetLastHostileActor(OBJECT_INVALID, 1);
+#if KOTOR1  // K1 also drops a dying PC
+            if (pActorCreature == 0 || pActorCreature->GetDead() == 1 ||
+                pActorCreature->GetIsPCDying() == 1 || pActorCreature->GetDeadTemp() != 0) {
+#else
+            if (pActorCreature == 0 || pActorCreature->GetDead() == 1 ||
+                pActorCreature->GetDeadTemp() != 0) {
+#endif
+                pSelf->SetLastHostileActor(OBJECT_INVALID, 1);
+                oidActor = OBJECT_INVALID;
+            }
         }
     }
     if (!g_pVirtualMachine->StackPushObject(oidActor))
@@ -8195,19 +8191,17 @@ int CSWVirtualMachineCommands::ExecuteCommandSignalEvent(int nCommand, int nArgC
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
     unsigned long long oidTarget;
     void* pEventStruct;
-    CGameObject* pSelfObject;
-    CGameObject* pTargetObject;
     if (!g_pVirtualMachine->StackPopObject(&oidTarget))
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopEngineStructure(ENGINE_STRUCTURE_EVENT, &pEventStruct))
         return VM_ERROR_POP_FAILED;
     void* pEvent = pEventStruct;
-    unsigned long long oidCaller;
+    unsigned long long oidCaller = OBJECT_INVALID;
+    CGameObject* pSelfObject;
     if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(m_oidSelf, &pSelfObject)
             == CGameObjectArray::SUCCESS)
         oidCaller = m_oidSelf;
-    else
-        oidCaller = OBJECT_INVALID;
+    CGameObject* pTargetObject;
     if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(oidTarget, &pTargetObject)
             == CGameObjectArray::SUCCESS)
         g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
@@ -8322,11 +8316,11 @@ int CSWVirtualMachineCommands::ExecuteCommandActionUseFeat(int nCommand, int nAr
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
     int nFeat;
     unsigned long long oidTarget;
-    CGameObject* pObject;
     if (g_pVirtualMachine->StackPopInteger(&nFeat) == 0)
         return VM_ERROR_POP_FAILED;
     if (g_pVirtualMachine->StackPopObject(&oidTarget) == 0)
         return VM_ERROR_POP_FAILED;
+    CGameObject* pObject;
     if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(m_oidSelf, &pObject)
             == CGameObjectArray::SUCCESS
         && pObject->AsSWSCreature() != 0
@@ -11346,11 +11340,12 @@ int CSWVirtualMachineCommands::ExecuteCommandGetStandardFaction(int nCommand, in
     if (!g_pVirtualMachine->StackPopObject(&oidObject))
         return VM_ERROR_POP_FAILED;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-    if (pServer->m_pInternal != 0 && pServer->m_pInternal->m_pFactionManager != 0)
-        pServer->GetFactionOfObject(oidObject, &nFaction);
-    if (!g_pVirtualMachine->StackPushInteger(nFaction))
-        return VM_ERROR_PUSH_FAILED;
-    return 0;
+    if (pServer->m_pInternal == 0)
+        return g_pVirtualMachine->StackPushInteger(nFaction) ? 0 : VM_ERROR_PUSH_FAILED;
+    if (pServer->m_pInternal->m_pFactionManager == 0)
+        return g_pVirtualMachine->StackPushInteger(nFaction) ? 0 : VM_ERROR_PUSH_FAILED;
+    pServer->GetFactionOfObject(oidObject, &nFaction);
+    return g_pVirtualMachine->StackPushInteger(nFaction) ? 0 : VM_ERROR_PUSH_FAILED;
 }
 
 // SetReturnStrref: the return-to-base / end-of-mission prompt strings kept on the party table. The
@@ -12099,7 +12094,6 @@ int CSWVirtualMachineCommands::ExecuteCommandChangeByFaction(int nCommand, int n
     int nOldFaction;
     int nNewFaction;
     unsigned long long oidEach;
-    CGameObject* pObject;
     if (!g_pVirtualMachine->StackPopInteger(&nOldFaction))
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopInteger(&nNewFaction))
@@ -12108,6 +12102,7 @@ int CSWVirtualMachineCommands::ExecuteCommandChangeByFaction(int nCommand, int n
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     if (m_nScriptRunArg == 0)
         return 0;
+    CGameObject* pObject;
     if (pObjectArray->GetGameObject(m_oidSelf, &pObject) != CGameObjectArray::SUCCESS)
         return 0;
     CSWSArea* pArea;
@@ -12246,24 +12241,28 @@ int CSWVirtualMachineCommands::ExecuteCommandGetCasterLevel(int nCommand, int nA
             pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidCreator);
             pPlaceable = g_pAppManager->m_pServerExoApp->GetPlaceableByGameObjectID(oidCreator);
         }
-        CSWSpell* pSpell = 0;
         if (pCreature != 0) {
             if (pCreature->m_bItemCastSpell != 0) {
                 nCasterLevel = pCreature->m_nItemCastSpellLevel;
             } else if (pCreature->m_nCastClassIndex == CAST_CLASS_NONE) {
-                pSpell = g_pRules->GetSpell(pCreature->m_castSpellId);
+                CSWSpell* pSpell = g_pRules->GetSpell(pCreature->m_castSpellId);
+                if (pSpell != 0) {
+                    nCasterLevel = pSpell->m_nSpellLevelOther * 2 - 1;
+                    if (nCasterLevel < 10)
+                        nCasterLevel = 10;
+                }
             } else if (pCreature->m_nCastClassIndex == CAST_CLASS_SPELL_LIKE_ABILITY) {
                 nCasterLevel = pCreature->m_pStats->GetSpellLikeAbilityCasterLevel(nSpellId);
             } else {
                 nCasterLevel = pCreature->m_pStats->GetClassLevel(pCreature->m_nCastClassIndex, 1);
             }
         } else if (pPlaceable != 0) {
-            pSpell = g_pRules->GetSpell(pPlaceable->m_castSpellId);
-        }
-        if (pSpell != 0) {
-            nCasterLevel = pSpell->m_nSpellLevelOther * 2 - 1;
-            if (nCasterLevel < 10)
-                nCasterLevel = 10;
+            CSWSpell* pSpell = g_pRules->GetSpell(pPlaceable->m_castSpellId);
+            if (pSpell != 0) {
+                nCasterLevel = pSpell->m_nSpellLevelOther * 2 - 1;
+                if (nCasterLevel < 10)
+                    nCasterLevel = 10;
+            }
         }
     }
     if (!g_pVirtualMachine->StackPushInteger(nCasterLevel))
@@ -13196,7 +13195,6 @@ int CSWVirtualMachineCommands::ExecuteCommandActionUseSkill(int nCommand, int nA
     int nSubSkill;
     unsigned long long oidTarget;
     unsigned long long oidItem;
-    CGameObject* pObject;
     if (!g_pVirtualMachine->StackPopInteger(&nSkill))
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopObject(&oidTarget))
@@ -13207,6 +13205,7 @@ int CSWVirtualMachineCommands::ExecuteCommandActionUseSkill(int nCommand, int nA
     oidItem = OBJECT_INVALID;
     if (nArgCount >= 4 && !g_pVirtualMachine->StackPopObject(&oidItem))
         return VM_ERROR_POP_FAILED;
+    CGameObject* pObject;
     if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(m_oidSelf, &pObject)
             == CGameObjectArray::SUCCESS
         && pObject->AsSWSCreature() != 0
@@ -14970,11 +14969,11 @@ int CSWVirtualMachineCommands::ExecuteCommandSetNPCAIStyle(int nCommand, int nAr
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
     int nStyle = 0;
     unsigned long long oidCreature;
-    CGameObject* pObject;
     if (!g_pVirtualMachine->StackPopObject(&oidCreature))
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopInteger(&nStyle))
         return VM_ERROR_POP_FAILED;
+    CGameObject* pObject;
     if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(oidCreature, &pObject)
             == CGameObjectArray::SUCCESS
         && pObject->AsSWSCreature() != 0) {

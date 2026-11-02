@@ -3246,18 +3246,12 @@ void CSWGuiStatusSummary::AddAlignmentShift(char shift) {
 // Sets the flag bit meaning the credit change runs against the balance's sign: the money went the
 // other way round from a positive/negative balance, and the popup shows a different line for it.
 void CSWGuiStatusSummary::AddCredits(int credits) {
-    if (credits == 0)
-        return;
-    if (credits < 0) {
-        if (m_credits > 0)
+    if (credits != 0) {
+        if ((m_credits > 0 && credits < 0) || (m_credits < 0 && credits > 0))
             m_flags |= SUMMARY_CREDITS_NET;
+        m_credits += credits;
+        m_flags |= 1;
     }
-    if (credits > 0) {
-        if (m_credits < 0)
-            m_flags |= SUMMARY_CREDITS_NET;
-    }
-    m_credits += credits;
-    m_flags |= 1;
 }
 
 #if !KOTOR1  // K1: no alignment movie or level-up dialog
@@ -3784,13 +3778,18 @@ void CSWGuiToolTipPanel::PositionToolTip()
 #else
         const int nPad = 8, nOffset = 15, nEdge = 10;
 #endif
-        extent.w = extentIdeal.w + nPad;
-        extent.h = extentIdeal.h + nPad;
+        extent = extentIdeal;
+        extent.h += nPad;
+        extent.w += nPad;
 
         int nX = g_pGuiMan->m_currentMousePos.x + nOffset;
         int nY = g_pGuiMan->m_currentMousePos.y + nOffset;
-        extent.x = (nX + extent.w < g_nScreenWidth) ? nX : g_nScreenWidth - extentIdeal.w - nEdge;
-        extent.y = (nY + extent.h < g_nScreenHeight) ? nY : g_nScreenHeight - extentIdeal.h - nEdge;
+        if (nX + extent.w >= g_nScreenWidth)
+            nX = g_nScreenWidth - extent.w - (nEdge - nPad);
+        if (nY + extent.h >= g_nScreenHeight)
+            nY = g_nScreenHeight - extent.h - (nEdge - nPad);
+        extent.y = nY;
+        extent.x = nX;
 
         m_label.SetExtent(extent);
     }

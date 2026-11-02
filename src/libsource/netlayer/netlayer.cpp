@@ -149,10 +149,10 @@ bool CNetLayer::StartConnectToSession(unsigned int playerId, const CExoString& t
     unsigned int msgLen = target.GetLength() + 9;
     K2_ASSUME(msgLen >= 9);   // the 9-byte header plus the target length, which is far below 4 GB
     unsigned char* msg = new unsigned char[msgLen];
-    msg[6] = 0;
     *reinterpret_cast<unsigned int*>(msg) = FOURCC_BNCS;
     msg[4] = 'U';
     msg[5] = 0;
+    msg[6] = 0;
     msg[7] = static_cast<unsigned char>(connectType);
     msg[8] = static_cast<unsigned char>(target.GetLength());
     memcpy(msg + 9, target.CStr(), static_cast<unsigned int>(target.GetLength()));  // idiom-exempt: runtime length (strlen-derived, no compile-time size)
@@ -307,17 +307,17 @@ int CNetLayer::HandleBNCRMessage(unsigned int a, unsigned char* data, unsigned i
 {
     K2_UNUSED(a);
     if (len != 10) return 0;
-    if (data[4] == 'A')
+    if (data[4] != 'A')
     {
-        if (data[5] == 'C')
-        {
-            m_bConnectResponseReceived = 1;
-            m_nConnectResult = 1;
-            m_bAccepted = 1;
-        }
+        m_bAccepted = 0;
         return 1;
     }
-    m_bAccepted = 0;
+    if (data[5] == 'C')
+    {
+        m_bConnectResponseReceived = 1;
+        m_nConnectResult = 1;
+        m_bAccepted = 1;
+    }
     return 1;
 }
 

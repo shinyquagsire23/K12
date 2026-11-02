@@ -786,8 +786,8 @@ CScriptTalent::~CScriptTalent() {
 
 void CScriptTalent::CopyScriptTalent(CScriptTalent* pSource) {
     if (pSource != 0) {
-        m_nType = pSource->m_nType;
         m_nId = pSource->m_nId;
+        m_nType = pSource->m_nType;
         m_nMultiClass = pSource->m_nMultiClass;
         m_oidItem = pSource->m_oidItem;
         m_nItemPropertyIndex = pSource->m_nItemPropertyIndex;
@@ -1684,9 +1684,9 @@ int CSWSObject::GetHasFeatEffectApplied(unsigned short nFeat) {
     CSWFeat* pFeat = g_pRules->GetFeat(nFeat);
     if (!pFeat)
         return 0;
-    unsigned short nSpellId = static_cast<unsigned short>(pFeat->m_nSpellId);
+    int nSpellId = static_cast<unsigned short>(pFeat->m_nSpellId);
     for (int i = 0; i < m_effects.m_count; i++) {
-        if (m_effects.m_pArray[i]->m_spellId == nSpellId)
+        if (m_effects.m_pArray[i]->m_spellId == static_cast<unsigned int>(nSpellId))
             return 1;
     }
     return 0;
@@ -1814,26 +1814,24 @@ int CSWSObject::GetNumActionGroups() {
 }
 
 CExoLinkedListNode* CSWSObject::GetPositionByGroupIndex(int nIndex) {
+    int nGroups = 0;
     if (m_actionList.m_pInternal->m_pHead == 0)
         return 0;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
     CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.GetAtPos(pNode));
-    // Group 0 starts at the head, so the walk is skipped entirely.
-    if (nIndex == 0)
-        return pNode;
-    if (pAction == 0)
-        return 0;
     unsigned short nPrevGroup = pAction->m_nGroupId;
-    int nGroups = 0;
-    while (nGroups != nIndex) {
-        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.GetNext(pNode));
-        if (pAction == 0)
-            return 0;
-        if (pAction->m_nGroupId != nPrevGroup)
+    if (nGroups == nIndex)
+        return pNode;
+    while (pAction) {
+        if (pAction->m_nGroupId != nPrevGroup) {
+            nPrevGroup = pAction->m_nGroupId;
             nGroups++;
-        nPrevGroup = pAction->m_nGroupId;
+        }
+        if (nGroups == nIndex)
+            return pNode;
+        pAction = static_cast<CSWSObjectActionNode*>(m_actionList.GetNext(pNode));
     }
-    return pNode;
+    return 0;
 }
 
 unsigned short CSWSObject::GetActionByGroupId(unsigned short nGroupId,

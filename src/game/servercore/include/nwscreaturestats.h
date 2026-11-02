@@ -361,7 +361,7 @@ public:
     // K1: one argument, with no companion base-alignment arm.
     void ModifyAlignment(short nDelta);
     void ModifyAlignment(short nDelta, int) { ModifyAlignment(nDelta); }
-    int  GetSimpleAlignmentGoodEvil();
+    unsigned char GetSimpleAlignmentGoodEvil();
 #else
     void ModifyAlignment(short nDelta, int a);
 #endif
@@ -513,7 +513,7 @@ public:
     void SetNormalBonusFlags(unsigned short nFeat, int& bNormal, int& bBonus);
 
     // The D&D ability modifier, (nStat - 10) / 2 rounded toward zero.
-    int  CalcStatModifier(unsigned char nStat);
+    char CalcStatModifier(unsigned char nStat);
     // The three mental abilities also refresh the per-day spell uses; strength and dexterity do
     // not.
     void AdjustSpellUsesPerDay();

@@ -624,7 +624,7 @@ public:
     CSWSItem* GetCurrentAttackWeapon(int nAttackType);
     void SetBonusEffectAttacks(int bonusEffectAttacks);
     int  GetActualBonusEffectAttacks();
-    int  GetTotalAttacks();
+    unsigned char GetTotalAttacks();
     int  GetFunctionalBonusEffectAttacks();
     void SetSpellCastRound(int spell, int round);
     int  GetSpellActionPending();

@@ -34,7 +34,7 @@ int CSWCAnimBaseDoor::LoadModel(const CResRef& resRef, unsigned char nStyle)
     if (nStyle != ANIM_MODEL_BODY)
         return 0;
 
-    char szName[20];
+    char szName[17];
     resRef.CopyToString(szName);
     m_pModel = NewCAurObject(szName, const_cast<char*>("door"), 0, 0);
     if (m_pModel == 0)

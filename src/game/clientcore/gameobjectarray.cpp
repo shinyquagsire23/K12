@@ -104,57 +104,34 @@ unsigned char CGameObjectArray::GetGameObject(unsigned long long id, CGameObject
 
 unsigned char CGameObjectArray::Delete(unsigned long long id)
 {
-    unsigned long long idx = (id >> 19 & BUCKETS_PER_LIST) | (id & BUCKET_MASK);
-    CGameObjectArrayNode** ppSlot = &m_paBuckets[idx];
-    CGameObjectArrayNode* pNode = *ppSlot;
-    if (pNode == 0)
-        return 1;
-    unsigned int nId = static_cast<unsigned int>(id) & ID_VALUE_MASK;
-    if (pNode->m_id != nId)
-    {
-        do
-        {
-            ppSlot = &pNode->m_pNext;
-            pNode = *ppSlot;
-            if (pNode == 0)
-                return 1;
-        } while (pNode->m_id != nId);
-    }
-    *ppSlot = pNode->m_pNext;
-    operator delete(pNode);
-    return 0;
+    CGameObject* pObject;
+    return Delete(id, &pObject);
 }
 
 unsigned char CGameObjectArray::Delete(unsigned long long id, CGameObject** ppObject)
 {
+    unsigned int nId = static_cast<unsigned int>(id) & ID_VALUE_MASK;
     unsigned long long idx = (id >> 19 & BUCKETS_PER_LIST) | (id & BUCKET_MASK);
     CGameObjectArrayNode* pNode = m_paBuckets[idx];
     if (pNode == 0)
         return 1;
-    unsigned int nId = static_cast<unsigned int>(id) & ID_VALUE_MASK;
-    CGameObjectArrayNode* pPrev;
-    if (pNode->m_id == nId)
+    CGameObjectArrayNode* pPrev = 0;
+    while (pNode != 0)
     {
-        pPrev = 0;
-    }
-    else
-    {
-        do
+        if (pNode->m_id == nId)
         {
-            pPrev = pNode;
-            pNode = pPrev->m_pNext;
-            if (pNode == 0)
-                return 1;
-        } while (pNode->m_id != nId);
+            *ppObject = pNode->m_pObject;
+            if (pPrev == 0)
+                m_paBuckets[idx] = pNode->m_pNext;
+            else
+                pPrev->m_pNext = pNode->m_pNext;
+            operator delete(pNode);
+            return 0;
+        }
+        pPrev = pNode;
+        pNode = pNode->m_pNext;
     }
-    *ppObject = pNode->m_pObject;
-    CGameObjectArrayNode* pNext = pNode->m_pNext;
-    if (pPrev == 0)
-        m_paBuckets[idx] = pNext;
-    else
-        pPrev->m_pNext = pNext;
-    operator delete(pNode);
-    return 0;
+    return 1;
 }
 
 CGameObjectArray::CGameObjectArray(int bLarge)
@@ -331,177 +308,131 @@ END:
 unsigned char CGameObjectArray::AddExternalObject(unsigned long long& id, CGameObject* pObject, int bChar)
 {
     K2_UNUSED(bChar);
-    unsigned char status = 1;
-    unsigned long long origId;
-    unsigned int nId;
-    CGameObjectArrayNode* pNode;
-    CGameObjectArrayNode** ppBucket;
-    CGameObjectArrayNode* pHead;
-    CGameObjectArrayNode* pCur;
-    CGameObjectArrayNode* pPrev;
-
-    if (__builtin_expect(pObject == 0, 0))
-        goto RETURN_NULL;
-
-    origId = id;
-    nId = static_cast<unsigned int>(origId) & ID_VALUE_MASK;
-    if ((static_cast<unsigned int>(origId) & OBJECT_INVALID) == 0)
+    if (pObject == 0)
+        return 4;
+    unsigned long long origId = id;
+    unsigned int nId = static_cast<unsigned int>(origId) & ID_VALUE_MASK;
+    unsigned int nBucket = (nId & BUCKET_MASK) + BUCKETS_PER_LIST;
+    if (nId & OBJECT_INVALID)
     {
-        if (__builtin_expect(nId > OBJECT_INVALID - 1, 0))
-            goto END;
-        if (m_nNextObjectId[1] <= nId)
-            m_nNextObjectId[1] = nId + 1;
-    }
-    else
-    {
-        if (__builtin_expect(nId < OBJECT_INVALID + 1, 0))
-            goto END;
+        if (nId < OBJECT_INVALID + 1)
+            return 1;
+        if (nId > MAX_CHARACTER_ID)
+            return 1;
         if (m_nNextCharacterObjectId[1] >= nId)
             m_nNextCharacterObjectId[1] = nId - 1;
     }
+    else
+    {
+        if (nId > OBJECT_INVALID - 1)
+            return 1;
+        if (m_nNextObjectId[1] <= nId)
+            m_nNextObjectId[1] = nId + 1;
+    }
 
-    pNode = static_cast<CGameObjectArrayNode*>(::operator new(sizeof(CGameObjectArrayNode)));
+    CGameObjectArrayNode* pNode = static_cast<CGameObjectArrayNode*>(::operator new(sizeof(CGameObjectArrayNode)));
     pNode->m_id = nId;
     pNode->m_pObject = pObject;
     pNode->m_pNext = 0;
 
-    ppBucket = &m_paBuckets[BUCKETS_PER_LIST | (origId & BUCKET_MASK)];
-    pHead = *ppBucket;
-    status = 0;
-    if (pHead != 0)
+    if (m_paBuckets[nBucket] == 0)
     {
-        if (pHead->m_id > nId)
-        {
-            pCur = pHead;
-            do
-            {
-                pPrev = pCur;
-                pCur = pPrev->m_pNext;
-                if (pCur == 0)
-                    goto INSERT_AFTER_PREV;
-            } while (pCur->m_id > nId);
-            if (pPrev != 0)
-            {
-INSERT_AFTER_PREV:
-                pNode->m_pNext = pPrev->m_pNext;
-                pPrev->m_pNext = pNode;
-                goto WRITEBACK;
-            }
-        }
-        pNode->m_pNext = pHead;
+        m_paBuckets[nBucket] = pNode;
     }
-    *ppBucket = pNode;
-WRITEBACK:
+    else
+    {
+        CGameObjectArrayNode* pCur = m_paBuckets[nBucket];
+        CGameObjectArrayNode* pPrev = 0;
+        while (pCur != 0)
+        {
+            if (pCur->m_id <= nId)
+                break;
+            pPrev = pCur;
+            pCur = pCur->m_pNext;
+        }
+        if (pCur == 0)
+        {
+            pPrev->m_pNext = pNode;
+        }
+        else if (pPrev == 0)
+        {
+            pNode->m_pNext = m_paBuckets[nBucket];
+            m_paBuckets[nBucket] = pNode;
+        }
+        else
+        {
+            pNode->m_pNext = pPrev->m_pNext;
+            pPrev->m_pNext = pNode;
+        }
+    }
     id = origId | ID_LIST_BIT;
-    goto END;
-RETURN_NULL:
-    status = 4;
-END:
-    return status;
+    return 0;
 }
 
-// On an id collision the occupant is moved to a fresh id and the insert is retried.
 unsigned char CGameObjectArray::AddObjectAtPos(unsigned long long id, CGameObject* pObject)
 {
-    unsigned char status;
-#ifdef K2_FIX_ENGINE_BUGS
-    status = 0;
-#endif
-    unsigned long long list;
-    unsigned int nId;
-    unsigned int nCounter;
-    unsigned long long idx;
-    CGameObjectArrayNode* pNode;
-    CGameObjectArrayNode** ppBucket;
-    CGameObjectArrayNode* pHead;
-    unsigned int nCurId;
-    CGameObjectArrayNode* pCur;
-    CGameObjectArrayNode* pPrev;
-
-    while (true)
+    if (pObject == 0)
+        return 4;
+    unsigned int list = static_cast<unsigned int>(id >> 31) & 1;
+    unsigned int nId = static_cast<unsigned int>(id) & ID_VALUE_MASK;
+    unsigned long long idx = (list << 12) + (id & BUCKET_MASK);
+    unsigned int nNextId;
+    if (nId & OBJECT_INVALID)
     {
-        if (__builtin_expect(pObject == 0, 0))
-        {
-            status = 4;
-            goto END;
-        }
-
-        list = (id >> 31) & 1;
-        nId = static_cast<unsigned int>(id) & ID_VALUE_MASK;
-        if ((static_cast<unsigned int>(id) & OBJECT_INVALID) == 0)
-        {
-            if (__builtin_expect(nId > OBJECT_INVALID - 1, 0))
-            {
-                status = 1;
-                goto END;
-            }
-            nCounter = m_nNextObjectId[list];
-            if (nCounter <= nId)
-                m_nNextObjectId[list] = nCounter = nId + 1;
-        }
-        else
-        {
-            if (__builtin_expect(nId < OBJECT_INVALID + 1, 0))
-            {
-                status = 1;
-                goto END;
-            }
-            nCounter = m_nNextCharacterObjectId[list];
-            if (nCounter >= nId)
-                m_nNextCharacterObjectId[list] = nCounter = nId - 1;
-        }
-
-        idx = (list << 12) | (id & BUCKET_MASK);
-        pNode = static_cast<CGameObjectArrayNode*>(::operator new(sizeof(CGameObjectArrayNode)));
-        pNode->m_id = nId;
-        pNode->m_pObject = pObject;
-        pNode->m_pNext = 0;
-
-        ppBucket = &m_paBuckets[idx];
-        pHead = *ppBucket;
-        if (pHead == 0)
-        {
-            *ppBucket = pNode;
-            status = 0;
-            goto END;
-        }
-
-        nCurId = pHead->m_id;
-        pCur = pHead;
-        if (nCurId > nId)
-        {
-            do
-            {
-                pPrev = pCur;
-                pCur = pPrev->m_pNext;
-                if (pCur == 0)
-                    goto INSERT_AFTER_PREV;
-                nCurId = pCur->m_id;
-            } while (nCurId > nId);
-        }
-        else
-        {
-            pPrev = 0;
-        }
-        if (nCurId != nId)
-        {
-            status = 0;
-            if (pPrev == 0)
-            {
-                pNode->m_pNext = pHead;
-                *ppBucket = pNode;
-                goto END;
-            }
-            pNode->m_pNext = pPrev->m_pNext;
-INSERT_AFTER_PREV:
-            pPrev->m_pNext = pNode;
-            goto END;
-        }
-
-        pObject = pCur->m_pObject;
-        operator delete(pNode);
-        id = nCounter | (id & ID_LIST_BIT);
+        if (nId < OBJECT_INVALID + 1 || nId > MAX_CHARACTER_ID)
+            return 1;
+        if (m_nNextCharacterObjectId[list] >= nId)
+            m_nNextCharacterObjectId[list] = nId - 1;
+        nNextId = m_nNextCharacterObjectId[list];
     }
-END:
-    return status;
+    else
+    {
+        if (nId > OBJECT_INVALID - 1)
+            return 1;
+        if (m_nNextObjectId[list] <= nId)
+            m_nNextObjectId[list] = nId + 1;
+        nNextId = m_nNextObjectId[list];
+    }
+
+    CGameObjectArrayNode* pNode = static_cast<CGameObjectArrayNode*>(::operator new(sizeof(CGameObjectArrayNode)));
+    pNode->m_id = nId;
+    pNode->m_pObject = pObject;
+    pNode->m_pNext = 0;
+
+    CGameObjectArrayNode* pCur = m_paBuckets[idx];
+    if (pCur == 0)
+    {
+        m_paBuckets[idx] = pNode;
+        return 0;
+    }
+    CGameObjectArrayNode* pPrev = 0;
+    while (pCur != 0)
+    {
+        if (pCur->m_id <= nId)
+            break;
+        pPrev = pCur;
+        pCur = pCur->m_pNext;
+    }
+    if (pCur == 0)
+    {
+        pPrev->m_pNext = pNode;
+        return 0;
+    }
+    if (pCur->m_id == nId)
+    {
+        CGameObject* pOld = pCur->m_pObject;
+        operator delete(pNode);
+        if (list)
+            nNextId |= ID_LIST_BIT;
+        return AddObjectAtPos(nNextId, pOld);
+    }
+    if (pPrev == 0)
+    {
+        pNode->m_pNext = m_paBuckets[idx];
+        m_paBuckets[idx] = pNode;
+        return 0;
+    }
+    pNode->m_pNext = pPrev->m_pNext;
+    pPrev->m_pNext = pNode;
+    return 0;
 }

@@ -141,25 +141,21 @@ void CSWSStore::AddToArea(CSWSArea* pArea, float x, float y, float z, int a5) {
     }
 }
 
-void CSWSStore::SellItem(CSWSItem* pItem, CSWSCreature* pCreature) {
-    CSWSItem* local40 = pItem;
-    CSWSItem* local48;
-    if ((pItem->m_flags & 4) == 0) {
-        if (pItem->m_stackCount > 1) {
-            local48 = pItem->SplitItem(1);
-            goto shared;
-        }
-        if (!RemoveItemFromInventory(pItem)) return;
-        pCreature->AcquireItem(&local40, m_objectId, OBJECT_INVALID, 1);
-        return;
-    } else {
-        local48 = new CSWSItem(OBJECT_INVALID);
-        local48->CopyItem(local40);
-        local48->m_stackCount = 1;
-        local48->m_flags &= ~CSWSItem::FLAG_INFINITE;
+int CSWSStore::SellItem(CSWSItem* pItem, CSWSCreature* pCreature) {
+    if ((pItem->m_flags & 4) != 0) {
+        CSWSItem* pCopy = new CSWSItem(OBJECT_INVALID);
+        pCopy->CopyItem(pItem);
+        pCopy->m_flags &= ~CSWSItem::FLAG_INFINITE;
+        pCopy->m_stackCount = 1;
+        return pCreature->AcquireItem(&pCopy, m_objectId, OBJECT_INVALID, 1);
     }
-shared:
-    pCreature->AcquireItem(&local48, m_objectId, OBJECT_INVALID, 1);
+    if (pItem->m_stackCount > 1) {
+        CSWSItem* pSplit = pItem->SplitItem(1);
+        return pCreature->AcquireItem(&pSplit, m_objectId, OBJECT_INVALID, 1);
+    }
+    if (!RemoveItemFromInventory(pItem))
+        return 0;
+    return pCreature->AcquireItem(&pItem, m_objectId, OBJECT_INVALID, 1);
 }
 
 int CSWSStore::LoadFromTemplate(const CResRef& resRef, int flag) {

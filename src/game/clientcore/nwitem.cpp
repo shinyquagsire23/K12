@@ -85,13 +85,9 @@ CSWBaseItemArray::CSWBaseItemArray()
 
 CSWBaseItem* CSWBaseItemArray::GetBaseItem(int index) const
 {
-    if (index < 0)
-        return 0;
-    if (m_pItems == 0)
-        return 0;
-    if (m_count <= index)
-        return 0;
-    return &m_pItems[index];
+    if (m_pItems && index >= 0 && index < m_count)
+        return &m_pItems[index];
+    return 0;
 }
 
 CSWBaseItem::~CSWBaseItem()

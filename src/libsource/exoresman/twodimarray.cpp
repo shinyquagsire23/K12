@@ -178,19 +178,7 @@ int C2DA::GetFLOATEntry(int nRow, int nColumn, float* pfValue) {
 
 
 int C2DA::GetCExoStringEntry(int nRow, int nColumn, CExoString* pValue) {
-    if (nRow < 0) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (nColumn < 0) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_nRows <= nRow) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_nColumns <= nColumn) {
+    if (nRow < 0 || nRow >= m_nRows || nColumn < 0 || nColumn >= m_nColumns) {
         *pValue = m_sDefaultValue;
         return 0;
     }
@@ -492,15 +480,7 @@ int C2DA::SetFLOATEntry(const CExoString& sRow, const CExoString& sColumn, float
 
 int C2DA::GetCExoStringEntry(int nRow, const CExoString& sColumn, CExoString* pValue) {
     int nColumn = GetColumnIndex(sColumn);
-    if (nRow < 0) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (nColumn == -1) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_nRows <= nRow) {
+    if (nRow < 0 || nRow >= m_nRows || nColumn == -1) {
         *pValue = m_sDefaultValue;
         return 0;
     }
@@ -1038,37 +1018,29 @@ enum : unsigned long long {
 };
 
 int C2DA::SkipNewLines(char** ppData, unsigned int* pnSize) {
-    unsigned int nSize = *pnSize;
     char* pData = *ppData;
+    unsigned int nSize = *pnSize;
     unsigned int nCommitted = 0;
     unsigned int nCurrent = 0;
-    const unsigned long long kWhitespace = TOKEN_SEPARATOR_BITS;
-    while (nCommitted < nSize) {
-        unsigned char c = *pData;
-        if (c > ' ' || !((1ULL << c) & kWhitespace))
-            break;
-        if (nCurrent < nSize) {
-            while (c == '\r' || c == '\n') {
-                if (nCurrent == nSize - 1) {
-                    nCommitted = nSize;
-                    goto done;
-                }
-                c = *++pData;
-                nCurrent++;
-            }
-        }
+    while (nCommitted < *pnSize && (*pData == '\n' || *pData == '\r' || *pData == ' ' || *pData == '\t')) {
         nCommitted = nCurrent;
-        for (; nCurrent < nSize && (*pData == ' ' || *pData == '\t'); pData++)
+        while (nCommitted < *pnSize && (*pData == '\n' || *pData == '\r')) {
+            pData++;
+            nCommitted++;
+        }
+        nCurrent = nCommitted;
+        while (nCurrent < *pnSize && (*pData == ' ' || *pData == '\t')) {
+            pData++;
             nCurrent++;
+        }
         if (nCurrent == nSize) {
-            nCommitted = nSize;
+            nCommitted = nCurrent;
             break;
         }
     }
-done:
-    *ppData = *ppData + nCommitted;
-    *pnSize = *pnSize - nCommitted;
-    return nCommitted != 0;
+    *ppData += nCommitted;
+    *pnSize -= nCommitted;
+    return nCommitted > 0;
 }
 
 // Skips leading tab/space (counting what it skipped), then copies either a "-quoted token or an
@@ -1076,70 +1048,42 @@ done:
 __attribute__((always_inline))
 int C2DA::GetNextToken(char** ppData, unsigned int* pnSize,
                        char* pToken, unsigned int* pnSkipped) {
-    unsigned int nSize = *pnSize;
-    if (nSize == 0) {
+    if (*pnSize == 0) {
         *pToken = '\0';
         return 0;
     }
     char* pData = *ppData;
+    unsigned int nCopied = 0;
+    unsigned int nSkipped = 0;
     if (*pData == '\0')
         pData++;
-
-    unsigned int nSkipped = 0;
-    if (*pData == ' ' || *pData == '\t') {
-        do {
-            do {
-                nSkipped++;
-            } while (pData[nSkipped] == '\t');
-        } while (nSkipped < nSize && pData[nSkipped] == ' ');
-        pData += nSkipped;
+    while ((nSkipped < *pnSize && *pData == ' ') || *pData == '\t') {
+        pData++;
+        nSkipped++;
     }
     *pnSkipped = nSkipped;
     *pnSize -= nSkipped;
-
-    char* pOut = pToken;
-    unsigned int nCopied = 0;
-    char c = *pData;
-    if (c == '"') {
-        char* pQuote = pData;
-        char c2 = pQuote[1];
-        if (*pnSize != 0) {
-            do {
-                if (c2 == '\0' || c2 == '"')
-                    break;
-                pOut[nCopied] = c2;
-                c2 = pQuote[nCopied + 2];
-                nCopied++;
-            } while (nCopied < *pnSize);
-        }
-        pData = pQuote + nCopied;
-        pOut += nCopied;
-        if (c2 == '"') {
-            pData += 2;
+    if (*pData == '"') {
+        pData++;
+        while (nCopied < *pnSize && *pData != '\0' && *pData != '"') {
+            *pToken++ = *pData++;
             nCopied++;
-        } else {
+        }
+        if (*pData == '"') {
             pData++;
-        }
-    } else if (*pnSize == 0) {
-        // nothing to copy; pData stays where it is
-    } else {
-        while (1) {
-            if (static_cast<unsigned char>(c) < ' ' + 1 && ((1ULL << static_cast<unsigned char>(c)) & (TOKEN_SEPARATOR_BITS | 1ULL)))
-                break;
-            pOut[nCopied] = c;
             nCopied++;
-            if (nCopied >= *pnSize)
-                break;
-            c = pData[nCopied];
         }
-        pData += nCopied;
-        pOut += nCopied;
+    } else {
+        while (nCopied < *pnSize && *pData != '\0' && *pData != ' ' && *pData != '\t' &&
+               *pData != '\n' && *pData != '\r') {
+            *pToken++ = *pData++;
+            nCopied++;
+        }
     }
-
     *ppData = pData;
-    *pnSize = *pnSize - nCopied;
-    *pOut = '\0';
-    return nCopied != 0;
+    *pnSize -= nCopied;
+    *pToken = '\0';
+    return nCopied > 0;
 }
 
 // Writes the "2DA V2.b" binary format: a deduped string table of every cell value, then the

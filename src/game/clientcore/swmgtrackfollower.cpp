@@ -1114,9 +1114,10 @@ float CSWMiniPlayer::SetMinSpeed(float speed)
     return m_minSpeed;
 }
 #else
-void CSWMiniPlayer::SetMinSpeed(float speed)
+float CSWMiniPlayer::SetMinSpeed(float speed)
 {
     m_minSpeed = speed;
+    return speed;
 }
 #endif
 
@@ -1131,9 +1132,10 @@ float CSWMiniPlayer::SetAPS(float aps)
     return m_aps;
 }
 #else
-void CSWMiniPlayer::SetAPS(float aps)
+float CSWMiniPlayer::SetAPS(float aps)
 {
     m_aps = aps;
+    return aps;
 }
 #endif
 

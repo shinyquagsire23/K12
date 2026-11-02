@@ -381,8 +381,8 @@ CLastUpdateObject::CLastUpdateObject()
     : m_position(), m_orientation(), m_lastPathPoint(0.0f, 0.0f), m_fLastPathPointZ(0.0f)
 {
     m_nSoundSetFile = 0;
-    m_nAnimation = SERVER_ANIMATION_READY;
     m_fAnimationSpeed = 1.0f;
+    m_nAnimation = SERVER_ANIMATION_READY;
     m_nClasses = 0xffff;
     m_nClassLevels = 0xffff;
 }

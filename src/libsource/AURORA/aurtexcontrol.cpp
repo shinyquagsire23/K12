@@ -358,9 +358,9 @@ unsigned char* TextureController::Height2Channel(unsigned char* pSrc, unsigned c
                         fTranslate = m_lstChannelTranslate.m_pData[n];
                     int nValue = 0;
                     if (fScale > 0.0f)
-                        nValue = static_cast<int>(static_cast<float>(uSrc) * fScale);
+                        nValue = static_cast<unsigned char>(static_cast<float>(uSrc) * fScale);
                     if (fTranslate > 0.0f)
-                        nValue = nValue + static_cast<int>(fTranslate * 255.0f);
+                        nValue = nValue + static_cast<unsigned char>(fTranslate * 255.0f);
                     pDst[(y * nWidth + x) * 4 + n] = static_cast<unsigned char>(nValue);
                 }
             } else if (nBPP >= 1) {
@@ -375,9 +375,9 @@ unsigned char* TextureController::Height2Channel(unsigned char* pSrc, unsigned c
                         fTranslateLo = m_lstChannelTranslate.m_pData[n];
                     unsigned char uValue = 0;
                     if (fScaleLo > 0.0f)
-                        uValue = static_cast<unsigned char>(static_cast<int>(fValue * fScaleLo)) & 0x0F;
+                        uValue = static_cast<unsigned char>(static_cast<unsigned char>(fValue * fScaleLo)) & 0x0F;
                     if (fTranslateLo > 0.0f)
-                        uValue = (static_cast<unsigned char>(uValue + static_cast<int>(fTranslateLo * 15.0f))) & 0x0F;
+                        uValue = (static_cast<unsigned char>(uValue + static_cast<unsigned char>(fTranslateLo * 15.0f))) & 0x0F;
                     pDstRow[x * nBPP + n / 2] = uValue;
 
                     float fScaleHi = 1.0f;
@@ -387,11 +387,11 @@ unsigned char* TextureController::Height2Channel(unsigned char* pSrc, unsigned c
                     if (m_lstChannelTranslate.m_count > n + 1)
                         fTranslateHi = m_lstChannelTranslate.m_pData[n + 1];
                     if (fScaleHi > 0.0f) {
-                        uValue = static_cast<unsigned char>(static_cast<int>(fValue * fScaleHi) << 4);
+                        uValue = static_cast<unsigned char>(static_cast<unsigned char>(fValue * fScaleHi) << 4);
                         pDstRow[x * nBPP + n / 2] = uValue;
                     }
                     if (fTranslateHi > 0.0f) {
-                        uValue = (static_cast<unsigned char>(uValue + (static_cast<int>(fTranslateHi * 15.0f) << 4))) & 0xF0;
+                        uValue = (static_cast<unsigned char>(uValue + (static_cast<unsigned char>(fTranslateHi * 15.0f) << 4))) & 0xF0;
                         pDstRow[x * nBPP + n / 2] = uValue;
                     }
                 }
@@ -424,8 +424,8 @@ void ImageLowpassLowQualityBlur2(unsigned char*, int, int);
 unsigned char* ImageBuildPerlin(int nSize, float fScale);
 // The 4th argument is a mode flag, constant 0 at its only call site.
 unsigned char* ImageBuildParameterPerlin(int nSize, float fScale, int nMaxChannel, int nBase);
-int ImageGetPerlinPixel(unsigned char** ppImages, int nX, int nY, int nBase, int nCount,
-                        int nDim);
+unsigned char ImageGetPerlinPixel(unsigned char** ppImages, int nX, int nY, int nBase, int nCount,
+                                  int nDim);
 
 // g_nArturoPass is the interlace pass (0 and 1 each redraw half the rows, 2 uploads) and
 // g_fArturoTime the renderer-time accumulator. The pass starts at -1, so the first Control() call
@@ -569,7 +569,7 @@ void WaveTextureController::Control()
     if (nHeight >= 1) {
         for (int y = 0; y < nHeight; y++) {
             for (int x = 0; x < nWidth; x++) {
-                pImage[nWidth * y + x] = static_cast<unsigned char>(static_cast<int>(m_pfHeights[nWidth * y + x]));
+                pImage[nWidth * y + x] = static_cast<unsigned char>(m_pfHeights[nWidth * y + x]);
             }
         }
     }
@@ -927,13 +927,13 @@ void RingDistortTextureController::Control()
                         fR0 = 255.0f;
                     if (fR0 < 0.0f)
                         fR0 = 0.0f;
-                    m_pImage[nOffset + 0] = static_cast<unsigned char>(fR0);
+                    m_pImage[nOffset + 0] = static_cast<unsigned char>(static_cast<int>(fR0));
                     float fG0 = fGVal * 255.0f;
                     if (fG0 > 255.0f)
                         fG0 = 255.0f;
                     if (fG0 < 0.0f)
                         fG0 = 0.0f;
-                    m_pImage[nOffset + 1] = static_cast<unsigned char>(fG0);
+                    m_pImage[nOffset + 1] = static_cast<unsigned char>(static_cast<int>(fG0));
                     m_pImage[nOffset + 2] = 0xFF;
                     m_pImage[nOffset + 3] = 0xFF;
 #endif
@@ -1227,7 +1227,7 @@ void WaterTextureController::Control()
                         float fFX = fStepX * static_cast<float>(x);
                         float fValue = FloatInterpolate(m_pfHeights, fFX, fFY, m_nWaterWidth, m_nWaterHeight);
                         unsigned char* pDest = (lowqualityblur == 0) ? m_pImage : m_pBlurImage;
-                        pDest[nOffset + x] = static_cast<unsigned char>(static_cast<int>(fValue));
+                        pDest[nOffset + x] = static_cast<unsigned char>(fValue);
                     }
                 }
                 nOffset += nImageWidth;

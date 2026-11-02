@@ -4,7 +4,7 @@ class CExoString;
 class CClientExoApp;
 class CServerExoApp;
 class CObjectTableManager;
-struct CLoadGameErrorInfo;
+struct CSWReentrantServerStats;
 
 class CAppManager {
 public:
@@ -37,7 +37,7 @@ public:
     CServerExoApp*       m_pServerExoApp;
     CObjectTableManager* m_pObjectTableManager1;
     CObjectTableManager* m_pObjectTableManager2;
-    CLoadGameErrorInfo*  m_pLoadGameErrorInfo;
+    CSWReentrantServerStats*  m_pLoadGameErrorInfo;
     int                  m_appId;
     // The pause state cached across a focus loss, so the window can be unpaused back to it.
     int                  m_nPauseStateOnDeactivate;
@@ -57,7 +57,7 @@ extern void AurSaveGameSnapshot(char* path, int value, bool flag);
 
 #include "exostring.h"
 
-struct CLoadGameErrorInfo {
+struct CSWReentrantServerStats {
     // m_nStallEvent: the long operation the load bar is stalled on, as the StartStallEvent message
     // carries it to the client.
     enum StallEvent {
@@ -67,7 +67,9 @@ struct CLoadGameErrorInfo {
         STALL_EVENT_LOAD_SAVE   = 3,
     };
 
-    CLoadGameErrorInfo();
+    CSWReentrantServerStats() {
+        __builtin_memset(&m_flag, 0, __builtin_offsetof(CSWReentrantServerStats, m_saveDirectory));
+    }
 
     int          m_flag;
     int          m_nStallEvent;

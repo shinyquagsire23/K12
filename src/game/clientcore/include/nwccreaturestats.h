@@ -130,7 +130,7 @@ public:
     CSWCCreature* m_pCreature;
 #endif
 
-    int  GetArmorClass(int nType);
+    short GetArmorClass(int nType);
     int  GetMenuInfoCount(unsigned int nType);
     void UpdateAbilityModifiedSkillRanks();
     void ClearKnownSpells();
@@ -171,7 +171,7 @@ public:
             return 1;
         return m_lstBonusFeats.Contains(nFeat) != 0;
     }
-    int  GetFeatRemainingUses(unsigned short nFeat);
+    unsigned char GetFeatRemainingUses(unsigned short nFeat);
     void SetFeatRemainingUses(unsigned short nFeat, unsigned char nUses);
     unsigned short GetBonusFeat(unsigned short nFeat);
     int  SpontaneousCastUsesLeft(unsigned char nClassPos, unsigned char nSpellLevel);
@@ -195,7 +195,7 @@ public:
     CExoString GetAlignmentString(int nAlignment);
     float GetMinSpellRange(const CExoString& sRange);
     void PayoutPowerAchievements();
-    int  GetBaseAttackBonus();
+    unsigned char GetBaseAttackBonus();
     int  GetModifiedAttackValue(int nAttack);
     int  CalculateNumAttacks();
     int  GetNumOnHandAttacks();
@@ -213,7 +213,7 @@ public:
     void SetSpellsPerDayLeft(unsigned char nClassPos, unsigned char nSpellLevel, unsigned char nValue);
     int  HasSpell(unsigned char nSpellLevel, unsigned int nSpellId);
     int  GetCanUseSkill(unsigned short nSkill);
-    int  GetSkillRank(unsigned short nSkill);
+    signed char GetSkillRank(unsigned short nSkill);
     signed char GetSkillModifier(unsigned short nSkill);
     int  GetCombatModeAttackModifier(CSWCCreature* pCreature);
     int  GetCombatModeDamageModifier(CSWCCreature* pCreature);
@@ -309,7 +309,7 @@ public:
     void AddDefaultPackageSkills(int nPackage, int bSkipFlagCheck);
     // nClassId is a raw class row id, not a class slot, and the two flags gate whether the initial
     // normal and bonus budget counts at all.
-    int AddDefaultPackageFeats(int nClassId, CExoArrayList<unsigned short>* pFeats,
+    unsigned char AddDefaultPackageFeats(int nClassId, CExoArrayList<unsigned short>* pFeats,
                                 int bAllowNormal, int bAllowBonus);
     unsigned int AddDefaultPackageSpells(CExoArrayList<unsigned int>* pSpells);
 };

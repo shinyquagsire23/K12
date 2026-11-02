@@ -652,47 +652,51 @@ int64_t CSWSPlayer::LoadCreatureData(CResRef resRef, CSWSCreature* pCreature)
 
     CResGFF* pGff = new CResGFF(RESTYPE_BIC, const_cast<char*>("BIC "), resRef);
 
-    if (pGff->m_nValid != 0)
+    if (pGff->m_nValid == 0)
     {
-        SetFileName(resRef);
-        pGff->GetTopLevelStruct(&topStruct);
-
-        int64_t nResult =
-            pCreature->m_pStats->ReadStatsFromGff(pGff, &topStruct, &pCreature->m_appearance);
-
-        if (nResult != 0)
-        {
-            pGff->Dump(0);
-            delete pGff;
-
-            return nResult;
-        }
-
-        pCreature->SetCurrentHitPoints(pCreature->GetMaxHitPoints(1));
-
-        pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("DetectMode"), bSuccess, 0);
-        pCreature->SetActivity(CSWSCreature::ACTIVITY_DETECT, 1, 0);
-
-        pCreature->SetActivity(
-            1, pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("StealthMode"), bSuccess, 0), 0);
-
-        pCreature->m_nCreatureSize =
-            pGff->ReadFieldINT(&topStruct, const_cast<char*>("CreatureSize"), bSuccess, 3);
-
-        pCreature->m_bDisguised =
-            pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("PM_IsDisguised"), bSuccess, 0);
-
-        if (pCreature->m_bDisguised != 0)
-        {
-            pCreature->m_nDisguiseAppearance =
-                pGff->ReadFieldWORD(&topStruct, const_cast<char*>("PM_Appearance"), bSuccess, 0);
-        }
-
-        pCreature->ReadScriptsFromGff(pGff, &topStruct);
-        pCreature->ReadItemsFromGff(pGff, &topStruct, 0, 1, 0);
-        pCreature->m_pStats->ReadSpellsFromGff(pGff, &topStruct);
-        pCreature->PostProcess();
+        pGff->Dump(0);
+        delete pGff;
+        return 0;
     }
+
+    SetFileName(resRef);
+    pGff->GetTopLevelStruct(&topStruct);
+
+    int64_t nResult =
+        pCreature->m_pStats->ReadStatsFromGff(pGff, &topStruct, &pCreature->m_appearance);
+
+    if (nResult != 0)
+    {
+        pGff->Dump(0);
+        delete pGff;
+
+        return nResult;
+    }
+
+    pCreature->SetCurrentHitPoints(pCreature->GetMaxHitPoints(1));
+
+    pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("DetectMode"), bSuccess, 0);
+    pCreature->SetActivity(CSWSCreature::ACTIVITY_DETECT, 1, 0);
+
+    pCreature->SetActivity(
+        1, pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("StealthMode"), bSuccess, 0), 0);
+
+    pCreature->m_nCreatureSize =
+        pGff->ReadFieldINT(&topStruct, const_cast<char*>("CreatureSize"), bSuccess, 3);
+
+    pCreature->m_bDisguised =
+        pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("PM_IsDisguised"), bSuccess, 0);
+
+    if (pCreature->m_bDisguised != 0)
+    {
+        pCreature->m_nDisguiseAppearance =
+            pGff->ReadFieldWORD(&topStruct, const_cast<char*>("PM_Appearance"), bSuccess, 0);
+    }
+
+    pCreature->ReadScriptsFromGff(pGff, &topStruct);
+    pCreature->ReadItemsFromGff(pGff, &topStruct, 0, 1, 0);
+    pCreature->m_pStats->ReadSpellsFromGff(pGff, &topStruct);
+    pCreature->PostProcess();
 
     pGff->Dump(0);
     delete pGff;

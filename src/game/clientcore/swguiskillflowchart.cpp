@@ -208,26 +208,15 @@ void CSWGuiSkillFlowChart::AddFeatSet(unsigned int nFeatA, unsigned int nFeatB, 
     CResRef resRef;
     CSWGuiSkillFlow* pFlow = new CSWGuiSkillFlow();
 
-    CSWFeat* pFeat = g_pRules->GetFeat(static_cast<unsigned short>(nFeatA));
-    if (pFeat)
-        resRef = pFeat->m_icon;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(0, nFeatA, resRef);
-
-    pFeat = g_pRules->GetFeat(static_cast<unsigned short>(nFeatB));
-    if (pFeat)
-        resRef = pFeat->m_icon;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(1, nFeatB, resRef);
-
-    pFeat = g_pRules->GetFeat(static_cast<unsigned short>(nFeatC));
-    if (pFeat)
-        resRef = pFeat->m_icon;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(2, nFeatC, resRef);
+    unsigned int anFeats[3] = { nFeatA, nFeatB, nFeatC };
+    for (int i = 0; i < 3; i++) {
+        CSWFeat* pFeat = g_pRules->GetFeat(static_cast<unsigned short>(anFeats[i]));
+        if (pFeat)
+            resRef = pFeat->m_icon;
+        else
+            resRef = const_cast<char*>("");
+        pFlow->SetSkillInfo(static_cast<unsigned char>(i), anFeats[i], resRef);
+    }
 
 #if KOTOR1 && !defined(K2_UI_TOUCH)
     pFlow->SetExtent(CSWGuiExtent(0, 0, 242, K1FlowRowHeight()));
@@ -248,32 +237,17 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     CResRef resRef;
     CSWGuiSkillFlow* pFlow = new CSWGuiSkillFlow();
 
-    CSWSpell* pSpell = g_pRules->GetSpell(nPowerA);
-    if (nSecret)
-        resRef = const_cast<char*>("ip_secret");
-    else if (pSpell)
-        resRef = pSpell->m_iconResRef;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(0, nPowerA, resRef);
-
-    pSpell = g_pRules->GetSpell(nPowerB);
-    if (nSecret)
-        resRef = const_cast<char*>("ip_secret");
-    else if (pSpell)
-        resRef = pSpell->m_iconResRef;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(1, nPowerB, resRef);
-
-    pSpell = g_pRules->GetSpell(nPowerC);
-    if (nSecret)
-        resRef = const_cast<char*>("ip_secret");
-    else if (pSpell)
-        resRef = pSpell->m_iconResRef;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(2, nPowerC, resRef);
+    unsigned int anPowers[3] = { nPowerA, nPowerB, nPowerC };
+    for (int i = 0; i < 3; i++) {
+        CSWSpell* pSpell = g_pRules->GetSpell(anPowers[i]);
+        if (nSecret)
+            resRef = const_cast<char*>("ip_secret");
+        else if (pSpell)
+            resRef = pSpell->m_iconResRef;
+        else
+            resRef = const_cast<char*>("");
+        pFlow->SetSkillInfo(static_cast<unsigned char>(i), anPowers[i], resRef);
+    }
 
     CSWGuiExtent extent;
     extent.x = 0;
@@ -292,26 +266,15 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
     CResRef resRef;
     CSWGuiSkillFlow* pFlow = new CSWGuiSkillFlow();
 
-    CSWSpell* pSpell = g_pRules->GetSpell(nPowerA);
-    if (pSpell)
-        resRef = pSpell->m_iconResRef;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(0, nPowerA, resRef);
-
-    pSpell = g_pRules->GetSpell(nPowerB);
-    if (pSpell)
-        resRef = pSpell->m_iconResRef;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(1, nPowerB, resRef);
-
-    pSpell = g_pRules->GetSpell(nPowerC);
-    if (pSpell)
-        resRef = pSpell->m_iconResRef;
-    else
-        resRef = const_cast<char*>("");
-    pFlow->SetSkillInfo(2, nPowerC, resRef);
+    unsigned int anPowers[3] = { nPowerA, nPowerB, nPowerC };
+    for (int i = 0; i < 3; i++) {
+        CSWSpell* pSpell = g_pRules->GetSpell(anPowers[i]);
+        if (pSpell)
+            resRef = pSpell->m_iconResRef;
+        else
+            resRef = const_cast<char*>("");
+        pFlow->SetSkillInfo(static_cast<unsigned char>(i), anPowers[i], resRef);
+    }
 
     CSWGuiExtent extent;
     extent.x = 0;

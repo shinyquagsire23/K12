@@ -6,6 +6,7 @@
 #endif
 #include "AURORA/aurmodel.h"
 #include <stdio.h>
+#include <algorithm>
 #include "aurlightmanager.h"
 #include "aurinternal.h"
 #include "aurcamera.h"
@@ -14,7 +15,10 @@
 #include "Vector.h"
 #include "Matrix.h"
 
+// The ASCII model loader's key-list switches (AddGenericController, aurmodelparse.cpp).
+int compressquaternions = 1;
 float cullvalueforkeys = 9.99999975e-05f;
+int cullunnecessary = 1;
 
 int LightManager::m_nMaxLights = 3;
 int LightManager::m_nMaxShadowLights = 1;
@@ -1096,12 +1100,11 @@ Vector LightManager::GetEmitterLighting(Vector vPosition, List<PartLight*>* pExc
         vTotal.z = headlightdiffuse.z + vTotal.z + headlightambient.z;
     }
 
-    Vector vResult;
-    vResult.x = fminf(vTotal.x, 1.0f);
-    vResult.y = fminf(vTotal.y, 1.0f);
-    vResult.z = fminf(vTotal.z, 1.0f);
+    vTotal.x = std::min(1.0f, vTotal.x);
+    vTotal.y = std::min(1.0f, vTotal.y);
+    vTotal.z = std::min(1.0f, vTotal.z);
 
-    return vResult;
+    return vTotal;
 }
 
 // Runs the fading pipeline. Reconciles the lights currently ramped up against the set the frame

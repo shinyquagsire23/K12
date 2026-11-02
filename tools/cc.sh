@@ -65,6 +65,11 @@ if [[ -n "${CF_MAP:-}" ]]; then   # CF_MAP: `<path prefix> <flags...>` lines, lo
     if [[ "$REL" == "$pfx"* && ${#pfx} -ge $best ]]; then best=${#pfx}; TU_CFLAGS="$rest "; fi
   done < "$CF_MAP"
 fi
+# CC_DROP: per-library flag words to remove (v7match's K1 armv7 config drops -fno-builtin-strlen/-memcpy/
+# -memset: that image was built without _FORTIFY_SOURCE and folds strlen of a literal, docs/TOOLS.md v7match).
+for w in ${CC_DROP:-}; do
+  TU_CFLAGS=" $TU_CFLAGS "; TU_CFLAGS="${TU_CFLAGS// $w / }"
+done
 # KOTOR 1 is C++14: no `new T[n]` negative-count clamp (see the -std note below).
 if [[ "$GAME" == k1 ]]; then
   TU_CFLAGS="$TU_CFLAGS -std=c++14"

@@ -256,22 +256,9 @@ void PartTrigger::SetHighlighted(bool bFlag, float fHeight, bool bGroup)
 // same begin, vertices, end shape.
 void PartTrigger::DrawVolume()
 {
-    unsigned int nPrimType = primTypeTranslationTable[4];
-    ASLgl::glBegin(nPrimType);
-    for (int i = 0; i < m_listCageSides.m_count; i++)
-        ASLgl::glVertex3fv(reinterpret_cast<const float*>(&m_listCageSides.m_pData[i]));
-    ASLgl::glEnd();
-
-    nPrimType = primTypeTranslationTable[8];
-    ASLgl::glBegin(nPrimType);
-    for (int i = 0; i < m_listCageTop.m_count; i++)
-        ASLgl::glVertex3fv(reinterpret_cast<const float*>(&m_listCageTop.m_pData[i]));
-    ASLgl::glEnd();
-
-    ASLgl::glBegin(nPrimType);
-    for (int i = 0; i < m_listCageBottom.m_count; i++)
-        ASLgl::glVertex3fv(reinterpret_cast<const float*>(&m_listCageBottom.m_pData[i]));
-    ASLgl::glEnd();
+    GLRender::DrawFromVerts(Aurora::kPrimTriangleStrip, m_listCageSides);
+    GLRender::DrawFromVerts(Aurora::kPrimPolygon, m_listCageTop);
+    GLRender::DrawFromVerts(Aurora::kPrimPolygon, m_listCageBottom);
 }
 
 // Draws the cage: the outline list between an attribute push and pop, then the fill list after a

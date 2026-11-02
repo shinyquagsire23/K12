@@ -427,14 +427,14 @@ void CClientExoApp::SetPauseState(unsigned char state, int a, CExoLinkedList<uns
     m_pInternal->SetPauseState(state, a, pList);
 }
 
-void CClientExoApp::SendSaveGameRequest(unsigned int a, const CExoString& b, const CExoString& c)
+int CClientExoApp::SendSaveGameRequest(unsigned int a, const CExoString& b, const CExoString& c)
 {
-    m_pInternal->SendSaveGameRequest(a, b, c);
+    return m_pInternal->SendSaveGameRequest(a, b, c);
 }
 
-void CClientExoApp::SendLoadGameRequest(unsigned int a, const CExoString& b, const CExoString& c)
+int CClientExoApp::SendLoadGameRequest(unsigned int a, const CExoString& b, const CExoString& c)
 {
-    m_pInternal->SendLoadGameRequest(a, b, c);
+    return m_pInternal->SendLoadGameRequest(a, b, c);
 }
 
 // sic: shipped returning NULL unconditionally.
@@ -1835,7 +1835,7 @@ extern int g_bUseJoystick;
 
 // True when a gamepad is attached and the player has asked for one: the gate the input code reads
 // before showing any gamepad hint.
-inline bool CClientExoAppInternal::GetIsJoystickConnected()
+inline int CClientExoAppInternal::GetIsJoystickConnected()
 {
     return (g_pExoInput->GetNumberJoysticks() != 0) & (g_bUseJoystick != 0);
 }

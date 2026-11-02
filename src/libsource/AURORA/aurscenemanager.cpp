@@ -327,7 +327,7 @@ static int NodeContainsLight(BSPNode* pNode, void* pData)
 {
     if (pNode == 0)
         return 0;
-    return pNode->m_pNodeData->m_lights.Contains(static_cast<Part*>(pData));
+    return pNode->m_pNodeData->m_lights.Contains(static_cast<PartLight*>(pData));
 }
 
 static int NodeContainsEmitter(BSPNode* pNode, void* pData)
@@ -341,7 +341,7 @@ static int NodeContainsShadow(BSPNode* pNode, void* pData)
 {
     if (pNode == 0)
         return 0;
-    return pNode->m_pNodeData->m_shadows.Contains(static_cast<Part*>(pData));
+    return pNode->m_pNodeData->m_shadows.Contains(static_cast<PartShadow*>(pData));
 }
 
 static int NodeContainsAABB(BSPNode* pNode, void* pData)
@@ -384,7 +384,8 @@ int SceneBSPAddPart(Scene* pScene, Part* pPart, Model* pModel)
 
     if (PartLight* pLight = pPart->AsPartLight()) {
         nodedata* pNodeData = BSPFitSphere(pScene->m_pBSPRoot, vWorldPosition, pLight->m_fLightRadius)->m_pNodeData;
-        pNodeData->m_lights.AddUnique(pLight);
+        if (!pNodeData->m_lights.Contains(pLight))
+            pNodeData->m_lights.Add(pLight);
         pScene->m_pLightManager->AddLight(pLight);
     } else if (PartAABB* pAABB = static_cast<PartAABB*>(pPart->AsPartAABB())) {
         nodedata* pNodeData = BSPFitSphere(pScene->m_pBSPRoot, vWorldPosition, 0.0f)->m_pNodeData;
@@ -399,12 +400,13 @@ int SceneBSPAddPart(Scene* pScene, Part* pPart, Model* pModel)
         Vector vMax = pProjection->m_vBBoxMax;
         nodedata* pNodeData = BSPFitBox(pScene->m_pBSPRoot, vMin, vMax)->m_pNodeData;
         if (pProjection->AsPartShadow())
-            pNodeData->m_shadows.Add(static_cast<Part*>(pProjection->AsPartShadow()));
+            pNodeData->m_shadows.Add(static_cast<PartShadow*>(pProjection->AsPartShadow()));
         else
-            pNodeData->m_beams.Add(static_cast<Part*>(pProjection->AsPartBeam()));
+            pNodeData->m_beams.Add(static_cast<PartBeam*>(pProjection->AsPartBeam()));
     } else if (PartEmitter* pEmitter = pPart->AsPartEmitter()) {
         nodedata* pNodeData = BSPFitSphere(pScene->m_pBSPRoot, vWorldPosition, pEmitter->m_fRadius)->m_pNodeData;
-        pNodeData->m_emitters.AddUnique(pEmitter);
+        if (!pNodeData->m_emitters.Contains(pEmitter))
+            pNodeData->m_emitters.Add(pEmitter);
         if (pEmitter->m_pNode->AsMdlNodeEmitter()->IsAffectedByWind()) {
             if (pScene->m_pWindManager != 0) {
                 pEmitter->m_spWindManager = pScene->m_pWindManager;
@@ -415,10 +417,12 @@ int SceneBSPAddPart(Scene* pScene, Part* pPart, Model* pModel)
         Vector vMin = pTrigger->m_vBBoxMin;
         Vector vMax = pTrigger->m_vBBoxMax;
         nodedata* pNodeData = BSPFitBox(pScene->m_pBSPRoot, vMin, vMax)->m_pNodeData;
-        pNodeData->m_parts.AddUnique(pTrigger);
+        if (!pNodeData->m_parts.Contains(pTrigger))
+            pNodeData->m_parts.Add(pTrigger);
     } else {
         nodedata* pNodeData = BSPFitSphere(pScene->m_pBSPRoot, vWorldPosition, 0.0f)->m_pNodeData;
-        pNodeData->m_otherParts.AddUnique(pPart);
+        if (!pNodeData->m_otherParts.Contains(pPart))
+            pNodeData->m_otherParts.Add(pPart);
     }
 
     if (pModel != 0)
@@ -453,11 +457,11 @@ void SceneBSPRemovePart(Scene* pScene, Part* pPart)
         nodedata* pNodeData = pNode->m_pNodeData;
         // A projection is either a shadow or a beam; one search covers both shared lists.
         if (void* pShadow = pProjection->AsPartShadow()) {
-            if (pNodeData->m_shadows.Contains(static_cast<Part*>(pShadow)))
-                pNodeData->m_shadows.Remove(static_cast<Part*>(pShadow));
+            if (pNodeData->m_shadows.Contains(static_cast<PartShadow*>(pShadow)))
+                pNodeData->m_shadows.Remove(static_cast<PartShadow*>(pShadow));
         } else if (void* pBeam = pProjection->AsPartBeam()) {
-            if (pNodeData->m_beams.Contains(static_cast<Part*>(pBeam)))
-                pNodeData->m_beams.Remove(static_cast<Part*>(pBeam));
+            if (pNodeData->m_beams.Contains(static_cast<PartBeam*>(pBeam)))
+                pNodeData->m_beams.Remove(static_cast<PartBeam*>(pBeam));
         }
     } else if (PartAABB* pAABB = static_cast<PartAABB*>(pPart->AsPartAABB())) {
         BSPNode* pNode = BSPSearch(pScene->m_pBSPRoot, vWorldPosition, NodeContainsAABB, pAABB);
@@ -1569,9 +1573,7 @@ void CollectActiveRooms(Scene* pScene, List<CAurRoom*>& outRooms)
     }
 
     if (pScene->m_nIgnoreVisibilityGraph != 0 || enablevisibilitygraph == 0) {
-        outRooms.m_count = 0;
-        for (int64_t i = 0; i < pScene->m_rooms.m_count; i++)
-            outRooms.Add(pScene->m_rooms.m_pData[i]);
+        outRooms = pScene->m_rooms;
         return;
     }
 
@@ -1693,10 +1695,10 @@ static void ConstructCameraFadePlaneDef(Scene* pScene, const Vector& vTarget, co
     Camera* pCam = CurrentCamera;
     Vector vNormal = Vector(vDir.x, vDir.y, 0.0f) * (1.0f / fMag);
     Vector vPoint = vTarget - vDelta * perpCloseFactor;
-    pCam->m_viewState.m_aFadePlane[0] = vNormal.x;
-    pCam->m_viewState.m_aFadePlane[1] = vNormal.y;
-    pCam->m_viewState.m_aFadePlane[2] = vNormal.z;
-    pCam->m_viewState.m_aFadePlane[3] =
+    pCam->m_viewState.m_fadePlane.a = vNormal.x;
+    pCam->m_viewState.m_fadePlane.b = vNormal.y;
+    pCam->m_viewState.m_fadePlane.c = vNormal.z;
+    pCam->m_viewState.m_fadePlane.d =
         -(vNormal.x * vPoint.x + vNormal.y * vPoint.y + vNormal.z * vPoint.z);
 
     pCam->SetFadePlanes(planeNear, planeFar);

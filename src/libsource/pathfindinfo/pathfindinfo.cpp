@@ -839,49 +839,34 @@ int CAvoidCreature::InsertPathSegmentBetween(int nStart, int nEnd, Vector* pv, i
 {
     float* pOld = pPathInfo->m_paWayPoints;
     int nOldCount = pPathInfo->m_nWayPointFloats;
-    int nDiff = nStart - nEnd;
+    int i = 0;
     int nExtra;
     int nSame;
-    if (nDiff == 0) {
+    if (nStart == nEnd) {
         nExtra = n * 2 - 2;
         nSame = 1;
     } else {
-        nExtra = (nDiff + n) * 2;
+        nExtra = (nStart - nEnd + n) * 2;
         nSame = 0;
     }
     int nNewCount = nExtra + nOldCount;
     float* pNew = new float[nNewCount];
-    // FindEntryAndExit keeps nStart and nEnd + nSame within nOldCount / 2, so the prefix and the new
-    // points fit in nNewCount, and the suffix fills it exactly.
-    int i = 0;
-    for (int j = 0; j < nStart; j++) {
-        K2_ASSUME(i >= 0 && i + 1 < nNewCount);
-        pNew[i] = pOld[i];
-        pNew[i + 1] = pOld[i + 1];
-        i += 2;
+    int j;
+    for (j = 0; j < nStart; j++) {
+        pNew[i++] = pOld[j * 2];
+        pNew[i++] = pOld[j * 2 + 1];
     }
-    for (int j = 0; j < n; j++) {
-        K2_ASSUME(i >= 0 && i + 1 < nNewCount);
-        pNew[i] = pv[j].x;
-        pNew[i + 1] = pv[j].y;
-        i += 2;
+    for (j = 0; j < n; j++) {
+        pNew[i++] = pv[j].x;
+        pNew[i++] = pv[j].y;
     }
-    if (nEnd + nSame < (nOldCount < 0 ? nOldCount + 1 : nOldCount) / 2) {
-        for (int j = nEnd + nSame; j < (nOldCount < 0 ? nOldCount + 1 : nOldCount) / 2; j++) {
-            K2_ASSUME(i >= 0 && i + 1 < nNewCount);
-            pNew[i] = pOld[j * 2];
-            pNew[i + 1] = pOld[j * 2 + 1];
-            i += 2;
-        }
-        pPathInfo->m_paWayPoints = 0;
-        pPathInfo->m_nWayPointFloats = 0;
-    } else {
-        pPathInfo->m_paWayPoints = 0;
-        pPathInfo->m_nWayPointFloats = 0;
-        if (pOld == 0) goto done;
+    for (j = nEnd + nSame; j < nOldCount / 2; j++) {
+        pNew[i++] = pOld[j * 2];
+        pNew[i++] = pOld[j * 2 + 1];
     }
+    pPathInfo->m_paWayPoints = 0;
+    pPathInfo->m_nWayPointFloats = 0;
     delete[] pOld;
-done:
     pPathInfo->m_paWayPoints = pNew;
     pPathInfo->m_nWayPointFloats = nNewCount;
     return 1;

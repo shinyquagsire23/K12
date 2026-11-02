@@ -525,64 +525,17 @@ void CSWGuiAbilitiesCharGen::OnEnterPointsButton(CSWGuiControl* pControl)
     Vector* pNormal = &m_avRowColors[0];
     Vector* pHighlight = &m_avRowColors[1];
 #endif
-    Vector* pColor = pNormal;
-
-    if (pControl == &m_aPointsButtons[0])
+    for (int i = 0; i < 6; i++)
     {
-        m_nHoveredRow = 0;
-#if KOTOR1
-        pColor = pHighlight;
-#else
-        pColor = &m_avRowColors[1];
-#endif
+        Vector* pColor = pNormal;
+        if (pControl == &m_aPointsButtons[i])
+        {
+            m_nHoveredRow = i;
+            pColor = pHighlight;
+        }
+        m_aPointsButtons[i].m_text.m_params.SetColor(*pColor);
+        m_aStatLabels[i].m_text.m_params.SetColor(*pColor);
     }
-    m_aPointsButtons[0].m_text.m_params.SetColor(*pColor);
-    m_aStatLabels[0].m_text.m_params.SetColor(*pColor);
-
-    pColor = pNormal;
-    if (pControl == &m_aPointsButtons[1])
-    {
-        m_nHoveredRow = 1;
-        pColor = pHighlight;
-    }
-    m_aPointsButtons[1].m_text.m_params.SetColor(*pColor);
-    m_aStatLabels[1].m_text.m_params.SetColor(*pColor);
-
-    pColor = pNormal;
-    if (pControl == &m_aPointsButtons[2])
-    {
-        m_nHoveredRow = 2;
-        pColor = pHighlight;
-    }
-    m_aPointsButtons[2].m_text.m_params.SetColor(*pColor);
-    m_aStatLabels[2].m_text.m_params.SetColor(*pColor);
-
-    pColor = pNormal;
-    if (pControl == &m_aPointsButtons[3])
-    {
-        m_nHoveredRow = 3;
-        pColor = pHighlight;
-    }
-    m_aPointsButtons[3].m_text.m_params.SetColor(*pColor);
-    m_aStatLabels[3].m_text.m_params.SetColor(*pColor);
-
-    pColor = pNormal;
-    if (pControl == &m_aPointsButtons[4])
-    {
-        m_nHoveredRow = 4;
-        pColor = pHighlight;
-    }
-    m_aPointsButtons[4].m_text.m_params.SetColor(*pColor);
-    m_aStatLabels[4].m_text.m_params.SetColor(*pColor);
-
-    pColor = pNormal;
-    if (pControl == &m_aPointsButtons[5])
-    {
-        m_nHoveredRow = 5;
-        pColor = pHighlight;
-    }
-    m_aPointsButtons[5].m_text.m_params.SetColor(*pColor);
-    m_aStatLabels[5].m_text.m_params.SetColor(*pColor);
 
     int nCost = DetermineCostToIncreaseScore(m_anStatValues[m_nHoveredRow]);
 

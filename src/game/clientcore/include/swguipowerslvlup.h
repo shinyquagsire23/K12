@@ -105,16 +105,11 @@ public:
     CExoString m_sPowerAvailableText;
     CExoString m_sPowerTakenText;
 
-#if KOTOR1
-    CExoArrayList<unsigned int> m_aPowerLists[3];
-#else
-    CExoArrayList<unsigned int> m_aPowerLists[4];
-#endif
-#define m_aOwnedPowers m_aPowerLists[0]
-#define m_aAvailablePowers m_aPowerLists[1]
-#define m_aChosenPowers m_aPowerLists[2]
+    CExoArrayList<unsigned int> m_aOwnedPowers;
+    CExoArrayList<unsigned int> m_aAvailablePowers;
+    CExoArrayList<unsigned int> m_aChosenPowers;
 #if !KOTOR1
-#define m_aNewPowers m_aPowerLists[3]
+    CExoArrayList<unsigned int> m_aNewPowers;
 #endif
 
     CSWGuiSkillFlowChart m_powerChart;

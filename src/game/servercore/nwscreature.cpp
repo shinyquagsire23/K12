@@ -3682,7 +3682,7 @@ disguise:
     return 1;
 }
 
-__attribute__((no_stack_protector)) int CSWSCreature::CalculateDamagePower(CSWSObject* pObject)
+__attribute__((no_stack_protector)) unsigned char CSWSCreature::CalculateDamagePower(CSWSObject* pObject)
 {
     int nBonus = 0;
 #if KOTOR1

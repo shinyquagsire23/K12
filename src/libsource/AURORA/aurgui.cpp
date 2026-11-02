@@ -122,15 +122,9 @@ void CAurGUIStringInternal::SetString(char* szText) {
     strcpy(m_pText, szText);
 }
 
-#if KOTOR1
 short CAurGUIStringInternal::GetStringSize() {
     return static_cast<short>(strlen(m_pText));
 }
-#else
-int CAurGUIStringInternal::GetStringSize() {
-    return static_cast<int>(strlen(m_pText));
-}
-#endif
 
 // SetString with the length supplied instead of measured: grow and copy when the request is
 // longer than the held buffer, otherwise truncate in place.
@@ -1320,7 +1314,7 @@ void CAurGUIStringInternal::Draw(float fAlpha)
 
     UpdateFontScale();
 
-    if (CAurGUIStringInternal::GetStringSize() == 0 || noguirender)
+    if (static_cast<int>(strlen(m_pText)) == 0 || noguirender)
         return;
 
     GLRender::Disable(Aurora::kCapLighting);

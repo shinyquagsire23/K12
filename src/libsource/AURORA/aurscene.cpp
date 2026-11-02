@@ -85,6 +85,9 @@ int equal(const Vector& a, const Vector& b);
 
 
 // Bounded sprintf into a caller-provided buffer.
+#if defined(K2_NO_FORTIFY)
+#define ScenePrintf(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void ScenePrintf(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
 {
     __builtin_va_list ap;
@@ -92,6 +95,7 @@ static void ScenePrintf(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
     __vsprintf_chk(pszBuf, 0, nSize, pszFmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 
 // The port's GL layer. Every capability, blend factor, compare function, stencil op, face
 // and material property goes through a per-kind translation table indexed by the port's
@@ -4524,7 +4528,7 @@ Gob* Scene::SpawnRoom(char* pszName, const Vector& vPos, const Quaternion& qOrie
         else if (pLight != 0)
         {
             m_pLightManager->AddLight(pLight);
-            pNodeData->m_lights.Add(static_cast<Part*>(pLight));
+            pNodeData->m_lights.Add(pLight);
             if (pLight->m_nIsDynamic != 0)
                 SceneBSPAddPart(this, pLight, 0);
             pModel->AddRef(static_cast<Gob*>(0));

@@ -96,7 +96,7 @@ unsigned char CSWClass::GetWillSaveBonus(unsigned char nLevel)
 }
 
 // Armor bonus comes from a heap table indexed directly by level, entry 0 unused.
-unsigned char CSWClass::GetArmorBonus(int nLevel)
+char CSWClass::GetArmorBonus(int nLevel)
 {
 #if KOTOR1
 #else

@@ -68,7 +68,7 @@ static inline void GetLocalTime(SystemTimeWords* pTime)
 {
     GetLocalTime(reinterpret_cast<SYSTEMTIME*>(pTime));
 }
-static inline void SystemTimeToFileTime(const SystemTimeWords* pSystemTime, unsigned long long* pFileTime)
+static inline void SystemTimeToFileTime(const SystemTimeWords* pSystemTime, uint64_ll_t* pFileTime)
 {
     SystemTimeToFileTime(reinterpret_cast<const SYSTEMTIME*>(pSystemTime), pFileTime);
 }
@@ -580,16 +580,16 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
 
     saveGameName = saveSlot + "/" + "SAVEGAME";
 
-    CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+    CSWReentrantServerStats* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
     pInfo->m_flag = 1;
-    pInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME;
+    pInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_SAVE_GAME;
     pInfo->m_bStallFirstFrame = 1;
     pInfo->m_errorCode = 0;
     pInfo->m_saveDirectory = saveSlot;
     g_pAppManager->m_pLoadGameErrorInfo->m_saveGameName = saveGameName;
     g_pAppManager->m_pLoadGameErrorInfo->m_nLoadBarPair = 0;
     g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerLoadBar_StartStallEvent(
-        CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME);
+        CSWReentrantServerStats::STALL_EVENT_SAVE_GAME);
 
     saveSlot = g_pExoBase->m_pAliasList->GetAliasPath("SAVES", 0);
 
@@ -634,7 +634,7 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
 
     uint64_ll_t freeSpace;
     int freeSpaceStatus;
-    CLoadGameErrorInfo* pInfo;
+    CSWReentrantServerStats* pInfo;
     CExoString tempName(name);
     if (tempSave != 0)
         tempName = "tempsave";
@@ -667,13 +667,13 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
 
     pInfo = g_pAppManager->m_pLoadGameErrorInfo;
     pInfo->m_flag = 1;
-    pInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME;
+    pInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_SAVE_GAME;
     pInfo->m_bStallFirstFrame = 1;
     pInfo->m_errorCode = 0;
     pInfo->m_saveDirectory = saveSlot;
     g_pAppManager->m_pLoadGameErrorInfo->m_saveGameName = saveGameName;
     g_pAppManager->m_pLoadGameErrorInfo->m_nLoadBarPair = 0;
-    SendStartStallEvent(CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME);
+    SendStartStallEvent(CSWReentrantServerStats::STALL_EVENT_SAVE_GAME);
 
     saveSlot = g_pExoBase->m_pAliasList->GetAliasPath("SAVES", 0);
 
@@ -1096,7 +1096,7 @@ unsigned int CServerExoAppInternal::GetPlayerIDByGameObjectID(unsigned long long
 uint64_ll_t CServerExoAppInternal::GetSystemTimeAsDWORD64()
 {
     SystemTimeWords st;
-    unsigned long long ft;
+    uint64_ll_t ft;
     GetLocalTime(&st);
     SystemTimeToFileTime(&st, &ft);
     return ft;
@@ -1252,9 +1252,10 @@ void CServerExoAppInternal::AddToExclusionList(unsigned long long a, unsigned ch
     if (b == 0)
         return;
 
+    CExoLinkedListNode* pNode;
     if (b & 2)
     {
-        CExoLinkedListNode* pNode = m_exclusionList1->m_pInternal->m_pHead;
+        pNode = m_exclusionList1->m_pInternal->m_pHead;
         while (pNode != 0)
         {
             if (reinterpret_cast<unsigned long long>(m_exclusionList1->GetAtPos(pNode)) == a)
@@ -1265,7 +1266,7 @@ void CServerExoAppInternal::AddToExclusionList(unsigned long long a, unsigned ch
     }
     else if (b & 1)
     {
-        CExoLinkedListNode* pNode = m_exclusionList2->m_pInternal->m_pHead;
+        pNode = m_exclusionList2->m_pInternal->m_pHead;
         while (pNode != 0)
         {
             if (reinterpret_cast<unsigned long long>(m_exclusionList2->GetAtPos(pNode)) == a)
@@ -1281,31 +1282,32 @@ void CServerExoAppInternal::RemoveFromExclusionList(unsigned long long a, unsign
     if (b == 0)
         return;
 
+    CExoLinkedListNode* pNode;
     if (b & 1)
     {
-        CExoLinkedListNode* pNode = m_exclusionList2->m_pInternal->m_pHead;
-        if (pNode == 0)
-            return;
-        while (reinterpret_cast<unsigned long long>(m_exclusionList2->GetAtPos(pNode)) != a)
+        pNode = m_exclusionList2->m_pInternal->m_pHead;
+        while (pNode != 0)
         {
-            m_exclusionList2->GetNext(pNode);
-            if (pNode == 0)
+            if (reinterpret_cast<unsigned long long>(m_exclusionList2->GetAtPos(pNode)) == a)
+            {
+                m_exclusionList2->Remove(pNode);
                 return;
+            }
+            m_exclusionList2->GetNext(pNode);
         }
-        m_exclusionList2->Remove(pNode);
     }
     else if (b & 2)
     {
-        CExoLinkedListNode* pNode = m_exclusionList1->m_pInternal->m_pHead;
-        if (pNode == 0)
-            return;
-        while (reinterpret_cast<unsigned long long>(m_exclusionList1->GetAtPos(pNode)) != a)
+        pNode = m_exclusionList1->m_pInternal->m_pHead;
+        while (pNode != 0)
         {
-            m_exclusionList1->GetNext(pNode);
-            if (pNode == 0)
+            if (reinterpret_cast<unsigned long long>(m_exclusionList1->GetAtPos(pNode)) == a)
+            {
+                m_exclusionList1->Remove(pNode);
                 return;
+            }
+            m_exclusionList1->GetNext(pNode);
         }
-        m_exclusionList1->Remove(pNode);
     }
 }
 
@@ -1518,7 +1520,7 @@ Vector CServerExoAppInternal::GetNormalOfPoint(const Vector& point)
 
 void CServerExoAppInternal::DealWithLoadGameError(unsigned int a)
 {
-    CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+    CSWReentrantServerStats* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
     UnloadModule();
     pInfo->m_errorCode = a;
     pInfo->m_bStallFinished = 1;
@@ -1526,7 +1528,7 @@ void CServerExoAppInternal::DealWithLoadGameError(unsigned int a)
     {
         pInfo->m_bStallFinished = 0;
         pInfo->m_flag = 0;
-        pInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
+        pInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_NONE;
     }
     m_serverMode = 0;
     m_loadingModule = 0;
@@ -3877,15 +3879,15 @@ int CServerExoAppInternal::MainLoop()
     {
         m_pNetLayer->ProcessReceivedFrames(0);
         m_pNetLayer->UpdateStatusLoop(CNetLayer::APPLICATION_SERVER);
-        CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+        CSWReentrantServerStats* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
 
         if (pInfo->m_errorCode != 0)
             goto tail;
 
         switch (pInfo->m_nStallEvent)
         {
-        case CLoadGameErrorInfo::STALL_EVENT_LOAD_MODULE:
-        case CLoadGameErrorInfo::STALL_EVENT_LOAD_SAVE:
+        case CSWReentrantServerStats::STALL_EVENT_LOAD_MODULE:
+        case CSWReentrantServerStats::STALL_EVENT_LOAD_SAVE:
         {
             CExoString moduleName(pInfo->m_saveDirectory);
 
@@ -3941,7 +3943,7 @@ int CServerExoAppInternal::MainLoop()
                     {
                         pInfo->m_bStallFinished = 0;
                         pInfo->m_flag = 0;
-                        pInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
+                        pInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_NONE;
                     }
                     m_serverMode = 1;
                     m_loadingModule = 0;
@@ -3974,7 +3976,7 @@ int CServerExoAppInternal::MainLoop()
             }
             break;
         }
-        case CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME:
+        case CSWReentrantServerStats::STALL_EVENT_SAVE_GAME:
             StallEventSaveGame();
             ClearLogCounters(const_cast<char*>("2"));
             break;
@@ -4154,7 +4156,7 @@ void CServerExoAppInternal::StallEventSaveGame()
     // The start and end stamps fed a timing log line the shipping build compiles out.
     unsigned int nStartTime = g_pExoBase->m_pTimers->GetLowResolutionTimer();
     K2_UNUSED(nStartTime);
-    CLoadGameErrorInfo* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
+    CSWReentrantServerStats* pInfo = g_pAppManager->m_pLoadGameErrorInfo;
     CExoString saveDir;
     CExoString saveFilePath;
     saveDir = pInfo->m_saveDirectory;
@@ -4384,7 +4386,7 @@ void CServerExoAppInternal::StallEventSaveGame()
         {
             pInfo->m_bStallFinished = 0;
             pInfo->m_flag = 0;
-            pInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
+            pInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_NONE;
         }
         pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
         pMsg->SendServerToPlayerModule_SaveGameStatus(1);
@@ -4719,18 +4721,18 @@ LAB_HaveResult:
     if (resType == RESTYPE_RSV || resType == RESTYPE_SAV)
     {
         g_pAppManager->m_pLoadGameErrorInfo->m_flag = 1;
-        g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_LOAD_SAVE;
+        g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_LOAD_SAVE;
         g_pAppManager->m_pLoadGameErrorInfo->m_bStallFirstFrame = 1;
         g_pAppManager->m_pLoadGameErrorInfo->m_errorCode = 0;
-        SendStartStallEvent(CLoadGameErrorInfo::STALL_EVENT_LOAD_SAVE);
+        SendStartStallEvent(CSWReentrantServerStats::STALL_EVENT_LOAD_SAVE);
     }
     else
     {
         g_pAppManager->m_pLoadGameErrorInfo->m_flag = 1;
-        g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_LOAD_MODULE;
+        g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CSWReentrantServerStats::STALL_EVENT_LOAD_MODULE;
         g_pAppManager->m_pLoadGameErrorInfo->m_bStallFirstFrame = 1;
         g_pAppManager->m_pLoadGameErrorInfo->m_errorCode = 0;
-        SendStartStallEvent(CLoadGameErrorInfo::STALL_EVENT_LOAD_MODULE);
+        SendStartStallEvent(CSWReentrantServerStats::STALL_EVENT_LOAD_MODULE);
     }
 
     g_pAppManager->m_pLoadGameErrorInfo->m_nLoadBarPair = 0;

@@ -460,7 +460,8 @@ Matrix operator*(const Matrix& m, const Matrix& b)
 float* Augment(const Matrix& m)
 {
     float* p = s_afAugmented;
-    memset(p, 0, 15 * sizeof(float));
+    for (int i = 0; i < 16; i++)
+        p[i] = 0.0f;
     p[15] = 1.0f;
     p[0] = m.m_f[0]; p[4] = m.m_f[1]; p[8]  = m.m_f[2];
     p[1] = m.m_f[3]; p[5] = m.m_f[4]; p[9]  = m.m_f[5];
@@ -1291,12 +1292,14 @@ Vector InterpolateBezier(const Vector& v0, const Vector& v1, const Vector& v2, c
                          float t)
 {
     float fA = 1.0f - t;
-    Vector vA = v0 * fA + v2 * t;
-    Vector vB = v2 * fA + v3 * t;
-    Vector vC = v3 * fA + v1 * t;
-    Vector vD = vA * fA + vB * t;
-    Vector vE = vB * fA + vC * t;
-    return vD * fA + vE * t;
+    Vector av[3];
+    av[0] = v0 * fA + v2 * t;
+    av[1] = v2 * fA + v3 * t;
+    av[2] = v3 * fA + v1 * t;
+    av[0] = av[0] * fA + av[1] * t;
+    av[1] = av[1] * fA + av[2] * t;
+    av[0] = av[0] * fA + av[1] * t;
+    return av[0];
 }
 
 float InterpolateBezier(float f0, float f1, float f2, float f3, float t)

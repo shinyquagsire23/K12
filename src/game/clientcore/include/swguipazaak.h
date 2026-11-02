@@ -357,9 +357,10 @@ private:
 #endif
     CSWGuiActivatedButton m_btnAccept;     // the HandleAcceptButton anchor
 #if KOTOR1  // K1: LBL_LTEXT only (no LBL_HELP, no BTN_CLEARCARDS)
-    CSWGuiLabel         m_bLabels[1];
+    CSWGuiLabel         m_lblLText;
 #else
-    CSWGuiLabel         m_bLabels[2];
+    CSWGuiLabel         m_lblLText;
+    CSWGuiLabel         m_lblHelp;
     CSWGuiButton        m_btnClearCards;      // the button of the plain button/label pair below
 #endif
     CSWGuiLabel         m_lblRText;

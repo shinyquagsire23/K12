@@ -189,8 +189,8 @@ public:
     CSWCPlayer* GetPlayerByPlayerID(unsigned int playerId);
     CSWCPlayer* GetPlayerByPlayerName(const CExoString& name);
     void SetPauseState(unsigned char state, int a, CExoLinkedList<unsigned long long>* pList);
-    void SendSaveGameRequest(unsigned int a, const CExoString& b, const CExoString& c);
-    void SendLoadGameRequest(unsigned int a, const CExoString& b, const CExoString& c);
+    int SendSaveGameRequest(unsigned int a, const CExoString& b, const CExoString& c);
+    int SendLoadGameRequest(unsigned int a, const CExoString& b, const CExoString& c);
     CExoString           GetClientName();
     void                 SetClientName(const CExoString& name);
     CExoString           GetCDKey(int index);

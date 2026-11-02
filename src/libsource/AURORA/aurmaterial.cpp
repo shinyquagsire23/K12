@@ -49,6 +49,7 @@ void Parse(char* pszLine, float& fValue);
 List<Material*> materials;
 
 // Size-checked sprintf.
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
@@ -56,6 +57,7 @@ static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 int Material::GetTextureTID() {
     return AurTextureGetTID(m_spr0.m_pObject);

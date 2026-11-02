@@ -69,10 +69,55 @@ extern "C" {
 // <sys/cdefs.h> declares atoi itself (bits/get_device_api_level_inlines.h) in every TU that sees any
 // bionic header, pure.
 int    atoi(const char* s);
+#if !defined(__ANDROID_API__) || __ANDROID_API__ >= 21
 int    rand();
 void   srand(unsigned int nSeed);
+#endif
 int    system(const char* pszCommand);
 void   qsort(void* pBase, size_t nCount, size_t nSize, int (*pfnCompare)(const void*, const void*));
+}
+#endif
+
+// Below API 21 bionic's <stdlib.h> defines rand, srand, atof and their neighbours inline over
+// lrand48, srand48 and strtod (android/legacy_stdlib_inlines.h): KOTOR 1's armv7 library is API 16
+// and imports those three, never rand or atof. This is that header's API 16 content under its own
+// guard, with its declarations, so whichever of the two a TU reaches first is the one that defines
+// them.
+#if defined(__ANDROID_API__) && __ANDROID_API__ < 21 && !defined(_ANDROID_LEGACY_STDLIB_INLINES_H_)
+#define _ANDROID_LEGACY_STDLIB_INLINES_H_
+struct __locale_t;
+typedef struct __locale_t* locale_t;
+extern "C" {
+int*   __errno() __attribute__((const));
+long   strtol(const char* s, char** ppEnd, int nBase);
+double strtod(const char* s, char** ppEnd);
+long   lrand48();
+void   srand48(long nSeed);
+#if __ANDROID_API__ < 19
+static inline int abs(int n) { return (n < 0) ? -n : n; }
+static inline long labs(long n) { return (n < 0L) ? -n : n; }
+static inline long long llabs(long long n) { return (n < 0LL) ? -n : n; }
+#endif
+static inline float strtof(const char* s, char** ppEnd) {
+    double d = strtod(s, ppEnd);
+    if (d > __FLT_MAX__) {
+        *__errno() = 34;  // ERANGE
+        return __builtin_huge_valf();
+    } else if (d < -__FLT_MAX__) {
+        *__errno() = 34;
+        return -__builtin_huge_valf();
+    }
+    return static_cast<float>(d);
+}
+static inline double atof(const char* s) { return strtod(s, 0); }
+static inline int rand() { return static_cast<int>(lrand48()); }
+static inline void srand(unsigned int nSeed) { srand48(nSeed); }
+static inline long random() { return lrand48(); }
+static inline void srandom(unsigned int nSeed) { srand48(nSeed); }
+static inline int grantpt(int) { return 0; }
+static inline double strtod_l(const char* s, char** ppEnd, locale_t) { return strtod(s, ppEnd); }
+static inline float strtof_l(const char* s, char** ppEnd, locale_t) { return strtof(s, ppEnd); }
+static inline long strtol_l(const char* s, char** ppEnd, int nBase, locale_t) { return strtol(s, ppEnd, nBase); }
 }
 #endif
 
@@ -109,5 +154,30 @@ void*  __memcpy_chk(void* dst, const void* src, size_t n, size_t nDstSize) throw
 int    __vsprintf_chk(char* pszDst, int nFlag, size_t nDstSize, const char* pszFormat,
                       __builtin_va_list ap);
 }
+
+#if !defined(K2_HOST_BUILD) && !defined(_FORTIFY_SOURCE)
+// A build without _FORTIFY_SOURCE (K1's armv7 libKOTOR.so imports no *_chk function) makes the plain
+// call wherever the fortified build calls a checked entry point; the engine spells those by name.
+#define K2_NO_FORTIFY 1
+#include "port/libcstring.h"
+extern "C" int sprintf(char* pszDst, const char* pszFormat, ...);
+#define __strlen_chk(s, nObjSize) strlen(s)
+#define __strchr_chk(s, c, nObjSize) strchr(s, c)
+#define __strcpy_chk(dst, src, nDstSize) strcpy(dst, src)
+#define __strcat_chk(dst, src, nDstSize) strcat(dst, src)
+#define __strncpy_chk(dst, src, n, nDstSize) strncpy(dst, src, n)
+#define __strncpy_chk2(dst, src, n, nDstSize, nSrcSize) strncpy(dst, src, n)
+#define __memcpy_chk(dst, src, n, nDstSize) memcpy(dst, src, n)
+#define __vsprintf_chk(pszDst, nFlag, nDstSize, pszFormat, ap) vsprintf(pszDst, pszFormat, ap)
+#define __builtin___strcpy_chk(dst, src, nDstSize) strcpy(dst, src)
+#define __builtin___strcat_chk(dst, src, nDstSize) strcat(dst, src)
+#define __builtin___strncpy_chk(dst, src, n, nDstSize) strncpy(dst, src, n)
+#define __builtin___memcpy_chk(dst, src, n, nDstSize) memcpy(dst, src, n)
+#define __builtin___memset_chk(dst, c, n, nDstSize) memset(dst, c, n)
+#define __builtin___sprintf_chk(pszDst, nFlag, nDstSize, ...) sprintf(pszDst, __VA_ARGS__)
+#define __builtin___vsprintf_chk(pszDst, nFlag, nDstSize, pszFormat, ap) vsprintf(pszDst, pszFormat, ap)
+// The TUs' own sprintf_s shims stand for the fortified sprintf.
+#define sprintf_s(pszDst, nDstSize, ...) sprintf(pszDst, __VA_ARGS__)
+#endif
 
 #endif // LIBCBASE_H

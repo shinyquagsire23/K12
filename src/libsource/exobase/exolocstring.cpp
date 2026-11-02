@@ -81,17 +81,17 @@ int CExoLocString::operator!=(const CExoLocString& other) const
 
 int CExoLocString::AddString(int nLanguage, const CExoString& str, unsigned char gender)
 {
-    unsigned char g1 = (nLanguage == 0) ? 0 : gender;
-    int nBase = nLanguage * 2;
+    gender = (nLanguage != 0) ? gender : 0;
+    int nId = nLanguage * 2 + gender;
 
-    RemoveString(nLanguage, g1);
+    RemoveString(nLanguage, gender);
 
     CExoString cur;
-    GetString(nLanguage, &cur, g1);
+    GetString(nLanguage, &cur, gender);
     if (cur == str)
         return 1;
 
-    return m_pInternal->AddString(nBase + (g1 & 0xff), str);
+    return m_pInternal->AddString(nId, str);
 }
 
 void CExoLocString::RemoveString(int nLanguage, unsigned char gender)

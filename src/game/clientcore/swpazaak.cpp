@@ -177,6 +177,18 @@ void CSWPazaak::ShuffleDeck()
         localDeck[i].m_nValue = 0;
     }
 #endif
+#if KOTOR1  // K1 deals by index from the shrinking front of the local deck
+    int nLeft = 40;
+    for (int i = 0; i < 40; i++) {
+        int idx = PazaakRand() % nLeft;
+        m_deck[i] = localDeck[idx];
+        localDeck[idx] = localDeck[nLeft - 1];
+        CPazaakCard emptyCard;
+        emptyCard.m_nCardType = PAZAAK_CARD_NONE;
+        localDeck[nLeft - 1] = emptyCard;
+        nLeft--;
+    }
+#else
     CPazaakCard* pOut = m_deck;
     CPazaakCard* pTail = &localDeck[39];
     int64_t remaining = 40;
@@ -185,18 +197,13 @@ void CSWPazaak::ShuffleDeck()
         *pOut = localDeck[idx];
         pOut++;
         localDeck[idx] = *pTail;
-#if KOTOR1
-        CPazaakCard emptyCard;
-        emptyCard.m_nCardType = PAZAAK_CARD_NONE;
-        *pTail = emptyCard;
-#else
         pTail->m_nCardType = PAZAAK_CARD_NONE;
         pTail->m_bIsNegative = 0;
         pTail->m_nValue = 0;
-#endif
         pTail--;
         remaining--;
     } while (remaining != 0);
+#endif
     m_nDeckIndex = 39;
 }
 

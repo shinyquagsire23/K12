@@ -106,15 +106,7 @@ CAurTexture::~CAurTexture()
 
 void CAurTexture::SetReference(CAurTexture* pReference)
 {
-#if KOTOR1  // K1 keeps a plain pointer, with no reference tracking
     m_pReferenced = pReference;
-#else
-    if (m_pReferenced.m_pObject)
-        m_pReferenced.m_pObject->Remove(&m_pReferenced);
-    m_pReferenced.m_pObject = pReference;
-    if (m_pReferenced.m_pObject)
-        m_pReferenced.m_pObject->AddPointer(&m_pReferenced);
-#endif
 }
 
 void CAurTexture::Bind()
@@ -626,19 +618,17 @@ void CAurTexture::IncrementTIDIndex(int nIndex)
         pTexture->m_nTIDIndex = pTexture->m_panTIDIndex[nIndex];
 }
 
-void CAurTexture::glImage(bool bParam, unsigned char* pData)
+int CAurTexture::glImage(bool bParam, unsigned char* pData)
 {
     CAurTextureBasic* pTexture = static_cast<CAurTextureBasic*>(GetReferencedTexture()->AsCAurTextureBasic());
     if (!pTexture)
-        return;
+        return 0;
     if (!pData)
-    {
-        pTexture->glImage(bParam);
-        return;
-    }
+        return pTexture->glImage(bParam);
     pTexture->m_pImage = pData;
-    pTexture->glImage(bParam);
+    int nResult = pTexture->glImage(bParam);
     pTexture->m_pImage = 0;
+    return nResult;
 }
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
@@ -967,7 +957,7 @@ void CAurFontInfo::ParseField(char* pszLine)
 
 // Computes a rolling hash, hash = v * (hash ? hash : 1) % 65101, first over the name bytes, then
 // the caller's int array.
-short AurTextureCalculateHashID(char* pszName, short nCount, int* panValues)
+unsigned short AurTextureCalculateHashID(char* pszName, short nCount, int* panValues)
 {
     int nHash = 0;
     int nLen = static_cast<int>(strlen(pszName));
@@ -984,7 +974,7 @@ short AurTextureCalculateHashID(char* pszName, short nCount, int* panValues)
             nHash = *panValues++ * (nHash ? nHash : 1) % 65101;
         } while (--i);
     }
-    return static_cast<short>(nHash);
+    return static_cast<unsigned short>(nHash);
 }
 
 CAurTextureBasic::CAurTextureBasic(char* pName, char* pResRef)
@@ -1983,13 +1973,7 @@ int AurTextureSetMem(int nMem)
     float fDynamicRatio = g_fDynamicMemoryRatio;
     int nDynamic = static_cast<int>(fDynamicRatio * nMem);
 
-#if KOTOR1  // K1 copies the list in one assignment
     RefreshTextures = CAurTextureBasic::m_OrderedTextureList;
-#else
-    RefreshTextures.m_count = 0;
-    for (int i = 0; i < CAurTextureBasic::m_OrderedTextureList.m_count; i++)
-        RefreshTextures.Add(CAurTextureBasic::m_OrderedTextureList.m_pData[i]);
-#endif
 
     for (int i = 0; i < RefreshTextures.m_count; i++)
         RefreshTextures.m_pData[i]->Reset();
@@ -2004,13 +1988,7 @@ int AurTextureSetMem(int nMem)
     usedlightmapmemory = g_dynamicTMS.m_anMemory[TMS_LIGHTMAP] + g_staticTMS.m_anMemory[TMS_LIGHTMAP];
     usedtexturememory = useddynamictexturememory + g_staticTMS.m_anMemory[TMS_TOTAL];
 
-#if KOTOR1
     RefreshTextures = CAurTextureBasic::m_OrderedTextureList;
-#else
-    RefreshTextures.m_count = 0;
-    for (int i = 0; i < CAurTextureBasic::m_OrderedTextureList.m_count; i++)
-        RefreshTextures.Add(CAurTextureBasic::m_OrderedTextureList.m_pData[i]);
-#endif
 
     AurTextureBuildAndStoreAll();
     return usedtexturememory <= maxtexmem;
@@ -2095,13 +2073,7 @@ void AurTextureClearAll()
 // Replaces the dirty queue with the whole ordered list, then Resets every entry.
 void AurTextureResetAll()
 {
-#if KOTOR1  // K1 copies the list in one assignment
     RefreshTextures = CAurTextureBasic::m_OrderedTextureList;
-#else
-    RefreshTextures.m_count = 0;
-    for (int i = 0; i < CAurTextureBasic::m_OrderedTextureList.m_count; i++)
-        RefreshTextures.Add(CAurTextureBasic::m_OrderedTextureList.m_pData[i]);
-#endif
 
     for (int i = 0; i < RefreshTextures.m_count; i++)
         RefreshTextures.m_pData[i]->Reset();
@@ -2852,10 +2824,10 @@ Normal* downSampleNormalMap(Normal* pData, int nWidth, int nHeight, int nNewWidt
             float fWeight = fLength * 0.25f;
             float fScaled = fWeight * 255.0f;
             Normal* pOut = &pNew[(nY / 2) * nNewWidth + nX / 2];
-            pOut->m_bZ = static_cast<unsigned char>(static_cast<int>(fSumZ * 127.0f + 128.0f));
-            pOut->m_bW = static_cast<unsigned char>(fWeight > 1.0f ? 255 : static_cast<int>(fScaled));
-            pOut->m_bY = static_cast<unsigned char>(static_cast<int>(fSumY * 127.0f + 128.0f));
-            pOut->m_bX = static_cast<unsigned char>(static_cast<int>(fSumX * 127.0f + 128.0f));
+            pOut->m_bZ = static_cast<unsigned char>(fSumZ * 127.0f + 128.0f);
+            pOut->m_bW = fWeight > 1.0f ? 255 : static_cast<unsigned char>(fScaled);
+            pOut->m_bY = static_cast<unsigned char>(fSumY * 127.0f + 128.0f);
+            pOut->m_bX = static_cast<unsigned char>(fSumX * 127.0f + 128.0f);
         }
     }
     delete[] pData;

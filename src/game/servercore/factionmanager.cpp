@@ -12,12 +12,11 @@ CFactionManager::CFactionManager()
     m_pFactionHostile2 = 0;
     m_pFactionFriendly1 = 0;
     m_pFactionFriendly2 = 0;
-    m_pFactionNeutral = 0;
     m_pFactionInsane = 0;
-    CExoArrayList<CSWSFaction*>* pFactions = new CExoArrayList<CSWSFaction*>();
-    m_paReputations = 0;
-    m_paFactions = pFactions;
+    m_pFactionNeutral = 0;
+    m_paFactions = new CExoArrayList<CSWSFaction*>();
     m_nNPCFactionCount = 0;
+    m_paReputations = 0;
 }
 
 CFactionManager::~CFactionManager()
@@ -181,19 +180,15 @@ int CFactionManager::GetFactionIdByName(const CExoString& sName)
 
 int CFactionManager::SaveFactions(CResGFF* pGFF, CResList* pList)
 {
-    if (m_nNPCFactionCount < 0)
-        return 1;
-    int i = 0;
-    do
+    for (int i = 0; i < m_nNPCFactionCount + 1; i++)
     {
-        K2_ASSUME(i < m_paFactions->m_count);
-        CSWSFaction* pFaction = (i < m_paFactions->m_count) ? m_paFactions->m_pArray[i] : 0;
+        CSWSFaction* pFaction = GetFaction(i);
         CResStruct s;
         pGFF->AddListElement(&s, pList, i);
         pGFF->WriteFieldCExoString(&s, pFaction->m_sName, const_cast<char*>("FactionName"));
         pGFF->WriteFieldDWORD(&s, pFaction->m_nParentFactionID, const_cast<char*>("FactionParentID"));
         pGFF->WriteFieldWORD(&s, static_cast<unsigned short>(pFaction->m_nGlobal), const_cast<char*>("FactionGlobal"));
-    } while (i++ < m_nNPCFactionCount);
+    }
     return 1;
 }
 

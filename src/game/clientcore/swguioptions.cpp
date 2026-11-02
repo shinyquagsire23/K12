@@ -291,18 +291,21 @@ void CSWGuiOptionsGraphicsAdvanced::OnAntiAliasLeft(CSWGuiControl* pControl)
     if (m_nAntiAlias < 1)
         return;
 
-    bool bFound = false;
+    int bFound = 0;
     if (m_nAntiAlias >= 8) {
         m_nAntiAlias = 6;
-        bFound = AurQueryAntiAliasingMode(6) != 0;
+        if (AurQueryAntiAliasingMode(6))
+            bFound = 1;
     }
-    if (!bFound && m_nAntiAlias >= 6) {
+    if (m_nAntiAlias >= 6 && !bFound) {
         m_nAntiAlias = 4;
-        bFound = AurQueryAntiAliasingMode(4) != 0;
+        if (AurQueryAntiAliasingMode(4))
+            bFound = 1;
     }
-    if (!bFound && m_nAntiAlias >= 4) {
+    if (m_nAntiAlias >= 4 && !bFound) {
         m_nAntiAlias = 2;
-        bFound = AurQueryAntiAliasingMode(2) != 0;
+        if (AurQueryAntiAliasingMode(2))
+            bFound = 1;
     }
     if (!bFound)
         m_nAntiAlias = 0;
@@ -3748,21 +3751,9 @@ void CSWGuiOptionsResolution::OnResolutionChosen(CSWGuiControl* pControl)
         }
 
         m_pGuiManager->PopModalPanel();
-        CSWGuiPanel* pPanel = this;
-        do {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel);
-        pPanel = m_pGuiManager->PopModalPanel();
-        do {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel);
-        pPanel = m_pGuiManager->PopModalPanel();
-        do {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        } while (pPanel);
+        SetToBeDeleted(0);
+        m_pGuiManager->PopModalPanel()->SetToBeDeleted(0);
+        m_pGuiManager->PopModalPanel()->SetToBeDeleted(0);
 
         CSWGuiOptionsMain* pMain = new CSWGuiOptionsMain(m_pGuiManager);
 #ifdef K2_QOL_FULLSCREEN

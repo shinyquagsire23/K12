@@ -37,27 +37,6 @@ enum : unsigned int {
     K1_REPORTED_FREE_DISK_SPACE = 0xffffffff,
 };
 
-// The resource types GetIsStaticType reports static (the scripts, dialogs, journals, area and
-// blueprint types), as bits over the type's distance from RESTYPE_NSS.
-enum : unsigned long long {
-    STATIC_RESTYPE_BITS = (1ULL << (RESTYPE_NSS - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_NCS - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_ARE - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTI - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTC - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_DLG - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_ITP - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTT - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTS - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTE - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTD - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTP - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_GIC - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTM - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_JRL - RESTYPE_NSS)) |
-                          (1ULL << (RESTYPE_UTW - RESTYPE_NSS)),
-};
-
 // m_nModuleResourceFlags: what AsyncLoad mounted for the module.
 enum {
     MODULERES_SAVED_RIM = 0x1,        // the current game's copy of the module's RIM
@@ -267,17 +246,29 @@ int CExoResMan::SetTotalResourceMemory(int nBytes)
 
 int CExoResMan::GetIsStaticType(unsigned short resType)
 {
-    unsigned int n = static_cast<unsigned int>(resType) - RESTYPE_NSS;
-    bool bStatic = true;
-    if (n > RESTYPE_UTW - RESTYPE_NSS || ((1ULL << (n & 63)) & STATIC_RESTYPE_BITS) == 0) {
-        goto checkSpecial;
+    // The scripts, dialogs, journals, area and blueprint types, and paths.
+    switch (resType) {
+    case RESTYPE_NSS:
+    case RESTYPE_NCS:
+    case RESTYPE_ARE:
+    case RESTYPE_UTI:
+    case RESTYPE_UTC:
+    case RESTYPE_DLG:
+    case RESTYPE_ITP:
+    case RESTYPE_UTT:
+    case RESTYPE_UTS:
+    case RESTYPE_UTE:
+    case RESTYPE_UTD:
+    case RESTYPE_UTP:
+    case RESTYPE_GIC:
+    case RESTYPE_UTM:
+    case RESTYPE_JRL:
+    case RESTYPE_UTW:
+    case RESTYPE_PTH:
+        return true;
+    default:
+        return false;
     }
-    return bStatic;
-checkSpecial:
-    if (resType == RESTYPE_PTH) {
-        return bStatic;
-    }
-    return false;
 }
 
 void CExoResMan::FreeResourceData(CRes* pRes)
@@ -1058,17 +1049,13 @@ int CExoResMan::CleanDirectory(const CExoString& path, int a, int b)
 
 void* CExoResMan::Demand(CRes* pRes)
 {
-    if (pRes == 0) {
+    if (pRes == 0 || pRes->m_dwResID == RESID_INVALID) {
         return 0;
     }
-    if (pRes->m_dwResID == RESID_INVALID) {
-        return 0;
-    }
-    unsigned int dwFlags = pRes->m_dwFlags;
-    if ((dwFlags & CRes::RESFLAG_RESIDENT) != 0 && pRes->m_pFileData != 0) {
+    if ((pRes->m_dwFlags & CRes::RESFLAG_RESIDENT) != 0 && pRes->m_pFileData != 0) {
         // Resident. If it was parked for freeing and nobody else holds it, take it back off the
         // free list. Walks the list directly rather than through GetAtPos/GetNext.
-        if ((dwFlags & CRes::RESFLAG_FREE_PENDING) != 0 && pRes->m_nDemandCount == 0) {
+        if (pRes->m_nDemandCount == 0 && (pRes->m_dwFlags & CRes::RESFLAG_FREE_PENDING) != 0) {
             CExoLinkedListNode* pNode = m_freeResources.m_pInternal->m_pHead;
             CRes* pFree = 0;
             if (m_freeResources.m_pInternal->m_pHead != 0) {
@@ -1083,7 +1070,10 @@ void* CExoResMan::Demand(CRes* pRes)
                 pFree = static_cast<CRes*>(m_freeResources.GetNext(pNode));
             }
         }
-    } else if ((dwFlags & CRes::RESFLAG_LOADING) != 0) {
+        pRes->m_nDemandCount = pRes->m_nDemandCount + 1;
+        return pRes->m_pFileData;
+    }
+    if ((pRes->m_dwFlags & CRes::RESFLAG_LOADING) != 0) {
         if (m_pAsyncReadFile == 0) {
             // Returns without bumping the demand count, unlike every other exit.
             return pRes->m_pFileData;
@@ -1096,31 +1086,31 @@ void* CExoResMan::Demand(CRes* pRes)
         if (ServiceCurrentAsyncRes() == 0) {
             return 0;
         }
-    } else {
-        int bServiced = 0;
-        switch (pRes->m_dwResID >> RESID_SOURCE_SHIFT) {
-        case RESSOURCE_BIF: bServiced = ServiceFromResFile(pRes, 0);      break;
-        case RESSOURCE_IMAGE: bServiced = ServiceFromImage(pRes, 0);        break;
-        case RESSOURCE_ENCAPSULATED: bServiced = ServiceFromEncapsulated(pRes, 0); break;
-        case RESSOURCE_DIRECTORY: bServiced = ServiceFromDirectory(pRes, 0);    break;
-        }
-        if (bServiced == 0) {
-            return 0;
-        }
-        CExoLinkedListNode* pNode = m_demandQueue.m_pInternal->m_pHead;
-        CRes* pQueued = 0;
-        if (m_demandQueue.m_pInternal->m_pHead != 0) {
-            pQueued = static_cast<CRes*>(m_demandQueue.m_pInternal->m_pHead->m_pData);
-        }
-        if (pNode != 0) {
-            while (pQueued != pRes) {
-                pQueued = static_cast<CRes*>(m_demandQueue.GetNext(pNode));
-                if (pNode == 0) goto bump;
-            }
-            m_demandQueue.Remove(pNode);
-        }
+        pRes->m_nDemandCount = pRes->m_nDemandCount + 1;
+        return pRes->m_pFileData;
     }
-bump:
+    int bServiced;
+    switch (pRes->m_dwResID >> RESID_SOURCE_SHIFT) {
+    case RESSOURCE_DIRECTORY: bServiced = ServiceFromDirectory(pRes, 0);    break;
+    case RESSOURCE_ENCAPSULATED: bServiced = ServiceFromEncapsulated(pRes, 0); break;
+    case RESSOURCE_BIF: bServiced = ServiceFromResFile(pRes, 0);      break;
+    case RESSOURCE_IMAGE: bServiced = ServiceFromImage(pRes, 0);        break;
+    }
+    if (bServiced == 0) {
+        return 0;
+    }
+    CExoLinkedListNode* pNode = m_demandQueue.m_pInternal->m_pHead;
+    CRes* pQueued = 0;
+    if (m_demandQueue.m_pInternal->m_pHead != 0) {
+        pQueued = static_cast<CRes*>(m_demandQueue.m_pInternal->m_pHead->m_pData);
+    }
+    while (pNode != 0) {
+        if (pQueued == pRes) {
+            m_demandQueue.Remove(pNode);
+            break;
+        }
+        pQueued = static_cast<CRes*>(m_demandQueue.GetNext(pNode));
+    }
     pRes->m_nDemandCount = pRes->m_nDemandCount + 1;
     return pRes->m_pFileData;
 }
@@ -2309,6 +2299,15 @@ CExoKeyTable* CExoResMan::GetTable(CRes* pRes)
         return 0;
     }
     CExoKeyTable* pTable = pList->GetAtPos(pNode);
+#if KOTOR1
+    while (pNode != 0) {
+        if (pTable != 0 && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) {
+            return pTable;
+        }
+        pTable = pList->GetNext(pNode);
+    }
+    return 0;
+#else
     if (pTable != 0) goto check;
 next:
     pTable = pList->GetNext(pNode);
@@ -2318,6 +2317,7 @@ check:
     if ((pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) != ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) goto next;
 
     return pTable;
+#endif
 }
 
 CRes* CExoResMan::GetResObject(const CResRef& resRef, unsigned short resType)
@@ -2437,7 +2437,7 @@ void ByteSwap(unsigned int* p) { K2_UNUSED(p); }
 void ByteSwap(int* p) { K2_UNUSED(p); }
 void ByteSwap(uint64_ll_t* p) { K2_UNUSED(p); }
 #if KOTOR1
-void ByteSwap(int64_t* p) { K2_UNUSED(p); }
+void ByteSwap(int64_ll_t* p) { K2_UNUSED(p); }
 #else
 void ByteSwap(long long* p) { K2_UNUSED(p); }
 #endif
@@ -2525,9 +2525,9 @@ CResRef CResRef::operator=(const CExoString& s)
     *reinterpret_cast<ResRefBytes*>(m_sResRef) = ResRefBytes();  // raw-offset: a resref is 16 name bytes, compared as words
     if (nLength != 0)
     {
-        unsigned int nCopy = (nLength < 16u) ? nLength : 16u;
-        memcpy(m_sResRef, s.CStr(), nCopy);  // idiom-exempt: runtime length (clamped source length)
-        for (unsigned int i = 0; i < nCopy; i++)
+        char* pStr = s.CStr();
+        memcpy(m_sResRef, pStr, nLength > 16 ? 16 : nLength);  // idiom-exempt: runtime length (clamped source length)
+        for (unsigned int i = 0; i < (nLength > 16 ? 16 : nLength); i++)
             m_sResRef[i] = static_cast<char>(tolower(static_cast<unsigned char>(m_sResRef[i])));
     }
     return *this;

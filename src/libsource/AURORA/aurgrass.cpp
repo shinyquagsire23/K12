@@ -934,10 +934,10 @@ void CAurTriangleBin::CreateArrays()
 
                 float fLmU = 0.0f;
                 float fLmV = 0.0f;
-                int nC0 = 0;
-                int nC1 = 0;
-                int nC2 = 0;
-                int nC3 = 0;
+                unsigned int nC0 = 0;
+                unsigned int nC1 = 0;
+                unsigned int nC2 = 0;
+                unsigned int nC3 = 0;
 
                 if (m_nFlags & kGrassLightmapped) {
                     // Per-vertex lightmap uv pair, blended with the barycentric weights.
@@ -971,10 +971,10 @@ void CAurTriangleBin::CreateArrays()
                     float fC3 = fmaxf(fminf(static_cast<float>(c0 >> 24) * fR0 +
                                             static_cast<float>(c1 >> 24) * fR1 +
                                             static_cast<float>(c2 >> 24) * fR2, 255.0f), 0.0f);
-                    nC0 = static_cast<int>(fC0);
-                    nC1 = static_cast<int>(fC1);
-                    nC2 = static_cast<int>(fC2);
-                    nC3 = static_cast<int>(fC3);
+                    nC0 = static_cast<unsigned int>(fC0);
+                    nC1 = static_cast<unsigned int>(fC1);
+                    nC2 = static_cast<unsigned int>(fC2);
+                    nC3 = static_cast<unsigned int>(fC3);
                     GLRender::UnlockPool(nColorPool);
                 }
 
@@ -1131,7 +1131,7 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
     int nN2 = pFace->m_nNormal[2];
 
     float fLmU = 0.0f, fLmV = 0.0f;
-    int nC0 = 0, nC1 = 0, nC2 = 0, nC3 = 127;
+    unsigned int nC0 = 0, nC1 = 0, nC2 = 0, nC3 = 127;
     if (m_nFlags & kGrassLightmapped) {
         Model* pModel = pTriMesh->m_pTree->AsModel();
         char* pPool = static_cast<char*>(GLRender::LockPool(pModel->m_nPool, 0, 0, 8))
@@ -1162,10 +1162,10 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
         float fC3 = fmaxf(fminf(static_cast<float>(c0 >> 24) * 0.0f +
                                 static_cast<float>(c1 >> 24) * 0.0f +
                                 static_cast<float>(c2 >> 24) * 0.0f, 255.0f), 0.0f);
-        nC0 = static_cast<int>(fC0);
-        nC1 = static_cast<int>(fC1);
-        nC2 = static_cast<int>(fC2);
-        nC3 = static_cast<int>(fC3);
+        nC0 = static_cast<unsigned int>(fC0);
+        nC1 = static_cast<unsigned int>(fC1);
+        nC2 = static_cast<unsigned int>(fC2);
+        nC3 = static_cast<unsigned int>(fC3);
         GLRender::UnlockPool(nColorPool);
     }
     float fColor = static_cast<float>(static_cast<unsigned int>(nC0 | (nC1 << 8) | (nC2 << 16) | (nC3 << 24)));

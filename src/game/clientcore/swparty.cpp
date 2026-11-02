@@ -252,10 +252,7 @@ CSWCCreature* CSWParty::RemoveCharacter(int index)
 int CSWParty::RemoveCharacter(unsigned long long id)
 {
     int index = GetIndex(id);
-    if (index == -1) {
-        return 0;
-    }
-    if (RemoveCharacter(index)) {
+    if (index != -1 && RemoveCharacter(index)) {
         return 1;
     }
     return 0;
@@ -381,9 +378,6 @@ int CSWParty::IsPartyTogether()
         return 0;
     }
     pLeader->GetArea();
-    if (m_nCharacterCount < 1) {
-        return 1;
-    }
     Vector leaderPos = pLeader->m_position;
     for (int i = 0; i < m_nCharacterCount; i++) {
         unsigned long long mid = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_members[i].id);

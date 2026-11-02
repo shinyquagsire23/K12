@@ -95,6 +95,7 @@ uint64_t AurAddDrawableSquare(float* paFloats, uint64_t nHandle, const char* psz
 #endif
 #if !KOTOR1
 // The fortified sprintf wrapper, file-local, taking (dst, length, fmt, ...).
+#if !defined(K2_NO_FORTIFY)
 static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
@@ -102,6 +103,7 @@ static int sprintf_s(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 #endif
 bool AurSwapControlAvailable();
 // A tri-state, -1 until the driver has been probed, so callers normalise the result themselves.

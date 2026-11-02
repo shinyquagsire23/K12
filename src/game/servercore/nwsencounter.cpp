@@ -460,16 +460,14 @@ void CSWSEncounter::SpawnIfAppropriate(unsigned long long objectId, float f) {
 }
 
 int CSWSEncounter::LineSegmentIntersectActivateArea(const Vector& p1, const Vector& p2) {
+    float outT1, outT2;
     CSWArea* pArea = GetArea();
     if (pArea == 0) return 0;
     for (int i = 0; i < m_nGeomIndexCount; i++) {
-        int next = (i == m_nGeomIndexCount - 1) ? 0 : i + 1;
         int idxA = m_pGeomIndices[i];
-        int idxB = m_pGeomIndices[next];
-        Vector& a = m_pGeomVerts[idxA];
-        Vector& b = m_pGeomVerts[idxB];
-        float outT1, outT2;
-        if (pArea->IntersectLineSegments(p1.x, p1.y, p2.x, p2.y, a.x, a.y, b.x, b.y, &outT1, &outT2) == 1) {
+        int idxB = m_pGeomIndices[i != m_nGeomIndexCount - 1 ? i + 1 : 0];
+        if (pArea->IntersectLineSegments(p1.x, p1.y, p2.x, p2.y, m_pGeomVerts[idxA].x, m_pGeomVerts[idxA].y,
+                                         m_pGeomVerts[idxB].x, m_pGeomVerts[idxB].y, &outT1, &outT2) == 1) {
             return 1;
         }
     }
