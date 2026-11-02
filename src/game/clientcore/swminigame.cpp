@@ -85,9 +85,7 @@ void CSWMiniGame::Go()
     }
     CSWMiniGameObjectArray* pArray = g_pAppManager->m_pClientExoApp->GetMGOArray();
     if (m_pPlayer != 0) {
-        g_pAppManager->m_pServerExoApp->GetPartyTable();
-        g_pAppManager->m_pServerExoApp->GetPartyTable();
-        g_pAppManager->m_pServerExoApp->GetPartyTable();
+        SetupSwoopUpgrades();
         m_pPlayer->Go();
     }
 #endif
@@ -783,9 +781,7 @@ CSWMGObstacle* CSWMiniGame::AddObstacle(const CResRef& resName, const Vector& vP
 // Registers an enemy id; registering the same enemy twice is a no-op.
 CSWMiniEnemy* CSWMiniGame::AddEnemy(CSWMiniEnemy* pEnemy)
 {
-    unsigned int nObjectId = pEnemy->m_nObjectId;
-    if (m_enemyIds.Contains(nObjectId) == 0)
-        m_enemyIds.Add(nObjectId);
+    m_enemyIds.AddUnique(pEnemy->m_nObjectId);
     return pEnemy;
 }
 
@@ -1160,7 +1156,7 @@ void CSWMiniGame::DoHitCheck()
         int bHit = 0;
         if (m_pPlayer != 0 && m_pPlayer->DoBulletHitCheck(pBullet))
         {
-            delete pBulletRef;
+            delete m_bullets.m_pArray[i];
             m_bullets.DelIndex(i);
             bHit = 1;
         }
@@ -1177,7 +1173,7 @@ void CSWMiniGame::DoHitCheck()
                 }
                 if (pEnemy->DoBulletHitCheck(pBullet))
                 {
-                    delete pBulletRef;
+                    delete m_bullets.m_pArray[i];
                     m_bullets.DelIndex(i);
                     bHit = 1;
                     break;
@@ -1199,7 +1195,7 @@ void CSWMiniGame::DoHitCheck()
                 if (HitCheckBullet(pBullet, pObstacle->m_pGob, pObstacle))
                 {
                     pObstacle->OnHitBullet(0);
-                    delete pBulletRef;
+                    delete m_bullets.m_pArray[i];
                     m_bullets.DelIndex(i);
                     pObstacle->m_pGob.m_pObject->DisableAlwaysRender();
                     delete pObstacle;
@@ -1233,7 +1229,7 @@ void CSWMiniGame::DoHitCheck()
                                   vCur, vPrev, &vHitPoint, &hitInfo) != 0)
                 {
                     delete pBullet;
-                    delete pBulletRef;
+                    delete m_bullets.m_pArray[i];
                     m_bullets.DelIndex(i);
                     bHit = 1;
                 }
@@ -1295,7 +1291,7 @@ void CSWMiniGame::DoHitCheck()
                 0, 0, oid, oid, nEventSignal, pEvent);
 
             delete pBullet;
-            delete pBulletRef;
+            delete m_bullets.m_pArray[i];
             m_bullets.DelIndex(i);
             bHit = 1;
             break;

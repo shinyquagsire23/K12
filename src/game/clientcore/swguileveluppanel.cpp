@@ -88,10 +88,10 @@ void CSWGuiLevelUpPanel::OnCancelPressed(CSWGuiControl* pControl)
     if (m_bCanCancel == 0)
         return;
 
-    m_pCharGenPanel->ClearPowers();
-    m_pCharGenPanel->ClearFeats();
-    m_pCharGenPanel->ClearSkills();
-    m_pCharGenPanel->ClearAbilities();
+    ClearPowers();
+    ClearFeats();
+    ClearSkills();
+    ClearAbilities();
     m_nCurrentPage = LEVELUP_STEP_ABILITIES;
     ChangeState(1);
 }
@@ -141,10 +141,10 @@ void CSWGuiLevelUpPanel::ChangeState(int nState)
         // summary and stages nothing).
         switch (i)
         {
-        case LEVELUP_STEP_ABILITIES: m_pCharGenPanel->ClearAbilities(); break;
-        case LEVELUP_STEP_SKILLS:    m_pCharGenPanel->ClearSkills();    break;
-        case LEVELUP_STEP_FEATS:     m_pCharGenPanel->ClearFeats();     break;
-        case LEVELUP_STEP_POWERS:    m_pCharGenPanel->ClearPowers();    break;
+        case LEVELUP_STEP_ABILITIES: ClearAbilities(); break;
+        case LEVELUP_STEP_SKILLS:    ClearSkills();    break;
+        case LEVELUP_STEP_FEATS:     ClearFeats();     break;
+        case LEVELUP_STEP_POWERS:    ClearPowers();    break;
         }
         m_nCurrentPage = i;
 
@@ -227,13 +227,11 @@ void CSWGuiLevelUpPanel::PlayGame()
 #else
     if (m_anState[LEVELUP_STEP_FEATS] == 0) {
         static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedFeats(0, 0);
-        m_pCharGenPanel->SetVisible(1);
-        ChangeState(0);
+        FeatSelectionCompleted();
     }
     if (m_anState[LEVELUP_STEP_POWERS] == 0) {
         static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedPowers(0);
-        m_pCharGenPanel->SetVisible(1);
-        ChangeState(0);
+        PowersSelectionCompleted();
     }
 #endif
     m_pCharGenPanel->BeginPlayGame();

@@ -72,14 +72,6 @@ static inline void SystemTimeToFileTime(const SystemTimeWords* pSystemTime, unsi
 {
     SystemTimeToFileTime(reinterpret_cast<const SYSTEMTIME*>(pSystemTime), pFileTime);
 }
-static inline unsigned long long GetLocalFileTime()
-{
-    SystemTimeWords localTime;
-    GetLocalTime(&localTime);
-    unsigned long long fileTime;
-    SystemTimeToFileTime(&localTime, &fileTime);
-    return fileTime;
-}
 
 #if KOTOR1  // K1 builds paths with std::string
 #include <string>
@@ -681,8 +673,7 @@ int CServerExoAppInternal::SaveGame(unsigned int saveNumber, const CExoString& n
     pInfo->m_saveDirectory = saveSlot;
     g_pAppManager->m_pLoadGameErrorInfo->m_saveGameName = saveGameName;
     g_pAppManager->m_pLoadGameErrorInfo->m_nLoadBarPair = 0;
-    g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerLoadBar_StartStallEvent(
-        CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME);
+    SendStartStallEvent(CLoadGameErrorInfo::STALL_EVENT_SAVE_GAME);
 
     saveSlot = g_pExoBase->m_pAliasList->GetAliasPath("SAVES", 0);
 
@@ -1209,18 +1200,7 @@ int CServerExoAppInternal::RemovePendingAuthorization(unsigned int a)
 
 int CServerExoAppInternal::IsOnActiveExclusionList(unsigned long long a)
 {
-    unsigned char pauseState = m_pauseFlags & 1;
-    if (m_pauseFlags & 2)
-        pauseState = 2;
-
-    CExoLinkedList<unsigned long long>* pList;
-    if (pauseState == 1)
-        pList = m_exclusionList2;
-    else if (pauseState == 2)
-        pList = m_exclusionList1;
-    else
-        return 1;
-
+    CExoLinkedList<unsigned long long>* pList = GetActiveExclusionList();
     if (pList == 0)
         return 1;
 
@@ -1340,45 +1320,12 @@ void* CServerExoAppInternal::GetActiveTimer(unsigned long long a)
 
         if (pauseState == 2)
         {
-            CExoLinkedList<unsigned long long>* pList = m_exclusionList1;
-            if (pList == 0)
+            if (IsOnActiveExclusionList(a) == 1)
                 ppTimer += 2;
-            else
-            {
-                CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-                while (pNode != 0)
-                {
-                    if (reinterpret_cast<unsigned long long>(pList->GetAtPos(pNode)) == a)
-                    {
-                        ppTimer += 2;
-                        break;
-                    }
-                    pList->GetNext(pNode);
-                }
-            }
         }
         else if (pauseState != 0)
         {
-            if (pauseState == 1)
-            {
-                CExoLinkedList<unsigned long long>* pList = m_exclusionList2;
-                if (pList == 0)
-                    ppTimer += 1;
-                else
-                {
-                    CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-                    while (pNode != 0)
-                    {
-                        if (reinterpret_cast<unsigned long long>(pList->GetAtPos(pNode)) == a)
-                        {
-                            ppTimer += 1;
-                            break;
-                        }
-                        pList->GetNext(pNode);
-                    }
-                }
-            }
-            else
+            if (IsOnActiveExclusionList(a) == 1)
                 ppTimer += 1;
         }
     }
@@ -1450,8 +1397,8 @@ void CServerExoAppInternal::UpdateSubareasOnMoveTo(unsigned long long id, const 
 
 int CServerExoAppInternal::GetFactionOfObject(unsigned long long id, int* pFaction)
 {
-    CGameObject* pFound = 0;
 #if KOTOR1  // K1 tests the lookup status first
+    CGameObject* pFound = 0;
     int bFound = 0;
     if (m_pObjectArray->GetGameObject(id, &pFound) == CGameObjectArray::SUCCESS && pFound != 0) {
         CGameObject* pObject = pFound;
@@ -1474,8 +1421,7 @@ int CServerExoAppInternal::GetFactionOfObject(unsigned long long id, int* pFacti
     }
     return bFound;
 #else
-    m_pObjectArray->GetGameObject(id, &pFound);
-    CGameObject* pObject = pFound;
+    CGameObject* pObject = GetGameObject(id);
     if (pObject == 0)
         return 0;
 
@@ -1597,14 +1543,14 @@ int CServerExoAppInternal::Initialize()
 
 void CServerExoAppInternal::SkipPastDialog(unsigned long long id)
 {
-    CGameObject* pOut = 0;
 #if KOTOR1  // K1 tests the lookup status
+    CGameObject* pOut = 0;
     if (m_pObjectArray->GetGameObject(id, &pOut) != CGameObjectArray::SUCCESS)
         return;
-#else
-    m_pObjectArray->GetGameObject(id, &pOut);
-#endif
     CGameObject* pObject = pOut;
+#else
+    CGameObject* pObject = GetGameObject(id);
+#endif
     if (pObject != 0)
     {
         if (pObject->AsSWSObject() != 0)
@@ -1628,14 +1574,7 @@ int CServerExoAppInternal::SendCharacterQuery(CSWSPlayer* pPlayer)
 
 int CServerExoAppInternal::IsInjured(unsigned long long id)
 {
-    CGameObject* pObject = 0;
-    if (m_pObjectArray->GetGameObject(id, &pObject) != CGameObjectArray::SUCCESS)
-        return 0;
-    if (pObject == 0)
-        return 0;
-    if (pObject->m_objectType != CGameObject::OBJECT_TYPE_CREATURE)
-        return 0;
-    CSWSCreature* pCreature = pObject->AsSWSCreature();
+    CSWSCreature* pCreature = GetCreatureByGameObjectID(id);
     if (pCreature == 0)
         return 0;
     return pCreature->IsInjured();
@@ -1826,23 +1765,7 @@ int CServerExoAppInternal::IsActionsPending(unsigned long long id)
 
 CExoString CServerExoAppInternal::GetModuleName()
 {
-    if (m_lastModuleFoundId != m_moduleObjectId)
-    {
-        CGameObject* pObject = 0;
-        m_pObjectArray->GetGameObject(m_moduleObjectId, &pObject);
-        if (pObject != 0)
-        {
-            m_lastModuleFoundId = m_moduleObjectId;
-            CSWSModule* pModule = pObject->AsSWSModule();
-            m_pLastModuleFound = pModule;
-        }
-        else
-        {
-            m_lastModuleFoundId = OBJECT_INVALID;
-            m_pLastModuleFound = 0;
-        }
-    }
-    if (m_pLastModuleFound != 0)
+    if (GetModule() != 0)
         return m_pServerInfo->m_sModuleName;
     return CExoString();
 }
@@ -2159,7 +2082,7 @@ int CServerExoAppInternal::RunModule()
 
         if (m_doingStartNewModule == 1)
         {
-            g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerModule_EndStartNewModule(1);
+            SendExitingStartNewModuleMessage(1);
             m_doingStartNewModule = 0;
         }
 
@@ -2321,10 +2244,11 @@ bool CServerExoAppInternal::DebugValidatePath(unsigned long long objectId, int w
             cur.z = pArea->ComputeHeight(cur, 1, 0, &roomHint);
 #endif
             pArea->m_pActivePathfindInfo = pPathInfo;
-            CSWSRoom* pRoom = pArea->GetRoom(cur, 0, &roomHint);
-            bool roomOk = pRoom != 0;
-            int walkable = pArea->PositionWalkable(cur);
-            result = roomOk & (walkable != 0);
+#if KOTOR1
+            result = DebugValidatePath_Point(pArea, cur) != 0;
+#else
+            result = DebugValidatePath_Point(pArea, cur, &roomHint) != 0;
+#endif
             Vector prev = cur;
 
             if (count > 2)
@@ -2337,10 +2261,11 @@ bool CServerExoAppInternal::DebugValidatePath(unsigned long long objectId, int w
                     cur.y = p[1];
                     cur.z = 0.0f;
                     cur.z = pArea->ComputeHeight(cur, 1, 0, &roomHint);
-                    CSWSRoom* pRoom2 = pArea->GetRoom(cur, 0, &roomHint);
-                    bool roomOk2 = pRoom2 != 0;
-                    int walkable2 = pArea->PositionWalkable(cur);
-                    bool posOk = roomOk2 & (walkable2 != 0);
+#if KOTOR1
+                    bool posOk = DebugValidatePath_Point(pArea, cur) != 0;
+#else
+                    bool posOk = DebugValidatePath_Point(pArea, cur, &roomHint) != 0;
+#endif
                     bool segOk = DebugValidatePath_Segment(pArea, pPathInfo, prev, cur);
                     result = segOk & result;
                     i += 2;
@@ -2375,9 +2300,7 @@ bool CServerExoAppInternal::DebugValidatePath_Segment(CSWSArea* pArea, CPathfind
     if (savedStatus != -2)
         return false;
 
-    CGameObject* pFound = 0;
-    m_pObjectArray->GetGameObject(hitInfo.m_hitObjectId, &pFound);
-    CGameObject* pObject = pFound;
+    CGameObject* pObject = GetGameObject(hitInfo.m_hitObjectId);
     if (pObject == 0)
         return true;
 
@@ -2809,7 +2732,7 @@ void CServerExoAppInternal::StartServices(int a)
     }
 
     m_nShutdownGracePeriod = 180000000;
-    m_pNetLayer->Initialize(reinterpret_cast<CBaseExoApp*>(g_pAppManager->m_pServerExoApp));
+    InitializeNetLayer();
 
     GetServerInfoFromIniFile();
 
@@ -3480,12 +3403,7 @@ int CServerExoAppInternal::LoadCharacterFinish(CSWSPlayer* pPlayer, int a)
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
     CScriptEvent* pEvent1 = new CScriptEvent();
 
-    if (pPlayer->m_connectionState != 1)
-    {
-        pPlayer->m_connectionState = 1;
-        m_pSWSMessage->SendServerToPlayerLogin_Confirm(pPlayer->m_nPlayerId);
-        m_pSWSMessage->SendServerToPlayerModule_Info(pPlayer->m_nPlayerId);
-    }
+    ValidatePlayerLogin(pPlayer);
 
     if (a != 0 && pPlayer->m_playerIndex != -1)
     {
@@ -3617,7 +3535,7 @@ void CServerExoAppInternal::TempDeathUpdate()
         }
 
         if (count != 0 && allDead)
-            g_pAppManager->m_pClientExoApp->RunDeathSequence();
+            RunDeathSequence();
 
         if (!anyDead)
         {
@@ -3868,16 +3786,10 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
     if (resType == -1)
     {
         resType = RESTYPE_NWM;
-        {
-            CExoString dir("NWMFILES:");
-            g_pExoResMan->AddResourceDirectory(dir);
-        }
+        g_pExoResMan->AddResourceDirectory(CExoString("NWMFILES:"));
         exists = g_pExoResMan->Exists(CResRef(moduleName), resType, static_cast<unsigned int*>(0));
         resType = exists ? resType : static_cast<short>(-1);
-        {
-            CExoString dir("NWMFILES:");
-            g_pExoResMan->RemoveResourceDirectory(dir);
-        }
+        g_pExoResMan->RemoveResourceDirectory(CExoString("NWMFILES:"));
 
         if (exists != 0)
         {
@@ -3885,10 +3797,7 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
         }
         else
         {
-            {
-                CExoString dir("MODULES:");
-                g_pExoResMan->AddResourceDirectory(dir);
-            }
+            g_pExoResMan->AddResourceDirectory(CExoString("MODULES:"));
 #if !KOTOR1  // K2 only adds the module override directories
             AddModuleOverrideResourceDirectories();
 #endif
@@ -3910,10 +3819,7 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
                     found = false;
             }
 
-            {
-                CExoString dir("MODULES:");
-                g_pExoResMan->RemoveResourceDirectory(dir);
-            }
+            g_pExoResMan->RemoveResourceDirectory(CExoString("MODULES:"));
 #if !KOTOR1  // K2 only adds the module override directories
             RemoveModuleOverrideResourceDirectories();
 #endif
@@ -3965,30 +3871,7 @@ int CServerExoAppInternal::GetModulePreviouslyVisited(const CExoString& moduleNa
 // party-injury-gated autosave trigger, character flushes and the shutdown countdown.
 int CServerExoAppInternal::MainLoop()
 {
-
-    m_pPauseTimer->GetSnapshotTime();
-    int now = g_pExoBase->m_pTimers->GetLowResolutionTimer();
-    if (m_autoSaveTimerFlag == 0)
-    {
-        int last = m_autoSaveTimerLastTime;
-        if (last == 0)
-        {
-            m_autoSaveTimerLastTime = now;
-            last = now;
-        }
-        unsigned int elapsed = m_autoSaveTimerDay + (now - last);
-        m_autoSaveTimerDay = elapsed;
-        m_autoSaveTimerLastTime = now;
-        if (elapsed > 900000)
-        {
-            m_autoSaveTimerDay = 0;
-            m_autoSaveTimerFlag = 1;
-        }
-    }
-    else
-    {
-        m_autoSaveTimerLastTime = now;
-    }
+    UpdateAutoSaveTimer();
 
     if (g_pAppManager->m_pLoadGameErrorInfo->m_flag != 0)
     {
@@ -4172,9 +4055,7 @@ int CServerExoAppInternal::MainLoop()
                             && pChar->GetServerCreature()->GetCurrentHitPoints(0) > 1))
 #endif
                     {
-                        uint64_ll_t freeSpace = 0;
-                        g_pExoResMan->GetFreeDiskSpace(CExoString("SAVES:"), &freeSpace);
-                        if ((freeSpace >> 14) <= SAVE_MIN_FREE_SPACE_16K || m_serverMode != 2)
+                        if (HasEnoughDiskSpaceForSaveGame() == 0 || m_serverMode != 2)
                         {
                             int fadeState = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nGlobalDialogState;
                             CGuiInGame* pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
@@ -4224,46 +4105,15 @@ int CServerExoAppInternal::MainLoop()
     }
 
 tail:
+    if (UpdateShutdownTimer(g_pExoBase->m_pTimers->GetHighResolutionTimer()) != 0)
     {
-        uint64_ll_t hiResNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
-        unsigned long long remaining = m_nShutdownTimeRemaining;
-        if (remaining != 0)
-        {
-            unsigned long long last = m_nShutdownLastTick;
-            if (remaining < hiResNow - last)
-            {
-                m_nShutdownTimeRemaining = 0;
-                if (m_aShutdownPlayerIds.m_count == 0)
-                    g_pAppManager->DestroyServer();
-                else
-                    Shutdown(0, 0);
-            }
-            else
-            {
-                if ((remaining > 60000000 && remaining - (hiResNow - last) < 60000000) ||
-                    (remaining > 30000000 && (remaining - hiResNow) + last < 30000000))
-                {
-                    for (long long i = 0; i < m_aShutdownPlayerIds.m_count; i++)
-                        m_pSWSMessage->SendServerToPlayerShutDownServer(static_cast<unsigned int>(m_aShutdownPlayerIds[static_cast<int>(i)]),
-                            static_cast<unsigned int>((m_nShutdownLastTick - hiResNow + m_nShutdownTimeRemaining) / 1000000));
-                }
-                m_nShutdownTimeRemaining = (m_nShutdownTimeRemaining - hiResNow) + m_nShutdownLastTick;
-                m_nShutdownLastTick = hiResNow;
-            }
-        }
+        if (m_aShutdownPlayerIds.m_count == 0)
+            g_pAppManager->DestroyServer();
+        else
+            Shutdown(0, 0);
     }
 
-    {
-        uint64_ll_t heartbeatNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
-        unsigned long long interval;
-        if (m_logHeartbeatLastTime != 0
-            && m_logHeartbeatInterval > heartbeatNow - m_logHeartbeatLastTime)
-            interval = m_logHeartbeatInterval - (heartbeatNow - m_logHeartbeatLastTime);
-        else
-            interval = 10000000;
-        m_logHeartbeatInterval = interval;
-        m_logHeartbeatLastTime = heartbeatNow;
-    }
+    UpdateLogHeartbeatTimer(g_pExoBase->m_pTimers->GetHighResolutionTimer());
     return 0;
 }
 
@@ -4283,13 +4133,7 @@ void CServerExoAppInternal::StallEventSaveGame()
     int colon = moduleTag.Find(':', 0);
     if (colon != -1)
     {
-#if KOTOR1
         int len = moduleTag.GetLength();
-#else
-        int len = 0;
-        if (moduleTag.m_sString != 0)
-            len = static_cast<int>(strlen(moduleTag.m_sString));
-#endif
         CExoString tail = moduleTag.Right(len - colon - 1);
         moduleTag = tail;
     }
@@ -4375,11 +4219,9 @@ void CServerExoAppInternal::StallEventSaveGame()
         if (found == 0)
         {
             screenshot.Format(const_cast<char*>("load_%s"), moduleTag.CStr());
-            CResRef bmpRef(screenshot);
-            if (g_pExoResMan->Exists(bmpRef, 3, static_cast<unsigned int*>(0)) == 0)
+            if (g_pExoResMan->Exists(CResRef(screenshot), 3, static_cast<unsigned int*>(0)) == 0)
             {
-                CResRef tgaRef(screenshot);
-                if (g_pExoResMan->Exists(tgaRef, RESTYPE_TPC, static_cast<unsigned int*>(0)) == 0)
+                if (g_pExoResMan->Exists(CResRef(screenshot), RESTYPE_TPC, static_cast<unsigned int*>(0)) == 0)
                 {
                     C2DA* pTable2 = g_pRules->m_p2DArrays->m_pAreaTransition;
                     CExoString defaultRow("DEFAULT");
@@ -4393,7 +4235,7 @@ void CServerExoAppInternal::StallEventSaveGame()
 #endif
 
 #if !KOTOR1
-    pGff->WriteFieldDWORD64(&topStruct, GetLocalFileTime(), const_cast<char*>("TIMESTAMP"));
+    pGff->WriteFieldDWORD64(&topStruct, GetSystemTimeAsDWORD64(), const_cast<char*>("TIMESTAMP"));
 
     {
         CExoString pcName(m_partyTable.m_saveTableName);
@@ -4480,7 +4322,11 @@ void CServerExoAppInternal::StallEventSaveGame()
     UpdateScreen(0.033333335f, 0, 0);
     {
         CExoString gipPrefix("GAMEINPROGRESS:");
+#if KOTOR1  // K1 passes no type mask (the callee ignores it in both games)
+        pErf->ImportFiles(gipPrefix, 0, UpdateLoadScreen, 30, 60);
+#else
         pErf->ImportFiles(gipPrefix, reinterpret_cast<void*>(-1), UpdateLoadScreen, 30, 60);
+#endif
     }
     pErf->Finish();
     pErf->Read(saveFilePath);
@@ -4876,8 +4722,7 @@ LAB_HaveResult:
         g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_LOAD_SAVE;
         g_pAppManager->m_pLoadGameErrorInfo->m_bStallFirstFrame = 1;
         g_pAppManager->m_pLoadGameErrorInfo->m_errorCode = 0;
-        g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerLoadBar_StartStallEvent(
-            CLoadGameErrorInfo::STALL_EVENT_LOAD_SAVE);
+        SendStartStallEvent(CLoadGameErrorInfo::STALL_EVENT_LOAD_SAVE);
     }
     else
     {
@@ -4885,8 +4730,7 @@ LAB_HaveResult:
         g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_LOAD_MODULE;
         g_pAppManager->m_pLoadGameErrorInfo->m_bStallFirstFrame = 1;
         g_pAppManager->m_pLoadGameErrorInfo->m_errorCode = 0;
-        g_pAppManager->m_pServerExoApp->GetSWSMessage()->SendServerToPlayerLoadBar_StartStallEvent(
-            CLoadGameErrorInfo::STALL_EVENT_LOAD_MODULE);
+        SendStartStallEvent(CLoadGameErrorInfo::STALL_EVENT_LOAD_MODULE);
     }
 
     g_pAppManager->m_pLoadGameErrorInfo->m_nLoadBarPair = 0;
@@ -4971,11 +4815,9 @@ void CServerExoAppInternal::DoPCAutosave(const CExoString& moduleName, C2DA* p2d
         if (found == 0)
         {
             screenshot.Format(const_cast<char*>("load_%s"), moduleName.CStr());
-            CResRef bmpRef(screenshot);
-            if (g_pExoResMan->Exists(bmpRef, 3, static_cast<unsigned int*>(0)) == 0)
+            if (g_pExoResMan->Exists(CResRef(screenshot), 3, static_cast<unsigned int*>(0)) == 0)
             {
-                CResRef tgaRef(screenshot);
-                if (g_pExoResMan->Exists(tgaRef, RESTYPE_TPC, static_cast<unsigned int*>(0)) == 0)
+                if (g_pExoResMan->Exists(CResRef(screenshot), RESTYPE_TPC, static_cast<unsigned int*>(0)) == 0)
                 {
                     C2DA* pTable2 = g_pRules->m_p2DArrays->m_pAreaTransition;
                     pTable2->GetCExoStringEntry(CExoString("DEFAULT"), CExoString("BMPResRef"), &screenshot);
@@ -4997,13 +4839,7 @@ void CServerExoAppInternal::DoPCAutosave(const CExoString& moduleName, C2DA* p2d
     pGff->WriteFieldCExoString(&topStruct, screenshot, const_cast<char*>("SCREENSHOT"));
 
 #if !KOTOR1
-    {
-        SystemTimeWords localTime;
-        GetLocalTime(&localTime);
-        unsigned long long fileTime;
-        SystemTimeToFileTime(&localTime, &fileTime);
-        pGff->WriteFieldDWORD64(&topStruct, fileTime, const_cast<char*>("TIMESTAMP"));
-    }
+    pGff->WriteFieldDWORD64(&topStruct, GetSystemTimeAsDWORD64(), const_cast<char*>("TIMESTAMP"));
 
     {
         CExoString pcName(m_partyTable.m_saveTableName);
@@ -5162,7 +4998,11 @@ void CServerExoAppInternal::DoPCAutosave(const CExoString& moduleName, C2DA* p2d
     UpdateScreen(0.033333335f, 0, 0);
     {
         CExoString gipPrefix("GAMEINPROGRESS:");
+#if KOTOR1  // K1 passes no type mask (the callee ignores it in both games)
+        pErf->ImportFiles(gipPrefix, 0, UpdateLoadScreen, step * 30 / 100, step * 60 / 100);
+#else
         pErf->ImportFiles(gipPrefix, reinterpret_cast<void*>(-1), UpdateLoadScreen, step * 30 / 100, step * 60 / 100);
+#endif
     }
     pErf->Finish();
     pErf->~CERFFile();

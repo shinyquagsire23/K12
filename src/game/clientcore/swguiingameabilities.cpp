@@ -327,9 +327,6 @@ void CSWGuiInGameAbilities::SetButtonColor(CSWGuiControl* pControl)
 // The description pane's text and the flag UpdateDescriptionListBox uses to decide whether the
 // list box shows anything at all.
 
-#if KOTOR1  // K1: the callers reach this through a bl
-__attribute__((noinline))
-#endif
 void CSWGuiInGameAbilities::SetDescription(const CExoString& sDescription)
 {
     m_labelDesc.m_text.m_params.SetText(sDescription);
@@ -399,15 +396,7 @@ void CSWGuiInGameAbilities::CreateSkillList()
             skill.m_nRankModifier = nRankMod - nRank;
             m_aSkillList.Add(skill);
 
-            CResRef resRef("inone");
-            int64_t nStrRef K2_UNSET;
-            if (&g_pRules->m_paSkills[i] != 0) {
-                nStrRef = g_pRules->m_paSkills[i].m_nNameStrRef;
-                resRef = g_pRules->m_paSkills[i].m_icon;
-            }
-            m_aSkillEntry[nRow].m_borderIcon.m_params.m_flags.nFillStyle = 2;
-            m_aSkillEntry[nRow].m_borderIcon.m_params.SetFillImage(resRef, 0);
-            m_aSkillEntry[nRow].m_text.m_params.SetStrRef(nStrRef);
+            m_aSkillEntry[nRow].SetSkill(static_cast<unsigned int>(i), CSWGuiInGameSkillEntry::ENTRY_SKILL);
             nRow++;
         }
     }
@@ -423,8 +412,6 @@ void CSWGuiInGameAbilities::CreatePowerList()
     }
 }
 
-// The Android build has no power page, so the jedi-class test's result is deliberately discarded,
-// and the K2 UpdatePortraits is an empty override.
 #if KOTOR1  // K1: a Jedi with at least one power to list
 int CSWGuiInGameAbilities::DisplayPowers()
 {
@@ -433,10 +420,10 @@ int CSWGuiInGameAbilities::DisplayPowers()
            && m_powerChart.m_aFlows.m_count > 0;
 }
 #else
-void CSWGuiInGameAbilities::DisplayPowers()
+int CSWGuiInGameAbilities::DisplayPowers()
 {
     CSWCCreatureStats* pStats = m_pCreature->m_pStats;
-    CSWClass::IsJedi(pStats->GetClass(pStats->m_nNumClasses - 1) & 0xff);
+    return CSWClass::IsJedi(pStats->GetClass(pStats->m_nNumClasses - 1) & 0xff);
 }
 #endif
 
@@ -448,15 +435,15 @@ void CSWGuiInGameAbilities::UpdatePortraits()
         CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
         if (pParty->m_nCharacterCount >= 2) {
             m_btnChange1.m_tail.bVisible = 1;
-            m_btnChange1.m_border.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1), 0);
-            m_btnChange1.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1), 0);
+            m_btnChange1.m_border.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1));
         } else {
             m_btnChange1.m_tail.bVisible = 0;
         }
         if (pParty->m_nCharacterCount >= 3) {
             m_btnChange2.m_tail.bVisible = 1;
-            m_btnChange2.m_border.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1), 0);
-            m_btnChange2.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1), 0);
+            m_btnChange2.m_border.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1));
         } else {
             m_btnChange2.m_tail.bVisible = 0;
         }
@@ -479,13 +466,13 @@ void CSWGuiInGameAbilities::UpdatePortraits()
         if (pNPC == 0)
             continue;
         if (nFound) {
-            m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
-            m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
+            m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
             m_btnChange2.m_tail.m_nUserData = i;
             goto both;
         }
-        m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
-        m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
+        m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+        m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
         m_btnChange1.m_tail.m_nUserData = i;
         nFound = 1;
     }
@@ -493,16 +480,16 @@ void CSWGuiInGameAbilities::UpdatePortraits()
     if (static_cast<unsigned char>(m_nNPC) != 0xff) {
         if (nFound) {
             m_btnChange2.m_border.m_params.SetFillImage(
-                g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+                g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
             m_btnChange2.m_borderHilight.m_params.SetFillImage(
-                g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+                g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
             m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
             goto both;
         }
         m_btnChange1.m_border.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_borderHilight.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         nFound = 1;
     }
@@ -518,13 +505,13 @@ void CSWGuiInGameAbilities::UpdatePortraits()
         if (pNPC == 0)
             continue;
         if (nFound) {
-            m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
-            m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
+            m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
             m_btnChange2.m_tail.m_nUserData = i;
             goto both;
         }
-        m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
-        m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
+        m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+        m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
         m_btnChange1.m_tail.m_nUserData = i;
         nFound = 1;
     }
@@ -541,6 +528,7 @@ cyclers:
         g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNumNPCAvailable() > 2;
 }
 #else
+// An empty override in K2.
 void CSWGuiInGameAbilities::UpdatePortraits()
 {
 }
@@ -594,9 +582,9 @@ void CSWGuiInGameAbilities::OnSwitchLeft(CSWGuiControl* pControl)
     char nCur = static_cast<char>(m_btnChange1.m_tail.m_nUserData);
     if (nCur == -2)
         return;
-    m_btnChange2.m_border.m_params.SetFillImage(m_btnChange1.m_border.m_params.m_fillImage, 0);
+    m_btnChange2.m_border.m_params.SetFillImage(m_btnChange1.m_border.m_params.m_fillImage);
     m_btnChange2.m_borderHilight.m_params.SetFillImage(
-        m_btnChange1.m_borderHilight.m_params.m_fillImage, 0);
+        m_btnChange1.m_borderHilight.m_params.m_fillImage);
     m_btnChange2.m_tail.m_nUserData = m_btnChange1.m_tail.m_nUserData;
 
     CSWCCreature* pNPC;
@@ -614,9 +602,9 @@ void CSWGuiInGameAbilities::OnSwitchLeft(CSWGuiControl* pControl)
     }
     if (static_cast<unsigned char>(m_nNPC) != 0xff && static_cast<char>(m_btnChange2.m_tail.m_nUserData) != -1) {
         m_btnChange1.m_border.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_borderHilight.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
@@ -633,8 +621,8 @@ void CSWGuiInGameAbilities::OnSwitchLeft(CSWGuiControl* pControl)
     }
     return;
 found:
-    m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
+    m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+    m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
     m_btnChange1.m_tail.m_nUserData = i;
 }
 
@@ -646,9 +634,9 @@ void CSWGuiInGameAbilities::OnSwitchRight(CSWGuiControl* pControl)
     char nCur = static_cast<char>(m_btnChange2.m_tail.m_nUserData);
     if (nCur == -2)
         return;
-    m_btnChange1.m_border.m_params.SetFillImage(m_btnChange2.m_border.m_params.m_fillImage, 0);
+    m_btnChange1.m_border.m_params.SetFillImage(m_btnChange2.m_border.m_params.m_fillImage);
     m_btnChange1.m_borderHilight.m_params.SetFillImage(
-        m_btnChange2.m_borderHilight.m_params.m_fillImage, 0);
+        m_btnChange2.m_borderHilight.m_params.m_fillImage);
     m_btnChange1.m_tail.m_nUserData = m_btnChange2.m_tail.m_nUserData;
 
     CSWCCreature* pNPC;
@@ -666,9 +654,9 @@ void CSWGuiInGameAbilities::OnSwitchRight(CSWGuiControl* pControl)
     }
     if (static_cast<unsigned char>(m_nNPC) != 0xff) {
         m_btnChange2.m_border.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange2.m_borderHilight.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
@@ -685,8 +673,8 @@ void CSWGuiInGameAbilities::OnSwitchRight(CSWGuiControl* pControl)
     }
     return;
 found:
-    m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1), 0);
+    m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+    m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
     m_btnChange2.m_tail.m_nUserData = i;
 }
 #endif
@@ -906,7 +894,7 @@ void CSWGuiInGameAbilities::SetCharacter(CSWCCreature* pCreature)
     if (pCreature == 0)
         return;
 
-    m_lblPortrait.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+    m_lblPortrait.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
     m_lbAbility.ClearItems();
     CreateFeatList();
     CreateSkillList();
@@ -1283,7 +1271,7 @@ void CSWGuiInGameAbilities::HandleInputEvent(int type, int val)
                 unsigned char nMode =
                     g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nAbilitiesMode;
                 if (nMode == 0) {
-                    if (CSWClass::IsJedi(m_pCreature->m_pStats->GetClass(m_pCreature->m_pStats->m_nNumClasses - 1) & 0xff))
+                    if (DisplayPowers())
                         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nAbilitiesMode = 1;
                     else
                         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nAbilitiesMode = 2;

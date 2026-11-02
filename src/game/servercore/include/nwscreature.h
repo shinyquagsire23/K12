@@ -328,7 +328,7 @@ public:
     int                   m_bSkipPartyAIStateUpdate;
     unsigned int          m_nActionQueueUpdateDay;
     unsigned int          m_nActionQueueUpdateTod;
-    CSWActionQueueEntry   m_actionQueue[NUM_ACTION_QUEUE_ENTRIES];
+    CSWActionNode   m_actionQueue[NUM_ACTION_QUEUE_ENTRIES];
     CSWSCreaturePartyFollowInfo* m_pFollowInfo;
     unsigned char         m_ambientAnimationState;
     CExoString            m_sModelType;

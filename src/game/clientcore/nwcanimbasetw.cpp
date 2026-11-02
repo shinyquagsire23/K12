@@ -18,17 +18,7 @@ CAurObject* NewCAurObject(char* pszResRef, char* pszParam2, FILE* pFile, FILE* p
 
 CSWCAnimBaseTW::~CSWCAnimBaseTW()
 {
-    if (m_pTail != 0) {
-        m_pTail->AttachToObject(0, 0, 0);
-        delete m_pTail;
-        m_pTail = 0;
-    }
-    if (m_pWings != 0) {
-        m_pWings->AttachToObject(0, 0, 0);
-        delete m_pWings;
-        m_pWings = 0;
-    }
-    CSWCAnimBase::UnloadModel();
+    UnloadModel();
 }
 
 CSWCAnimBaseTW::CSWCAnimBaseTW()

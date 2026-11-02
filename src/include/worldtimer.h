@@ -26,7 +26,8 @@ struct CWorldTimer {
     ~CWorldTimer();
     void      SetSnapshotTime();
     long long GetSnapshotTime();
-    void      ResetLastSnapshotTime() { m_nLastSnapshotTime = GetSnapshotTime(); }
+    // No image exports this one: every caller has it inline.
+    __attribute__((always_inline)) void ResetLastSnapshotTime() { m_nLastSnapshotTime = GetSnapshotTime(); }
     long long GetSnapshotTimeDifference();
     void      PauseWorldTimer();
     void      UnpauseWorldTimer();

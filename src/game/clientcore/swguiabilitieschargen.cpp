@@ -474,24 +474,7 @@ void CSWGuiAbilitiesCharGen::HandleInputEvent(int nEvent, int nArg)
         case INPUTEVENT_GUI_B:
         case INPUTEVENT_GUI_BACK:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            // Back out to the page that owns us.
-            if (m_pParentPanel != 0)
-            {
-                m_pGuiManager->PopModalPanel();
-                m_pParentPanel->SetVisible(1);
-
-                SetToBeDeleted(0);
-
-                if (m_nMode == 0)
-                {
-                    m_pCreature->m_pStats->m_nAbilityPointsRemaining = 30;
-                    static_cast<CSWGuiCustomPanel*>(m_pParentPanel)->CancelledByChild();
-                }
-                else
-                {
-                    static_cast<CSWGuiLevelUpPanel*>(m_pParentPanel)->CancelledByChild();
-                }
-            }
+            HandleCancelButton();
             break;
 
         case INPUTEVENT_GUI_Y:
@@ -833,7 +816,7 @@ void CSWGuiAbilitiesCharGen::OnRecommendButton()
     if (m_nMode == 0)
     {
         CSWCCreatureStats* pStats = m_pCreature->m_pStats;
-        CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClassLeveledUpIn()];
+        CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClass(pStats->m_nNumClasses - 1)];
         m_anStatValues[0] = pClass->m_abRecommendedScores[0];
         m_anStatValues[1] = pClass->m_abRecommendedScores[1];
         m_anStatValues[2] = pClass->m_abRecommendedScores[2];
@@ -844,7 +827,7 @@ void CSWGuiAbilitiesCharGen::OnRecommendButton()
     else
     {
         CSWCCreatureStats* pStats = m_pCreature->m_pStats;
-        CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClassLeveledUpIn()];
+        CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClass(pStats->m_nNumClasses - 1)];
         switch (pClass->m_nPrimaryAbility)
         {
         case ABILITY_STRENGTH: m_anStatValues[0] += 1; break;

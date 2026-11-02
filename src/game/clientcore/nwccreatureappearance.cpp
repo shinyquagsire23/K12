@@ -430,11 +430,7 @@ int CSWCCreatureAppearance::CreateBTypeBody(unsigned char a, CCAppearanceInfo* p
         pInfo->core.m_nAppearanceId, CExoString("ENVMAP"), &sEnvMap);
 
     bool bHasEnvMap;
-#if KOTOR1
     if (sEnvMap.GetLength() < 1)
-#else
-    if (sEnvMap.m_sString == nullptr || static_cast<int>(strlen(sEnvMap.m_sString)) < 1)
-#endif
     {
         bHasEnvMap = false;
     }
@@ -534,11 +530,7 @@ int CSWCCreatureAppearance::CreateSimple(unsigned char a, CCAppearanceInfo* pInf
         pInfo->core.m_nAppearanceId, CExoString("ENVMAP"), &sEnvMap);
 
     bool bHasEnvMap;
-#if KOTOR1
     if (sEnvMap.GetLength() < 1)
-#else
-    if (sEnvMap.m_sString == nullptr || static_cast<int>(strlen(sEnvMap.m_sString)) < 1)
-#endif
     {
         bHasEnvMap = false;
     }
@@ -1088,30 +1080,30 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
         if (nVariant == 12)
         {
             if (a <= 40)
-                bFoundL = pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXLEVIL"), &sTexL);
+                bFoundL = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXLEVIL"), &sTexL);
         }
         else if (nVariant == 9)
         {
             if (a <= 40)
-                bFoundI = pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXIEVIL"), &sTexI);
+                bFoundI = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXIEVIL"), &sTexI);
         }
         else if (nVariant == 2)
         {
             if (a <= 40)
-                bFoundB = pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXBEVIL"), &sTexB);
+                bFoundB = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXBEVIL"), &sTexB);
         }
         else if (a <= 40 && nVariant == 14)
         {
 #ifdef K2_FIX_ENGINE_BUGS
-            bFoundM = pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXNEVIL"), &sTexM);
+            bFoundM = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXNEVIL"), &sTexM);
 #else
-            bFoundM = pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXMEVIL"), &sTexM);
+            bFoundM = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXMEVIL"), &sTexM);
 #endif
         }
     }
     else if (a <= 40)
     {
-        bFoundA = pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXAEVIL"), &sTexA);
+        bFoundA = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(m_nAppearanceId, CExoString("TEXAEVIL"), &sTexA);
     }
 
     if (bHeadTexFound)

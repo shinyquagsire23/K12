@@ -77,7 +77,7 @@ public:
     }
 
     // Delegates to the pointer overload so copies rebind through the watcher list.
-    SafePointer<T>& operator=(SafePointer<T>& rhs) {
+    SafePointer<T>& operator=(const SafePointer<T>& rhs) {
         *this = rhs.m_pObject;
         return *this;
     }

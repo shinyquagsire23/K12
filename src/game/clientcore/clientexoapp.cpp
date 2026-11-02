@@ -68,7 +68,7 @@ int CClientExoApp::IsClientImeUI()
     return m_pInternal->m_bClientImeUI;
 }
 
-CImeUI* CClientExoApp::GetImeUI()
+CExoImeUI* CClientExoApp::GetImeUI()
 {
     return m_pInternal->m_pImeUI;
 }
@@ -1110,13 +1110,6 @@ void CClientExoApp::HandleExitGameButton()
     m_pInternal->HandleExitGameButton(0);
 }
 
-void MacHack::HandleExitGameButton(CSWGuiControl* pControl)
-{
-    K2_UNUSED(pControl);
-    if (g_pAppManager && g_pAppManager->m_pClientExoApp)
-        g_pAppManager->m_pClientExoApp->HandleExitGameButton();
-}
-
 #ifdef K2_UI_PC
 extern volatile bool g_done;
 
@@ -1686,8 +1679,7 @@ void CClientExoApp::SetLoadMusic(const CExoString& music)
 
 void CClientExoApp::SetRunScript(const CExoString& script)
 {
-    m_pInternal->m_bRunScriptSet = 1;
-    m_pInternal->m_runScript = script;
+    m_pInternal->SetRunScript(script);
 }
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
@@ -1708,7 +1700,7 @@ void OnGameComplete()
     pOptions->m_nGamesCompleted = nGamesCompleted;
     g_pAppManager->m_pServerExoApp->GetGlobalVariableTable()->SetValueNumber(
         CExoString("GBL_GAME_COMPLETE"), nGamesCompleted);
-    g_pAppManager->m_pClientExoApp->m_pInternal->SaveOptions();
+    g_pAppManager->m_pClientExoApp->SaveOptions();
 }
 #endif
 
@@ -1727,7 +1719,7 @@ void CClientExoApp::AddFeedbackMessage(unsigned short nMsg, CSWCCMessageData* pD
 
 void CClientExoApp::AddCDKey(const CExoString& sKey)
 {
-    m_pInternal->m_sCDKeys.Add(sKey.UpperCase());
+    m_pInternal->AddCDKey(sKey);
 }
 
 // Free function OnGameComplete fires only for the post-game "malmov12"/"malmov14" end-roll.
@@ -1759,7 +1751,7 @@ void CClientExoApp::PlayMovie(const CExoString& sMovie, int& nResult, int a, int
 
 void CClientExoApp::ClearAllCDKeys()
 {
-    m_pInternal->m_sCDKeys.Clear();
+    m_pInternal->ClearAllCDKeys();
 }
 
 CGameObject* CClientExoApp::GetGameObject(unsigned long long id)
@@ -1780,7 +1772,7 @@ void CClientExoApp::CreatureAcquireItem(unsigned long long id, const CResRef& r)
 
 CSWMiniGame* CClientExoApp::GetMiniGame()
 {
-    CSWCModule* pModule = m_pInternal->GetModule();
+    CSWCModule* pModule = GetModule();
     if (pModule)
         return pModule->GetMiniGame();
     return 0;
@@ -1788,24 +1780,16 @@ CSWMiniGame* CClientExoApp::GetMiniGame()
 
 int CClientExoApp::GetInFreeLook()
 {
-    if (!m_pInternal->GetModule())
+    if (!GetModule())
         return 0;
-    if (!m_pInternal->GetModule()->m_pCamera)
+    if (!GetModule()->m_pCamera)
         return 0;
-    return m_pInternal->GetModule()->m_pCamera->GetBehavior(BEHAVIOR_CAMERA_FREE_LOOK) != 0;
+    return GetModule()->m_pCamera->GetBehavior(BEHAVIOR_CAMERA_FREE_LOOK) != 0;
 }
 
 int CClientExoApp::GetPlayerMovementInput()
 {
-    CClientExoAppInternal* pInternal = m_pInternal;
-    CSWPlayerControl* pCtl = pInternal->m_pPlayerControl;
-    if (pCtl) {
-        if (pCtl->GetLeftRight() != 0.0f)
-            return 1;
-        pCtl = pInternal->m_pPlayerControl;
-        return pCtl->GetUpDown() != 0.0f;
-    }
-    return 0;
+    return m_pInternal->GetPlayerMovementInput();
 }
 
 #if !KOTOR1  // K1 has no main-menu idle timer

@@ -15,6 +15,7 @@ int bDumpData;
 #include "port/libcbase.h"
 #include "port/libcstring.h"
 #include "port/crtapi.h"
+#include "exostringinline.h"
 #ifndef SEEK_SET
 #define SEEK_SET 0
 #endif
@@ -1209,14 +1210,7 @@ const char* ConvertDoor(char* pszArgs)
     int nSpace = fileName.Find(' ', 0);
     resRefName = fileName.Left(nSpace);
 
-#if KOTOR1 // K1: CExoString::GetLength is out of line
     fileName = fileName.Right(fileName.GetLength() - nSpace - 1);
-#else
-    int len = 0;
-    if (fileName.m_sString != 0)
-        len = static_cast<int>(strlen(fileName.m_sString));
-    fileName = fileName.Right(len - nSpace - 1);
-#endif
 
     return CSWCollisionMesh::ConvertDoor(CResRef(resRefName), fileName) == 1 ? "SUSSESS" : "FAILURE";
 }
@@ -1229,14 +1223,7 @@ const char* ConvertPlaceable(char* pszArgs)
     int nSpace = fileName.Find(' ', 0);
     resRefName = fileName.Left(nSpace);
 
-#if KOTOR1 // K1: CExoString::GetLength is out of line
     fileName = fileName.Right(fileName.GetLength() - nSpace - 1);
-#else
-    int len = 0;
-    if (fileName.m_sString != 0)
-        len = static_cast<int>(strlen(fileName.m_sString));
-    fileName = fileName.Right(len - nSpace - 1);
-#endif
 
     return CSWCollisionMesh::ConvertPlaceable(CResRef(resRefName), fileName) == 1 ? "SUSSESS"
                                                                                   : "FAILURE";
@@ -1250,14 +1237,7 @@ const char* ConvertRooms(char* pszArgs)
     int nSpace = fileName.Find(' ', 0);
     resRefName = fileName.Left(nSpace);
 
-#if KOTOR1 // K1: CExoString::GetLength is out of line
     fileName = fileName.Right(fileName.GetLength() - nSpace - 1);
-#else
-    int len = 0;
-    if (fileName.m_sString != 0)
-        len = static_cast<int>(strlen(fileName.m_sString));
-    fileName = fileName.Right(len - nSpace - 1);
-#endif
 
     return CSWCollisionMesh::ConvertRooms(CResRef(resRefName), fileName) == 1 ? "SUSSESS" : "FAILURE";
 }

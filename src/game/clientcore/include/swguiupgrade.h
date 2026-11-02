@@ -104,8 +104,8 @@ public:
     int  CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiControl*>& aControls,
                          unsigned long long oidItem, int bInventory,
                          CExoString sTag);
-    int  GetItemSellValue(CSWSItem* pItem);
-    int  GetItemBuyValue(CSWSItem* pItem);
+    unsigned int GetItemSellValue(CSWSItem* pItem);
+    unsigned int GetItemBuyValue(CSWSItem* pItem);
     void SellItemCallback(CSWGuiControl* pControl);
     void BuyItemCallback(CSWGuiControl* pControl);
     void SellItem(CSWSItem* pItem);
@@ -563,7 +563,7 @@ public:
     CSWGuiUpgradeSelection(CSWGuiManager* pGuiManager);
     void OnTypeSelected(CSWGuiControl* pControl);
     void OnEnter(CSWGuiControl* pControl);
-    void AutoUpgradeDone();
+    static void AutoUpgradeDone();
     void GetUpgradableItems(CSWSCreature* pCreature, int* panAvailable, C2DA* pUpgradeC2DA);
 
     CSWGuiLabel        m_lblTitle;
@@ -579,12 +579,12 @@ public:
     CSWGuiUpgradeSelection(CSWGuiManager* pGuiManager, unsigned long long creatureObjId);
 
     __attribute__((noinline)) void UpdateFilterButtons();
-    __attribute__((noinline)) void PopulateItemList();
+    void PopulateItemList();
 
     void OnFilterPicked(CSWGuiControl* pControl);
     void OnItemSelected(CSWGuiControl* pControl);
     void OnCreateItem(CSWGuiControl* pControl);
-    void AutoUpgradeDone();
+    static void AutoUpgradeDone();
     void OnItemEntered(CSWGuiControl* pControl);
     // By value, unlike the sibling panel's const reference.
     void SetDescription(CExoString sDescription);

@@ -518,35 +518,7 @@ void CSWCCreature::ClientServerSyncHandler_Position(const Vector& v, int anim, f
         m_pCreatureAppearance->m_nAppearanceId, *pCol, &fCol);
     fCol *= 1000.0f;
 noColumn:;
-    float fSpeed = 0.0f;
-    if (m_pCurrentWayPoint) {
-        int nClass = m_bServerWayPoints;
-        float fDist = 0.0f;
-        Vector prev = {m_desiredPosition.x, m_desiredPosition.y, 0.0f};
-        Vector* p = static_cast<Vector*>(m_pCurrentWayPoint);
-        do {
-            Vector cur = {p->x, p->y, 0.0f};
-            p++;
-            Vector d = {cur.x - prev.x, cur.y - prev.y, 0.0f};
-            fDist += magnitude(d);
-            prev = cur;
-        } while (p < m_pWayPoints + m_wayPointCount);
-        float fThresh = (nClass == 1) ? 500.0f : 1000.0f;
-        float fRef = (fScale * 1000.0f) / 2000000.0f;
-        float fNew = 1.0f;
-        if (fDist <= fRef) {
-            fNew = fDist / fRef;
-            fNew = (fNew >= 0.01f) ? __builtin_sqrtf(fNew) : 0.1f;
-            fNew = fNew + static_cast<float>(m_nAIUpdateDeltaMs) / -1000.0f;
-        }
-        float fOld = m_fMoveSpeedScale;
-        if (fOld <= 1.0f) {
-            float fCap = fOld + static_cast<float>(m_nAIUpdateDeltaMs) / fThresh;
-            if (fNew >= fCap)
-                fNew = fCap;
-        }
-        fSpeed = fNew <= 0.1f ? 0.1f : fNew;
-    }
+    float fSpeed = ComputeSpeedFactor(fScale);
     m_fMoveSpeedScale = fSpeed;
     float fLen0 = GetAnimationLength(GetCurrentAnimation());
     float fRate11 = 0.0f;
@@ -662,14 +634,12 @@ int CSWCCreature::IsHostileUsableItem(CSWSItem* pItem) {
         return 1;
     if (pItem->GetBaseItem()->m_nItemType != ITEM_TYPE_ROCKET)
         return 0;
-    GetServerObject();
     CSWSItem* pEquipped = static_cast<CSWSItem*>(
-        GetServerObject()->AsSWSCreature()->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTARM));
+        GetServerCreature()->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTARM));
     if (pEquipped != 0 && pEquipped->GetBaseItem()->m_nItemType == ITEM_TYPE_WRIST_LAUNCHER)
         return 1;
-    GetServerObject();
     pEquipped = static_cast<CSWSItem*>(
-        GetServerObject()->AsSWSCreature()->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTARM));
+        GetServerCreature()->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTARM));
     return pEquipped != 0 && pEquipped->GetBaseItem()->m_nItemType == ITEM_TYPE_WRIST_LAUNCHER;
 #endif
 }
@@ -682,9 +652,7 @@ int CSWCCreature::IsLeaderUsableItem(CSWSItem* pItem, int unused, unsigned char 
     K2_UNUSED(unused);
     if (pItem == 0)
         return 0;
-    CSWSCreature* pLeader = 0;
-    if (GetServerObject())
-        pLeader = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pLeader = GetServerCreature();
     CSWSArea* pArea = m_pArea->GetServerArea();
     if (pLeader == 0)
         return 0;
@@ -1014,8 +982,7 @@ int CSWCCreature::UpdateMeleeAttackData(unsigned short a, int b, int c, int d) {
                 case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER:
                     return nIdx + CSWCAnimBase::CLIENT_ANIMATION_DUAL_SABER_ATTACK_1;
                 case CSWCAnimBase::WEAPON_CLASS_NATURAL:
-                    GetServerObject();
-                    if (GetServerObject()->AsSWSCreature()->m_pStats->HasFeat(
+                    if (GetServerCreature()->m_pStats->HasFeat(
                             CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS)) {
                         int n;
                         if (m_pStats->GetLevel() <= 9) {
@@ -1047,8 +1014,7 @@ int CSWCCreature::UpdateMeleeAttackData(unsigned short a, int b, int c, int d) {
                 case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER:
                     return nIdx + CSWCAnimBase::CLIENT_ANIMATION_DUAL_SABER_ATTACK_MONSTER_1;
                 case CSWCAnimBase::WEAPON_CLASS_NATURAL:
-                    GetServerObject();
-                    if (GetServerObject()->AsSWSCreature()->m_pStats->HasFeat(
+                    if (GetServerCreature()->m_pStats->HasFeat(
                             CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS))
                         return nIdx + CSWCAnimBase::CLIENT_ANIMATION_UNARMED_ATTACK_MONSTER_1;
                     return nIdx + CSWCAnimBase::CLIENT_ANIMATION_NATURAL_ATTACK_1;
@@ -1065,8 +1031,7 @@ int CSWCCreature::UpdateMeleeAttackData(unsigned short a, int b, int c, int d) {
             case CSWCAnimBase::WEAPON_CLASS_TWO_HANDED_SABER: return MELEE_ATTACK_TABLE_D3[n];
             case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER: return MELEE_ATTACK_TABLE_D4[n];
             case CSWCAnimBase::WEAPON_CLASS_NATURAL:
-                GetServerObject();
-                if (GetServerObject()->AsSWSCreature()->m_pStats->HasFeat(
+                if (GetServerCreature()->m_pStats->HasFeat(
                         CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS))
                     return MELEE_ATTACK_TABLE_D8[n];
                 return nIdx + CSWCAnimBase::CLIENT_ANIMATION_NATURAL_ATTACK_1;
@@ -1246,9 +1211,7 @@ int CSWCCreature::CheckFeat(int a, int b, int c, int d) {
 
 // The first of a, b or c the creature has, else -1. Prefers the server creature's stats.
 int CSWCCreature::CheckFeat(int a, int b, int c) {
-    CSWSCreature* pServerCreature = 0;
-    if (GetServerObject())
-        pServerCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = GetServerCreature();
     if (pServerCreature != 0 && pServerCreature->m_pStats != 0) {
         if (pServerCreature->m_pStats->HasFeat(static_cast<unsigned short>(a)))
             return a;
@@ -1344,7 +1307,7 @@ int CSWCCreature::LipSync(const CResRef& r) {
                 pTimes[i] = (pLip->GetTimeIndex(i) + s_fLipDelay) / fAnimLength;
 #endif
             pTimes[nVisemes - 1] = 1.0f;
-            m_pModel->SetAnimationVisemes(0, 0, 0, 0.0f);
+            StopLipSync();
             bSuccess = m_pModel->SetAnimationVisemes(pTimes, pVisemes, nVisemes, fAnimLength);
         }
     }
@@ -1477,9 +1440,7 @@ void CSWCCreature::PerformCombatFeat(unsigned short nFeat, CSWCCreature* pTarget
     if (pMsg)
         pMsg->SendPlayerToServerInput_Attack(m_objectId, nFeat);
     if (pTarget) {
-        pTarget->m_nStateFlags |= 1;
-        if (pTarget->m_objectId == g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-            g_pAppManager->m_pClientExoApp->SetCombatMode(pTarget->m_nStateFlags & 1);
+        pTarget->SetCombatMode(1);
     }
 }
 
@@ -1490,7 +1451,7 @@ void CSWCCreature::ActionMenuSwitchWeapons(unsigned int a, CSWCCreature* pTarget
     K2_UNUSED(pTarget);
     if (m_nSwitchWeaponsCooldown <= 0) {
         CSWSCreature* pServer;
-        if (GetServerObject() == 0 || (pServer = GetServerObject()->AsSWSCreature()) == 0 ||
+        if ((pServer = GetServerCreature()) == 0 ||
             pServer->GetArea() == 0 ||
             static_cast<CSWSArea*>(pServer->GetArea())->m_nPlayerRestrictMode == 0) {
             int bSwap = (a == 0xffffffff);
@@ -1578,8 +1539,7 @@ void CSWCCreature::StopSpecialAttacks(unsigned char slot) {
 
 int CSWCCreature::GetForceShield() {
     CSWSCreature* pServer;
-    if (GetServerObject() != 0 &&
-        (pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature())) != 0) {
+    if ((pServer = GetServerCreature()) != 0) {
         for (int64_t i = 0; i < pServer->m_effects.m_count; i++) {
             CGameEffect* pEffect = pServer->m_effects.m_pArray[i];
             if (CSWSEffectListHandler::EFFECT_FORCESHIELD == pEffect->m_subType)
@@ -1852,17 +1812,12 @@ void CSWCCreature::PerformToggleMode(int mode, unsigned long long objId) {
 }
 
 int CSWCCreature::IsInjured() {
-#if KOTOR1
-    CSWSCreature* pCreature = 0;
-    if (GetServerObject())
-        pCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pCreature = GetServerCreature();
+#if KOTOR1  // K1 does not test the server twin
     return pCreature->IsInjured();
 #else
-    if (GetServerObject()) {
-        CSWSCreature* pCreature = GetServerObject()->AsSWSCreature();
-        if (pCreature)
-            return pCreature->IsInjured();
-    }
+    if (pCreature)
+        return pCreature->IsInjured();
     return 0;
 #endif
 }
@@ -1905,7 +1860,11 @@ void CSWCCreature::EvaluateNewWayPoints(int nCount, Vector* pPoints, int nId, co
                         vTo = *pTest;
                         if (m_pArea->TestDirectLine(m_objectId, vFrom, vTo, fHit, 0.015625f,
                                                     0, 0) == 1) {
+#ifdef K2_FIX_ENGINE_BUGS
+                            int nNewCount = nCount - i - 1;
+#else
                             int nNewCount = nCount - i;
+#endif
                             Vector* pNewPoints = new Vector[nNewCount]();
                             // Drops the way-points before the first reachable one.
                             memcpy(pNewPoints, pTest, nNewCount * sizeof(Vector));
@@ -1935,20 +1894,14 @@ void CSWCCreature::EvaluateNewWayPoints(int nCount, Vector* pPoints, int nId, co
                         vTo = vLast;
                         if (m_pArea->TestDirectLine(m_objectId, vFrom, vTo, fHit, 0.015625f,
                                                     0, 0) == 1) {
-                            unsigned short nWayPoints = m_wayPointCount;
-                            Vector* pWayPoints = m_pWayPoints;
-                            int nCurrent = 0;
-                            for (uint64_t k = 0; k < nWayPoints; k++) {
-                                if (pWayPoints + k == m_pCurrentWayPoint) {
-                                    nCurrent = static_cast<int>(k);
-                                    break;
-                                }
-                            }
-                            int nRemain = nWayPoints - static_cast<unsigned short>(nCurrent);
+                            unsigned short nWayPoints;
+                            Vector* pWayPoints;
+                            unsigned short nCurrent;
+                            GetWayPoints(&nWayPoints, &pWayPoints, &nCurrent);
+                            int nRemain = nWayPoints - nCurrent;
                             int nNewCount = nRemain + 1;
                             Vector* pNewPoints = new Vector[nNewCount]();
-                            memcpy(pNewPoints, pWayPoints + static_cast<unsigned short>(nCurrent),
-                                   nRemain * sizeof(Vector));
+                            memcpy(pNewPoints, pWayPoints + nCurrent, nRemain * sizeof(Vector));
                             pNewPoints[nRemain] = vTo;
                             bAllocated = 1;
                             nCount = nNewCount;
@@ -1958,11 +1911,7 @@ void CSWCCreature::EvaluateNewWayPoints(int nCount, Vector* pPoints, int nId, co
                     }
                     if (!bRebuilt) {
                         Vector vG = pPoints[0];
-                        if (g_pAppManager->m_pServerExoApp != 0) {
-                            vG.z = 0.0f;
-                            vG.z = g_pAppManager->m_pServerExoApp->ComputeHeight(
-                                m_pArea->m_areaResRef, vG, 1);
-                        }
+                        ComputeZValue(m_pArea, &vG, vG.z, 0);
                         SetPosition(vNew);
                         m_desiredPosition = vNew;
                         SetGroundNormal(vGroundNormal);
@@ -1973,7 +1922,7 @@ void CSWCCreature::EvaluateNewWayPoints(int nCount, Vector* pPoints, int nId, co
     }
     if (g_pAppManager->m_pClientExoApp->GetCaptureEvents() == 1) {
         CExoString s;
-        unsigned long long nTime =
+        uint64_ll_t nTime =
             g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime();
         s.Format(const_cast<char*>("%d %c %x %f %f %f\n"), static_cast<int>(nTime / 1000), 'Y', m_objectId,
                  static_cast<double>(m_position.x), static_cast<double>(m_position.y), static_cast<double>(m_position.z));
@@ -2216,8 +2165,7 @@ static void K2LogMoveBlock(CSWCCreature* pCreature, CSWSCreature* pServer, bool 
 int CSWCCreature::SetPrecalculatedPosition(const Vector& vPrecalc) {
     if (RenderClosestPathPoint) {
         CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetModule()->GetArea();
-        GetServerObject();  // Result discarded.
-        pArea->m_pActivePathfindInfo = GetServerObject()->AsSWSCreature()->m_pPathfindInfo;
+        pArea->m_pActivePathfindInfo = GetServerCreature()->m_pPathfindInfo;
         unsigned int nPoint;
         if (g_pAppManager->m_pServerExoApp->GetModule()->GetArea()->ClosestPathPoint(
                 m_position, nPoint)) {
@@ -2231,13 +2179,9 @@ int CSWCCreature::SetPrecalculatedPosition(const Vector& vPrecalc) {
         }
     }
     if (RenderTriangles) {
-        CSWSCreature* pServerCreature = 0;
-        if (GetServerObject() != 0)
-            pServerCreature = GetServerObject()->AsSWSCreature();
+        CSWSCreature* pServerCreature = GetServerCreature();
         int nRoom = static_cast<CSWSArea*>(pServerCreature->GetArea())->GetRoomIndex(vPrecalc, 0);
-        pServerCreature = 0;
-        if (GetServerObject() != 0)
-            pServerCreature = GetServerObject()->AsSWSCreature();
+        pServerCreature = GetServerCreature();
         CSWSRoom* pRoom = static_cast<CSWSArea*>(pServerCreature->GetArea())->GetRoom(nRoom);
         int nTriA, nTriB, nTriC;
         Vector vA = {0.0f, 0.0f, 0.0f};
@@ -2250,24 +2194,18 @@ int CSWCCreature::SetPrecalculatedPosition(const Vector& vPrecalc) {
             pRoom->m_pSurfaceMesh->GetVertex(nTriB, &vB);
             pRoom->m_pSurfaceMesh->GetVertex(nTriC, &vC);
         }
-        pServerCreature = 0;
-        if (GetServerObject() != 0)
-            pServerCreature = GetServerObject()->AsSWSCreature();
+        pServerCreature = GetServerCreature();
         Vector vEye;
         vEye.x = pServerCreature->m_position.x;
         vEye.y = pServerCreature->m_position.y;
         vEye.z = pServerCreature->m_position.z + 1.5f;
-        pServerCreature = 0;
-        if (GetServerObject() != 0)
-            pServerCreature = GetServerObject()->AsSWSCreature();
+        pServerCreature = GetServerCreature();
         Vector vHead;
         vHead.x = pServerCreature->m_orientation.x + pServerCreature->m_orientation.x + vEye.x;
         vHead.y = pServerCreature->m_orientation.y + pServerCreature->m_orientation.y + vEye.y;
         vHead.z = pServerCreature->m_orientation.z + pServerCreature->m_orientation.z + vEye.z;
         Vector vOut = {0.0f, 0.0f, 0.0f};
-        pServerCreature = 0;
-        if (GetServerObject() != 0)
-            pServerCreature = GetServerObject()->AsSWSCreature();
+        pServerCreature = GetServerCreature();
         static_cast<CSWSArea*>(pServerCreature->GetArea())->ClearLineOfSight(
             vEye, vHead, &vOut, 0, OBJECT_INVALID, OBJECT_INVALID, 0, 0);
         if (pRoom != 0) {
@@ -2282,35 +2220,24 @@ int CSWCCreature::SetPrecalculatedPosition(const Vector& vPrecalc) {
             }
         }
     }
-    CSWSCreature* pServerCreature;
-    if (GetServerObject() == 0) {
-        pServerCreature = 0;
-    } else {
-        pServerCreature = GetServerObject()->AsSWSCreature();
-        if (pServerCreature != 0 &&
-            (pServerCreature->IsDebilitated(0) != 0 ||
-             (pServerCreature->m_nAIState & 2) == 0)) {
-            return 1;
-        }
-    }
-    unsigned long long serverId =
-        g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_objectId);
-#ifdef K2_HOST_BUILD
-    K2LogMoveBlock(this, pServerCreature,
-                   g_pAppManager->m_pServerExoApp->IsActionsPending(serverId) != 0);
-#endif
-    if (g_pAppManager->m_pServerExoApp->IsActionsPending(serverId) |
-        m_engagedState |
-        AnimationDialog(m_currentAnimation)) {
+    CSWSCreature* pServerCreature = GetServerCreature();
+    if (pServerCreature != 0 &&
+        (pServerCreature->IsDebilitated(0) != 0 || (pServerCreature->m_nAIState & 2) == 0)) {
         return 1;
     }
+#ifdef K2_HOST_BUILD
+    K2LogMoveBlock(this, pServerCreature,
+                   g_pAppManager->m_pServerExoApp->IsActionsPending(
+                       g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_objectId)) != 0);
+#endif
+    if (IsDriveAnimationBlocked())
+        return 1;
 #ifdef K2_FIX_ENGINE_BUGS
     if (pServerCreature == 0)
         return 1;
 #endif
 #if KOTOR1
-    GetServerObject();  // K1 re-fetches the server creature here.
-    int flagValue = GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_nPersonalSpaceBits;
+    int flagValue = GetServerCreature()->m_pPathfindInfo->m_nPersonalSpaceBits;
 #else
     int flagValue = pServerCreature->m_pPathfindInfo->m_nPersonalSpaceBits;
 #endif
@@ -2383,16 +2310,12 @@ int CSWCCreature::SetPrecalculatedPosition(const Vector& vPrecalc) {
                 if (status == -3) {
 #if KOTOR1
 // K1: the server creature is re-fetched per use and the safe-location radius is +1.0.
-                    CSWSCreature* pSafe = 0;
-                    if (GetServerObject() != 0)
-                        pSafe = GetServerObject()->AsSWSCreature();
+                    CSWSCreature* pSafe = GetServerCreature();
                     if (static_cast<CSWSArea*>(pSafe->GetArea())->TestSafeLocationPoint(m_position,
                                                                              pPathInfo) != 0) {
                         status = -3;
                     } else {
-                        pSafe = 0;
-                        if (GetServerObject() != 0)
-                            pSafe = GetServerObject()->AsSWSCreature();
+                        pSafe = GetServerCreature();
                         static_cast<CSWSArea*>(pSafe->GetArea())->ComputeSafeLocation(
                             m_position, 1.0f, pPathInfo, 1, &m_position);
 #else
@@ -2413,13 +2336,8 @@ int CSWCCreature::SetPrecalculatedPosition(const Vector& vPrecalc) {
             }
         }
         if (status == 1) {
-            CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-            if (pServer != 0) {
-                vTarget.z = 0.0f;
-                vTarget.z = pServer->ComputeHeight(pModule->m_pArea->m_areaResRef, vTarget, 1);
-                pServer = g_pAppManager->m_pServerExoApp;
-            }
-            pServer->UpdateSubareasOnMoveTo(m_objectId, m_position, vTarget);
+            ComputeZValue(pModule->m_pArea, &vTarget, vTarget.z, 0);
+            g_pAppManager->m_pServerExoApp->UpdateSubareasOnMoveTo(m_objectId, m_position, vTarget);
             SetPosition(vTarget);
             m_desiredPosition = vTarget;
             g_pAppManager->m_pServerExoApp->UpDatePlayerPosition(m_objectId, vTarget,
@@ -2646,22 +2564,14 @@ void CSWCCreature::HideEquippedItems(const CResRef& r1, const CResRef& r2) {
 }
 
 float CSWCCreature::GetLightSaberThrowRate() {
-    if (GetServerObject()) {
-        if (GetServerObject()->AsSWSCreature()) {
-            GetServerObject();  // Result discarded.
-            return GetServerObject()->AsSWSCreature()->m_lightSaberThrowRate;
-        }
-    }
+    if (GetServerCreature())
+        return GetServerCreature()->m_lightSaberThrowRate;
     return 37.0f;
 }
 
 void CSWCCreature::SetLightSaberThrowRate(float rate) {
-    if (GetServerObject()) {
-        if (GetServerObject()->AsSWSCreature()) {
-            GetServerObject();  // Result discarded.
-            GetServerObject()->AsSWSCreature()->m_lightSaberThrowRate = rate;
-        }
-    }
+    if (GetServerCreature())
+        GetServerCreature()->m_lightSaberThrowRate = rate;
 }
 
 void CSWCCreature::PerformFeat(int nFeat, unsigned long long objId) {
@@ -2746,17 +2656,8 @@ int CSWCCreature::InCreatureCombat(CSWCObject* pObj) {
 }
 
 int CSWCCreature::InCreatureCombat(unsigned long long objId) {
-    CSWCObject* pObj =
-        static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(objId)->AsSWCObject());
-    if (pObj == 0)
-        return 0;
-    if (!IsCreature()) {
-        if (pObj->AsSWCCreature() == 0)
-            return 0;
-        if (!pObj->AsSWCCreature()->IsCreature())
-            return 0;
-    }
-    return 1;
+    return InCreatureCombat(
+        static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(objId)->AsSWCObject()));
 }
 
 int CSWCCreature::BarkString(unsigned long long objId, const CExoString& str,
@@ -2929,8 +2830,7 @@ void CSWCCreature::PlayFootstep() {
         nFootstepType = 0;
 #if !KOTOR1  // K1: a stealthed footfall still plays
         CSWSCreature* pServerCreature;
-        if (GetServerObject() != 0 &&
-            (pServerCreature = GetServerObject()->AsSWSCreature()) != 0)
+        if ((pServerCreature = GetServerCreature()) != 0)
             bSilent = pServerCreature->m_silentMoveCount != 0;
 #endif
     }
@@ -2985,8 +2885,7 @@ void CSWCCreature::PlayFootstep() {
             break;
         }
     }
-    g_pAppManager->m_pClientExoApp->LookUpAndPerformRumbleWithCutOff(
-        nFootstepType, CClientExoApp::RUMBLE_TABLE_FOOTSTEP_SOUNDS, m_position);
+    DoFootstepRumble(nFootstepType);
 }
 
 // Shared body of the Swing*Event callbacks.
@@ -3006,9 +2905,9 @@ void Swing(const CExoString& sName, CSWCCombatAttackData* pData, int nCount) {
 // disabled. The scene's result wins when it is non-zero.
 int SceneHitCheck(CAurScene* pScene, Vector vFrom, Vector vTo, Vector* pHit, CHitInfo* pInfo) {
     K2_UNUSED(pHit);
+    CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
     CSWRoomSurfaceMeshHitInfo hitInfo(0xffffffff);
     int nHit = 0;
-    CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
     if (pServerApp != 0) {
         CSWSModule* pModule = pServerApp->GetModule();
         if (pModule != 0) {
@@ -3056,60 +2955,35 @@ CSWCCreature* GetCreature(unsigned long long id) {
 void SwingShortEvent(CAurObject* pObject, char* pEvent, void* pData) {
     K2_UNUSED(pObject); K2_UNUSED(pEvent);
     CExoString sName("SwingShort");
-    if (pData != 0) {
-        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
-            static_cast<CSWCCreature*>(pData)->m_objectId);
-        if (pCreature != 0)
-            pCreature->PlaySwingSound(sName, static_cast<CSWCCombatAttackData*>(pData), 3);
-    }
+    Swing(sName, static_cast<CSWCCombatAttackData*>(pData), 3);
 }
 
 // SwingShortEvent over "SwingLong".
 void SwingLongEvent(CAurObject* pObject, char* pEvent, void* pData) {
     K2_UNUSED(pObject); K2_UNUSED(pEvent);
     CExoString sName("SwingLong");
-    if (pData != 0) {
-        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
-            static_cast<CSWCCreature*>(pData)->m_objectId);
-        if (pCreature != 0)
-            pCreature->PlaySwingSound(sName, static_cast<CSWCCombatAttackData*>(pData), 3);
-    }
+    Swing(sName, static_cast<CSWCCombatAttackData*>(pData), 3);
 }
 
 // SwingShortEvent over "SwingTwirl".
 void SwingTwirlEvent(CAurObject* pObject, char* pEvent, void* pData) {
     K2_UNUSED(pObject); K2_UNUSED(pEvent);
     CExoString sName("SwingTwirl");
-    if (pData != 0) {
-        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
-            static_cast<CSWCCreature*>(pData)->m_objectId);
-        if (pCreature != 0)
-            pCreature->PlaySwingSound(sName, static_cast<CSWCCombatAttackData*>(pData), 3);
-    }
+    Swing(sName, static_cast<CSWCCombatAttackData*>(pData), 3);
 }
 
 // SwingShortEvent over "Clash" with a 2-sound count.
 void HitClashEvent(CAurObject* pObject, char* pEvent, void* pData) {
     K2_UNUSED(pObject); K2_UNUSED(pEvent);
     CExoString sName("Clash");
-    if (pData != 0) {
-        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
-            static_cast<CSWCCreature*>(pData)->m_objectId);
-        if (pCreature != 0)
-            pCreature->PlaySwingSound(sName, static_cast<CSWCCombatAttackData*>(pData), 2);
-    }
+    Swing(sName, static_cast<CSWCCombatAttackData*>(pData), 2);
 }
 
 // SwingShortEvent over "Parry" with a 2-sound count.
 void HitParryEvent(CAurObject* pObject, char* pEvent, void* pData) {
     K2_UNUSED(pObject); K2_UNUSED(pEvent);
     CExoString sName("Parry");
-    if (pData != 0) {
-        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
-            static_cast<CSWCCreature*>(pData)->m_objectId);
-        if (pCreature != 0)
-            pCreature->PlaySwingSound(sName, static_cast<CSWCCombatAttackData*>(pData), 2);
-    }
+    Swing(sName, static_cast<CSWCCombatAttackData*>(pData), 2);
 }
 
 // Fires the saber-contact visual on the creature the userdata names.
@@ -3214,14 +3088,7 @@ parry:
             pAttacker->m_pCreatureAppearance->m_nAppearanceId, CExoString("ABORTONPARRY"),
             &nAbortOnParry);
         if (nAbortOnParry != 0) {
-            if (pAttacker->m_blurWeapon != 0) {
-                CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(
-                    pAttacker->m_aEquippedItemIds[4]);
-                if (pItem != 0)
-                    g_pRules->GetBaseItem(pItem->m_baseItem);
-                if (pItem == 0 || pItem->m_bVisualEffectLoaded != 1)
-                    pAttacker->m_blurWeapon = 0;
-            }
+            pAttacker->BlurWeapon(0);
             pAttacker->AbortFireForgetAnimation(0);
         }
         if (pAttackData->m_pNext != 0)
@@ -3233,12 +3100,9 @@ hit:
     if (pTarget->AsSWCCreature() != 0) {
         CSWCCreature* pTargetCreature = pTarget->AsSWCCreature();
         if (pTargetCreature->IsCreature() != 0) {
-            if (pTargetCreature->GetServerObject() != 0) {
-                CSWSCreature* pServerCreature =
-                    pTargetCreature->GetServerObject()->AsSWSCreature();
-                if (pServerCreature != 0 && pServerCreature->IsDebilitated(1) != 0)
-                    goto pain;
-            }
+            CSWSCreature* pServerCreature = pTargetCreature->GetServerCreature();
+            if (pServerCreature != 0 && pServerCreature->IsDebilitated(1) != 0)
+                goto pain;
             if (pAttackData->m_reaxnGroup.m_nFeatId != 0 ||
                 pTargetCreature->m_creatureType != CSWCAnimBase::CREATURE_TYPE_FULL)
                 pTarget->GetAnimationBase()->SetOverlayAnimation(SERVER_ANIMATION_DAMAGE_GENERIC, 1);
@@ -3289,20 +3153,15 @@ void CSWCCreature::PlaySoundSetSound(unsigned short nSound, int b3D) {
     CExoStreamingSoundSource* pOld;
     if (GetSoundSetStrres(nSound, strres) == 0)
         return;
-    if (GetServerObject()) {
-        if (GetServerObject()->AsSWSCreature()) {
-            GetServerObject();  // Result discarded.
-            if (GetServerObject()->AsSWSCreature()->GetDead() != 0) {
-                if (nSound != CSWSCreature::VOICE_CHAT_DEATH)
-                    return;
-            } else {
-                pServerCreature = 0;
-                if (GetServerObject())
-                    pServerCreature = GetServerObject()->AsSWSCreature();
-                K2_ASSUME(pServerCreature != 0);   // the same twin the two tests above found
-                if (pServerCreature->GetDeadTemp() != 0 && nSound != CSWSCreature::VOICE_CHAT_DEATH)
-                    return;
-            }
+    if (GetServerCreature()) {
+        if (GetServerCreature()->GetDead() != 0) {
+            if (nSound != CSWSCreature::VOICE_CHAT_DEATH)
+                return;
+        } else {
+            pServerCreature = GetServerCreature();
+            K2_ASSUME(pServerCreature != 0);   // the same twin the test above found
+            if (pServerCreature->GetDeadTemp() != 0 && nSound != CSWSCreature::VOICE_CHAT_DEATH)
+                return;
         }
     }
     CExoStreamingSoundSource* pSource;
@@ -3351,10 +3210,10 @@ int CSWCCreature::GetSoundSetStrres(unsigned short nIdx, STR_RES& out) {
         return 0;
     if (m_pSoundSet == 0)
         return 0;
-    if (m_pSoundSet->m_pRes->Demand() == 0)
+    if (m_pSoundSet->Demand() == 0)
         return 0;
     m_pSoundSet->GetStrres(nIdx, out);
-    m_pSoundSet->m_pRes->Release();
+    m_pSoundSet->Release();
     return 1;
 }
 
@@ -3737,7 +3596,7 @@ void CSWCCreature::AnimateFireAndForget() {
             if (AnimationAttack(anim) || anim == SERVER_ANIMATION_READY) {
                 pCopied1 = static_cast<CSWCCombatAttackData*>(pData);
                 if (pCopied1)
-                    *m_pCurrentAttackData = *pCopied1;
+                    m_pCurrentAttackData->Copy(pCopied1);
             }
             if ((anim >> 2) == (SERVER_ANIMATION_COMBAT_STEP_FORWARD >> 2))  // the four combat steps
                 PlayFootstep();
@@ -3751,20 +3610,13 @@ void CSWCCreature::AnimateFireAndForget() {
             case SERVER_ANIMATION_POWER_ATTACK:
                 pCopied2 = static_cast<CSWCCombatAttackData*>(pData);
                 if (pCopied2)
-                    *m_pCurrentCastData = *pCopied2;
+                    m_pCurrentCastData->Copy(pCopied2);
                 break;
             }
             TestAndReEquipweapons(m_currentAnimation, anim);
             m_currentAnimation = anim;
-            if (AnimationHideEquippedItems(anim)) {
-                CResRef r1;
-                CResRef r2;
-                if (m_pModel) {
-                    GetAnimationBase();
-                    m_pModel->HideWieldedItems(r1, r2);
-                    m_bEquippedItemsHidden = 1;
-                }
-            }
+            if (AnimationHideEquippedItems(anim))
+                HideEquippedItems(CResRef(), CResRef());
             if (m_bModelSyncDisabled) {
                 m_bModelSyncDisabled = 0;
                 Vector pos = m_position;
@@ -3797,14 +3649,8 @@ void CSWCCreature::AnimateFireAndForget() {
                 pModel->SetAnimation(anim, fSpeed, bOutOfPlace ? 3 : 1, 0.0f);
             }
             m_nFireForgetTimeLeftMs = duration;
-            if (pData) {
-                CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(
-                    static_cast<CSWCCombatAttackData*>(pData)->m_weaponObjectId);
-                if (pObj && pObj->AsSWCObject()) {
-                    pObj->AsSWCObject();
-                    { CExoString unused; }
-                }
-            }
+            if (pData)
+                PlayHitSound(static_cast<CSWCCombatAttackData*>(pData), 1);
             RemoveTopFireForgetAnimation();
             delete pCopied1;
             delete pCopied2;
@@ -3832,9 +3678,6 @@ int CSWCCreature::GetFreeLookVideoEffect() {
 
 // Queues a party-menu item use. Self-targets send a zeroed position, other targets ours. The
 // item id's inventory-slot bit is masked off.
-#if !KOTOR1
-__attribute__((noinline))
-#endif
 void CSWCCreature::PartyMenuUseItem(unsigned int itemId, CSWCCreature* pTarget) {
 #if KOTOR1
 // K1 names no target object when the item is used on someone else.
@@ -3855,13 +3698,9 @@ void CSWCCreature::PartyMenuUseItem(unsigned int itemId, CSWCCreature* pTarget) 
     unsigned long long id = m_objectId;
     if (pTarget->m_objectId == id) {
         Vector pos = {};
-        CSWCMessage* pMsg = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-        if (pMsg)
-            pMsg->SendPlayerToServerInput_UseItem(itemId, 0, 0, id, pos);
+        PerformUseItem(itemId, 0, id, pos);
     } else {
-        CSWCMessage* pMsg = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-        if (pMsg)
-            pMsg->SendPlayerToServerInput_UseItem(itemId, 0, 0, id, m_position);
+        PerformUseItem(itemId, 0, id, m_position);
     }
 #endif
 }
@@ -3870,9 +3709,7 @@ void CSWCCreature::PartyMenuUseItem(unsigned int itemId, CSWCCreature* pTarget) 
 // player, then queues the item use.
 void CSWCCreature::PerformUseHostileItem(unsigned long long itemId, CSWCCreature* pTarget) {
     if (pTarget) {
-        pTarget->m_nStateFlags |= 1;
-        if (pTarget->m_objectId == g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-            g_pAppManager->m_pClientExoApp->SetCombatMode(pTarget->m_nStateFlags & 1);
+        pTarget->SetCombatMode(1);
     }
     PartyMenuUseItem(static_cast<unsigned int>(itemId), pTarget);
 }
@@ -3898,14 +3735,7 @@ void CSWCCreature::PartyMenuStealth(unsigned int n, CSWCCreature* pTarget) {
     K2_UNUSED(n); K2_UNUSED(pTarget);
     if (g_pAppManager->m_pServerExoApp->GetPartyTable()->m_soloMode != 0 ||
         g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount == 1) {
-        unsigned long long id = m_objectId;
-        if (CGameObjectArray::INVALIDOBJID != id) {
-            CSWCMessage* pMsg = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-            if (pMsg != 0) {
-                Vector pos = {};
-                pMsg->SendPlayerToServerInput_UseSkill(2, 0, id, pos);
-            }
-        }
+        PerformSkill(2, 0, m_objectId);
     } else {
         g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowSoloModeQuery(1);
     }
@@ -3958,12 +3788,7 @@ void CSWCCreature::PartyMenuUseHostileItem(unsigned int itemId, CSWCCreature* pT
                                                              pTarget->m_objectId, itemId))
             return;
     }
-    if (pTarget != 0) {
-        pTarget->m_nStateFlags |= 1;
-        if (pTarget->m_objectId == g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-            g_pAppManager->m_pClientExoApp->SetCombatMode(pTarget->m_nStateFlags & 1);
-    }
-    PartyMenuUseItem(itemId, pTarget);
+    PerformUseHostileItem(itemId, pTarget);
 #endif
 }
 
@@ -4015,12 +3840,7 @@ Gob* CSWCCreature::GetModel(unsigned char a, int b) {
         if (b != 0) {
             if ((a == CSWCAnimBase::ANIM_MODEL_BODY) & (m_nAppearanceRequestTimer != 0) &&
                 m_pModel->GetModel(CSWCAnimBase::ANIM_MODEL_BODY) == 0) {
-                m_nAppearanceRequestTimer = 0;
-                CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
-                m_pCreatureAppearance->m_nAppearanceId = m_nAppearanceId;
-                SetAppearance(&m_appearanceInfo, 0xef, 1, 0);
-                if (pModule != 0 && pModule->m_pArea != 0)
-                    AttachToScene(pModule->m_pArea->m_pScene);
+                ForceAppearanceUpdate();
                 ReAttachCamera();
             }
         }
@@ -4037,14 +3857,7 @@ void CSWCCreature::ActionMenuUseAttackFeat(unsigned int nFeat, CSWCCreature* pTa
     if (g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_USE_COMBAT_FEAT, m_objectId, OBJECT_INVALID,
                                                            nFeat & 0xffff))
         return;
-    CSWCMessage* pMsg = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-    if (pMsg != 0)
-        pMsg->SendPlayerToServerInput_Attack(m_objectId, static_cast<unsigned short>(nFeat));
-    if (pTarget != 0) {
-        pTarget->m_nStateFlags |= 1;
-        if (pTarget->m_objectId == g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-            g_pAppManager->m_pClientExoApp->SetCombatMode(pTarget->m_nStateFlags & 1);
-    }
+    PerformCombatFeat(static_cast<unsigned short>(nFeat), pTarget);
 }
 
 // Blocked while the server reports the creature's item actions as disabled; only the feedback
@@ -4101,9 +3914,7 @@ void CSWCCreature::ActionMenuSetMine(unsigned int itemId, CSWCCreature* pTarget)
         itemId &= CSWGuiInterfaceAction::ACTION_ID_ITEM_CLEAR;
         if (g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_SET_MINE, m_objectId, itemId, 0))
             return;
-        CSWCMessage* pMsg = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-        if (pMsg != 0)
-            pMsg->SendPlayerToServerInput_UseItem(itemId, 0, 0, OBJECT_INVALID, m_position);
+        PerformUseItem(itemId, 0, OBJECT_INVALID, m_position);
     } else {
         CSWGuiMessageBox* pBox =
             g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
@@ -4184,14 +3995,10 @@ void CSWCCreature::ActionPushAway(unsigned int n, CSWCCreature* pTarget) {
             }
             CWalkHitInfo hitInfo = {};
             hitInfo.m_hitObjectId = OBJECT_INVALID;
-            const CResRef& areaResRef = static_cast<CSWSArea*>(GetServerObject()->GetArea())->m_resRef;
-            GetServerObject();
-            int flagValue = GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_nPersonalSpaceBits;
-            GetServerObject();
             int status = g_pAppManager->m_pServerExoApp->TestDirectLine(
-                m_objectId, areaResRef, m_position, vDest,
-                *reinterpret_cast<const float*>(&flagValue),
-                GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_fHeightAlias, 1, &hitInfo);
+                m_objectId, static_cast<CSWSArea*>(GetServerObject()->GetArea())->m_resRef, m_position, vDest,
+                static_cast<float>(GetServerCreature()->m_pPathfindInfo->m_fPersonalSpace),
+                GetServerCreature()->m_pPathfindInfo->m_fHeightAlias, 1, &hitInfo);
             if (status == 0)
                 vDest = m_position;
             else if (status != 1)
@@ -4201,24 +4008,17 @@ void CSWCCreature::ActionPushAway(unsigned int n, CSWCCreature* pTarget) {
             pPath[1] = m_position.y;
             pPath[2] = vDest.x;
             pPath[3] = vDest.y;
-            GetServerObject();
-            if (GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_nWayPointFloats != 0) {
-                GetServerObject();
-                float* pOld = GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_paWayPoints;
-                GetServerObject();
-                GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_paWayPoints = 0;
+            if (GetServerCreature()->m_pPathfindInfo->m_nWayPointFloats != 0) {
+                float* pOld = GetServerCreature()->m_pPathfindInfo->m_paWayPoints;
+                GetServerCreature()->m_pPathfindInfo->m_paWayPoints = 0;
                 if (pOld != 0)
                     delete[] pOld;
             }
-            GetServerObject();
-            GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_nWayPointFloats = 4;
-            GetServerObject();
-            GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_paWayPoints = pPath;
-            GetServerObject();
-            GetServerObject()->AsSWSCreature()->m_pPathfindInfo->m_nWayPointCursor = 0;
-            GetServerObject();
-            GetServerObject()->AsSWSCreature()->m_nMoveState = 4;
-            (GetServerObject() ? GetServerObject()->AsSWSCreature() : static_cast<CSWSCreature*>(0))
+            GetServerCreature()->m_pPathfindInfo->m_nWayPointFloats = 4;
+            GetServerCreature()->m_pPathfindInfo->m_paWayPoints = pPath;
+            GetServerCreature()->m_pPathfindInfo->m_nWayPointCursor = 0;
+            GetServerCreature()->m_nMoveState = 4;
+            GetServerCreature()
                 ->WalkUpdateLocation_QuickWalk(1);
         }
     }
@@ -4228,9 +4028,7 @@ void CSWCCreature::ActionPushAway(unsigned int n, CSWCCreature* pTarget) {
 // Applies a behavior pick to the target's server stats, raises the matching feedback window
 // and arms the main interface's feedback timer.
 void CSWCCreature::ActionMenuSelectBehavior(unsigned int nBehavior, CSWCCreature* pTarget) {
-    CSWSCreature* pServerCreature = 0;
-    if (pTarget->GetServerObject())
-        pServerCreature = pTarget->GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = pTarget->GetServerCreature();
     CSWSCreatureStats* pStats = pServerCreature != 0 ? pServerCreature->m_pStats : 0;
     if (pStats != 0) {
         int nStrRef = -1;
@@ -4284,9 +4082,7 @@ void CSWCCreature::ActionMenuStance(unsigned int nStance, CSWCCreature* pTarget)
         return;
     } else {
         if (pTarget != 0) {
-            pTarget->m_nStateFlags |= 1;
-            if (pTarget->m_objectId == g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-                g_pAppManager->m_pClientExoApp->SetCombatMode(pTarget->m_nStateFlags & 1);
+            pTarget->SetCombatMode(1);
             if (pTarget->m_bInParty != 0) {
                 int nCount = g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount;
                 if (nCount >= 2) {
@@ -4294,10 +4090,7 @@ void CSWCCreature::ActionMenuStance(unsigned int nStance, CSWCCreature* pTarget)
                     do {
                         CSWCCreature* pMember =
                             g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
-                        pMember->m_nStateFlags |= 1;
-                        if (pMember->m_objectId ==
-                            g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-                            g_pAppManager->m_pClientExoApp->SetCombatMode(pMember->m_nStateFlags & 1);
+                        pMember->SetCombatMode(1);
                         i++;
                     } while (i != nCount);
                 }
@@ -4318,33 +4111,13 @@ void CSWCCreature::UpdateRollingFootstepSound() {
     switch (nAnim) {
     case SERVER_ANIMATION_WALK: case SERVER_ANIMATION_WALK_BACKWARD: case SERVER_ANIMATION_STEALTH:
     case SERVER_ANIMATION_WALK_INJURED:
-        if (m_pRollingFootstepSound != 0) {
-            m_pRollingFootstepSound->SetPosition(m_position, 0.0f);
-            if (m_bRollingFootstepPlaying != 0 && m_rollingFootstepType == 0)
-                return;
-            m_pRollingFootstepSound->SetFixedVariance(1.0f);
-            m_pRollingFootstepSound->Play();
-            m_bRollingFootstepPlaying = 1;
-            m_rollingFootstepType = 0;
-        }
+        PlayRollingFootstepSound(0);
         break;
     case SERVER_ANIMATION_RUN: case SERVER_ANIMATION_RUN_INJURED:
-        if (m_pRollingFootstepSound != 0) {
-            m_pRollingFootstepSound->SetPosition(m_position, 0.0f);
-            if (m_bRollingFootstepPlaying != 0 && m_rollingFootstepType == 1)
-                return;
-            m_pRollingFootstepSound->SetFixedVariance(m_rollingFootstepVariance + 1.0f);
-            m_pRollingFootstepSound->Play();
-            m_bRollingFootstepPlaying = 1;
-            m_rollingFootstepType = 1;
-        }
+        PlayRollingFootstepSound(1);
         break;
     default:
-        if (m_pRollingFootstepSound != 0 && m_bRollingFootstepPlaying != 0) {
-            m_pRollingFootstepSound->Stop();
-            m_bRollingFootstepPlaying = 0;
-            m_rollingFootstepType = 0;
-        }
+        StopRollingFootstepSound();
         break;
     }
 }
@@ -4429,18 +4202,14 @@ void CSWCCreature::UpdateWeaponClass() {
     GetAnimationBase()->m_nWeaponClass = nWeaponClass;
 #if !KOTOR1  // K1 has no lightsaber flag or feat latch
     GetAnimationBase()->m_bLightsaber = static_cast<unsigned char>(bLightsaber);
-    if (GetServerObject()) {
-        if (GetServerObject()->AsSWSCreature()) {
-            GetServerObject();  // Result discarded.
-            if (GetServerObject()->AsSWSCreature()->m_pStats) {
-                GetServerObject();  // Result discarded.
-                int bHasFeat = GetServerObject()->AsSWSCreature()->m_pStats->HasFeat(CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS);
-                CSWCAnimBase* pAnimBase = GetAnimationBase();
-                if (bHasFeat) {
-                    pAnimBase->m_bHasUnarmedFeat = 1;
-                } else {
-                    pAnimBase->m_bHasUnarmedFeat = 0;
-                }
+    if (GetServerCreature()) {
+        if (GetServerCreature()->m_pStats) {
+            int bHasFeat = GetServerCreature()->m_pStats->HasFeat(CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS);
+            CSWCAnimBase* pAnimBase = GetAnimationBase();
+            if (bHasFeat) {
+                pAnimBase->m_bHasUnarmedFeat = 1;
+            } else {
+                pAnimBase->m_bHasUnarmedFeat = 0;
             }
         }
     }
@@ -4682,7 +4451,7 @@ void CSWCCreature::CreateUsableItemEntry(CExoArrayList<CSWGuiInterfaceAction>& l
                 pMember->m_pStats->m_nCurrentHitPoints < pMember->m_pStats->GetMaxHitPoints())
                 bHurt = 1;
         }
-        if (GetServerObject() != 0 && GetServerObject()->AsSWSCreature() != 0 && bHurt)
+        if (GetServerCreature() != 0 && bHurt)
             return;
         list.m_pArray[nOldCount].m_nFlags &= ~1;
         list.m_pArray[nOldCount].m_nFlags =
@@ -4741,26 +4510,16 @@ void CSWCCreature::CreateUsableItemEntry(CExoArrayList<CSWGuiInterfaceAction>& l
 
 // Unequips the seven weapon slots and clears both wield slots on the model.
 void CSWCCreature::StripEquippedItems() {
-    for (int i = 0; i != 20; i++) {
-        unsigned long long itemId;
-        switch (i - 1) {
-        case 0:  itemId = m_aEquippedItemIds[0]; break;
-        case 1:  itemId = m_aEquippedItemIds[1]; break;
-        case 3:  itemId = m_aEquippedItemIds[2]; break;
-        case 7:  itemId = m_aEquippedItemIds[3]; break;
-        case 15: itemId = m_aEquippedItemIds[4]; break;
-        case 31: itemId = m_aEquippedItemIds[5]; break;
-        case 63: itemId = m_aEquippedItemIds[6]; break;
-        default: itemId = CGameObjectArray::INVALIDOBJID; break;
-        }
-        if (itemId == CGameObjectArray::INVALIDOBJID)
-            continue;
-        CGameObject* pObj;
-        if (g_pAppManager->m_pClientExoApp->GetGameObjectArray()->GetGameObject(itemId, &pObj) !=
-            CGameObjectArray::SUCCESS)
-            continue;
-        static_cast<CSWCItem*>(pObj->AsSWCItem())->SetEquippedBy(0);
-    }
+#ifdef K2_FIX_ENGINE_BUGS
+    for (int i = 0; i < 20; i++)
+        SetItemUnEquippedByMe(GetEquippedItemID(1u << i));
+#elif KOTOR1
+    for (int i = 0; i < 18; i++)
+        SetItemUnEquippedByMe(GetEquippedItemID(i));
+#else
+    for (int i = 0; i < 20; i++)
+        SetItemUnEquippedByMe(GetEquippedItemID(i));
+#endif
     if (m_pModel != 0) {
         m_pModel->Wield(CGameObjectArray::INVALIDOBJID, CExoString(""), 0, 1.0f);
         m_pModel->Wield(CGameObjectArray::INVALIDOBJID, CExoString(""), 1, 1.0f);
@@ -4818,14 +4577,13 @@ int CSWCCreature::PlayHitSound(CSWCCombatAttackData* pData, int a) {
         g_pRules->m_p2DArrays->m_pAppearanceSounds->GetINTEntry(
             nSoundAppType, CTwoDimArrays::COL2DA_APPEARANCESOUNDS_WEAPON, &nSoundType);
         if (nSoundType == 0) {
-            unsigned long long nItemId;
+            unsigned int nSlot;
             if (pData->m_nWeaponAttackType == 1 || pData->m_nWeaponAttackType == 6 ||
                 GetAnimationBase()->m_nWeaponClass == CSWCAnimBase::WEAPON_CLASS_TWO_HANDED_SABER)
-                nItemId = m_aEquippedItemIds[4];
+                nSlot = MSG_SLOT_RIGHT_WEAPON;
             else
-                nItemId = pData->m_nWeaponAttackType == 2 ? m_aEquippedItemIds[5]
-                                                : CGameObjectArray::INVALIDOBJID;
-            CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nItemId);
+                nSlot = pData->m_nWeaponAttackType == 2 ? MSG_SLOT_LEFT_WEAPON : 0;
+            CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(GetEquippedItemID(nSlot));
             if (pItem != 0)
                 nSoundType = g_pRules->GetBaseItem(pItem->m_baseItem)->m_bIsPC;
         }
@@ -4918,7 +4676,6 @@ int CSWCCreature::SpawnHitVisuals(unsigned char a, CSWCCombatAttackData* pData, 
         Gob* pGob = m_aHitVisualGobs[i];
         float fDot;
         float fAngle;
-        unsigned long long nItemId;
         CSWCItem* pItem;
         if (pGob != 0) {
             float fTime = 0.0f;
@@ -4938,28 +4695,7 @@ int CSWCCreature::SpawnHitVisuals(unsigned char a, CSWCCombatAttackData* pData, 
         if (fDot > 1.0f)
             fDot = 1.0f;
         fAngle = acosf(fDot);
-        switch (pData->m_nWeaponAttackType) {
-        case CSWSCombatRound::WEAPON_ATTACK_TYPE_ONHAND:
-        case CSWSCombatRound::WEAPON_ATTACK_TYPE_EXTRA:
-            nItemId = m_aEquippedItemIds[4];
-            break;
-        case CSWSCombatRound::WEAPON_ATTACK_TYPE_OFFHAND:
-            nItemId = m_aEquippedItemIds[5];
-            break;
-        case CSWSCombatRound::WEAPON_ATTACK_TYPE_CWEAPON1:
-            nItemId = m_aEquippedItemIds[11];
-            break;
-        case CSWSCombatRound::WEAPON_ATTACK_TYPE_CWEAPON2:
-            nItemId = m_aEquippedItemIds[12];
-            break;
-        case CSWSCombatRound::WEAPON_ATTACK_TYPE_CWEAPON3:
-            nItemId = m_aEquippedItemIds[13];
-            break;
-        default:
-            nItemId = OBJECT_INVALID;
-            break;
-        }
-        pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nItemId);
+        pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(GetAttackingWeapon(pData->m_nWeaponAttackType));
         if (pItem != 0)
             g_pRules->GetBaseItem(pItem->m_baseItem);
         if (cross(v, normalize(m_orientation)).z >= 0.0f)
@@ -4978,9 +4714,7 @@ int CSWCCreature::SpawnHitVisuals(unsigned char a, CSWCCombatAttackData* pData, 
 // Builds the radial-menu usable-item list: the three equipped slots first, then every item in
 // the server inventory.
 void CSWCCreature::GetUsableItems(CExoArrayList<CSWGuiInterfaceAction>& list, unsigned char nType) {
-    CSWSCreature* pServerCreature = 0;
-    if (GetServerObject())
-        pServerCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = GetServerCreature();
     if (pServerCreature != 0) {
         if (static_cast<CSWSArea*>(pServerCreature->GetArea())->m_nPlayerRestrictMode == 0) {
             CAppManager** ppMgr = &g_pAppManager;
@@ -5005,9 +4739,7 @@ void CSWCCreature::GetUsableItems(CExoArrayList<CSWGuiInterfaceAction>& list, un
 
 void CSWCCreature::SetName(const CExoString& first, const CExoString& last) {
     CExoString sFull;
-    CSWCCreatureStats* pStats = m_pStats;
-    pStats->m_name = first;
-    pStats->m_sLastName = last;
+    m_pStats->SetName(first, last);
     sFull = "[";
 #if KOTOR1  // K1 uses the full name
     sFull = sFull + m_pStats->GetFullName() + "]";
@@ -5030,9 +4762,7 @@ void CSWCCreature::ActionMenuAttack(unsigned int n, CSWCCreature* pTarget) {
     if (g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_ATTACK, pTarget->m_objectId,
                                                            m_objectId, 0))
         return;
-    pTarget->m_nStateFlags |= 1;
-    if (pTarget->m_objectId == g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-        g_pAppManager->m_pClientExoApp->SetCombatMode(pTarget->m_nStateFlags & 1);
+    pTarget->SetCombatMode(1);
 #if !KOTOR1  // K1 arms only the target
     if (pTarget->m_bInParty != 0) {
         int nCount = g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount;
@@ -5041,10 +4771,7 @@ void CSWCCreature::ActionMenuAttack(unsigned int n, CSWCCreature* pTarget) {
             do {
                 CSWCCreature* pMember =
                     g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
-                pMember->m_nStateFlags |= 1;
-                if (pMember->m_objectId ==
-                    g_pAppManager->m_pClientExoApp->GetPlayerCreatureId())
-                    g_pAppManager->m_pClientExoApp->SetCombatMode(pMember->m_nStateFlags & 1);
+                pMember->SetCombatMode(1);
                 i++;
             } while (i != nCount);
         }
@@ -5063,9 +4790,7 @@ void CSWCCreature::SetCombatState(int bCombat) {
     if (bCombat != 0)
         GetAnimationBase();
     if (nOldState != bCombat) {
-        CSWSCreature* pServerCreature = 0;
-        if (GetServerObject())
-            pServerCreature = GetServerObject()->AsSWSCreature();
+        CSWSCreature* pServerCreature = GetServerCreature();
         if (pServerCreature != 0 && pServerCreature->GetDead() == 0 &&
             pServerCreature->GetDeadTemp() == 0) {
             if (m_aEquippedItemIds[4] != OBJECT_INVALID) {
@@ -5082,27 +4807,18 @@ void CSWCCreature::SetCombatState(int bCombat) {
             }
         }
     }
-    if (bCombat != 0) {
-        LookAt(OBJECT_INVALID, 0.0f);
-        m_bDisableLookAt = 1;
-    } else {
-        m_bDisableLookAt = 0;
-    }
+    SetDisableLookAt(bCombat);
 }
 
 // Probes for a usable item. For ourselves: the three equipped slots, then the inventory. For
 // another creature: inventory items pass only while we are hostile and IsHostileUsableItem
 // agrees.
 int CSWCCreature::HasUsableItems(CSWCCreature* pOther) {
-    CSWSCreature* pServerCreature = 0;
-    if (GetServerObject())
-        pServerCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = GetServerCreature();
     if (pServerCreature == 0)
         return 0;
     int bMenuDisabled = static_cast<CSWSArea*>(pServerCreature->GetArea())->m_nPlayerRestrictMode;
-    CSWSCreature* pOtherServer = 0;
-    if (pOther->GetServerObject())
-        pOtherServer = pOther->GetServerObject()->AsSWSCreature();
+    CSWSCreature* pOtherServer = pOther->GetServerCreature();
     CItemRepository* pRepo = pOtherServer->GetItemRepository(1);
     if (pOther == this && bMenuDisabled == 0) {
         CSWCItem* pItem =
@@ -5286,34 +5002,32 @@ int CSWCCreature::ComputeWeaponOverlays(int a, int b) {
 float CSWCCreature::ComputeSpeedFactor(float f) {
     if (m_pCurrentWayPoint == 0)
         return 0.0f;
-    float fTotal = 0.0f;
-    Vector vPrev = m_desiredPosition;
+    int nClass = m_bServerWayPoints;
+    float fDist = 0.0f;
+    Vector prev = {m_desiredPosition.x, m_desiredPosition.y, 0.0f};
     Vector* p = static_cast<Vector*>(m_pCurrentWayPoint);
-    Vector* pEnd = m_pWayPoints + m_wayPointCount;
     do {
-        Vector vDelta;
-        vDelta.x = p->x - vPrev.x;
-        vDelta.y = p->y - vPrev.y;
-        vDelta.z = 0.0f;
-        fTotal += magnitude(vDelta);
-        vPrev = *p;
+        Vector cur = {p->x, p->y, 0.0f};
         p++;
-    } while (p < pEnd);
-    float fSpeed = (m_bServerWayPoints == 1) ? 500.0f : 1000.0f;
-    float fNorm = f * 1000.0f / 2000000.0f;
-    float fResult = 1.0f;
-    if (fTotal <= fNorm) {
-        float fRatio = fTotal / fNorm;
-        float fCurve = fRatio >= 0.01f ? sqrtf(fRatio) : 0.1f;
-        fResult = fCurve + static_cast<float>(m_nAIUpdateDeltaMs) / -1000.0f;
+        Vector d = {cur.x - prev.x, cur.y - prev.y, 0.0f};
+        fDist += magnitude(d);
+        prev = cur;
+    } while (p < m_pWayPoints + m_wayPointCount);
+    float fThresh = (nClass == 1) ? 500.0f : 1000.0f;
+    float fRef = (f * 1000.0f) / 2000000.0f;
+    float fNew = 1.0f;
+    if (fDist <= fRef) {
+        fNew = fDist / fRef;
+        fNew = (fNew >= 0.01f) ? __builtin_sqrtf(fNew) : 0.1f;
+        fNew = fNew + static_cast<float>(m_nAIUpdateDeltaMs) / -1000.0f;
     }
-    if (m_fMoveSpeedScale <= 1.0f) {
-        float fWalk = m_fMoveSpeedScale + static_cast<float>(m_nAIUpdateDeltaMs) / fSpeed;
-        if (fResult >= fWalk)
-            fResult = fWalk;
+    float fOld = m_fMoveSpeedScale;
+    if (fOld <= 1.0f) {
+        float fCap = fOld + static_cast<float>(m_nAIUpdateDeltaMs) / fThresh;
+        if (fNew >= fCap)
+            fNew = fCap;
     }
-    // A float max that sends NaN to the floor, as a floating-point minimum would.
-    return fResult < 0.1f ? 0.1f : fResult;
+    return fNew <= 0.1f ? 0.1f : fNew;
 }
 
 // Projects a point above the creature's head into camera space and scales the screen point by
@@ -5323,9 +5037,7 @@ int CSWCCreature::GetMenuPoint(Vector& vOut) {
     CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
     Vector vDir = -pCamera->GetOrientation().zdir();
     vOut = m_position;
-    CSWSCreature* pServerCreature = 0;
-    if (GetServerObject())
-        pServerCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = GetServerCreature();
     if (pServerCreature != 0 &&
         (pServerCreature->m_sTag == "zaalbar" || pServerCreature->m_sTag == "hk47"))
         vOut.z += 2.0f;
@@ -5379,12 +5091,9 @@ char CSWCCreature::GetReticlePoint(Vector& v) {
 // idle and injured corrections.
 void CSWCCreature::AnimationUpdate() {
     if (AnimationStationary(m_currentAnimation) == 0) {
-        CSWSCreature* pServerCreature = 0;
-        if (GetServerObject())
-            pServerCreature = GetServerObject()->AsSWSCreature();
+        CSWSCreature* pServerCreature = GetServerCreature();
         if (pServerCreature != 0) {
-            GetServerObject();
-            if (GetServerObject()->AsSWSCreature()->m_nMoveState == 0)
+            if (GetServerCreature()->m_nMoveState == 0)
                 return;
         }
     }
@@ -5418,14 +5127,10 @@ void CSWCCreature::AnimationUpdate() {
 // must be usable, and either a stealth belt is equipped, the feat is held, or one of the three
 // stealth powers is known.
 int CSWCCreature::IsStealthCapable() {
-    CSWSCreature* pServerCreature = 0;
-    if (GetServerObject())
-        pServerCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = GetServerCreature();
     if (pServerCreature == 0)
         return 0;
-    CSWSCreature* pServerCreature2 = 0;
-    if (GetServerObject())
-        pServerCreature2 = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature2 = GetServerCreature();
     if (static_cast<CSWSArea*>(pServerCreature2->GetArea())->m_nPlayerRestrictMode != 0)
         return 0;
     if (m_pStats->GetCanUseSkill(SKILL_STEALTH) == 0)
@@ -5443,20 +5148,16 @@ int CSWCCreature::IsStealthCapable() {
 #if KOTOR1
     return bHasBelt;  // K1: the stealth belt is the only source
 #else
-    GetServerObject();
-    CSWSCreatureStats* pStats = GetServerObject()->AsSWSCreature()->m_pStats;
+    CSWSCreatureStats* pStats = GetServerCreature()->m_pStats;
     int bHasFeat = pStats->HasFeat(FEAT_PERSONAL_CLOAKING_SHIELD) != 0;
-    GetServerObject();
-    pStats = GetServerObject()->AsSWSCreature()->m_pStats;
+    pStats = GetServerCreature()->m_pStats;
     if (pStats->HasSpell(0, FORCE_POWER_FORCE_CAMOUFLAGE, 0) != 0)
         return 1;
-    GetServerObject();
-    pStats = GetServerObject()->AsSWSCreature()->m_pStats;
+    pStats = GetServerCreature()->m_pStats;
     if (pStats->HasSpell(0, FORCE_POWER_IMPROVED_FORCE_CAMOUFLAGE, 0) != 0)
         return 1;
-    GetServerObject();
-    pStats = GetServerObject()->AsSWSCreature()->m_pStats;
-    return (bHasBelt | bHasFeat | (pStats->HasSpell(0, FORCE_POWER_MASTER_FORCE_CAMOUFLAGE, 0) != 0));
+    pStats = GetServerCreature()->m_pStats;
+    return (bHasBelt | bHasFeat | pStats->HasSpell(0, FORCE_POWER_MASTER_FORCE_CAMOUFLAGE, 0)) != 0;
 #endif
 }
 
@@ -5638,18 +5339,8 @@ int CSWCCreature::UpdateAttackData(unsigned short* pOutAnim, CSWCCombatAttackDat
             if (pData->m_rangedAttackGroup.m_bRangedAttack != 0) {
                 nAnim = UpdateRangedAttackData(pData->m_reaxnGroup.m_nFeatId, nWeaponType);
             } else {
-                int bRanged;
-                if (pWeaponObj2 == 0) {
-                    bRanged = 0;
-                } else if (IsCreature() != 0) {
-                    bRanged = 1;
-                } else if (pWeaponObj2->AsSWCCreature() != 0 &&
-                           static_cast<CSWCCreature*>(pWeaponObj2->AsSWCCreature())->IsCreature() != 0) {
-                    bRanged = 1;
-                } else {
-                    bRanged = 0;
-                }
-                nAnim = UpdateMeleeAttackData(*pOutAnim, pData->m_reaxnGroup.m_nFeatId, bRanged, nWeaponType);
+                int bInCombat = InCreatureCombat(pWeaponObj2);
+                nAnim = UpdateMeleeAttackData(*pOutAnim, pData->m_reaxnGroup.m_nFeatId, bInCombat, nWeaponType);
             }
         }
     }
@@ -5670,8 +5361,7 @@ int CSWCCreature::UpdateAttackData(unsigned short* pOutAnim, CSWCCombatAttackDat
 unsigned short CSWCCreature::ResolveReactionAnimation(unsigned short a, unsigned short b, int c) {
 #if !KOTOR1  // K1 has no feat-selected reaction column
     if (c == 8) {
-        GetServerObject();
-        c = GetServerObject()->AsSWSCreature()->m_pStats->HasFeat(CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS) ? 10 : 8;
+        c = GetServerCreature()->m_pStats->HasFeat(CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS) ? 10 : 8;
     }
 #endif
     CExoString sRow(a);
@@ -5978,9 +5668,7 @@ void CSWCCreature::SetStealthState(int nState, int b) {
         bChanged = 1;
     }
     m_nStealthState = nState;
-    if (GetServerObject() == 0)
-        return;
-    CSWSCreature* pServer = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServer = GetServerCreature();
     if (bChanged == 0 || pServer == 0)
         return;
     int nPUP = pServer->m_nAssignedPup;
@@ -6210,28 +5898,7 @@ int CSWCCreature::GetMatchingEquippedItemCount(CSWSItem* pItem) {
         if (i - INVENTORY_SLOT_CWEAPON_L >= 0 && i - INVENTORY_SLOT_CWEAPON_L < 4)  // the creature slots
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        unsigned long long* pItemId;
-        switch (1 << i) {
-        case MSG_SLOT_HEAD:              pItemId = &m_aEquippedItemIds[0];  break;
-        case MSG_SLOT_BODY:              pItemId = &m_aEquippedItemIds[1];  break;
-        case MSG_SLOT_BOOTS:             pItemId = &m_aEquippedItemIds[2];  break;
-        case MSG_SLOT_HANDS:             pItemId = &m_aEquippedItemIds[3];  break;
-        case MSG_SLOT_RIGHT_WEAPON:      pItemId = &m_aEquippedItemIds[4];  break;
-        case MSG_SLOT_LEFT_WEAPON:       pItemId = &m_aEquippedItemIds[5];  break;
-        case MSG_SLOT_CLOAK:             pItemId = &m_aEquippedItemIds[6];  break;
-        case MSG_SLOT_LEFT_ARM:          pItemId = &m_aEquippedItemIds[7];  break;
-        case MSG_SLOT_RIGHT_ARM:         pItemId = &m_aEquippedItemIds[8];  break;
-        case MSG_SLOT_IMPLANT:           pItemId = &m_aEquippedItemIds[9];  break;
-        case MSG_SLOT_BELT:              pItemId = &m_aEquippedItemIds[10]; break;
-        case MSG_SLOT_CREATURE_WEAPON_L: pItemId = &m_aEquippedItemIds[11]; break;
-        case MSG_SLOT_CREATURE_WEAPON_R: pItemId = &m_aEquippedItemIds[12]; break;
-        case MSG_SLOT_CREATURE_WEAPON_B: pItemId = &m_aEquippedItemIds[13]; break;
-        case MSG_SLOT_CREATURE_ARMOR:    pItemId = &m_aEquippedItemIds[14]; break;
-        case MSG_SLOT_RIGHT_WEAPON_2:    pItemId = &m_aEquippedItemIds[15]; break;
-        case MSG_SLOT_LEFT_WEAPON_2:     pItemId = &m_aEquippedItemIds[16]; break;
-        default:      pItemId = const_cast<unsigned long long*>(&CGameObjectArray::INVALIDOBJID); break;
-        }
-        CSWCItem* pEquipped = pApp->GetItemByGameObjectID(*pItemId);
+        CSWCItem* pEquipped = pApp->GetItemByGameObjectID(GetEquippedItemID(1 << i));
         if (pEquipped != 0) {
             CSWSItem* pServerItem = pEquipped->GetServerItem();
             if (pServerItem != 0 && pServerItem->m_baseItem == pItem->m_baseItem &&
@@ -6464,16 +6131,6 @@ unsigned long long CSWCCreature::GetEquippedItemID(unsigned int nSlot) {
     }
 }
 
-#if !KOTOR1
-static void UnequipItemById(unsigned long long itemId) {
-    CGameObject* pObj;
-    if (g_pAppManager->m_pClientExoApp->GetGameObjectArray()->GetGameObject(itemId, &pObj) ==
-        CGameObjectArray::SUCCESS) {
-        static_cast<CSWCItem*>(pObj->AsSWCItem())->SetEquippedBy(0);
-    }
-}
-#endif
-
 #if KOTOR1
 // K1's form: no creature-weapon slots, so only the two hands are paired, and the replaced
 // item's model is always torn down. A hand slot keeps its old item when the incoming id already
@@ -6538,38 +6195,16 @@ void CSWCCreature::EquipToInventorySlot(unsigned int nSlot, CSWCItem* pItem, int
         pItem->SetEquippedBy(this);
     }
 
-    const unsigned long long* pSlotId = &CGameObjectArray::INVALIDOBJID;
-    switch (nSlot) {
-    case MSG_SLOT_HEAD:              pSlotId = &m_aEquippedItemIds[0];  break;
-    case MSG_SLOT_BODY:              pSlotId = &m_aEquippedItemIds[1];  break;
-    case MSG_SLOT_BOOTS:             pSlotId = &m_aEquippedItemIds[2];  break;
-    case MSG_SLOT_HANDS:             pSlotId = &m_aEquippedItemIds[3];  break;
-    case MSG_SLOT_RIGHT_WEAPON:      pSlotId = &m_aEquippedItemIds[4];  break;
-    case MSG_SLOT_LEFT_WEAPON:       pSlotId = &m_aEquippedItemIds[5];  break;
-    case MSG_SLOT_CLOAK:             pSlotId = &m_aEquippedItemIds[6];  break;
-    case MSG_SLOT_LEFT_ARM:          pSlotId = &m_aEquippedItemIds[7];  break;
-    case MSG_SLOT_RIGHT_ARM:         pSlotId = &m_aEquippedItemIds[8];  break;
-    case MSG_SLOT_IMPLANT:           pSlotId = &m_aEquippedItemIds[9];  break;
-    case MSG_SLOT_BELT:              pSlotId = &m_aEquippedItemIds[10]; break;
-    case MSG_SLOT_CREATURE_WEAPON_L: pSlotId = &m_aEquippedItemIds[11]; break;
-    case MSG_SLOT_CREATURE_WEAPON_R: pSlotId = &m_aEquippedItemIds[12]; break;
-    case MSG_SLOT_CREATURE_WEAPON_B: pSlotId = &m_aEquippedItemIds[13]; break;
-    case MSG_SLOT_CREATURE_ARMOR:    pSlotId = &m_aEquippedItemIds[14]; break;
-    case MSG_SLOT_RIGHT_WEAPON_2:    pSlotId = &m_aEquippedItemIds[15]; break;
-    case MSG_SLOT_LEFT_WEAPON_2:     pSlotId = &m_aEquippedItemIds[16]; break;
-    }
-
-    unsigned long long slotId = *pSlotId;
+    unsigned long long slotId = GetEquippedItemID(nSlot);
     CSWCItem* pOld = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(slotId);
 
-    pSlotId = &m_aEquippedItemIds[5];
+    const unsigned long long* pSlotId = &m_aEquippedItemIds[5];
 
     bool bRaw = false;  // The incoming id sits in another wielded slot.
     bool bEarly = false;  // Right-hand arm stamps before the pair check.
     bool bAccum = false;  // The accumulated flag.
     bool bUnload = false;  // Tear the replaced item's model down.
     bool bOther = false;  // The raw incoming-id case.
-    const unsigned long long* pPair = 0;
     unsigned long long nOtherId = 0;  // The pair slot's id, shared by the two creature-weapon arms.
 
     if (m_aEquippedItemIds[5] == slotId || m_aEquippedItemIds[4] == slotId) {
@@ -6590,7 +6225,6 @@ L1e8:
 L200:
     bRaw = true;
 L204:
-    pPair = &m_aEquippedItemIds[4];
     bUnload = true;
     bEarly = true;
     bOther = bRaw && slotId != CGameObjectArray::INVALIDOBJID;
@@ -6609,7 +6243,6 @@ L1cc:
 L3d0:
     bRaw = false;
 L3d4:
-    pPair = &m_aEquippedItemIds[16];
     bEarly = false;
     goto L3e0;
 
@@ -6625,7 +6258,6 @@ L22c:
 L260:
     bRaw = true;
 L264:
-    pPair = pSlotId;
     bEarly = false;
     goto L3e0;
 L614:
@@ -6642,7 +6274,6 @@ L294:
 L3bc:
     bRaw = false;
 L3c0:
-    pPair = &m_aEquippedItemIds[15];
     bEarly = false;
     goto L3e0;
 
@@ -6650,10 +6281,8 @@ L29c:
     if (nSlot - 2 != 0) goto L36c;
     bUnload = bAccum;
     if (pModel != 0) pModel->AttachToScene(0);
-    if (m_aEquippedItemIds[1] != itemId &&
-        m_aEquippedItemIds[1] != CGameObjectArray::INVALIDOBJID) {
-        UnequipItemById(m_aEquippedItemIds[1]);
-    }
+    if (m_aEquippedItemIds[1] != itemId)
+        SetItemUnEquippedByMe(m_aEquippedItemIds[1]);
     m_aEquippedItemIds[1] = itemId;
     goto Finish;
 
@@ -6661,7 +6290,7 @@ L3e0:
     bOther = bRaw && slotId != CGameObjectArray::INVALIDOBJID;
     bUnload = bAccum;
 L3ec:
-    if (*pPair != itemId) goto L47c;
+    if (GetEquippedItemID(nSlot) != itemId) goto L47c;
 L3f8:
     SetEquippedItemID(nSlot, itemId);
     if (nSlot != MSG_SLOT_LEFT_WEAPON && nSlot != MSG_SLOT_RIGHT_WEAPON) goto Finish;
@@ -6677,8 +6306,8 @@ L418:
 L47c:
     if (!bEarly) goto L4f0;
     if (m_aEquippedItemIds[5] == CGameObjectArray::INVALIDOBJID || m_aEquippedItemIds[5] != itemId) {
-        if (!bOther && m_aEquippedItemIds[4] != CGameObjectArray::INVALIDOBJID)
-            UnequipItemById(m_aEquippedItemIds[4]);
+        if (!bOther)
+            SetItemUnEquippedByMe(m_aEquippedItemIds[4]);
     }
     goto L3f8;
 
@@ -6714,79 +6343,29 @@ L578:
 L58c:
     nOtherId = m_aEquippedItemIds[15];
 L590:
-    if (nOtherId != CGameObjectArray::INVALIDOBJID) UnequipItemById(nOtherId);
+    SetItemUnEquippedByMe(nOtherId);
     goto L8b4;
 L59c:
     if (bOther) goto L600;
     if (m_aEquippedItemIds[4] == itemId) goto L600;
 L5a8:
-    if (m_aEquippedItemIds[5] != CGameObjectArray::INVALIDOBJID) UnequipItemById(m_aEquippedItemIds[5]);
+    SetItemUnEquippedByMe(m_aEquippedItemIds[5]);
 L600:
     SetEquippedItemID(nSlot, itemId);
     goto L418;
 
 L36c:
-    pPair = &CGameObjectArray::INVALIDOBJID;
     bUnload = bAccum;
-    if (nSlot >= MSG_SLOT_IMPLANT) goto L544;
-    if (nSlot >= MSG_SLOT_CLOAK) goto L61c;
-    if (nSlot - 1 > MSG_SLOT_LEFT_WEAPON - 1) goto L6b4;
-    switch (nSlot) {
-    case MSG_SLOT_HEAD:        pPair = &m_aEquippedItemIds[0]; break;
-    case MSG_SLOT_BOOTS:       pPair = &m_aEquippedItemIds[2]; break;
-    case MSG_SLOT_HANDS:       pPair = &m_aEquippedItemIds[3]; break;
-    case MSG_SLOT_LEFT_WEAPON: pPair = pSlotId; break;
-    }
-    goto L6b4;
-L61c:
-    if (nSlot == MSG_SLOT_CLOAK) { pPair = &m_aEquippedItemIds[6];  goto L6b4; }
-    if (nSlot == MSG_SLOT_LEFT_ARM) { pPair = &m_aEquippedItemIds[7];  goto L6b4; }
-    if (nSlot == MSG_SLOT_RIGHT_ARM) { pPair = &m_aEquippedItemIds[8];  goto L6b4; }
-    goto L6b4;
-L544:
-    if (nSlot < MSG_SLOT_CREATURE_WEAPON_R) goto L63c;
-    if (nSlot >= MSG_SLOT_CREATURE_ARMOR) goto L65c;
-    if (nSlot == MSG_SLOT_CREATURE_WEAPON_R) { pPair = &m_aEquippedItemIds[12]; goto L6b4; }
-    if (nSlot == MSG_SLOT_CREATURE_WEAPON_B) { pPair = &m_aEquippedItemIds[13]; goto L6b4; }
-    goto L6b4;
-L63c:
-    if (nSlot == MSG_SLOT_IMPLANT) { pPair = &m_aEquippedItemIds[9];  goto L6b4; }
-    if (nSlot == MSG_SLOT_BELT) { pPair = &m_aEquippedItemIds[10]; goto L6b4; }
-    if (nSlot == MSG_SLOT_CREATURE_WEAPON_L) { pPair = &m_aEquippedItemIds[11]; goto L6b4; }
-    goto L6b4;
-L65c:
-    if (nSlot == MSG_SLOT_CREATURE_ARMOR) { pPair = &m_aEquippedItemIds[14]; goto L6b4; }
-    if (nSlot == MSG_SLOT_RIGHT_WEAPON_2) { pPair = &m_aEquippedItemIds[15]; goto L6b4; }
-L6b4:
+    nOtherId = GetEquippedItemID(nSlot);
     if (nSlot == MSG_SLOT_HEAD) {
-        if (*pPair != itemId && m_aEquippedItemIds[0] != CGameObjectArray::INVALIDOBJID)
-            UnequipItemById(m_aEquippedItemIds[0]);
+        if (nOtherId != itemId)
+            SetItemUnEquippedByMe(m_aEquippedItemIds[0]);
         m_aEquippedItemIds[0] = itemId;
         if (pItem != 0) pItem->m_possessorObjectId = m_objectId;
         goto Finish;
     }
-    if (*pPair == itemId) goto L8b4;
-    pPair = &CGameObjectArray::INVALIDOBJID;
-    switch (nSlot) {
-    case MSG_SLOT_BODY:              pPair = &m_aEquippedItemIds[1]; break;
-    case MSG_SLOT_BOOTS:             pPair = &m_aEquippedItemIds[2]; break;
-    case MSG_SLOT_HANDS:             pPair = &m_aEquippedItemIds[3]; break;
-    case MSG_SLOT_RIGHT_WEAPON:      pPair = &m_aEquippedItemIds[4]; break;
-    case MSG_SLOT_LEFT_WEAPON:       pPair = pSlotId; break;
-    case MSG_SLOT_CLOAK:             pPair = &m_aEquippedItemIds[6];  break;
-    case MSG_SLOT_LEFT_ARM:          pPair = &m_aEquippedItemIds[7];  break;
-    case MSG_SLOT_RIGHT_ARM:         pPair = &m_aEquippedItemIds[8];  break;
-    case MSG_SLOT_IMPLANT:           pPair = &m_aEquippedItemIds[9];  break;
-    case MSG_SLOT_BELT:              pPair = &m_aEquippedItemIds[10]; break;
-    case MSG_SLOT_CREATURE_WEAPON_L: pPair = &m_aEquippedItemIds[11]; break;
-    case MSG_SLOT_CREATURE_WEAPON_R: pPair = &m_aEquippedItemIds[12]; break;
-    case MSG_SLOT_CREATURE_WEAPON_B: pPair = &m_aEquippedItemIds[13]; break;
-    case MSG_SLOT_CREATURE_ARMOR:    pPair = &m_aEquippedItemIds[14]; break;
-    case MSG_SLOT_RIGHT_WEAPON_2:    pPair = &m_aEquippedItemIds[15]; break;
-    case MSG_SLOT_LEFT_WEAPON_2:     pPair = &m_aEquippedItemIds[16]; break;
-    }
-    nOtherId = *pPair;
-    if (nOtherId != CGameObjectArray::INVALIDOBJID) UnequipItemById(nOtherId);
+    if (nOtherId == itemId) goto L8b4;
+    SetItemUnEquippedByMe(nOtherId);
 L8b4:
     SetEquippedItemID(nSlot, itemId);
 
@@ -6891,25 +6470,18 @@ void CSWCCreature::GetSelfForcePowers(CExoArrayList<CSWGuiInterfaceAction>& list
     unsigned int nForceItemMask;
     short nForcePoints;
     int nHasServer;
-    if (GetServerObject() == 0) {
+    pServer = GetServerCreature();
+    if (pServer == 0) {
         nForceItemMask = 0;
-        pServer = 0;
         nHasServer = 0;
         nForcePoints = 0;
     } else {
-        pServer = GetServerObject()->AsSWSCreature();
-        if (pServer == 0) {
-            nForceItemMask = 0;
-            nHasServer = 0;
-            nForcePoints = 0;
-        } else {
-            nForceItemMask = pServer->GetForceItemMask();
-            if (pServer->m_bBodyFuel != 0)
-                nForcePoints = static_cast<short>(pServer->GetCurrentHitPoints(0));
-            else
-                nForcePoints = static_cast<short>(pServer->m_pStats->m_nCurrentForcePoints + pServer->m_pStats->m_nTemporaryForcePoints);
-            nHasServer = 1;
-        }
+        nForceItemMask = pServer->GetForceItemMask();
+        if (pServer->m_bBodyFuel != 0)
+            nForcePoints = static_cast<short>(pServer->GetCurrentHitPoints(0));
+        else
+            nForcePoints = static_cast<short>(pServer->m_pStats->m_nCurrentForcePoints + pServer->m_pStats->m_nTemporaryForcePoints);
+        nHasServer = 1;
     }
 
     int nOldCount = list.m_count;
@@ -6917,11 +6489,10 @@ void CSWCCreature::GetSelfForcePowers(CExoArrayList<CSWGuiInterfaceAction>& list
 #ifdef K2_FIX_ENGINE_BUGS
     CSWSArea* pArea = nHasServer != 0 ? static_cast<CSWSArea*>(pServer->GetArea()) : 0;
 #else
-    CSWSArea* pArea = static_cast<CSWSArea*>((GetServerObject() ? GetServerObject()->AsSWSCreature()
-                                                    : static_cast<CSWSCreature*>(0))->GetArea());
+    CSWSArea* pArea = static_cast<CSWSArea*>(GetServerCreature()->GetArea());
 #endif
     if (pArea != 0) {
-        CSWSCreature* pTwin = GetServerObject() ? GetServerObject()->AsSWSCreature() : static_cast<CSWSCreature*>(0);
+        CSWSCreature* pTwin = GetServerCreature();
         K2_ASSUME(pTwin != 0);   // an area was found only through the server twin
         nRoomForceRating = pArea->GetRoomForceRating(pTwin->m_position);
     }
@@ -6959,9 +6530,7 @@ void CSWCCreature::GetSelfForcePowers(CExoArrayList<CSWGuiInterfaceAction>& list
 // out-of-range flag.
 void CSWCCreature::GetHostileForcePowers(CSWCObject* pTarget, CExoArrayList<CSWGuiInterfaceAction>& list)
 {
-    if (GetServerObject() == 0)
-        return;
-    CSWSCreature* pServer = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServer = GetServerCreature();
     if (pServer == 0)
         return;
     if (static_cast<CSWSArea*>(pServer->GetArea())->m_nPlayerRestrictMode != 0)
@@ -7034,11 +6603,10 @@ void CSWCCreature::GetHostileForcePowers(CSWCObject* pTarget, CExoArrayList<CSWG
         float fDx = pTarget->m_position.x - m_position.x;
         float fDy = pTarget->m_position.y - m_position.y;
         float fDz = pTarget->m_position.z - m_position.z;
-        CSWSArea* pArea = static_cast<CSWSArea*>((GetServerObject() ? GetServerObject()->AsSWSCreature()
-                                                        : static_cast<CSWSCreature*>(0))->GetArea());
+        CSWSArea* pArea = static_cast<CSWSArea*>(GetServerCreature()->GetArea());
         int nRoomForceRating = 0;
         if (pArea != 0) {
-            CSWSCreature* pTwin = GetServerObject() ? GetServerObject()->AsSWSCreature() : static_cast<CSWSCreature*>(0);
+            CSWSCreature* pTwin = GetServerCreature();
             K2_ASSUME(pTwin != 0);   // the server twin was tested non-null on entry
             nRoomForceRating = pArea->GetRoomForceRating(pTwin->m_position);
         }
@@ -7092,9 +6660,7 @@ int CSWCCreature::GetInterfaceTargetType(CSWCObject* pTarget)
 // stack suffix, the set-mine callback, the item's object id as the action id and the item icon.
 void CSWCCreature::GetMines(CExoArrayList<CSWGuiInterfaceAction>& list)
 {
-    if (GetServerObject() == 0)
-        return;
-    CSWSCreature* pServerCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = GetServerCreature();
     if (pServerCreature == 0)
         return;
     if (static_cast<CSWSArea*>(pServerCreature->GetArea())->m_nPlayerRestrictMode != 0)
@@ -7157,8 +6723,8 @@ void CSWCCreature::GetFriendlyInterfaceActions(CSWCObject* pTarget, int nType,
     {
         {
 #else
-    if (GetServerObject() != 0) {
-        CSWSCreature* pServer = GetServerObject()->AsSWSCreature();
+    {
+        CSWSCreature* pServer = GetServerCreature();
         if (pServer != 0 && pServer->m_bConfused == 0) {
 #endif
             list.SetSize(nOldCount + 1);
@@ -7188,22 +6754,13 @@ void CSWCCreature::GetFriendlyInterfaceActions(CSWCObject* pTarget, int nType,
                  pTarget->m_objectId != nClientId) &&
                 pPlayerCreature->m_bInParty != 0 &&
                 pPlayerCreature->GetServerCreature() != 0 &&
-#if KOTOR1  // K1: the dying test is GetDeadTemp()
-                (pServerCreature = pPlayerCreature->GetServerObject() != 0
-                                       ? pPlayerCreature->GetServerObject()->AsSWSCreature()
-                                       : 0,
+                (pServerCreature = pPlayerCreature->GetServerCreature(),
                  pServerCreature->GetDeadTemp() != 0) &&
-#else
-                (pPlayerCreature->GetServerObject(),
-                 pServerCreature = pPlayerCreature->GetServerObject()->AsSWSCreature(),
-                 pServerCreature->GetDeadTemp() != 0) &&
-#endif
-                GetServerObject() != 0 &&
-                GetServerObject()->AsSWSCreature() != 0 &&
+                GetServerCreature() != 0 &&
 #if KOTOR1
-                (GetServerObject(), GetServerObject()->AsSWSCreature()->m_bPartyInteract == 0))) {
+                (GetServerCreature()->m_bPartyInteract == 0))) {
 #else
-                (GetServerObject(), GetServerObject()->AsSWSCreature()->m_bPartyInteract == 0),
+                (GetServerCreature()->m_bPartyInteract == 0),
             0)) {
 #endif
         unsigned char& cFlags = list.m_pArray[nOldCount].m_nFlags;
@@ -7217,9 +6774,7 @@ void CSWCCreature::GetHostileInterfaceActions(CSWCObject* pTarget, int nType,
                                               CExoArrayList<CSWGuiInterfaceAction>& list)
 {
     K2_UNUSED(pTarget); K2_UNUSED(nType);
-    if (GetServerObject() == 0)
-        return;
-    CSWSCreature* pServer = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServer = GetServerCreature();
     if (pServer == 0)
         return;
     if (static_cast<CSWSArea*>(pServer->GetArea())->m_nPlayerRestrictMode != 0)
@@ -7239,9 +6794,7 @@ void CSWCCreature::GetHostileInterfaceActions(CSWCObject* pTarget, int nType,
 // and the stack count.
 void CSWCCreature::GetHostileItems(CExoArrayList<CSWGuiInterfaceAction>& list,
                                    CSWCCreature* pCreature) {
-    CSWSCreature* pServerCreature = 0;
-    if (GetServerObject())
-        pServerCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = GetServerCreature();
     CItemRepository* pRepo = pServerCreature->GetItemRepository(1);
     if (pRepo->ItemListGetCount() != 0) {
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++)
@@ -7251,9 +6804,7 @@ void CSWCCreature::GetHostileItems(CExoArrayList<CSWGuiInterfaceAction>& list,
 
 void CSWCCreature::GetHostileItems(CExoArrayList<CSWGuiInterfaceAction>& list,
                                    CSWCPlaceable* pPlaceable) {
-    CSWSCreature* pServerCreature = 0;
-    if (GetServerObject())
-        pServerCreature = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServerCreature = GetServerCreature();
     CItemRepository* pRepo = pServerCreature->GetItemRepository(1);
     if (pRepo->ItemListGetCount() != 0) {
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++)
@@ -7309,9 +6860,7 @@ void CSWCCreature::CreateHostileItemEntry(CExoArrayList<CSWGuiInterfaceAction>& 
 void CSWCCreature::GetCombatFeatsSkills(CExoArrayList<CSWGuiInterfaceAction>& list,
                                         CSWCCreature* pCreature)
 {
-    if (GetServerObject() == 0)
-        return;
-    CSWSCreature* pServer = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServer = GetServerCreature();
     if (pServer == 0)
         return;
     if (static_cast<CSWSArea*>(pServer->GetArea())->m_nPlayerRestrictMode != 0)
@@ -7365,9 +6914,7 @@ void CSWCCreature::GetCombatFeatsSkills(CExoArrayList<CSWGuiInterfaceAction>& li
 // equipped stealth belt, the feat, or one of the three camouflage powers.
 void CSWCCreature::GetNonCombatFeatsSkills(CExoArrayList<CSWGuiInterfaceAction>& list)
 {
-    if (GetServerObject() == 0)
-        return;
-    CSWSCreature* pServer = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServer = GetServerCreature();
     if (pServer == 0)
         return;
     int nOldCount = list.m_count;
@@ -7453,15 +7000,7 @@ void CSWCCreature::GetTargetActions(CSWCObject* pTarget, int nType,
                     if (nType != 1) {
                         if (nType != 2)
                             return;
-                        CSWCPlaceable* pPlaceable = pTarget->AsSWCPlaceable();
-                        CSWSCreature* pServerCreature = 0;
-                        if (GetServerObject())
-                            pServerCreature = GetServerObject()->AsSWSCreature();
-                        CItemRepository* pRepo = pServerCreature->GetItemRepository(1);
-                        if (pRepo->ItemListGetCount() != 0) {
-                            for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++)
-                                CreateHostileItemEntry(list, pRepo->ItemListGetItem(i), pPlaceable);
-                        }
+                        GetHostileItems(list, pTarget->AsSWCPlaceable());
                         return;
                     }
                     GetHostileForcePowers(pTarget, list);
@@ -7485,18 +7024,8 @@ void CSWCCreature::GetTargetActions(CSWCObject* pTarget, int nType,
             GetHostileForcePowers(pTarget, list);
             return;
         }
-        {
-            CSWCCreature* pCreature = pTarget->AsSWCCreature();
-            CSWSCreature* pServerCreature = 0;
-            if (GetServerObject())
-                pServerCreature = GetServerObject()->AsSWSCreature();
-            CItemRepository* pRepo = pServerCreature->GetItemRepository(1);
-            if (pRepo->ItemListGetCount() != 0) {
-                for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++)
-                    CreateHostileItemEntry(list, pRepo->ItemListGetItem(i), pCreature);
-            }
-            return;
-        }
+        GetHostileItems(list, pTarget->AsSWCCreature());
+        return;
     }
 }
 
@@ -7507,13 +7036,11 @@ void CSWCCreature::GetTargetActions(CSWCObject* pTarget, int nType,
 void CSWCCreature::GetBehaviors(CExoArrayList<CSWGuiInterfaceAction>& list)
 {
     C2DA* pAIScripts = g_pRules->m_p2DArrays->m_pAIScripts;
-    GetServerObject();
-    unsigned short nAIState = GetServerObject()->AsSWSCreature()->m_pStats->m_aiState;
+    unsigned short nAIState = GetServerCreature()->m_pStats->m_aiState;
     if (__builtin_expect((nAIState > AI_STATE_SUPPORT ||
                           ((1 << nAIState) & ((1 << AI_STATE_AGGRESSIVE) | (1 << AI_STATE_RANGED_SUPPORT) |
                                               (1 << AI_STATE_STATIONARY) | (1 << AI_STATE_SUPPORT))) == 0) != 0, 0)) {
-        GetServerObject();
-        GetServerObject()->AsSWSCreature()->m_pStats->m_aiState = 9;
+        GetServerCreature()->m_pStats->m_aiState = 9;
     }
 
     int nIdx = list.m_count;
@@ -7729,12 +7256,8 @@ void CSWCCreature::ForceMenuAction(unsigned int n, CSWCCreature* p)
     if (nId - FORCE_POWER_WOOKIEE_RAGE_I < 3 || n == FORCE_POWER_DROID_TRICK ||
         n == FORCE_POWER_DROID_CONFUSION || n == (FORCE_POWER_DROID_TRICK | CSWGuiInterfaceAction::ACTION_ID_SPELL) ||
         n == (FORCE_POWER_DROID_CONFUSION | CSWGuiInterfaceAction::ACTION_ID_SPELL)) {
-        unsigned long long nObjId = m_objectId;
         Vector vPos = {0.0f, 0.0f, 0.0f};
-        CSWCMessage* pMsg2 = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-        if (pMsg2 == 0)
-            return;
-        pMsg2->SendPlayerToServerInput_CastSpell(nId, 0, 0, 0, 0, vPos, nObjId);
+        PerformCastSpell(nId, m_objectId, vPos, 0, 0, 0, 0);
         return;
     }
 
@@ -7752,11 +7275,8 @@ void CSWCCreature::ForceMenuAction(unsigned int n, CSWCCreature* p)
         nWindow = TUTORIAL_USE_HOSTILE_FORCE_POWER;
     if (g_pAppManager->m_pClientExoApp->ShowTutorialWindow(nWindow, m_objectId,
                                                            nClassSlot, nId) == 0) {
-        unsigned long long nObjId = m_objectId;
         Vector vPos = {0.0f, 0.0f, 0.0f};
-        CSWCMessage* pMsg2 = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-        if (pMsg2 != 0)
-            pMsg2->SendPlayerToServerInput_CastSpell(nId, nClassSlot, 0, 0, 0, vPos, nObjId);
+        PerformCastSpell(nId, m_objectId, vPos, nClassSlot, 0, 0, 0);
     }
 #endif
 }
@@ -7766,9 +7286,7 @@ __attribute__((noinline))
 void CSWCCreature::ActionMenuForm(unsigned int n, CSWCCreature* p)
 {
     K2_UNUSED(p);
-    if (GetServerObject() == 0)
-        return;
-    CSWSCreature* pServer = GetServerObject()->AsSWSCreature();
+    CSWSCreature* pServer = GetServerCreature();
     if (pServer == 0)
         return;
     pServer->m_stanceId = n;
@@ -7986,10 +7504,7 @@ void CSWCCreature::ActionSwapImplant(int nImplantId)
     CExoString sScript("a_swapimplant");
     CVirtualMachine* pVM = g_pVirtualMachine;
     CSWGuiMainInterface* pMain;
-    static_cast<CSWCObject*>(this)->GetServerObject();  // idiom-exempt: the header models these classes flat.
-    pVM->RunScript(&sScript,
-                   static_cast<CSWCObject*>(this)->GetServerObject()->AsSWSCreature()->m_objectId,  // idiom-exempt: the header models these classes flat.
-                   1);
+    pVM->RunScript(&sScript, GetServerCreature()->m_objectId, 1);
     pMain = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface;
     pMain->m_feedbackTimer = 4.0f;
     pMain->m_feedbackStrRef = nStrRef;
@@ -8250,9 +7765,9 @@ int CSWCCreature::LookAt(unsigned long long objId, float fRange) {
     CExoString sBone;
     CExoString sHeadBone;
     int nResult = 0;
-    float fArc;
     int nHeadTrack;
     CSWCObject* pTarget;
+    float fArcH;
     float fArcV;
 
     if (m_bDisableLookAt == 0 && m_lookAtTargetId != objId && m_bPlayingCutsceneAnimation == 0 &&
@@ -8273,7 +7788,6 @@ int CSWCCreature::LookAt(unsigned long long objId, float fRange) {
                     float dx = pTarget->m_position.x - m_position.x;
                     float dy = pTarget->m_position.y - m_position.y;
                     float dz = pTarget->m_position.z - m_position.z;
-                    float fArcH = 40.0f;
                     if (dx * dx + dy * dy + dz * dz > fRange * fRange) {
 // Out of range: a plain 0, with the tracking state untouched.
                     } else {
@@ -8285,15 +7799,8 @@ int CSWCCreature::LookAt(unsigned long long objId, float fRange) {
                                        &sHeadBone) == 0) {
                             sHeadBone = "hturn_g";
                         }
-                        if (g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
-                                m_pCreatureAppearance->m_nAppearanceId,
-                                CTwoDimArrays::COL2DA_APPEARANCETABLE_HEAD_ARC_H, &fArc) != 0)
-                            fArcH = fArc;
-                        if (g_pRules->m_p2DArrays->m_pAppearance->GetFLOATEntry(
-                                m_pCreatureAppearance->m_nAppearanceId,
-                                CTwoDimArrays::COL2DA_APPEARANCETABLE_HEAD_ARC_V, &fArc) == 0)
-                            fArc = 30.0f;
-                        fArcV = fArc;
+                        fArcH = GetHeadTurnHorizontal();
+                        fArcV = GetHeadTurnVertical();
                         if (pTarget->m_objectType == GAME_OBJECT_TYPE_CREATURE) {
                             sBone = "CAMERAHOOK";
                         } else {
@@ -8464,9 +7971,7 @@ void CSWCCreature::PartyMenuUseItemSelect(unsigned int itemId, CSWCCreature* pTa
         if (pItem == 0)
             return;
         pItem->GetBaseItem();  // Result discarded.
-        if (pTarget->GetServerObject() == 0)
-            return;
-        CSWSCreature* pServer = static_cast<CSWSCreature*>(pTarget->GetServerObject()->AsSWSCreature());
+        CSWSCreature* pServer = pTarget->GetServerCreature();
         if (pServer == 0)
             return;
         if (pServer->CanUseItem(pItem, 1, 1) == 0)
@@ -8494,27 +7999,19 @@ void CSWCCreature::PartyMenuUseItemSelect(unsigned int itemId, CSWCCreature* pTa
         unsigned long long targetId = pChar->m_objectId;
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->m_bPartyItemUsePending = 0;
         pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(nPartyMember);
-        CSWSCreature* pServer = 0;
-        if (pChar->GetServerObject() != 0)
-            pServer = static_cast<CSWSCreature*>(pChar->GetServerObject()->AsSWSCreature());
+        CSWSCreature* pServer = pChar->GetServerCreature();
         CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(serverId);
         if (pServer->CanUseItem(pItem, 0, 1) == 0)
             goto end;
         pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(nPartyMember);
-        CSWCMessage* pMsg = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-        if (pMsg == 0)
-            goto end;
-        pMsg->SendPlayerToServerInput_UseItem(itemId, 0, 0, targetId, pChar->m_position);
+        PerformUseItem(itemId, 0, targetId, pChar->m_position);
         goto end;
     }
 
     if (g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(serverId)
             ->GetBaseItem()
             ->m_nItemType == ITEM_TYPE_FOREARM_BANDS) {
-        unsigned long long oid = m_objectId;
-        CSWCMessage* pMsg = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-        if (pMsg != 0)
-            pMsg->SendPlayerToServerInput_UseItem(itemId, 0, 0, oid, m_position);
+        PerformUseItem(itemId, 0, m_objectId, m_position);
     } else {
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->m_oidPartyItemUse = itemId;
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->m_bPartyItemUsePending = 1;
@@ -8524,17 +8021,11 @@ void CSWCCreature::PartyMenuUseItemSelect(unsigned int itemId, CSWCCreature* pTa
 solo: {
     CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(
         nPartyMember == -1 ? 0 : nPartyMember);
-    CSWSCreature* pServer = 0;
-    if (pChar->GetServerObject() != 0)
-        pServer = static_cast<CSWSCreature*>(pChar->GetServerObject()->AsSWSCreature());
+    CSWSCreature* pServer = pChar->GetServerCreature();
     CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(serverId);
     if (pServer->CanUseItem(pItem, 0, 1) == 0)
         return;
-    unsigned long long oid = m_objectId;
-    CSWCMessage* pMsg = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-    if (pMsg == 0)
-        return;
-    pMsg->SendPlayerToServerInput_UseItem(itemId, 0, 0, oid, m_position);
+    PerformUseItem(itemId, 0, m_objectId, m_position);
     return;
 }
 
@@ -8652,8 +8143,7 @@ updateDone:
             goto groundTiltRange;
         if (GetServerCreature() != 0) {
             CSWSCreature* pServer;
-            GetServerObject();  // Result discarded.
-            pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+            pServer = static_cast<CSWSCreature*>(GetServerCreature());
             if (pServer->GetDead() == 1) {
             groundTiltRange:
                 Vector vNormal = g_pAppManager->m_pServerExoApp->GetNormalOfPoint(m_position);
@@ -8666,8 +8156,7 @@ updateDone:
                 if (GetServerCreature()->GetDeadTemp() == 1)
                     goto groundTiltRange;
 #else
-                GetServerObject();  // Result discarded.
-                pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+                pServer = static_cast<CSWSCreature*>(GetServerCreature());
                 if (pServer->GetDeadTemp() != 0)
                     goto groundTiltRange;
 #endif
@@ -8765,62 +8254,42 @@ appearanceDone:
 // its own orientation at the combat turn speed, otherwise the creature turns toward the passed
 // direction and fires one of the two turn animations.
 void CSWCCreature::RotateCreatureToOrientation(const Vector& vDir) {
-    if (GetServerObject() != 0 && GetServerObject()->AsSWSCreature() != 0) {
-        CSWSCreature* pServer = 0;
-        if (GetServerObject() != 0)
-            pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+    if (GetServerCreature() != 0) {
+        CSWSCreature* pServer = GetServerCreature();
         if (pServer->IsDebilitated(0) != 0)
             return;
-        GetServerObject();  // Result discarded.
-        pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+        pServer = static_cast<CSWSCreature*>(GetServerCreature());
         if (pServer->GetDead() != 0)
             return;
-        pServer = 0;
-        if (GetServerObject() != 0)
-            pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+        pServer = GetServerCreature();
         if (pServer->GetDeadTemp() != 0)
             return;
     }
 
-    if (GetServerObject() == 0 || GetServerObject()->AsSWSCreature() == 0)
+    if (GetServerCreature() == 0)
         return;
 
-    CSWSCreature* pServer = 0;
-    if (GetServerObject() != 0)
-        pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+    CSWSCreature* pServer = GetServerCreature();
     if (pServer != 0) {
-        GetServerObject();  // Result discarded.
-        pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+        pServer = static_cast<CSWSCreature*>(GetServerCreature());
         if (pServer->m_bCombatState != 0) {
-            pServer = 0;
-            if (GetServerObject() != 0)
-                pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+            pServer = GetServerCreature();
             if (pServer->HasAction(1) == 0) {
-                GetServerObject();  // Result discarded.
-                if (GetServerObject()->AsSWSCreature()->m_attemptedAttackTargetId !=
+                if (GetServerCreature()->m_attemptedAttackTargetId !=
                     OBJECT_INVALID) {  // INVALIDOBJID
-                    pServer = 0;
-                    if (GetServerObject() != 0)
-                        pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
-                    GetServerObject();  // Result discarded.
-                    if (pServer->GetReputation(GetServerObject()->AsSWSCreature()
+                    pServer = GetServerCreature();
+                    if (pServer->GetReputation(GetServerCreature()
                                                    ->m_attemptedAttackTargetId, 0) < 11)
                         goto faceCurrentTarget;
                 }
-                GetServerObject();  // Result discarded.
-                if (GetServerObject()->AsSWSCreature()->m_oidAttemptedSpellTarget ==
+                if (GetServerCreature()->m_oidAttemptedSpellTarget ==
                     OBJECT_INVALID)  // INVALIDOBJID
                     goto rotateToDir;
-                pServer = 0;
-                if (GetServerObject() != 0)
-                    pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
-                GetServerObject();  // Result discarded.
-                if (pServer->GetReputation(GetServerObject()->AsSWSCreature()->m_oidAttemptedSpellTarget, 0) > 10)
+                pServer = GetServerCreature();
+                if (pServer->GetReputation(GetServerCreature()->m_oidAttemptedSpellTarget, 0) > 10)
                     goto rotateToDir;
 faceCurrentTarget: {
-                    pServer = 0;
-                    if (GetServerObject() != 0)
-                        pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+                    pServer = GetServerCreature();
                     Vector vFrom = pServer->m_orientation;
                     float fTurn = Yaw(vDir) - Yaw(vFrom);
                     if (fTurn > 180.0f)
@@ -8935,20 +8404,15 @@ rotateToDir: {
 // get the limp variants and the animation's own length normalizes the playback speed. Always
 // ends facing the follow orientation.
 void CSWCCreature::FollowAnimationUpdate() {
-    if (GetServerObject() != 0 && GetServerObject()->AsSWSCreature() != 0) {
-        CSWSCreature* pServer = 0;
-        if (GetServerObject() != 0)
-            pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+    if (GetServerCreature() != 0) {
+        CSWSCreature* pServer = GetServerCreature();
         K2_ASSUME(pServer != 0);   // the same twin the test above found
         if (pServer->GetDeadTemp() != 0)
             return;
-        GetServerObject();  // Result discarded.
-        pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+        pServer = static_cast<CSWSCreature*>(GetServerCreature());
         if (pServer->GetDead() != 0)
             return;
-        pServer = 0;
-        if (GetServerObject() != 0)
-            pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+        pServer = GetServerCreature();
         if (pServer->IsDebilitated(0) != 0)
             return;
     }
@@ -8971,14 +8435,11 @@ void CSWCCreature::FollowAnimationUpdate() {
         float fSpeed;
         if (fDist >= DriveWalkThreshold * m_fRunRate) {
             fSpeed = m_pCreatureAppearance->m_runSpeed * 1000.0f;
-            if (m_bInParty != 0 && GetServerObject() != 0) {
-                CSWSCreature* pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
-                if (pServer != 0 && pServer->IsInjured() != 0) {
-                    if (!(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
-                          g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) == this)) {
-                        anim = SERVER_ANIMATION_RUN_INJURED;
-                        goto apply;
-                    }
+            if (m_bInParty != 0 && IsInjured() != 0) {
+                if (!(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
+                      g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) == this)) {
+                    anim = SERVER_ANIMATION_RUN_INJURED;
+                    goto apply;
                 }
             }
 #if KOTOR1  // K1: no feat exemption
@@ -8991,14 +8452,11 @@ void CSWCCreature::FollowAnimationUpdate() {
                 anim = SERVER_ANIMATION_RUN;
         } else {
             fSpeed = m_pCreatureAppearance->m_walkSpeed * 1000.0f;
-            if (m_bInParty != 0 && GetServerObject() != 0) {
-                CSWSCreature* pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
-                if (pServer != 0 && pServer->IsInjured() != 0) {
-                    if (!(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
-                          g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) == this)) {
-                        anim = SERVER_ANIMATION_WALK_INJURED;
-                        goto apply;
-                    }
+            if (m_bInParty != 0 && IsInjured() != 0) {
+                if (!(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
+                      g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) == this)) {
+                    anim = SERVER_ANIMATION_WALK_INJURED;
+                    goto apply;
                 }
             }
 #if KOTOR1  // K1: no feat exemption
@@ -9072,8 +8530,8 @@ void CSWCCreature::TurnOffShadows() {
 void CSWCCreature::DriveAnimationUpdate() {
     if (AnimationDialog(m_currentAnimation) != 0)
         return;
-    if (g_pAppManager->m_pServerExoApp != 0 && GetServerObject() != 0) {
-        CSWSCreature* pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
+    if (g_pAppManager->m_pServerExoApp != 0) {
+        CSWSCreature* pServer = GetServerCreature();
         if (pServer != 0) {
             if (pServer->GetDead() != 0)
                 return;
@@ -9089,15 +8547,9 @@ void CSWCCreature::DriveAnimationUpdate() {
                 return;
         }
     }
-    if (AnimationStationary(m_currentAnimation) == 0) {
-        unsigned long long serverId =
-            g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_objectId);
-        if (g_pAppManager->m_pServerExoApp->IsActionsPending(serverId) |
-            m_engagedState |
-            AnimationDialog(m_currentAnimation)) {
-            m_pModel->SetLean(0.0f);
-            return;
-        }
+    if (AnimationStationary(m_currentAnimation) == 0 && IsDriveAnimationBlocked()) {
+        m_pModel->SetLean(0.0f);
+        return;
     }
     float fScale = m_pCreatureAppearance->m_fDriveMaxSpeed;
     g_pAppManager->m_pClientExoApp->GetSWParty();  // Result discarded.
@@ -9176,14 +8628,11 @@ drive:
     {
         float fSpeed;
         if (m_swAnimationSpeed > fScale * DriveWalkThreshold) {
-            if (m_bInParty != 0 && GetServerObject() != 0) {
-                CSWSCreature* pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
-                if (pServer != 0 && pServer->IsInjured() != 0 &&
-                    !(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
-                      g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) == this)) {
-                    anim = SERVER_ANIMATION_RUN_INJURED;
-                    goto run;
-                }
+            if (m_bInParty != 0 && IsInjured() != 0 &&
+                !(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
+                  g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) == this)) {
+                anim = SERVER_ANIMATION_RUN_INJURED;
+                goto run;
             }
 #if KOTOR1  // K1: no feat exemption
             if ((m_nActivityFlags & 1) != 0)
@@ -9197,14 +8646,11 @@ run:
             m_bRunning = 1;
             fSpeed = m_pCreatureAppearance->m_runSpeed;
         } else {
-            if (m_bInParty != 0 && GetServerObject() != 0) {
-                CSWSCreature* pServer = static_cast<CSWSCreature*>(GetServerObject()->AsSWSCreature());
-                if (pServer != 0 && pServer->IsInjured() != 0 &&
-                    !(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
-                      g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) == this)) {
-                    anim = SERVER_ANIMATION_WALK_INJURED;
-                    goto walk;
-                }
+            if (m_bInParty != 0 && IsInjured() != 0 &&
+                !(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
+                  g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) == this)) {
+                anim = SERVER_ANIMATION_WALK_INJURED;
+                goto walk;
             }
 #if KOTOR1  // K1: no feat exemption
             if ((m_nActivityFlags & 1) != 0)
@@ -9395,9 +8841,7 @@ int CSWCCreature::RequestModel(const CResRef& r1, const CResRef& r2, unsigned ch
     if (!CAuroraInterface::IsResident(static_cast<char*>(s.CStr()))) {
         CAuroraInterface::RequestModel(static_cast<char*>(s.CStr()));
         r2.CopyToString(s);
-#if KOTOR1  // K1: the length result is unused
         s.GetLength();
-#endif
     }
     return 1;
 }

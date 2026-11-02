@@ -1151,19 +1151,8 @@ void CSWGuiStore::HandleInputEvent(int type, int val)
         break;
 
     case INPUTEVENT_GUI_X:
-        {
-            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            CSWSStore* pStore = g_pAppManager->m_pServerExoApp->GetStoreByGameObjectID(m_oidStore);
-            if (!pStore)
-                break;
-            if (pStore->m_buySellFlag != CSWSStore::STORE_BUY_AND_SELL)
-                break;
-
-            if (m_lbShopItems.m_tail.bVisible)
-                ShowSellGUI();
-            else
-                ShowBuyGUI();
-        }
+        m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
+        OnControlXButton(NULL);
         break;
 
     case INPUTEVENT_GUI_Y:
@@ -1264,10 +1253,7 @@ void CSWGuiStore::SellItem(CSWSItem* pItem)
 
     m_pGuiManager->PlayGuiSound(static_cast<char>(GUISOUND_INVENTORY_DROP));
 
-    int nPrice = 0;
-    CSWSStore* pPriceStore = g_pAppManager->m_pServerExoApp->GetStoreByGameObjectID(m_oidStore);
-    if (pPriceStore != NULL)
-        nPrice = pItem->GetCost() * (pPriceStore->m_nMarkDown + pPriceStore->m_nBonusMarkDown) / 100;
+    int nPrice = GetItemSellValue(pItem);
 
     m_nGold = m_nGold + nPrice;
     pCreature->SetGold(m_nGold);
@@ -1351,10 +1337,7 @@ void CSWGuiStore::BuyItem(CSWSItem* pItem)
 
     m_pGuiManager->PlayGuiSound(static_cast<char>(9));
 
-    int nPrice = 0;
-    CSWSStore* pPriceStore = g_pAppManager->m_pServerExoApp->GetStoreByGameObjectID(m_oidStore);
-    if (pPriceStore != NULL)
-        nPrice = pItem->GetCost() * (pPriceStore->m_nMarkUp + pPriceStore->m_nBonusMarkUp) / 100;
+    int nPrice = GetItemBuyValue(pItem);
 
     m_nGold = m_nGold - nPrice;
     pCreature->SetGold(m_nGold);

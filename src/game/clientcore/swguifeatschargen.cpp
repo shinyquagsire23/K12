@@ -19,7 +19,6 @@
 #include "exolocstringinternal.h"
 #include "Vector.h"
 
-#define CEXO_ARRAYLIST_KEEP_ADDUNIQUE_OUT_OF_LINE
 #include "CExoArrayListImpl.h"
 #include "tutorial.h"
 
@@ -181,12 +180,7 @@ void CSWGuiFeatsCharGen::OnPanelAdded()
         return;
     }
 
-#if !KOTOR1
-    if ((m_bFlags & FEATS_FLAG_LEVEL_UP) == 0)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-#endif
-    m_pGuiManager->AddPanel(
-        static_cast<CSWGuiPanel*>(g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSkillInfoBoxPanel), 1, 1);
+    ShowGranted(0);
 }
 
 // Shows the list the tutorial box was opened for (the granted-feats pane's own callback).
@@ -490,13 +484,7 @@ void CSWGuiFeatsCharGen::OnAcceptButton()
     {
         for (int i = 0; i < m_aChosenFeats.m_count; i++)
         {
-            CSWCCreatureStats* pStats = m_pCreature->m_pStats;
-            unsigned short nFeat = m_aChosenFeats.m_pArray[i];
-            CExoArrayList<unsigned short>& aFeats = pStats->m_lstFeats;
-            // inlined CExoArrayList<unsigned short>::AddUnique(nFeat): our build keeps the call out
-            // of line (LENGTH 464/884)
-            if (aFeats.Contains(nFeat) == 0)
-                aFeats.Add(nFeat);
+            m_pCreature->m_pStats->m_lstFeats.AddUnique(m_aChosenFeats.m_pArray[i]);
         }
 
         m_pGuiManager->PopModalPanel();
@@ -534,9 +522,12 @@ void CSWGuiFeatsCharGen::OnAcceptButton()
 void CSWGuiFeatsCharGen::OnFeatPicked(unsigned short nFeat)
 {
     uint64_t nStrRef;
+    unsigned char nStatus;
 
-    if (m_aAvailableFeats.IndexOf(nFeat) != -1)
+    DetermineFeat(nFeat, nStatus);
+    switch (nStatus)
     {
+    case DRAW_STATE_AVAILABLE:
         if (m_nSelectionsLeft != 0)
         {
             AddChosenFeat(nFeat);
@@ -544,24 +535,22 @@ void CSWGuiFeatsCharGen::OnFeatPicked(unsigned short nFeat)
             return;
         }
         nStrRef = STRREF_ALL_FEATS_SELECTED;
-    }
-    else if (m_aChosenFeats.IndexOf(nFeat) != -1)
-    {
+        break;
+    case DRAW_STATE_CHOSEN:
         RemoveChosenFeat(nFeat);
         BuildButtons();
         return;
-    }
-    else if (m_aOwnedFeats.IndexOf(nFeat) != -1)
-    {
+    case DRAW_STATE_OWNED:
         nStrRef = STRREF_CANNOT_DESELECT_OWNED_FEAT;
-    }
-    else if (m_aNewFeats.IndexOf(nFeat) != -1)
-    {
+        break;
+    case DRAW_STATE_GRANTED:
         nStrRef = STRREF_FEAT_GRANTED_AT_LEVEL;
-    }
-    else
-    {
+        break;
+    case DRAW_STATE_UNAVAILABLE:
         nStrRef = STRREF_FEAT_PREREQUISITES_NOT_MET;
+        break;
+    default:
+        return;
     }
 
     CSWGuiMessageBox* pBox =
@@ -577,19 +566,7 @@ void CSWGuiFeatsCharGen::OnFeatPicked(unsigned short nFeat)
 // column.
 void CSWGuiFeatsCharGen::OnEnterFeat(unsigned short nFeat)
 {
-    unsigned char nStatus;
-    if (m_aAvailableFeats.IndexOf(nFeat) != -1)
-        nStatus = DRAW_STATE_AVAILABLE;
-    else if (m_aChosenFeats.IndexOf(nFeat) != -1)
-        nStatus = DRAW_STATE_CHOSEN;
-    else if (m_aOwnedFeats.IndexOf(nFeat) != -1)
-        nStatus = DRAW_STATE_OWNED;
-    else if (m_aNewFeats.IndexOf(nFeat) != -1)
-        nStatus = DRAW_STATE_GRANTED;
-    else
-        nStatus = DRAW_STATE_UNAVAILABLE;
-
-    m_nDrawState = nStatus;
+    DetermineFeat(nFeat, m_nDrawState);
     m_nSelectedFeat = nFeat;
 
     CSWFeat* pFeat = g_pRules->GetFeat(nFeat);

@@ -212,20 +212,8 @@ int CFactionManager::LoadReputationsFromSaveGame(CResGFF* pGFF, CResList* pList)
         pGFF->GetListElement(&s, pList, i);
         int id1 = pGFF->ReadFieldDWORD(&s, const_cast<char*>("FactionID1"), bSuccess, 0);
         int id2 = pGFF->ReadFieldDWORD(&s, const_cast<char*>("FactionID2"), bSuccess, 0);
-        unsigned int rep = pGFF->ReadFieldDWORD(&s, const_cast<char*>("FactionRep"), bSuccess, 0);
-        if (id2 > 0 && m_nNPCFactionCount >= id2 && id1 >= 0 && m_nNPCFactionCount >= id1)
-        {
-            CExoArrayList<int>* pRep = m_paReputations;
-            int idx = m_nNPCFactionCount * id1 + id2 - 1u;
-            if (idx < pRep->m_count)
-            {
-                if (static_cast<int>(rep) < 0)
-                    rep = 0;
-                if (static_cast<int>(rep) > 100)
-                    rep = 100;
-                pRep->m_pArray[idx] = rep;
-            }
-        }
+        int rep = pGFF->ReadFieldDWORD(&s, const_cast<char*>("FactionRep"), bSuccess, 0);
+        SetNPCFactionReputation(id1, id2, rep);
         result = bSuccess;
     } while (i++ < count && bSuccess);
     return result;
@@ -340,7 +328,6 @@ void CFactionManager::CreateDefaultFactions()
     m_paReputations->SetSize(m_paReputations->m_count);
 }
 
-// No id1 >= 0 check here: id1 is a repute.2da row index and is never negative.
 int CFactionManager::LoadReputations()
 {
     int total = (m_nNPCFactionCount + 1) * m_nNPCFactionCount;
@@ -369,18 +356,7 @@ int CFactionManager::LoadReputations()
                 {
                     int value;
                     bSuccess = pTable->GetINTEntry(id1, id2, &value);
-                    if (id2 != 0 && m_nNPCFactionCount >= id1 && m_nNPCFactionCount >= id2)
-                    {
-                        CExoArrayList<int>* p = m_paReputations;
-                        int idx = m_nNPCFactionCount * id1 + id2 - 1u;
-                        if (idx < p->m_count)
-                        {
-                            int v = value < 0 ? 0 : value;
-                            if (v > 100)
-                                v = 100;
-                            p->m_pArray[idx] = v;
-                        }
-                    }
+                    SetNPCFactionReputation(id1, id2, value);
                 } while (bSuccess != 0 && ++id2 < colCount);
             }
         } while (bSuccess != 0 && id1++ < rowCount);

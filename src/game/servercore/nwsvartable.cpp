@@ -67,17 +67,7 @@ CSWSScriptVar* CSWSScriptVarTable::MatchIndex(const CExoString& sName, unsigned 
 
 int CSWSScriptVarTable::GetInt(const CExoString& sName)
 {
-    CSWSScriptVar* pVar = 0;
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType != VARTYPE_INTEGER)
-            continue;
-        if (m_vars.m_pArray[i].m_sName == sName)
-        {
-            pVar = &m_vars.m_pArray[i];
-            break;
-        }
-    }
+    CSWSScriptVar* pVar = MatchIndex(sName, VARTYPE_INTEGER, 0);
     if (pVar != 0)
         return pVar->m_nInt;
     return 0;
@@ -86,39 +76,16 @@ int CSWSScriptVarTable::GetInt(const CExoString& sName)
 float CSWSScriptVarTable::GetFloat(const CExoString& sName)
 {
     float fResult = 0.0f;
-    CSWSScriptVar* pVar = 0;
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType != VARTYPE_FLOAT)
-            continue;
-        if (m_vars.m_pArray[i].m_sName == sName)
-        {
-            pVar = &m_vars.m_pArray[i];
-            break;
-        }
-    }
+    CSWSScriptVar* pVar = MatchIndex(sName, VARTYPE_FLOAT, 0);
     if (pVar != 0)
         fResult = pVar->m_fFloat;
     return fResult;
 }
 
-#if KOTOR1  // K1 inlines this into SaveVarTable, its only caller
-__attribute__((always_inline))
-#endif
 CExoString CSWSScriptVarTable::GetString(const CExoString& sName)
 {
     CExoString sResult;
-    CSWSScriptVar* pVar = 0;
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType != VARTYPE_STRING)
-            continue;
-        if (m_vars.m_pArray[i].m_sName == sName)
-        {
-            pVar = &m_vars.m_pArray[i];
-            break;
-        }
-    }
+    CSWSScriptVar* pVar = MatchIndex(sName, VARTYPE_STRING, 0);
     if (pVar != 0)
         sResult = *pVar->m_pString;
     return sResult;
@@ -132,17 +99,7 @@ unsigned long long CSWSScriptVarTable::GetObjectA(const CExoString& sName)
 #endif
 {
     unsigned long long oResult = CGameObjectArray::INVALIDOBJID;
-    CSWSScriptVar* pVar = 0;
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType != VARTYPE_OBJECT)
-            continue;
-        if (m_vars.m_pArray[i].m_sName == sName)
-        {
-            pVar = &m_vars.m_pArray[i];
-            break;
-        }
-    }
+    CSWSScriptVar* pVar = MatchIndex(sName, VARTYPE_OBJECT, 0);
     if (pVar != 0)
         oResult = pVar->m_oObject;
     return oResult;
@@ -151,17 +108,7 @@ unsigned long long CSWSScriptVarTable::GetObjectA(const CExoString& sName)
 CScriptLocation CSWSScriptVarTable::GetLocation(const CExoString& sName)
 {
     CScriptLocation result;
-    CSWSScriptVar* pVar = 0;
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType != VARTYPE_LOCATION)
-            continue;
-        if (m_vars.m_pArray[i].m_sName == sName)
-        {
-            pVar = &m_vars.m_pArray[i];
-            break;
-        }
-    }
+    CSWSScriptVar* pVar = MatchIndex(sName, VARTYPE_LOCATION, 0);
     if (pVar != 0)
         result = *pVar->m_pLocation;
     return result;
@@ -229,14 +176,7 @@ void CSWSScriptVarTable::DeleteIndex(const CExoString& sName, unsigned int nType
 // Destroying an NW_JOURNAL int also drops the journal entry it backed.
 void CSWSScriptVarTable::DestroyInt(const CExoString& sName)
 {
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType == VARTYPE_INTEGER && m_vars.m_pArray[i].m_sName == sName)
-        {
-            m_vars.DelIndex(i);
-            break;
-        }
-    }
+    DeleteIndex(sName, VARTYPE_INTEGER);
 
     // The journal pointer is not tested here, unlike in SetInt.
     if (NW_JOURNAL_OWNER_AND_LENGTH(sName) && sName.Left(JOURNAL_VAR_PREFIX_LENGTH) == "NW_JOURNAL")
@@ -245,51 +185,23 @@ void CSWSScriptVarTable::DestroyInt(const CExoString& sName)
 
 void CSWSScriptVarTable::DestroyFloat(const CExoString& sName)
 {
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType == VARTYPE_FLOAT && m_vars.m_pArray[i].m_sName == sName)
-        {
-            m_vars.DelIndex(i);
-            break;
-        }
-    }
+    DeleteIndex(sName, VARTYPE_FLOAT);
 }
 
 // The entry's heap CExoString is freed by the destructor, not here.
 void CSWSScriptVarTable::DestroyString(const CExoString& sName)
 {
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType == VARTYPE_STRING && m_vars.m_pArray[i].m_sName == sName)
-        {
-            m_vars.DelIndex(i);
-            break;
-        }
-    }
+    DeleteIndex(sName, VARTYPE_STRING);
 }
 
 void CSWSScriptVarTable::DestroyObject(const CExoString& sName)
 {
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType == VARTYPE_OBJECT && m_vars.m_pArray[i].m_sName == sName)
-        {
-            m_vars.DelIndex(i);
-            break;
-        }
-    }
+    DeleteIndex(sName, VARTYPE_OBJECT);
 }
 
 void CSWSScriptVarTable::DestroyLocation(const CExoString& sName)
 {
-    for (int i = 0; i < m_vars.m_count; i++)
-    {
-        if (m_vars.m_pArray[i].m_nType == VARTYPE_LOCATION && m_vars.m_pArray[i].m_sName == sName)
-        {
-            m_vars.DelIndex(i);
-            break;
-        }
-    }
+    DeleteIndex(sName, VARTYPE_LOCATION);
 }
 
 // Frees the heap-owned string and location entries; the in-class CExoArrayList frees the elements.

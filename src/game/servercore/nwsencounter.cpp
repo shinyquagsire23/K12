@@ -80,14 +80,8 @@ void CSWSEncounter::SetActive(int bActive) {
     // K1 sizes the spawn pool from the hostiles around the entering creature first.
     SpawnIfAppropriate(OBJECT_INVALID, -1.0f);
 #else
-    if (bActive != 0 && m_bStarted != 1) {
-        m_bShouldSpawn = 0;
-        UpdateActivateAreaList(OBJECT_INVALID);
-        if (m_bShouldSpawn == 1) {
-            BuildSpawnList();
-            m_bStarted = 1;
-        }
-    }
+    if (bActive != 0)
+        SpawnIfAppropriate(OBJECT_INVALID, -1.0f);
 #endif
 }
 
@@ -380,12 +374,7 @@ CSWSEncounter::CSWSEncounter(unsigned long long objectId)
 
     LoadFractionalCRData();
 
-#if KOTOR1
     SetActive(1);
-#else
-    m_bActive = 1;
-    SpawnIfAppropriate(OBJECT_INVALID, 0.0f);
-#endif
 
     m_bReset = 0;
     m_nRespawnTime = 60;
@@ -848,19 +837,7 @@ void CSWSEncounter::AIUpdate() {
                 m_nCurrentRespawns = m_nCurrentRespawns + 1;
                 m_lastSpawnDay = 0;
                 m_lastSpawnTime = 0;
-#if KOTOR1
                 SetActive(1);
-#else
-                m_bActive = 1;
-                if (m_bStarted != 1) {
-                    m_bShouldSpawn = 0;
-                    UpdateActivateAreaList(OBJECT_INVALID);
-                    if (m_bShouldSpawn == 1) {
-                        BuildSpawnList();
-                        m_bStarted = 1;
-                    }
-                }
-#endif
                 m_nSpawnPoolBits = 0;
                 m_nSpawnPoolActiveBits = 0;
             }
@@ -904,18 +881,7 @@ void CSWSEncounter::EventHandler(unsigned int eventType, unsigned long long a2, 
     case CSWSSCRIPTEVENT_EVENTTYPE_ON_OBJECT_ENTER: {
         m_enteredObjectId = pScriptEvent->GetObjectID(0);
         unsigned long long enteredId = pScriptEvent->GetObjectID(0);
-#if KOTOR1
         SpawnIfAppropriate(enteredId, -1.0f);
-#else
-        if (m_bActive != 0 && m_bStarted != 1) {
-            m_bShouldSpawn = 0;
-            UpdateActivateAreaList(enteredId);
-            if (m_bShouldSpawn == 1) {
-                BuildSpawnList();
-                m_bStarted = 1;
-            }
-        }
-#endif
         g_pVirtualMachine->RunScript(&m_scripts[ENCOUNTER_SCRIPT_ON_ENTERED], m_objectId, 1);
         break;
     }
@@ -1206,30 +1172,7 @@ void CSWSEncounter::LoadFractionalCRData() {
             CExoString colName("Min");
             p2DA->GetFLOATEntry(i, colName, &value);
         }
-#if KOTOR1
         m_pFractionalCRThresholds->Add(value);
-#else
-        // inlined CExoArrayList<float>::Add(float): the call swaps x8/x9 in the store
-        float v = value;
-        pList = m_pFractionalCRThresholds;
-        int count = pList->m_count;
-        if (count == pList->m_capacity) {
-            int newCap = count == 0 ? 16 : count * 2;
-            float* pOld = pList->m_pArray;
-            pList->m_capacity = newCap;
-            float* pNew = new float[newCap];
-            K2_ASSUME(count < newCap);
-            pList->m_pArray = pNew;
-            for (int64_t j = 0; j < count; j++) {
-                pNew[j] = pOld[j];
-            }
-            delete[] pOld;
-            count = pList->m_count;
-        }
-        float* pData = pList->m_pArray;
-        pList->m_count = count + 1;
-        pData[count] = v;
-#endif
     }
 }
 

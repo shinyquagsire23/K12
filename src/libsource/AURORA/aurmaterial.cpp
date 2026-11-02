@@ -71,7 +71,7 @@ int Material::GetBumpMapTID() {
 
 // The two stage-5 lookups read the same watcher under two names.
 int Material::GetBumpyShinyMapTID() {
-    return AurTextureGetTID(m_spr5.m_pObject);
+    return GetEnvMapTID();
 }
 
 int Material::GetEnvMapTID() {
@@ -104,28 +104,15 @@ enum { kMbIconExclamation = 0x30, kMbSystemModal = 0x1000 };
 
 // Loads the seven texture stages: the four name parameters fill the first four watchers and the
 // three .txi name buffers ParseField filled fill the last three, each buffer freed as it is used.
-// EFFECTIVE: clang tail-duplicates one AurTextureGetNULL() arm (5 call sites, the orig 4); same calls on every path.
 void Material::InitializeTextures(char* pszTexture, char* p2, char* p3, char* p4)
 {
-    if (pszTexture != 0 && pszTexture[0] != 0 && strcmp(NULL_NAME, pszTexture) != 0)
-        m_spr0 = AurTextureGetReference(pszTexture, 0);
-    else
-        m_spr0 = AurTextureGetNULL();
+    m_spr0 = LoadTexture(pszTexture);
     if (pszTexture != 0 && pszTexture[0] != 0 && strcmp(NULL_NAME, pszTexture) != 0)
         Init(pszTexture);
 
-    if (p2 != 0 && p2[0] != 0 && strcmp(NULL_NAME, p2) != 0)
-        m_spr1 = AurTextureGetReference(p2, 0);
-    else
-        m_spr1 = AurTextureGetNULL();
-    if (p3 != 0 && p3[0] != 0 && strcmp(NULL_NAME, p3) != 0)
-        m_spr2 = AurTextureGetReference(p3, 0);
-    else
-        m_spr2 = AurTextureGetNULL();
-    if (p4 != 0 && p4[0] != 0 && strcmp(NULL_NAME, p4) != 0)
-        m_spr3 = AurTextureGetReference(p4, 0);
-    else
-        m_spr3 = AurTextureGetNULL();
+    m_spr1 = LoadTexture(p2);
+    m_spr2 = LoadTexture(p3);
+    m_spr3 = LoadTexture(p4);
 
     if (m_apszMapNames[0] != 0) {
         if (m_apszMapNames[0][0] != 0 && strcmp(NULL_NAME, m_apszMapNames[0]) != 0)
@@ -186,9 +173,7 @@ void Material::BindBumpMap() {
 }
 
 void Material::BindBumpyShinyMap() {
-    PurgeBadTexture(m_spr5);
-    m_spr5.m_pObject->Bind();
-    AurTextureGetTID(m_spr5.m_pObject);
+    BindEnvMap();
 }
 
 void Material::BindEnvMap() {

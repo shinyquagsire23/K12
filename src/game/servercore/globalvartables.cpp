@@ -27,19 +27,7 @@ CSWGlobalVariableTable::CSWGlobalVariableTable()
             crc = (crc & 1) ? ((crc >> 1) ^ CRC32_POLYNOMIAL) : (crc >> 1);
         m_aHashTable[i] = crc;
     }
-#if KOTOR1  // K1 resets through ClearIdentifiers
     ClearIdentifiers();
-#else
-    __builtin_memset(m_aIdentifiers, 0, sizeof(m_aIdentifiers));
-    m_nCollisions = 0;
-    m_nProbes = 0;
-    m_nMaxProbes = 0;
-    m_nBooleanCount = 0;
-    m_nNumberCount = 0;
-    m_nLocationCount = 0;
-    m_nStringCount = 0;
-    ClearValues();
-#endif
 }
 
 // Clears the identifier table and every counter and statistic, then the values.

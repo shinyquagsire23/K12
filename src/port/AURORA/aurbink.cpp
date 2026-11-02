@@ -18,8 +18,6 @@ void DrawTextWrapped(const char* pszText, bool bUtf8, int nSize, int nW, int nH,
 // call site leaves the size argument unset. It has to be a translation-unit-local static for that
 // to hold, and the declaration must not say extern.
 static void snprintff(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
-    __attribute__((noinline));
-static void snprintff(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
 {
     K2_UNUSED(nSize);
     __builtin_va_list ap;

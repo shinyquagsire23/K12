@@ -144,10 +144,7 @@ void CSWTrackFollower::OnDamage(int bApply) {
     if (m_hitPointAdjust >= 0) {
         m_hitPoints = m_hitPoints < m_maxHitPoints ? m_hitPoints : m_maxHitPoints;
     } else if (m_hitPoints <= 0) {
-        if ((m_flags & FLAG_DEAD) == 0) {
-            m_flags |= FLAG_DEAD;
-            OnDeath(0);
-        }
+        Die();
     } else {
         PlayAnimation(const_cast<char*>("damage"), 1.0f, 1);
         PlayAnimation(const_cast<char*>("Ready_01"), 1.0f, AnimRun::kAnimQueue);
@@ -211,15 +208,7 @@ void CSWTrackFollower::OnDeath(int a) {
         }
     }
 
-    if (m_pTrack != 0 && (m_flags & FLAG_TRACK_PLAYING) != 0) {
-        m_pTrack->PlayAnimation(const_cast<char*>("track"), 0.0f,
-                                m_numLoops == 1 ? AnimRun::kAnimOnce | AnimRun::kAnimSyncTime
-                                                : AnimRun::kAnimLoopEvents | AnimRun::kAnimSyncTime,
-                                0.0f);
-        m_flags &= ~FLAG_TRACK_PLAYING;
-        if (m_pSounds[0] != 0)
-            m_pSounds[0]->Stop();
-    }
+    Stop();
 
     CResRef resSound = m_soundNames[0];
     if (resSound.IsValid()) {
@@ -299,12 +288,7 @@ CExoSoundSource* CSWTrackFollower::SetSoundName(int index, CResRef const& resSou
                 if (resSound.IsValid()) {
                     m_pSounds[index]->SetResRef(resSound, 1);
                     m_pSounds[index]->Set3D(1);
-                    int nModels = m_models.m_count;
-                    CExoSoundSource* pSound = m_pSounds[index];
-                    Vector vPosition = nModels != 0
-                                           ? m_models.m_pArray[0].pModel->GetPosition()
-                                           : Vector();
-                    pSound->SetPosition(vPosition, 0.0f);
+                    m_pSounds[index]->SetPosition(GetPosition(), 0.0f);
                     m_pSounds[index]->SetVolume(static_cast<unsigned char>(m_sounds[index].volume));
                     int nPriority = AsPlayer() != 0 ? 23 : 24;
                     m_pSounds[index]->SetPriorityGroup(static_cast<unsigned char>(nPriority));
@@ -317,12 +301,7 @@ CExoSoundSource* CSWTrackFollower::SetSoundName(int index, CResRef const& resSou
             } else if (resSound.IsValid()) {
                 m_pSounds[index] = new CExoSoundSource(resSound);
                 m_pSounds[index]->Set3D(1);
-                int nModels = m_models.m_count;
-                CExoSoundSource* pSound = m_pSounds[index];
-                Vector vPosition = nModels != 0
-                                       ? m_models.m_pArray[0].pModel->GetPosition()
-                                       : Vector();
-                pSound->SetPosition(vPosition, 0.0f);
+                m_pSounds[index]->SetPosition(GetPosition(), 0.0f);
                 m_pSounds[index]->SetVolume(static_cast<unsigned char>(m_sounds[index].volume));
                 int nPriority = AsPlayer() != 0 ? 23 : 24;
                 m_pSounds[index]->SetPriorityGroup(static_cast<unsigned char>(nPriority));
@@ -402,7 +381,7 @@ void CSWTrackFollower::LoadSounds(CResGFF* pGff, CResStruct* pStruct, CResStruct
         SetSoundName(0, pGff->ReadFieldCResRef(&gffStruct, const_cast<char*>("Engine"), bSuccess, CResRef("")));
     if (pSound != 0)
         pSound->SetLooping(1);
-    m_soundNames[0] = pGff->ReadFieldCResRef(&gffStruct, const_cast<char*>("Death"), bSuccess, CResRef(""));
+    SetSoundName(1, pGff->ReadFieldCResRef(&gffStruct, const_cast<char*>("Death"), bSuccess, CResRef("")));
 }
 
 CExoSoundSource* CSWTrackFollower::GetSound(int index) {
@@ -530,12 +509,7 @@ void CSWTrackFollower::Resume() {
     if ((m_flags & FLAG_TRACK_PLAYING) != 0)
         return;
     m_flags |= FLAG_TRACK_PLAYING;
-    if (m_pTrack == 0)
-        return;
-    float fTrackSpeed = m_fSpeed;
-    int nAnim = m_numLoops == 1 ? AnimRun::kAnimOnce | AnimRun::kAnimSyncTime
-                                 : AnimRun::kAnimLoopEvents | AnimRun::kAnimSyncTime;
-    m_pTrack->PlayAnimation(const_cast<char*>("track"), fTrackSpeed / 100.0f, nAnim, 0.0f);
+    SetSpeed(m_fSpeed);
 }
 
 void CSWTrackFollower::Die() {
@@ -611,10 +585,7 @@ void CSWTrackFollower::OnHitObstacle(int bApply) {
     for (int i = 0; i < nModels; i++)
         m_models.m_pArray[i].pModel->SetBehavior(0);
 
-    if ((m_flags & FLAG_DEAD) == 0) {
-        m_flags |= FLAG_DEAD;
-        OnDeath(0);
-    }
+    Die();
 }
 
 // Sweeps the vehicle's lead model against the obstacle's "hitbump" part. On a hit both objects
@@ -732,11 +703,7 @@ void OnAnimKeyEvent(CAurObject* pObject, char* pszEvent, void* pData) {
     int nLoops = pFollower->m_numLoops;
     if (nLoops != -1) {
         pFollower->SetLooping(nLoops - 1);
-        CAurObject* pTrack = pFollower->m_pTrack;
-        if (pTrack != 0 && (pFollower->m_flags & CSWTrackFollower::FLAG_TRACK_PLAYING) != 0) {
-            int nAnim = pFollower->m_numLoops == 1 ? 17 : 20;
-            pTrack->PlayAnimation(const_cast<char*>("track"), pFollower->m_fSpeed / 100.0f, nAnim, 0.0f);
-        }
+        pFollower->SetSpeed(pFollower->m_fSpeed);
     }
     CResRef resScript = pFollower->GetScriptName(CSWMiniGameObject::SCRIPT_ON_TRACK_LOOP);
     if (resScript.IsValid()) {
@@ -863,12 +830,6 @@ CSWTrackFollower::CSWTrackFollower(CSWMiniGame* pMiniGame, unsigned int nObjectI
     m_invincibilityTimer = 0.0f;
     m_invincibility = 0.0f;
     m_pSounds[0] = 0;
-    m_sounds[0].volume = 0;
-    m_sounds[0].frequency = 0;
-    m_sounds[0].frequencyIsRandom = 0;
-    m_sounds[1].volume = 0;
-    m_sounds[1].frequency = 0;
-    m_sounds[1].frequencyIsRandom = 0;
     m_nLastObstacleHitId = CSWMiniGameObjectArray::OBJECT_ID_NONE;
     m_hitPointAdjust = 0;
 #if !KOTOR1  // K1: no wake latch
@@ -1380,15 +1341,12 @@ void CSWMiniPlayer::Control(float fDelta, CSWMGPhysicsState& cur, CSWMGPhysicsSt
 
     if (m_pMiniGame->m_type == CSWMiniGame::MINIGAME_TYPE_SWOOP && __builtin_fabsf(vPreTunnel.x - m_vOffset.x) > 0.01f)
     {
-        // The previous state's velocity x and position are saved, the velocity's x cleared and the
-        // pair stored back; zeroing the member's x alone is not the same state.
-        // inlined CSWMiniGame::Set{Current,Previous}PhysicsState(CSWMGPhysicsState)
-        m_pMiniGame->m_curPhysicsState.m_vVelocity.x = 0.0f;
-        Vector vVel = m_pMiniGame->m_prevPhysicsState.m_vVelocity;
-        Vector vPos = m_pMiniGame->m_prevPhysicsState.m_vPosition;
-        vVel.x = 0.0f;
-        m_pMiniGame->m_prevPhysicsState.m_vVelocity = vVel;
-        m_pMiniGame->m_prevPhysicsState.m_vPosition = vPos;
+        CSWMGPhysicsState sCur = m_pMiniGame->m_curPhysicsState;
+        CSWMGPhysicsState sPrev = m_pMiniGame->m_prevPhysicsState;
+        sCur.m_vVelocity.x = 0.0f;
+        sPrev.m_vVelocity.x = 0.0f;
+        m_pMiniGame->SetCurrentPhysicsState(sCur);
+        m_pMiniGame->SetPreviousPhysicsState(sPrev);
     }
 #endif
 
@@ -1642,11 +1600,7 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
         {
             if (!(pEnemy->m_invincibilityTimer > 0.0f))
             {
-                pEnemy->PlayAnimation(const_cast<char*>("damage"), 1.0f, 1);
-                pEnemy->PlayAnimation(const_cast<char*>("Ready_01"), 1.0f, AnimRun::kAnimQueue);
-                int nBanks = pEnemy->m_gunBanks.m_count;
-                for (int j = 0; j < nBanks; j++)
-                    pEnemy->m_gunBanks.m_pArray[j]->Hit();
+                pEnemy->Hit();
                 pEnemy->AdjustHitPoints(-m_nBumpDamage);
                 pEnemy->m_invincibilityTimer = pEnemy->m_invincibility;
             }
@@ -1678,11 +1632,7 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
             m_invincibilityTimer = m_invincibility;
             if (bApply != 0)
             {
-                PlayAnimation(const_cast<char*>("damage"), 1.0f, 1);
-                PlayAnimation(const_cast<char*>("Ready_01"), 1.0f, AnimRun::kAnimQueue);
-                int nBanks = m_gunBanks.m_count;
-                for (int i = 0; i < nBanks; i++)
-                    m_gunBanks.m_pArray[i]->Hit();
+                Hit();
                 AdjustHitPoints(-nMaxBump);
                 m_bBumped = 1;
             }
@@ -1702,9 +1652,8 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
 
     Vector vFollowPos = pFollowModel->GetPosition();
     Vector vFollowPrevPos = pFollowModel->GetPreviousPosition();
-    Quaternion qFollow = pFollowModel->GetOrientation();
 
-    m_pMiniGame->BumpPlane(qFollow);
+    m_pMiniGame->BumpPlane(pFollowModel->GetOrientation());
     CHitInfo hitInfo(0, ~CHitInfo::kMaterialTrigger, 0);
 
     int nHits = 0;
@@ -1762,13 +1711,8 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
         {
             if (!(pEnemy->m_invincibilityTimer > 0.0f))
             {
-                pEnemy->PlayAnimation(const_cast<char*>("damage"), 1.0f, 1);
-                pEnemy->PlayAnimation(const_cast<char*>("Ready_01"), 1.0f, AnimRun::kAnimQueue);
-                int nBanks = pEnemy->m_gunBanks.m_count;
-                for (int j = 0; j < nBanks; j++)
-                    pEnemy->m_gunBanks.m_pArray[j]->Hit();
-                pEnemy->m_hitPointAdjust = -m_nBumpDamage;
-                pEnemy->OnDamage(0);
+                pEnemy->Hit();
+                pEnemy->AdjustHitPoints(-m_nBumpDamage);
                 pEnemy->m_invincibilityTimer = pEnemy->m_invincibility;
             }
             m_nLastFollowerHit = pEnemy->m_nObjectId;
@@ -1800,13 +1744,8 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
             m_invincibilityTimer = m_invincibility * 2.0f;
             if (bApply != 0)
             {
-                PlayAnimation(const_cast<char*>("damage"), 1.0f, 1);
-                PlayAnimation(const_cast<char*>("Ready_01"), 1.0f, AnimRun::kAnimQueue);
-                int nBanks = m_gunBanks.m_count;
-                for (int i = 0; i < nBanks; i++)
-                    m_gunBanks.m_pArray[i]->Hit();
-                m_hitPointAdjust = -nMaxBump;
-                OnDamage(0);
+                Hit();
+                AdjustHitPoints(-nMaxBump);
                 m_bBumped = 1;
             }
         }

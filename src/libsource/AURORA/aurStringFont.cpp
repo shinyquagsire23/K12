@@ -170,37 +170,11 @@ int CAurFont::TextOutA(char* pszText, int nLength)
         char* p = &pszText[i];
         unsigned char c = *p;
         if (c == '<') {
-            CAurFont* pFont = this;
-            int nSkip = 0;
-
-            cColor = g_cSavedCol;
-            switch (p[1]) {
-            case 'f':
-                pFont = s_LoadedFontList.m_pData[static_cast<unsigned char>(p[2]) - '0'];
-                nSkip = 4;
-                break;
-            case 'c':
-                cColor.r = static_cast<unsigned char>(p[2]) / 255.0f;
-                cColor.g = static_cast<unsigned char>(p[3]) / 255.0f;
-                cColor.b = static_cast<unsigned char>(p[4]) / 255.0f;
-                cColor.a = 1.0f;
-                nSkip = 6;
-                break;
-            case '/':
-                switch (p[2]) {
-                case 'c':
-                    nSkip = 4;
-                    break;
-                case 'f':
-                    pFont = 0;
-                    nSkip = 4;
-                    break;
-                }
-                break;
-            }
+            CAurFont* pFont;
+            int nSkip = ProcessTextMarkup(p, &pFont, cColor);
             bColorDirty = true;
 
-            if (nSkip != 0) {
+            if (nSkip > 1) {
                 int nNext = i + nSkip;
                 if (pFont != this) {
                     GLRender::UnlockPool(nPool);
@@ -295,29 +269,10 @@ void CAurFont::CalculateVisibleStringLengthAndWidth(CStringItem* pItem, float fM
         if (c == ' ')
             nLastSpace = g_nParseIndex;
         else if (c == '<') {
-            CAurFont* pFont = this;
-            int nSkip = 0;
-            switch (p[1]) {
-            case 'f':
-                pFont = s_LoadedFontList.m_pData[static_cast<unsigned char>(p[2]) - '0'];
-                nSkip = 4;
-                break;
-            case 'c':
-                nSkip = 6;
-                break;
-            case '/':
-                switch (p[2]) {
-                case 'c':
-                    nSkip = 4;
-                    break;
-                case 'f':
-                    pFont = 0;
-                    nSkip = 4;
-                    break;
-                }
-                break;
-            }
-            if (nSkip != 0) {
+            CAurFont* pFont;
+            CStringColor cColor = {1.0f, 1.0f, 1.0f, 1.0f};
+            int nSkip = ProcessTextMarkup(p, &pFont, cColor);
+            if (nSkip > 1) {
                 g_nParseIndex += nSkip;
                 if (pFont != this) {
                     if (pFont == 0)

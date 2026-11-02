@@ -121,14 +121,12 @@ void CSWCPlaceable::AddFireAndForgetAnimation(unsigned short a, void* p, unsigne
 void CSWCPlaceable::ActionMenuExamine(unsigned int a, CSWCCreature* c)
 {
     K2_UNUSED(a); K2_UNUSED(c);
-    if (GetServerObject()) {
-        CSWSPlaceable* pServerPlaceable = GetServerObject()->AsSWSPlaceable();
-        if (pServerPlaceable) {
-            CExoString text;
-            pServerPlaceable->m_description.GetString(
-                g_pAppManager->m_pClientExoApp->GetClientLanguage(), &text, 0);
-            g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowExamineBox(text, 0);
-        }
+    CSWSPlaceable* pServerPlaceable = GetServerPlaceable();
+    if (pServerPlaceable) {
+        CExoString text;
+        pServerPlaceable->m_description.GetString(
+            g_pAppManager->m_pClientExoApp->GetClientLanguage(), &text, 0);
+        g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowExamineBox(text, 0);
     }
 }
 
@@ -162,15 +160,10 @@ void CSWCPlaceable::UsePlaceable(unsigned int a, CSWCCreature* c)
 // Applies a computer spike's bonus to the server placeable, then asks it to be used.
 void CSWCPlaceable::MenuActionUseComputerSpike(unsigned int a, CSWCCreature* c)
 {
-    K2_UNUSED(c);
-    if (GetServerObject()) {
-        CSWSPlaceable* pServerPlaceable = GetServerObject()->AsSWSPlaceable();
-        if (pServerPlaceable)
-            pServerPlaceable->ApplyComputerSpikeBonus(a);
-    }
-    CSWCMessage* pMessage = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-    if (g_pAppManager->m_pClientExoApp->GetInGameGui()->GetCanClick())
-        pMessage->SendPlayerToServerInput_UseObject(m_objectId);
+    CSWSPlaceable* pServerPlaceable = GetServerPlaceable();
+    if (pServerPlaceable)
+        pServerPlaceable->ApplyComputerSpikeBonus(a);
+    UsePlaceable(a, c);
 }
 
 // Builds the placeable's radial-menu entries: 0 bash (with a party-interact fixup), 1 security
@@ -178,8 +171,7 @@ void CSWCPlaceable::MenuActionUseComputerSpike(unsigned int a, CSWCCreature* c)
 void CSWCPlaceable::GetTargetActions(CSWCCreature* pCreature, int nType,
                                      CExoArrayList<CSWGuiInterfaceAction>& list)
 {
-    CSWSPlaceable* pServerPlaceable =
-        GetServerObject() ? GetServerObject()->AsSWSPlaceable() : static_cast<CSWSPlaceable*>(0);
+    CSWSPlaceable* pServerPlaceable = GetServerPlaceable();
     int nAreaMenuDisabled = m_pArea->GetServerArea()->m_nPlayerRestrictMode;
     int nOldCount = list.m_count;
     CExoString sName;
@@ -233,10 +225,8 @@ void CSWCPlaceable::GetTargetActions(CSWCCreature* pCreature, int nType,
                     (pServerCreature = pPlayerCreature->GetServerCreature(),
                      pServerCreature->GetDeadTemp() != 0 &&
 #endif
-                         GetServerObject() != 0 &&
-                         GetServerObject()->AsSWSPlaceable() != 0 &&
-                         (GetServerObject(),
-                          GetServerObject()->AsSWSPlaceable()->m_bPartyInteract == 0))) {
+                         GetServerPlaceable() != 0 &&
+                         GetServerPlaceable()->m_bPartyInteract == 0)) {
                     unsigned char& cFlags = list.m_pArray[nOldCount].m_nFlags;
                     cFlags &= ~CSWGuiInterfaceAction::FLAG_ENABLED;
                     list.m_pArray[nOldCount].m_nFlags =
@@ -344,8 +334,7 @@ void CSWCPlaceable::GetUseItems(CSWCCreature* pCreature,
                                 CExoArrayList<CSWGuiInterfaceAction>& list)
 {
     CSWSCreature* pServerCreature = pCreature->GetServerCreature();
-    if (GetServerObject())
-        GetServerObject()->AsSWSPlaceable();
+    GetServerPlaceable();
     if (m_bLocked != 0) {
         int nOldCount = list.m_count;
         if (pServerCreature != 0 && pCreature->m_pStats->GetCanUseSkill(SKILL_SECURITY) != 0)

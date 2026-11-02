@@ -577,53 +577,14 @@ int CAvoidCreature::PlotPathAroundCreature(CSWSCreature* pSelf, CSWSCreature* pB
     Vector* pTrial2;
     if (FindEntryAndExit(pSelf->m_pPathfindInfo) == 0) return AVOIDCREATURE_FAILED;
 
-    int bBlocked1 = 0;
-    int nOldSide;
-    int bBlocked2 = 0;
     pTrial1 = FindPath(nPoints1);
-    {
-        Vector vFrom = pTrial1[0];
-        Vector vTo;
-        oidAvoid1 = OBJECT_INVALID;
-        if (nPoints1 >= 2) {
-            uint64_t nSeg = static_cast<uint64_t>(nPoints1) - 1;
-            Vector* pPt = pTrial1 + 1;
-            do {
-                vTo = *pPt;
-                if (SideClearOfObstructions(pSelf->m_objectId, vFrom, vTo, oidAvoid1) == 0) {
-                    bBlocked1 = 1;
-                    break;
-                }
-                nSeg--;
-                vFrom = vTo;
-                pPt++;
-            } while (nSeg != 0);
-        }
-    }
-    nOldSide = m_nSide;
+    int bClear1 = IsPathClear(pSelf->m_objectId, pTrial1, nPoints1, oidAvoid1);
+    int nOldSide = m_nSide;
     m_nSide = (nOldSide == 0);
     pTrial2 = FindPath(nPoints2);
-    {
-        Vector vFrom = pTrial2[0];
-        Vector vTo;
-        oidAvoid2 = OBJECT_INVALID;
-        if (nPoints2 >= 2) {
-            uint64_t nSeg = static_cast<uint64_t>(nPoints2) - 1;
-            Vector* pPt = pTrial2 + 1;
-            do {
-                vTo = *pPt;
-                if (SideClearOfObstructions(pSelf->m_objectId, vFrom, vTo, oidAvoid2) == 0) {
-                    bBlocked2 = 1;
-                    break;
-                }
-                nSeg--;
-                vFrom = vTo;
-                pPt++;
-            } while (nSeg != 0);
-        }
-    }
+    int bClear2 = IsPathClear(pSelf->m_objectId, pTrial2, nPoints2, oidAvoid2);
     int nClass1 = 0;
-    if (!bBlocked1) {
+    if (bClear1) {
         nClass1 = 2;
     } else if (oidAvoid1 != OBJECT_INVALID) {
         nClass1 = 1;
@@ -631,7 +592,7 @@ int CAvoidCreature::PlotPathAroundCreature(CSWSCreature* pSelf, CSWSCreature* pB
         nClass1 = 0;
     }
     int nClass2 = 0;
-    if (!bBlocked2) {
+    if (bClear2) {
         nClass2 = 2;
     } else if (oidAvoid2 != OBJECT_INVALID) {
         nClass2 = 1;

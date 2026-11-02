@@ -43,8 +43,7 @@ CSWGuiTextParams::CSWGuiTextParams()
     bHilight = false;
 
     CResRef resRefFont("dialogfont16x16");
-    resRefFont.CopyToString(m_szBaseFont);
-    SetFontRename();
+    SetBaseFont(resRefFont);
 }
 
 void CSWGuiTextParams::SetBaseFont(const CResRef& resRef)
@@ -589,16 +588,7 @@ CSWGuiBorderParams& CSWGuiBorderParams::operator=(const CSWGuiBorderParams& othe
     m_nInnerOffsetY = other.m_nInnerOffsetY ? other.m_nInnerOffsetY : other.m_nInnerOffset;
 #endif
 
-#if KOTOR1
-    // K1 re-installs the images through SetBorder.
     SetBorder(m_pBorder);
-#else
-    if (m_pBorder) {
-        SetCornerImage(m_cornerImage, 1);
-        SetEdgeImage(m_edgeImage, 1);
-        SetFillImage(m_fillImage, 1);
-    }
-#endif
     return *this;
 }
 
@@ -789,8 +779,8 @@ void CSWGuiBorder::Load(CResGFF* pGFF, CResStruct& rStruct, const CExoString& sF
         return;
 
     int bSuccess;
-    m_params.SetCornerImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("CORNER"), bSuccess, CResRef("")), 0);
-    m_params.SetEdgeImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("EDGE"), bSuccess, CResRef("")), 0);
+    m_params.SetCornerImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("CORNER"), bSuccess, CResRef("")));
+    m_params.SetEdgeImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("EDGE"), bSuccess, CResRef("")));
     m_params.SetFillImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("FILL"), bSuccess, CResRef("")));
     m_params.m_flags.nFillStyle = pGFF->ReadFieldINT(&subStruct, const_cast<char*>("FILLSTYLE"), bSuccess, 0);
     m_params.m_nBorderDim = pGFF->ReadFieldINT(&subStruct, const_cast<char*>("DIMENSION"), bSuccess, 0);
@@ -1051,7 +1041,7 @@ void CSWGuiBorder::Draw(float fAlpha)
 
             int nRemainderH = nSlackH - nRowExtra * nRows;
             int nRowHeight = nRowExtra + nTile;
-            for (int i = nRows; i > 0; i--) {
+            for (int i = 0; i < nRows; i++) {
                 int nThisH = nRowHeight;
                 if (nRemainderH != 0) {
                     nThisH++;
@@ -1145,22 +1135,10 @@ CSWGuiBorder& CSWGuiBorder::operator=(CSWGuiBorder& other)
 CSWGuiBorder::CSWGuiBorder()
     : m_params(CResRef(), CResRef(), CResRef(), 0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0)
 {
-#if KOTOR1
-    // K1 clears the three image slots and installs the owner through SetBorder.
     m_pCornerImage = 0;
     m_pEdgeImage = 0;
     m_pFillImage = 0;
     m_params.SetBorder(this);
-#else
-    m_params.m_pBorder = this;
-    m_pCornerImage = 0;
-    m_pEdgeImage = 0;
-    m_pFillImage = 0;
-
-    m_params.SetCornerImage(m_params.m_cornerImage, 1);
-    m_params.SetEdgeImage(m_params.m_edgeImage, 1);
-    m_params.SetFillImage(m_params.m_fillImage, 1);
-#endif
 }
 
 // Rotations for the rotation-style index; the guard is two-sided because the index is signed.
@@ -1350,7 +1328,7 @@ void CSWGuiImage::Load(CResGFF* pGFF, CResStruct& rStruct, const CExoString& sFi
         return;
 
     int bSuccess;
-    m_params.SetImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("IMAGE"), bSuccess, CResRef("")), 0);
+    m_params.SetImage(pGFF->ReadFieldCResRef(&subStruct, const_cast<char*>("IMAGE"), bSuccess, CResRef("")));
     m_params.SetDrawStyle(pGFF->ReadFieldINT(&subStruct, const_cast<char*>("DRAWSTYLE"), bSuccess, 0));
     // No setter; nothing downstream re-derives from this field.
     m_params.m_nFlipStyle = pGFF->ReadFieldINT(&subStruct, const_cast<char*>("FLIPSTYLE"), bSuccess, 0);

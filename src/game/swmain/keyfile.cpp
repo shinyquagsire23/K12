@@ -167,11 +167,10 @@ int KeyFileValidate(char* pszFileName, char* pszName, int nMinVersion, KeyFileDa
 
     int nRead = KeyFileRead(pFile, pData);
 
-    SYSTEMTIME st;
-    GetSystemTime(&st);
-    int nMonth = st.wMonth;
-    int nDay = st.wDay;
-    int nYear = st.wYear;
+    int nMonth;
+    int nDay;
+    int nYear;
+    KeyFileGetCurrentTime(&nMonth, &nDay, &nYear);
 
     fclose(pFile);
 

@@ -46,9 +46,6 @@ CExoSoundSourceInternal::CExoSoundSourceInternal(CExoSoundInternal* pSound)
     : m_vPosition(), m_vOcclusionPosition()
 {
     m_b3D = 0;
-#if !KOTOR1
-    m_fFixedVariance = 0.0f;
-#endif
     m_bLooping = 0;
     m_bOneShot = 0;
     m_p2DVoice = 0;
@@ -60,24 +57,39 @@ CExoSoundSourceInternal::CExoSoundSourceInternal(CExoSoundInternal* pSound)
     m_pListNode = 0;
     m_pSound = pSound;
     m_pAudioSystem = &pSound->m_audioSystem;
+#if KOTOR1
     m_nSoundLength = 0;
     m_nOneShotDelay = 0;
     m_nOneShotDelayTimer = 0;
     m_nVoiceId = pSound->m_nNextStreamingVoiceId++;
-#if KOTOR1  // K1: the four floats are one 16-byte constant store
-    m_fFixedVariance = 0.0f;
+    m_fFixedVariance = 0.0f;  // K1: the four floats are one 16-byte constant store
 #endif
     m_fMaxDistance = 20.0f;
     m_fMinDistance = 10.0f;
+#if KOTOR1
     m_fPitchVariance = 0.0f;
     m_bLoaded = 0;
+#endif
     m_nPlaybackPosition = 0;
     m_nListState = 0;
     m_nPriorityGroup = PRIORITY_GROUP_DEFAULT;
+#if !KOTOR1
+    m_nVolume = CExoSound::CMAX_VOLUME;
+#endif
 
     CPriorityGroup* pGroup = pSound->GetPriorityGroup(PRIORITY_GROUP_DEFAULT);
     m_nGroupVolume = pGroup ? pGroup->m_nVolume : 127;
+#if KOTOR1
     m_nVolume = CExoSound::CMAX_VOLUME;
+#else
+    m_fPitchVariance = 0.0f;
+    m_bLoaded = 0;
+    m_nOneShotDelayTimer = 0;
+    m_fFixedVariance = 0.0f;
+    m_nSoundLength = 0;
+    m_nOneShotDelay = 0;
+    m_nVoiceId = m_pSound->m_nNextStreamingVoiceId++;
+#endif
 
     float fZero = 0.0f;
     m_vOcclusionPosition.x = fZero;
@@ -241,22 +253,7 @@ void CExoSoundSourceInternal::SetOneShotDelay(unsigned int nDelay)
 
 void CExoSoundSourceInternal::Pause()
 {
-    if (m_pSound->m_bInitialized == 0)
-        return;
-
-    ExoSoundChannel nChannel = EXOSOUND_NO_CHANNEL;
-    if (m_p3DVoice != 0)
-        nChannel = m_p3DVoice->m_nChannel;
-    if (nChannel == EXOSOUND_NO_CHANNEL)
-    {
-        if (m_p2DVoice == 0)
-            return;
-        nChannel = m_p2DVoice->m_nChannel;
-        if (nChannel == EXOSOUND_NO_CHANNEL)
-            return;
-    }
-
-    if (m_pAudioSystem->GetIsChannelPlaying(nChannel) == 0)
+    if (IsPlaying() == 0)
         return;
 
     if (m_p3DVoice != 0 && m_p3DVoice->m_nChannel != EXOSOUND_NO_CHANNEL)
@@ -278,22 +275,7 @@ void CExoSoundSourceInternal::SetPosition(const Vector& vPosition)
     if (m_b3D == 0)
         return;
 
-    if (m_pSound->m_bInitialized == 0)
-        return;
-
-    ExoSoundChannel nChannel = EXOSOUND_NO_CHANNEL;
-    if (m_p3DVoice != 0)
-        nChannel = m_p3DVoice->m_nChannel;
-    if (nChannel == EXOSOUND_NO_CHANNEL)
-    {
-        if (m_p2DVoice == 0)
-            return;
-        nChannel = m_p2DVoice->m_nChannel;
-        if (nChannel == EXOSOUND_NO_CHANNEL)
-            return;
-    }
-
-    if (m_pAudioSystem->GetIsChannelPlaying(nChannel) == 0)
+    if (IsPlaying() == 0)
         return;
 
 #ifdef K2_FIX_ENGINE_BUGS
@@ -522,7 +504,7 @@ void CExoSoundSourceInternal::SetVolume(unsigned char nVolume, int a, float f)
     float fVol = m_pSound->GetSliderVolume(nSliderType, a);
 
     float fScale = 1.0f;
-    if (m_nPriorityGroup == PRIORITY_GROUP_LOOPING_AREA_WIDE_AMBIENTS || (m_nPriorityGroup == PRIORITY_GROUP_SINGLE_SHOT_GLOBAL && m_p2DVoice != 0))
+    if (IsScalable())
         fScale = f;
 
     if (m_pSound->m_bInitialized == 0)
@@ -579,35 +561,13 @@ void CExoSoundSourceInternal::SetPitchVariance(float fVariance)
 
     if (m_p3DVoice != 0 && m_p3DVoice->m_nChannel != EXOSOUND_NO_CHANNEL)
     {
-        if (rand_wincompatible() & 1)
-        {
-            unsigned int nRange = static_cast<unsigned int>(static_cast<float>(m_baseFrequency) * m_fPitchVariance);
-            if (nRange != 0)
-                m_nPitchVarianceFrequency += static_cast<unsigned int>(rand_wincompatible()) % nRange;
-        }
-        else
-        {
-            unsigned int nRange = static_cast<unsigned int>(static_cast<float>(m_baseFrequency) * 0.5f * m_fPitchVariance);
-            if (nRange != 0)
-                m_nPitchVarianceFrequency -= static_cast<unsigned int>(rand_wincompatible()) % nRange;
-        }
+        CalculatePitchVarianceFrequency();
 
         m_pAudioSystem->SetChannelFrequency(m_p3DVoice->m_nChannel, static_cast<float>(m_nPitchVarianceFrequency));
     }
     else if (m_p2DVoice != 0 && m_p2DVoice->m_nChannel != EXOSOUND_NO_CHANNEL)
     {
-        if (rand_wincompatible() & 1)
-        {
-            unsigned int nRange = static_cast<unsigned int>(static_cast<float>(m_baseFrequency) * m_fPitchVariance);
-            if (nRange != 0)
-                m_nPitchVarianceFrequency += static_cast<unsigned int>(rand_wincompatible()) % nRange;
-        }
-        else
-        {
-            unsigned int nRange = static_cast<unsigned int>(static_cast<float>(m_baseFrequency) * 0.5f * m_fPitchVariance);
-            if (nRange != 0)
-                m_nPitchVarianceFrequency -= static_cast<unsigned int>(rand_wincompatible()) % nRange;
-        }
+        CalculatePitchVarianceFrequency();
 
         m_pAudioSystem->SetChannelFrequency(m_p2DVoice->m_nChannel, static_cast<float>(m_nPitchVarianceFrequency));
     }

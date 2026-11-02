@@ -46,10 +46,7 @@ CSWNameGen::CSWNameGen()
 
 CSWNameGen::~CSWNameGen()
 {
-    if (m_bTableLoaded) {
-        m_bTableLoaded = 0;
-        m_pRes->Release();
-    }
+    UnloadNameTable();
 }
 
 void CSWNameGen::UnloadNameTable()
@@ -278,12 +275,9 @@ CExoString CSWNameGen::GetRandomName(unsigned short nSpecies, unsigned char nGen
     }
 
     // The cached table is reused only for the same species and gender.
-    if (m_bTableLoaded) {
-        if (m_nLoadedSpecies == nSpecies && m_nLoadedGender == (nGender & 0xfb))
-            return CExoString("");
-        m_bTableLoaded = 0;
-        m_pRes->Release();
-    }
+    if (m_bTableLoaded && m_nLoadedSpecies == nSpecies && m_nLoadedGender == (nGender & 0xfb))
+        return CExoString("");
+    UnloadNameTable();
 
     if (sFirst.GetLength() >= 1) {
         if (!LoadNameTable(sFirst))

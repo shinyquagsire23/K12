@@ -298,8 +298,8 @@ class CSWGuiOptionsMain : public CSWGuiPanel {
 public:
     CSWGuiOptionsMain(CSWGuiManager* pGuiManager);
 
-    // None of the three are virtual.
-    void ClosePanel();
+    // None of the three are virtual; ClosePanel is static.
+    static void ClosePanel();
     void OnEnterSlot(CSWGuiControl* pControl);
     void SetDescription(uint64_t nDescription);
 

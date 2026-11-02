@@ -321,16 +321,12 @@ void CSWGuiPortraitCharGen::HandleInputEvent(int type, int val) {
         switch (type) {
         case INPUTEVENT_GUI_DPAD_LEFT: case INPUTEVENT_GUI_LEFT_SHOULDER: case INPUTEVENT_GUI_KEY_LEFT:
             m_pGuiManager->PlayGuiSound(1);
-            if (--m_nCurrentPortrait < 0)
-                m_nCurrentPortrait = m_paPortraitIds.m_count - 1;
-            UpdatePortraitButton();
+            HandleLeftButton();
             break;
 
         case INPUTEVENT_GUI_DPAD_RIGHT: case INPUTEVENT_GUI_RIGHT_SHOULDER: case INPUTEVENT_GUI_KEY_RIGHT:
             m_pGuiManager->PlayGuiSound(1);
-            if (++m_nCurrentPortrait >= m_paPortraitIds.m_count)
-                m_nCurrentPortrait = 0;
-            UpdatePortraitButton();
+            HandleRightButton();
             break;
 
         case INPUTEVENT_GUI_A: case INPUTEVENT_GUI_START:

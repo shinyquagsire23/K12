@@ -103,33 +103,13 @@ int CResPLT::OnResourceServiced()
     if (static_cast<PLTHeader*>(m_pPLTHeader)->m_magic != FOURCC_PLT)
         return 0;
     if (static_cast<PLTHeader*>(m_pPLTHeader)->m_bCompressed) {
-        unsigned char* src = reinterpret_cast<unsigned char*>(static_cast<PLTHeader*>(m_pFileData) + 1);
         m_bCompressed = 1;
         m_nSrcSize = m_nSize - PLT_HEADER_SIZE;
-        m_pPLTData = src;
-        unsigned int size = m_nPLTSize;
-        m_pPLTData = new unsigned char[size];
-        if (size != 0) {
-            unsigned int dstPos = 0;
-            unsigned int srcPos = 0;
-            do {
-                unsigned char ctrl = src[srcPos++];  // raw-offset: PLT file bytes
-                unsigned int newPos = dstPos + (ctrl & RLE_COUNT_MASK) + 1;
-#ifdef K2_FIX_ENGINE_BUGS
-                if (newPos > size)
-                    newPos = size;
-#endif
-                if (ctrl & RLE_RUN_FLAG) {
-                    unsigned char runByte = src[srcPos++];  // raw-offset: PLT file bytes
-                    while (dstPos < newPos)
-                        static_cast<unsigned char*>(m_pPLTData)[dstPos++] = runByte;
-                } else {
-                    while (dstPos < newPos)
-                        static_cast<unsigned char*>(m_pPLTData)[dstPos++] = src[srcPos++];  // raw-offset: PLT file bytes
-                }
-            } while (dstPos < m_nPLTSize);
+        m_pPLTData = static_cast<PLTHeader*>(m_pFileData) + 1;
+        if (!ReadRLEPLT()) {
+            OnResourceFreed();
+            return 0;
         }
-        m_bOwnsData = 1;
     } else {
         m_bOwnsData = 0;
         m_bCompressed = 0;

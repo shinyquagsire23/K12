@@ -1730,23 +1730,13 @@ void CExoKeyTable::RebuildTable()
                 continue;
             }
 
-            unsigned short oldResType = pOld->m_resType;
-            int bMoved = 0;
-
-            if (m_paEntries != NULL && m_nTableSize != 0) {
-                for (unsigned int j = 0; j < m_nTableSize; j++) {
-                    if (m_paEntries[j].m_resType == oldResType &&
-                        m_paEntries[j].m_resRef == pOld->m_resRef) {
-                        m_paEntries[j].m_pRes = pOld->m_pRes;
-                        m_paEntries[j].m_pRes->m_dwResID = m_paEntries[j].m_dwResID;
-                        pOld->m_pRes = NULL;
-                        m_paEntries[j].m_pRes->m_pKeyEntry = &m_paEntries[j];
-                        bMoved = 1;
-                        break;
-                    }
-                }
-            }
-            if (bMoved) {
+            unsigned int nIndex;
+            if (GetTableIndex(nIndex, pOld->m_resRef, pOld->m_resType)) {
+                CKeyTableEntry* pNew = &m_paEntries[nIndex];
+                pNew->m_pRes = pOld->m_pRes;
+                pNew->m_pRes->m_dwResID = pNew->m_dwResID;
+                pOld->m_pRes = NULL;
+                pNew->m_pRes->m_pKeyEntry = pNew;
                 continue;
             }
 

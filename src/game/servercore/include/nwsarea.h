@@ -491,8 +491,8 @@ public:
     // Registers objectId in the X-sorted object index. Returns 1 on success, 0 when the object cannot
     // be resolved.
     int    AddObjectToArea(unsigned long long objectId, int n);
-    // Binary-search estimate for the X-sorted object index, declared always_inline.
-    __attribute__((always_inline)) int  GetFirstObjectIndiceByX(int* pOutIndex, float x);
+    // Binary-search estimate for the X-sorted object index.
+    int  GetFirstObjectIndiceByX(int* pOutIndex, float x);
     // RemoveStaticBoundingBox/AddStaticBoundingBox are CSWArea members, not CSWSArea ones: they
     // are declared in CSWArea.h and reached straight off GetArea()'s CSWArea* result.
     // Returns int, not void: CSWGuiDebugMenu::OpenAllDoors branches on whether the walk had any

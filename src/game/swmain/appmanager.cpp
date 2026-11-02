@@ -110,17 +110,8 @@ CObjectTableManager* CAppManager::GetObjectTableManager(unsigned int type) {
 }
 
 void CAppManager::CreateServer(int flag) {
-    if (m_pServerExoApp) {
-        m_pServerExoApp->Uninitialize();
-        m_pServerExoApp->StopServices();
-        CServerExoApp* pOld = m_pServerExoApp;
-        if (pOld) {
-            pOld->CServerExoApp::~CServerExoApp();
-            operator delete(pOld);
-        }
-        m_pServerExoApp = 0;
-        SetWindowTitle();
-    }
+    if (m_pServerExoApp)
+        DestroyServer();
 
     CServerExoApp* pNew = new CServerExoApp();
     m_pServerExoApp = pNew;

@@ -20,7 +20,6 @@ public:
 
 private:
     void GenSeed();
-    void SeedTimers();
     void Add(unsigned char* pData, int nLen);
     void ReSeed(unsigned int a, unsigned int b, unsigned int c, unsigned int d) throw();
 

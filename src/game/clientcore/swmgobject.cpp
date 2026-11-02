@@ -119,16 +119,10 @@ void CSWMiniGameObject::Update(float)
 CSWTrackFollower* CSWMiniGameObject::GetLastBulletHitShooter()
 {
     CSWMiniGameObjectArray* pObjects = static_cast<CSWMiniGameObjectArray*>(g_pAppManager->m_pClientExoApp->GetMGOArray());
-    if (m_nLastBulletHitShooter < CSWMiniGameObjectArray::OBJECT_ID_NONE)
-    {
-        CSWMiniGameObject* pShooter = pObjects->m_apObjects[m_nLastBulletHitShooter];
-        if (pShooter != NULL)
-        {
-            CSWTrackFollower* pFollower = static_cast<CSWTrackFollower*>(pShooter->AsFollower());
-            if (pFollower != NULL)
-                return pFollower;
-        }
-    }
+    CSWTrackFollower* pFollower = static_cast<CSWTrackFollower*>(
+        pObjects->GetMiniGameObject(m_nLastBulletHitShooter, CSWMiniGameObjectArray::PROBE_FOLLOWER));
+    if (pFollower != NULL)
+        return pFollower;
     m_nLastBulletHitShooter = CSWMiniGameObjectArray::OBJECT_ID_NONE;
     return NULL;
 }
@@ -136,16 +130,10 @@ CSWTrackFollower* CSWMiniGameObject::GetLastBulletHitShooter()
 CSWTrackFollower* CSWMiniGameObject::GetLastFollowerHit()
 {
     CSWMiniGameObjectArray* pObjects = static_cast<CSWMiniGameObjectArray*>(g_pAppManager->m_pClientExoApp->GetMGOArray());
-    if (m_nLastFollowerHit < CSWMiniGameObjectArray::OBJECT_ID_NONE)
-    {
-        CSWMiniGameObject* pHit = pObjects->m_apObjects[m_nLastFollowerHit];
-        if (pHit != NULL)
-        {
-            CSWTrackFollower* pFollower = static_cast<CSWTrackFollower*>(pHit->AsFollower());
-            if (pFollower != NULL)
-                return pFollower;
-        }
-    }
+    CSWTrackFollower* pFollower = static_cast<CSWTrackFollower*>(
+        pObjects->GetMiniGameObject(m_nLastFollowerHit, CSWMiniGameObjectArray::PROBE_FOLLOWER));
+    if (pFollower != NULL)
+        return pFollower;
     m_nLastFollowerHit = CSWMiniGameObjectArray::OBJECT_ID_NONE;
     return NULL;
 }

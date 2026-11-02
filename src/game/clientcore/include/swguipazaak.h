@@ -24,22 +24,7 @@ public:
     // Kicks the floating "+N" label: timer to 0.8 and the world-space anchor stored.
     void ActivateLabel(const Vector& pos);
 
-    __attribute__((always_inline)) void SetEnabled(int bEnabled) override {
-        CSWGuiButton::SetEnabled(bEnabled);
-        if (m_fFlashTimer < 0.0f) {
-#if KOTOR1  // K1 uses blue text and leaves the border colour alone
-            m_text.m_params.SetColor(m_tail.bEnabled ? CGuiInGame::COLOR_BLUE
-                                                     : CGuiInGame::DISABLED_TEXT);
-#else
-            m_text.m_params.SetColor(m_tail.bEnabled ? CGuiInGame::COLOR_PAZAAK_GOLD
-                                                     : CGuiInGame::DISABLED_TEXT);
-            m_border.m_params.m_color =
-                *reinterpret_cast<const CSWGuiColor*>(&(m_tail.bEnabled ? CGuiInGame::COLOR_PAZAAK_GOLD
-                                                       : CGuiInGame::DISABLED_TEXT));
-#endif
-            SetActive(m_tail.bEnabled && this == g_pGuiMan->m_pMouseOverControl);
-        }
-    }
+    void SetEnabled(int bEnabled) override;
 
     void Draw(float f) override;
 
@@ -71,11 +56,7 @@ public:
     // CSWGUIPAZAAKCARD_CTOR_DECLARED_ONLY selects the declared-only form the K1 panel constructors
     // need.
 #ifdef CSWGUIPAZAAKCARD_CTOR_DECLARED_ONLY
-#if KOTOR1  // K1 panel ctors call it
-    __attribute__((noinline)) CSWGuiPazaakCard();
-#else
     CSWGuiPazaakCard();
-#endif
 #else
     CSWGuiPazaakCard() {
         m_bDragLatch = 1;
@@ -235,7 +216,7 @@ public:
 #endif
     void HandleTutorialClose(CSWGuiControl* pControl);
     void HandlePlayHandCard(int nSlot);
-    __attribute__((noinline)) void SetHandEnabled(int nHand);
+    void SetHandEnabled(int nHand);
     void HandleFlipHandCard();
 #if !KOTOR1  // K2-only: no change cards, interactive tutorial or forfeit in K1
     void HandleChangeHandCard();
@@ -461,15 +442,12 @@ public:
     CSWGuiLabel        m_lblBg;
     int                m_nWager;       // the live value, shown by UpdateWagerText
     int                m_nWagerMax;    // the increment guard's bound
-#if KOTOR1  // K1: the arrow-flash list FlashArrow fills
-    struct ArrowFlash {
+    // The arrow-flash countdowns K1's FlashArrow fills (K2 never does).
+    struct CSWGuiCGArrowButtonCountDown {
         CSWGuiButton* m_pButton;
         float         m_fTimer;
     };
-    CExoArrayList<ArrowFlash> m_aArrowFlashes;
-#else
-    CExoArrayList<int> m_aArrowFlashes;  // never filled
-#endif
+    CExoArrayList<CSWGuiCGArrowButtonCountDown> m_aArrowFlashes;
     CSWGuiPazaakStart* m_pOwner;       // used by HandleInputEvent's two paths
 };
 

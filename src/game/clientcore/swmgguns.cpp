@@ -287,16 +287,7 @@ int CSWMGGunBank::ClearGuns()
         delete m_aGuns.m_pArray[i];
     }
 
-    // inlined CExoArrayList<CAurObject*>::SetSize(0): the call swaps two callee-saved registers
-    // (K2 DIFF) and costs K1 ClearGuns and GunDie
-    if (m_aGuns.m_pArray != NULL)
-    {
-        delete[] m_aGuns.m_pArray;
-        m_aGuns.m_pArray = NULL;
-        m_aGuns.m_capacity = 0;
-    }
-
-    m_aGuns.m_count = 0;
+    m_aGuns.SetSize(0);
     return nOldCount;
 }
 

@@ -1,7 +1,6 @@
 #include "k2stdint.h"
 #include "port/sdlapi.h"
 #include "swguicontrol.h"
-#define CSWGUI_FORCE_WIDGET_INLINE 1
 
 #include "CExoArrayListImpl.h"
 #include <stdio.h>
@@ -419,7 +418,7 @@ CSWGuiMainMenu::~CSWGuiMainMenu()
     }
 #endif
 
-    ClearListBox();
+    m_lbModules.ClearItems();
 
     if (g_pExoResMan->Exists(CResRef("MAINMENU"), RESTYPE_RIM, static_cast<unsigned int*>(0)))
     {
@@ -476,28 +475,13 @@ void UpdateModsButton(CSWGuiButton& button)
 void CSWGuiMainMenu::OnMoreGamesPressed(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    JNIEnv* env = Android_JNI_GetEnv();
-    jclass cls = env->FindClass("com/aspyr/kotor/KOTOR");
-    jmethodID mid = env->GetStaticMethodID(cls, "launchURL", "(Ljava/lang/String;)V");
-    jstring url = env->NewStringUTF("https://play.google.com/store/apps/details?id=com.aspyr.swkotor");
-    env->CallStaticVoidMethod(cls, mid, url);
-    env->DeleteLocalRef(url);
-    env->DeleteLocalRef(cls);
+    MoreGamesButton();
 }
 
 void CSWGuiMainMenu::OnRegistrationPressed(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    JNIEnv* env = Android_JNI_GetEnv();
-    jclass cls = env->FindClass("com/aspyr/kotor/KOTOR");
-    jmethodID midLaunchUrl = env->GetStaticMethodID(cls, "launchURL", "(Ljava/lang/String;)V");
-    jmethodID midRegister =
-        env->GetStaticMethodID(cls, "OnRegistrationButtonClicked", "()V");
-    jstring url = env->NewStringUTF("https://ctep.aspyr.com/k2_android");
-    env->CallStaticVoidMethod(cls, midLaunchUrl, url);
-    env->CallStaticVoidMethod(cls, midRegister);
-    env->DeleteLocalRef(url);
-    env->DeleteLocalRef(cls);
+    RegistrationButton();
 }
 
 void CSWGuiMainMenu::OnFacebookButtonPressed(CSWGuiControl* pControl)
@@ -823,8 +807,8 @@ void CSWGuiMainMenu::OnLoadGamePicked()
     m_btnOptions.m_tail.bVisible = 0;
     m_btnExit.m_tail.bVisible = 0;
     m_btnWarp.m_tail.bVisible = 0;
-    m_lblGameLogo.m_tail.bVisible = 0;
-    m_lblMenuBG.m_tail.bVisible = 0;
+    m_lblLogos[0].m_tail.bVisible = 0;
+    m_lblLogos[1].m_tail.bVisible = 0;
 
     SetActiveControl(&m_lbModules, 0);
     m_lbModules.SetActiveControl(m_lbModules.GetControl(0), 0);
@@ -859,8 +843,8 @@ void CSWGuiMainMenu::OnLoadGamePicked()
     m_lblDeviceId.m_tail.bVisible = 0;
     m_btnExit.m_tail.bVisible = 0;
     m_btnWarp.m_tail.bVisible = 0;
-    m_lblGameLogo.m_tail.bVisible = 0;
-    m_lblMenuBG.m_tail.bVisible = 0;
+    m_lblLogos[0].m_tail.bVisible = 0;
+    m_lblLogos[1].m_tail.bVisible = 0;
 
     SetActiveControl(&m_lbModules, 0);
     m_lbModules.SetActiveControl(m_lbModules.GetControl(0), 0);
@@ -1246,9 +1230,9 @@ void CSWGuiMainMenu::HandleInputEvent(int type, int val)
                 m_btnNewGame.m_tail.bVisible = 1;
                 m_btnOptions.m_tail.bVisible = 1;
                 m_btnWarp.m_tail.bVisible = 1;
-                m_lblGameLogo.m_tail.bVisible = 1;
+                m_lblLogos[0].m_tail.bVisible = 1;
                 m_btnExit.m_tail.bVisible = m_bShowExit;
-                m_lblMenuBG.m_tail.bVisible = 1;
+                m_lblLogos[1].m_tail.bVisible = 1;
 
                 SetActiveControl(&m_btnNewGame, 0);
                 if (m_btnContinue.m_tail.bVisible)
@@ -1287,8 +1271,8 @@ void CSWGuiMainMenu::HandleInputEvent(int type, int val)
                 m_lblDeviceId.m_tail.bVisible = 1;
                 m_btnExit.m_tail.bVisible = 1;
                 m_btnWarp.m_tail.bVisible = 1;
-                m_lblGameLogo.m_tail.bVisible = 1;
-                m_lblMenuBG.m_tail.bVisible = 1;
+                m_lblLogos[0].m_tail.bVisible = 1;
+                m_lblLogos[1].m_tail.bVisible = 1;
 
                 SetActiveControl(&m_btnNewGame, 0);
                 m_nMenuMode = 1;
@@ -1438,9 +1422,9 @@ void SetIosButtonImage(CSWGuiButton* pButton, const char* pszImage)
     }
 
     sprintf(szName, "ios_mm_%s%s", pszImage, pszLang);
-    pButton->m_border.m_params.SetFillImage(CResRef(szName), 0);
+    pButton->m_border.m_params.SetFillImage(CResRef(szName));
     sprintf(szName, "ios_mm_%s2%s", pszImage, pszLang);
-    pButton->m_borderHilight.m_params.SetFillImage(CResRef(szName), 0);
+    pButton->m_borderHilight.m_params.SetFillImage(CResRef(szName));
 }
 
 #ifndef K2_UI_TOUCH
@@ -1467,8 +1451,8 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
     InitControl(m_btnMovies, CExoString("BTN_MOVIES"), 1, 1, 0, 0, 0);
     InitControl(m_btnOptions, CExoString("BTN_OPTIONS"), 1, 1, 0, 0, 0);
     InitControl(m_lblNewContent, CExoString("LBL_NEWCONTENT"), 1, 1, 0, 0, 0);
-    InitControl(m_lblGameLogo, CExoString("LBL_GAMELOGO"), 1, 1, 0, 0, 0);
-    InitControl(m_lblMenuBG, CExoString("LBL_MENUBG"), 1, 1, 0, 0, 0);
+    InitControl(m_lblLogos[0], CExoString("LBL_GAMELOGO"), 1, 1, 0, 0, 0);
+    InitControl(m_lblLogos[1], CExoString("LBL_MENUBG"), 1, 1, 0, 0, 0);
     StopLoadFromLayout();
 
     // The panel is in 1024x768 units; scale them to the screen height (the draw centres it).
@@ -1496,8 +1480,8 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
     InitControl(m_btnMovies, CExoString("BTN_MOVIES"), 1, 1, 0, 0, 0);
     InitControl(m_btnOptions, CExoString("BTN_OPTIONS"), 1, 1, 0, 0, 0);
     InitControl(m_lblNewContent, CExoString("LBL_NEWCONTENT"), 1, 1, 0, 0, 0);
-    InitControl(m_lblGameLogo, CExoString("LBL_GAMELOGO"), 1, 1, 0, 0, 0);
-    InitControl(m_lblMenuBG, CExoString("LBL_MENUBG"), 1, 1, 0, 0, 0);
+    InitControl(m_lblLogos[0], CExoString("LBL_GAMELOGO"), 1, 1, 0, 0, 0);
+    InitControl(m_lblLogos[1], CExoString("LBL_MENUBG"), 1, 1, 0, 0, 0);
 
     CSWGuiExtent extent;
     extent.w = g_SDL_mode.w;
@@ -1507,9 +1491,9 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
 
     m_btnBlack.SetExtent(extent);
     m_btnBlack.m_text.m_params.SetText(CExoString(""));
-    m_btnBlack.m_border.m_params.SetFillImage(CResRef("black"), 0);
+    m_btnBlack.m_border.m_params.SetFillImage(CResRef("black"));
     m_btnBlack.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnBlack.m_borderHilight.m_params.SetFillImage(CResRef("black"), 0);
+    m_btnBlack.m_borderHilight.m_params.SetFillImage(CResRef("black"));
     m_btnBlack.m_borderHilight.m_params.m_flags.nFillStyle = 2;
     m_btnBlack.m_tail.bFocusOnHover = 0;
     m_btnBlack.SetEnabled(0);
@@ -1546,10 +1530,10 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
     {
         CSWGuiButton* pButton = apButtons[i];
         pButton->m_text.m_params.SetText(CExoString(""));
-        pButton->m_border.m_params.SetFillImage(CResRef("ios_help"), 0);
+        pButton->m_border.m_params.SetFillImage(CResRef("ios_help"));
         pButton->m_border.m_params.SetCornerImage(CResRef(""), 0);
         pButton->m_border.m_params.SetEdgeImage(CResRef(""), 0);
-        pButton->m_borderHilight.m_params.SetFillImage(CResRef("ios_help2"), 0);
+        pButton->m_borderHilight.m_params.SetFillImage(CResRef("ios_help2"));
         BringControlToFront(apButtons[i]);
     }
 
@@ -1672,8 +1656,8 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
     InitControl(m_btnMusic, CExoString("BTN_MUSIC"), 1, 1, 0, 0, 0);
     InitControl(m_btnOptions, CExoString("BTN_OPTIONS"), 1, 1, 0, 0, 0);
     InitControl(m_lblNewContent, CExoString("LBL_NEWCONTENT"), 1, 1, 0, 0, 0);
-    InitControl(m_lblGameLogo, CExoString("LBL_GAMELOGO"), 1, 1, 0, 0, 0);
-    InitControl(m_lblMenuBG, CExoString("LBL_MENUBG"), 1, 1, 0, 0, 0);
+    InitControl(m_lblLogos[0], CExoString("LBL_GAMELOGO"), 1, 1, 0, 0, 0);
+    InitControl(m_lblLogos[1], CExoString("LBL_MENUBG"), 1, 1, 0, 0, 0);
 
     // "More Games" only exists on a touch build, but its caption is set unconditionally below.
     if (HasTouchScreen())
@@ -1744,7 +1728,7 @@ void CSWGuiMainMenu::LoadFromLayout(CSWGuiManager* pGuiManager)
     // The PC layout's own fill (pnl_mainmenu) lies under LBL_3DVIEW, whose scene covers the whole
     // panel whenever it draws; a frame presented without that scene shows black, not the art.
     if (sLayout.m_sString != 0 && strcmp(sLayout.m_sString, "mainmenu8x6_p") == 0)
-        m_pBackground->m_params.SetFillImage(CResRef(""), 0);
+        m_pBackground->m_params.SetFillImage(CResRef(""));
 #endif
 
 #if !defined(K2_UI_TOUCH) || defined(K2_FIX_ENGINE_BUGS)
@@ -2044,12 +2028,7 @@ void CSWGuiMainMenu::PopulateModules()
     {
         sAlias.Format(const_cast<char*>("live%d"), nPkg);
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (g_pExoBase->m_pAliasList->GetAliasPath(sAlias, 0).GetLength() < 1)
-#else
-        const char* pszAliasPath = g_pExoBase->m_pAliasList->GetAliasPath(sAlias, 0).m_sString;
-        if (pszAliasPath == 0 || static_cast<int>(strlen(pszAliasPath)) < 1)
-#endif
         {
             continue;
         }

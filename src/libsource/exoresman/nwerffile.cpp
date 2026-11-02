@@ -192,7 +192,7 @@ int CERFFile::AddString(CERFString* pString)
 {
     CERFString* pNew = new CERFString();
     pNew->m_nLanguageId = pString->m_nLanguageId;
-    CExoString sText(pString->m_pString, pString->m_nLength);
+    CExoString sText = pString->GetText();
     pNew->SetText(sText);
     m_lstStrings.AddTail(pNew);
     return 1;
@@ -456,26 +456,13 @@ int CERFFile::Write(CExoString& filePath)
 {
     time_t tNow;
     CExoFile file(filePath, RESTYPE_SAV, CExoString("wb"));
-    unsigned int nStringTableSize;
     CExoLinkedListNode* pNode;
     struct tm* pTime;
     if (file.FileOpened() == 0) {
         return 0;
     }
 
-    m_header.m_nKeyCount = m_lstKeys.m_pInternal->m_nCount;
-    m_header.m_nStringCount = m_lstStrings.m_pInternal->m_nCount;
-
-    nStringTableSize = 0;
-    pNode = m_lstStrings.m_pInternal->m_pHead;
-    while (pNode != 0) {
-        nStringTableSize += static_cast<CERFString*>(m_lstStrings.GetAtPos(pNode))->m_nLength + 8;
-        m_lstStrings.GetNext(pNode);
-    }
-    m_header.m_nStringTableSize = nStringTableSize;
-    m_header.m_nStringTableOffset = ERF_HEADER_SIZE;
-    m_header.m_nKeyTableOffset = m_header.m_nStringTableOffset + nStringTableSize;
-    m_header.m_nResTableOffset = m_header.m_nKeyTableOffset + m_lstKeys.m_pInternal->m_nCount * ERF_KEY_ENTRY_SIZE;
+    RecalculateOffsets();
 
     tNow = time(0);
     pTime = localtime(&tNow);

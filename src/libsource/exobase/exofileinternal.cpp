@@ -41,7 +41,11 @@ void CExoAliasListInternal::Add(const CExoString& alias, const CExoString& path)
     sAlias = sAlias.UpperCase();
 
     const char* pszPath = sPath.CStr();
+#if KOTOR1  // K1's port tests for a '/' terminator but still appends '\\'
+    if (pszPath[sPath.GetLength() - 1] != '/')
+#else
     if (pszPath[sPath.GetLength() - 1] != '\\')
+#endif
         sPath = sPath + "\\";
 
     CExoAliasListEntry* pPrev = 0;
@@ -215,7 +219,7 @@ CExoFileInternal::CExoFileInternal(const CExoString& path, unsigned short resTyp
     std::string sTv(sPath);
     bool bCompressed = false;
     bool bTv = false;
-    if (static_cast<unsigned short>(resType - 9997) < 2) {
+    if (static_cast<unsigned int>(resType - 9997) < 2) {
         sCompressed.replace(sCompressed.size() - 2, 1, "z", 1);
         m_pFile = SDL_RWFromFile(sCompressed.c_str(), mode.CStr());
         bCompressed = true;
@@ -471,17 +475,7 @@ void CExoFileInternal::ReadAsync(void* pBuffer, unsigned int elemSize, unsigned 
     ResumeThread(hThread);
     pReq->m_lock.LeaveCriticalSection();
 #else
-    CExoFileThread* pReq = g_ExoFileThread;
-    FILE* f = m_pFile;
-    pReq->m_lock.EnterCriticalSection();
-    void* hThread = pReq->m_hThread;
-    pReq->m_bComplete = 0;
-    pReq->m_pBuffer = pBuffer;
-    pReq->m_pFile = f;
-    pReq->m_elemSize = elemSize;
-    pReq->m_count = count;
-    ResumeThread(hThread);
-    pReq->m_lock.LeaveCriticalSection();
+    g_ExoFileThread->Read(pBuffer, elemSize, count, m_pFile);
 #endif
 }
 
@@ -531,35 +525,14 @@ CExoFileThread::~CExoFileThread()
 uint64_t AsyncReadThreadProc(void* pArg)
 {
     K2_UNUSED(pArg);
-    if (g_ExoFileThread->m_bShutDown)
-        return 1;
-    for (;;)
+    while (!g_ExoFileThread->m_bShutDown)
     {
         g_ExoFileThread->m_lock.EnterCriticalSection();
-        CExoFileThread* p = g_ExoFileThread;
-        p->m_lock.EnterCriticalSection();
-        p->m_bytesRead = 0;
-        if (p->m_pFile != 0)
-        {
-#if KOTOR1  // K1 reports the element count, without the elemSize scale
-            p->m_bytesRead = static_cast<unsigned int>(SDL_RWread(p->m_pFile, p->m_pBuffer, p->m_elemSize, p->m_count));
-#else
-            p->m_bytesRead =
-                p->m_elemSize *
-                static_cast<unsigned int>(fread(p->m_pBuffer, p->m_elemSize, p->m_count, p->m_pFile));
-#endif
-        }
-        p->m_bComplete = 1;
-        p->m_pBuffer = 0;
-        p->m_pFile = 0;
-        p->m_elemSize = 0;
-        p->m_count = 0;
-        p->m_lock.LeaveCriticalSection();
+        g_ExoFileThread->AsyncRead();
         g_ExoFileThread->m_lock.LeaveCriticalSection();
         SuspendThread(g_ExoFileThread->m_hThread);
-        if (g_ExoFileThread->m_bShutDown)
-            return 1;
     }
+    return 1;
 }
 
 void CExoFileThread::AsyncRead()

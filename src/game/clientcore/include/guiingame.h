@@ -259,8 +259,7 @@ public:
     CGuiInGame();
     ~CGuiInGame();
 
-    // Kept out of line because the single caller must keep its call.
-    void ShutDown() __attribute__((noinline));
+    void ShutDown();
     void ShutDownGlobal();
     int  Initialize();
     void InitializeGlobal();

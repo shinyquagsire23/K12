@@ -104,9 +104,9 @@ public:
     unsigned int GetFieldType(CResStruct* pStruct, char* sLabel, unsigned int nIndex);
     unsigned int GetFieldSize(CResStruct* pStruct, char* sLabel, unsigned int nIndex);
 #if KOTOR1
-    void* GetDataField(CResGFFField* pField, unsigned int& nSize) __attribute__((noinline));
-    void* GetDataLayoutField(CResGFFField* pField, unsigned int& nSize) __attribute__((noinline));
-    void* GetDataLayoutList(CResGFFField* pField, unsigned int& nSize) __attribute__((noinline));
+    void* GetDataField(CResGFFField* pField, unsigned int& nSize);
+    void* GetDataLayoutField(CResGFFField* pField, unsigned int& nSize);
+    void* GetDataLayoutList(CResGFFField* pField, unsigned int& nSize);
 #else
     void* GetDataField(CResGFFField* pField, unsigned int& nSize);
     void* GetDataLayoutField(CResGFFField* pField, unsigned int& nSize);

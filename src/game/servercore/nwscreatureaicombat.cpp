@@ -268,7 +268,7 @@ void CSWSCreature::ResolveMeleeSpecialAttack(int nAttackIndex, int b, CSWSObject
         pDodge->SetInteger(5, CSWSEffectListHandler::DAMAGE_FLAG_PHYSICAL);
         ApplyEffect(pDodge, 0, 0);
 
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3 && pTarget->AsSWSCreature() != 0) {
+        if (IsAttackSuccessful(pAttack->m_nAttackResult) && pTarget->AsSWSCreature() != 0) {
             CGameEffect* pStun = new CGameEffect(1);
             pStun->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_SETSTATE);
             pStun->SetInteger(0, 4);
@@ -342,7 +342,7 @@ void CSWSCreature::ResolveMeleeSpecialAttack(int nAttackIndex, int b, CSWSObject
         } else {
             goto noJab;
         }
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3 && pTarget->AsSWSCreature() != 0) {
+        if (IsAttackSuccessful(pAttack->m_nAttackResult) && pTarget->AsSWSCreature() != 0) {
             unsigned short nDamage = g_pRules->RollDice(static_cast<unsigned char>(nRank), 6);
 
             CGameEffect* pDamage = new CGameEffect(1);
@@ -426,7 +426,7 @@ noJab:
         pDodge->SetInteger(5, CSWSEffectListHandler::DAMAGE_FLAG_PHYSICAL);
         ApplyEffect(pDodge, 0, 0);
 
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3 && pTarget->AsSWSCreature() != 0) {
+        if (IsAttackSuccessful(pAttack->m_nAttackResult) && pTarget->AsSWSCreature() != 0) {
             CGameEffect* pStun = new CGameEffect(1);
             pStun->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_SETSTATE);
             pStun->SetInteger(0, 4);
@@ -453,7 +453,7 @@ noJab:
     case FEAT_IMPROVED_POWER_ATTACK:
     case FEAT_POWER_ATTACK:
     case FEAT_MASTER_POWER_ATTACK:
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3 && pTarget->AsSWSCreature() != 0
+        if (IsAttackSuccessful(pAttack->m_nAttackResult) && pTarget->AsSWSCreature() != 0
             && pAttack->m_nAttackResult == 2) {
             CGameEffect* pPush = new CGameEffect(1);
             pPush->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_FORCEPUSHED);
@@ -494,7 +494,7 @@ noJab:
     }
     // The shield-breaker is a visual effect plus the shield strip, both hung on the attack.
     case CSWSCreatureStats::FEAT_SHIELD_BREAKER:
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3 && pTarget->AsSWSCreature() != 0) {
+        if (IsAttackSuccessful(pAttack->m_nAttackResult) && pTarget->AsSWSCreature() != 0) {
             CGameEffect* pVfx = new CGameEffect(1);
             pVfx->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_VISUALEFFECT);
             pVfx->m_durationTypeBits =
@@ -539,7 +539,7 @@ void CSWSCreature::ResolveRangedSpecialAttack(CSWSObject* pTarget, int nSubAttac
                 goto noSnipe;
             }
             // Critical hits only, and then a flat 20% chance.
-            if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3 && pTarget->AsSWSCreature() != 0
+            if (IsAttackSuccessful(pAttack->m_nAttackResult) && pTarget->AsSWSCreature() != 0
                 && pAttack->m_nAttackResult == 2 && rand_wincompatible() % 100 <= 19) {
                 CGameEffect* pKill = new CGameEffect(1);
                 pKill->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_ASSASSINATE);
@@ -577,7 +577,7 @@ noSnipe:
     case FEAT_IMPROVED_POWER_BLAST:
     case FEAT_POWER_BLAST:
     case FEAT_MASTER_POWER_BLAST:
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3 && pTarget->AsSWSCreature() != 0
+        if (IsAttackSuccessful(pAttack->m_nAttackResult) && pTarget->AsSWSCreature() != 0
             && pAttack->m_nAttackResult == 2) {
             CGameEffect* pPush = new CGameEffect(1);
             pPush->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_FORCEPUSHED);
@@ -640,7 +640,7 @@ noSnipe:
         pDodge->SetInteger(5, CSWSEffectListHandler::DAMAGE_FLAG_PHYSICAL);
         ApplyEffect(pDodge, 0, 0);
 
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3 && pTarget->AsSWSCreature() != 0) {
+        if (IsAttackSuccessful(pAttack->m_nAttackResult) && pTarget->AsSWSCreature() != 0) {
             CGameEffect* pStun = new CGameEffect(1);
             pStun->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_SETSTATE);
             pStun->SetInteger(0, 4);
@@ -865,11 +865,11 @@ void CSWSCreature::ResolveMeleeAnimations(int a1, int a2, CSWSObject* pTarget, i
     if (pTargetCreature == 0)
         return;
     unsigned char bResult = pAttack->m_nAttackResult;
-    if (static_cast<unsigned char>(bResult - 1) < 3) {
+    if (IsAttackSuccessful(bResult)) {
         pAttack->m_nReaxnAnimation = SERVER_ANIMATION_DAMAGE;
-    } else if (static_cast<unsigned char>(bResult - 8) < 3) {
+    } else if (IsAttackParried(bResult)) {
         pAttack->m_nReaxnAnimation = SERVER_ANIMATION_PARRY;
-    } else if (static_cast<unsigned char>(bResult - 4) < 3) {
+    } else if (IsAttackMiss(bResult)) {
         pAttack->m_nReaxnAnimation = SERVER_ANIMATION_DODGE;
     }
 #if KOTOR1  // K1: only an idle (state 0), non-dying target reacts.
@@ -885,28 +885,13 @@ void CSWSCreature::ResolveMeleeAnimations(int a1, int a2, CSWSObject* pTarget, i
         (pTargetCreature->m_pCombatRound->CheckActionLengthAtTime(m_objectId, nTime, 0) != 0 ||
          a5 != 0) &&
 #else
-    int nCanCounter = 1;
-    if ((pTargetCreature->m_nState == EFFECT_STATE_NONE ||
-         pTargetCreature->m_nState == EFFECT_STATE_CONFUSED ||
-         pTargetCreature->m_nState == EFFECT_STATE_DROID_CONFUSED) &&
-        (pTargetCreature->m_bInParty == 0 || pTargetCreature->GetCurrentHitPoints(0) > 0)) {
-        nCanCounter = 0;
-    }
-    if (pTargetCreature->m_nStancePosture == STANCE_POSTURE_MEDITATIVE) {
-        nCanCounter = 1;
-    }
-    m_pCombatRound->m_bTargetCannotReact = nCanCounter;
-    if ((pTargetCreature->m_nState == EFFECT_STATE_NONE ||
-         pTargetCreature->m_nState == EFFECT_STATE_CONFUSED ||
-         pTargetCreature->m_nState == EFFECT_STATE_DROID_CONFUSED) &&
-        (pTargetCreature->m_bInParty == 0 || pTargetCreature->GetCurrentHitPoints(0) >= 1) &&
-        pTargetCreature->m_nStancePosture != STANCE_POSTURE_MEDITATIVE &&
+    m_pCombatRound->m_bTargetCannotReact = pTargetCreature->IsDebilitated(1);
+    if (pTargetCreature->IsDebilitated(1) == 0 &&
         (pTargetCreature->m_pCombatRound->CheckActionLengthAtTime(m_objectId, nTime, 0) != 0 ||
          a5 != 0) &&
 #endif
         m_pCombatRound->m_bEngaged != 0) {
-        m_pCombatRound->GetAttack(nAttack)->m_nReaxnAnimLength = static_cast<short>(nTime);
-        m_pCombatRound->GetAttack(nAttack)->m_nReaxnDelay = 0;
+        SetCombatReactionTime(nAttack, nTime, 0);
         pTargetCreature->SetAnimation(pAttack->m_nReaxnAnimation);
         pTargetCreature->m_pCombatRound->DecrementRoundLength(nTime, 0);
         return;
@@ -1532,11 +1517,7 @@ int CSWSCreature::IsProjectileParryable(CSWSObject* pObject, int a, int b,
     int bParryable = 0;
     if ((pCreature->m_pStats->HasFeat(FEAT_JEDI_DEFENSE) != 0 || pCreature->m_pStats->HasFeat(FEAT_ADVANCED_JEDI_DEFENSE) != 0 ||
          pCreature->m_pStats->HasFeat(FEAT_MASTER_JEDI_DEFENSE) != 0) &&
-        (pCreature->m_nState == EFFECT_STATE_NONE ||
-         pCreature->m_nState == EFFECT_STATE_CONFUSED ||
-         pCreature->m_nState == EFFECT_STATE_DROID_CONFUSED) &&
-        (pCreature->m_bInParty == 0 || pCreature->GetCurrentHitPoints(0) >= 1) &&
-        pCreature->m_nStancePosture != STANCE_POSTURE_MEDITATIVE && pCreature->GetClientCreature() != 0 &&
+        pCreature->IsDebilitated(1) == 0 && pCreature->GetClientCreature() != 0 &&
         pCreature->IsLightsaberEquipped() != 0 && pCreature->m_bLightsaberThrowActive == 0) {
         if (c == -1) {
             if (pAttack->m_nWeaponAttackType == CSWSCombatRound::WEAPON_ATTACK_TYPE_ONHAND)
@@ -1583,11 +1564,7 @@ int CSWSCreature::IsProjectileParryable(CSWSObject* pObject, int a, int b,
         return 1;
     if (bHasDeflect == 0 && bHasRedirect == 0)
         return 0;
-    if ((pCreature->m_nState == EFFECT_STATE_NONE ||
-         pCreature->m_nState == EFFECT_STATE_CONFUSED ||
-         pCreature->m_nState == EFFECT_STATE_DROID_CONFUSED) &&
-        (pCreature->m_bInParty == 0 || pCreature->GetCurrentHitPoints(0) >= 1) &&
-        pCreature->m_nStancePosture != STANCE_POSTURE_MEDITATIVE && pCreature->m_bLightsaberThrowActive == 0) {
+    if (pCreature->IsDebilitated(1) == 0 && pCreature->m_bLightsaberThrowActive == 0) {
         CSWCCreature* pClient = pCreature->GetClientCreature();
         Vector vTarget = pClient->m_orientation;
         Vector vSelf = m_orientation;
@@ -1803,10 +1780,7 @@ void CSWSCreature::ResolveRangedMiss(CSWSObject* pObject)
         CSWSCombatAttackData* pAttack = m_pCombatRound->GetAttack(m_pCombatRound->m_currentAttack);
         Vector vMissLocation = ResolveProjectileMissLocation(pObject);
         pAttack->m_vMissLocation = vMissLocation;
-        Vector vDelta = vMissLocation - m_position;
-        // Cast through a 32-bit unsigned first: narrowing straight to the 16-bit field allows a
-        // signed conversion, since only the low 16 bits survive the store.
-        pAttack->m_nReaxnDelay = static_cast<unsigned short>(static_cast<unsigned int>(magnitude(vDelta) / 42.0f * 1000.0f));
+        pAttack->m_nReaxnDelay = static_cast<unsigned short>(CalculateProjectileTimeToTarget(pAttack->m_vMissLocation, 0));
     }
 }
 
@@ -1903,17 +1877,14 @@ void CSWSCreature::ResolveRangedHit(CSWSObject* pObject)
     if (pObject != 0) {
         CSWSCombatAttackData* pAttack = m_pCombatRound->GetAttack(m_pCombatRound->m_currentAttack);
         unsigned char nResult = pAttack->m_nAttackResult;
-        if (static_cast<unsigned char>(nResult - 1) >= 3) {
-            if (static_cast<unsigned char>(nResult - 8) < 3)
+        if (!IsAttackSuccessful(nResult)) {
+            if (IsAttackParried(nResult))
                 pAttack->m_nReaxnAnimation = SERVER_ANIMATION_PARRY;
         } else {
             pAttack->m_nReaxnAnimation = SERVER_ANIMATION_DAMAGE;
         }
         pAttack->m_vMissLocation = pObject->m_position;
-        Vector vDelta = pObject->m_position - m_position;
-        // Cast through a 32-bit unsigned first: narrowing straight to the 16-bit field allows a
-        // signed conversion, since only the low 16 bits survive the store.
-        pAttack->m_nReaxnDelay = static_cast<unsigned short>(static_cast<unsigned int>(magnitude(vDelta) / 42.0f * 1000.0f));
+        pAttack->m_nReaxnDelay = static_cast<unsigned short>(CalculateProjectileTimeToTarget(pObject->m_position, 0));
     }
 }
 
@@ -2278,17 +2249,7 @@ void CSWSCreature::ResolveRangedAnimations(CSWSObject* pTarget, int nTime, int a
         nCanCounter = 1;
     }
 #else
-    if ((pTargetCreature->m_nState == EFFECT_STATE_NONE ||
-         pTargetCreature->m_nState == EFFECT_STATE_CONFUSED ||
-         pTargetCreature->m_nState == EFFECT_STATE_DROID_CONFUSED) &&
-        (pTargetCreature->m_bInParty == 0 || pTargetCreature->GetCurrentHitPoints(0) > 0)) {
-        nCanCounter = 0;
-    } else {
-        nCanCounter = 1;
-    }
-    if (pTargetCreature->m_nStancePosture == STANCE_POSTURE_MEDITATIVE) {
-        nCanCounter = 1;
-    }
+    nCanCounter = pTargetCreature->IsDebilitated(1);
 #endif
     pCombatRound->m_bTargetCannotReact = nCanCounter;
     if (a3 == 0 && pTargetCreature->IsLightsaberEquipped() == 0 &&
@@ -2300,19 +2261,14 @@ void CSWSCreature::ResolveRangedAnimations(CSWSObject* pTarget, int nTime, int a
 #if KOTOR1
     if (pTargetCreature->m_nState == EFFECT_STATE_NONE && pTargetCreature->GetDeadTemp() == 0) {
 #else
-    if ((pTargetCreature->m_nState == EFFECT_STATE_NONE ||
-         pTargetCreature->m_nState == EFFECT_STATE_CONFUSED ||
-         pTargetCreature->m_nState == EFFECT_STATE_DROID_CONFUSED) &&
-        (pTargetCreature->m_bInParty == 0 || pTargetCreature->GetCurrentHitPoints(0) >= 1) &&
-        pTargetCreature->m_nStancePosture != STANCE_POSTURE_MEDITATIVE) {
+    if (pTargetCreature->IsDebilitated(1) == 0) {
 #endif
         if (pTarget->AsSWSCreature()->m_pCombatRound->CheckActionLengthAtTime(
                 m_objectId, nTime, 0) == 0)
             return;
         if (m_pCombatRound->m_bEngaged == 0)
             return;
-        m_pCombatRound->GetAttack(nAttack)->m_nReaxnAnimLength = static_cast<short>(nTime);
-        m_pCombatRound->GetAttack(nAttack)->m_nReaxnDelay = 0;
+        SetCombatReactionTime(nAttack, nTime, 0);
         pTargetCreature->SetAnimation(pAttack->m_nReaxnAnimation);
         pTargetCreature->m_pCombatRound->DecrementRoundLength(nTime, 0);
         return;
@@ -2456,7 +2412,7 @@ void CSWSCreature::SignalDamage(int bRanged, unsigned long long oidTarget)
         }
 
         // (6) deflection -- results 8, 9 and 10 are the deflect/reflect family.
-        if (pAttack->m_nAttackResult >= 8 && pAttack->m_nAttackResult <= 10)
+        if (IsAttackParried(pAttack->m_nAttackResult))
         {
             pData = new CSWCCMessageData();
             pData->SetObjectID(0, pAttack->m_targetObjectId);
@@ -2549,7 +2505,7 @@ void CSWSCreature::SignalMeleeDamage(unsigned long long oidTarget, int nNumAttac
         pAIMaster->AddEventDeltaTime(0, i, m_objectId, oidTarget,
                                      CServerAIMaster::EVENT_ON_MELEE_ATTACKED, pAttack);
         m_pCombatRound->GetAttack(i);
-        if (pAttack->m_nAttackResult == 0 || pAttack->m_nAttackResult > 3)
+        if (!IsAttackSuccessful(pAttack->m_nAttackResult))
         {
             CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
             if (pClient->ServerToClientObjectId(m_objectId) == pClient->GetPlayerCreatureId())
@@ -2628,14 +2584,13 @@ void CSWSCreature::SignalRangedDamage(unsigned long long oidTarget)
         CSWSCreature* pTarget =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidTarget);
         int bDeflected = 0;
-        if (pTarget != 0 && pAttack->m_nAttackResult >= 8 && pAttack->m_nAttackResult <= 10)
+        if (pTarget != 0 && IsAttackParried(pAttack->m_nAttackResult))
             bDeflected = 1;
         if (bDeflected != 0 && (pAttack->m_nAttackResult | 2) == 10)
         {
             // Deflected clean away: re-aim at a computed miss point and fly there at 42 u/s.
             Vector vMiss = pTarget->ResolveProjectileMissLocation(this);
-            unsigned int nFlight =
-                static_cast<unsigned int>(magnitude(vMiss - pTarget->m_position) / 42.0f * 1000.0f);
+            unsigned int nFlight = pTarget->CalculateProjectileTimeToTarget(vMiss, 0);
             pTarget->ResolveProjectileMissImpact(vMiss, nFlight);
             pAttack->m_vMissLocation = vMiss;
             pAttack->m_nMissedBy = nFlight;
@@ -2958,7 +2913,7 @@ void CSWSCreature::ResolveOnHitVisuals(CSWSObject* pObject)
             pAttack->m_effects.Add(pVfx);
         }
     }
-    if (pAttack->m_nAttackResult < 8 || pAttack->m_nAttackResult > 10)
+    if (!IsAttackParried(pAttack->m_nAttackResult))
         return;
     CGameEffect* pDeflect = new CGameEffect(1);
     pDeflect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_VISUALEFFECT);
@@ -2994,25 +2949,14 @@ void CSWSCreature::ResolveSneakAttack(CSWSCreature* pTarget)
             fDistance = magnitude(vDelta);
         }
         int bSneak = 0;
+#if KOTOR1  // K1: only state 0 can be caught unaware; the dying test is GetDeadTemp().
         switch (pTarget->m_nState)
         {
         case EFFECT_STATE_NONE:
-#if KOTOR1  // K1: only state 0 can be caught unaware; the dying test is GetDeadTemp().
             if (pTarget->GetDeadTemp() != 0)
-#else
-        case EFFECT_STATE_CONFUSED:
-        case EFFECT_STATE_DROID_CONFUSED:
-            if (pTarget->m_bInParty != 0 && pTarget->GetCurrentHitPoints(0) < 1)
-#endif
             {
                 bSneak = 1;
             }
-#if !KOTOR1  // K1: no meditation posture
-            else if (pTarget->m_nStancePosture == STANCE_POSTURE_MEDITATIVE)
-            {
-                bSneak = 1;
-            }
-#endif
             else
             {
                 CSWVisibilityNode* pNode = pTarget->GetVisibleListElement(m_objectId);
@@ -3029,6 +2973,23 @@ void CSWSCreature::ResolveSneakAttack(CSWSCreature* pTarget)
             bSneak = 1;
             break;
         }
+#else
+        if (pTarget->IsDebilitated(1) != 0)
+        {
+            bSneak = 1;
+        }
+        else
+        {
+            CSWVisibilityNode* pNode = pTarget->GetVisibleListElement(m_objectId);
+            if (pNode == 0 || (pNode->m_flags & VISIBILITY_SEEN) == 0)
+            {
+                if (bRanged == 1 && fDistance <= 10.0f)
+                    bSneak = 1;
+                else if (bRanged == 0)
+                    bSneak = 1;
+            }
+        }
+#endif
         if (bSneak == 1)
         {
             if (pTarget->m_pStats->GetEffectImmunity(
@@ -3489,17 +3450,10 @@ void CSWSCreature::CreateNewAttackActions(int bForce, int bHaveTarget,
                                         m_objectId, OBJECT_INVALID);
         if (oidTarget == OBJECT_INVALID ||
             g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget)->AsSWSCreature() == 0) {
-            SetLockOrientationToObject(OBJECT_INVALID, 0);
-            SetAnimation(SERVER_ANIMATION_PAUSE);
-            SetCombatMode(CREATURE_COMBAT_MODE_NONE, 1);
-            m_pCombatRound->ClearAllSpecialAttacks();
+            CancelAllCombatModes(1);
             return;
         }
-        SetLockOrientationToObject(oidTarget, 0);
-        m_attackTargetId = oidTarget;
-        SetAttemptedAttackTarget(oidTarget);
-        m_pCombatRound->UpdateAttackTargetForAllActions(oidTarget);
-        m_bPassiveAttackBehaviour = 1;
+        InitializeNewAttackTarget(oidTarget, 0);
         CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
         pClient->SetLastTarget(pClient->ServerToClientObjectId(oidTarget), 1);
     }
@@ -3571,8 +3525,7 @@ void CSWSCreature::ResolveRangedAttack(CSWSObject* pTarget, int a, int nTime, in
 #else
             ResolveRangedSpecialAttack(pTarget, nSubAttack);
 #endif
-            unsigned char nResult = pAttack->m_nAttackResult;
-            bResolved = !((static_cast<unsigned char>(nResult - 1) >= 3) && (static_cast<unsigned char>(nResult - 8) >= 3));
+            bResolved = IsAttackSuccessful(pAttack->m_nAttackResult) || IsAttackParried(pAttack->m_nAttackResult);
             if (bResolved)
                 bSpecialAnimation = 1;
             nSubAttack++;
@@ -3580,14 +3533,12 @@ void CSWSCreature::ResolveRangedAttack(CSWSObject* pTarget, int a, int nTime, in
             bResolved = 0;
         }
 
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 4) < 3)
+        if (IsAttackMiss(pAttack->m_nAttackResult))
             bResolved = ResolveRangedMissToParry(pTarget, 1, GetWeaponDischargeHand(nAnimation, i));
 
         if (bResolved) {
             ResolveRangedHit(pTarget);
-            unsigned char nResult = pAttack->m_nAttackResult;
-            bool bDamageResult = nResult == 9 || (nResult - 1U) <= 2U;
-            if (bDamageResult) {
+            if (IsAttackSuccessful(pAttack->m_nAttackResult) || pAttack->m_nAttackResult == 9) {
                 ResolveDamage(pTarget, bForceResult, nDamageFlags);
 #if !KOTOR1  // K1: no Fury
                 CSWSCombatAttackData* pDamaged =
@@ -3659,7 +3610,7 @@ void CSWSCreature::ResolveMeleeAttack(CSWSObject* pTarget, int a, int nTime, int
         int nSpecialResult = 0;
         ResolveMeleeSpecialAttack(i, 0, pTarget, 0, nSpecialResult);
 
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3) {
+        if (IsAttackSuccessful(pAttack->m_nAttackResult)) {
             CSWSCreature* pVictim = pTarget->AsSWSCreature();
             if (pVictim != 0 && nSpecialResult == 0
                 && (pAttack->m_nWeaponAttackType == CSWSCombatRound::WEAPON_ATTACK_TYPE_UNARMED
@@ -3701,7 +3652,7 @@ void CSWSCreature::ResolveMeleeAttack(CSWSObject* pTarget, int a, int nTime, int
     noPush:
 #endif
 
-        if (static_cast<unsigned char>(pAttack->m_nAttackResult - 1) < 3) {
+        if (IsAttackSuccessful(pAttack->m_nAttackResult)) {
             ResolveDamage(pTarget, bForceResult, nDamageFlags);
 #if !KOTOR1
             CSWSCombatAttackData* pDamaged =
@@ -4031,8 +3982,8 @@ int CSWSCreature::AIActionCombat(CSWSObjectActionNode* pNode)
                     if (nForceHostile <= 0 && pAction->m_oidSpellTarget != m_objectId)
                         pAction->m_oidSpellTarget = OBJECT_INVALID;
 #else
-                    CSWSpell* pSpell =
-                        g_pRules->GetSpell(ConvertGrenadeSpellID(nSpellId));
+                    int nConvertedId = ConvertGrenadeSpellID(nSpellId);
+                    CSWSpell* pSpell = g_pRules->GetSpell(nConvertedId);
                     if (pSpell != 0 && pSpell->m_bHostileActivity != 0)
                         SetActivity(ACTIVITY_STEALTH, 0, 0);
                     // The spell pointer is re-dereferenced here without the null guard the

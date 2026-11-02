@@ -267,8 +267,7 @@ void CSWCAmbientSound::PlayBattleMusic(int nState)
                 m_pMusicSource->FadeAndStop(800);
                 m_bMusicPlaying = 0;
                 m_nMusicDelayCounter = 10;
-                g_pAppManager->m_pClientExoApp->GetPauseTimer()->GetWorldTime(
-                    &m_nLastUpdateDay, &m_nLastUpdateTime);
+                ResetLastUpdate();
             }
             else
             {
@@ -690,8 +689,7 @@ void CSWCAmbientSound::Update()
             if (static_cast<unsigned int>(m_nMusicDelayCounter) > nDelta)
             {
                 m_nMusicDelayCounter -= nDelta;
-                g_pAppManager->m_pClientExoApp->GetPauseTimer()->GetWorldTime(
-                    &m_nLastUpdateDay, &m_nLastUpdateTime);
+                ResetLastUpdate();
             }
             else
             {
@@ -713,8 +711,7 @@ void CSWCAmbientSound::Update()
             else
                 m_nMusicDelayCounter = m_nMusicDelay > 1 ? m_nMusicDelay : 1;
 
-            g_pAppManager->m_pClientExoApp->GetPauseTimer()->GetWorldTime(
-                &m_nLastUpdateDay, &m_nLastUpdateTime);
+            ResetLastUpdate();
         }
     }
 
@@ -836,7 +833,6 @@ const char* SetMusicVolume(char* pszArgs)
     if (nVolume < 0 || nVolume > CExoSound::CMAX_VOLUME)
         return "Failed";
 
-    pAmbientSound->m_pMusicSource->SetVolume(
-        CExoSound::CMAX_VOLUME > static_cast<unsigned char>(nVolume) ? static_cast<unsigned char>(nVolume) : CExoSound::CMAX_VOLUME);
+    pAmbientSound->SetMusicVolume(static_cast<unsigned char>(nVolume));
     return "Success";
 }

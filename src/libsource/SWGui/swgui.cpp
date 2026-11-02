@@ -286,7 +286,7 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef)
             else
             {
                 m_pBackground->m_params.SetFillImage(
-                    pResGFF->ReadFieldCResRef(&resStruct, const_cast<char*>("BACKGROUND"), bSuccess, CResRef("")), 0);
+                    pResGFF->ReadFieldCResRef(&resStruct, const_cast<char*>("BACKGROUND"), bSuccess, CResRef("")));
             }
 
             float fAlpha = pResGFF->ReadFieldFLOAT(&resStruct, const_cast<char*>("ALPHA"), bSuccess, 1.0f);
@@ -331,7 +331,7 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef, int bScaleOrigin, i
         else
         {
             m_pBackground->m_params.SetFillImage(
-                pResGFF->ReadFieldCResRef(&resStruct, const_cast<char*>("BACKGROUND"), bSuccess, CResRef("")), 0);
+                pResGFF->ReadFieldCResRef(&resStruct, const_cast<char*>("BACKGROUND"), bSuccess, CResRef("")));
         }
 
         float fAlpha = pResGFF->ReadFieldFLOAT(&resStruct, const_cast<char*>("ALPHA"), bSuccess, 1.0f);
@@ -893,10 +893,7 @@ void CSWGuiPanel::AddExtraBorderPanel(CSWGuiManager* pGuiManager, CExoString nam
         m_pNextInChain = pPanel;
     }
 
-    {
-        CResRef resRef(name);
-        pPanel->m_pBackground->m_params.SetFillImage(resRef, 0);
-    }
+    pPanel->SetBackground(CResRef(name));
 #ifndef K2_UI_TOUCH
     pPanel->m_pBackground->m_params.m_color = BackdropColor(name);
 #endif
@@ -971,44 +968,20 @@ void CSWGuiPanel::GetLocalMouseCoords(int* pX, int* pY)
     *pX = pGuiMan->m_currentMousePos.x;
     *pY = pGuiMan->m_currentMousePos.y;
 
-    int x = m_extent.x;
-    int y = m_extent.y;
+    CSWGuiExtent extent = m_extent;
 
-#if KOTOR1  // K1's centre bit is 3; its anchor bits sit one higher
     if (!(m_stateFlags & 1))
     {
         *pX -= (g_nScreenWidth - 640) / 2;
         *pY -= (g_nScreenHeight - 480) / 2;
-    }
-    else if (m_stateFlags & 8)
-    {
-        x += (m_pGuiManager->m_nScreenWidth - m_extent.w) / 2;
-        y += (m_pGuiManager->m_nScreenHeight - m_extent.h) / 2;
     }
     else
     {
-        if (m_stateFlags & PANEL_STATE_CENTER_X)
-            x += (m_pGuiManager->m_nScreenWidth - 640) / 2;
-        if (m_stateFlags & PANEL_STATE_CENTER_Y)
-            y += (m_pGuiManager->m_nScreenHeight - 480) / 2;
+        GetExtentAccountingForPanelOffset(&extent);
     }
-#else
-    if (!(m_stateFlags & 1))
-    {
-        *pX -= (g_nScreenWidth - 640) / 2;
-        *pY -= (g_nScreenHeight - 480) / 2;
-    }
-    else if (!(m_stateFlags & 8))
-    {
-        if (m_stateFlags & PANEL_STATE_CENTER_X)
-            x += (m_pGuiManager->m_nScreenWidth - 640) / 2;
-        if (m_stateFlags & PANEL_STATE_CENTER_Y)
-            y += (m_pGuiManager->m_nScreenHeight - 480) / 2;
-    }
-#endif
 
-    *pX -= x;
-    *pY -= y;
+    *pX -= extent.x;
+    *pY -= extent.y;
 }
 
 // Removes the control from the panel's list and clears its container. The control is located
@@ -1216,10 +1189,9 @@ void CSWGuiManager::SetTemporarilyDisableToolTip(int bDisable)
                 pPending = m_pMouseOverControl;
         }
     }
-    else if (!m_bToolTipDisabled &&
-             g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bEnableToolTips)
+    else
     {
-        m_fToolTipTimer = 0.0f;
+        ResetToolTipTimer();
     }
 
     m_pPendingToolTipControl = pPending;
@@ -1318,8 +1290,7 @@ CSWGuiPanel* CSWGuiManager::PopModalPanel()
         return 0;
 
     CSWGuiPanel* pPanel = m_modalPanels.m_pArray[m_modalPanels.m_count - 1];
-    // inlined CExoArrayList<CSWGuiPanel*>::DelIndex(m_count - 1)
-    m_modalPanels.m_count--;
+    m_modalPanels.DelIndex(m_modalPanels.m_count - 1);
 
     DetermineNeedToDraw();
 
@@ -1458,9 +1429,7 @@ int CSWGuiManager::HandleZMouse(int zDelta)
 
         if (m_bToolTipDisabled == 1)
         {
-            ResetToolTipTimer();
-            m_pPendingToolTipControl = 0;
-            m_bToolTipDisabled = 0;
+            SetTemporarilyDisableToolTip(0);
         }
 
         pControl->AsListBox()->HandleMouseMove();
@@ -1548,9 +1517,7 @@ void CSWGuiManager::HandleMouseMove(int x, int y)
     {
         if (m_nMouseStateFlags & 8)
             RemoveToolTip();
-        ResetToolTipTimer();
-        m_pPendingToolTipControl = 0;
-        m_bToolTipDisabled = 0;
+        SetTemporarilyDisableToolTip(0);
     }
 
     if (!pControl)
@@ -1574,9 +1541,7 @@ void CSWGuiManager::HandleMouseMove(int x, int y)
             m_pMouseOverControl = 0;
         }
 
-        ResetToolTipTimer();
-        m_pPendingToolTipControl = 0;
-        m_bToolTipDisabled = 0;
+        SetTemporarilyDisableToolTip(0);
         return;
     }
 
@@ -1586,9 +1551,7 @@ void CSWGuiManager::HandleMouseMove(int x, int y)
         !pControl->AsListBox() &&
         pControl != m_pPendingToolTipControl)
     {
-        ResetToolTipTimer();
-        m_pPendingToolTipControl = 0;
-        m_bToolTipDisabled = 0;
+        SetTemporarilyDisableToolTip(0);
     }
 
     CSWGuiControl* pOld = m_pMouseOverControl;
@@ -1695,9 +1658,7 @@ void CSWGuiManager::HandleMouseMove(int x, int y)
         if (m_bToolTipDisabled == 1 &&
             pListBox->HitCheckMouseLocal(0) != m_pPendingToolTipControl)
         {
-            ResetToolTipTimer();
-            m_pPendingToolTipControl = 0;
-            m_bToolTipDisabled = 0;
+            SetTemporarilyDisableToolTip(0);
         }
 
         pListBox->HandleMouseMove();
@@ -1769,7 +1730,7 @@ void CSWGuiManager::DrawPCBG(float fAlpha)
                                    1.0f);
             }
         }
-        m_pBackgroundLabel->m_border.m_params.SetFillImage(m_fullScreenBG, 0);
+        m_pBackgroundLabel->m_border.m_params.SetFillImage(m_fullScreenBG);
         m_pBackgroundLabel->m_border.m_params.m_flags.nFillStyle = 2;
 #ifndef K2_UI_TOUCH
         m_pBackgroundLabel->m_border.m_params.m_color = BackdropColor(m_fullScreenBG);
@@ -1799,7 +1760,7 @@ void CSWGuiManager::DrawPCBG(float fAlpha)
                                                   0, 0, 0, 1.0f, Vector(1.0f, 1.0f, 1.0f), 0, 0),
                                1.0f);
         }
-        m_pBackgroundLabel->m_border.m_params.SetFillImage(m_fullScreenBG, 0);
+        m_pBackgroundLabel->m_border.m_params.SetFillImage(m_fullScreenBG);
         m_pBackgroundLabel->m_border.m_params.m_flags.nFillStyle = 2;
 #ifndef K2_UI_TOUCH
         m_pBackgroundLabel->m_border.m_params.m_color = BackdropColor(m_fullScreenBG);
@@ -1880,13 +1841,7 @@ void CSWGuiManager::ShowSoftwareMouse()
 
 void CSWGuiManager::HideSoftwareMouse()
 {
-    if (m_pSoftwareMouse)
-    {
-        delete m_pSoftwareMouse;
-        m_pSoftwareMouse = 0;
-    }
-    if (m_pMouseCursorModel)
-        m_pMouseCursorModel = 0;
+    DeactivateSoftwareMouse();
 }
 
 void CSWGuiManager::DeactivateSoftwareMouse()
@@ -2862,18 +2817,7 @@ void CSWGuiManager::SetSize(int nWidth, int nHeight)
 #endif
 #endif
 
-    for (int i = 0; i < m_panels.m_count; i++)
-    {
-        CSWGuiPanel* pPanel = m_panels.m_pArray[i];
-        if (pPanel->m_bAllowFontReset)
-            pPanel->ResetFont();
-    }
-
-    if (m_pToolTipPanel)
-        m_pToolTipPanel->ResetFont();
-
-    if (g_pAppManager->m_pClientExoApp->GetInGameGui())
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->ResetInterfaceFont();
+    UpdateAllFonts();
 
     if (m_pBackgroundLabel)
     {
@@ -3316,34 +3260,8 @@ CSWGuiControl* CSWGuiPanel::HitCheckMouse(int x, int y)
 {
     CSWGuiExtent extent = m_extent;
 
-#if KOTOR1  // K1's centre bit is 3; its anchor bits sit one higher
     if (m_stateFlags & 1)
-    {
-        if (m_stateFlags & 8)
-        {
-            extent.x += (m_pGuiManager->m_nScreenWidth - extent.w) / 2;
-            extent.y += (m_pGuiManager->m_nScreenHeight - extent.h) / 2;
-        }
-        else
-        {
-            if (m_stateFlags & PANEL_STATE_CENTER_X)
-                extent.x += (m_pGuiManager->m_nScreenWidth - 640) / 2;
-            if (m_stateFlags & PANEL_STATE_CENTER_Y)
-                extent.y += (m_pGuiManager->m_nScreenHeight - 480) / 2;
-        }
-    }
-#else
-    if (m_stateFlags & 1)
-    {
-        if (!(m_stateFlags & 8))
-        {
-            if (m_stateFlags & PANEL_STATE_CENTER_X)
-                extent.x += (m_pGuiManager->m_nScreenWidth - 640) / 2;
-            if (m_stateFlags & PANEL_STATE_CENTER_Y)
-                extent.y += (m_pGuiManager->m_nScreenHeight - 480) / 2;
-        }
-    }
-#endif
+        GetExtentAccountingForPanelOffset(&extent);
     else
     {
         x -= (g_nScreenWidth - 640) / 2;
@@ -3431,24 +3349,13 @@ void CSWGuiPanel::Draw(float fDelta)
             return;
     }
 
-    int x = m_extent.x;
-    int y = m_extent.y;
-    int w = m_extent.w;
-    int h = m_extent.h;
+    CSWGuiExtent extent = m_extent;
     int nControls = m_controls.m_count;
-
-    // The same centring correction as GetExtentAccountingForPanelOffset.
-    if (!(m_stateFlags & 8))
-    {
-        if (m_stateFlags & PANEL_STATE_CENTER_X)
-            x += (m_pGuiManager->m_nScreenWidth - 640) / 2;
-        if (m_stateFlags & PANEL_STATE_CENTER_Y)
-            y += (m_pGuiManager->m_nScreenHeight - 480) / 2;
-    }
+    GetExtentAccountingForPanelOffset(&extent);
 
     AurGUIStartLayer();
 
-    if (AurGUISetupViewport(x, y, w, h, m_vColor, false, m_fAlpha))
+    if (AurGUISetupViewport(extent.x, extent.y, extent.w, extent.h, m_vColor, false, m_fAlpha))
     {
         m_pBackground->Draw(fDelta);
 

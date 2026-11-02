@@ -726,14 +726,12 @@ int CSWCModule::LoadModule() {
         sHak = "HAK:";
         sHak = sHak + CExoString(m_cModuleHak.GetResRef(), 16);
         if (g_pExoResMan->AddEncapsulatedResourceFile(sHak, 2) == 0) {
-            if (m_pCamera != 0) {
+            if (m_pCamera != 0)
                 delete m_pCamera;
-                m_pCamera = 0;
-            }
-            if (m_pArea != 0) {
+            m_pCamera = 0;
+            if (m_pArea != 0)
                 delete m_pArea;
-                m_pArea = 0;
-            }
+            m_pArea = 0;
             return 0;
         }
     }
@@ -757,15 +755,13 @@ int CSWCModule::LoadModule() {
     return 1;
 
 cleanup_all:
-    if (m_pCamera != 0) {
+    if (m_pCamera != 0)
         delete m_pCamera;
-        m_pCamera = 0;
-    }
+    m_pCamera = 0;
 cleanup_area:
-    if (m_pArea != 0) {
+    if (m_pArea != 0)
         delete m_pArea;
-        m_pArea = 0;
-    }
+    m_pArea = 0;
     return 0;
 }
 
@@ -1919,7 +1915,7 @@ last_camera_mode_check:
         UpdateCameraModeChaseCam();
         break;
     case CAMERA_MODE_TOP_DOWN:
-        UpdateCameraModeNormal();
+        UpdateCameraModeBG();
         break;
     case CAMERA_MODE_STIFF_CHASE_CAMERA:
         UpdateCameraModeEQ(fDeltaTime);
@@ -2104,10 +2100,7 @@ int CSWCModule::RestoreCamera() {
         }
     }
 
-    if (m_pAnimatedCameraModel) {
-        delete m_pAnimatedCameraModel;
-        m_pAnimatedCameraModel = 0;
-    }
+    UnloadAnimatedCamera();
 
     g_pAppManager->m_pClientExoApp->GetClientOptions()->SetCameraMode(static_cast<unsigned char>(m_nCameraMode));
     return 1;

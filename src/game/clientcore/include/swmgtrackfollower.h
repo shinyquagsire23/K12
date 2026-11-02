@@ -102,6 +102,8 @@ struct TrackFollowerSound {
     int volume;
     int frequency;
     int frequencyIsRandom;
+
+    TrackFollowerSound() : volume(0), frequency(0), frequencyIsRandom(0) {}
 };
 
 // A scripted track-following object: a model list, hit-point and invincibility state, and a

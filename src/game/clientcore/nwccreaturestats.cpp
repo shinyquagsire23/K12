@@ -231,32 +231,16 @@ int CSWCCreatureStats::GetArmorClass(int nType)
     return m_nArmorClass;
 #else
     signed char nBonus = 0;
-    if (nType == 1 && m_nNumClasses != 0) {
-        uint64_t i = 0;
-        do {
-            K2_ASSUME(i < 2);   // m_nNumClasses is at most 2, the class slots (server and GFF clamp it)
-            uint64_t nNumKnown = static_cast<unsigned short>(m_classes[i].m_spellLevels[0].m_count);
-            if (nNumKnown != 0) {
-                unsigned int* pKnown = m_classes[i].m_spellLevels[0].m_pArray;
-                do {
-                    if (*pKnown == FORCE_POWER_BATTLE_PRECOGNITION) {
-                        CSWSCreature* pServer = m_pCreature->GetServerCreature();
-                        if (pServer != 0) {
-                            CSWItem* pItem = pServer->m_pInventory->GetItemInSlot(CSWInventory::SLOT_BODY);
-                            CSWBaseItem* pBase = (pItem != 0) ? pItem->GetBaseItem() : 0;
-                            if (pItem == 0 || (pBase != 0 && pBase->m_nBaseAC == 0)) {
-                                nBonus = (GetWISMod() < 0) ? 0 : GetWISMod();
-                            }
-                        }
-                        goto done;
-                    }
-                    pKnown++;
-                } while (--nNumKnown != 0);
+    if (nType == 1 && HasSpell(0, FORCE_POWER_BATTLE_PRECOGNITION)) {
+        CSWSCreature* pServer = m_pCreature->GetServerCreature();
+        if (pServer != 0) {
+            CSWItem* pItem = pServer->m_pInventory->GetItemInSlot(CSWInventory::SLOT_BODY);
+            CSWBaseItem* pBase = (pItem != 0) ? pItem->GetBaseItem() : 0;
+            if (pItem == 0 || (pBase != 0 && pBase->m_nBaseAC == 0)) {
+                nBonus = (GetWISMod() < 0) ? 0 : GetWISMod();
             }
-            i++;
-        } while (i != m_nNumClasses);
+        }
     }
-done:
     return m_nArmorClass + static_cast<unsigned char>(nBonus);
 #endif
 }
@@ -296,7 +280,7 @@ unsigned char CSWCCreatureStats::GetLevel()
             }
 
             unsigned char nMult = static_cast<signed char>(nPCLevel) < 2 ? 1 : nPCLevel;
-            nLevel = nLevel + static_cast<int>(fLevelMult * static_cast<float>(nMult)) - 1;
+            nLevel += static_cast<int>(fLevelMult * static_cast<float>(nMult)) - 1;
             if (nLevel < 0)
                 nLevel = 1;
         }
@@ -414,7 +398,7 @@ int CSWCCreatureStats::GetFeatRemainingUses(unsigned short nFeat)
 {
     for (int64_t i = 0; i < m_lstFeatUses.m_count; i++)
         if (m_lstFeatUses.m_pArray[i]->m_nFeat == nFeat)
-            return m_lstFeatUses.m_pArray[i]->m_nRemainingUses;
+            return m_lstFeatUses.m_pArray[i]->m_nUses;
     if (FeatAcquired(nFeat))
         return 100;
     return 0;
@@ -424,13 +408,13 @@ void CSWCCreatureStats::SetFeatRemainingUses(unsigned short nFeat, unsigned char
 {
     for (int64_t i = 0; i < m_lstFeatUses.m_count; i++) {
         if (m_lstFeatUses.m_pArray[i]->m_nFeat == nFeat) {
-            m_lstFeatUses.m_pArray[i]->m_nRemainingUses = nUses;
+            m_lstFeatUses.m_pArray[i]->m_nUses = nUses;
             return;
         }
     }
-    CSWCCreatureStats_FeatUse* pFeatUse = new CSWCCreatureStats_FeatUse;
+    CFeatUseListEntry* pFeatUse = new CFeatUseListEntry;
     pFeatUse->m_nFeat = nFeat;
-    pFeatUse->m_nRemainingUses = nUses;
+    pFeatUse->m_nUses = nUses;
 
     m_lstFeatUses.Add(pFeatUse);
 }
@@ -449,29 +433,9 @@ int CSWCCreatureStats::GetCanUseSkill(unsigned short nSkill)
     CSWSkill* paSkills = g_pRules->m_paSkills;
 #if !KOTOR1  // K1 has no power-based Stealth unlock
     if (nSkill == SKILL_STEALTH) {
-        if (m_nNumClasses != 0) {
-            for (int64_t i = 0; i < m_nNumClasses; i++) {
-                unsigned int* pKnown = m_classes[i].m_spellLevels[0].m_pArray;
-                for (int64_t n = static_cast<unsigned short>(m_classes[i].m_spellLevels[0].m_count); n != 0; n--)
-                    if (*pKnown++ == FORCE_POWER_FORCE_CAMOUFLAGE)
-                        return 1;
-            }
-            for (int64_t i = 0; i < m_nNumClasses; i++) {
-                unsigned int* pKnown = m_classes[i].m_spellLevels[0].m_pArray;
-                for (int64_t n = static_cast<unsigned short>(m_classes[i].m_spellLevels[0].m_count); n != 0; n--)
-                    if (*pKnown++ == FORCE_POWER_IMPROVED_FORCE_CAMOUFLAGE)
-                        return 1;
-            }
-            for (int64_t i = 0; i < m_nNumClasses; i++) {
-                unsigned int* pKnown = m_classes[i].m_spellLevels[0].m_pArray;
-                for (int64_t n = static_cast<unsigned short>(m_classes[i].m_spellLevels[0].m_count); n != 0; n--)
-                    if (*pKnown++ == FORCE_POWER_MASTER_FORCE_CAMOUFLAGE)
-                        return 1;
-            }
-        }
-        for (int64_t i = 0; i < m_lstFeats.m_count; i++)
-            if (m_lstFeats.m_pArray[i] == FEAT_PERSONAL_CLOAKING_SHIELD)
-                return 1;
+        if (HasSpell(0, FORCE_POWER_FORCE_CAMOUFLAGE) || HasSpell(0, FORCE_POWER_IMPROVED_FORCE_CAMOUFLAGE)
+            || HasSpell(0, FORCE_POWER_MASTER_FORCE_CAMOUFLAGE) || HasFeat(FEAT_PERSONAL_CLOAKING_SHIELD))
+            return 1;
     }
 #endif
     if ((paSkills[nSkill].m_flags & 2) == 0)
@@ -694,20 +658,16 @@ CResRef CSWCCreatureStats::GetPortrait(int nType)
     C2DA* pPortraits = g_pRules->m_p2DArrays->m_pPortrait;
     if (pPortraits != 0 && nType != 0) {
         int bFound = 0;
-        short nAlignment = m_alignmentGoodEvil;
         sVariant = "";
+        short nAlignment = m_alignmentGoodEvil;
         if (nAlignment <= 10) {
-            CExoString sColumn("BaseResRefVVVE");
-            bFound = pPortraits->GetCExoStringEntry(m_portraitId, sColumn, &sVariant);
+            bFound = pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVVVE"), &sVariant);
         } else if (nAlignment <= 20) {
-            CExoString sColumn("BaseResRefVVE");
-            bFound = pPortraits->GetCExoStringEntry(m_portraitId, sColumn, &sVariant);
+            bFound = pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVVE"), &sVariant);
         } else if (nAlignment <= 30) {
-            CExoString sColumn("BaseResRefVE");
-            bFound = pPortraits->GetCExoStringEntry(m_portraitId, sColumn, &sVariant);
+            bFound = pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefVE"), &sVariant);
         } else if (nAlignment <= 40) {
-            CExoString sColumn("BaseResRefE");
-            bFound = pPortraits->GetCExoStringEntry(m_portraitId, sColumn, &sVariant);
+            bFound = pPortraits->GetCExoStringEntry(m_portraitId, CExoString("BaseResRefE"), &sVariant);
         }
         if (bFound)
             return sVariant;
@@ -826,19 +786,10 @@ void CSWCCreatureStats::InitializeCombatInformation()
 
     pInfo->m_nNumOnHandAttacks = static_cast<unsigned char>(CalculateNumAttacks());
 
-    signed char nMod = CalcStatModifier(m_abScores[0]);
-    pInfo->m_nAttackModOnHand = nMod;
-    pInfo->m_nStrDamageModOnHand = nMod;
-
-    int nSizeCategory;
-    g_pRules->m_p2DArrays->m_pAppearance->GetINTEntry(
-        g_pRules->m_paRaces[m_nRace].m_nAppearance,
-        CTwoDimArrays::COL2DA_APPEARANCETABLE_SIZECATEGORY, &nSizeCategory);
-    pInfo->m_nDefaultDamageDie = 0;
-    g_pRules->m_p2DArrays->m_pAppearance->GetINTEntry(
-        g_pRules->m_paRaces[m_nRace].m_nAppearance,
-        CTwoDimArrays::COL2DA_APPEARANCETABLE_SIZECATEGORY, &nSizeCategory);
-    pInfo->m_nDefaultDamageDiceCount = 0;
+    pInfo->m_nAttackModOnHand = static_cast<signed char>(CalculateAttackModifier());
+    pInfo->m_nStrDamageModOnHand = static_cast<signed char>(CalculateDamageModifier());
+    pInfo->m_nDefaultDamageDie = static_cast<unsigned char>(CalculateUnarmedDamageDice());
+    pInfo->m_nDefaultDamageDiceCount = static_cast<unsigned char>(CalculateUnarmedDamageDie());
     pInfo->m_nCritRangeOnHand = 1;
 }
 
@@ -1352,16 +1303,8 @@ signed char CSWCCreatureStats::GetSkillModifier(unsigned short nSkill)
 int CSWCCreatureStats::HasSpell(unsigned char nSpellLevel, unsigned int nSpellId)
 {
     for (int i = 0; i < m_nNumClasses; i++) {
-        // The known-spell count is effectively 16-bit, so the counter is compared zero-extended.
-        int64_t nNum = static_cast<unsigned short>(m_classes[i].m_spellLevels[nSpellLevel].m_count);
-        if (nNum != 0) {
-            const unsigned int* pSpells = m_classes[i].m_spellLevels[nSpellLevel].m_pArray;
-            do {
-                if (static_cast<unsigned int>(*pSpells) == nSpellId)
-                    return 1;
-                pSpells++;
-            } while (--nNum != 0);
-        }
+        if (m_classes[i].HasSpell(nSpellLevel, nSpellId))
+            return 1;
     }
     return 0;
 }
@@ -1427,36 +1370,13 @@ void CSWCCreatureStats::RemoveKnownSpell(unsigned char nClassPos, unsigned int n
     m_classes[nClassPos].RemoveKnownSpell(0, nSpellId);
 }
 
-// inlined CExoArrayList<unsigned int>::Add(nValue)
-static inline void AppendKnownSpell(CExoArrayList<unsigned int>& lvl, unsigned int nValue)
-{
-    int idx = lvl.m_count;
-    if (lvl.m_count == lvl.m_capacity) {
-        int newcap = lvl.m_count != 0 ? lvl.m_count * 2 : 16;
-        unsigned int* pOld = lvl.m_pArray;
-        lvl.m_capacity = newcap;
-        lvl.m_pArray = new unsigned int[newcap];
-        for (int64_t i = 0; i < lvl.m_count; i++)
-            lvl.m_pArray[i] = pOld[i];
-        delete[] pOld;
-        idx = lvl.m_count;
-    }
-    unsigned int* pSlot = &lvl.m_pArray[idx];
-    lvl.m_count = idx + 1;
-    *pSlot = nValue;
-}
-
 void CSWCCreatureStats::AddKnownSpell(unsigned char nClassPos, unsigned int nSpellId)
 {
     if (nClassPos > 1)
         return;
     if (g_pRules->GetSpell(nSpellId) == 0)
         return;
-    // inlined CSWCCreatureStats_ClassInfo::AddKnownSpell(0, nSpellId)
-    CExoArrayList<unsigned int>& lvl = m_classes[nClassPos].m_spellLevels[0];
-    if (lvl.IndexOf(nSpellId) != -1)
-        return;
-    AppendKnownSpell(lvl, nSpellId);
+    m_classes[nClassPos].AddKnownSpell(0, nSpellId);
 }
 
 CSWCStats_SpellLikeAbility::CSWCStats_SpellLikeAbility()
@@ -1624,73 +1544,15 @@ char CSWCLevelUpStats::GetBaseAttackBonus()
     return nBonus;
 }
 
-__attribute__((noinline))
 int CSWCLevelUpStats::HasFeatPrereq(CSWFeat* pFeat, CExoArrayList<unsigned short>* pFeats)
 {
-    unsigned short* p;
-    int n;
-    int nCount;
-    int nBonusCount;
-
     unsigned short nPrereq1 = pFeat->m_nPrereqFeat1;
-    if (nPrereq1 != 0xffff) {
-        nCount = 0;
-        p = m_lstFeats.m_pArray;
-        n = m_lstFeats.m_count;
-        for (; n > 0; n--, p++)
-            if (*p == nPrereq1)
-                nCount++;
-        if (nCount == 0) {
-            nBonusCount = 0;
-            p = m_lstBonusFeats.m_pArray;
-            n = m_lstBonusFeats.m_count;
-            for (; n > 0; n--, p++)
-                if (*p == nPrereq1)
-                    nBonusCount++;
-            if (nBonusCount == 0) {
-                if (!pFeats)
-                    return 0;
-                if (pFeats->m_count < 1)
-                    return 0;
-                unsigned short i = 0;
-                while (pFeats->m_pArray[i] != nPrereq1) {
-                    i++;
-                    if (static_cast<int>(i) >= pFeats->m_count)
-                        return 0;
-                }
-            }
-        }
-    }
+    if (nPrereq1 != 0xffff && !FeatAcquired(nPrereq1, pFeats))
+        return 0;
 
     unsigned short nPrereq2 = pFeat->m_nPrereqFeat2;
-    if (nPrereq2 != 0xffff) {
-        nCount = 0;
-        p = m_lstFeats.m_pArray;
-        n = m_lstFeats.m_count;
-        for (; n > 0; n--, p++)
-            if (*p == nPrereq2)
-                nCount++;
-        if (nCount == 0) {
-            nBonusCount = 0;
-            p = m_lstBonusFeats.m_pArray;
-            n = m_lstBonusFeats.m_count;
-            for (; n > 0; n--, p++)
-                if (*p == nPrereq2)
-                    nBonusCount++;
-            if (nBonusCount == 0) {
-                if (!pFeats)
-                    return 0;
-                if (pFeats->m_count < 1)
-                    return 0;
-                unsigned short i = 0;
-                while (pFeats->m_pArray[i] != nPrereq2) {
-                    i++;
-                    if (static_cast<int>(i) >= pFeats->m_count)
-                        return 0;
-                }
-            }
-        }
-    }
+    if (nPrereq2 != 0xffff && !FeatAcquired(nPrereq2, pFeats))
+        return 0;
 
     bool bAnyOrReq = false;
     bool bMatched = false;
@@ -1699,40 +1561,9 @@ int CSWCLevelUpStats::HasFeatPrereq(CSWFeat* pFeat, CExoArrayList<unsigned short
         if (nOrReq == 0xffff)
             continue;
         bAnyOrReq = true;
-
-        nCount = 0;
-        p = m_lstFeats.m_pArray;
-        n = m_lstFeats.m_count;
-        for (; n > 0; n--, p++)
-            if (*p == nOrReq)
-                nCount++;
-        if (nCount != 0) {
+        if (FeatAcquired(nOrReq, pFeats)) {
             bMatched = true;
             break;
-        }
-
-        nBonusCount = 0;
-        p = m_lstBonusFeats.m_pArray;
-        n = m_lstBonusFeats.m_count;
-        for (; n > 0; n--, p++)
-            if (*p == nOrReq)
-                nBonusCount++;
-        if (nBonusCount != 0) {
-            bMatched = true;
-            break;
-        }
-
-        if (pFeats) {
-            bool bFoundInList = false;
-            for (int i = 0; i < pFeats->m_count; i++)
-                if (pFeats->m_pArray[i] == nOrReq) {
-                    bFoundInList = true;
-                    break;
-                }
-            if (bFoundInList) {
-                bMatched = true;
-                break;
-            }
         }
     }
     return !bAnyOrReq || bMatched;
@@ -1997,12 +1828,8 @@ int CSWCLevelUpStats::CanChooseSpell(unsigned int nSpell, unsigned char nLeft, C
     if (nLeft == 0 || nSpellLevel == CSWSpell::SPELL_LEVEL_NONE)
         return false;
 
-    for (int i = 0; i != m_nNumClasses; i++) {
-        unsigned short nCount = static_cast<unsigned short>(m_classes[i].m_spellLevels[0].m_count);
-        for (int j = 0; j < nCount; j++)
-            if (m_classes[i].m_spellLevels[0].m_pArray[j] == nSpell)
-                return false;
-    }
+    if (HasSpell(0, nSpell))
+        return false;
     for (unsigned short i = 0; i < pChosen->m_count; i++)
         if (static_cast<unsigned int>(pChosen->m_pArray[i]) == nSpell)
             return false;
@@ -2017,27 +1844,15 @@ int CSWCLevelUpStats::HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned in
 {
     for (int k = 0; pSpell->m_anPrereq2[k] != -1; k++) {
         int nId = pSpell->m_anPrereq2[k];
-        for (int i = 0; i != m_nNumClasses; i++) {
-            unsigned short nCount = static_cast<unsigned short>(m_classes[i].m_spellLevels[0].m_count);
-            for (int j = 0; j < nCount; j++)
-                if (m_classes[i].m_spellLevels[0].m_pArray[j] == nId)
-                    goto next2;
-        }
-        if (pChosen->IndexOf(static_cast<unsigned int>(nId)) == -1)
+        if (!HasSpell(0, static_cast<unsigned int>(nId))
+            && pChosen->IndexOf(static_cast<unsigned int>(nId)) == -1)
             return false;
-    next2: ;
     }
     for (int k = 0; pSpell->m_anPrereq1[k] != -1; k++) {
         int nId = pSpell->m_anPrereq1[k];
-        for (int i = 0; i != m_nNumClasses; i++) {
-            unsigned short nCount = static_cast<unsigned short>(m_classes[i].m_spellLevels[0].m_count);
-            for (int j = 0; j < nCount; j++)
-                if (m_classes[i].m_spellLevels[0].m_pArray[j] == nId)
-                    goto next1;
-        }
-        if (pChosen->IndexOf(static_cast<unsigned int>(nId)) == -1)
+        if (!HasSpell(0, static_cast<unsigned int>(nId))
+            && pChosen->IndexOf(static_cast<unsigned int>(nId)) == -1)
             return false;
-    next1: ;
     }
     unsigned char nLevel = GetLevel();
     unsigned char nSpellLevel = pSpell->GetSpellLevel(GetClassLeveledUpIn());
@@ -2370,11 +2185,9 @@ void CSWCLevelUpStats::CalcNumberFeats(unsigned char& nNormal, unsigned char& nB
 // first-level racial bonus feats, the last class slot's class-progression grants (the
 // Jedi-multiclass range gated separately), PC-only grants, and a fixed companion cascade keyed on
 // the party tag. Every grant site repeats the dedup/grow/append block.
-// inlined CExoArrayList<unsigned short>::AddUnique(nId), as its deferred-inline form
 #define KOTOR2_GRANT_FEAT(nId, bAlsoAddToList)                                 \
     do {                                                                      \
-        if (m_lstFeats.Contains(nId) == 0)                                    \
-            m_lstFeats.Add(nId);                                              \
+        m_lstFeats.AddUnique(nId);                                            \
         if (pFeats && (bAlsoAddToList))                                      \
             pFeats->Add(nId);                                               \
     } while (0)
@@ -2382,13 +2195,13 @@ void CSWCLevelUpStats::CalcNumberFeats(unsigned char& nNormal, unsigned char& nB
 #if KOTOR1
 void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<unsigned int>* pFeats)
 {
+    CSWRace* pRace = &g_pRules->m_paRaces[m_nRace];
     for (unsigned short nFeatIdx = 0; nFeatIdx < g_pRules->m_nFeats; nFeatIdx++) {
         CSWFeat* pFeat = g_pRules->GetFeat(nFeatIdx);
         if (!pFeat)
             continue;
 
-        if (GetLevel() == 1 && m_nExperience == 0 &&
-            g_pRules->m_paRaces[m_nRace].IsFirstLevelGrantedFeat(nFeatIdx)) {
+        if (GetLevel() == 1 && m_nExperience == 0 && pRace->IsFirstLevelGrantedFeat(nFeatIdx)) {
             KOTOR2_GRANT_FEAT(nFeatIdx, true);
             continue;
         }
@@ -2485,9 +2298,8 @@ void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<unsigned int>* pFeats, bool
 
     // bIsPC-gated hardcoded feat 206; a duplicate hit returns early, as at the other grant sites.
     if (bIsPC) {
-        for (int i = 0; i < m_lstFeats.m_count; i++)
-            if (m_lstFeats.m_pArray[i] == FEAT_WAR_VETERAN)
-                return;
+        if (HasFeat(FEAT_WAR_VETERAN))
+            return;
         KOTOR2_GRANT_FEAT(FEAT_WAR_VETERAN, true);
     }
 }
@@ -2600,10 +2412,8 @@ void CSWCLevelUpStats::ClearPackage()
 #else
     AddGrantedFeats(0, false);
 #endif
-    // Resets the count only; the backing array and capacity stay allocated.
-    // inlined CExoArrayList<CResRef>::DelIndex(m_count - 1), popped until empty
-    if (m_lstPackageResRefs.m_count != 0)
-        m_lstPackageResRefs.m_count = 0;
+    while (m_lstPackageResRefs.m_count != 0)
+        m_lstPackageResRefs.DelIndex(m_lstPackageResRefs.m_count - 1);
 }
 
 void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
@@ -2699,8 +2509,7 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
     unsigned short nPortraitId = pGFF->ReadFieldWORD(pStruct, const_cast<char*>("PortraitId"), success, CSWPortrait::PORTRAIT_ID_NONE);
     SetPortraitId(nPortraitId);
     if (nPortraitId > CSWPortrait::PORTRAIT_ID_LAST) {
-        { CExoString unused; }
-        CResRef newResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Portrait"), success, m_portrait.m_baseResRef);
+        CResRef newResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Portrait"), success, GetPortrait(0));
         CheckCustomPortrait(&newResRef, static_cast<unsigned>(m_nGender == GENDER_FEMALE));
         m_portrait.SetPortrait(newResRef);
     }
@@ -2740,15 +2549,7 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
             }
         }
     }
-    if (g_pRules->m_nNumSkills != 0) {
-        for (unsigned short i = 0; i < g_pRules->m_nNumSkills; i++) {
-            signed char nBaseRank = m_pSkillRanksBase[i];
-            signed char nTotal = 0;
-            if (nBaseRank != 0 || (g_pRules->m_paSkills[i].m_flags & 2) != 0)
-                nTotal = static_cast<signed char>(GetSkillModifier(i) + nBaseRank);
-            m_pSkillRanks[i] = nTotal;
-        }
-    }
+    UpdateAbilityModifiedSkillRanks();
 
     if (pGFF->GetList(&featList, pStruct, const_cast<char*>("FeatList"))) {
         unsigned short nFeatCount = static_cast<unsigned short>(pGFF->GetListCount(&featList));
@@ -2957,14 +2758,13 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
         if (candSpells.m_count > 0) {
             int nBase = menuList.m_count;
             int nDiscountPct = (2 < static_cast<unsigned int>(nDiscountTier)) ? 0 : (nDiscountTier * -10 + 50);
-            CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
 
             for (int i = 0; i < candSpells.m_count; i++) {
                 CSWSpell* pSpell = candSpells.m_pArray[i];
                 menuList.SetSize(nBase + i + 1);
 
                 CSWGuiInterfaceAction& entry = menuList.m_pArray[nBase + i];
-                entry.m_sName = pApp->GetGUIString(pSpell->m_nNameStrRef);
+                entry.m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
                 entry.m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
                 entry.m_resRef = pSpell->m_iconResRef;
                 entry.m_nFlags = entry.m_nFlags & ~ACTION_FLAG_REASON_MASK;
@@ -3090,14 +2890,13 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
 
     if (candSpells.m_count > 0) {
         int nBase = menuList.m_count;
-        CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
 
         for (int i = 0; i < candSpells.m_count; i++) {
             CSWSpell* pSpell = candSpells.m_pArray[i];
             menuList.SetSize(nBase + i + 1);
 
             CSWGuiInterfaceAction& entry = menuList.m_pArray[nBase + i];
-            entry.m_sName = pApp->GetGUIString(pSpell->m_nNameStrRef);
+            entry.m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
             entry.m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
             entry.m_resRef = pSpell->m_iconResRef;
             entry.m_nFlags = entry.m_nFlags & ~ACTION_FLAG_REASON_MASK;
@@ -3261,14 +3060,13 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
     if (candSpells.m_count > 0) {
         int nBase = menuList.m_count;
         int nDiscountPct = (2 < static_cast<unsigned int>(nDiscountTier)) ? 0 : (nDiscountTier * -10 + 50);
-        CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
 
         for (int i = 0; i < candSpells.m_count; i++) {
             CSWSpell* pSpell = candSpells.m_pArray[i];
             menuList.SetSize(nBase + i + 1);
 
             CSWGuiInterfaceAction& entry = menuList.m_pArray[nBase + i];
-            entry.m_sName = pApp->GetGUIString(pSpell->m_nNameStrRef);
+            entry.m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
             entry.m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
             entry.m_resRef = pSpell->m_iconResRef;
             entry.m_nFlags = entry.m_nFlags & ~ACTION_FLAG_REASON_MASK;

@@ -379,17 +379,7 @@ void CSWGuiDialogTop::Draw(float f) {
 // The blank test is a whitespace scan, so a message of pure whitespace counts as blank.
 void CSWGuiDialogCinematic::ShowDialogMessage()
 {
-    m_nMessageFlags &= ~DIALOGMSG_LINE_PENDING;
-
-    // The autopause gate passes when the option is on or a pending message was queued.
-    CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
-    if (pOptions->m_bFeedback2 || g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bForceDialogText)
-    {
-        m_msgLabel.m_text.m_params.SetText(m_sDialogMessage);
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bForceDialogText = 0;
-    }
-
-    m_msgLabel.m_tail.bVisible = 1;
+    CSWGuiDialog::ShowDialogMessage();
 
     // The spoken-line label grows to whatever the wrapped text needs, and the panel's extent
     // grows with it: the letterbox bars have to move out of the way.
@@ -647,11 +637,11 @@ CSWGuiDialogComputer::CSWGuiDialogComputer(CSWGuiManager* pGuiManager)
     m_aInfo[0].m_labelCaption.m_text.m_params.SetStrRef(
         g_pRules->m_paSkills[0].m_nNameStrRef);
     m_aInfo[0].m_labelIcon.m_border.m_params.SetFillImage(
-        CResRef(g_pRules->m_paSkills[0].m_icon), 0);
+        CResRef(g_pRules->m_paSkills[0].m_icon));
     m_aInfo[1].m_labelCaption.m_text.m_params.SetStrRef(
         g_pRules->m_paSkills[5].m_nNameStrRef);
     m_aInfo[1].m_labelIcon.m_border.m_params.SetFillImage(
-        CResRef(g_pRules->m_paSkills[5].m_icon), 0);
+        CResRef(g_pRules->m_paSkills[5].m_icon));
 
     CSWGuiLabel* pProtoLabel = static_cast<CSWGuiLabel*>(CSWGuiDialog::m_listBox.m_pProtoItem);
     for (int i = 0; i < 20; i++)
@@ -682,8 +672,8 @@ CSWGuiDialogComputer::CSWGuiDialogComputer(CSWGuiManager* pGuiManager)
         m_aButtons[i].SetExtent(extent);
         m_aButtons[i].m_text.m_params.SetText(CExoString(""));
         m_aButtons[i].m_tail.m_nUserData = i;
-        m_aButtons[i].m_border.m_params.SetFillImage(CResRef(szName), 0);
-        m_aButtons[i].m_borderHilight.m_params.SetFillImage(CResRef(szName), 0);
+        m_aButtons[i].m_border.m_params.SetFillImage(CResRef(szName));
+        m_aButtons[i].m_borderHilight.m_params.SetFillImage(CResRef(szName));
         m_aButtons[i].m_tail.bVisible = 0;
         m_aButtons[i].m_border.m_params.SetPulsingAlpha(1, 1, 1);
         m_aButtons[i].m_borderHilight.m_params.SetPulsingAlpha(1, 1, 1);
@@ -946,11 +936,7 @@ void CSWGuiDialogComputer::Update(float f)
     }
 #else
     m_replies.GetConfirmedReplyAndReset();
-    if (s_iosJoystickReplySelection >= 0)
-    {
-        CSWGuiDialog::m_listBox.SetSelectedControl(s_iosJoystickReplySelection, 1);
-        s_iosJoystickReplySelection = -1;
-    }
+    CSWGuiDialog::Update(f);
 #endif
 }
 
@@ -1163,7 +1149,7 @@ void CSWGuiDialogComputer::OnPanelAdded()
 #ifndef K2_UI_TOUCH
     if (ComputerPhoneArtExists())
 #endif
-    m_pBackground->m_params.SetFillImage(CResRef("ios_phpanel01"), 0);
+    m_pBackground->m_params.SetFillImage(CResRef("ios_phpanel01"));
 #endif
     m_pSoundSource->Play();
     CSWGuiPanel::OnPanelAdded();
@@ -1965,13 +1951,8 @@ void CSWGuiDialogCinematic::SetReplies(int n, CExoString* pa, unsigned int* pb, 
 // drops the reply panel. An index past the live reply count is ignored, but still succeeds.
 int CSWGuiDialogCinematic::SelectReply(int n)
 {
-    if (m_nReplyCount > n)
+    if (CSWGuiDialog::SelectReply(n))
     {
-#if !KOTOR1  // K1 has no achievement tracker
-        Achievements::OnDialogOptionChosen(n);
-#endif
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->SetDialogSelection(n, m_nReplyCount, 1);
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateDialog();
         m_pDialogTop->SetReply(CExoString(""));
         if (m_pGuiManager->PanelExists(m_pDialogTop))
             m_pGuiManager->RemovePanel(m_pDialogTop);
@@ -2051,11 +2032,7 @@ void CSWGuiDialogCinematic::Update(float f)
     m_labelScrollRelated.SetExtent(extent);
 
 #if !KOTOR1  // K1 has no joystick reply hand-over
-    if (s_iosJoystickReplySelection >= 0)
-    {
-        m_listBox.SetSelectedControl(s_iosJoystickReplySelection, 1);
-        s_iosJoystickReplySelection = -1;
-    }
+    CSWGuiDialog::Update(f);
 #endif
 }
 
@@ -2199,8 +2176,8 @@ CSWGuiDialogTop::CSWGuiDialogTop(CSWGuiManager* pGuiManager, const CResRef& resR
     for (int i = 0; i < 16; i++)
     {
         char sImage[256];
-        CSWGuiExtent extent(940, 160 + i * 63, g_nReplyButtonWidth, g_nReplyButtonHeight);
         sprintf(sImage, "ios_reply_%d", i + 1);
+        CSWGuiExtent extent(940, 160 + i * 63, g_nReplyButtonWidth, g_nReplyButtonHeight);
 
         m_replyButtons[i].SetExtent(extent);
         m_replyButtons[i].m_text.m_params.SetText(CExoString(""));

@@ -69,12 +69,6 @@ int usebumpspecular = 1;
 VertexProgram* g_pBumpyShinySkinPass1;
 int AurVertexProgramsAvailable();
 
-// The shadow pass draws nothing for a skinned mesh yet; kept so its dispatcher stays complete.
-void RenderShadowSkinnedVariant(VertexPrimitiveSkinned* vertices)
-{
-    K2_UNUSED(vertices);
-}
-
 #include "Matrix.h"
 
 // Port GL translation tables the render tail indexes.
@@ -385,10 +379,8 @@ void IOS_MdlNodeTriMeshDestroyed(MdlNodeTriMesh* pNode)
 // render tail (ExecuteSkinTransforms).
 void RenderSkinned(VertexPrimitiveSkinned* vertices, bool flag)
 {
-#if KOTOR1  // K1 reads the part and node before the statics' guards
     Part* part = vertices->m_pPart;
     MdlNodeSkin* node = static_cast<MdlNodeSkin*>(part->m_pNode);
-#endif
     static List<Quaternion> qbones;
     static List<Matrix> rbones;
     static List<Vector> tbones;
@@ -396,11 +388,6 @@ void RenderSkinned(VertexPrimitiveSkinned* vertices, bool flag)
     qbones.m_count = 0;
     rbones.m_count = 0;
     tbones.m_count = 0;
-
-#if !KOTOR1
-    Part* part = vertices->m_pPart;
-    MdlNodeSkin* node = static_cast<MdlNodeSkin*>(part->m_pNode);
-#endif
 
     // Gather the world frame: the part's own frame, then up the parent chain.
     Part* pTop = part;
@@ -796,7 +783,8 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         Vector vWS(0.0f, 0.0f, 0.0f);
         Quaternion lq(1.0f, 0.0f, 0.0f, 0.0f);
         part->GetWorld(vWS, lq);
-        Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, -lq);
+        Quaternion qInv = -lq;
+        Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, qInv);
         GLRender::Enable(Aurora::kCapVertexProgram);
         GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         currentscene->m_pLightManager->DisableBumpMapLights();
@@ -884,7 +872,8 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         Vector vWS(0.0f, 0.0f, 0.0f);
         Quaternion lq(1.0f, 0.0f, 0.0f, 0.0f);
         part->GetWorld(vWS, lq);
-        Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, -lq);
+        Quaternion qInv = -lq;
+        Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, qInv);
         GLRender::Enable(Aurora::kCapVertexProgram);
         GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         currentscene->m_pLightManager->DisableBumpMapLights();
@@ -971,7 +960,8 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         Vector vWS(0.0f, 0.0f, 0.0f);
         Quaternion lq(1.0f, 0.0f, 0.0f, 0.0f);
         part->GetWorld(vWS, lq);
-        Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, -lq);
+        Quaternion qInv = -lq;
+        Vector vView = RotateVector(CurrentCamera->m_vPosition - vWS, qInv);
         GLRender::Enable(Aurora::kCapVertexProgram);
         GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         for (int64_t k = 0; k < bumpLights.m_count; k++) {
@@ -1075,7 +1065,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
     if (node->m_nTexCoordSets == 0)
         return;
     PartTriMesh* pTri12 = part->AsPartTriMesh();
-    MdlNodeTriMesh* pNode12 = pTri12 != 0 ? node : 0;
+    MdlNodeTriMesh* pNode12 = pTri12 != 0 ? static_cast<MdlNodeTriMesh*>(part->m_pNode) : 0;
     Gob* pGob = pTri12 != 0 ? pTri12->m_pGob : 0;
     if (part->m_bHologramRendering && pNode12->m_bHologramDoNotDraw != 0)
         return;
@@ -1279,7 +1269,6 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
     // Vendor strategy ladder.
 
     Material* pMat = part->m_pMaterial;
-    LightManager* lm = currentscene->m_pLightManager;
     if (pMat->HasBumpMap() && pMat->HasBumpyShinyMap() && node->HasTangentBases() &&
         AurBumpyShinyAvailable() && enablebumpyshiny) {
         // Bumpy-shiny pass.
@@ -1390,7 +1379,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             } else {
                 fAmbiX = 0.0f; fAmbiY = 0.0f; fAmbiZ = 0.0f; vSpecColor = Vector(0.0f, 0.0f, 0.0f);
             }
-            List<PartLight*> bumpLights(lm->GetBumpMapLights());
+            List<PartLight*> bumpLights(currentscene->m_pLightManager->GetBumpMapLights());
             if (g_ForceSight == 0) {
                 GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmap, pMat->Textures(4).m_pObject,
                                                   currentscene->m_pNormalizationCubeMap.m_pObject,
@@ -1474,15 +1463,10 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                             GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
                         else
                             GLRender::pfuncSetPixelShaderAmbientColor(vSpec, 1.0f);
-                        if (usearbvertexprograms &&
-                            (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, lx, ly, lz, 1.0f),
-                             usearbvertexprograms) &&
-                            (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, vx, vy, vz, 1.0f),
-                             usearbvertexprograms)) {
-                            float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
-                            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
-                                                              9.0f / (fR + fR), 1.0f);
-                        }
+                        GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+                        GLRender::SetVertexShaderConstant(13, vx, vy, vz, 1.0f);
+                        float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                        GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
                         RenderFlat(vertices);
                     }
                 }
@@ -1562,7 +1546,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             } else {
                 fAmbiX = 0.0f; fAmbiY = 0.0f; fAmbiZ = 0.0f; vSpecColor = Vector(0.0f, 0.0f, 0.0f);
             }
-            List<PartLight*> bumpLights(lm->GetBumpMapLights());
+            List<PartLight*> bumpLights(currentscene->m_pLightManager->GetBumpMapLights());
             GLRender::pfuncEnablePixelShaders(GLRender::kPSNormalmap, pMat->Textures(0).m_pObject, pMat->Textures(4).m_pObject,
                                               currentscene->m_pNormalizationCubeMap.m_pObject,
                                               currentscene->m_pNormalizationCubeMap.m_pObject);
@@ -1645,15 +1629,10 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                         GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
                     else
                         GLRender::pfuncSetPixelShaderAmbientColor(vSpec, 1.0f);
-                    if (usearbvertexprograms &&
-                        (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, lx, ly, lz, 1.0f),
-                         usearbvertexprograms) &&
-                        (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, vx, vy, vz, 1.0f),
-                         usearbvertexprograms)) {
-                        float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
-                                                          9.0f / (fR + fR), 1.0f);
-                    }
+                    GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+                    GLRender::SetVertexShaderConstant(13, vx, vy, vz, 1.0f);
+                    float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                    GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
                     RenderFlat(vertices);
                 }
             }
@@ -1712,7 +1691,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             } else {
                 fAmbiX = 0.0f; fAmbiY = 0.0f; fAmbiZ = 0.0f; vSpecColor = Vector(0.0f, 0.0f, 0.0f);
             }
-            List<PartLight*> bumpLights(lm->GetBumpMapLights());
+            List<PartLight*> bumpLights(currentscene->m_pLightManager->GetBumpMapLights());
             GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmap, pMat->Textures(4).m_pObject,
                                               currentscene->m_pNormalizationCubeMap.m_pObject,
                                               currentscene->m_pNormalizationCubeMap.m_pObject,
@@ -1793,15 +1772,10 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                         GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
                     else
                         GLRender::pfuncSetPixelShaderAmbientColor(vSpec, 1.0f);
-                    if (usearbvertexprograms &&
-                        (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 12, lx, ly, lz, 1.0f),
-                         usearbvertexprograms) &&
-                        (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, vx, vy, vz, 1.0f),
-                         usearbvertexprograms)) {
-                        float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
-                        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
-                                                          9.0f / (fR + fR), 1.0f);
-                    }
+                    GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+                    GLRender::SetVertexShaderConstant(13, vx, vy, vz, 1.0f);
+                    float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                    GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
                     RenderFlat(vertices);
                     currentscene->m_pLightManager->EnableBumpMapLights();
                 }
@@ -2455,14 +2429,8 @@ void PartSkin::Draw(bool b)
         RenderSkinned(p, false);
     }
 
-    if (m_pGob != 0 && m_pGob->m_fBumpOutDistance != 0.0f && currentscene != 0) {
-        if (AurNV2xLevelShadersAvailable() && AurNonRadeon8500Validate()) {
-            DrawBumpedOutShellVP();
-            return;
-        }
-        RenderSkinned(m_pVertexPrimitive->AsVertexPrimitiveSkinned(), true);
-        return;
-    }
+    if (m_pGob != 0 && m_pGob->m_fBumpOutDistance != 0.0f && currentscene != 0)
+        DrawBumpedOutShell();
 }
 
 void PartSkin::DrawBumpedOutShell()
@@ -2484,8 +2452,8 @@ void PartSkin::DrawBumpedOutShellVP()
         m_pMaterial->SetBlendingMode(1);
 
     VertexPrimitiveSkinned* pv = m_pVertexPrimitive->AsVertexPrimitiveSkinned();
-    Part* part = pv->m_pPart;
-    MdlNodeSkin* node = static_cast<MdlNodeSkin*>(part->AsPartSkin()->m_pNode);
+    PartSkin* part = pv->m_pPart->AsPartSkin();
+    MdlNodeSkin* node = static_cast<MdlNodeSkin*>(part->m_pNode);
     if (node->m_nTexCoordSets != 0) {
     MdlNodeTriMesh* trinode = part->AsPartTriMesh() ? static_cast<MdlNodeTriMesh*>(part->m_pNode) : 0;
 
@@ -2668,8 +2636,8 @@ void PartSkin::DrawBumpedOutShellVP()
 #endif
     SetBumpedOutShellIos(m_pGob->m_fBumpOutDistance);
     {
-        float local[3] = {1.0f, 1.0f, 1.0f};
-        (*GLRender::pfuncSetPixelShaderAmbientColor)(reinterpret_cast<Vector&>(local), m_fOpacity);
+        Vector vAmbient(1.0f, 1.0f, 1.0f);
+        (*GLRender::pfuncSetPixelShaderAmbientColor)(vAmbient, m_fOpacity);
     }
     VertexProgram* pVP;
     if (m_pMaterial->HasBumpMap() &&
@@ -3157,6 +3125,7 @@ void MdlNodeSkin::InternalGenVertices()
     for (int64_t i = 0; i < static_cast<int64_t>(m_faces.m_count); i++) {
         for (int64_t j = 0; j < 3; j++) {
             int nVert = PostProcess()->m_faces.m_pData[i].m_paVertIndices[j];
+            Vector* pPos = &PostProcess()->m_verts.m_pData[nVert];
             Vector* pTex0 = PostProcess()->m_tverts.m_count
                 ? &PostProcess()->m_tverts.m_pData[PostProcess()->m_faces.m_pData[i].m_paTVertIndices[j]] : 0;
             Vector* pTex1 = PostProcess()->m_tverts1.m_count
@@ -3169,10 +3138,10 @@ void MdlNodeSkin::InternalGenVertices()
                 &PostProcess()->m_normals.m_pData[PostProcess()->m_faces.m_pData[i].m_paNormalIndices[j]];
             int64_t index;
             int bFound = 0;
-            NodeVertex* pVertex = new NodeVertex(&PostProcess()->m_verts.m_pData[nVert],
+            NodeVertex* pVertex = new NodeVertex(pPos,
                                                pTex0, pTex1, pTex2, pTex3, pNormal, 0);
             for (index = 0; index < static_cast<int64_t>(PostProcess()->m_vertices.m_count); index++) {
-                if (*reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[index]) == *pVertex) {
+                if (*PostProcess()->m_vertices.m_pData[index] == *pVertex) {
                     bFound = 1;
                     break;
                 }
@@ -3183,7 +3152,7 @@ void MdlNodeSkin::InternalGenVertices()
             } else {
                 m_faces.m_pData[i].m_anVertIndices[j] =
                     static_cast<unsigned short>(PostProcess()->m_vertices.m_count);
-                PostProcess()->m_vertices.Add(reinterpret_cast<unsigned int*>(pVertex));
+                PostProcess()->m_vertices.Add(pVertex);
 #if KOTOR1  // K1 re-reads the corner's old vertex index
                 lWeights.Add(m_lWeights.m_pData[PostProcess()->m_faces.m_pData[i].m_paVertIndices[j]]);
 #else

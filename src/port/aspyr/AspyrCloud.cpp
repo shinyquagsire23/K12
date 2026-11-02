@@ -112,9 +112,7 @@ void IosCloudDelete()
 
 bool IosCloudIsAvailable()
 {
-    if (IsAmazon())
-        return false;
-    return g_GooglePlay;
+    return IosCloudAvailable();
 }
 
 void IosCloudWrite(const char* pszPath)

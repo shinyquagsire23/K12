@@ -217,19 +217,9 @@ void CSWMessage::WriteSigned(long long nValue, int nBits)
 #endif
 {
     if (nValue >= 0) {
-        WriteBit(0);
-        m_nWriteBitIndex++;
-        if (m_nWriteBitIndex == 8) {
-            m_nWriteFragmentsPos++;
-            m_nWriteBitIndex = 0;
-        }
+        WriteBits(0, 1);
     } else {
-        WriteBit(1);
-        m_nWriteBitIndex++;
-        if (m_nWriteBitIndex == 8) {
-            m_nWriteFragmentsPos++;
-            m_nWriteBitIndex = 0;
-        }
+        WriteBits(1, 1);
         nValue = -nValue;
     }
 
@@ -341,13 +331,7 @@ long long CSWMessage::ReadSigned(int nBits)
     if (m_nReadFragmentsPos > m_nReadFragmentsSize)
         return 0;
 
-    unsigned char bNegative = ReadBit(m_nReadBitIndex);
-    m_nReadBitIndex++;
-    if (m_nReadBitIndex == 8) {
-        m_nReadFragmentsPos++;
-        m_nReadBitIndex = 0;
-    }
-
+    unsigned char bNegative = static_cast<unsigned char>(ReadBits(1));
     long long nValue = ReadUnsigned(nBits - 1);
     if (bNegative) {
         if (nValue == 0)
@@ -650,7 +634,6 @@ void CSWMessage::WriteVector(const Vector& v)
     WriteFLOAT(v.z, 0.0f, 32);
 }
 
-__attribute__((noinline))
 void CSWMessage::WriteFLOAT(float fValue, float scale, int nBits)
 {
     K2_UNUSED(scale); K2_UNUSED(nBits);

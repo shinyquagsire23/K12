@@ -50,5 +50,7 @@ public:
     unsigned short m_nPriority;
     unsigned char  _pad1a[0x1c - 0x1a];
     int            m_nGood;
+#if !KOTOR1  // K1's effecticon.2da has no NameStrRef: the object is 0x20 bytes
     unsigned int   m_nNameStrRef;
+#endif
 };

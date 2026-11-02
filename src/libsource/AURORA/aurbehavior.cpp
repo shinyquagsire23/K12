@@ -731,18 +731,30 @@ int CAurBehaviorCameraFollow::Control(float fParam) {
     m_fYaw += m_fYawVel * fParam;
     m_fYawVel = 0;
     if (m_fYawClipGate != 0.0f)
+#if KOTOR1  // K1 clamps with fminf/fmaxf
+        m_fYaw = fmaxf(m_fYawClipMin, fminf(m_fYaw, m_fYawClipMax));
+#else
         m_fYaw = max(m_fYawClipMin, min(m_fYaw, m_fYawClipMax));
+#endif
 
     m_fPitch += m_fPitchVel * fParam;
     m_fPitchVel = 0;
     if (m_fPitchClipGate != 0.0f)
+#if KOTOR1  // K1 clamps with fminf/fmaxf
+        m_fPitch = fmaxf(m_fPitchClipMin, fminf(m_fPitch, m_fPitchClipMax));
+#else
         m_fPitch = max(m_fPitchClipMin, min(m_fPitch, m_fPitchClipMax));
+#endif
 
     float fDist = m_fDist;
     m_fDist = fDist * exp2f(m_fZoomDeltaAccum * fParam * -0.5f);
     m_fZoomDeltaAccum = 0;
     if (m_fDistClipGate != 0.0f)
+#if KOTOR1  // K1 clamps with fminf/fmaxf
+        m_fDist = fmaxf(m_fDistClipMin, fminf(m_fDist, m_fDistClipMax));
+#else
         m_fDist = max(m_fDistClipMin, min(m_fDist, m_fDistClipMax));
+#endif
 
     float fBlend = 1.0f - exp2f(-m_fFOV * fParam);
 
@@ -891,16 +903,18 @@ int CAurBehaviorCameraLooseFollow::Control(float fParam) {
         // block, which is why the sign fix and the m_fYawVel store appear only once; a projection
         // inside the dead zone skips them and keeps the previous m_fYawVel.
         if (fProj > m_fDistClipMax) {
-            Vector vPos = m_pOwner->GetPosition();
-            m_pOwner->SetPosition(Vector(vPos.x + vDir.x * (fProj - m_fDistClipMax),
+            CAurObject* pOwner = m_pOwner;
+            Vector vPos = pOwner->GetPosition();
+            pOwner->SetPosition(Vector(vPos.x + vDir.x * (fProj - m_fDistClipMax),
                                          vPos.y + vDir.y * (fProj - m_fDistClipMax),
                                          vPos.z + vDir.z * (fProj - m_fDistClipMax)));
             if (fCross < 0.0f)
                 fDeg = -fDeg;
             m_fYawVel = fDeg;
         } else if (fProj < m_fDistClipMin) {
-            Vector vPos = m_pOwner->GetPosition();
-            m_pOwner->SetPosition(Vector(vPos.x - vDir.x * (m_fDistClipMin - fProj),
+            CAurObject* pOwner = m_pOwner;
+            Vector vPos = pOwner->GetPosition();
+            pOwner->SetPosition(Vector(vPos.x - vDir.x * (m_fDistClipMin - fProj),
                                          vPos.y - vDir.y * (m_fDistClipMin - fProj),
                                          vPos.z - vDir.z * (m_fDistClipMin - fProj)));
             if (fCross < 0.0f)

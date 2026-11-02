@@ -95,6 +95,7 @@ void exportparts(Gob* pGob, Part* pPart);
 
 
 int enabletransform = 1;
+void Transform(const Vector& v, const Quaternion& q, int n);
 
 extern int systemmemoryshadows;
 
@@ -1167,8 +1168,7 @@ void PartProjection::Init()
                 -(vFoot.x * vNormal.x + vFoot.y * vNormal.y + vFoot.z * vNormal.z));
 
     ASLgl::glPushMatrix();
-    if (enabletransform)
-        GLRender::Transform(m_pTriMesh->m_vLocalPosition, m_pTriMesh->m_qLocalOrientation, 0);
+    Transform(m_pTriMesh->m_vLocalPosition, m_pTriMesh->m_qLocalOrientation, 0);
 
     CAurShadowData data;
     unsigned int nPoolSize;
@@ -1359,8 +1359,7 @@ void PartTriMesh::TransformModelviewMatrix()
     ASLgl::glPushMatrix();
     const Vector& v = m_vLocalPosition;
     const Quaternion& q = m_qLocalOrientation;
-    if (enabletransform)
-        GLRender::Transform(v, q, 0);
+    Transform(v, q, 0);
 }
 
 int PartTriMesh::WithinRange(Vector v, float f)
@@ -1402,8 +1401,7 @@ void PartAnimMesh::Draw(bool)
         ASLgl::glPushMatrix();
         const Vector& v = m_vLocalPosition;
         const Quaternion& q = m_qLocalOrientation;
-        if (enabletransform != 0)
-            GLRender::Transform(v, q, 0);
+        Transform(v, q, 0);
     }
     m_pVertexPrimitive->SetupVertexArraysStandard();
     RenderFlat(m_pVertexPrimitive->AsVertexPrimitiveFlat());
@@ -1429,8 +1427,7 @@ void PartAABB::Draw(bool)
 
     if (m_pGob == 0) {
         ASLgl::glPushMatrix();
-        if (enabletransform)
-            GLRender::Transform(m_vLocalPosition, m_qLocalOrientation, 0);
+        Transform(m_vLocalPosition, m_qLocalOrientation, 0);
     }
 
 #if !KOTOR1
@@ -1526,6 +1523,9 @@ void PartLightsaber::Draw(bool)
                             for (int j = 0; j < MdlNodeLightsaber::NUM_SEGMENT_VERTS; j++) {
                                 ASLgl::glTexCoord2f(aTexCoords[kBackPieceBase + j].u,
                                                     aTexCoords[kBackPieceBase + j].v);
+#if KOTOR1
+                                Quaternion qInverse = -qWorld;
+#endif
                                 Vector v = RotateVector(Vector(paPositions[kBackPieceBase + j].x,
                                                                paPositions[kBackPieceBase + j].y,
                                                                paPositions[kBackPieceBase + j].z), qNew);
@@ -1533,7 +1533,7 @@ void PartLightsaber::Draw(bool)
                                 v.y = vNew.y + v.y - vWorldPos.y;
                                 v.z = vNew.z + v.z - vWorldPos.z;
 #if KOTOR1
-                                v = RotateVector(v, -qWorld);
+                                v = RotateVector(v, qInverse);
 #else
                                 v = RotateVector(v, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
 #endif
@@ -1544,6 +1544,9 @@ void PartLightsaber::Draw(bool)
 
                                 ASLgl::glTexCoord2f(aTexCoords[kBackPieceBase + j].u,
                                                     aTexCoords[kBackPieceBase + j].v);
+#if KOTOR1
+                                qInverse = -qWorld;
+#endif
                                 Vector u = RotateVector(Vector(paPositions[kBackPieceBase + j].x,
                                                                paPositions[kBackPieceBase + j].y,
                                                                paPositions[kBackPieceBase + j].z), qSeg);
@@ -1551,7 +1554,7 @@ void PartLightsaber::Draw(bool)
                                 u.y = vSeg.y + u.y - vWorldPos.y;
                                 u.z = vSeg.z + u.z - vWorldPos.z;
 #if KOTOR1
-                                u = RotateVector(u, -qWorld);
+                                u = RotateVector(u, qInverse);
 #else
                                 u = RotateVector(u, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
 #endif
@@ -1590,6 +1593,9 @@ void PartLightsaber::Draw(bool)
         for (int j = 0; j < nHalf; j++) {
             ASLgl::glTexCoord2f(aTexCoords[kBackPieceBase + nHalf + j].u,
                                 aTexCoords[kBackPieceBase + nHalf + j].v);
+#if KOTOR1
+            Quaternion qInverse = -qWorld;
+#endif
             Vector v = RotateVector(Vector(paPositions[kBackPieceBase + j].x,
                                            paPositions[kBackPieceBase + j].y,
                                            paPositions[kBackPieceBase + j].z), qSeg);
@@ -1597,7 +1603,7 @@ void PartLightsaber::Draw(bool)
             v.y = vSeg.y + v.y - vWorldPos.y;
             v.z = vSeg.z + v.z - vWorldPos.z;
 #if KOTOR1
-            v = RotateVector(v, -qWorld);
+            v = RotateVector(v, qInverse);
 #else
             v = RotateVector(v, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
 #endif
@@ -1606,6 +1612,9 @@ void PartLightsaber::Draw(bool)
                 ASLgl::glVertex4f(v.x + avPiece[j].x, v.y + avPiece[j].y, v.z + avPiece[j].z, 1.0f);
 
             ASLgl::glTexCoord2f(aTexCoords[kBackPieceBase + j].u, aTexCoords[kBackPieceBase + j].v);
+#if KOTOR1
+            qInverse = -qWorld;
+#endif
             Vector u = RotateVector(Vector(paPositions[kBackPieceBase + j].x,
                                            paPositions[kBackPieceBase + j].y,
                                            paPositions[kBackPieceBase + j].z), qSeg);
@@ -1613,7 +1622,7 @@ void PartLightsaber::Draw(bool)
             u.y = vSeg.y + u.y - vWorldPos.y;
             u.z = vSeg.z + u.z - vWorldPos.z;
 #if KOTOR1
-            u = RotateVector(u, -qWorld);
+            u = RotateVector(u, qInverse);
 #else
             u = RotateVector(u, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
 #endif
@@ -1645,15 +1654,21 @@ void PartLightsaber::Draw(bool)
 
                 for (int n = 1; n < m_nSegmentCount; n++) {
 // B's blade axis, in the world-conjugate frame
+#if KOTOR1
+                    Quaternion qInverse = -qWorld;
+#endif
                     Vector vB0 = RotateVector(Vector(paPositions[0].x, paPositions[0].y,
                                                      paPositions[0].z), qB);
                     vB0.x = vB.x + vB0.x - vWorldPos.x;
                     vB0.y = vB.y + vB0.y - vWorldPos.y;
                     vB0.z = vB.z + vB0.z - vWorldPos.z;
 #if KOTOR1
-                    vB0 = RotateVector(vB0, -qWorld);
+                    vB0 = RotateVector(vB0, qInverse);
 #else
                     vB0 = RotateVector(vB0, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
+#endif
+#if KOTOR1
+                    qInverse = -qWorld;
 #endif
                     Vector vB3 = RotateVector(Vector(paPositions[3].x, paPositions[3].y,
                                                      paPositions[3].z), qB);
@@ -1661,22 +1676,28 @@ void PartLightsaber::Draw(bool)
                     vB3.y = vB.y + vB3.y - vWorldPos.y;
                     vB3.z = vB.z + vB3.z - vWorldPos.z;
 #if KOTOR1
-                    vB3 = RotateVector(vB3, -qWorld);
+                    vB3 = RotateVector(vB3, qInverse);
 #else
                     vB3 = RotateVector(vB3, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
 #endif
                     Vector vAxisB(vB3.x - vB0.x, vB3.y - vB0.y, vB3.z - vB0.z);
 
 // The same axis of A
+#if KOTOR1
+                    qInverse = -qWorld;
+#endif
                     Vector vA0 = RotateVector(Vector(paPositions[0].x, paPositions[0].y,
                                                      paPositions[0].z), qA);
                     vA0.x = vA.x + vA0.x - vWorldPos.x;
                     vA0.y = vA.y + vA0.y - vWorldPos.y;
                     vA0.z = vA.z + vA0.z - vWorldPos.z;
 #if KOTOR1
-                    vA0 = RotateVector(vA0, -qWorld);
+                    vA0 = RotateVector(vA0, qInverse);
 #else
                     vA0 = RotateVector(vA0, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
+#endif
+#if KOTOR1
+                    qInverse = -qWorld;
 #endif
                     Vector vA3 = RotateVector(Vector(paPositions[3].x, paPositions[3].y,
                                                      paPositions[3].z), qA);
@@ -1684,7 +1705,7 @@ void PartLightsaber::Draw(bool)
                     vA3.y = vA.y + vA3.y - vWorldPos.y;
                     vA3.z = vA.z + vA3.z - vWorldPos.z;
 #if KOTOR1
-                    vA3 = RotateVector(vA3, -qWorld);
+                    vA3 = RotateVector(vA3, qInverse);
 #else
                     vA3 = RotateVector(vA3, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
 #endif
@@ -1708,13 +1729,16 @@ void PartLightsaber::Draw(bool)
 
                                 for (int j = 0; j < MdlNodeLightsaber::NUM_SEGMENT_VERTS; j++) {
                                     ASLgl::glTexCoord2f(aTexCoords[j].u, aTexCoords[j].v);
+#if KOTOR1
+                                    Quaternion qInverse = -qWorld;
+#endif
                                     Vector v = RotateVector(Vector(paPositions[j].x, paPositions[j].y,
                                                                    paPositions[j].z), qSeg);
                                     v.x = vSeg.x + v.x - vWorldPos.x;
                                     v.y = vSeg.y + v.y - vWorldPos.y;
                                     v.z = vSeg.z + v.z - vWorldPos.z;
 #if KOTOR1
-                                    v = RotateVector(v, -qWorld);
+                                    v = RotateVector(v, qInverse);
 #else
                                     v = RotateVector(v, Quaternion(-qWorld.w, qWorld.x, qWorld.y,
                                                                    qWorld.z));
@@ -1725,13 +1749,16 @@ void PartLightsaber::Draw(bool)
                                     avPiece[j] = v;
 
                                     ASLgl::glTexCoord2f(aTexCoords[j].u, aTexCoords[j].v);
+#if KOTOR1
+                                    qInverse = -qWorld;
+#endif
                                     Vector u = RotateVector(Vector(paPositions[j].x, paPositions[j].y,
                                                                    paPositions[j].z), qNew);
                                     u.x = vNew.x + u.x - vWorldPos.x;
                                     u.y = vNew.y + u.y - vWorldPos.y;
                                     u.z = vNew.z + u.z - vWorldPos.z;
 #if KOTOR1
-                                    u = RotateVector(u, -qWorld);
+                                    u = RotateVector(u, qInverse);
 #else
                                     u = RotateVector(u, Quaternion(-qWorld.w, qWorld.x, qWorld.y,
                                                                    qWorld.z));
@@ -1776,13 +1803,16 @@ void PartLightsaber::Draw(bool)
                 }
 
                 ASLgl::glTexCoord2f(aTexCoords[j].u, aTexCoords[j].v);
+#if KOTOR1
+                Quaternion qInverse = -qWorld;
+#endif
                 Vector v = RotateVector(Vector(paPositions[j].x, paPositions[j].y, paPositions[j].z),
                                         qSeg);
                 v.x = vSeg.x + v.x - vWorldPos.x;
                 v.y = vSeg.y + v.y - vWorldPos.y;
                 v.z = vSeg.z + v.z - vWorldPos.z;
 #if KOTOR1
-                v = RotateVector(v, -qWorld);
+                v = RotateVector(v, qInverse);
 #else
                 v = RotateVector(v, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
 #endif
@@ -1791,13 +1821,16 @@ void PartLightsaber::Draw(bool)
                     ASLgl::glVertex4f(v.x, v.y, v.z, 1.0f);
 
                 ASLgl::glTexCoord2f(aTexCoords[nHalf + j].u, aTexCoords[nHalf + j].v);
+#if KOTOR1
+                qInverse = -qWorld;
+#endif
                 Vector u = RotateVector(Vector(paPositions[j].x, paPositions[j].y, paPositions[j].z),
                                         qSeg);
                 u.x = vSeg.x + u.x - vWorldPos.x;
                 u.y = vSeg.y + u.y - vWorldPos.y;
                 u.z = vSeg.z + u.z - vWorldPos.z;
 #if KOTOR1
-                u = RotateVector(u, -qWorld);
+                u = RotateVector(u, qInverse);
 #else
                 u = RotateVector(u, Quaternion(-qWorld.w, qWorld.x, qWorld.y, qWorld.z));
 #endif
@@ -1899,7 +1932,6 @@ const char* setenvironmentmap(char* pszParams)
     return szBuf;
 }
 
-static void snprintff(char* buf, uint64_t n, const char* fmt, ...) __attribute__((noinline));
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...)
 {
     K2_UNUSED(n);
@@ -2050,9 +2082,9 @@ void PartTriMesh::Mat()
             kFogByte142 = 0x3f0e8e8f,
             kFogByte143 = 0x3f0f8f90,
         };
-        const Vector& vFog = currentscene->m_vFogColor;
         if ((IosAntiAliasOn() && !m_bFog) ||
-            (FloatBits(vFog.x) == kFogByte112 && FloatBits(vFog.y) == kFogByte143 && FloatBits(vFog.z) == kFogByte142 &&
+            (FloatBits(currentscene->m_vFogColor.x) == kFogByte112 && FloatBits(currentscene->m_vFogColor.y) == kFogByte143 &&
+             FloatBits(currentscene->m_vFogColor.z) == kFogByte142 &&
              !m_bFog))
 #else
         if (!m_bFog)
@@ -2208,8 +2240,7 @@ void Gob::PartDraw(Part* pPart, bool b)
     ASLgl::glPushMatrix();
     const Vector& v = pPart->m_vLocalPosition;
     const Quaternion& q = pPart->m_qLocalOrientation;
-    if (enabletransform)
-        GLRender::Transform(v, q, 0);
+    Transform(v, q, 0);
     ASLgl::glScalef(pPart->m_scale.m_fScale, pPart->m_scale.m_fScale, pPart->m_scale.m_fScale);
 
     if (pPart->AsPartTriMesh() == 0 || pPart->m_pNode == 0 ||
@@ -2602,33 +2633,11 @@ void PartSkin::Project(const Vector& light, float fDist, const Plane& plane, CAu
                 tv.z = rz + tv.z;
                 Quaternion* pAccQuat = &qbones.m_pData[i];
                 *pAccQuat = *pAccQuat * pNode->m_lQBoneRefInv.m_pData[i];
-                // inlined Quaternion::getmatrix() const
-                if (usearbvertexprograms != 0) {
-                    float av = pAccQuat->w, bx = pAccQuat->x, by = pAccQuat->y, bz = pAccQuat->z;
-                    const Vector& vr = tbones.m_pData[i];
-                    int ib = bone * 3;
-// Row 0 of the composed rotation matrix.
-                    float m11 = by * by + bz * bz;
-                    float m12 = bx * by - bz * av;
-                    float m13 = bx * bz + by * av;
-                    ASLgl::glProgramEnvParameter4fARB(
-                        GL_VERTEX_PROGRAM_ARB, ib + 18, 1.0f - (m11 + m11), m12 + m12, m13 + m13, vr.x);
-                    if (usearbvertexprograms != 0) {
-                        float m21 = bx * by + bz * av;
-                        float m22 = bx * bx + bz * bz;
-                        float m23 = by * bz - bx * av;
-                        ASLgl::glProgramEnvParameter4fARB(
-                            GL_VERTEX_PROGRAM_ARB, ib + 19, m21 + m21, 1.0f - (m22 + m22), m23 + m23, vr.y);
-                        if (usearbvertexprograms != 0) {
-                            float m31 = bx * bz - by * av;
-                            float m32 = by * by + bx * bx;
-                            float m33 = by * bz + bx * av;
-                            ASLgl::glProgramEnvParameter4fARB(
-                                GL_VERTEX_PROGRAM_ARB, ib + 20, m31 + m31, m33 + m33,
-                                1.0f - (m32 + m32), vr.z);
-                        }
-                    }
-                }
+                Matrix m = pAccQuat->getmatrix();
+                int ib = bone * 3;
+                GLRender::SetVertexShaderConstant(ib + 18, m.m_f[0], m.m_f[3], m.m_f[6], tbones.m_pData[i].x);
+                GLRender::SetVertexShaderConstant(ib + 19, m.m_f[1], m.m_f[4], m.m_f[7], tbones.m_pData[i].y);
+                GLRender::SetVertexShaderConstant(ib + 20, m.m_f[2], m.m_f[5], m.m_f[8], tbones.m_pData[i].z);
             }
             i++;
         } while (i < pNode->m_nBoneCount);
@@ -2654,8 +2663,7 @@ void Gob::PartVolumeProject(Part* pPart, Vector v, float f, Plane p)
     {
         const Vector& vGob = m_vPosition;
         const Quaternion& qGob = m_qOrientation;
-        if (enabletransform)
-            GLRender::Transform(vGob, qGob, 1);
+        Transform(vGob, qGob, 1);
         if (!systemmemoryshadows)
         {
             v = WorldToLocal(v, qGob, vGob);
@@ -2673,8 +2681,7 @@ void Gob::PartVolumeProject(Part* pPart, Vector v, float f, Plane p)
         planeLocal.Transform(pPart->m_vLocalPosition, pPart->m_qLocalOrientation);
     }
 
-    if (enabletransform)
-        GLRender::Transform(pPart->m_vLocalPosition, pPart->m_qLocalOrientation, 0);
+    Transform(pPart->m_vLocalPosition, pPart->m_qLocalOrientation, 0);
 #if !KOTOR1
     counttrans++;
 #endif
@@ -2699,8 +2706,7 @@ void Gob::RenderBlur()
     ASLgl::glPushMatrix();
     const Vector& v = m_vPosition;
     const Quaternion& q = m_qOrientation;
-    if (enabletransform)
-        GLRender::Transform(v, q, 1);
+    Transform(v, q, 1);
     if (m_fObjectScale != 1.0f)
         ASLgl::glScalef(m_fObjectScale, m_fObjectScale, m_fObjectScale);
     ProxyPartDraw(m_pPart, true);
@@ -2832,6 +2838,28 @@ extern List<Gob*> blurbucket;
 extern int g_RenderSkip;
 #endif
 
+void Gob::RenderBoundingBox()
+{
+    GLRender::Disable(Aurora::kCapCullFace);
+    ASLgl::glPushMatrix();
+    const Vector& v = m_vPosition;
+    const Quaternion& q = m_qOrientation;
+#if KOTOR1
+    if (enabletransform)
+        GLRender::Transform(v, q, 1);
+#else
+    Transform(v, q, 1);
+#endif
+    if (m_fObjectScale != 1.0f)
+        ASLgl::glScalef(m_fObjectScale, m_fObjectScale, m_fObjectScale);
+    Vector vMax = m_vBoundingBoxMax;
+    if (m_vBoundingBoxMax.z <= 0.1f)
+        vMax.z = 0.1f;
+    GLRender::DrawAxisAlignedFrame(m_vBoundingBoxMin, vMax, m_vGobBBox);
+    ASLgl::glPopMatrix();
+    GLRender::Enable(Aurora::kCapCullFace);
+}
+
 void Gob::Render(bool b)
 {
     if (enablegobrender == 0)
@@ -2877,8 +2905,7 @@ void Gob::Render(bool b)
     ASLgl::glPushMatrix();
     const Vector& v = m_vPosition;
     const Quaternion& q = m_qOrientation;
-    if (enabletransform)
-        GLRender::Transform(v, q, 1);
+    Transform(v, q, 1);
     if (m_fObjectScale != 1.0f)
         ASLgl::glScalef(m_fObjectScale, m_fObjectScale, m_fObjectScale);
     if (m_bHasSingleTexture)
@@ -3028,10 +3055,11 @@ void RenderMotionBlurred(VertexPrimitiveFlat* vertices)
 
         part->GetWorld(vLocalPosition, qLocalOrientation);
 
-        Vector vCam = CurrentCamera->m_vPosition - vLocalPosition;
 #if KOTOR1  // K1: the forward rotate through the out-of-line inverse
-        vCam = RotateVector(vCam, -qLocalOrientation);
+        Quaternion qInverse = -qLocalOrientation;
+        Vector vCam = RotateVector(CurrentCamera->m_vPosition - vLocalPosition, qInverse);
 #else
+        Vector vCam = CurrentCamera->m_vPosition - vLocalPosition;
         {
             float qw = qLocalOrientation.w;
             float qx = qLocalOrientation.x;
@@ -3190,6 +3218,12 @@ void RenderMotionBlurred(VertexPrimitiveFlat* vertices)
     }
 
     GLRender::Disable(Aurora::kCapVertexProgram);
+}
+
+// The shadow pass draws nothing for a skinned mesh yet; kept so its dispatcher stays complete.
+void RenderShadowSkinnedVariant(VertexPrimitiveSkinned* vertices)
+{
+    K2_UNUSED(vertices);
 }
 
 void RenderShadowTriMesh(VertexPrimitiveFlat* vertices)
@@ -3695,14 +3729,7 @@ void RenderBumpyShiny(VertexPrimitiveFlat* vertices)
     standardvp->Enable(part, true);
     GLRender::Enable(Aurora::kCapVertexProgram);
 
-    if (enablerender != 0)
-    {
-        GLRender::DisableClientState(Aurora::kClientStateTexCoord);
-        GLRender::Disable(Aurora::kCapTexture2D);
-        RenderFlat(vertices);
-        GLRender::Enable(Aurora::kCapTexture2D);
-        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
-    }
+    RenderFlatNonTextured(vertices);
 
     GLRender::Disable(Aurora::kCapVertexProgram);
     GLRender::Enable(Aurora::kCapAlphaTest);
@@ -4691,16 +4718,18 @@ void RenderLightMappedBumpDiffuse(VertexPrimitiveFlat* vertices)
     Quaternion qLocalOrientation;
     part->GetWorld(vLocalPosition, qLocalOrientation);
 
-    Vector vCam = CurrentCamera->m_vPosition;
 #if KOTOR1  // K1: the forward rotate through the out-of-line inverse
     float cx, cy, cz;
     {
-        Vector r = WorldToLocal(vCam, qLocalOrientation, vLocalPosition);
+        Quaternion qInverse = -qLocalOrientation;
+        Vector r = RotateVector(CurrentCamera->m_vPosition - vLocalPosition, qInverse);
         cx = r.x;
         cy = r.y;
         cz = r.z;
     }
+    Vector vCam;
 #else
+    Vector vCam = CurrentCamera->m_vPosition;
     float cx = vCam.x - vLocalPosition.x;
     float cy = vCam.y - vLocalPosition.y;
     float cz = vCam.z - vLocalPosition.z;
@@ -4935,16 +4964,18 @@ void RenderLightMappedBumpSpecular(VertexPrimitiveFlat* vertices)
         Vector vLocalPosition;
         part->GetWorld(vLocalPosition, qLocalOrientation);
 
-        Vector vCam = CurrentCamera->m_vPosition;
 #if KOTOR1  // K1: the forward rotate through the out-of-line inverse
         float cx, cy, cz;
         {
-            Vector r = WorldToLocal(vCam, qLocalOrientation, vLocalPosition);
+            Quaternion qInverse = -qLocalOrientation;
+            Vector r = RotateVector(CurrentCamera->m_vPosition - vLocalPosition, qInverse);
             cx = r.x;
             cy = r.y;
             cz = r.z;
         }
+        Vector vCam;
 #else
+        Vector vCam = CurrentCamera->m_vPosition;
         float cx = vCam.x - vLocalPosition.x;
         float cy = vCam.y - vLocalPosition.y;
         float cz = vCam.z - vLocalPosition.z;
@@ -5360,16 +5391,18 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
             Vector vLocalPosition;
             part->GetWorld(vLocalPosition, qLocalOrientation);
 
-            Vector vCam = CurrentCamera->m_vPosition;
 #if KOTOR1  // K1: the forward rotate through the out-of-line inverse
             float cx, cy, cz;
             {
-                Vector r = WorldToLocal(vCam, qLocalOrientation, vLocalPosition);
+                Quaternion qInverse = -qLocalOrientation;
+                Vector r = RotateVector(CurrentCamera->m_vPosition - vLocalPosition, qInverse);
                 cx = r.x;
                 cy = r.y;
                 cz = r.z;
             }
+            Vector vCam;
 #else
+            Vector vCam = CurrentCamera->m_vPosition;
             float cx = vCam.x - vLocalPosition.x;
             float cy = vCam.y - vLocalPosition.y;
             float cz = vCam.z - vLocalPosition.z;
@@ -5651,16 +5684,18 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
         Vector vLocalPosition;
         part->GetWorld(vLocalPosition, qLocalOrientation);
 
-        Vector vCam = CurrentCamera->m_vPosition;
 #if KOTOR1  // K1: the forward rotate through the out-of-line inverse
         float cx, cy, cz;
         {
-            Vector r = WorldToLocal(vCam, qLocalOrientation, vLocalPosition);
+            Quaternion qInverse = -qLocalOrientation;
+            Vector r = RotateVector(CurrentCamera->m_vPosition - vLocalPosition, qInverse);
             cx = r.x;
             cy = r.y;
             cz = r.z;
         }
+        Vector vCam;
 #else
+        Vector vCam = CurrentCamera->m_vPosition;
         float cx = vCam.x - vLocalPosition.x;
         float cy = vCam.y - vLocalPosition.y;
         float cz = vCam.z - vLocalPosition.z;

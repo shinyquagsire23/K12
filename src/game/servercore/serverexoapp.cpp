@@ -731,45 +731,38 @@ CServerInfo* CServerExoApp::GetServerInfo()
 // The interface types this as CExoString*, but the field it points at is a CExoLocString.
 CExoString* CServerExoApp::GetModuleDescription()
 {
-    if (m_pInternal->GetModule() == 0)
+    if (GetModule() == 0)
         return 0;
-    return reinterpret_cast<CExoString*>(&m_pInternal->GetModule()->m_sDescription);
+    return reinterpret_cast<CExoString*>(&GetModule()->m_sDescription);
 }
 
 CGameObject* CServerExoApp::GetGameObject(unsigned long long a)
 {
-#if KOTOR1
     return m_pInternal->GetGameObject(a);
-#else
-    CServerExoAppInternal* pInternal = m_pInternal;
-    CGameObject* pObject = 0;
-    pInternal->m_pObjectArray->GetGameObject(a, &pObject);
-    return pObject;
-#endif
 }
 
 int CServerExoApp::GetIsControlledByPlayer(unsigned long long a)
 {
-    return m_pInternal->GetClientObjectByObjectId(a) != 0;
+    return GetClientObjectByObjectId(a) != 0;
 }
 
 int CServerExoApp::IsInjured(unsigned long long a)
 {
-    unsigned long long id = m_pInternal->ClientToServerObjectId(a);
+    unsigned long long id = ClientToServerObjectId(a);
     return m_pInternal->IsInjured(id);
 }
 
 void CServerExoApp::ClearAllQueuedCombatActions(unsigned long long a)
 {
-    CSWSCreature* pCreature = m_pInternal->GetCreatureByGameObjectID(a);
+    CSWSCreature* pCreature = GetCreatureByGameObjectID(a);
     if (pCreature != 0)
         pCreature->m_pCombatRound->RemoveAllActions();
 }
 
 CPathfindInformation* CServerExoApp::GetCreaturePathfindInformation(unsigned long long a)
 {
-    unsigned long long id = m_pInternal->ClientToServerObjectId(a);
-    CSWSCreature* pCreature = m_pInternal->GetCreatureByGameObjectID(id);
+    unsigned long long id = ClientToServerObjectId(a);
+    CSWSCreature* pCreature = GetCreatureByGameObjectID(id);
     if (pCreature == 0)
         return 0;
     return pCreature->m_pPathfindInfo;
@@ -777,7 +770,7 @@ CPathfindInformation* CServerExoApp::GetCreaturePathfindInformation(unsigned lon
 
 void CServerExoApp::UpDatePlayerPosition(unsigned long long a, const Vector& b, const Vector& c)
 {
-    unsigned long long id = m_pInternal->ClientToServerObjectId(a);
+    unsigned long long id = ClientToServerObjectId(a);
     m_pInternal->UpDatePlayerPosition(id, b, c);
 }
 
@@ -811,7 +804,7 @@ float CServerExoApp::ComputeHeight(const CResRef& a, const Vector& b, int c)
 
 void CServerExoApp::ClearAllActions(unsigned long long a)
 {
-    CSWSCreature* pCreature = m_pInternal->GetCreatureByGameObjectID(a);
+    CSWSCreature* pCreature = GetCreatureByGameObjectID(a);
     if (pCreature != 0)
     {
         pCreature->ClearAllActions(1);
@@ -826,8 +819,8 @@ void CServerExoApp::ClearAllActions(unsigned long long a)
 
 int CServerExoApp::GetCreatureMovedByPowerOrFeat(unsigned long long a, Vector& b)
 {
-    unsigned long long id = m_pInternal->ClientToServerObjectId(a);
-    CGameObject* pObject = m_pInternal->GetGameObject(id);
+    unsigned long long id = ClientToServerObjectId(a);
+    CGameObject* pObject = GetGameObject(id);
     // AsSWSCreature() is called without testing pObject for null.
     CSWSCreature* pCreature = pObject->AsSWSCreature();
     int result = 0;
@@ -853,8 +846,8 @@ int CServerExoApp::TestDirectLine(unsigned long long a, const CResRef& b, const 
 #endif
     if (m_pInternal->GetModule() != 0)
         pArea = m_pInternal->GetModule()->GetArea();
-    unsigned long long id = m_pInternal->ClientToServerObjectId(a);
-    CSWSCreature* pCreature = m_pInternal->GetCreatureByGameObjectID(id);
+    unsigned long long id = ClientToServerObjectId(a);
+    CSWSCreature* pCreature = GetCreatureByGameObjectID(id);
 #if KOTOR1  // K1 has no minigame fallback: no area or no creature is a plain 0
     if (pArea != 0 && pCreature != 0)
     {
@@ -881,11 +874,11 @@ void CServerExoApp::SetCreatureFollowing(unsigned long long a, unsigned long lon
 {
     unsigned long long id_b = b;
     int actionInt = c;
-    CSWSCreature* pCreature = m_pInternal->GetCreatureByGameObjectID(a);
+    CSWSCreature* pCreature = GetCreatureByGameObjectID(a);
     if (pCreature != 0)
     {
         pCreature->ClearAllActions(1);
-        CGameObject* pObject = m_pInternal->GetGameObject(b);
+        CGameObject* pObject = GetGameObject(b);
         if (pObject != 0)
         {
             int zeroInt = 0;

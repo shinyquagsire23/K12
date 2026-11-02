@@ -265,16 +265,7 @@ void DrawTextWrapped(const char* pszText, bool bUtf8, int nSize, int nW, int nH,
     if (nSize < 4)
         return;
 
-    FTTextureFont* pFont = s_textureFonts[nSize];
-    if (pFont == 0)
-    {
-        pFont = new FTTextureFont("override/iosdialog.otf");
-        textureFont = pFont;
-        s_textureFonts[nSize] = pFont;
-        pFont->FaceSize(static_cast<unsigned int>(nSize), 72);
-        pFont = s_textureFonts[nSize];
-    }
-    textureFont = pFont;
+    SetupTruetypeFont(nSize);
 
     int aBreaks[256];
     memset(aBreaks, 0, sizeof(aBreaks));

@@ -244,13 +244,7 @@ CSWSObject::~CSWSObject()
         if (pEffect)
             delete pEffect;
     }
-    // inlined CExoArrayList<CGameEffect*>::SetSize(0): the call loses a `mov x0, x8` before delete[]
-    if (m_effects.m_pArray) {
-        delete[] m_effects.m_pArray;
-        m_effects.m_pArray = 0;
-        m_effects.m_capacity = 0;
-    }
-    m_effects.m_count = 0;
+    m_effects.SetSize(0);
 
     if (m_paDamageImmunity) {
         delete m_paDamageImmunity;
@@ -275,8 +269,7 @@ CSWSObject::~CSWSObject()
 void CSWSObject::LoadObjectState(CResGFF* pGff, CResStruct* pStruct)
 {
     LoadEffectList(pGff, pStruct);
-    m_scriptVars.LoadVarTable(pGff, pStruct);
-    m_varTable.LoadVarTable(pGff, pStruct);
+    LoadVarTable(pGff, pStruct);
     LoadActionQueue(pGff, pStruct);
 
     int bSuccess;
@@ -327,8 +320,7 @@ void CSWSObject::SaveEffectList(CResGFF* pGff, CResStruct* pStruct)
 void CSWSObject::SaveObjectState(CResGFF* pGff, CResStruct* pStruct)
 {
     SaveEffectList(pGff, pStruct);
-    m_scriptVars.SaveVarTable(pGff, pStruct);
-    m_varTable.SaveVarTable(pGff, pStruct);
+    SaveVarTable(pGff, pStruct);
     SaveActionQueue(pGff, pStruct);
     pGff->WriteFieldBYTE(pStruct, static_cast<unsigned char>(m_bCommandable), const_cast<char*>("Commandable"));
 }
@@ -374,17 +366,7 @@ void CSWSObject::LoadListenData(CResGFF* pGff, CResStruct* pStruct)
 
 int CSWSObject::SetListenExpression(const CExoString& sExpression, int nExpressionId)
 {
-    CSWSExpression* pExpression = NULL;
-    if (m_listenExpressions.m_count >= 1)
-    for (int64_t i = 0; i < m_listenExpressions.m_count; i++)
-    {
-        if (m_listenExpressions.m_pArray[i]->m_nId == nExpressionId)
-        {
-            pExpression = m_listenExpressions.m_pArray[i];
-            break;
-        }
-    }
-
+    CSWSExpression* pExpression = GetListenExpressionObj(nExpressionId);
     if (!pExpression)
     {
         pExpression = new CSWSExpression;
@@ -1173,7 +1155,11 @@ int CSWSObject::DoDamageResistance(CSWSCreature* pAttacker, int nDamage, unsigne
         }
         if (nResisted != 0) {
             int nUses = m_effects.m_pArray[nResistIndex]->GetInteger(2);
+#if KOTOR1
+            int nMultiplier = bTypeMatch + 1;
+#else
             int nMultiplier = bTypeMatch != 0 ? 2 : 1;
+#endif
 #if !KOTOR1  // K1 has no feat-attack surcharge on the resistance's uses
             if (pAttacker != 0) {
                 if (m_effects.m_pArray[nResistIndex]->GetInteger(4) == 1) {
@@ -1443,11 +1429,17 @@ int CSWSObject::DoDamageImmunity(CSWSCreature* pAttacker, int nDamage, unsigned 
                                  int bNoFeedback, int bQueueOnAttack)
 {
     int nImmunity = GetDamageImmunityByFlags(nFlags);
+#if KOTOR1
+    int nAbsorbed = nImmunity * nDamage / 100;
+    if (nImmunity > 0)
+        nAbsorbed = nAbsorbed > 1 ? nAbsorbed : 1;
+#else
     int nAbsorbed;
     if (nImmunity * nDamage < 100 && nImmunity > 0)
         nAbsorbed = 1;
     else
         nAbsorbed = nImmunity * nDamage / 100;
+#endif
     if (bNoFeedback == 0 && nImmunity > 0) {
         if (pAttacker != 0 && bQueueOnAttack == 1) {
             CSWCCMessageData* pData = new CSWCCMessageData;
@@ -1603,9 +1595,9 @@ int CSWSObject::IsDialogDelay()
 
     int bWaiting = 0;
     if (nWaitFlags & 2)
-        bWaiting = g_pAppManager->m_pClientExoApp->IsSoundPlayingInDialog();
+        bWaiting = IsSoundPlayingInDialog();
     if (nWaitFlags & 4)
-        bWaiting |= g_pAppManager->m_pClientExoApp->GetInGameGui()->IsAnimationPlayingInDialog();
+        bWaiting |= IsStuntAnimationPlayingInDialog();
     if (nWaitFlags & 1)
     {
         bWaiting |= g_pAppManager->m_pClientExoApp->GetModule()->IsCameraAnimated();
@@ -1613,7 +1605,7 @@ int CSWSObject::IsDialogDelay()
         g_pExoBase->m_pTimers->GetHighResolutionTimer();
     }
     if (nWaitFlags & 8)
-        bWaiting |= g_pAppManager->m_pClientExoApp->GetInGameGui()->IsFadingInDialog();
+        bWaiting |= IsFadingInDialog();
 
 #if KOTOR1  // K1 has no extra dialog flag test
     if (m_bSkipDialogRequested != 0 && m_pDialog->m_bSkippable != 0)
@@ -1621,8 +1613,7 @@ int CSWSObject::IsDialogDelay()
     if (m_bSkipDialogRequested != 0 && m_pDialog->m_bSkippable != 0 && m_pDialog->m_bNodeUnskippable == 0)
 #endif
     {
-        m_bDialogSoundStopped = 1;
-        g_pAppManager->m_pClientExoApp->StopSoundPlayingInDialog();
+        StopSoundPlayingInDialog();
         g_pAppManager->m_pServerExoApp->GetWorldTimer()->AddWorldTimes(
             nDay, nTod, 0, 1, &m_nDialogDelayDay, &m_nDialogDelayTod);
         return 0;
@@ -2113,7 +2104,7 @@ int CSWSObject::UpdateDialog() {
     if (!IsDialogDelay() && m_bDialogSendPending != 0) {
         if (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bAnimatedCut == 0
             && m_bDialogSoundStopped != 0
-            && g_pAppManager->m_pClientExoApp->IsSoundPlayingInDialog())
+            && IsSoundPlayingInDialog())
             return 1;
         m_bDialogSendPending = 0;
         m_bDialogSoundStopped = 0;
@@ -2121,7 +2112,7 @@ int CSWSObject::UpdateDialog() {
             return SendDialogEntry(m_nPendingDialogEntry);
         return SendDialogReplies();
     }
-    if (m_pDialog->m_bEnded != 0 && !g_pAppManager->m_pClientExoApp->IsSoundPlayingInDialog())
+    if (m_pDialog->m_bEnded != 0 && !IsSoundPlayingInDialog())
         StopDialog();
     return 1;
 }
@@ -2941,7 +2932,8 @@ int CSWSObject::StartDialog(unsigned long long targetId, const CExoString& sResR
                 pTarget->AsSWSCreature()->ActionManager(2);
                 pTarget->AsSWSCreature()->SetActivity(CSWSCreature::ACTIVITY_CONVERSATION, 1, 0);
             }
-            g_pAppManager->m_pClientExoApp->GetInGameGui()->m_oidDialogOwner = m_objectId;
+            CGuiInGame* pInGameGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
+            pInGameGui->m_oidDialogOwner = m_objectId;
             m_dialogOwnerId = m_objectId;
             m_dialogWaitFlags = 0;
             if (AsSWSCreature() != 0) {

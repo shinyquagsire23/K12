@@ -20,7 +20,7 @@ class CGuiAreaLoadscreen;
 class CGuiInGame;
 class CGuiPanel;
 class CSWGuiStore;
-class CImeUI;
+class CExoImeUI;
 class CConnectionLib;
 class CModuleDescription;
 class CAurCamera;
@@ -91,7 +91,7 @@ public:
     int                  GetClientLanguage();
     void                 SetClientLanguage(int lang);
     int                  IsClientImeUI();
-    CImeUI*              GetImeUI();
+    CExoImeUI*              GetImeUI();
     CWorldTimer*         GetWorldTimer();
     CWorldTimer*         GetPauseTimer();
     CWorldTimer*         GetAnimationTimer();

@@ -37,9 +37,7 @@ CSWGuiTutorialBox::CSWGuiTutorialBox(CSWGuiManager* pGuiManager)
 void CSWGuiTutorialBox::OnPanelAdded()
 {
     CSWGuiMessageBox::OnPanelAdded();
-    m_bCombatWasPaused = g_pAppManager->m_pClientExoApp->GetPausedByCombat();
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(1, 2, 0);
+    MessageBoxPause(0);
 }
 
 void CSWGuiTutorialBox::MessageBoxPause(CSWGuiControl* pControl)
@@ -179,50 +177,38 @@ int CSWGuiTutorialBox::SetTutorialReason(unsigned char reason)
 
 void CSWGuiTutorialBox::PerformCombatFeat(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
     CSWCCreature* pCreature =
         g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_instigatorId);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     if (pCreature)
         pCreature->PerformCombatFeat(static_cast<unsigned short>(m_type), pCreature);
 }
 
 void CSWGuiTutorialBox::PerformUseGrenade(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
     CSWCCreature* pCreature =
         g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_instigatorId);
     CSWCCreature* pTarget =
         g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_targetId);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     if (pCreature)
         pCreature->PerformUseHostileItem(m_type, pTarget);
 }
 
 void CSWGuiTutorialBox::PerformSetMine(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
     CSWCCreature* pCreature =
         g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_instigatorId);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     if (pCreature)
         pCreature->PerformUseItem(m_targetId, 0, OBJECT_INVALID, pCreature->m_position);
 }
 
 void CSWGuiTutorialBox::PerformForcePower(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
     CSWCCreature* pCreature =
         g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_instigatorId);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     if (pCreature)
     {
         // sic: the sub-spell selector is the low byte of the target object id, not a field of its
@@ -234,21 +220,15 @@ void CSWGuiTutorialBox::PerformForcePower(CSWGuiControl* pControl)
 
 void CSWGuiTutorialBox::PerformPlayerFlourishWeapons(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     g_pAppManager->m_pClientExoApp->PlayerFlourishWeapons();
 }
 
 void CSWGuiTutorialBox::PerformBash(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
     CSWCCreature* pCreature =
         g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_instigatorId);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     if (pCreature)
     {
         // m_type discriminates the bashable: non-zero is a door, zero a placeable.
@@ -270,12 +250,9 @@ void CSWGuiTutorialBox::PerformBash(CSWGuiControl* pControl)
 
 void CSWGuiTutorialBox::PerformAttack(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
     CSWCCreature* pCreature =
         g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_instigatorId);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     if (pCreature)
     {
         CSWCCreature* pTarget =
@@ -288,37 +265,25 @@ void CSWGuiTutorialBox::PerformAttack(CSWGuiControl* pControl)
 // The in-game GUI this fetches is deliberately unused.
 void CSWGuiTutorialBox::PerformNonCombatXButton(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     g_pAppManager->m_pClientExoApp->GetInGameGui();
 }
 
 void CSWGuiTutorialBox::PerformCombatXButton(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     g_pAppManager->m_pClientExoApp->GetInGameGui();
 }
 
 void CSWGuiTutorialBox::PerformCombatYButton(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->OnCombatYButton();
 }
 
 void CSWGuiTutorialBox::PerformReturnToBase(CSWGuiControl* pControl)
 {
-    K2_UNUSED(pControl);
-    if (!m_bCombatWasPaused)
-        g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 2, 0);
-    m_bCombatWasPaused = 0;
+    MessageBoxUnpause(pControl);
     // Screen panel 6 is the in-game map; its X button is the "return to the Ebon Hawk" prompt.
     static_cast<CSWGuiInGameMap*>(g_pAppManager->m_pClientExoApp->GetInGameGui()
         ->GetGuiInGameScreenPanel(6))->OnXButton(0);

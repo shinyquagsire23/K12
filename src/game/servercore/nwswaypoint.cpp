@@ -48,14 +48,7 @@ void CSWSWaypoint::EventHandler(unsigned int eventType, unsigned long long a2, v
 }
 
 void CSWSWaypoint::AddToArea(CSWSArea* pArea, float x, float y, float z, int a5) {
-    if (GetArea() != 0) {
-        static_cast<CSWSArea*>(GetArea())->RemoveObjectFromArea(m_objectId);
-    }
-    SetArea(0);
-    {
-        Vector zero = {};
-        SetPosition(zero, 1, 1, 0);
-    }
+    RemoveFromArea();
     if (pArea != 0) {
         CExoString tag;
         SetArea(pArea);

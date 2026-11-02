@@ -15,19 +15,6 @@ struct _SYSTEM_INFO {
 extern "C" void k2host_entropy(unsigned char* pOut, int nLen);
 #endif
 
-#if !KOTOR1
-void CExoRandInternal::SeedTimers()
-{
-    long long llCounter;
-    if (QueryPerformanceCounter(&llCounter))
-        Add(reinterpret_cast<unsigned char*>(&llCounter), sizeof(llCounter));
-
-    _SYSTEM_INFO si;
-    GetSystemInfo(&si);
-    Add(reinterpret_cast<unsigned char*>(&si), sizeof(si));
-}
-#endif
-
 // The four generators' state before the first seeding.
 enum : unsigned int {
     RAND_INITIAL_STATE_0 = 0x1745d12d,
@@ -59,12 +46,12 @@ CExoRandInternal::CExoRandInternal()
     m_anStepShift[3] = 15;
     m_nEntropyWritePos = 0;
     m_pEntropyRing = new unsigned char[BUFFER_SIZE];
+#if KOTOR1  // K1 seeds from the string pass alone
 #ifdef K2_FIX_ENGINE_BUGS
     k2host_entropy(m_pEntropyRing, BUFFER_SIZE);
 #endif
-
-#if !KOTOR1  // K1 seeds from the string pass alone
-    SeedTimers();
+#else
+    GenSeed();
 #endif
 
     sSeed = GetString(16);
@@ -96,7 +83,13 @@ void CExoRandInternal::GenSeed()
     __builtin_memcpy(m_pEntropyRing, aStackEntropy, BUFFER_SIZE);  // idiom-exempt: fixed-size ring clear, inlined in the orig
 #endif
 #if !KOTOR1
-    SeedTimers();
+    long long llCounter;
+    if (QueryPerformanceCounter(&llCounter))
+        Add(reinterpret_cast<unsigned char*>(&llCounter), sizeof(llCounter));
+
+    _SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    Add(reinterpret_cast<unsigned char*>(&si), sizeof(si));
 #endif
 }
 

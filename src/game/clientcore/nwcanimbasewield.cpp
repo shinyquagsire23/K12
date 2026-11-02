@@ -118,21 +118,12 @@ int CSWCAnimBaseWield::LoadModel(CResRef const& cResRef, unsigned char which)
 
 void CSWCAnimBaseWield::ReAttachWieldedObjects()
 {
-    unsigned long long nOid = m_oidWieldedLeft;
-    CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nOid);
-    if (pItem != 0)
-    {
-        Gob* pObject = pItem->GetModel(ANIM_MODEL_BODY, 1);
-        if (pObject != 0)
-            pObject->AttachToObject(m_pModel, static_cast<char*>(m_sWieldedLeftNode.CStr()), 0);
-    }
-    CSWCItem* pItem2 = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_oidWieldedRight);
-    if (pItem2 != 0)
-    {
-        Gob* pObject2 = pItem2->GetModel(ANIM_MODEL_BODY, 1);
-        if (pObject2 != 0)
-            pObject2->AttachToObject(m_pModel, static_cast<char*>(m_sWieldedRightNode.CStr()), 0);
-    }
+    Gob* pObject = GetItemAurObject(m_oidWieldedLeft, ANIM_MODEL_BODY);
+    if (pObject != 0)
+        pObject->AttachToObject(m_pModel, static_cast<char*>(m_sWieldedLeftNode.CStr()), 0);
+    Gob* pObject2 = GetItemAurObject(m_oidWieldedRight, ANIM_MODEL_BODY);
+    if (pObject2 != 0)
+        pObject2->AttachToObject(m_pModel, static_cast<char*>(m_sWieldedRightNode.CStr()), 0);
     CSWCAnimBase::RefreshHilite();
 }
 
@@ -140,17 +131,10 @@ int CSWCAnimBaseWield::Wield(unsigned long long oid, CExoString const& sName, un
                              float fSpeed)
 {
     // Each arm first detaches the outgoing model, then plays its equip or unequip sound.
-    Gob* pModel = 0;
-    CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(oid);
-    if (pItem != 0)
-        pModel = pItem->GetModel(ANIM_MODEL_BODY, 1);
+    Gob* pModel = GetItemAurObject(oid, ANIM_MODEL_BODY);
     if (which == 0)
     {
-        unsigned long long oidOld = m_oidWieldedLeft;
-        CSWCItem* pOld3 = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(oidOld);
-        Gob* pOldModel3 = 0;
-        if (pOld3 != 0)
-            pOldModel3 = pOld3->GetModel(ANIM_MODEL_BODY, 1);
+        Gob* pOldModel3 = GetItemAurObject(m_oidWieldedLeft, ANIM_MODEL_BODY);
         if (m_oidWieldedLeft != oid && pOldModel3 != 0)
         {
             CSWCItem* pCheck3 = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_oidWieldedLeft);
@@ -181,8 +165,7 @@ int CSWCAnimBaseWield::Wield(unsigned long long oid, CExoString const& sName, un
             }
             m_sWieldedLeftNode = const_cast<char*>("");
         }
-        else if (m_bWieldLimited == 0 ||
-                 g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(oid) != 0)
+        else if (ItemIsValid(oid))
         {
             pModel->AttachToObject(m_pModel, sName.CStr(), 0);
             pModel->SetObjectScale(fSpeed, 1);
@@ -201,11 +184,7 @@ int CSWCAnimBaseWield::Wield(unsigned long long oid, CExoString const& sName, un
     }
     if (which == 1)
     {
-        unsigned long long oidOld2 = m_oidWieldedRight;
-        CSWCItem* pOld = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(oidOld2);
-        Gob* pOldModel = 0;
-        if (pOld != 0)
-            pOldModel = pOld->GetModel(ANIM_MODEL_BODY, 1);
+        Gob* pOldModel = GetItemAurObject(m_oidWieldedRight, ANIM_MODEL_BODY);
         if (m_oidWieldedRight != oid && pOldModel != 0)
         {
             CSWCItem* pCheck = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_oidWieldedRight);
@@ -230,8 +209,7 @@ int CSWCAnimBaseWield::Wield(unsigned long long oid, CExoString const& sName, un
             }
             m_sWieldedRightNode = const_cast<char*>("");
         }
-        else if (m_bWieldLimited == 0 ||
-                 g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(oid) != 0)
+        else if (ItemIsValid(oid))
         {
             pModel->AttachToObject(m_pModel, sName.CStr(), 0);
             pModel->SetObjectScale(fSpeed, 1);
@@ -369,41 +347,23 @@ int CSWCAnimBaseWield::SetAnimationInternal(CAurObject* pObject, unsigned short 
 
 void CSWCAnimBaseWield::EnableDistortion()
 {
-    unsigned long long nOid = m_oidWieldedRight;
-    CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nOid);
-    if (pItem != 0)
-    {
-        Gob* pObject = pItem->GetModel(ANIM_MODEL_BODY, 1);
-        if (pObject != 0)
-            pObject->EnableDistortion();
-    }
-    CSWCItem* pItem2 = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_oidWieldedLeft);
-    if (pItem2 != 0)
-    {
-        Gob* pObject2 = pItem2->GetModel(ANIM_MODEL_BODY, 1);
-        if (pObject2 != 0)
-            pObject2->EnableDistortion();
-    }
+    Gob* pObject = GetItemAurObject(m_oidWieldedRight, ANIM_MODEL_BODY);
+    if (pObject != 0)
+        pObject->EnableDistortion();
+    Gob* pObject2 = GetItemAurObject(m_oidWieldedLeft, ANIM_MODEL_BODY);
+    if (pObject2 != 0)
+        pObject2->EnableDistortion();
     CSWCAnimBaseTW::EnableDistortion();
 }
 
 void CSWCAnimBaseWield::DisableDistortion()
 {
-    unsigned long long nOid = m_oidWieldedRight;
-    CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nOid);
-    if (pItem != 0)
-    {
-        Gob* pObject = pItem->GetModel(ANIM_MODEL_BODY, 1);
-        if (pObject != 0)
-            pObject->DisableDistortion();
-    }
-    CSWCItem* pItem2 = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_oidWieldedLeft);
-    if (pItem2 != 0)
-    {
-        Gob* pObject2 = pItem2->GetModel(ANIM_MODEL_BODY, 1);
-        if (pObject2 != 0)
-            pObject2->DisableDistortion();
-    }
+    Gob* pObject = GetItemAurObject(m_oidWieldedRight, ANIM_MODEL_BODY);
+    if (pObject != 0)
+        pObject->DisableDistortion();
+    Gob* pObject2 = GetItemAurObject(m_oidWieldedLeft, ANIM_MODEL_BODY);
+    if (pObject2 != 0)
+        pObject2->DisableDistortion();
     CSWCAnimBaseTW::DisableDistortion();
 }
 

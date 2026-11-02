@@ -366,67 +366,8 @@ CTwoDimArrays::~CTwoDimArrays()
 
 bool CTwoDimArrays::UnLoad2DArrays()
 {
-    if (m_paIPRPCostTables != 0) {
-        C2DA** paTables = m_paIPRPCostTables;
-        unsigned char count = m_nIPRPCostTableCount;
-        if (count == 0) {
-            operator delete[](paTables);
-        } else {
-            uint64_t i = 0;
-            for (;;) {
-                C2DA* pTable = paTables[i];
-                if (pTable != 0) {
-                    pTable->Unload2DArray();
-                    paTables = m_paIPRPCostTables;
-                    C2DA* pElem = paTables[i];
-                    if (pElem != 0) {
-                        delete pElem;
-                        paTables = m_paIPRPCostTables;
-                    }
-                    paTables[i] = 0;
-                    paTables = m_paIPRPCostTables;
-                    count = m_nIPRPCostTableCount;
-                }
-                i++;
-                if (count <= i) break;
-            }
-            if (paTables != 0) {
-                operator delete[](paTables);
-            }
-        }
-        m_paIPRPCostTables = 0;
-    }
-
-    if (m_paIPRPParamTables != 0) {
-        C2DA** paTables = m_paIPRPParamTables;
-        unsigned char count = m_nIPRPParamTableCount;
-        if (count == 0) {
-            operator delete[](paTables);
-        } else {
-            uint64_t i = 0;
-            for (;;) {
-                C2DA* pTable = paTables[i];
-                if (pTable != 0) {
-                    pTable->Unload2DArray();
-                    paTables = m_paIPRPParamTables;
-                    C2DA* pElem = paTables[i];
-                    if (pElem != 0) {
-                        delete pElem;
-                        paTables = m_paIPRPParamTables;
-                    }
-                    paTables[i] = 0;
-                    paTables = m_paIPRPParamTables;
-                    count = m_nIPRPParamTableCount;
-                }
-                i++;
-                if (count <= i) break;
-            }
-            if (paTables != 0) {
-                operator delete[](paTables);
-            }
-        }
-        m_paIPRPParamTables = 0;
-    }
+    UnLoadIPRPCostTables();
+    UnLoadIPRPParamTables();
 
 #if KOTOR1
     if (m_pRemoveFXOnDeath != 0) {
@@ -1034,8 +975,6 @@ bool CTwoDimArrays::UnLoad2DArrays()
 }
 
 
-static inline CResRef MakeResRef(const char* szName) { CResRef r(szName); return r; }
-
 int CTwoDimArrays::Load2DArrays()
 {
     LoadIPRPCostTables();
@@ -1051,162 +990,93 @@ int CTwoDimArrays::Load2DArrays()
     if (!Load2DArrays_GenericDoors()) return false;
     if (!Load2DArrays_Placeables()) return false;
 
-    m_pAreaTransition = new C2DA(MakeResRef("Loadscreens"), 0);
-    if (!m_pAreaTransition->Load2DArray()) return false;
-    m_pIPRPMelee = new C2DA(MakeResRef("IPRP_MeleeCost"), 0);
-    if (!m_pIPRPMelee->Load2DArray()) return false;
-    m_pItemPropDef = new C2DA(MakeResRef("ItemPropDef"), 0);
-    if (!m_pItemPropDef->Load2DArray()) return false;
-    m_pPortrait = new C2DA(MakeResRef("Portraits"), 0);
-    if (!m_pPortrait->Load2DArray()) return false;
-    m_pIPRPDamage = new C2DA(MakeResRef("IPRP_DAMAGECOST"), 0);
-    if (!m_pIPRPDamage->Load2DArray()) return false;
-    m_pTraps = new C2DA(MakeResRef("Traps"), 0);
-    if (!m_pTraps->Load2DArray()) return false;
-    m_pLightColor = new C2DA(MakeResRef("LightColor"), 0);
-    if (!m_pLightColor->Load2DArray()) return false;
+    if (!Load2DArrays_AreaTransition()) return false;
+    if (!Load2DArrays_IPRPMelee()) return false;
+    if (!Load2DArrays_ItemPropDef()) return false;
+    if (!Load2DArrays_Portrait()) return false;
+    if (!Load2DArrays_IPRPDamage()) return false;
+    if (!Load2DArrays_Traps()) return false;
+    if (!Load2DArrays_LightColor()) return false;
 
     bool bSkipStateScripts = false;
     if (g_nClientServerMode != 2) {
-        m_pCursor = new C2DA(MakeResRef("cursors"), 0);
-        if (!m_pCursor->Load2DArray()) return false;
-        m_pAmbientMusic = new C2DA(MakeResRef("AmbientMusic"), 0);
-        if (!m_pAmbientMusic->Load2DArray()) return false;
-        m_pAmbientSound = new C2DA(MakeResRef("AmbientSound"), 0);
-        if (!m_pAmbientSound->Load2DArray()) return false;
+        if (!Load2DArrays_Cursor()) return false;
+        if (!Load2DArrays_AmbientMusic()) return false;
+        if (!Load2DArrays_AmbientSound()) return false;
         if (!Load2DArrays_FootstepSounds()) return false;
         if (!Load2DArrays_AppearanceSounds()) return false;
         if (!Load2DArrays_WeaponSounds()) return false;
-        m_pAmmunitionTypes = new C2DA(MakeResRef("AmmunitionTypes"), 0);
-        if (!m_pAmmunitionTypes->Load2DArray()) return false;
-        m_pKeymap = new C2DA(MakeResRef("keymap"), 0);
-        if (!m_pKeymap->Load2DArray()) return false;
-        m_pBindableKey = new C2DA(MakeResRef("BindableKeys"), 0);
-        if (!m_pBindableKey->Load2DArray()) return false;
+        if (!Load2DArrays_AmmunitionTypes()) return false;
+        if (!Load2DArrays_Keymap()) return false;
+        if (!Load2DArrays_BindableKey()) return false;
         if (!Load2DArrays_PlaceableSounds()) return false;
-        m_pCameraStyle = new C2DA(MakeResRef("CameraStyle"), 0);
-        if (!m_pCameraStyle->Load2DArray()) return false;
-        m_pTutorial = new C2DA(MakeResRef("tutorial"), 0);
-        if (!m_pTutorial->Load2DArray()) return false;
-        m_pDifficultyOptions = new C2DA(MakeResRef("difficultyopt"), 0);
-        if (!m_pDifficultyOptions->Load2DArray()) return false;
-        m_pGamma = new C2DA(MakeResRef("gamma"), 0);
-        if (!m_pGamma->Load2DArray()) return false;
+        if (!Load2DArrays_CameraStyle()) return false;
+        if (!Load2DArrays_Tutorial()) return false;
+        if (!Load2DArrays_DifficultyOptions()) return false;
+        if (!Load2DArrays_Gamma()) return false;
 #if !KOTOR1
-        m_pAIScripts = new C2DA(MakeResRef("aiscripts"), 0);
-        if (!m_pAIScripts->Load2DArray()) return false;
+        if (!Load2DArrays_AIScripts()) return false;
 #endif
         bSkipStateScripts = (g_nClientServerMode == 1);
     }
 
     if (!bSkipStateScripts) {
-        m_pStateScripts = new C2DA(MakeResRef("StateScripts"), 0);
-        if (!m_pStateScripts->Load2DArray()) return false;
-        m_pPoison = new C2DA(MakeResRef("poison"), 0);
-        if (!m_pPoison->Load2DArray()) return false;
-        m_pDisease = new C2DA(MakeResRef("disease"), 0);
-        if (!m_pDisease->Load2DArray()) return false;
-        m_pRepAdjustments = new C2DA(MakeResRef("RepAdjust"), 0);
-        if (!m_pRepAdjustments->Load2DArray()) return false;
-        m_pFractionalCR = new C2DA(MakeResRef("FractionalCR"), 0);
-        if (!m_pFractionalCR->Load2DArray()) return false;
-        m_pEncounterDifficulty = new C2DA(MakeResRef("EncDifficulty"), 0);
-        if (!m_pEncounterDifficulty->Load2DArray()) return false;
-        m_pExcitedDuration = new C2DA(MakeResRef("ExcitedDuration"), 0);
-        if (!m_pExcitedDuration->Load2DArray()) return false;
-#if KOTOR1
+        if (!Load2DArrays_StateScripts()) return false;
+        if (!Load2DArrays_Poison()) return false;
+        if (!Load2DArrays_Disease()) return false;
+        if (!Load2DArrays_RepAdjustments()) return false;
+        if (!Load2DArrays_FractionalCR()) return false;
+        if (!Load2DArrays_EncounterDifficulty()) return false;
+        if (!Load2DArrays_ExcitedDuration()) return false;
         if (!Load2DArrays_Regeneration()) return false;
-#else
-        m_pRegeneration = new C2DA(MakeResRef("Regeneration"), 0);
-        if (!m_pRegeneration->Load2DArray()) return false;
-#endif
-        m_pXpBase = new C2DA(MakeResRef("XPTable"), 0);
-        if (!m_pXpBase->Load2DArray()) return false;
-        m_pIPRPMonsterDamage = new C2DA(MakeResRef("IPRP_MONSTCOST"), 0);
-        if (!m_pIPRPMonsterDamage->Load2DArray()) return false;
-        m_pIPRPBonusCost = new C2DA(MakeResRef("IPRP_BONUSCOST"), 0);
-        if (!m_pIPRPBonusCost->Load2DArray()) return false;
-        m_pIPRPSRCost = new C2DA(MakeResRef("IPRP_SRCOST"), 0);
-        if (!m_pIPRPSRCost->Load2DArray()) return false;
-        m_pIPRPNeg5Cost = new C2DA(MakeResRef("IPRP_NEG5COST"), 0);
-        if (!m_pIPRPNeg5Cost->Load2DArray()) return false;
-        m_pRanges = new C2DA(MakeResRef("Ranges"), 0);
-        if (!m_pRanges->Load2DArray()) return false;
-        m_pOnHit = new C2DA(MakeResRef("IPRP_ONHIT"), 0);
-        if (!m_pOnHit->Load2DArray()) return false;
-        m_pOnHitDuration = new C2DA(MakeResRef("IPRP_ONHITDUR"), 0);
-        if (!m_pOnHitDuration->Load2DArray()) return false;
-        m_pDamageHitVisual = new C2DA(MakeResRef("DamageHitVisual"), 0);
-        if (!m_pDamageHitVisual->Load2DArray()) return false;
+        if (!Load2DArrays_XpBase()) return false;
+        if (!Load2DArrays_IPRPMonsterDamage()) return false;
+        if (!Load2DArrays_IPRPBonusCost()) return false;
+        if (!Load2DArrays_IPRPSRCost()) return false;
+        if (!Load2DArrays_IPRPNeg5Cost()) return false;
+        if (!Load2DArrays_Ranges()) return false;
+        if (!Load2DArrays_OnHit()) return false;
+        if (!Load2DArrays_OnHitDuration()) return false;
+        if (!Load2DArrays_DamageHitVisual()) return false;
         if (!Load2DArrays_Animations()) return false;
-        m_pBodyBag = new C2DA(MakeResRef("bodybag"), 0);
-        if (!m_pBodyBag->Load2DArray()) return false;
+        if (!Load2DArrays_BodyBag()) return false;
         if (!Load2DArrays_ForceAdjust()) return false;
-        m_pGameEffects = new C2DA(MakeResRef("GameEffects"), 0);
-        if (!m_pGameEffects->Load2DArray()) return false;
+        if (!Load2DArrays_GameEffects()) return false;
 #if KOTOR1
-        m_pGameEffects = new C2DA(MakeResRef("GameEffects"), 0);
-        if (!m_pGameEffects->Load2DArray()) return false;
+        if (!Load2DArrays_GameEffects()) return false;
 #endif
-        m_pRepute = new C2DA(MakeResRef("Repute"), 0);
-        if (!m_pRepute->Load2DArray()) return false;
-        m_pWeaponDischarge = new C2DA(MakeResRef("WeaponDischarge"), 0);
-        if (!m_pWeaponDischarge->Load2DArray()) return false;
-        m_pDroidDischarge = new C2DA(MakeResRef("DroidDischarge"), 0);
-        if (!m_pDroidDischarge->Load2DArray()) return false;
-        m_pPlotXP = new C2DA(MakeResRef("Plot"), 0);
-        if (!m_pPlotXP->Load2DArray()) return false;
-        m_pCombatAnimations = new C2DA(MakeResRef("CombatAnimations"), 0);
-        if (!m_pCombatAnimations->Load2DArray()) return false;
+        if (!Load2DArrays_Repute()) return false;
+        if (!Load2DArrays_WeaponDischarge()) return false;
+        if (!Load2DArrays_DroidDischarge()) return false;
+        if (!Load2DArrays_PlotXP()) return false;
+        if (!Load2DArrays_CombatAnimations()) return false;
         if (!Load2DArrays_DialogAnimations()) return false;
-        m_pNPC = new C2DA(MakeResRef("NPC"), 0);
-        if (!m_pNPC->Load2DArray()) return false;
-        m_pSpells = new C2DA(MakeResRef("Spells"), 0);
-        if (!m_pSpells->Load2DArray()) return false;
-        m_pFeat = new C2DA(MakeResRef("Feat"), 0);
-        if (!m_pFeat->Load2DArray()) return false;
-        m_pFormations = new C2DA(MakeResRef("Formations"), 0);
-        if (!m_pFormations->Load2DArray()) return false;
-        m_pGrenadeSound = new C2DA(MakeResRef("GrenadeSND"), 0);
-        if (!m_pGrenadeSound->Load2DArray()) return false;
-        m_pPlanetary = new C2DA(MakeResRef("Planetary"), 0);
-        if (!m_pPlanetary->Load2DArray()) return false;
-        m_pFeedBackText = new C2DA(MakeResRef("FeedBackText"), 0);
-        if (!m_pFeedBackText->Load2DArray()) return false;
-        m_pForceShields = new C2DA(MakeResRef("ForceShields"), 0);
-        if (!m_pForceShields->Load2DArray()) return false;
-        m_pHeads = new C2DA(MakeResRef("Heads"), 0);
-        if (!m_pHeads->Load2DArray()) return false;
-        m_pItemValues = new C2DA(MakeResRef("ItemValue"), 0);
-        if (!m_pItemValues->Load2DArray()) return false;
-        m_pVideoEffects = new C2DA(MakeResRef("VideoEffects"), 0);
-        if (!m_pVideoEffects->Load2DArray()) return false;
-        m_pMovies = new C2DA(MakeResRef("Movies"), 0);
-        if (!m_pMovies->Load2DArray()) return false;
+        if (!Load2DArrays_NPC()) return false;
+        if (!Load2DArrays_Spells()) return false;
+        if (!Load2DArrays_Feat()) return false;
+        if (!Load2DArrays_Formations()) return false;
+        if (!Load2DArrays_GrenadeSound()) return false;
+        if (!Load2DArrays_Planetary()) return false;
+        if (!Load2DArrays_FeedBackText()) return false;
+        if (!Load2DArrays_ForceShields()) return false;
+        if (!Load2DArrays_Heads()) return false;
+        if (!Load2DArrays_ItemValues()) return false;
+        if (!Load2DArrays_VideoEffects()) return false;
+        if (!Load2DArrays_Movies()) return false;
         if (!Load2DArrays_EffectIcon()) return false;
         if (!Load2DArrays_RemoveFXOnDeath()) return false;
         if (!Load2DArrays_TexPacks()) return false;
 #if !KOTOR1
-        m_pSubrace = new C2DA(MakeResRef("Subrace"), 0);
-        if (!m_pSubrace->Load2DArray()) return false;
-        m_pIPRPPC = new C2DA(MakeResRef("IPRP_PC"), 0);
-        if (!m_pIPRPPC->Load2DArray()) return false;
-        m_pInfluence = new C2DA(MakeResRef("Influence"), 0);
-        if (!m_pInfluence->Load2DArray()) return false;
-        m_pItemCreate = new C2DA(MakeResRef("ItemCreate"), 0);
-        if (!m_pItemCreate->Load2DArray()) return false;
-        m_pChemicalCreate = new C2DA(MakeResRef("ChemicalCreate"), 0);
-        if (!m_pChemicalCreate->Load2DArray()) return false;
-        m_pSwoopUpgrade = new C2DA(MakeResRef("SwoopUpgrade"), 0);
-        if (!m_pSwoopUpgrade->Load2DArray()) return false;
-        m_pMusic = new C2DA(MakeResRef("MusicTable"), 0);
-        if (!m_pMusic->Load2DArray()) return false;
-        m_pAlienVO = new C2DA(MakeResRef("AlienVO"), 0);
-        if (!m_pAlienVO->Load2DArray()) return false;
-        m_pEmotion = new C2DA(MakeResRef("Emotion"), 0);
-        if (!m_pEmotion->Load2DArray()) return false;
-        m_pAutoBalance = new C2DA(MakeResRef("AutoBalance"), 0);
-        if (!m_pAutoBalance->Load2DArray()) return false;
+        if (!Load2DArrays_Subrace()) return false;
+        if (!Load2DArrays_IPRPPC()) return false;
+        if (!Load2DArrays_Influence()) return false;
+        if (!Load2DArrays_ItemCreate()) return false;
+        if (!Load2DArrays_ChemicalCreate()) return false;
+        if (!Load2DArrays_SwoopUpgrade()) return false;
+        if (!Load2DArrays_Music()) return false;
+        if (!Load2DArrays_AlienVO()) return false;
+        if (!Load2DArrays_Emotion()) return false;
+        if (!Load2DArrays_AutoBalance()) return false;
 #endif
     }
 

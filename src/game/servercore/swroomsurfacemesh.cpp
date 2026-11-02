@@ -801,11 +801,8 @@ CSWRoomSurfaceMesh::~CSWRoomSurfaceMesh()
         m_paTriAdjacency = 0;
 #endif
 
-        if (!m_aEdgeAdjacency.m_bStatic)
-            m_aEdgeAdjacency.Clear();
-
-        if (!m_aBorderEnds.m_bStatic)
-            m_aBorderEnds.Clear();
+        m_aEdgeAdjacency.SetSize(0);
+        m_aBorderEnds.SetSize(0);
     }
 }
 
@@ -1042,10 +1039,7 @@ int CSWRoomSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
                 int nExterior = 0;
                 for (int f = 0; f < m_nTriangleCount; f++) {
                     int walk;
-                    {
-                        CExoString colWalk("Walk");
-                        g_pRules->m_p2DArrays->m_pSurfaceMaterial->GetINTEntry(faceMats[f], colWalk, &walk);
-                    }
+                    g_pRules->m_p2DArrays->m_pSurfaceMaterial->GetINTEntry(faceMats[f], CExoString("Walk"), &walk);
                     if (walk == 0) {
                         walkableMap[f] = -1;
                         exteriorMap[f] = nExterior;

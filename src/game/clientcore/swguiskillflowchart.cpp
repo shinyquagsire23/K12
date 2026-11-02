@@ -133,11 +133,9 @@ void CSWGuiSkillFlowChart::SetSkillStatus(unsigned int nId, unsigned char bStatu
 }
 
 void CSWGuiSkillFlowChart::SetSkillStatusAll(unsigned char bStatus) {
-    for (int64_t i = 0; i < m_aFlows.m_count; i++) {
-        m_aFlows.m_pArray[i]->SetSkillStatus(0, bStatus);
-        m_aFlows.m_pArray[i]->SetSkillStatus(1, bStatus);
-        m_aFlows.m_pArray[i]->SetSkillStatus(2, bStatus);
-    }
+    for (int64_t i = 0; i < m_aFlows.m_count; i++)
+        for (int j = 0; j < 3; j++)
+            m_aFlows.m_pArray[i]->SetSkillStatus(static_cast<unsigned char>(j), bStatus);
 }
 
 void CSWGuiSkillFlowChart::SetSelectedSkill(unsigned int nId) {
@@ -158,60 +156,13 @@ void CSWGuiSkillFlowChart::SetSelectedSkill(unsigned int nId) {
 
 int CSWGuiSkillFlowChart::SetTopLeft() {
     if (m_nSelectedSlot || m_nSelectedFlow) {
-        if (m_nSelectedFlow < m_aFlows.m_count) {
-            CSWGuiSkillFlow* pOld = m_aFlows.m_pArray[m_nSelectedFlow];
-            if (pOld->m_aSlots[m_nSelectedSlot].m_bSelected & 1) {
-                pOld->m_aSlots[m_nSelectedSlot].m_bSelected &= ~1;
-                pOld->SetSkillStatus(m_nSelectedSlot, pOld->m_aSlots[m_nSelectedSlot].m_bStatus);
-            }
-        }
+        if (m_nSelectedFlow < m_aFlows.m_count)
+            m_aFlows.m_pArray[m_nSelectedFlow]->SetSkillSelected(m_nSelectedSlot, 0);
         m_nSelectedSlot = 0;
         m_nSelectedFlow = 0;
     }
     if (m_aFlows.m_count < 1) return -1;
-    CSWGuiSkillFlow* pTop = m_aFlows.m_pArray[0];
-#if KOTOR1
-    // K1 routes this through the frame-painting SetSkillStatus instead of setting both alphas.
-    if (!(pTop->m_aSlots[0].m_bSelected & 1)) {
-        pTop->m_aSlots[0].m_bSelected |= 1;
-        pTop->SetSkillStatus(0, pTop->m_aSlots[0].m_bStatus);
-    }
-#else
-    if (!(pTop->m_aSlots[0].m_bSelected & 1)) {
-        CSWGuiSkillFlow::Slot& sTop = pTop->m_aSlots[0];
-        sTop.m_bSelected |= 1;
-        sTop.m_imageIcon.m_params.m_fAlpha = 1.0f;
-        sTop.m_imageBg.m_params.m_fAlpha = 1.0f;
-        switch (sTop.m_bStatus) {
-            case CSWGuiSkillFlow::SKILL_STATUS_AVAILABLE:
-                sTop.m_imageIcon.m_params.m_fAlpha = 0.25f;
-                sTop.m_imageBg.m_params.m_color = CGuiInGame::COLOR_NEW_GREEN;
-                break;
-            case CSWGuiSkillFlow::SKILL_STATUS_OWNED:
-            case CSWGuiSkillFlow::SKILL_STATUS_GRANTED:
-                sTop.m_imageBg.m_params.m_color = CGuiInGame::COLOR_NEW_TEXT;
-                break;
-            case CSWGuiSkillFlow::SKILL_STATUS_UNAVAILABLE:
-                sTop.m_imageIcon.m_params.m_fAlpha = 0.25f;
-                sTop.m_imageBg.m_params.m_color = CGuiInGame::COLOR_RED;
-                break;
-            case CSWGuiSkillFlow::SKILL_STATUS_CHOSEN:
-                sTop.m_imageBg.m_params.m_color = CGuiInGame::COLOR_NEW_HIGHLIGHT;
-                break;
-            case CSWGuiSkillFlow::SKILL_STATUS_BONUS:
-                sTop.m_imageBg.m_params.m_color = *reinterpret_cast<const Vector*>(&CGuiInGame::COLOR_NEW_BONUS);
-                break;
-            case CSWGuiSkillFlow::SKILL_STATUS_VIEW:
-                sTop.m_imageBg.m_params.m_color = (sTop.m_bSelected & 1) ? CGuiInGame::COLOR_NEW_HIGHLIGHT
-                                                                          : CGuiInGame::COLOR_NEW_GREEN;
-                break;
-        }
-        if (sTop.m_bSelected & 1)
-            sTop.m_imageBg.m_params.bHilight = 1;
-        else
-            sTop.m_imageBg.m_params.bHilight = 0;
-    }
-#endif
+    m_aFlows.m_pArray[0]->SetSkillSelected(0, 1);
     return m_aFlows.m_pArray[0]->m_aSlots[0].m_nId;
 }
 
@@ -458,7 +409,7 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
     int nC;
     int nB;
     CSWRules* pRules = g_pRules;
-    unsigned char nClass = pStats->GetClassLeveledUpIn();
+    unsigned char nClass = pStats->GetClass(pStats->m_nNumClasses - 1);
     CSWClass* pClass = &pRules->m_paClasses[nClass];
 
     ClearChart();
@@ -507,7 +458,7 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
     bool bChainGate;
     int nB;
     int nC;
-    CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClassLeveledUpIn()];
+    CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClass(pStats->m_nNumClasses - 1)];
 
     ClearChart();
 
@@ -730,17 +681,8 @@ int CSWGuiSkillFlowChart::HandleInput(int nKey) {
     }
     }
     if (bFlow != m_nSelectedFlow || bSel != m_nSelectedSlot) {
-        CSWGuiSkillFlow* pOld = m_aFlows.m_pArray[bFlow];
-        if (pOld->m_aSlots[bSel].m_bSelected & 1) {
-            pOld->m_aSlots[bSel].m_bSelected &= ~1;
-            pOld->SetSkillStatus(bSel, pOld->m_aSlots[bSel].m_bStatus);
-        }
-        unsigned char nSelNow = m_nSelectedFlow;
-        CSWGuiSkillFlow* pSel = m_aFlows.m_pArray[nSelNow];
-        if (!(pSel->m_aSlots[m_nSelectedSlot].m_bSelected & 1)) {
-            pSel->m_aSlots[m_nSelectedSlot].m_bSelected |= 1;
-            pSel->SetSkillStatus(m_nSelectedSlot, pSel->m_aSlots[m_nSelectedSlot].m_bStatus);
-        }
+        m_aFlows.m_pArray[bFlow]->SetSkillSelected(bSel, 0);
+        m_aFlows.m_pArray[m_nSelectedFlow]->SetSkillSelected(m_nSelectedSlot, 1);
     }
     return m_aFlows.m_pArray[m_nSelectedFlow]->m_aSlots[m_nSelectedSlot].m_nId;
 }
@@ -946,7 +888,7 @@ CSWGuiSkillFlow::CSWGuiSkillFlow() {
         m_aSlots[i].m_imageIcon.m_params.SetDrawStyle(0);
 #endif
         m_aSlots[i].m_imageIcon.m_params.SetAlignment(18);
-        m_aSlots[i].m_imageBg.m_params.SetImage("lbl_indent", 0);
+        m_aSlots[i].m_imageBg.m_params.SetImage("lbl_indent");
     }
     for (int i = 0; i < 2; i++) {
 #ifdef K2_UI_TOUCH
@@ -955,18 +897,18 @@ CSWGuiSkillFlow::CSWGuiSkillFlow() {
         m_aArrow[i].m_params.SetDrawStyle(0);   // pc / xbox: fills the box SetExtent scales
 #endif
         m_aArrow[i].m_params.SetAlignment(18);
-        m_aArrow[i].m_params.SetImage("lbl_skarr", 0);
+        m_aArrow[i].m_params.SetImage("lbl_skarr");
     }
 #else
     for (int i = 0; i < 3; i++) {
         m_aSlots[i].m_imageIcon.m_params.SetDrawStyle(0);
         m_aSlots[i].m_imageIcon.m_params.SetAlignment(18);
-        m_aSlots[i].m_imageBg.m_params.SetImage("UIBIT_ABI_BACK", 0);
+        m_aSlots[i].m_imageBg.m_params.SetImage("UIBIT_ABI_BACK");
     }
     for (int i = 0; i < 2; i++) {
         m_aArrow[i].m_params.SetDrawStyle(1);
         m_aArrow[i].m_params.SetAlignment(18);
-        m_aArrow[i].m_params.SetImage("UIBIT_ABI_ARROW", 0);
+        m_aArrow[i].m_params.SetImage("UIBIT_ABI_ARROW");
     }
 #endif
     Clear();
@@ -1117,8 +1059,6 @@ void CSWGuiSkillFlow::SetSkillSelected(unsigned char bSlot, int nSelected) {
     SetSkillStatus(bSlot, m_aSlots[bSlot].m_bStatus);
 }
 
-// Kept out of line so the constant-slot callers make one call rather than a copy per site.
-__attribute__((noinline))
 void CSWGuiSkillFlow::SetSkillStatus(unsigned char bSlot, unsigned char bStatus) {
     Slot& s = m_aSlots[bSlot];
 #if KOTOR1

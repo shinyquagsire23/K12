@@ -341,9 +341,7 @@ void CSWSArea::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                 {
                     g_pAppManager->m_pClientExoApp->AddMoveToModuleMovie(pEvent->GetString(i));
                 }
-                m_bTransitionPending = 0;
-                m_activeTransitionID = 0;
-                g_pAppManager->m_pClientExoApp->SetInputActive(1, 0);
+                SetTransitionPending(0, 0);
             }
         }
         else
@@ -369,9 +367,7 @@ void CSWSArea::EventHandler(unsigned int nEventType, unsigned long long nCallerI
             CGuiInGame* pInGameGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
             Vector vFade;  // black
             pInGameGui->StartGlobalFade(0, 0.0f, 0.5f, vFade);
-            m_bTransitionPending = 1;
-            m_activeTransitionID = nPendingID;
-            g_pAppManager->m_pClientExoApp->SetInputActive(0, 1);
+            SetTransitionPending(1, nPendingID);
         }
     }
     else
@@ -740,11 +736,7 @@ int CSWSArea::AddObjectToArea(unsigned long long objectId, int n)
     {
         CSWSPlayer* pClient = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(objectId);
         if (pClient != 0)
-        {
-            if (m_nPlayersInArea == 0)
-                IncreaseAILevelPriority();
-            m_nPlayersInArea++;
-        }
+            IncrementPlayersInArea();
 
         if (n == 1)
         {
@@ -775,11 +767,7 @@ int CSWSArea::RemoveObjectFromArea(unsigned long long objectId)
     {
         CSWSPlayer* pClient = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(objectId);
         if (pClient != 0)
-        {
-            m_nPlayersInArea--;
-            if (m_nPlayersInArea == 0)
-                DecreaseAILevelPriority();
-        }
+            DecrementPlayersInArea();
 
         CScriptEvent* pEvent = new CScriptEvent;
         pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_OBJECT_EXIT;
@@ -2949,10 +2937,7 @@ void CSWSArea::SetCurrentWeather(unsigned char nWeather, int bTurnOn)
 void CSWSArea::PlayVisualEffect(unsigned short nEffectId, const Vector& vPosition)
 {
     float fRange;
-    {
-        CExoString sColumn("RADIUS");
-        g_pRules->m_p2DArrays->m_pVisualEffect->GetFLOATEntry(nEffectId, sColumn, &fRange);
-    }
+    g_pRules->m_p2DArrays->m_pVisualEffect->GetFLOATEntry(nEffectId, CExoString("RADIUS"), &fRange);
 
     fRange = fRange + 250.0f;
 
@@ -2960,39 +2945,13 @@ void CSWSArea::PlayVisualEffect(unsigned short nEffectId, const Vector& vPositio
     float fXMax = fRange + vPosition.x;
 
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
-    CGameObjectArray* pSearchArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CGameObject* pObject;
 
-    int nLast = m_aObjectsByX.m_count - 1;
-    int nLow = 0;
-    int nHigh = nLast;
-
-    while (nLow < nHigh || nLow == nLast)
-    {
-        int nMid = (nLow + nHigh) >> 1;
-
-        if (pSearchArray->GetGameObject(m_aObjectsByX.m_pArray[nMid], &pObject)
-                != CGameObjectArray::SUCCESS)
-            return;
-
-        if (static_cast<CSWSObject*>(pObject)->m_position.x >= fXMin)
-        {
-            if (nMid == nHigh)
-                goto found;
-
-            nHigh = nMid;
-        }
-        else
-        {
-            nLow = nMid + 1;
-        }
-    }
-
-    if (nLow != nHigh)
+    int nIndex;
+    if (GetFirstObjectIndiceByX(&nIndex, fXMin) == 0)
         return;
 
-found:
-    for (int i = nHigh; i < m_aObjectsByX.m_count; i++)
+    for (int i = nIndex; i < m_aObjectsByX.m_count; i++)
     {
         if (pObjectArray->GetGameObject(m_aObjectsByX.m_pArray[i], &pObject)
                 != CGameObjectArray::SUCCESS)

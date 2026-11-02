@@ -1,10 +1,7 @@
 #pragma once
 #include "k2stdint.h"
 
-struct CSWSStats_FeatRemainingUses {
-    unsigned short m_nFeat;
-    unsigned char  m_nUsesUsed;
-};
+#include "featuselistentry.h"
 
 #include "exolocstring.h"
 #include "exoresman.h"
@@ -127,7 +124,7 @@ public:
     };
 
     CExoArrayList<unsigned short> m_feats;
-    CExoArrayList<CSWSStats_FeatRemainingUses*> m_featRemainingUses;
+    CExoArrayList<CFeatUseListEntry*> m_featRemainingUses;
     CExoArrayList<unsigned short> m_bonusFeats;
     CSWSCreature* m_pOwner;
     CExoArrayList<CSWLevelStats*> m_levelStats;

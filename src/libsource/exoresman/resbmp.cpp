@@ -85,32 +85,7 @@ int CResBmp::GetPixelColor(int x, int y, tagRGBQUAD& rQuad)
     case 8:
     {
         tagRGBQUAD* paColorTable = static_cast<tagRGBQUAD*>(m_pColorTable);
-        int nIndex = 0;
-        if (x >= 0 && x < pInfo->m_biWidth && y >= 0 && y < pInfo->m_biHeight)
-        {
-            switch (nBitCount)
-            {
-            case 8:
-            {
-                unsigned char* pPixels = static_cast<unsigned char*>(m_pImageData);
-                int nRow = pInfo->m_biHeight - 1 - y;
-                nIndex = pPixels[nRow * m_nStride * 4 + x];
-                break;
-            }
-            case 4:
-            {
-                unsigned char* pPixels = static_cast<unsigned char*>(m_pImageData);
-                int nRow = pInfo->m_biHeight - 1 - y;
-                unsigned char nByte = pPixels[nRow * m_nStride * 4 + (x >> 1)];
-                if (x & 1)
-                    nIndex = nByte & LOW_NIBBLE;
-                else
-                    nIndex = nByte >> 4;
-                break;
-            }
-            }
-        }
-        rQuad = paColorTable[nIndex];
+        rQuad = paColorTable[GetPixelValue(x, y)];
         return 1;
     }
     case 24:

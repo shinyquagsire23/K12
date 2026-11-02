@@ -54,7 +54,6 @@ int g_bLogConversations;
 
 extern int g_bLoggedIn;
 
-
 int enablemodelrequest = 1;
 
 extern int RenderQATriggers;
@@ -159,7 +158,6 @@ enum {
 enum { kFeedbackInfoMaxLength = 20 };
 
 extern int g_bShowIndicator;
-
 
 void SwitchWeaponEvent(CAurObject* pObject, char* pEvent, void* pData);
 
@@ -1329,6 +1327,7 @@ int CSWCMessage::HandleServerToPlayerCheat_DoNasty()
     return 1;
 }
 
+// Tests overflow only, unlike its siblings.
 int CSWCMessage::HandleServerToPlayerCheat_PonyRide()
 {
     ReadOBJECTIDClient();
@@ -2067,22 +2066,10 @@ int CSWCMessage::HandleServerToPlayerCheatMessage(unsigned char nType)
         return HandleServerToPlayerCheat_DoNasty();
 
     if (nType == MSG_CHEAT_PONY_RIDE)
-    {
-        ReadOBJECTIDClient();
-        ReadBOOL();
-        // Tests overflow only, unlike the sibling arms.
-        return MessageReadOverflow(1) == 0;
-    }
+        return HandleServerToPlayerCheat_PonyRide();
 
     if (nType == MSG_CHEAT_DEBUG_MODE)
-    {
-        int bDebugMode = ReadBOOL();
-        if (MessageReadOverflow(1))
-            return 0;
-
-        g_pAppManager->m_pClientExoApp->SetDebugMode(bDebugMode);
-        return 1;
-    }
+        return HandleServerToPlayerCheat_DebugMode();
 
     return 0;
 }
@@ -2387,7 +2374,6 @@ int CSWCMessage::HandleServerToPlayerUpdate_GuiRepository(int nType)
 
     return 0;
 }
-
 
 int CSWCMessage::HandleServerToPlayerItemAppearance(unsigned int* pnBaseItem,
                                                     unsigned char* pnAppearance,
@@ -2728,7 +2714,6 @@ int CSWCMessage::HandleServerToPlayerCreatureUpdate_VisEffect()
     return 1;
 }
 
-
 int CSWCMessage::HandleServerToPlayerJournalMessage_AddWorld()
 {
     CExoString sName;
@@ -2862,7 +2847,6 @@ int CSWCMessage::HandleServerToPlayerJournalMessage_RemoveQuest()
     pJournal->Remove(sPlotId);
     return MessageReadUnderflow(1) == 0;
 }
-
 
 int CSWCMessage::HandleServerToPlayerJournalMessage_SetQuestPicture()
 {
@@ -3016,7 +3000,6 @@ int CSWCMessage::HandleServerToPlayerSaveGameStatus()
     return MessageReadUnderflow(1) == 0;
 }
 
-
 int CSWCMessage::HandleServerToPlayerDebugInfo(unsigned char nType)
 {
     K2_UNUSED(nType);
@@ -3049,38 +3032,10 @@ int CSWCMessage::HandleServerToPlayerDebugInfo(unsigned char nType)
 int CSWCMessage::HandleServerToPlayerSound(unsigned char nType)
 {
     if (nType == MSG_SOUND_OBJECT_PLAY)
-    {
-        unsigned long long objId = ReadOBJECTIDClient();
-
-        if (MessageReadOverflow(1))
-            return 0;
-        if (MessageReadUnderflow(1))
-            return 0;
-
-        CSWCSoundObject* pSound =
-            g_pAppManager->m_pClientExoApp->GetSoundObjectByGameObjectID(objId);
-        if (pSound)
-            pSound->Play();
-
-        return 1;
-    }
+        return HandleServerToPlayerSoundObject_Play();
 
     if (nType == MSG_SOUND_OBJECT_STOP)
-    {
-        unsigned long long objId = ReadOBJECTIDClient();
-
-        if (MessageReadOverflow(1))
-            return 0;
-        if (MessageReadUnderflow(1))
-            return 0;
-
-        CSWCSoundObject* pSound =
-            g_pAppManager->m_pClientExoApp->GetSoundObjectByGameObjectID(objId);
-        if (pSound)
-            pSound->Stop();
-
-        return 1;
-    }
+        return HandleServerToPlayerSoundObject_Stop();
 
     if (nType == MSG_SOUND_OBJECT_CHANGE_POSITION)
         return HandleServerToPlayerSoundObject_ChangePosition();
@@ -3116,7 +3071,6 @@ int CSWCMessage::HandleServerToPlayerSoundObject_ChangePosition()
 // a zero one reads "ModelName" from genericdoors.2da and leaves VisibleModel at 1. A failed lookup
 // loads an empty model. Four appearance ids map to door states 0-3 while the animation is set from
 // the raw word, and a door whose VisibleModel column is 0 is forced to state 3.
-
 
 int CSWCMessage::HandleServerToPlayerDoorUpdate_Add()
 {
@@ -3641,8 +3595,6 @@ int CSWCMessage::HandleServerToPlayerUpdate_Add()
     return 0;
 }
 
-
-
 int CSWCMessage::HandleServerToPlayerUpdate_Update()
 {
     unsigned char      nObjectType = ReadBYTE(8);
@@ -3659,25 +3611,13 @@ int CSWCMessage::HandleServerToPlayerUpdate_Update()
         return 0;
 
     if (CGameObject::OBJECT_TYPE_ITEM == nObjectType)
-    {
-        CResRef resRef;
-
-        CSWCItem* pItem = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(objId);
-        if (pItem == 0)
-            return 0;
-
-        CSWCArea* pArea = g_pAppManager->m_pClientExoApp->GetModule()->m_pArea;
-
-        pItem->AttachToScene(pArea->m_pScene);
-        pItem->SetArea(pArea);
-        return 1;
-    }
+        return HandleServerToPlayerItemUpdate_Update(objId, nSize);
     if (CGameObject::OBJECT_TYPE_TRIGGER == nObjectType)
         return HandleServerToPlayerTriggerUpdate_Update(objId, nSize);
     if (CGameObject::OBJECT_TYPE_DOOR == nObjectType)
         return HandleServerToPlayerDoorUpdate_Update(objId, nSize);
     if (CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT == nObjectType)
-        return g_pAppManager->m_pClientExoApp->GetAreaOfEffectByGameObjectID(objId) != 0;
+        return HandleServerToPlayerAreaOfEffectUpdate_Update(objId, nSize);
     if (CGameObject::OBJECT_TYPE_PLACEABLE == nObjectType)
         return HandleServerToPlayerPlaceableUpdate_Update(objId, nSize);
 
@@ -3739,7 +3679,6 @@ int CSWCMessage::HandleServerToPlayerUpdate_GuiQuickbarItemUseCount()
 
     return 1;
 }
-
 
 int CSWCMessage::HandleServerToPlayerPopUpGUIPanel(unsigned char nType)
 {
@@ -4194,7 +4133,7 @@ int CSWCMessage::HandleServerToPlayerModule(unsigned char nType)
             return 1;
 
         case MSG_MODULE_DUMP_PLAYER:
-            g_pAppManager->m_pClientExoApp->SetInStartNewModule(1);
+            HandleServerToPlayerModule_StartStartNewModule();
             return 1;
 
         case MSG_MODULE_LOADING:
@@ -4212,7 +4151,7 @@ int CSWCMessage::HandleServerToPlayerModule(unsigned char nType)
             return HandleServerToPlayerSaveGameStatus();
 
         case MSG_MODULE_END_GAME:
-            ReadCExoString(32);
+            HandleServerToPlayerEndGame();
             return 1;
 
         default:
@@ -4295,7 +4234,6 @@ void CSWCMessage::SetGuiSkillRank(CSWCCreature* pCreature, unsigned short nMaskA
 #endif
 }
 
-
 // Game-object update fan-out. Sub-opcode 1 walks the rest of the message one tag byte at a time
 // until the payload runs dry, so its inner arms break back into the loop. The appearance arm
 // swallows its own overflow failure and continues, where the loop's leading guard aborts the
@@ -4372,14 +4310,8 @@ int CSWCMessage::HandleServerToPlayerGameObjectUpdate(unsigned char nType)
                         break;
 
                     case 'P':
-                    {
-                        unsigned char nObjectType = ReadBYTE(8);
-
-                        if (!MessageReadOverflow(1)
-                            && nObjectType == CGameObject::OBJECT_TYPE_CREATURE)
-                            HandleServerToPlayerCreatureUpdate_Appearance();
+                        HandleServerToPlayerUpdate_Appearance();
                         break;
-                    }
 
                     case 'U':
                         HandleServerToPlayerUpdate_Update();
@@ -4416,20 +4348,7 @@ int CSWCMessage::HandleServerToPlayerGameObjectUpdate(unsigned char nType)
             return HandleServerToPlayerCreatureUpdate_VisEffect();
 
         case MSG_GAME_OBJECT_UPDATE_STRIP_EQUIPPED_ITEMS:
-        {
-            unsigned long long objId = ReadOBJECTIDClient();
-
-            if (MessageReadOverflow(1))
-                return 0;
-
-            CSWCCreature* pCreature =
-                g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(objId);
-            if (!pCreature)
-                return 0;
-
-            pCreature->StripEquippedItems();
-            return 1;
-        }
+            return HandleServerToPlayerCreatureUpdate_StripEquippedItems();
 
         case MSG_GAME_OBJECT_UPDATE_DESTROY_ITEM:
             return HandleServerToPlayerItemUpdate_DestroyItem();
@@ -4454,23 +4373,15 @@ int CSWCMessage::HandleServerToPlayerItemUpdate_Add(int nMode, CSWCItem** ppItem
     if (MessageReadOverflow(1))
         return 0;
 
-    unsigned int nBaseItem = ReadDWORD(32);
-
-    int nModelVariation;
+    unsigned int nBaseItem;
+    unsigned char nModelVariation;
+    unsigned char nBodyVariation;
+    unsigned char nTextureVariation;
 #ifdef K2_FIX_ENGINE_BUGS
     nModelVariation = 0;
 #endif
 
-    if (MessageReadOverflow(1) == 0)
-    {
-        nModelVariation = ReadBYTE(8);
-
-        if (g_pRules->GetBaseItem(nBaseItem)->m_nModelType == 1)
-        {
-            ReadBYTE(8);
-            ReadBYTE(8);
-        }
-    }
+    HandleServerToPlayerItemAppearance(&nBaseItem, &nModelVariation, &nBodyVariation, &nTextureVariation);
 
     CSWCArea*         pArea  = g_pAppManager->m_pClientExoApp->GetModule()->m_pArea;
     CGameObjectArray* pArray = g_pAppManager->m_pClientExoApp->GetGameObjectArray();
@@ -4478,7 +4389,7 @@ int CSWCMessage::HandleServerToPlayerItemUpdate_Add(int nMode, CSWCItem** ppItem
     CGameObject* pObject;
     CSWCItem*    pItem = 0;
 
-    if (CGameObjectArray::SUCCESS == pArray->GetGameObject(objId, &pObject))
+    if (pArray->GetGameObject(objId, &pObject) == CGameObjectArray::SUCCESS)
     {
         pItem = static_cast<CSWCItem*>(pObject->AsSWCItem());
         pItem->m_bInContainer = 0;
@@ -4537,11 +4448,11 @@ int CSWCMessage::HandleServerToPlayerItemUpdate_Add(int nMode, CSWCItem** ppItem
     {
         CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
 
-        char nTextureVariation = 'M';
+        char cGender = 'M';
         if (pPlayer != 0 && pPlayer->m_pCreatureAppearance != 0)
-            nTextureVariation = pPlayer->m_pCreatureAppearance->GetGenderChar();
+            cGender = pPlayer->m_pCreatureAppearance->GetGenderChar();
 
-        CSWCItem* pNewItem = CreateItem(nBaseItem, static_cast<unsigned char>(nModelVariation), nTextureVariation);
+        CSWCItem* pNewItem = CreateItem(nBaseItem, nModelVariation, cGender);
         if (pNewItem == 0)
             return 0;
 
@@ -4602,22 +4513,15 @@ int CSWCMessage::HandleServerToPlayerItemScript_Add()
     if (MessageReadOverflow(1))
         return 0;
 
-    unsigned int nBaseItem = ReadDWORD(32);
+    unsigned int nBaseItem;
     unsigned char nModelVariation;
+    unsigned char nBodyVariation;
+    unsigned char nTextureVariation;
 #ifdef K2_FIX_ENGINE_BUGS
     nModelVariation = 0;
 #endif
 
-    if (!MessageReadOverflow(1))
-    {
-        nModelVariation = ReadBYTE(8);
-
-        if (g_pRules->GetBaseItem(nBaseItem)->m_nModelType == 1)
-        {
-            ReadBYTE(8);
-            ReadBYTE(8);
-        }
-    }
+    HandleServerToPlayerItemAppearance(&nBaseItem, &nModelVariation, &nBodyVariation, &nTextureVariation);
 
     CSWCArea* pArea = g_pAppManager->m_pClientExoApp->GetModule()->m_pArea;
     CGameObjectArray* pArray = g_pAppManager->m_pClientExoApp->GetGameObjectArray();
@@ -5183,8 +5087,7 @@ static const uint64_t s_anDamageTypeLabels[14] = {
 int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 {
     CExoString sOut;
-    CExoString sSpeaker;
-    CResRef resTemplate;
+    STR_RES strRes;
     CExoString sName;
 
     int bRet = 0;
@@ -5193,8 +5096,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
     {
     case 1:
     {
+        unsigned int nStrRef;
+
         unsigned long long objId = ReadOBJECTIDClient();
-        unsigned int nStrRef = ReadDWORD(32);
+        nStrRef = ReadDWORD(32);
 
         if (MessageReadOverflow(1))
             return 0;
@@ -5239,7 +5144,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         CExoString sLabel;
         int nValues[15];
 
-        unsigned long long objId = ReadOBJECTIDClient();
+        unsigned long long objId;
+        int nFirst;
+
+        objId = ReadOBJECTIDClient();
 
         for (int i = 0; i < 15; i++)
         {
@@ -5276,7 +5184,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             g_pTlkTable->SetCustomToken(0, sName);
         }
 
-        int nFirst = 0;
+        nFirst = 0;
 
         g_pTlkTable->SetCustomToken(1, CExoString(nValues[14]));
 
@@ -5397,7 +5305,6 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         break;
     }
 
-
     case CC_MESSAGE_DAMAGE_FROM_ATTACKER:
     {
         // In the combat damage breakdown with two names, object 1 publishes its display name as
@@ -5407,15 +5314,20 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         //
         // This arm also reads a further bool and, when set, a further string it renders through a
         // second AppendToCombatBuffer, which makes it the only arm of the family that renders twice.
-        // The failed name lookup publishes sSpeaker, the outer local nothing assigns, rather than the
-        // fallback it just stored into sName.
+        // The failed name lookup publishes strRes.text, the outer string nothing assigns, rather than
+        // the fallback it just stored into sName.
+        unsigned long long objId2;
+        int bMore;
+        unsigned long long objId1;
+        int nFirst;
+
         CExoString sName0;      // token 0 -- GetObjectName(first reader)
         CExoString sFallback;   // the STRREF_OTHER name, used only on a failed lookup
         CExoString sLabel;      // the per-slot label chosen by the loop below
         int nValues[15];
 
-        unsigned long long objId1 = ReadOBJECTIDClient();   // -> token 0
-        unsigned long long objId2 = ReadOBJECTIDClient();   // -> sName / token 1
+        objId1 = ReadOBJECTIDClient();   // -> token 0
+        objId2 = ReadOBJECTIDClient();   // -> sName / token 1
 
         for (int i = 0; i < 15; i++)
         {
@@ -5473,10 +5385,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
                 g_pTlkTable->SetCustomToken(0, sFallback);
             }
 
-            g_pTlkTable->SetCustomToken(1, sSpeaker);
+            g_pTlkTable->SetCustomToken(1, strRes.text);
         }
 
-        int nFirst = 0;
+        nFirst = 0;
 
         g_pTlkTable->SetCustomToken(2, CExoString(nValues[14]));
 
@@ -5593,7 +5505,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         g_pAppManager->m_pClientExoApp->GetInGameGui()->AppendToCombatBuffer(
             sOut, kMessageTypeFeedback, 0);
 
-        int bMore = ReadBOOL();
+        bMore = ReadBOOL();
         if (MessageReadOverflow(1))
             return 0;
 
@@ -5625,42 +5537,57 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // prefix fragments, but never calls a buffer, so the string is dropped. Token 8 holds a
         // roll breakdown built only when the third bool is set.
         CExoString sSign;       // token 5 -- the literal at the front of the bonus
+        unsigned long long objId2;
+        char nAttackBonus;
+        unsigned char nRoll;
+        unsigned char nResultCode;
+        unsigned short nFeatId;
+        unsigned char nKind;
+        int bFirst;
+        int bSecond;
+        int bThird;
+        unsigned int nExtra;
+        unsigned long long objId1;
+        unsigned char nConceal;
+        int nSum;
+        int nAbs;
+        int bTrailing;
+
         CExoString sName0;      // token 0 -- GetObjectName(reader 0)
         CExoString sFeatName;   // token 1 -- the feat's name strref
         CExoString sResult;     // token 3 -- the per-result string, chosen by the switch below
         CExoString sFallback;   // the STRREF_OTHER name, used only on a failed lookup
         CExoString sConceal;    // token 8 -- the roll breakdown, built only when the third BOOL is 1
 
-        unsigned long long objId1 = ReadOBJECTIDClient();   // -> token 0
-        unsigned long long objId2 = ReadOBJECTIDClient();   // -> sName / token 2
-        char nAttackBonus = ReadCHAR(8);
-        unsigned char nRoll = ReadBYTE(5);
-        unsigned char nResultCode = ReadBYTE(4);
-        unsigned short nFeatId = ReadWORD(16);
-        unsigned char nKind = ReadBYTE(3);
-        int bFirst = ReadBOOL();
-        int bSecond = ReadBOOL();
-        int bThird = ReadBOOL();
+        objId1 = ReadOBJECTIDClient();   // -> token 0
+        objId2 = ReadOBJECTIDClient();   // -> sName / token 2
+        nAttackBonus = ReadCHAR(8);
+        nRoll = ReadBYTE(5);
+        nResultCode = ReadBYTE(4);
+        nFeatId = ReadWORD(16);
+        nKind = ReadBYTE(3);
+        bFirst = ReadBOOL();
+        bSecond = ReadBOOL();
+        bThird = ReadBOOL();
 
         if (MessageReadOverflow(1))
             return 0;
 
-        unsigned int nExtra = 0;
+        nExtra = 0;
         if (bThird == 1)
             nExtra = ReadBYTE(5);
 
-        unsigned char nConceal = 0;
+        nConceal = 0;
         if ((nResultCode & 0xfe) == kAttackResultTargetConcealed)
             nConceal = ReadBYTE(7);
 
         if (MessageReadOverflow(1))
             return 0;
 
-        int nSum = nRoll + nAttackBonus;
+        nSum = nRoll + nAttackBonus;
 
         // The sign goes out as its own token, and the amount it signs appears twice, as the
         // magnitude and inside the roll breakdown.
-        int nAbs;
         if (nAttackBonus < 0)
         {
             sSign = "-";
@@ -5676,7 +5603,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         {
             g_pTlkTable->SetCustomToken(0, CExoString(nExtra));
             sConceal = g_pSWTlkTable->Fetch(STRREF_FMT_THREAT_ROLL, 0, 0, 0);
-            sConceal.Format(const_cast<char*>("%s %s %d = %d"), sConceal.CStr(), sSign.CStr(), nAbs, nAbs + nExtra);
+            int nTotal = nAbs + nExtra;
+            sConceal.Format(const_cast<char*>("%s %s %d = %d"), sConceal.CStr(), sSign.CStr(), nAbs, nTotal);
         }
 
         if (nFeatId != 0)
@@ -5797,7 +5725,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         if (bFirst == 1)
             sOut = g_pAppManager->m_pClientExoApp->GetGUIString(0) + CExoString(" : ") + sOut;
 
-        int bTrailing = ReadBOOL();
+        bTrailing = ReadBOOL();
 
         if (MessageReadOverflow(1))
             return 0;
@@ -5821,12 +5749,18 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // The subtype picks one of three token-1 strings; the two signed chars plus the amount,
         // summed, are compared with the limit to choose the short line or the normal one. Three of
         // the six declared CExoStrings are never read.
-        unsigned char nSub = ReadBYTE(8);
+        unsigned char nAmount;
+        char nChA;
+        char nChB;
+        unsigned char nLimit;
+        unsigned char nSub;
+
+        nSub = ReadBYTE(8);
         ReadBYTE(8);
-        unsigned char nAmount = ReadBYTE(5);
-        char nChA = ReadCHAR(8);
-        char nChB = ReadCHAR(8);
-        unsigned char nLimit = ReadBYTE(7);
+        nAmount = ReadBYTE(5);
+        nChA = ReadCHAR(8);
+        nChB = ReadCHAR(8);
+        nLimit = ReadBYTE(7);
         unsigned long long objId = ReadOBJECTIDClient();
 
         if (MessageReadOverflow(1))
@@ -5877,14 +5811,14 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         }
         g_pTlkTable->SetCustomToken(1, sSubStr);
 
-        int nSum = nChA + nAmount + nChB;
-
-        if (nSum < nLimit)
+        if (nChA + nAmount + nChB < nLimit)
             sCountStr = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_FAILURE);
         else
             sCountStr = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_SUCCESS);
 
         g_pTlkTable->SetCustomToken(2, sCountStr);
+
+        int nSum = nChA + nAmount + nChB;
         g_pTlkTable->SetCustomToken(3, CExoString(nSum));
         g_pTlkTable->SetCustomToken(4, CExoString(nAmount));
         g_pTlkTable->SetCustomToken(5, sMsg);
@@ -5916,10 +5850,12 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             sLocString = ReadCExoLocStringClient();
         int nA = ReadINT(32);
         int nB = ReadINT(32);
-        ReadINT(32);
+        int nUnused2 = ReadINT(32);
+        (void)nUnused2;
 #if !KOTOR1  // K1: three trailing INTs, no count line
         int nC = ReadINT(32);
-        ReadINT(32);
+        int nUnused4 = ReadINT(32);
+        (void)nUnused4;
 #endif
 
         bRet = 1;
@@ -6035,18 +5971,30 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // respectively. sDead is never written or read.
         CExoString sSign;       // token 5 -- the literal in front of the skill modifier
         CExoString sDead;       // ctor + dtor only
+        int nSum;
+        int nAbs;
+
+        unsigned long long objIdTarget;
+        unsigned int nSkillStrRef;
+        unsigned char nRoll;
+        char nSkillRank;
+        unsigned char nDC;
+        unsigned char nOutcome;
+        unsigned long long objId;
+        CGameObject* pTargetObject;
+
         CExoString sSkill;      // token 2 -- GetGUIString(int 0); also the feedback's guard value
         CExoString sSkill2;     // token 6 -- GetGUIString(int 6)
         CExoString sVerb;       // token 1 -- the success/failure verb (UNASSIGNED on outcome 5)
 
-        unsigned long long objId = ReadOBJECTIDClient();        // -> token 0
-        unsigned long long objIdTarget = ReadOBJECTIDClient();  // -> the feedback's object
-        unsigned int nSkillStrRef = ReadDWORD(32);
-        unsigned char nRoll = ReadBYTE(5);
-        char nSkillRank = ReadCHAR(8);
-        unsigned char nDC = ReadBYTE(7);
+        objId = ReadOBJECTIDClient();        // -> token 0
+        objIdTarget = ReadOBJECTIDClient();  // -> the feedback's object
+        nSkillStrRef = ReadDWORD(32);
+        nRoll = ReadBYTE(5);
+        nSkillRank = ReadCHAR(8);
+        nDC = ReadBYTE(7);
         ReadBOOL();                                             // the take-20 flag, unread
-        unsigned char nOutcome = ReadBYTE(8);
+        nOutcome = ReadBYTE(8);
         unsigned int nSkillStrRef2 = ReadDWORD(32);
 
         if (MessageReadOverflow(1))
@@ -6075,11 +6023,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         if (nOutcome != 5)
         {
-            int nSum = nSkillRank + nRoll;
+            nSum = nSkillRank + nRoll;
 
             // The skill modifier goes out three ways, as its sign, as its magnitude, and folded
             // into the check total (token 3).
-            int nAbs;
             if (nSkillRank < 0)
             {
                 sSign = "-";
@@ -6122,8 +6069,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // The floating feedback on the checked object reads "<skill> *<verb>*", with the emphasis
         // marks re-formatted over the verb alone when the line runs past 20 characters.
         {
-            CGameObject* pTargetObject =
-                g_pAppManager->m_pClientExoApp->GetGameObject(objIdTarget);
+            pTargetObject = g_pAppManager->m_pClientExoApp->GetGameObject(objIdTarget);
 
             if (pTargetObject != 0)
             {
@@ -6210,14 +6156,17 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
     case CC_MESSAGE_DEATH:
     {
         // Four CExoStrings and two CResRefs are declared here; the arm reads two of them.
+        unsigned long long objId1;
+        int nValue;
+
         CExoString sName0;      // token 0 -- GetObjectName(second reader)
         CExoString sName1;      // token 1 -- GetObjectName(first reader)
         STR_RES strTmp;
         STR_RES strTmp2;
 
         unsigned long long objId0 = ReadOBJECTIDClient();   // -> token 1
-        unsigned long long objId1 = ReadOBJECTIDClient();   // -> token 0
-        int nValue = ReadINT(32);
+        objId1 = ReadOBJECTIDClient();   // -> token 0
+        nValue = ReadINT(32);
 
         if (MessageReadOverflow(1))
             return 0;
@@ -6269,43 +6218,56 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // and its sign, the magnitude, the raw sum and the value breakdown.
         STR_RES strTmp;
         CExoString sSign;       // token 4 -- the literal at the front of the value
+        unsigned long long objId2;
+        int nHp;
+        unsigned char nA;
+        unsigned char nResultCode;
+        unsigned char nKind;
+        int bFirst;
+        int bSecond;
+        int bThird;
+        int bFourth;
+        int bFifth;
+        unsigned char nConceal;
+        unsigned long long objId1;
+        int nAbs;
+        int bTrailing;
+        unsigned int nExtra K2_UNSET;    // not zero-initialized, unlike the identical gate in case 6
+
         CExoString sName0;      // token 0 -- GetObjectName(reader 1)
         CExoString sResult;     // token 2 -- the per-result string, chosen by the switch below
         CExoString sFallback;   // the STRREF_OTHER name, used only on a failed lookup
         CExoString sConceal;    // token 7 -- the breakdown, built only when the fifth BOOL is 1
 
-        unsigned long long objId1 = ReadOBJECTIDClient();   // -> token 0
-        unsigned long long objId2 = ReadOBJECTIDClient();   // -> sName / token 1
+        objId1 = ReadOBJECTIDClient();   // -> token 0
+        objId2 = ReadOBJECTIDClient();   // -> sName / token 1
 
         if (MessageReadOverflow(1))
             return 0;
 
-        int nHp = ReadCHAR(8);
-        unsigned char nA = ReadBYTE(5);
-        unsigned char nResultCode = ReadBYTE(4);
-        unsigned char nKind = ReadBYTE(3);
-        int bFirst = ReadBOOL();
-        int bSecond = ReadBOOL();
-        int bThird = ReadBOOL();
-        int bFourth = ReadBOOL();
-        int bFifth = ReadBOOL();
+        nHp = ReadCHAR(8);
+        nA = ReadBYTE(5);
+        nResultCode = ReadBYTE(4);
+        nKind = ReadBYTE(3);
+        bFirst = ReadBOOL();
+        bSecond = ReadBOOL();
+        bThird = ReadBOOL();
+        bFourth = ReadBOOL();
+        bFifth = ReadBOOL();
 
         if (MessageReadOverflow(1))
             return 0;
 
-        // Not zero-initialized, unlike the identical gate in case 6.
-        unsigned int nExtra K2_UNSET;
         if (bFifth == 1)
             nExtra = ReadBYTE(5);
 
-        unsigned char nConceal = 0;
+        nConceal = 0;
         if ((nResultCode & 0xfe) == kAttackResultTargetConcealed)
             nConceal = ReadBYTE(7);
 
         if (MessageReadOverflow(1))
             return 0;
 
-        int nAbs;
         if (nHp < 0)
         {
             sSign = "-";
@@ -6441,7 +6403,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         if (bFirst == 1)
             sOut = g_pAppManager->m_pClientExoApp->GetGUIString(0) + CExoString(" : ") + sOut;
 
-        int bTrailing = ReadBOOL();
+        bTrailing = ReadBOOL();
 
         if (MessageReadOverflow(1))
             return 0;
@@ -6463,8 +6425,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
     case CC_MESSAGE_FORCE_RESIST:
     {
         CExoString sType;
+        unsigned char nSubType;
+
         unsigned long long objId = ReadOBJECTIDClient();
-        unsigned char nSubType = ReadBYTE(8);
+        nSubType = ReadBYTE(8);
 
         if (MessageReadOverflow(1))
             return 0;
@@ -6513,6 +6477,9 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // On the feedback message channel, a 16-bit sub-type selects a payload shape, which is
         // packed into a CSWCCMessageData and handed to the feedback UI with an empty template.
         // Sub-cases 161/164 and 162/165 have identical bodies and keep their own blocks.
+        unsigned long long objId;
+        CSWCCMessageData* pData;
+
         unsigned short nMsgType = ReadWORD(16);
 
         if (MessageReadOverflow(1))
@@ -6522,12 +6489,14 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         {
         case FEEDBACK_SKILL_NOT_READY:
         {
-            int nValue = ReadINT(32);
+            int nValue;
+
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetInteger(0, nValue);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -6537,13 +6506,16 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         case 4:
         case 47:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int bLocString = ReadBOOL();
+            int bLocString;
+            unsigned char nItem;
+
+            objId = ReadOBJECTIDClient();
+            bLocString = ReadBOOL();
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            unsigned char nItem = 0;
+            nItem = 0;
             if (bLocString == 1)
                 sName = ReadCExoLocStringClient();
             else
@@ -6555,7 +6527,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             if (!bLocString)
                 sName = g_pRules->GetBaseItem(nItem)->GetNameText();
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetString(0, sName);
 
@@ -6565,13 +6537,15 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case 5:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nValue = ReadINT(32);
+            int nValue;
+
+            objId = ReadOBJECTIDClient();
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nValue);
 
@@ -6581,12 +6555,12 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_OBJECT_LOCKED:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
+            objId = ReadOBJECTIDClient();
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -6632,12 +6606,12 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         case FEEDBACK_PARTY_INVITEE_IN_OTHER_PARTY:
         case FEEDBACK_IMMUNE_FEAR_FEAT:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
+            objId = ReadOBJECTIDClient();
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -6647,12 +6621,15 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         case FEEDBACK_ITEM_ACQUIRED:
         case FEEDBACK_ITEM_LOST:
         {
-            int bLocString = ReadBOOL();
+            int bLocString;
+            unsigned char nItem;
+
+            bLocString = ReadBOOL();
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            unsigned char nItem = 0;
+            nItem = 0;
             if (bLocString == 1)
                 sName = ReadCExoLocStringClient();
             else
@@ -6664,7 +6641,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             if (!bLocString)
                 sName = g_pRules->GetBaseItem(nItem)->GetNameText();
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetString(0, sName);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -6673,16 +6650,19 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_DAMAGE_IMMUNITY:
         {
+            int nA;
+            int nB;
+
             STR_RES strUnused;
 
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            objId = ReadOBJECTIDClient();
+            nA = ReadINT(32);
+            nB = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nA);
             pData->SetInteger(1, nB);
@@ -6693,13 +6673,15 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_DAMAGE_RESISTED:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nValue = ReadINT(32);
+            int nValue;
+
+            objId = ReadOBJECTIDClient();
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nValue);
 
@@ -6709,13 +6691,15 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_DAMAGE_REDUCED:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nValue = ReadINT(32);
+            int nValue;
+
+            objId = ReadOBJECTIDClient();
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nValue);
 
@@ -6725,14 +6709,17 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_DAMAGE_RESISTED_REMAINING:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            int nA;
+            int nB;
+
+            objId = ReadOBJECTIDClient();
+            nA = ReadINT(32);
+            nB = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nA);
             pData->SetInteger(1, nB);
@@ -6743,14 +6730,17 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_DAMAGE_REDUCED_REMAINING:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            int nA;
+            int nB;
+
+            objId = ReadOBJECTIDClient();
+            nA = ReadINT(32);
+            nB = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nA);
             pData->SetInteger(1, nB);
@@ -6761,13 +6751,15 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_SPELL_IMMUNITY:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nValue = ReadINT(32);
+            int nValue;
+
+            objId = ReadOBJECTIDClient();
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nValue);
 
@@ -6777,13 +6769,15 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case 69:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nValue = ReadINT(32);
+            int nValue;
+
+            objId = ReadOBJECTIDClient();
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nValue);
 
@@ -6793,14 +6787,17 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case 70:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            int nA;
+            int nB;
+
+            objId = ReadOBJECTIDClient();
+            nA = ReadINT(32);
+            nB = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nA);
             pData->SetInteger(1, nB);
@@ -6811,13 +6808,16 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case 71:
         {
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            int nB;
+            int nA;
+
+            nA = ReadINT(32);
+            nB = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetInteger(0, nA);
             pData->SetInteger(1, nB);
 
@@ -6827,13 +6827,15 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_FLOATING_TEXT_STRREF:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nValue = ReadINT(32);
+            int nValue;
+
+            objId = ReadOBJECTIDClient();
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nValue);
 
@@ -6844,13 +6846,14 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         case FEEDBACK_FLOATING_TEXT_STRING:
         {
             CExoString sText;
-            unsigned long long objId = ReadOBJECTIDClient();
+
+            objId = ReadOBJECTIDClient();
             sText = ReadCExoString(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetString(0, sText);
 
@@ -6860,13 +6863,16 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_ALIGNMENT_SHIFT:
         {
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            int nB;
+            int nA;
+
+            nA = ReadINT(32);
+            nB = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetInteger(0, nA);
             pData->SetInteger(1, nB);
 
@@ -6876,7 +6882,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_ATTRIBUTE_REDUCED:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
+            objId = ReadOBJECTIDClient();
             int nA = ReadINT(32);
             int nB = ReadINT(32);
             float fValue = ReadFLOAT(1.0f, 32);
@@ -6884,7 +6890,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nA);
             pData->SetInteger(1, nB);
@@ -6896,12 +6902,14 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_EXPERIENCE_RECEIVED:
         {
-            int nValue = ReadINT(32);
+            int nValue;
+
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetInteger(0, nValue);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -6915,12 +6923,14 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         case FEEDBACK_CHEMICALS_ACQUIRED:
 #endif
         {
-            int nValue = ReadINT(32);
+            int nValue;
+
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetInteger(0, nValue);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -6929,13 +6939,15 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_HEALED:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
-            int nValue = ReadINT(32);
+            int nValue;
+
+            objId = ReadOBJECTIDClient();
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nValue);
 
@@ -6948,15 +6960,17 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             CExoString sNameA;
             CExoString sNameB;
 
-            unsigned long long objId = ReadOBJECTIDClient();
+            int nValue;
+
+            objId = ReadOBJECTIDClient();
             sNameA = ReadCExoString(32);
             sNameB = ReadCExoString(32);
-            int nValue = ReadINT(32);
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetString(0, sNameA);
             pData->SetString(1, sNameB);
@@ -6971,15 +6985,18 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         {
             CExoString sText;
 
-            unsigned long long objId = ReadOBJECTIDClient();
+            int nB;
+            int nA;
+
+            objId = ReadOBJECTIDClient();
             sText = ReadCExoString(32);
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            nA = ReadINT(32);
+            nB = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetString(1, sText);
             pData->SetInteger(0, nA);
@@ -6994,15 +7011,18 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         {
             CExoString sText;
 
-            unsigned long long objId = ReadOBJECTIDClient();
+            int nB;
+            int nA;
+
+            objId = ReadOBJECTIDClient();
             sText = ReadCExoString(32);
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            nA = ReadINT(32);
+            nB = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetString(1, sText);
             pData->SetInteger(0, nA);
@@ -7017,18 +7037,23 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             CExoString sTextA;
             CExoString sTextB;
 
-            unsigned long long objId = ReadOBJECTIDClient();
+            int nB;
+            int nD;
+            int nA;
+            int nC;
+
+            objId = ReadOBJECTIDClient();
             sTextA = ReadCExoString(32);
-            int nA = ReadINT(32);
-            int nB = ReadINT(32);
+            nA = ReadINT(32);
+            nB = ReadINT(32);
             sTextB = ReadCExoString(32);
-            int nC = ReadINT(32);
-            int nD = ReadINT(32);
+            nC = ReadINT(32);
+            nD = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetString(1, sTextA);
             pData->SetString(2, sTextB);
@@ -7044,12 +7069,14 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         case FEEDBACK_XP_GAINED:
         case FEEDBACK_XP_LOST:
         {
-            int nValue = ReadINT(32);
+            int nValue;
+
+            nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetInteger(0, nValue);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -7059,12 +7086,13 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         case FEEDBACK_SCRIPT_MESSAGE:
         {
             CExoString sText;
+
             sText = ReadCExoString(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetString(0, sText);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -7074,9 +7102,11 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // The only sub-case without an overflow re-test; the value goes straight into the record.
         case 222:
         {
-            int nValue = ReadINT(32);
+            int nValue;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            nValue = ReadINT(32);
+
+            pData = new CSWCCMessageData;
             pData->SetInteger(0, nValue);
 
             g_pAppManager->m_pClientExoApp->AddFeedbackMessage(nMsgType, pData, CExoString(""));
@@ -7085,13 +7115,13 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         case FEEDBACK_FORCE_POINTS_REGAINED:
         {
-            unsigned long long objId = ReadOBJECTIDClient();
+            objId = ReadOBJECTIDClient();
             int nValue = ReadINT(32);
 
             if (MessageReadOverflow(1))
                 return 0;
 
-            CSWCCMessageData* pData = new CSWCCMessageData;
+            pData = new CSWCCMessageData;
             pData->SetObjectID(0, objId);
             pData->SetInteger(0, nValue);
 
@@ -7115,7 +7145,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         CExoString sText = ReadCExoString(32);
         int nA = ReadINT(32);
         int nB = ReadINT(32);
-        ReadINT(32);
+        int nUnused2 = ReadINT(32);
+        (void)nUnused2;
 
         if (nB != 0)
         {
@@ -7147,24 +7178,35 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // unknown string) and publish sName as token 2, because the failing arm has to overwrite
         // sName with that fallback first.
         CExoString sSign;       // token 5 -- the literal at the front of the modifier
+        unsigned long long objId2;
+        char nAttackBonus;
+        unsigned char nRoll;
+        unsigned char nResult;
+        int bRangedAttack;
+        unsigned int nConcealment;
+        int bHasConcealment;
+        unsigned long long objId1;
+        int nSum;
+        int nAbs;
+
         CExoString sName0;      // token 0 -- GetObjectName(reader 0)
         CExoString sResult;     // token 3 -- the per-result string, chosen by the switch below
         CExoString sVerb;       // token 1 -- the melee/ranged verb
         CExoString sFallback;   // the STRREF_OTHER name, used only on a failed lookup
 
-        unsigned long long objId1 = ReadOBJECTIDClient();   // -> token 0
-        unsigned long long objId2 = ReadOBJECTIDClient();   // -> sName / token 2
-        char nAttackBonus = ReadCHAR(8);
-        unsigned char nRoll = ReadBYTE(5);
-        unsigned char nResult = ReadBYTE(4);
-        int bRangedAttack = ReadBOOL();
+        objId1 = ReadOBJECTIDClient();   // -> token 0
+        objId2 = ReadOBJECTIDClient();   // -> sName / token 2
+        nAttackBonus = ReadCHAR(8);
+        nRoll = ReadBYTE(5);
+        nResult = ReadBYTE(4);
+        bRangedAttack = ReadBOOL();
 
         if (MessageReadOverflow(1))
             return 0;
 
         // Declared between the two overflow checks.
-        unsigned int nConcealment = 0;
-        int bHasConcealment = ReadBOOL();
+        nConcealment = 0;
+        bHasConcealment = ReadBOOL();
 
         if (MessageReadOverflow(1))
             return 0;
@@ -7200,11 +7242,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             break;
         }
 
-        int nSum = nRoll + nAttackBonus;
+        nSum = nRoll + nAttackBonus;
 
         // The sign goes out as its own token, and the amount it signs goes out twice, as the signed
         // magnitude (reusing nSum) and as the running total.
-        int nAbs;
         if (nAttackBonus < 0)
         {
             sSign = "-";
@@ -7280,18 +7321,23 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
     {
         CExoString sSign;
 
-        unsigned long long objId = ReadOBJECTIDClient();
-        unsigned char nA = ReadBYTE(5);
-        char nB = ReadCHAR(8);
+        unsigned char nA;
+        char nB;
+        unsigned long long objId;
+        int nSum;
+        int nAbs;
+
+        objId = ReadOBJECTIDClient();
+        nA = ReadBYTE(5);
+        nB = ReadCHAR(8);
 
         if (MessageReadOverflow(1))
             return 0;
 
-        int nSum = nB + nA;
+        nSum = nB + nA;
 
         // The sign string is the literal at the front of token 3; the amount it signs goes out twice,
         // as the signed sum (tokens 1 and 5) and as the magnitude (token 4).
-        int nAbs;
         if (nB < 0)
         {
             sSign = "-";
@@ -7336,8 +7382,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // A named spell list is "<strref 0> : <object name> : " followed by every spell's name,
         // comma separated. The count is a byte and each spell id a 9-bit value indexing the rules'
         // spell array; the name comes off the spell's own name strref.
+        unsigned char nSpellCount;
+
         unsigned long long objId = ReadOBJECTIDClient();
-        unsigned char nSpellCount = ReadBYTE(8);
+        nSpellCount = ReadBYTE(8);
 
         if (MessageReadOverflow(1))
             return 0;
@@ -7369,8 +7417,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             if (i != 0)
                 sOut = sOut + CExoString(", ");
 
-            CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
-            sOut = sOut + g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
+            sOut = sOut + g_pAppManager->m_pClientExoApp->GetGUIString(
+                g_pRules->GetSpell(nSpellId)->m_nNameStrRef);
         }
 
         g_pAppManager->m_pClientExoApp->GetInGameGui()->AppendToCombatBuffer(
@@ -7397,19 +7445,35 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         CExoString sSpotter;   // object 0's name -- token 0 of both spot lines
         CExoString sTarget;    // object 1's name -- token 1 of the summary, token 0 of the hide line
 
-        unsigned long long objSpotter = ReadOBJECTIDClient();
-        unsigned long long objTarget = ReadOBJECTIDClient();
-        int bHasData = ReadBOOL();
-        short nSpotRoll = ReadSHORT(16);
-        short nHideRoll = ReadSHORT(16);
-        short nSpotRank = ReadSHORT(16);
-        short nHideRank = ReadSHORT(16);
-        short nSelfStationary = ReadSHORT(16);
-        short nTargetStationary = ReadSHORT(16);
-        short nDistance = ReadSHORT(16);
-        short nArc = ReadSHORT(16);
-        short nMove = ReadSHORT(16);
-        short nCombat = ReadSHORT(16);
+        unsigned long long objTarget;
+        int bHasData;
+        short nSpotRoll;
+        short nHideRoll;
+        short nSpotRank;
+        short nHideRank;
+        short nSelfStationary;
+        short nTargetStationary;
+        short nDistance;
+        short nArc;
+        short nMove;
+        short nCombat;
+        unsigned long long objSpotter;
+        short nSpotTotal;
+        short nHideTotal;
+
+        objSpotter = ReadOBJECTIDClient();
+        objTarget = ReadOBJECTIDClient();
+        bHasData = ReadBOOL();
+        nSpotRoll = ReadSHORT(16);
+        nHideRoll = ReadSHORT(16);
+        nSpotRank = ReadSHORT(16);
+        nHideRank = ReadSHORT(16);
+        nSelfStationary = ReadSHORT(16);
+        nTargetStationary = ReadSHORT(16);
+        nDistance = ReadSHORT(16);
+        nArc = ReadSHORT(16);
+        nMove = ReadSHORT(16);
+        nCombat = ReadSHORT(16);
 
         if (MessageReadOverflow(1))
             return 0;
@@ -7424,11 +7488,10 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             g_pTlkTable->SetCustomToken(0, sSpotter);
             g_pTlkTable->SetCustomToken(1, sTarget);
 
-            short nSpotTotal =
-                nSpotRoll + nSpotRank + nSelfStationary + nDistance + nArc + nMove + nCombat;
+            nSpotTotal = nSpotRoll + nSpotRank + nSelfStationary + nDistance + nArc + nMove + nCombat;
             g_pTlkTable->SetCustomToken(2, CExoString(nSpotTotal));
 
-            short nHideTotal = nHideRoll + nHideRank + nTargetStationary;
+            nHideTotal = nHideRoll + nHideRank + nTargetStationary;
             g_pTlkTable->SetCustomToken(3, CExoString(nHideTotal));
 
             sOut = g_pSWTlkTable->Fetch(STRREF_FMT_DETECTS_STEALTH, 0, 0, 0);
@@ -7510,11 +7573,16 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
     {
         // Two object readers and three bytes; the names go out at tokens 0 and 3, token 0 being the
         // second reader.
+        unsigned long long objId1;
+        unsigned char nA;
+        unsigned char nB;
+        unsigned char nC;
+
         unsigned long long objId0 = ReadOBJECTIDClient();   // -> token 3
-        unsigned long long objId1 = ReadOBJECTIDClient();   // -> token 0
-        unsigned char nA = ReadBYTE(8);
-        unsigned char nB = ReadBYTE(8);
-        unsigned char nC = ReadBYTE(8);
+        objId1 = ReadOBJECTIDClient();   // -> token 0
+        nA = ReadBYTE(8);
+        nB = ReadBYTE(8);
+        nC = ReadBYTE(8);
 
         if (MessageReadOverflow(1))
             return 0;
@@ -7744,11 +7812,17 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         CExoString sName0;
         CExoString sName1;
 
+        unsigned long long objId1;
+        short nA;
+        short nB;
+        short nC;
+        short nSum;
+
         unsigned long long objId0 = ReadOBJECTIDClient();
-        unsigned long long objId1 = ReadOBJECTIDClient();
-        short nA = ReadSHORT(16);
-        short nB = ReadSHORT(16);
-        short nC = ReadSHORT(16);
+        objId1 = ReadOBJECTIDClient();
+        nA = ReadSHORT(16);
+        nB = ReadSHORT(16);
+        nC = ReadSHORT(16);
 
         if (MessageReadOverflow(1))
             return 0;
@@ -7758,7 +7832,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         g_pAppManager->m_pClientExoApp->GetObjectName(objId0, sName0);
         g_pAppManager->m_pClientExoApp->GetObjectName(objId1, sName1);
 
-        short nSum = nB + nA;
+        nSum = nB + nA;
 
         g_pTlkTable->SetCustomToken(0, sName0);
         g_pTlkTable->SetCustomToken(1, sName1);
@@ -7820,7 +7894,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         int nAttackRollTotal = ReadINT(32);
         int nAttackRoll = ReadINT(32);
-        ReadINT(32);
+        int nUnused2 = ReadINT(32);
+        (void)nUnused2;
         int nStrAttackMod = ReadINT(32);
         int nDexAttackMod = ReadINT(32);
         int nFeatId = ReadINT(32);
@@ -7828,7 +7903,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         int bDualWield = ReadINT(32);
         int nDoubleWeapon = ReadINT(32);
         int nOffhandByte = ReadINT(32);
-        ReadINT(32);
+        int nUnused10 = ReadINT(32);
+        (void)nUnused10;
         int nDuelingBonus = ReadINT(32);
         int nDuelingFeat = ReadINT(32);
         int nGoodAim = ReadINT(32);
@@ -7852,8 +7928,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         int nJediDefense = ReadINT(32);
 #endif
 
-        sAttackLabel = g_pSWTlkTable->Fetch(bDualWield != 0 ? STRREF_OFFHAND : STRREF_MAINHAND, 0,
-                                            0, 0);
+        int nAttackLabel = bDualWield != 0 ? STRREF_OFFHAND : STRREF_MAINHAND;
+        sAttackLabel = g_pSWTlkTable->Fetch(nAttackLabel, 0, 0, 0);
         g_pTlkTable->SetCustomToken(0, sAttackLabel);
         g_pTlkTable->SetCustomToken(1, CExoString(nAttackRollTotal));
 
@@ -7982,7 +8058,6 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
             {
                 g_pTlkTable->SetCustomToken(0, CExoString(nAttackMod));
 
-
                 sOut = sOut + g_pSWTlkTable->Fetch(nDexAttackMod != 0 ? STRREF_FMT_DEXTERITY_MOD : STRREF_FMT_STRENGTH_MOD, 0, 0, 0);
             }
 
@@ -8013,7 +8088,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         int nHaveData = ReadINT(32);
         int nTok3 = ReadINT(32);
         int nTok4 = ReadINT(32);
-        ReadINT(32);
+        int nUnused5 = ReadINT(32);
+        (void)nUnused5;
         int nSel = ReadINT(32);
 
         if (nHaveData == 0)
@@ -8043,7 +8119,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         int nValue0 = ReadINT(32);
         int nValue1 = ReadINT(32);
         int nValue2 = ReadINT(32);
-        ReadINT(32);
+        int nUnused3 = ReadINT(32);
+        (void)nUnused3;
         int nValue4 = ReadINT(32);
         int nValue5 = ReadINT(32);
         int nValue6 = ReadINT(32);
@@ -8149,19 +8226,25 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         }
 
         int nBaseDamage = ReadINT(32);
-        ReadINT(32);
+        int nUnused1 = ReadINT(32);
+        (void)nUnused1;
         int nStrDamageBonus = ReadINT(32);
-        ReadINT(32);
+        int nUnused3 = ReadINT(32);
+        (void)nUnused3;
         int nDamageBonus = ReadINT(32);
-        ReadINT(32);
+        int nUnused5 = ReadINT(32);
+        (void)nUnused5;
         int nSneakDamage = ReadINT(32);
         int nSpecDamageBonus = ReadINT(32);
         int nThreatBonus = ReadINT(32);
         int nFeatSoak = ReadINT(32);
         int nFeatFlatDR = ReadINT(32);
-        ReadINT(32);
-        ReadINT(32);
-        ReadINT(32);
+        int nUnused11 = ReadINT(32);
+        (void)nUnused11;
+        int nUnused12 = ReadINT(32);
+        (void)nUnused12;
+        int nUnused13 = ReadINT(32);
+        (void)nUnused13;
 #if !KOTOR1  // K1: 28 INTs -- no spell bonus, spell id or effect damage
         int nSpellBonus = ReadINT(32);
         int nSpellId = ReadINT(32);
@@ -8205,8 +8288,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         if (nStrDamageBonus != 0)
         {
-            CExoString sTmpDamage;  // ctor + dtor only (same dead pair as case 4's sTmpName)
-            CResRef resTmp;         // ctor only
+            STR_RES strTmp;         // ctor + dtor only (same dead pair as case 4's strTmp)
 
             g_pTlkTable->SetCustomToken(0, CExoString(nStrDamageBonus));
 
@@ -8215,8 +8297,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         if (nSpecDamageBonus != 0)
         {
-            // No dead CExoString/CResRef pair here, unlike its six siblings: this is the one term that
-            // declares none.
+            // No dead STR_RES here, unlike its six siblings: this is the one term that declares none.
             g_pTlkTable->SetCustomToken(0, CExoString(nSpecDamageBonus));
 
             sDamageList = sDamageList + CExoString(" ") + g_pSWTlkTable->Fetch(STRREF_FMT_WEAPON_SPECIALIZATION, 0, 0, 0);
@@ -8224,8 +8305,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         if (nDamageBonus > 0)
         {
-            CExoString sTmpDamage;  // ctor + dtor only
-            CResRef resTmp;         // ctor only
+            STR_RES strTmp;         // ctor + dtor only
 
             g_pTlkTable->SetCustomToken(0, CExoString(nDamageBonus));
 
@@ -8235,8 +8315,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 #if !KOTOR1
         if (nEffectDamage != 0)
         {
-            CExoString sTmpDamage;  // ctor + dtor only
-            CResRef resTmp;         // ctor only
+            STR_RES strTmp;         // ctor + dtor only
 
             g_pTlkTable->SetCustomToken(0, CExoString(nEffectDamage));
 
@@ -8246,8 +8325,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         if (nSneakDamage > 0)
         {
-            CExoString sTmpDamage;  // ctor + dtor only
-            CResRef resTmp;         // ctor only
+            STR_RES strTmp;         // ctor + dtor only
 
             g_pTlkTable->SetCustomToken(0, CExoString(nSneakDamage));
 
@@ -8256,8 +8334,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         if (nFeatSoak != 0)
         {
-            CExoString sTmpDamage;  // ctor + dtor only
-            CResRef resTmp;         // ctor only
+            STR_RES strTmp;         // ctor + dtor only
 
             g_pTlkTable->SetCustomToken(0, CExoString(nFeatSoak));
 
@@ -8266,8 +8343,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
         if (nFeatFlatDR != 0)
         {
-            CExoString sTmpDamage;  // ctor + dtor only
-            CResRef resTmp;         // ctor only
+            STR_RES strTmp;         // ctor + dtor only
 
             g_pTlkTable->SetCustomToken(0, CExoString(nFeatFlatDR));
 
@@ -8323,14 +8399,21 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // string out of a switch whose 11/12/13/17 arms are the default (strref 0). Also note the arm
         // does not set bRet: like case 21 it just `break`s, leaving bRet at 0.
         unsigned long long objId = ReadOBJECTIDClient();
-        ReadINT(32);
+        int nUnused0 = ReadINT(32);
+        (void)nUnused0;
         int nKind = ReadINT(32);
-        ReadINT(32);
-        ReadINT(32);
-        ReadINT(32);
-        ReadINT(32);
-        ReadINT(32);
-        ReadINT(32);
+        int nUnused2 = ReadINT(32);
+        (void)nUnused2;
+        int nUnused3 = ReadINT(32);
+        (void)nUnused3;
+        int nUnused4 = ReadINT(32);
+        (void)nUnused4;
+        int nUnused5 = ReadINT(32);
+        (void)nUnused5;
+        int nUnused6 = ReadINT(32);
+        (void)nUnused6;
+        int nUnused7 = ReadINT(32);
+        (void)nUnused7;
         int nSel = ReadINT(32);
 
         if (nSel == -1 || nSel == 1)
@@ -8384,7 +8467,6 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 #endif
             }
 
-
             g_pTlkTable->SetCustomToken(1, g_pSWTlkTable->Fetch(nKindStrRef, 0, 0, 0));
         }
 
@@ -8412,7 +8494,8 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
         // bRet at 0.
         unsigned long long objId = ReadOBJECTIDClient();
 
-        ReadINT(32);                                 // m_nDeflectResult -- read, never used
+        int nDeflectResult = ReadINT(32);            // m_nDeflectResult -- read, never used
+        (void)nDeflectResult;
         int nAttackTotal = ReadINT(32);
         int nDeflectTotal = ReadINT(32);
         int nDeflectRoll = ReadINT(32);
@@ -8513,9 +8596,7 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 
     case CC_MESSAGE_POISONED:
     {
-        unsigned long long objId = ReadOBJECTIDClient();
-
-        if (g_pAppManager->m_pClientExoApp->GetObjectName(objId, sName))
+        if (g_pAppManager->m_pClientExoApp->GetObjectName(ReadOBJECTIDClient(), sName))
         {
             g_pTlkTable->SetCustomToken(0, sName);
         }
@@ -8547,7 +8628,6 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 #if KOTOR1
 #undef AppendToCombatBuffer
 #endif
-
 
 int CSWCMessage::HandleServerToPlayerMessage(unsigned char* pMessage, unsigned int nSize)
 {
@@ -8734,7 +8814,6 @@ int CSWCMessage::HandleServerToPlayerMessage(unsigned char* pMessage, unsigned i
 
     return bRet;
 }
-
 
 int CSWCMessage::HandleServerToPlayerDebugInfo_Creature(unsigned long long objId)
 {
@@ -9101,7 +9180,6 @@ int CSWCMessage::HandleServerToPlayerDebugInfo_Creature(unsigned long long objId
     return 1;
 }
 
-
 int CSWCMessage::HandleServerToPlayerDebugInfo_Placeable(unsigned long long objId)
 {
     CResRef resTemplate;
@@ -9196,7 +9274,6 @@ int CSWCMessage::HandleServerToPlayerDebugInfo_Placeable(unsigned long long objI
 
     return 1;
 }
-
 
 int CSWCMessage::HandleServerToPlayerDebugInfo_Item(unsigned long long objId)
 {
@@ -9313,7 +9390,6 @@ int CSWCMessage::HandleServerToPlayerDebugInfo_Item(unsigned long long objId)
 
     return 1;
 }
-
 
 int CSWCMessage::HandleServerToPlayerInventory(unsigned char nType)
 {
@@ -10288,22 +10364,10 @@ int CSWCMessage::HandleServerToPlayerUpdate_CharacterSheet()
             if (MessageReadOverflow(1))
                 return 0;
 
-            // The rank bound is re-read between the two stores.
             if (i < g_pRules->m_nNumSkills)
                 pStats->m_pSkillRanks[i] = nRank;
 
-            // The base rank is read through a bounds-checked accessor and the store re-checks the bound
-            // on its own, so the two are not one guarded block.
-            signed char nBase = i < g_pRules->m_nNumSkills
-                                    ? static_cast<signed char>(pCreature->m_pStats->m_pSkillRanksBase[i])
-                                    : 0;
-            if (bCanUse & 1) {
-                if (nBase <= 0 && i < g_pRules->m_nNumSkills)
-                    pCreature->m_pStats->m_pSkillRanksBase[i] = 1;
-            } else {
-                if (nBase >= 1 && i < g_pRules->m_nNumSkills)
-                    pCreature->m_pStats->m_pSkillRanksBase[i] = 0;
-            }
+            SetGuiSkillRank(pCreature, 1, static_cast<unsigned short>(bCanUse), i);
         }
     }
 
@@ -10319,10 +10383,7 @@ int CSWCMessage::HandleServerToPlayerUpdate_CharacterSheet()
             if (MessageReadOverflow(1))
                 return 0;
 
-            // inlined CExoArrayList<unsigned short>::AddUnique(unsigned short)
-            if (pStats->m_lstFeats.Contains(nFeat) != 0)
-                continue;
-            pStats->m_lstFeats.Add(nFeat);
+            pStats->m_lstFeats.AddUnique(nFeat);
         }
 
         unsigned short nNumBonusFeats = ReadWORD(16);
@@ -10334,10 +10395,7 @@ int CSWCMessage::HandleServerToPlayerUpdate_CharacterSheet()
             if (MessageReadOverflow(1))
                 return 0;
 
-            // inlined CExoArrayList<unsigned short>::AddUnique(unsigned short)
-            if (pStats->m_lstBonusFeats.Contains(nFeat) != 0)
-                continue;
-            pStats->m_lstBonusFeats.Add(nFeat);
+            pStats->m_lstBonusFeats.AddUnique(nFeat);
         }
     }
 
@@ -12041,12 +12099,12 @@ LTailMask:
 
                 pCreature->ComputeWeaponOverlays(0, 0);
 
-                CSWCItem* pRight = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(
-                    pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON));
+                uint64_t nRightId = pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON);
+                CSWCItem* pRight = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nRightId);
                 if (pRight != NULL)
                     pRight->PowerItem(0, 0, 1, 0);
-                CSWCItem* pLeft = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(
-                    pCreature->GetEquippedItemID(MSG_SLOT_LEFT_WEAPON));
+                uint64_t nLeftId = pCreature->GetEquippedItemID(MSG_SLOT_LEFT_WEAPON);
+                CSWCItem* pLeft = g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(nLeftId);
                 if (pLeft != NULL)
                     pLeft->PowerItem(0, 0, 1, 0);
 
@@ -12054,7 +12112,7 @@ LTailMask:
                             pCreature->m_objectId)
                         && g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount >= 2)
                     g_pAppManager->m_pClientExoApp->ShowTutorialWindow(
-                        TUTORIAL_PARTY_MEMBER_DIES, CGameObjectArray::INVALIDOBJID, CGameObjectArray::INVALIDOBJID, 0);
+                        TUTORIAL_PARTY_MEMBER_DIES, OBJECT_INVALID, OBJECT_INVALID, 0);
             }
 
             pCreature->m_nAIStateFlags = nCombatFlags;
@@ -12489,7 +12547,10 @@ LTailMask:
             {
                 pBody->SetAlignmentValue(nAlignment);
                 pBody->SetForceGlowColor(fR, fG, fB, fGlow);
-                pBody->EnableForceGlow(nRace != CSWRace::CRACE_DROID);
+                if (nRace == CSWRace::CRACE_DROID)
+                    pBody->EnableForceGlow(false);
+                else
+                    pBody->EnableForceGlow(true);
                 pBody->SetNonForceBlending(true);
             }
             Gob* pHead = pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD, 0);
@@ -12497,7 +12558,10 @@ LTailMask:
             {
                 pHead->SetAlignmentValue(nAlignment);
                 pHead->SetForceGlowColor(fR, fG, fB, fGlow);
-                pHead->EnableForceGlow(nRace != CSWRace::CRACE_DROID);
+                if (nRace == CSWRace::CRACE_DROID)
+                    pHead->EnableForceGlow(false);
+                else
+                    pHead->EnableForceGlow(true);
                 pHead->SetNonForceBlending(true);
             }
 

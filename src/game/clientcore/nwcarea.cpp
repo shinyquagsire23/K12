@@ -405,11 +405,7 @@ void CSWCArea::SetAsDawn()
     m_bDayNightSwitchPending = 1;
     *reinterpret_cast<CSWCAreaV2si*>(&m_v2iDawnDusk) = CSWCAreaV2si{1, 0};
     m_isNight = 1;
-    if (m_pSunGob != 0) {
-        CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-        if (pPlayer != 0)
-            pPlayer->GetCreatureLight(1);
-    }
+    UpdateShadowingLights();
 }
 
 void CSWCArea::SetAsDusk()
@@ -427,11 +423,7 @@ void CSWCArea::SetAsDusk()
     m_bDayNightSwitchPending = 1;
     *reinterpret_cast<CSWCAreaV2si*>(&m_v2iDawnDusk) = CSWCAreaV2si{0, 1};
     m_isNight = 0;
-    if (m_pSunGob != 0) {
-        CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-        if (pPlayer != 0)
-            pPlayer->GetCreatureLight(1);
-    }
+    UpdateShadowingLights();
 }
 
 void CSWCArea::SetAsDay()
@@ -448,11 +440,7 @@ void CSWCArea::SetAsDay()
     SetFog(m_sunFogNear, m_sunFogFar, m_vDayFogColor);
     SetGlobalLightAmbient(1, Vector{m_vSunAmbientRG.x, m_vSunAmbientRG.y, m_fSunAmbientBlue});
     SetGlobalLightDiffuse(1, Vector{m_vSunDiffuseRG.x, m_vSunDiffuseRG.y, m_fSunDiffuseBlue});
-    if (m_pSunGob != 0) {
-        CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-        if (pPlayer != 0)
-            pPlayer->GetCreatureLight(1);
-    }
+    UpdateShadowingLights();
 }
 
 void CSWCArea::SetAsNight()
@@ -469,11 +457,7 @@ void CSWCArea::SetAsNight()
     SetFog(m_moonFogNear, m_moonFogFar, m_vNightFogColor);
     SetGlobalLightAmbient(1, Vector{m_vMoonAmbientRG.x, m_vMoonAmbientRG.y, m_fMoonAmbientBlue});
     SetGlobalLightDiffuse(1, Vector{m_vMoonDiffuseRG.x, m_vMoonDiffuseRG.y, m_fMoonDiffuseBlue});
-    if (m_pSunGob != 0) {
-        CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-        if (pPlayer != 0)
-            pPlayer->GetCreatureLight(1);
-    }
+    UpdateShadowingLights();
 }
 
 void CSWCArea::AttachmentFromServerArea(CSWSArea* pServerArea)
@@ -727,8 +711,7 @@ void CSWCArea::UnloadArea()
         if (pObject != 0)
             delete pObject;
     }
-    while (m_hitCheckIgnoreList.m_pInternal->m_pHead != 0)
-        m_hitCheckIgnoreList.RemoveHead();
+    EmptyCAurObjectToHitCheckIgnoreList();
     for (int i = m_placeableObjectLights.m_count - 1; i >= 0; i--) {
         CSWCPlaceableObjectLight* pEntry = m_placeableObjectLights.m_pArray[i];
         if (pEntry != 0) {
@@ -887,7 +870,7 @@ CSWMiniGame* CSWCArea::RestartMiniGame()
 
 CSWCRoom* CSWCArea::GetRoom(const Vector& pos)
 {
-    int nRoom = g_pAppManager->m_pServerExoApp->GetRoomIndex(m_areaResRef, pos, 0);
+    int nRoom = GetRoomIndex(pos, 0);
     if (nRoom == -1)
         return 0;
     return &m_paRooms[nRoom];
@@ -990,11 +973,7 @@ void CSWCArea::UpdateDayNightCycle(float deltaTime)
             vFogColor = m_vDayFogColor;
             vFog.x = m_sunFogNear;
             vFog.y = m_sunFogFar;
-            if (m_pSunGob != 0) {
-                CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-                if (pPlayer != 0)
-                    pPlayer->GetCreatureLight(1);
-            }
+            UpdateShadowingLights();
             m_isNight = 0;
         } else {
             // dawn in progress: night -> day
@@ -1028,11 +1007,7 @@ void CSWCArea::UpdateDayNightCycle(float deltaTime)
             vFogColor = m_vNightFogColor;
             vFog.x = m_fogNear;
             vFog.y = m_fogFar;
-            if (m_pSunGob != 0) {
-                CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-                if (pPlayer != 0)
-                    pPlayer->GetCreatureLight(1);
-            }
+            UpdateShadowingLights();
             m_isNight = 1;
         } else {
             // dusk in progress: day -> night
@@ -1061,11 +1036,7 @@ void CSWCArea::UpdateDayNightCycle(float deltaTime)
             m_isNight = 1;
         else if (m_v2iDawnDusk.x != 0)
             m_isNight = 0;
-        if (m_pSunGob != 0) {
-            CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-            if (pPlayer != 0)
-                pPlayer->GetCreatureLight(1);
-        }
+        UpdateShadowingLights();
         m_bDayNightSwitchPending = 0;
     }
     if (fTime < fMax) {

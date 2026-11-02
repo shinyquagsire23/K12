@@ -92,7 +92,7 @@ int AurBumpMapAvailable()
     return AurATIFragmentShaderAvailable();
 }
 
-// Same feature-set test as AurBumpMapAvailable, gated on the render level.
+// AurBumpMapAvailable, gated on the render level.
 bool AurNV1xLevelShadersAvailable()
 {
     if (renderlevel < 1)
@@ -100,12 +100,7 @@ bool AurNV1xLevelShadersAvailable()
     int bATI = AurATIFragmentShaderAvailable();
     if (renderlevel == 1 && bATI)
         return 0;
-    if (((EXT_BGRA_BIT | ARB_MULTITEXTURE_BIT | NV_REGISTER_COMBINERS_BIT | EXT_TEXTURE_CUBE_MAP_BIT
-          | GL_ARB_VERTEX_PROGRAM_BIT) & existingextensions)
-        == (EXT_BGRA_BIT | ARB_MULTITEXTURE_BIT | NV_REGISTER_COMBINERS_BIT | EXT_TEXTURE_CUBE_MAP_BIT
-            | GL_ARB_VERTEX_PROGRAM_BIT))
-        return 1;
-    return (bATI != 0) & (AurVertexProgramsARBAvailable() != 0);
+    return AurBumpMapAvailable() != 0;
 }
 
 bool AurNV2xLevelShadersAvailable()
@@ -154,8 +149,7 @@ bool AurBumpMapCardValidate()
 #else
     static int returnval = -1;
     if (returnval == -1)
-        returnval = !(((ATI_FRAGMENT_SHADER_BIT & existingextensions) == ATI_FRAGMENT_SHADER_BIT)
-                      & useatifragmentshaders);
+        returnval = !AurATIFragmentShaderAvailable();
     return returnval == 1;
 #endif
 }
@@ -186,29 +180,13 @@ int AurOnePassEnvMapAvailable()
 {
     static int returnval = -1;
     if (returnval == -1) {
-        if (renderlevel < 1)
+        if (!AurNV1xLevelShadersAvailable())
             returnval = 0;
+        else if (AurATIFragmentShaderAvailable())
+            returnval = AurNonRadeon8500Validate();
         else {
-            int bATI = AurATIFragmentShaderAvailable();
-            if (renderlevel == 1 && bATI)
-                returnval = 0;
-            else if (((ARB_MULTITEXTURE_BIT | EXT_BGRA_BIT | NV_REGISTER_COMBINERS_BIT
-                       | EXT_TEXTURE_CUBE_MAP_BIT | GL_ARB_VERTEX_PROGRAM_BIT) & existingextensions)
-                     == (ARB_MULTITEXTURE_BIT | EXT_BGRA_BIT | NV_REGISTER_COMBINERS_BIT
-                         | EXT_TEXTURE_CUBE_MAP_BIT | GL_ARB_VERTEX_PROGRAM_BIT)) {
-                if (bATI)
-                    returnval = AurNonRadeon8500Validate();
-                else {
-                    GLRender::QueryIntegerv(Aurora::kQueryUnmapped, &returnval);
-                    returnval = returnval > 1;
-                }
-            } else {
-                int bARB = AurVertexProgramsARBAvailable();
-                if (bATI && bARB)
-                    returnval = AurNonRadeon8500Validate();
-                else
-                    returnval = 0;
-            }
+            GLRender::QueryIntegerv(Aurora::kQueryUnmapped, &returnval);
+            returnval = returnval > 1;
         }
     }
     return returnval;

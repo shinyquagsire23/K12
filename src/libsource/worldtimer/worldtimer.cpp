@@ -143,8 +143,7 @@ int CWorldTimer::ConvertToTimeOfDay(unsigned int hour, unsigned int minute,
 // Unpacking the snapshot into a (day, time-of-day) pair is shared by this whole family.
 unsigned int CWorldTimer::GetWorldTimeYear()
 {
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nDay = GetWorldTimeCalendarDay();
     return (nDay >> 19 > 20) ? MAX_YEAR : nDay / DAYS_PER_YEAR;
 }
 
@@ -157,16 +156,14 @@ unsigned int CWorldTimer::GetWorldTimeCalendarDay()
 
 unsigned int CWorldTimer::GetWorldTimeHour()
 {
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nTod = GetWorldTimeTimeOfDay();
     unsigned int nMinutesTotal = nTod / 60000;
     return nMinutesTotal / m_nMinutesPerHour;
 }
 
 unsigned int CWorldTimer::GetWorldTimeMinute()
 {
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nTod = GetWorldTimeTimeOfDay();
     unsigned int nMinutesTotal = nTod / 60000;
     unsigned int nHours = nMinutesTotal / m_nMinutesPerHour;
     return nMinutesTotal - nHours * m_nMinutesPerHour;
@@ -174,15 +171,13 @@ unsigned int CWorldTimer::GetWorldTimeMinute()
 
 unsigned int CWorldTimer::GetWorldTimeSecond()
 {
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nTod = GetWorldTimeTimeOfDay();
     return (nTod / 1000) % 60;
 }
 
 unsigned int CWorldTimer::GetWorldTimeMillisecond()
 {
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nTod = GetWorldTimeTimeOfDay();
     return nTod % 1000;
 }
 
@@ -196,8 +191,7 @@ unsigned int CWorldTimer::GetWorldTimeTimeOfDay()
 CExoString CWorldTimer::GetWorldTimeTimeOfDayString()
 {
     CExoString result;
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nTod = GetWorldTimeTimeOfDay();
     unsigned int nHour, nMinute, nSecond, nMs;
     ConvertFromTimeOfDay(nTod, &nHour, &nMinute, &nSecond, &nMs);
     result.Format(const_cast<char*>("%02d:%02d:%02d.%03d"), nHour, nMinute, nSecond, nMs);
@@ -206,16 +200,14 @@ CExoString CWorldTimer::GetWorldTimeTimeOfDayString()
 
 unsigned int CWorldTimer::GetWorldTimeDay()
 {
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nDay = GetWorldTimeCalendarDay();
     unsigned int nWeeks = (nDay >> 2) / 7;
     return nDay - nWeeks * DAYS_PER_MONTH + 1;
 }
 
 unsigned int CWorldTimer::GetWorldTimeMonth()
 {
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nDay = GetWorldTimeCalendarDay();
     unsigned int nWeeks = (nDay >> 2) / 7;
     return nWeeks % 12 + 1;
 }
@@ -223,8 +215,7 @@ unsigned int CWorldTimer::GetWorldTimeMonth()
 CExoString CWorldTimer::GetWorldTimeCalendarDayString()
 {
     CExoString result;
-    unsigned int nDay, nTod;
-    GetWorldTime(&nDay, &nTod);
+    unsigned int nDay = GetWorldTimeCalendarDay();
     unsigned int nYear, nMonth, nDayOfMonth;
     ConvertFromCalendarDay(nDay, &nYear, &nMonth, &nDayOfMonth);
     result.Format(const_cast<char*>("%02d/%02d/%04d"), nDayOfMonth, nMonth, nYear);
@@ -274,14 +265,8 @@ int CWorldTimer::AddWorldTimes(unsigned int day1, unsigned int tod1, unsigned in
 int CWorldTimer::SubtractWorldTimes(unsigned int day1, unsigned int tod1, unsigned int day2,
                                     unsigned int tod2, unsigned int* pDay, unsigned int* pTod)
 {
-    if (tod1 < static_cast<unsigned int>(m_nMillisecondsPerDay) && tod2 < static_cast<unsigned int>(m_nMillisecondsPerDay)) {
-        if (day1 == day2) {
-            if (tod1 < tod2)
-                return -2;
-        } else if (day1 <= day2) {
-            return -2;
-        }
-    }
+    if (CompareWorldTimes(day1, tod1, day2, tod2) == -1)
+        return -2;
     *pDay = day1 - day2;
     *pTod = tod1 - tod2;
     if (tod1 - tod2 < static_cast<unsigned int>(m_nMillisecondsPerDay))
@@ -330,19 +315,8 @@ void CWorldTimer::PauseWorldTimer()
     if (m_bUseFixedRate != 0)
         return;
 
-    uint64_t nTotal = static_cast<uint64_t>(m_nSnapshotTime) / 1000;
-    unsigned int nSpan = m_nMillisecondsPerDay;
-    int nDays = static_cast<int>(nTotal / nSpan);
-    int nDay = m_nCalendarDayOffset + nDays;
-    unsigned int nTod = m_nTimeOfDayOffset + static_cast<unsigned int>(nTotal % nSpan);
-    while (~nSpan < nTod) {
-        nDay--;
-        nTod += nSpan;
-    }
-    while (nSpan <= nTod) {
-        nDay++;
-        nTod -= nSpan;
-    }
+    unsigned int nDay, nTod;
+    GetWorldTime(&nDay, &nTod);
     m_bUseFixedRate = 1;
     m_nPauseDay = nDay;
     m_nPauseTime = nTod;
@@ -365,7 +339,7 @@ void CWorldTimer::SetSnapshotTime()
     m_nLastSnapshotTime = m_nSnapshotTime;
     if (m_nFixedRateNumerator == 0) {
         long long t = g_pExoBase->m_pTimers->GetHighResolutionTimer();
-        m_nSnapshotTime += static_cast<long long>(static_cast<unsigned long long>((t - m_nLastHighResTime) * static_cast<long long>(m_nSnapshotScale)) / 100);
+        m_nSnapshotTime += static_cast<long long>(static_cast<uint64_ll_t>((t - m_nLastHighResTime) * static_cast<long long>(m_nSnapshotScale)) / 100);
         m_nLastHighResTime = t;
     } else {
         int nRate = 1000000 / m_nFixedRateDenominator;
@@ -380,27 +354,19 @@ void CWorldTimer::SetWorldTime(unsigned int day, unsigned int tod, int bUpdateSn
 {
     if (bUpdateSnapshot == 1)
         SetSnapshotTime();
-    uint64_t nTotal = static_cast<uint64_t>(m_nSnapshotTime) / 1000;
+    uint64_ll_t nTotal = static_cast<uint64_ll_t>(m_nSnapshotTime) / 1000;
     unsigned int nSpan = m_nMillisecondsPerDay;
     m_nCalendarDayOffset = day - static_cast<unsigned int>(nTotal / nSpan);  // no divisor guard needed: division by zero yields zero
     m_nTimeOfDayOffset = tod - static_cast<unsigned int>(nTotal % nSpan);
 }
 
-// The (year, month, day, hour, minute, second, ms) overload converts both parts, then runs the same
-// snapshot update and offset tail as the overload above.
+// The (year, month, day, hour, minute, second, ms) overload converts both parts for the overload above.
 void CWorldTimer::SetWorldTime(unsigned int year, unsigned int month, unsigned int day,
                                 unsigned int hour, unsigned int minute, unsigned int second,
                                 unsigned int ms, int bUpdateSnapshot)
 {
     int nCalDay = ConvertToCalendarDay(year, month, day);
-    int nTod = ConvertToTimeOfDay(hour, minute, second, ms);
-
-    if (bUpdateSnapshot == 1)
-        SetSnapshotTime();
-    uint64_t nTotal = static_cast<uint64_t>(m_nSnapshotTime) / 1000;
-    unsigned int nSpan = m_nMillisecondsPerDay;
-    m_nCalendarDayOffset = nCalDay - static_cast<unsigned int>(nTotal / nSpan);  // division by zero yields zero
-    m_nTimeOfDayOffset = nTod - static_cast<unsigned int>(nTotal % nSpan);
+    SetWorldTime(nCalDay, ConvertToTimeOfDay(hour, minute, second, ms), bUpdateSnapshot);
 }
 
 void CWorldTimer::GetWorldTime(unsigned int* pDay, unsigned int* pTod)
@@ -410,7 +376,7 @@ void CWorldTimer::GetWorldTime(unsigned int* pDay, unsigned int* pTod)
         *pDay = m_nPauseDay;
         tod = m_nPauseTime;
     } else {
-        uint64_t nTotal = static_cast<uint64_t>(m_nSnapshotTime) / 1000;
+        uint64_ll_t nTotal = static_cast<uint64_ll_t>(m_nSnapshotTime) / 1000;
         unsigned int nSpan = m_nMillisecondsPerDay;
         unsigned int nRem = static_cast<unsigned int>(nTotal % nSpan);
         *pDay = m_nCalendarDayOffset + static_cast<unsigned int>(nTotal / nSpan);

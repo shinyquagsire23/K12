@@ -1,7 +1,6 @@
 #include "k2stdint.h"
 #include "port/sdlapi.h"
 #include "nwscriptconst.h"
-#define CSWGUI_FORCE_WIDGET_INLINE 1
 #include "swguinamechargen.h"
 #include "swgui.h"
 #include "swguicontrol.h"

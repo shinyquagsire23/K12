@@ -64,7 +64,7 @@ CSWGuiLoadScreen::CSWGuiLoadScreen(CSWGuiManager* pGuiManager)
 
     CExoString name = CSWGuiManager::GetScreenResolutionString(g_nScreenWidth, g_nScreenHeight);
     name = "black";
-    m_lblBackground.m_border.m_params.SetFillImage(CResRef(name), 0);
+    m_lblBackground.m_border.m_params.SetFillImage(CResRef(name));
     m_lblBackground.m_border.m_params.m_flags.nFillStyle = 2;
 
     ScaleExtentForResolution();
@@ -98,14 +98,14 @@ CSWGuiLoadScreen::CSWGuiLoadScreen(CSWGuiManager* pGuiManager)
         name = "1024x768";
 
     name = name + "load";
-    m_lblBackground.m_border.m_params.SetFillImage(CResRef(name), 0);
+    m_lblBackground.m_border.m_params.SetFillImage(CResRef(name));
     m_lblBackground.m_border.m_params.m_flags.nFillStyle = 2;
     m_stateFlags &= ~(PANEL_STATE_CENTER_X | PANEL_STATE_CENTER_Y);
 
     // The logo keeps the background resref so OnPanelAdded can re-install it, and starts with no
     // fill image of its own.
     m_resRefBackground = m_lblLogo.m_border.m_params.m_fillImage;
-    m_lblLogo.m_border.m_params.SetFillImage(CResRef(""), 0);
+    m_lblLogo.m_border.m_params.SetFillImage(CResRef(""));
 #ifdef K2_QOL_IMPROVEMENTS
     s_extentK2QolLoading = m_lblLoading.m_extent;
 #endif
@@ -132,7 +132,7 @@ void CSWGuiLoadScreen::SetImage(const CResRef& resRef)
     extent.y = 0;
     m_pBackground->SetExtent(extent);
     extent.x = (g_SDL_mode.w - extent.w) / 2;
-    m_lblBackground.m_border.m_params.SetFillImage(resRef, 0);
+    m_lblBackground.m_border.m_params.SetFillImage(resRef);
     m_lblBackground.SetExtent(extent);
 #ifndef K2_UI_TOUCH
     // The progress bar's x and width are positions on the load art, so they follow the art's

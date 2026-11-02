@@ -160,8 +160,7 @@ void CSWGuiPowersLevelUp::OnPanelAdded()
         return;
     }
 
-    m_pGuiManager->AddPanel(
-        static_cast<CSWGuiPanel*>(g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSkillInfoBoxPanel), 1, 1);
+    ShowGranted(0);
 #endif
 }
 
@@ -493,20 +492,13 @@ void CSWGuiPowersLevelUp::OnAcceptButton()
 // lists explain themselves through the query box.
 void CSWGuiPowersLevelUp::OnPowerPicked(unsigned int nPower)
 {
-    uint64_t nStrRef;
+    unsigned char nStatus;
+    DeterminePower(nPower, nStatus);
 
-    if (m_aOwnedPowers.IndexOf(nPower) != -1)
+    uint64_t nStrRef;
+    switch (nStatus)
     {
-        nStrRef = STRREF_CANNOT_DESELECT_OWNED_POWER;
-    }
-    else if (m_aChosenPowers.IndexOf(nPower) != -1)
-    {
-        RemoveChosenPower(nPower);
-        BuildButtons();
-        return;
-    }
-    else if (m_aAvailablePowers.IndexOf(nPower) != -1)
-    {
+    case DRAW_STATE_AVAILABLE:
         if ((nPower | (FORCE_POWER_DOMINATE - FORCE_POWER_AFFECT_MIND)) == FORCE_POWER_DOMINATE
             && (m_bFlags & POWERS_FLAG_IS_PC) == 0)
         {
@@ -522,15 +514,24 @@ void CSWGuiPowersLevelUp::OnPowerPicked(unsigned int nPower)
         {
             nStrRef = STRREF_ALL_POWERS_SELECTED;
         }
-    }
-    else
-    {
-        // The strref pair is picked with a select rather than a branch.
-#if KOTOR1
+        break;
+    case DRAW_STATE_CHOSEN:
+        RemoveChosenPower(nPower);
+        BuildButtons();
+        return;
+    case DRAW_STATE_OWNED:
+        nStrRef = STRREF_CANNOT_DESELECT_OWNED_POWER;
+        break;
+    case DRAW_STATE_UNAVAILABLE:
         nStrRef = STRREF_POWER_PREREQUISITES_NOT_MET;
-#else
-        nStrRef = m_aNewPowers.IndexOf(nPower) != -1 ? STRREF_POWER_GRANTED_AT_LEVEL : STRREF_POWER_PREREQUISITES_NOT_MET;
+        break;
+#if !KOTOR1
+    case DRAW_STATE_GRANTED:
+        nStrRef = STRREF_POWER_GRANTED_AT_LEVEL;
+        break;
 #endif
+    default:
+        return;
     }
 
     CSWGuiMessageBox* pBox =

@@ -384,8 +384,8 @@ void CSWGuiInGameEquip::OnSwitchLeft(CSWGuiControl* pControl) {
     if (nCur == -2)
         return;
 
-    m_btnChange2.m_border.m_params.SetFillImage(m_btnChange1.m_border.m_params.m_fillImage, 0);
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(m_btnChange1.m_borderHilight.m_params.m_fillImage, 0);
+    m_btnChange2.m_border.m_params.SetFillImage(m_btnChange1.m_border.m_params.m_fillImage);
+    m_btnChange2.m_borderHilight.m_params.SetFillImage(m_btnChange1.m_borderHilight.m_params.m_fillImage);
     m_btnChange2.m_tail.m_nUserData = m_btnChange1.m_tail.m_nUserData;
 
     CSWCCreature* pCreature;
@@ -403,9 +403,9 @@ void CSWGuiInGameEquip::OnSwitchLeft(CSWGuiControl* pControl) {
     }
     if (m_slot.m_nShownNPC != -1 && static_cast<signed char>(m_btnChange2.m_tail.m_nUserData) != -1) {
         m_btnChange1.m_border.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_borderHilight.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
@@ -423,8 +423,8 @@ void CSWGuiInGameEquip::OnSwitchLeft(CSWGuiControl* pControl) {
     return;
 
 found:
-    m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+    m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+    m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
     m_btnChange1.m_tail.m_nUserData = i;
 }
 
@@ -435,8 +435,8 @@ void CSWGuiInGameEquip::OnSwitchRight(CSWGuiControl* pControl) {
     if (nCur == -2)
         return;
 
-    m_btnChange1.m_border.m_params.SetFillImage(m_btnChange2.m_border.m_params.m_fillImage, 0);
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(m_btnChange2.m_borderHilight.m_params.m_fillImage, 0);
+    m_btnChange1.m_border.m_params.SetFillImage(m_btnChange2.m_border.m_params.m_fillImage);
+    m_btnChange1.m_borderHilight.m_params.SetFillImage(m_btnChange2.m_borderHilight.m_params.m_fillImage);
     m_btnChange1.m_tail.m_nUserData = m_btnChange2.m_tail.m_nUserData;
 
     CSWCCreature* pCreature;
@@ -454,9 +454,9 @@ void CSWGuiInGameEquip::OnSwitchRight(CSWGuiControl* pControl) {
     }
     if (m_slot.m_nShownNPC != -1) {
         m_btnChange2.m_border.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange2.m_borderHilight.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
@@ -474,8 +474,8 @@ void CSWGuiInGameEquip::OnSwitchRight(CSWGuiControl* pControl) {
     return;
 
 found:
-    m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+    m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+    m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
     m_btnChange2.m_tail.m_nUserData = i;
 }
 #else
@@ -541,15 +541,15 @@ void CSWGuiInGameEquip::UpdatePortraits(int bShow) {
         CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
         if (pParty->m_nCharacterCount >= 2) {
             m_btnChange1.m_tail.bVisible = 1;
-            m_btnChange1.m_border.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1), 0);
-            m_btnChange1.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1), 0);
+            m_btnChange1.m_border.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1));
         } else {
             m_btnChange1.m_tail.bVisible = 0;
         }
         if (pParty->m_nCharacterCount >= 3) {
             m_btnChange2.m_tail.bVisible = 1;
-            m_btnChange2.m_border.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1), 0);
-            m_btnChange2.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1), 0);
+            m_btnChange2.m_border.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1));
         } else {
             m_btnChange2.m_tail.bVisible = 0;
         }
@@ -576,12 +576,12 @@ void CSWGuiInGameEquip::UpdatePortraits(int bShow) {
             continue;
         if (nShown == 0) {
             nShown = 1;
-            m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
-            m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+            m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
             m_btnChange1.m_tail.m_nUserData = i;
         } else {
-            m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
-            m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+            m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
             m_btnChange2.m_tail.m_nUserData = i;
             goto both;
         }
@@ -589,17 +589,17 @@ void CSWGuiInGameEquip::UpdatePortraits(int bShow) {
     if (m_slot.m_nShownNPC != -1) {
         if (nShown != 0) {
             m_btnChange2.m_border.m_params.SetFillImage(
-                g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+                g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
             m_btnChange2.m_borderHilight.m_params.SetFillImage(
-                g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+                g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
             m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
             goto both;
         }
         nShown = 1;
         m_btnChange1.m_border.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_borderHilight.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
     }
     for (i = 0; i < nStart; i++) {
@@ -614,12 +614,12 @@ void CSWGuiInGameEquip::UpdatePortraits(int bShow) {
             continue;
         if (nShown == 0) {
             nShown = 1;
-            m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
-            m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+            m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
             m_btnChange1.m_tail.m_nUserData = i;
         } else {
-            m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
-            m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+            m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
             m_btnChange2.m_tail.m_nUserData = i;
             goto both;
         }
@@ -673,16 +673,7 @@ void CSWGuiInGameEquip::OnOKPressed(CSWGuiControl* pControl) {
         m_slot.m_pSavedOffHandCopy = 0;
     }
 
-#if KOTOR1  // K1: CloseDescription stays a call
     CloseDescription();
-#else
-    ShowDescription(0);
-
-    m_slot.m_bFlags = m_slot.m_bFlags & ~SLOTSTATE_SELECTING_ITEM;
-    SetActiveControl(m_slot.m_pActiveSlotButton, 0);
-    OnEnterSlot(m_pActiveControl);
-    m_lbItems.SetEnabled(0);
-#endif
 }
 
 void CSWGuiInGameEquip::OnSelectSlot(CSWGuiControl* pControl) {
@@ -700,8 +691,7 @@ void CSWGuiInGameEquip::OnSelectSlot(CSWGuiControl* pControl) {
     }
 
 #if !KOTOR1  // K1: no slot locks
-    int nSlot = MapGlobalSlotToGuiSlot(m_slot.m_nSlotFlag);
-    if (nSlot != GUI_SLOT_NONE && m_abSlotLocked[nSlot] != 0) {
+    if (GetSlotLockedBySLOTID(m_slot.m_nSlotFlag) != 0) {
         m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
         pBox->SetAllowCancel(0);
@@ -989,11 +979,7 @@ void CSWGuiInGameEquip::ShowDescription(int n) {
 }
 #else
 void CSWGuiInGameEquip::ShowDescription(int n) {
-    m_lblCantEquip.m_tail.bVisible = 0;
-
-    m_btnEquip.SetEnabled(1);
-    m_btnEquip.m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_TEXT);
-    m_btnEquip.m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
+    ShowCantEquipMessage(0, STRREF_NONE);
 
     if (n != 0) {
         UpdatePortraits(0);
@@ -1188,13 +1174,13 @@ void CSWGuiInGameEquip::SetCharacter(CSWCCreature* pCreature) {
         m_pCreature = pCreature;
         if (pCreature != 0) {
             for (int i = 0; i < 9; i++)
-                m_apSlotLabels[i].m_border.m_params.SetFillImage(GetIcon(i), 0);
+                m_apSlotLabels[i].m_border.m_params.SetFillImage(GetIcon(i));
         } else {
-            m_lblPortrait.m_border.m_params.SetFillImage(CResRef(""), 0);
+            m_lblPortrait.m_border.m_params.SetFillImage(CResRef(""));
         }
     }
     if (m_pCreature != 0)
-        m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(1), 0);
+        m_lblPortrait.m_border.m_params.SetFillImage(m_pCreature->GetPortrait(1));
 }
 #else
 void CSWGuiInGameEquip::SetCharacter(CSWCCreature* pCreature) {
@@ -1204,12 +1190,9 @@ void CSWGuiInGameEquip::SetCharacter(CSWCCreature* pCreature) {
 
     if (pCreature != 0) {
         for (int i = 0; i < 11; i++) {
-            CExoString sIcon;
-            sIcon.Format(const_cast<char*>("i%s%s"),
-                         m_pCreature->m_pStats->m_nRace == CSWRace::CRACE_DROID ? "d" : "",
-                         SLOT_INFO[i].m_pModelName);
+            CExoString sIcon = GetIcon(i);
             CResRef resIcon(sIcon);
-            m_apSlotLabels[i].m_border.m_params.SetFillImage(resIcon, 0);
+            m_apSlotLabels[i].m_border.m_params.SetFillImage(resIcon);
         }
     }
 
@@ -1372,28 +1355,7 @@ void CSWGuiInGameEquip::OnItemSelected(CSWGuiControl* pControl) {
         return;
     }
 
-#if KOTOR1  // K1: the stat readout comes back, COLOR_BLUE caption, no border tint
-    m_lblAtkL.m_tail.bVisible = 1;
-    m_lblAtkR.m_tail.bVisible = 1;
-    m_lblDef.m_tail.bVisible = 1;
-    m_lblToHitL.m_tail.bVisible = 1;
-    m_lblToHitR.m_tail.bVisible = 1;
-    m_lblVitality.m_tail.bVisible = 1;
-    m_lblAttackInfo.m_tail.bVisible = 1;
-    m_lblDefInfo.m_tail.bVisible = 1;
-    m_lblToHit.m_tail.bVisible = 1;
-    m_lblDamage.m_tail.bVisible = 1;
-    m_lblCantEquip.m_tail.bVisible = 0;
-    m_btnEquip.SetEnabled(1);
-    m_btnEquip.m_text.m_params.SetColor(CGuiInGame::COLOR_BLUE);
-#else
-    // For a usable row, clear the cannot-equip banner, arm the equip button and repaint its two
-    // colour slots.
-    m_lblCantEquip.m_tail.bVisible = 0;
-    m_btnEquip.SetEnabled(1);
-    m_btnEquip.m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_TEXT);
-    m_btnEquip.m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
-#endif
+    ShowCantEquipMessage(0, STRREF_NONE);
 
     if (oidItem == oidEquipped)
         return;
@@ -1401,25 +1363,7 @@ void CSWGuiInGameEquip::OnItemSelected(CSWGuiControl* pControl) {
     // The displayed item is whichever oid the description cache holds; refresh the copy when the
     // cache is empty.
     if (m_slot.m_oidSavedItem == 0) {
-        int nSlot = GUI_SLOT_WEAP_L;
-        switch (m_slot.m_nSlotFlag) {
-        case CSWInventory::SLOT_LEFTWEAPON: break;
-        case CSWInventory::SLOT_RIGHTWEAPON: nSlot = GUI_SLOT_WEAP_R; break;
-        case CSWInventory::SLOT_HEAD: nSlot = GUI_SLOT_HEAD; break;
-        case CSWInventory::SLOT_LEFTARM: nSlot = GUI_SLOT_ARM_L; break;
-        case CSWInventory::SLOT_RIGHTARM: nSlot = GUI_SLOT_ARM_R; break;
-        case CSWInventory::SLOT_BODY: nSlot = GUI_SLOT_BODY; break;
-        case CSWInventory::SLOT_HANDS: nSlot = GUI_SLOT_HANDS; break;
-        case CSWInventory::SLOT_IMPLANT: nSlot = GUI_SLOT_IMPLANT; break;
-        case CSWInventory::SLOT_BELT: nSlot = GUI_SLOT_BELT; break;
-#if KOTOR1
-        default: nSlot = GUI_SLOT_NONE; break;
-#else
-        case CSWInventory::SLOT_LEFTWEAPON2: nSlot = GUI_SLOT_WEAP_L2; break;
-        case CSWInventory::SLOT_RIGHTWEAPON2: nSlot = GUI_SLOT_WEAP_R2; break;
-        default: nSlot = GUI_SLOT_NONE; break;
-#endif
-        }
+        int nSlot = MapGlobalSlotToGuiSlot(m_slot.m_nSlotFlag);
 #ifdef K2_FIX_ENGINE_BUGS
         if (nSlot >= static_cast<int>(sizeof(m_slot.m_aoidEquipped) / sizeof(m_slot.m_aoidEquipped[0])))
             m_slot.m_oidSavedItem = 0;
@@ -1560,7 +1504,7 @@ void CSWGuiInGameEquip::OnItemExited(CSWGuiControl* pControl) {
 
     CSWGuiInGameItemEntry* pEntry = static_cast<CSWGuiInGameItemEntry*>(pControl);
     pEntry->bNewItem = 0;
-    pEntry->SetItem(pEntry->m_oidItem, pEntry->bEquipped, 0);
+    pEntry->UpdateItem();
 }
 #endif // !KOTOR1
 
@@ -1568,7 +1512,7 @@ void CSWGuiInGameEquip::OnItemExited(CSWGuiControl* pControl) {
 void CSWGuiInGameEquip::UpdateInventory() {
     CResRef resRef;
 
-    m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.SetFillImage(GetIcon(GUI_SLOT_WEAP_L), 0);
+    m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.SetFillImage(GetIcon(GUI_SLOT_WEAP_L));
     m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.m_fAlpha = 1.0f;
 
     unsigned long long oidEquipped K2_UNSET;
@@ -1632,7 +1576,7 @@ void CSWGuiInGameEquip::UpdateInventory() {
                 if (nSlot == 1) {
                     if (pServerItem->GetBaseItem()->m_nWeaponSize == CSWBaseItem::WEAPON_SIZE_LARGE
                         || pServerItem->GetBaseItem()->m_weaponWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED) {
-                        m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.SetFillImage(resRef, 0);
+                        m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.SetFillImage(resRef);
                         m_apSlotLabels[GUI_SLOT_WEAP_L].m_border.m_params.m_fAlpha = 0.25f;
                     }
                 }
@@ -1661,7 +1605,7 @@ void CSWGuiInGameEquip::UpdateInventory() {
             }
 
             if ((nWieldType == CSWBaseItem::WEAPON_WIELD_TWO_HANDED && nSlot == GUI_SLOT_WEAP_R) || nWieldType != CSWBaseItem::WEAPON_WIELD_TWO_HANDED)
-                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(resRef, 0);
+                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(resRef);
         } else {
             int bReadout = 0;
             if (nSlot == 1) {
@@ -1707,7 +1651,7 @@ void CSWGuiInGameEquip::UpdateInventory() {
                     break;
                 }
 
-                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(GetIcon(nSlot), 0);
+                m_apSlotLabels[nSlot].m_border.m_params.SetFillImage(GetIcon(nSlot));
             }
         }
 
@@ -2215,7 +2159,7 @@ void CSWGuiInGameEquip::OnPanelAdded() {
     }
 
     SetCharacter(g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter());
-    g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowGameMenuChangeButtons(1);
+    UpdatePortraits(1);
     OnEnterSlot(m_pActiveControl);
     CSWGuiPanel::OnPanelAdded();
 #endif
@@ -2532,7 +2476,7 @@ void CSWGuiInGameEquip::HandleInputEvent(int type, int val)
                     if (nSlot != 12)
                         SetActiveControl(&m_abtnSlot[nSlot], 0);
                     OnEnterSlot(m_pActiveControl);
-                    g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowGameMenuChangeButtons(1);
+                    UpdatePortraits(1);
                 }
             }
             break;
@@ -2807,8 +2751,8 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
     bNewItem = static_cast<unsigned char>(bIsNewItem);
 
     if (oidItem == OBJECT_INVALID) {
-        m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
-        m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
+        m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
+        m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
         m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_TEXT_NONE));
         m_textCount.m_params = CSWGuiTextParams(CExoString(), CResRef("fnt_d16x16"),
                                                 CGuiInGame::COLOR_NEW_TEXT, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2819,8 +2763,8 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
         CSWSItem* pItem =
             pServer->GetItemByGameObjectID(pServer->ClientToServerObjectId(oidItem));
         if (pItem == 0) {
-            m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
-            m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
+            m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
+            m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
             m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_TEXT_NONE));
             m_textCount.m_params = CSWGuiTextParams(CExoString(), CResRef("fnt_d16x16"),
                                                     CGuiInGame::COLOR_NEW_TEXT, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2859,17 +2803,17 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
             int nStack = pItem->m_stackCount;
             if (nStack >= 2) {
                 if (nStack >= 100) {
-                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"));
                     sCount.Format(const_cast<char*>("%d"), nStack);
                 } else {
-                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"));
                     sCount.Format(const_cast<char*>("%d"), nStack);
                 }
             } else {
-                m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
-                m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
+                m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
+                m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
             }
             m_textCount.m_params = CSWGuiTextParams(sCount, CResRef("fnt_d16x16"),
                                                     CGuiInGame::COLOR_NEW_TEXT, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2880,7 +2824,7 @@ void CSWGuiInGameItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped,
     // A stretch fill on the always-drawn frame, then the item's own icon.
     SetExtent(m_extent);
     m_borderIcon.m_params.m_flags.nFillStyle = 2;
-    m_borderIcon.m_params.SetFillImage(resRefIcon, 0);
+    m_borderIcon.m_params.SetFillImage(resRefIcon);
 }
 #endif
 
@@ -3759,16 +3703,16 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped)
             nStack = pItem->m_stackCount;
             if (nStack >= 2) {
                 if (nStack >= 100) {
-                    m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_7"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_7"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_7"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_7"));
                 } else {
-                    m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_6"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_6"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_6"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_6"));
                 }
                 sCount.Format(const_cast<char*>("%d"), nStack);
             } else {
-                m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
-                m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"), 0);
+                m_borderFrame.m_params.SetFillImage(CResRef("lbl_hex_3"));
+                m_borderFrameHilight.m_params.SetFillImage(CResRef("lbl_hex_3"));
             }
             m_textCount.m_params = CSWGuiTextParams(sCount, CResRef("fnt_d16x16"),
                                                     CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -3776,7 +3720,7 @@ void CSWGuiStoreItemEntry::SetItem(unsigned long long oidItem, int bIsEquipped)
     }
     CSWGuiBorderParams& iconParams = m_borderIcon.m_params;
     iconParams.m_flags.nFillStyle = 2;
-    iconParams.SetFillImage(resRefIcon, 0);
+    iconParams.SetFillImage(resRefIcon);
 }
 #else
 

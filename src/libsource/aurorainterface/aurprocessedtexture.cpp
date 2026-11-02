@@ -169,26 +169,29 @@ int CAuroraProcessedTexture::GetTextureSize() {
     float fAlphaTest;
     int nWidth, nHeight, nSize44, nSize40, nTXISize;
 #ifdef K2_FIX_ENGINE_BUGS
+    nSize44 = 0;
     nSize40 = 0;
 #endif
     char cFormat, cMipCount;
 
-    if (m_pRes != 0 && m_pRes->GetDemands() > 0) {
-        m_pRes->GetTPCAttrib(&nWidth, &nHeight, &cFormat, &nSize44, &nSize40, &nTXISize,
-                             &fAlphaTest, &cMipCount);
-        if (nSize44 != 0) {
-            int nRatio = nHeight / nWidth;
-            int nMipWidth = nWidth;
-            int nMipHeight = (nRatio == 6) ? nHeight / 6 : nHeight;
-            int nBlockBytes = (cFormat == 4) ? 16 : 8;
-            int nTotal = nSize44;
-            for (int i = 0; i < cMipCount - 1; i++) {
-                nMipWidth >>= 1;
-                nMipHeight >>= 1;
-                nTotal += (nMipWidth + 3) / 4 * ((nMipHeight + 3) / 4) * nBlockBytes;
-            }
-            return nTotal * ((nRatio == 6) ? 6 : 1);
+    GetProcessedTextureAttrib(&nWidth, &nHeight, &cFormat, &nSize44, &nSize40, &nTXISize, &fAlphaTest,
+                              &cMipCount);
+    if (nSize44 != 0) {
+        int nRatio = nHeight / nWidth;
+        int nMipWidth = nWidth;
+        int nMipHeight = (nRatio == 6) ? nHeight / 6 : nHeight;
+        int nBlockBytes = (cFormat == 4) ? 16 : 8;
+        int nTotal = nSize44;
+        for (int i = 0; i < cMipCount - 1; i++) {
+            nMipWidth >>= 1;
+            nMipHeight >>= 1;
+            nTotal += (nMipWidth + 3) / 4 * ((nMipHeight + 3) / 4) * nBlockBytes;
         }
+#if KOTOR1  // K1: a header format bit means the size field already covers the mip chain
+        if (static_cast<TPCHeader*>(m_pRes->m_pTPCHeader)->m_formatBits & TPC_FORMAT_PACKED_CHAIN)
+            return nSize44;
+#endif
+        return nTotal * ((nRatio == 6) ? 6 : 1);
     }
     return nSize40;
 }

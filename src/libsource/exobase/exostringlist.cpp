@@ -175,43 +175,26 @@ void CExoStringList::Delete(CExoString* pString)
 
 void CExoStringList::Introduce(CExoString* pString, int index)
 {
-    int capacity = m_nCapacity;
-    int count = m_nCount;
-    int newCapacity = (count < capacity) ? capacity : capacity + 5;
+    int nOldCapacity = m_nCapacity;
+    int nNewCapacity = nOldCapacity;
+    if (m_nCount >= nOldCapacity)
+        nNewCapacity = nOldCapacity + 5;
 
-    if (newCapacity > capacity)
+    if (nNewCapacity > nOldCapacity)
     {
-        CExoString** paNew = static_cast<CExoString**>(calloc(newCapacity, sizeof(CExoString*)));
-        K2_ASSUME(paNew != 0);   // an allocation failure is not handled (the engine-wide policy)
-        if (capacity < 1)
-        {
-            K2_ASSUME(m_nCount <= index);   // the count never passes the capacity: nothing to shift
-            free(m_paStrings);
-        }
-        else
-        {
-            CExoString** paOld = m_paStrings;
-            for (int i = 0; i < capacity; i++)
-                paNew[i] = paOld[i];
-            free(paOld);
-        }
-        count = m_nCount;
+        CExoString** paNew = static_cast<CExoString**>(calloc(nNewCapacity, sizeof(CExoString*)));
+        for (int i = 0; i < nOldCapacity; i++)
+            paNew[i] = m_paStrings[i];
+        free(m_paStrings);
         m_paStrings = paNew;
     }
 
-    if (index < count)
-    {
-        long long i = count;
-        do
-        {
-            m_paStrings[i] = m_paStrings[i - 1];
-            i--;
-        } while (index < i);
-    }
+    for (int i = m_nCount; i > index; i--)
+        m_paStrings[i] = m_paStrings[i - 1];
 
     m_paStrings[index] = pString;
-    m_nCapacity = newCapacity;
-    m_nCount = count + 1;
+    m_nCapacity = nNewCapacity;
+    m_nCount++;
 }
 
 void CExoStringList::Insert(CExoString* pString, int index)
@@ -223,43 +206,7 @@ void CExoStringList::Insert(CExoString* pString, int index)
         return;
     }
 
-    int capacity = m_nCapacity;
-    int count = m_nCount;
-    int newCapacity = (count < capacity) ? capacity : capacity + 5;
-
-    if (newCapacity > capacity)
-    {
-        CExoString** paNew = static_cast<CExoString**>(calloc(newCapacity, sizeof(CExoString*)));
-        K2_ASSUME(paNew != 0);   // an allocation failure is not handled (the engine-wide policy)
-        if (capacity < 1)
-        {
-            K2_ASSUME(m_nCount <= index);   // the count never passes the capacity: nothing to shift
-            free(m_paStrings);
-        }
-        else
-        {
-            CExoString** paOld = m_paStrings;
-            for (int i = 0; i < capacity; i++)
-                paNew[i] = paOld[i];
-            free(paOld);
-        }
-        count = m_nCount;
-        m_paStrings = paNew;
-    }
-
-    if (index < count)
-    {
-        long long i = count;
-        do
-        {
-            m_paStrings[i] = m_paStrings[i - 1];
-            i--;
-        } while (index < i);
-    }
-
-    m_paStrings[index] = pString;
-    m_nCapacity = newCapacity;
-    m_nCount = count + 1;
+    Introduce(pString, index);
 }
 
 CExoStringList* CExoStringList::Merge(CExoStringList* pOther, int bSorted, int bDuplicate)
@@ -350,35 +297,7 @@ void CExoStringList::Add(CExoString* pString)
             return;
     }
 
-    int count = m_nCount;
-    int capacity = m_nCapacity;
-    int newCapacity = (count < capacity) ? capacity : capacity + 5;
-
-    if (newCapacity > capacity)
-    {
-        CExoString** paNew = static_cast<CExoString**>(calloc(newCapacity, sizeof(CExoString*)));
-        K2_ASSUME(paNew != 0);   // an allocation failure is not handled (the engine-wide policy)
-        if (capacity < 1)
-        {
-            free(m_paStrings);
-        }
-        else
-        {
-            CExoString** paOld = m_paStrings;
-            for (int i = 0; i < capacity; i++)
-                paNew[i] = paOld[i];
-            free(paOld);
-        }
-        count = m_nCount;
-        m_paStrings = paNew;
-    }
-
-    for (int i = count; i > insertPos; i--)
-        m_paStrings[i] = m_paStrings[i - 1];
-
-    m_paStrings[insertPos] = pString;
-    m_nCapacity = newCapacity;
-    m_nCount = count + 1;
+    Introduce(pString, insertPos);
 }
 
 // Inserts sorted, with front and end fast paths, else a binary search, and growth by 5 when full.
@@ -386,266 +305,79 @@ void CExoStringList::Add(CExoString* pString)
 // existing duplicate.
 void CExoStringList::AddSorted(CExoString* pString)
 {
-    int count = m_nCount;
+    int bDone = 0;
+    int nCmp = 0;
+    int nHi = 0;
 
-    if (count >= 1)
+    if (m_nCount >= 1)
     {
-        CExoString* pFirst = m_paStrings[0];
-        int cmp = strcmp(pString->CStr(), pFirst->CStr());
-
-        if (cmp == 0)
+        nCmp = strcmp(pString->CStr(), m_paStrings[0]->CStr());
+        if (nCmp < 0)
+        {
+            Introduce(pString, 0);
+            bDone = 1;
+        }
+        else if (nCmp == 0)
         {
             if (m_bDuplicate == 2)
-            {
                 MessageBoxA(0, "Duplicate string detected.", "Error: ExoStringList", 1);
-                return;
-            }
-            if (m_bDuplicate != 0)
-                return;
-            // fall through: insert anyway at position 0
+            else if (m_bDuplicate == 0)
+                Introduce(pString, 0);
+            bDone = 1;
         }
-
-        if (cmp <= 0)
+        else if (m_nCount >= 1)
         {
-            // insert at the front
-            int capacity = m_nCapacity;
-            int newCapacity = (count < capacity) ? capacity : capacity + 5;
-
-            if (newCapacity > capacity)
+            nHi = m_nCount - 1;
+            nCmp = strcmp(pString->CStr(), m_paStrings[nHi]->CStr());
+            if (nCmp > 0)
             {
-                CExoString** paNew = static_cast<CExoString**>(calloc(newCapacity, sizeof(CExoString*)));
-                K2_ASSUME(paNew != 0);   // an allocation failure is not handled (the engine-wide policy)
-                if (capacity < 1)
-                {
-                    K2_ASSUME(m_nCount == 0);   // the count never passes the capacity: an empty list
-                    free(m_paStrings);
-                }
-                else
-                {
-                    CExoString** paOld = m_paStrings;
-                    for (int i = 0; i < capacity; i++)
-                        paNew[i] = paOld[i];
-                    free(paOld);
-                }
-                count = m_nCount;
-                m_paStrings = paNew;
+                Introduce(pString, m_nCount);
+                bDone = 1;
             }
-
-            if (count > 0)
+            else if (nCmp == 0)
             {
-                long long i = count;
-                do
-                {
-                    m_paStrings[i] = m_paStrings[i - 1];
-                    i--;
-                } while (i > 0);
+                if (m_bDuplicate == 2)
+                    MessageBoxA(0, "Duplicate string detected.", "Error: ExoStringList", 1);
+                else if (m_bDuplicate == 0)
+                    Introduce(pString, m_nCount);
+                bDone = 1;
             }
-
-            m_paStrings[0] = pString;
-            m_nCapacity = newCapacity;
-            m_nCount = count + 1;
-            return;
-        }
-
-        // cmp > 0: pString sorts after element 0
-        int lastIdx = m_nCount - 1;
-        if (m_nCount >= 1)
-        {
-            CExoString* pLast = m_paStrings[lastIdx];
-            int cmpLast = strcmp(pString->CStr(), pLast->CStr());
-
-            if (cmpLast == 0 && m_bDuplicate == 2)
-            {
-                MessageBoxA(0, "Duplicate string detected.", "Error: ExoStringList", 1);
-                return;
-            }
-            if (cmpLast == 0 && m_bDuplicate != 0)
-                return;
-
-            if (cmpLast >= 0)
-            {
-                // append at the end (either pString sorts after the last element, or it equals
-                // the last element and m_bDuplicate == 0 so it's inserted anyway)
-                int capacity = m_nCapacity;
-                count = m_nCount;
-                int newCapacity = (count < capacity) ? capacity : capacity + 5;
-
-                if (newCapacity > capacity)
-                {
-                    CExoString** paNew = static_cast<CExoString**>(calloc(newCapacity, sizeof(CExoString*)));
-                    K2_ASSUME(paNew != 0);   // an allocation failure is not handled (the engine-wide policy)
-                    if (capacity < 1)
-                    {
-                        K2_ASSUME(m_nCount == 0);   // the count never passes the capacity: an empty list
-                        free(m_paStrings);
-                    }
-                    else
-                    {
-                        CExoString** paOld = m_paStrings;
-                        for (int i = 0; i < capacity; i++)
-                            paNew[i] = paOld[i];
-                        free(paOld);
-                    }
-                    count = m_nCount;
-                    m_paStrings = paNew;
-                }
-
-                m_paStrings[count] = pString;
-                m_nCapacity = newCapacity;
-                m_nCount = count + 1;
-                return;
-            }
-
-            // strictly between element 0 and element lastIdx: binary search
-            int lo = 0;
-            int hi = lastIdx;
-            while (hi - lo > 1)
-            {
-                int mid = (lo + hi) >> 1;
-                CExoString* pMid = m_paStrings[mid];
-                int cmpMid = strcmp(pString->CStr(), pMid->CStr());
-
-                if (cmpMid < 0)
-                {
-                    hi = mid;
-                }
-                else if (cmpMid == 0)
-                {
-                    if (m_bDuplicate == 2)
-                    {
-                        MessageBoxA(0, "Duplicate string detected.", "Error: ExoStringList", 1);
-                        return;
-                    }
-                    if (m_bDuplicate != 0)
-                        return;
-
-                    int capacity = m_nCapacity;
-                    count = m_nCount;
-                    int newCapacity = (count < capacity) ? capacity : capacity + 5;
-
-                    if (newCapacity > capacity)
-                    {
-                        CExoString** paNew = static_cast<CExoString**>(calloc(newCapacity, sizeof(CExoString*)));
-                        K2_ASSUME(paNew != 0);   // an allocation failure is not handled (the engine-wide policy)
-                        if (capacity < 1)
-                        {
-                            K2_ASSUME(m_nCount == 0);   // the count never passes the capacity: an empty list
-                            free(m_paStrings);
-                        }
-                        else
-                        {
-                            CExoString** paOld = m_paStrings;
-                            for (int i = 0; i < capacity; i++)
-                                paNew[i] = paOld[i];
-                            free(paOld);
-                        }
-                        count = m_nCount;
-                        m_paStrings = paNew;
-                    }
-
-                    if (mid < count)
-                    {
-                        long long i = count;
-                        do
-                        {
-                            m_paStrings[i] = m_paStrings[i - 1];
-                            i--;
-                        } while (mid < i);
-                    }
-
-                    m_paStrings[mid] = pString;
-                    m_nCapacity = newCapacity;
-                    m_nCount = count + 1;
-                    return;
-                }
-                else
-                {
-                    lo = mid;
-                }
-            }
-
-            int insertPos = hi;
-            int capacity = m_nCapacity;
-            count = m_nCount;
-            int newCapacity = (count < capacity) ? capacity : capacity + 5;
-
-            if (newCapacity > capacity)
-            {
-                CExoString** paNew = static_cast<CExoString**>(calloc(newCapacity, sizeof(CExoString*)));
-                K2_ASSUME(paNew != 0);   // an allocation failure is not handled (the engine-wide policy)
-                if (capacity < 1)
-                {
-                    K2_ASSUME(m_nCount == 0);   // the count never passes the capacity: an empty list
-                    free(m_paStrings);
-                }
-                else
-                {
-                    CExoString** paOld = m_paStrings;
-                    for (int i = 0; i < capacity; i++)
-                        paNew[i] = paOld[i];
-                    free(paOld);
-                }
-                count = m_nCount;
-                m_paStrings = paNew;
-            }
-
-            if (insertPos < count)
-            {
-                long long i = count;
-                do
-                {
-                    m_paStrings[i] = m_paStrings[i - 1];
-                    i--;
-                } while (insertPos < i);
-            }
-
-            m_paStrings[insertPos] = pString;
-            m_nCapacity = newCapacity;
-            m_nCount = count + 1;
-            return;
         }
     }
 
-    // empty list (or the m_nCount<1 re-check above): insert at position 0
-    int insertPos = m_nCount;
-    if (insertPos < 0)
-        insertPos = insertPos + 1;
-    insertPos = insertPos >> 1;
-
-    int capacity = m_nCapacity;
-    int newCapacity = (count < capacity) ? capacity : capacity + 5;
-
-    if (newCapacity > capacity)
+    // Binary search between the two ends: the probe moves by half the remaining span, towards the
+    // side the comparison picked.
+    int nLo = 0;
+    int nMid = m_nCount / 2;
+    int nStep = nMid;
+    while (nHi - nLo > 1 && !bDone)
     {
-        CExoString** paNew = static_cast<CExoString**>(calloc(newCapacity, sizeof(CExoString*)));
-        K2_ASSUME(paNew != 0);   // an allocation failure is not handled (the engine-wide policy)
-        if (capacity < 1)
+        nCmp = strcmp(pString->CStr(), m_paStrings[nMid]->CStr());
+        if (nCmp < 0)
         {
-            K2_ASSUME(m_nCount == 0 && insertPos == 0);   // the count never passes the capacity: an empty list
-            free(m_paStrings);
+            nStep = -1;
+            nHi = nMid;
+        }
+        else if (nCmp > 0)
+        {
+            nStep = 1;
+            nLo = nMid;
         }
         else
         {
-            CExoString** paOld = m_paStrings;
-            for (int i = 0; i < capacity; i++)
-                paNew[i] = paOld[i];
-            free(paOld);
+            if (m_bDuplicate == 2)
+                MessageBoxA(0, "Duplicate string detected.", "Error: ExoStringList", 1);
+            else if (m_bDuplicate == 0)
+                Introduce(pString, nMid);
+            bDone = 1;
         }
-        count = m_nCount;
-        m_paStrings = paNew;
+        nStep *= (nHi - nLo) / 2;
+        nMid += nStep;
     }
 
-    if (insertPos < count)
-    {
-        long long i = count;
-        do
-        {
-            m_paStrings[i] = m_paStrings[i - 1];
-            i--;
-        } while (insertPos < i);
-    }
-
-    m_paStrings[insertPos] = pString;
-    m_nCapacity = newCapacity;
-    m_nCount = count + 1;
+    if (bDone)
+        return;
+    if (nCmp > 0)
+        nMid++;
+    Introduce(pString, nMid);
 }

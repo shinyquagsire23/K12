@@ -44,11 +44,7 @@ struct CSWCCreatureStats_ClassInfo {
     float GetMinSpellRange(const CExoString& sRange);
 };
 
-struct CSWCCreatureStats_FeatUse {
-    unsigned short m_nFeat;
-    unsigned char  m_nRemainingUses;
-    unsigned char  _pad03;
-};
+#include "featuselistentry.h"
 
 class CSWCCreatureStats {
 public:
@@ -121,7 +117,7 @@ public:
     unsigned short m_nSkillPointsRemaining;
     CExoArrayList<unsigned short> m_lstFeats;
     CExoArrayList<unsigned short> m_lstBonusFeats;
-    CExoArrayList<CSWCCreatureStats_FeatUse*> m_lstFeatUses;
+    CExoArrayList<CFeatUseListEntry*> m_lstFeatUses;
     CSWCCreatureStats_ClassInfo m_classes[2];
     CExoString    m_sDeity;
     unsigned short m_portraitId;
@@ -293,8 +289,6 @@ public:
     void SetClassLevel(unsigned char nClassPos, unsigned char nLevel);
     int  FeatRequirementsMet(unsigned short nFeat, CExoArrayList<unsigned short>* pFeats);
     char GetBaseAttackBonus();
-    // noinline: the single call site needs a real call.
-    __attribute__((noinline))
     int  HasFeatPrereq(CSWFeat* pFeat, CExoArrayList<unsigned short>* pFeats);
     int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned int>* pSpells);
     int  FeatAcquired(unsigned short nFeat, CExoArrayList<unsigned short>* pFeats);
@@ -306,14 +300,10 @@ public:
 #endif
     void CalcNumberFeats(unsigned char& nNormal, unsigned char& nBonus);
     void ClearPackage();
-    // noinline: the single call site needs a real call.
-    __attribute__((noinline))
     unsigned int ComputeNumberKnownSpellsLeft();
     int  CanChooseFeat(unsigned short nFeat, unsigned char nNormalLeft,
                        unsigned char nBonusLeft, CExoArrayList<unsigned short>* pChosen);
     void SetNormalBonusFlags(unsigned short nFeat, int& nNormal, int& nBonus);
-    // noinline: the single call site needs a real call.
-    __attribute__((noinline))
     int CanChooseSpell(unsigned int nSpell, unsigned char nLeft,
                         CExoArrayList<unsigned int>* pChosen);
     void AddDefaultPackageSkills(int nPackage, int bSkipFlagCheck);

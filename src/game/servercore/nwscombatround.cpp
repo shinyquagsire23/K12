@@ -172,7 +172,6 @@ void CSWSCombatRound::StartCombatRoundCast(int a1, int a2, unsigned long long oi
     m_bEngaged = a4;
     m_bMaster = a5;
 
-    bool bSkip = false;
     if (a5 != 0) {
         m_oidMaster = m_pCreature->m_objectId;
         if (oidTarget != OBJECT_INVALID && a4 != 0) {
@@ -184,7 +183,6 @@ void CSWSCombatRound::StartCombatRoundCast(int a1, int a2, unsigned long long oi
             pCreature->m_pCombatRound->m_nTimer = 0;
             pCreature->m_pCombatRound->m_oidMaster = oidAlly;
             pCreature->m_pCombatRound->m_oidSlave = oidTarget2;
-            bSkip = m_bRoundStarted == 0;
         }
     } else {
         m_oidMaster = oidTarget;
@@ -195,12 +193,7 @@ void CSWSCombatRound::StartCombatRoundCast(int a1, int a2, unsigned long long oi
     m_nPauseTimer = 0;
     m_pCreature->m_nCurrentAttackAction = 4;
     m_pCreature->m_nCurrentForcePower = a1;
-    if (bSkip)
-        return;
-
-    CSWSCombatRoundAction* pAction = new CSWSCombatRoundAction;
-    pAction->m_nActionType = CSWSCombatRoundAction::TYPE_SPELL;
-    AddAction(pAction, -1);
+    AddSpellAction();
 }
 
 void CSWSCombatRound::StartCombatRound(unsigned long long oidTarget, int bAttack, int bDefend,
@@ -234,13 +227,8 @@ void CSWSCombatRound::StartCombatRound(unsigned long long oidTarget, int bAttack
     m_spellCastRound = 0;
     m_bCutsceneAttack = a5;
     m_nRoundLength = 3000;
-    for (int i = 0; i < 5; i++) {
-        m_attacks[i].ClearAttackData();
-    }
-    CalculateOnHandAttacks(nAttacks);
-    CalculateOffHandAttacks();
-    m_nOffHandTaken = 0;
-    m_nExtraTaken = 0;
+    ClearAllAttacks();
+    InitializeNumberOfAttacks(nAttacks);
     m_oidAttackTarget = m_pCreature->m_objectId == oidTarget ? OBJECT_INVALID : oidTarget;
     m_oidDodgeTarget = oidTarget;
     m_deflectArrow = 1;
@@ -310,11 +298,7 @@ void CSWSCombatRound::EndCombatRound(int bEndRound)
     }
 
     m_pCreature->SetAnimation(SERVER_ANIMATION_READY);
-    m_attacks[0].ClearAttackData();
-    m_attacks[1].ClearAttackData();
-    m_attacks[2].ClearAttackData();
-    m_attacks[3].ClearAttackData();
-    m_attacks[4].ClearAttackData();
+    ClearAllAttacks();
 
     CGameObject* pObject =
         g_pAppManager->m_pServerExoApp->GetGameObject(m_pCreature->m_attemptedAttackTargetId);
@@ -2053,15 +2037,7 @@ CSWSCombatSubAttack CSWSCombatAttackData::GetTopSubAttack()
 void CSWSCombatAttackData::RemoveTopSubAttack()
 {
     if (m_subAttacks.m_count > 0)
-    {
-        // inlined CExoArrayList<CSWSCombatSubAttack>::DelIndex(0)
-        m_subAttacks.m_count--;
-        for (int64_t i = 0; i < m_subAttacks.m_count; i++)
-        {
-            memcpy(static_cast<void*>(&m_subAttacks.m_pArray[i]), &m_subAttacks.m_pArray[i + 1],
-                   sizeof(CSWSCombatSubAttack));
-        }
-    }
+        m_subAttacks.DelIndex(0);
 }
 
 void CSWSCombatAttackData::ClearSubAttacks()

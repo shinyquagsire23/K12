@@ -314,8 +314,7 @@ int CResTGA::Write(const CExoString& path)
         return 0;
 
     pBuffer = new unsigned char[m_nTGASize];
-    if (m_bLoaded)
-        memcpy(pBuffer, m_pTGAData, m_nTGASize);  // idiom-exempt: runtime length
+    CopyTGAData(pBuffer);
 
     h = static_cast<TGAHeader*>(m_pTGAHeader);
     if (h->m_imageType != 3) {

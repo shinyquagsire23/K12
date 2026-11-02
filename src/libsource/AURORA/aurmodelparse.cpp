@@ -100,19 +100,11 @@ void Parse(char* pszLine, int& nValue)
     }
 }
 
-// Same spellings as the int overload, parsed through an int scratch and stored unconditionally.
+// The int overload into a scratch, stored unconditionally.
 void Parse(char* pszLine, unsigned int& nValue)
 {
     int nScratch;
-    if (!sscanf(pszLine, "%d", &nScratch)) {
-        char buf[64];
-        buf[0] = 0;
-        static_cast<void>(sscanf(pszLine, "%s", buf));
-        if (!_stricmp("TRUE", buf))
-            nScratch = 1;
-        if (!_stricmp("FALSE", buf))
-            nScratch = 0;
-    }
+    Parse(pszLine, nScratch);
     nValue = nScratch;
 }
 
@@ -286,14 +278,7 @@ void Parse(char* pszLine, unsigned int* value)
 // The `int` twin of the overload above.
 void Parse(char* pszLine, int* value)
 {
-    int nCount = 0;
-    static_cast<void>(sscanf(pszLine, "%d", &nCount));
-    if (nCount >= 1) {
-        for (int64_t i = 0; i < nCount; i++) {
-            static_cast<void>(sscanf(AurResGetNextLine(), "%d", value));
-            value++;
-        }
-    }
+    Parse(pszLine, reinterpret_cast<unsigned int*>(value));
 }
 
 // Reads a trimesh face. It frees the three owned buffers, re-allocates them at the sizes a face
@@ -393,8 +378,7 @@ void Parse(char* pszLine, List<T>& list)
     int nScan = sscanf(pszLine, "%d %c", &nCount, &cType);
     if (nScan <= 0) {
         // One element per line until the terminator.
-        pszLine = AurResGetNextLine();
-        while (pszLine) {
+        while ((pszLine = AurResGetNextLine()) != 0) {
             if (!strncmp(skipspace(pszLine), "endlist", strlen("endlist")))
                 break;
             if (list.m_count != 0) {
@@ -407,7 +391,6 @@ void Parse(char* pszLine, List<T>& list)
             int n = nCount;
             Parse(pszLine, list.m_pData[n]);
             nCount++;
-            pszLine = AurResGetNextLine();
         }
         skipspace(skipspace(pszLine) + strlen("endlist"));
         return;
@@ -466,22 +449,19 @@ void Parse<char*>(char* pszLine, List<char*>& list)
     int nCount = 0;
     int nScan = sscanf(pszLine, "%d", &nCount);
     if (nScan <= 0) {
-        pszLine = AurResGetNextLine();
-        while (pszLine) {
+        while ((pszLine = AurResGetNextLine()) != 0) {
             if (!strncmp(skipspace(pszLine), "endlist", strlen("endlist")))
                 break;
             if (list.m_count != 0) {
                 if (list.m_count == nCount)
                     list.Add(list.m_pData[list.m_count - 1]);
             } else {
-                list.allocate(1);
-                list.m_count = 1;
+                list.SetSize(1);
             }
             list.m_pData[nCount] = new char[128];
             int n = nCount;
             Parse(pszLine, list.m_pData[n]);
             nCount++;
-            pszLine = AurResGetNextLine();
         }
         skipspace(skipspace(pszLine) + strlen("endlist"));
         return;
@@ -498,25 +478,24 @@ void Parse<char*>(char* pszLine, List<char*>& list)
 #include "auranim.h"
 extern float cullvalueforkeys;
 
-// True when two keys hold the same pose, that is when every one of the four axis/angle values
-// differs by less than the engine threshold.
-static inline bool KeysWithinThreshold(const AurGenericKey* pKeyA, const AurGenericKey* pKeyB,
-                                       float fThreshold)
-{
-    return fabsf(pKeyA->m_afValues[1] - pKeyB->m_afValues[1]) < fThreshold
-        && fabsf(pKeyA->m_afValues[2] - pKeyB->m_afValues[2]) < fThreshold
-        && fabsf(pKeyA->m_afValues[3] - pKeyB->m_afValues[3]) < fThreshold
-        && fabsf(pKeyA->m_afValues[4] - pKeyB->m_afValues[4]) < fThreshold;
-}
-
 // Walks the key list backwards and drops a key that sits within the threshold of both its
-// neighbours, i.e. one that adds nothing to the straight line between them.
+// neighbours (every one of the four axis/angle values), i.e. one that adds nothing to the straight
+// line between them. The threshold is re-read for every test: DelIndex may write it.
+// EFFECTIVE (armv7): the loop guard is `cmp #2; blt` in the orig, `cmp #1; ble` in ours.
 void CullUnnecessaryKeys(List<AurGenericKey>& list)
 {
-    float fThreshold = cullvalueforkeys;
     for (int i = list.m_count - 2; i > 1; i--) {
-        if (KeysWithinThreshold(&list.m_pData[i], &list.m_pData[i - 1], fThreshold)
-            && KeysWithinThreshold(&list.m_pData[i - 2], &list.m_pData[i - 1], fThreshold))
+        AurGenericKey* pPrev = &list.m_pData[i - 2];
+        AurGenericKey* pKey = &list.m_pData[i - 1];
+        AurGenericKey* pNext = &list.m_pData[i];
+        if (fabsf(pNext->m_afValues[1] - pKey->m_afValues[1]) < cullvalueforkeys
+            && fabsf(pNext->m_afValues[2] - pKey->m_afValues[2]) < cullvalueforkeys
+            && fabsf(pNext->m_afValues[3] - pKey->m_afValues[3]) < cullvalueforkeys
+            && fabsf(pNext->m_afValues[4] - pKey->m_afValues[4]) < cullvalueforkeys
+            && fabsf(pPrev->m_afValues[1] - pKey->m_afValues[1]) < cullvalueforkeys
+            && fabsf(pPrev->m_afValues[2] - pKey->m_afValues[2]) < cullvalueforkeys
+            && fabsf(pPrev->m_afValues[3] - pKey->m_afValues[3]) < cullvalueforkeys
+            && fabsf(pPrev->m_afValues[4] - pKey->m_afValues[4]) < cullvalueforkeys)
             list.DelIndex(i - 1);
     }
 }
@@ -557,8 +536,7 @@ template <> inline List<NewController>& List<NewController>::operator=(List<NewC
 // The clamps are ternaries so the NaN-propagating minimum and maximum are selected, and the values
 // are read as ints so the negation is a sign-bit flip.
 #if KOTOR1
-// K1 flips a negative-w key through Quaternion::operator* and hands the scratch list back in one
-// assignment; K2 clears the list and re-adds element by element.
+// K1 flips a negative-w key through Quaternion::operator*; K2 flips the three sign bits.
 void CompressQuaternionKey(List<AurGenericKey>& list)
 {
     List<AurGenericKey> compressed;
@@ -618,10 +596,7 @@ void CompressQuaternionKey(List<AurGenericKey>& list)
         key.m_nCount = 2;
         compressed.Add(key);
     }
-
-    list.m_count = 0;
-    for (int64_t j = 0; j < compressed.m_count; j++)
-        list.Add(compressed.m_pData[j]);
+    list = compressed;
 }
 #endif
 
@@ -715,241 +690,30 @@ void MdlNodeEmitter::InternalParseField(char* pszLine)
         bool bInheritingPart = false;
         bool bDepthTexture = false;
 
-        if (_stricmp("p2p", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("p2p");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bPointToPoint = true;
-            if (!_stricmp("false", szValue)) bPointToPoint = false;
-            if (!_stricmp("1", szValue)) bPointToPoint = true;
-            if (!_stricmp("0", szValue)) bPointToPoint = false;
-        }
-        if (_stricmp("p2p_sel", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("p2p_sel");
-            if (sscanf(pszLine + nName, "%d", &nPointToPointSel) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) nPointToPointSel = 1;
-                if (!_stricmp("FALSE", szValue)) nPointToPointSel = 0;
-            }
-        }
-        if (_stricmp("affectedByWind", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("affectedByWind");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bAffectedByWind = true;
-            if (!_stricmp("false", szValue)) bAffectedByWind = false;
-            if (!_stricmp("1", szValue)) bAffectedByWind = true;
-            if (!_stricmp("0", szValue)) bAffectedByWind = false;
-        }
-        if (_stricmp("m_isTinted", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("m_isTinted");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bTinted = true;
-            if (!_stricmp("false", szValue)) bTinted = false;
-            if (!_stricmp("1", szValue)) bTinted = true;
-            if (!_stricmp("0", szValue)) bTinted = false;
-        }
-        if (_stricmp("bounce", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("bounce");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bBouncing = true;
-            if (!_stricmp("false", szValue)) bBouncing = false;
-            if (!_stricmp("1", szValue)) bBouncing = true;
-            if (!_stricmp("0", szValue)) bBouncing = false;
-        }
-        if (_stricmp("inherit", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("inherit");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bInheriting = true;
-            if (!_stricmp("false", szValue)) bInheriting = false;
-            if (!_stricmp("1", szValue)) bInheriting = true;
-            if (!_stricmp("0", szValue)) bInheriting = false;
-        }
-        if (_stricmp("random", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("random");
-            if (sscanf(pszLine + nName, "%d", &nRandom) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) nRandom = 1;
-                if (!_stricmp("FALSE", szValue)) nRandom = 0;
-            }
-        }
-        if (_stricmp("inheritvel", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("inheritvel");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bInheritingVelocity = true;
-            if (!_stricmp("false", szValue)) bInheritingVelocity = false;
-            if (!_stricmp("1", szValue)) bInheritingVelocity = true;
-            if (!_stricmp("0", szValue)) bInheritingVelocity = false;
-        }
-        if (_stricmp("inherit_local", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("inherit_local");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bInheritingLocal = true;
-            if (!_stricmp("false", szValue)) bInheritingLocal = false;
-            if (!_stricmp("1", szValue)) bInheritingLocal = true;
-            if (!_stricmp("0", szValue)) bInheritingLocal = false;
-        }
-        if (_stricmp("splat", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("splat");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bSplat = true;
-            if (!_stricmp("false", szValue)) bSplat = false;
-            if (!_stricmp("1", szValue)) bSplat = true;
-            if (!_stricmp("0", szValue)) bSplat = false;
-        }
-        if (_stricmp("inherit_part", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("inherit_part");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bInheritingPart = true;
-            if (!_stricmp("false", szValue)) bInheritingPart = false;
-            if (!_stricmp("1", szValue)) bInheritingPart = true;
-            if (!_stricmp("0", szValue)) bInheritingPart = false;
-        }
-        if (_stricmp("depth_texture", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("depth_texture");
-            char szValue[64];
-            szValue[0] = 0;
-            static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-            if (!_stricmp("true", szValue)) bDepthTexture = true;
-            if (!_stricmp("false", szValue)) bDepthTexture = false;
-            if (!_stricmp("1", szValue)) bDepthTexture = true;
-            if (!_stricmp("0", szValue)) bDepthTexture = false;
-        }
-        if (_stricmp("renderorder", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("renderorder");
-            int nValue;
-            static_cast<void>(sscanf(pszLine + nName, "%d", &nValue));
-            m_nRenderOrder = static_cast<short>(nValue);
-        }
-        if (_stricmp("spawntype", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("spawntype");
-            if (sscanf(pszLine + nName, "%d", &m_nSpawnType) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) m_nSpawnType = 1;
-                if (!_stricmp("FALSE", szValue)) m_nSpawnType = 0;
-            }
-        }
-        if (_stricmp("update", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("update");
-            if (sscanf(pszLine + nName, "%s", m_szUpdate) == 0) m_szUpdate[0] = 0;
-        }
-        if (_stricmp("render", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("render");
-            if (sscanf(pszLine + nName, "%s", m_szRender) == 0) m_szRender[0] = 0;
-        }
-        if (_stricmp("blend", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("blend");
-            if (sscanf(pszLine + nName, "%s", m_szBlend) == 0) m_szBlend[0] = 0;
-        }
-        if (_stricmp("texture", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("texture");
-            if (sscanf(pszLine + nName, "%s", m_szTexture) == 0) m_szTexture[0] = 0;
-        }
-        if (_stricmp("chunkName", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("chunkName");
-            if (sscanf(pszLine + nName, "%s", m_szChunkName) == 0) m_szChunkName[0] = 0;
-        }
-        if (_stricmp("xgrid", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("xgrid");
-            if (sscanf(pszLine + nName, "%d", &m_nXGrid) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) m_nXGrid = 1;
-                if (!_stricmp("FALSE", szValue)) m_nXGrid = 0;
-            }
-        }
-        if (_stricmp("ygrid", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("ygrid");
-            if (sscanf(pszLine + nName, "%d", &m_nYGrid) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) m_nYGrid = 1;
-                if (!_stricmp("FALSE", szValue)) m_nYGrid = 0;
-            }
-        }
-        if (_stricmp("loop", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("loop");
-            if (sscanf(pszLine + nName, "%d", &m_nLoop) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) m_nLoop = 1;
-                if (!_stricmp("FALSE", szValue)) m_nLoop = 0;
-            }
-        }
-        if (_stricmp("deadspace", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("deadspace");
-            static_cast<void>(sscanf(pszLine + nName, "%f", &m_fDeadSpace));
-        }
-        if (_stricmp("twosidedtex", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("twosidedtex");
-            if (sscanf(pszLine + nName, "%d", &m_nTwoSidedTex) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) m_nTwoSidedTex = 1;
-                if (!_stricmp("FALSE", szValue)) m_nTwoSidedTex = 0;
-            }
-        }
-        if (_stricmp("blastRadius", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("blastRadius");
-            static_cast<void>(sscanf(pszLine + nName, "%f", &m_fBlastRadius));
-        }
-        if (_stricmp("blastLength", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("blastLength");
-            static_cast<void>(sscanf(pszLine + nName, "%f", &m_fBlastLength));
-        }
-        if (_stricmp("m_bFrameBlending", firstword(pszLine)) == 0)
-            Parse(pszLine + strlen("m_bFrameBlending"),
-                  m_bFrameBlending);
-        if (_stricmp("m_sDepthTextureName", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("m_sDepthTextureName");
-            if (sscanf(pszLine + nName, "%s", m_szDepthTextureName) == 0) m_szDepthTextureName[0] = 0;
-        }
-        if (_stricmp("numBranches", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("numBranches");
-            if (sscanf(pszLine + nName, "%d", &m_nNumBranches) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) m_nNumBranches = 1;
-                if (!_stricmp("FALSE", szValue)) m_nNumBranches = 0;
-            }
-        }
-        if (_stricmp("controlptsmoothing", firstword(pszLine)) == 0) {
-            int64_t nName = strlen("controlptsmoothing");
-            if (sscanf(pszLine + nName, "%d", &m_bControlPtSmoothing) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszLine + nName, "%s", szValue));
-                if (!_stricmp("TRUE", szValue)) m_bControlPtSmoothing = 1;
-                if (!_stricmp("FALSE", szValue)) m_bControlPtSmoothing = 0;
-            }
-        }
+        if (_stricmp("p2p", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("p2p"), bPointToPoint);
+        if (_stricmp("p2p_sel", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("p2p_sel"), nPointToPointSel);
+        if (_stricmp("affectedByWind", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("affectedByWind"), bAffectedByWind);
+        if (_stricmp("m_isTinted", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("m_isTinted"), bTinted);
+        if (_stricmp("bounce", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("bounce"), bBouncing);
+        if (_stricmp("inherit", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("inherit"), bInheriting);
+        if (_stricmp("random", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("random"), nRandom);
+        if (_stricmp("inheritvel", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("inheritvel"), bInheritingVelocity);
+        if (_stricmp("inherit_local", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("inherit_local"), bInheritingLocal);
+        if (_stricmp("splat", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("splat"), bSplat);
+        if (_stricmp("inherit_part", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("inherit_part"), bInheritingPart);
+        if (_stricmp("depth_texture", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("depth_texture"), bDepthTexture);
 
         if (bPointToPoint) EnablePointToPoint();
         if (nPointToPointSel == 1) EnablePointToPointSel();
@@ -964,6 +728,43 @@ void MdlNodeEmitter::InternalParseField(char* pszLine)
         if (bSplat) EnableSplat();
         if (bInheritingPart) EnableInheritingPart();
         if (bDepthTexture) EnableDepthTexture();
+        if (_stricmp("renderorder", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("renderorder"), m_nRenderOrder);
+        if (_stricmp("spawntype", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("spawntype"), m_nSpawnType);
+        if (_stricmp("update", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("update"), m_szUpdate);
+        if (_stricmp("render", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("render"), m_szRender);
+        if (_stricmp("blend", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("blend"), m_szBlend);
+        if (_stricmp("texture", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("texture"), m_szTexture);
+        if (_stricmp("chunkName", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("chunkName"), m_szChunkName);
+        if (_stricmp("xgrid", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("xgrid"), m_nXGrid);
+        if (_stricmp("ygrid", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("ygrid"), m_nYGrid);
+        if (_stricmp("loop", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("loop"), m_nLoop);
+        if (_stricmp("deadspace", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("deadspace"), m_fDeadSpace);
+        if (_stricmp("twosidedtex", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("twosidedtex"), m_nTwoSidedTex);
+        if (_stricmp("blastRadius", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("blastRadius"), m_fBlastRadius);
+        if (_stricmp("blastLength", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("blastLength"), m_fBlastLength);
+        if (_stricmp("m_bFrameBlending", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("m_bFrameBlending"),
+                  m_bFrameBlending);
+        if (_stricmp("m_sDepthTextureName", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("m_sDepthTextureName"), m_szDepthTextureName);
+        if (_stricmp("numBranches", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("numBranches"), m_nNumBranches);
+        if (_stricmp("controlptsmoothing", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("controlptsmoothing"), m_bControlPtSmoothing);
         if (_stricmp("blurlength", firstword(pszLine)) == 0) {
             int64_t nName = static_cast<int64_t>(strlen("blurlength"));
             AddGenericControllerSingle(reinterpret_cast<char*>(nName), pszLine + nName, m_listControllers,
@@ -1977,32 +1778,13 @@ extern void      operator delete(void* p) throw();
 //
 // The position and orientation keys appear twice, once for the node's own transform and once to open
 // the controller group, so both tests run on one line.
-static inline void ParseVectorInlined(char* pszLine, Vector& vValue)
-{
-    static_cast<void>(sscanf(pszLine, "%f %f %f", &vValue.x, &vValue.y, &vValue.z));
-}
-
-static inline void ParseQuaternionInlined(char* pszLine, Quaternion& qValue)
-{
-    Vector vAxis;
-    float fAngle;
-    static_cast<void>(sscanf(pszLine, "%f %f %f %f", &vAxis.x, &vAxis.y, &vAxis.z, &fAngle));
-    if (vAxis.x == 0.0f && vAxis.y == 0.0f && vAxis.z == 0.0f)
-        qValue = Quaternion();
-    else
-        qValue = Quaternion(vAxis, fAngle);
-}
-
 void MdlNode::InternalParseField(char* pszLine)
 {
     if (!disablepostprocessing) {
         if (_stricmp("position", firstword(pszLine)) == 0)
-            ParseVectorInlined(pszLine + __strlen_chk("position", sizeof("position")), m_vPosition);
-        if (_stricmp("orientation", firstword(pszLine)) == 0) {
-            // Bind the destination to a reference so its address is formed before the scan.
-            ParseQuaternionInlined(pszLine + __strlen_chk("orientation", sizeof("orientation")),
-                         m_qOrientation);
-        }
+            Parse(pszLine + __strlen_chk("position", sizeof("position")), m_vPosition);
+        if (_stricmp("orientation", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("orientation", sizeof("orientation")), m_qOrientation);
 
         // The callee never reads its first argument, so the callers pass the already-computed key
         // length through it.
@@ -2038,8 +1820,7 @@ void MdlNode::InternalParseField(char* pszLine)
 
         if (_stricmp("wirecolor", firstword(pszLine)) == 0) {
             Vector vColor;
-            static_cast<void>(sscanf(pszLine + __strlen_chk("wirecolor", sizeof("wirecolor")), "%f %f %f",
-                   &vColor.x, &vColor.y, &vColor.z));
+            Parse(pszLine + __strlen_chk("wirecolor", sizeof("wirecolor")), vColor);
         }
         if (_stricmp("scale", firstword(pszLine)) == 0) {
             int64_t nName = static_cast<int64_t>(__strlen_chk("scale", sizeof("scale")));
@@ -2159,92 +1940,22 @@ void MdlNodeLight::InternalParseField(char* pszLine)
                                                        sizeof("multiplierbezierkey")),
                                 m_listControllers, m_listFloats, reinterpret_cast<void*>(K2_PART_OFFSET(PartLight, m_fLightScale)), reinterpret_cast<void*>(-1));
 
-        if (_stricmp("ambientonly", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("ambientonly", sizeof("ambientonly"));
-            if (sscanf(pszValue, "%d", &m_bAmbientOnly) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_bAmbientOnly = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_bAmbientOnly = 0;
-            }
-        }
-        if (_stricmp("shadow", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("shadow", sizeof("shadow"));
-            if (sscanf(pszValue, "%d", &m_bShadow) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_bShadow = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_bShadow = 0;
-            }
-        }
-        if (_stricmp("isdynamic", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("isdynamic", sizeof("isdynamic"));
-            if (sscanf(pszValue, "%d", &m_bIsDynamic) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_bIsDynamic = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_bIsDynamic = 0;
-            }
-        }
+        if (_stricmp("ambientonly", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("ambientonly", sizeof("ambientonly")), m_bAmbientOnly);
+        if (_stricmp("shadow", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("shadow", sizeof("shadow")), m_bShadow);
+        if (_stricmp("isdynamic", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("isdynamic", sizeof("isdynamic")), m_bIsDynamic);
         // `nDynamicType` is a second spelling of the same key (`isdynamic`): it targets the same
-        // field and reuses the pointer computed by the arm above.
-        if (_stricmp("nDynamicType", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("nDynamicType", sizeof("nDynamicType"));
-            if (sscanf(pszValue, "%d", &m_bIsDynamic) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_bIsDynamic = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_bIsDynamic = 0;
-            }
-        }
-        if (_stricmp("affectdynamic", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("affectdynamic", sizeof("affectdynamic"));
-            if (sscanf(pszValue, "%d", &m_bAffectDynamic) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_bAffectDynamic = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_bAffectDynamic = 0;
-            }
-        }
-        if (_stricmp("lightpriority", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("lightpriority", sizeof("lightpriority"));
-            if (sscanf(pszValue, "%d", &m_nPriority) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_nPriority = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_nPriority = 0;
-            }
-        }
-        if (_stricmp("generateflare", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("generateflare", sizeof("generateflare"));
-            if (sscanf(pszValue, "%d", &m_bGenerateFlare) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_bGenerateFlare = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_bGenerateFlare = 0;
-            }
-        }
+        // field.
+        if (_stricmp("nDynamicType", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("nDynamicType", sizeof("nDynamicType")), m_bIsDynamic);
+        if (_stricmp("affectdynamic", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("affectdynamic", sizeof("affectdynamic")), m_bAffectDynamic);
+        if (_stricmp("lightpriority", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("lightpriority", sizeof("lightpriority")), m_nPriority);
+        if (_stricmp("generateflare", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("generateflare", sizeof("generateflare")), m_bGenerateFlare);
 
         if (_stricmp("texturenames", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("texturenames", sizeof("texturenames")), m_lFlareNames);
@@ -2257,22 +1968,10 @@ void MdlNodeLight::InternalParseField(char* pszLine)
             Parse(pszLine + __strlen_chk("flarecolorshifts", sizeof("flarecolorshifts")),
                   m_lFlareColourShifts);
 
-        if (_stricmp("flareradius", firstword(pszLine)) == 0) {
-            static_cast<void>(sscanf(pszLine + __strlen_chk("flareradius", sizeof("flareradius")), "%f",
-                   &m_fFlareRange));
-        }
-        if (_stricmp("fadingLight", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("fadingLight", sizeof("fadingLight"));
-            if (sscanf(pszValue, "%d", &m_nFadingEnabled) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_nFadingEnabled = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_nFadingEnabled = 0;
-            }
-        }
+        if (_stricmp("flareradius", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("flareradius", sizeof("flareradius")), m_fFlareRange);
+        if (_stricmp("fadingLight", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("fadingLight", sizeof("fadingLight")), m_nFadingEnabled);
     }
     MdlNode::InternalParseField(pszLine);
 }
@@ -2285,18 +1984,13 @@ void MdlNodeLight::InternalParseField(char* pszLine)
 // node uses.
 void MdlNodeTriMesh::InternalParseField(char* pszLine)
 {
-    if (_stricmp("texture0", firstword(pszLine)) == 0) {
-        if (sscanf(pszLine + __strlen_chk("texture0", sizeof("texture0")), "%s", m_szTexture) == 0)
-            m_szTexture[0] = 0;
-    }
-    if (_stricmp("texture1", firstword(pszLine)) == 0) {
-        if (sscanf(pszLine + __strlen_chk("texture1", sizeof("texture1")), "%s", m_szLightmap) == 0)
-            m_szLightmap[0] = 0;
-    }
+    if (_stricmp("texture0", firstword(pszLine)) == 0)
+        Parse(pszLine + __strlen_chk("texture0", sizeof("texture0")), m_szTexture);
+    if (_stricmp("texture1", firstword(pszLine)) == 0)
+        Parse(pszLine + __strlen_chk("texture1", sizeof("texture1")), m_szLightmap);
     if (_stricmp("bitmap", firstword(pszLine)) == 0) {
         char szValue[64];
-        if (sscanf(pszLine + __strlen_chk("bitmap", sizeof("bitmap")), "%s", szValue) == 0)
-            szValue[0] = 0;
+        Parse(pszLine + __strlen_chk("bitmap", sizeof("bitmap")), szValue);
         if (szValue[0] != 0)
             __strcpy_chk(m_szTexture, szValue, sizeof(m_szTexture));
     }
@@ -2318,36 +2012,19 @@ void MdlNodeTriMesh::InternalParseField(char* pszLine)
         }
         if (_stricmp("animateuv", firstword(pszLine)) == 0) {
             int nValue = 0;
-            char* pszValue = pszLine + __strlen_chk("animateuv", sizeof("animateuv"));
-            if (sscanf(pszValue, "%d", &nValue) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    nValue = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    nValue = 0;
-            }
+            Parse(pszLine + __strlen_chk("animateuv", sizeof("animateuv")), nValue);
             if (nValue != 0)
                 m_nAnimateUV = 1;
         }
         if (m_nAnimateUV != 0) {
-            if (_stricmp("uvdirectionx", firstword(pszLine)) == 0) {
-                float& fValue = m_fUVDirectionX;
-                static_cast<void>(sscanf(pszLine + __strlen_chk("uvdirectionx", sizeof("uvdirectionx")), "%f", &fValue));
-            }
-            if (_stricmp("uvdirectiony", firstword(pszLine)) == 0) {
-                float& fValue = m_fUVDirectionY;
-                static_cast<void>(sscanf(pszLine + __strlen_chk("uvdirectiony", sizeof("uvdirectiony")), "%f", &fValue));
-            }
-            if (_stricmp("uvjitter", firstword(pszLine)) == 0) {
-                float& fValue = m_fUVJitter;
-                static_cast<void>(sscanf(pszLine + __strlen_chk("uvjitter", sizeof("uvjitter")), "%f", &fValue));
-            }
-            if (_stricmp("uvjitterspeed", firstword(pszLine)) == 0) {
-                float& fValue = m_fUVJitterSpeed;
-                static_cast<void>(sscanf(pszLine + __strlen_chk("uvjitterspeed", sizeof("uvjitterspeed")), "%f", &fValue));
-            }
+            if (_stricmp("uvdirectionx", firstword(pszLine)) == 0)
+                Parse(pszLine + __strlen_chk("uvdirectionx", sizeof("uvdirectionx")), m_fUVDirectionX);
+            if (_stricmp("uvdirectiony", firstword(pszLine)) == 0)
+                Parse(pszLine + __strlen_chk("uvdirectiony", sizeof("uvdirectiony")), m_fUVDirectionY);
+            if (_stricmp("uvjitter", firstword(pszLine)) == 0)
+                Parse(pszLine + __strlen_chk("uvjitter", sizeof("uvjitter")), m_fUVJitter);
+            if (_stricmp("uvjitterspeed", firstword(pszLine)) == 0)
+                Parse(pszLine + __strlen_chk("uvjitterspeed", sizeof("uvjitterspeed")), m_fUVJitterSpeed);
         }
         if (_stricmp("tverts1", firstword(pszLine)) == 0) {
             List<Vector>& l = pPost->m_tverts1;
@@ -2391,15 +2068,13 @@ void MdlNodeTriMesh::InternalParseField(char* pszLine)
                 // The line fetch drives the loop, so there is a single scan site.
                 char* pszResLine;
                 while ((pszResLine = AurResGetNextLine()) != 0) {
-                    pszResLine = skipspace(pszResLine);
+                    while (*pszResLine == ' ' || *pszResLine == '\t')
+                        pszResLine++;
                     if (_stricmp("tverts1offset", firstword(pszResLine)) == 0)
                         Parse(pszResLine + __strlen_chk("tverts1offset", sizeof("tverts1offset")),
                               lIndices);
-                    if (_stricmp("texture1", firstword(pszResLine)) == 0) {
-                        if (sscanf(pszResLine + __strlen_chk("texture1", sizeof("texture1")), "%s",
-                                   m_szLightmap) == 0)
-                            m_szLightmap[0] = 0;
-                    }
+                    if (_stricmp("texture1", firstword(pszResLine)) == 0)
+                        Parse(pszResLine + __strlen_chk("texture1", sizeof("texture1")), m_szLightmap);
                 }
                 AurResFree(pRes, 0);
                 if (lIndices.m_count == pPost->m_tverts1.m_count * 4
@@ -2436,26 +2111,14 @@ void MdlNodeTriMesh::InternalParseField(char* pszLine)
         }
 
         if (_stricmp("diffuse", firstword(pszLine)) == 0)
-            static_cast<void>(sscanf(pszLine + __strlen_chk("diffuse", sizeof("diffuse")), "%f %f %f", &m_vDiffuse.x,
-                   &m_vDiffuse.y, &m_vDiffuse.z));
+            Parse(pszLine + __strlen_chk("diffuse", sizeof("diffuse")), m_vDiffuse);
         if (_stricmp("ambient", firstword(pszLine)) == 0)
-            static_cast<void>(sscanf(pszLine + __strlen_chk("ambient", sizeof("ambient")), "%f %f %f", &m_vAmbient.x,
-                   &m_vAmbient.y, &m_vAmbient.z));
+            Parse(pszLine + __strlen_chk("ambient", sizeof("ambient")), m_vAmbient);
         if (_stricmp("shadow", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("shadow", sizeof("shadow")), m_bShadow);
         // This one field is an int, not a bool, so it uses the shared integer reader.
-        if (_stricmp("transparencyhint", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("transparencyhint", sizeof("transparencyhint"));
-            if (sscanf(pszValue, "%d", &m_nTransparencyHint) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_nTransparencyHint = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_nTransparencyHint = 0;
-            }
-        }
+        if (_stricmp("transparencyhint", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("transparencyhint", sizeof("transparencyhint")), m_nTransparencyHint);
         if (_stricmp("beaming", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("beaming", sizeof("beaming")), m_bBeaming);
         if (_stricmp("render", firstword(pszLine)) == 0)
@@ -2463,11 +2126,9 @@ void MdlNodeTriMesh::InternalParseField(char* pszLine)
         if (_stricmp("rotatetexture", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("rotatetexture", sizeof("rotatetexture")), m_bRotateTexture);
         if (_stricmp("bmin", firstword(pszLine)) == 0)
-            static_cast<void>(sscanf(pszLine + __strlen_chk("bmin", sizeof("bmin")), "%f %f %f", &m_vMin.x, &m_vMin.y,
-                   &m_vMin.z));
+            Parse(pszLine + __strlen_chk("bmin", sizeof("bmin")), m_vMin);
         if (_stricmp("bmax", firstword(pszLine)) == 0)
-            static_cast<void>(sscanf(pszLine + __strlen_chk("bmax", sizeof("bmax")), "%f %f %f", &m_vMax.x, &m_vMax.y,
-                   &m_vMax.z));
+            Parse(pszLine + __strlen_chk("bmax", sizeof("bmax")), m_vMax);
         if (_stricmp("vertexindicescount", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("vertexindicescount", sizeof("vertexindicescount")),
                   m_lVertexIndicesCount);
@@ -2483,17 +2144,10 @@ void MdlNodeTriMesh::InternalParseField(char* pszLine)
 #if !KOTOR1  // K1 parses no dirt or hologram fields
         if (_stricmp("dirt_enabled", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("dirt_enabled", sizeof("dirt_enabled")), m_bDirtEnabled);
-        if (_stricmp("dirt_texture", firstword(pszLine)) == 0) {
-            int nValue;
-            static_cast<void>(sscanf(pszLine + __strlen_chk("dirt_texture", sizeof("dirt_texture")), "%d", &nValue));
-            m_nDirtTexture = static_cast<unsigned short>(nValue);
-        }
-        if (_stricmp("dirt_worldspace", firstword(pszLine)) == 0) {
-            int nValue;
-            static_cast<void>(sscanf(pszLine + __strlen_chk("dirt_worldspace", sizeof("dirt_worldspace")), "%d",
-                   &nValue));
-            m_nDirtWorldspace = static_cast<unsigned short>(nValue);
-        }
+        if (_stricmp("dirt_texture", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("dirt_texture", sizeof("dirt_texture")), m_nDirtTexture);
+        if (_stricmp("dirt_worldspace", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("dirt_worldspace", sizeof("dirt_worldspace")), m_nDirtWorldspace);
         if (_stricmp("hologram_donotdraw", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("hologram_donotdraw", sizeof("hologram_donotdraw")),
                   m_bHologramDoNotDraw);
@@ -2545,13 +2199,11 @@ void MdlNodeDanglyMesh::InternalParseField(char* pszLine)
 {
     if (!disablepostprocessing) {
         if (_stricmp("displacement", firstword(pszLine)) == 0)
-            static_cast<void>(sscanf(pszLine + __strlen_chk("displacement", sizeof("displacement")), "%f",
-                   &m_fDisplacement));
+            Parse(pszLine + __strlen_chk("displacement", sizeof("displacement")), m_fDisplacement);
         if (_stricmp("period", firstword(pszLine)) == 0)
-            static_cast<void>(sscanf(pszLine + __strlen_chk("period", sizeof("period")), "%f", &m_fPeriod));
+            Parse(pszLine + __strlen_chk("period", sizeof("period")), m_fPeriod);
         if (_stricmp("tightness", firstword(pszLine)) == 0)
-            static_cast<void>(sscanf(pszLine + __strlen_chk("tightness", sizeof("tightness")), "%f",
-                   &m_fTightness));
+            Parse(pszLine + __strlen_chk("tightness", sizeof("tightness")), m_fTightness);
         if (_stricmp("constraints", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("constraints", sizeof("constraints")), m_lConstraints);
     }
@@ -2563,8 +2215,7 @@ void MdlNodeAnimMesh::InternalParseField(char* pszLine)
 {
     if (!disablepostprocessing) {
         if (_stricmp("sampleperiod", firstword(pszLine)) == 0)
-            static_cast<void>(sscanf(pszLine + __strlen_chk("sampleperiod", sizeof("sampleperiod")), "%f",
-                   &m_fSamplePeriod));
+            Parse(pszLine + __strlen_chk("sampleperiod", sizeof("sampleperiod")), m_fSamplePeriod);
         if (_stricmp("animverts", firstword(pszLine)) == 0)
             Parse(pszLine + __strlen_chk("animverts", sizeof("animverts")), m_lAnimVerts);
         if (_stricmp("animtverts", firstword(pszLine)) == 0)
@@ -2610,15 +2261,12 @@ void MaxTree::InternalParseField(char* pszLine)
 void Model::InternalParseField(char* pszLine)
 {
     if (_stricmp("radius", firstword(pszLine)) == 0)
-        static_cast<void>(sscanf(pszLine + __strlen_chk("radius", sizeof("radius")), "%f", &m_fRadius));
+        Parse(pszLine + __strlen_chk("radius", sizeof("radius")), m_fRadius);
     if (_stricmp("bmin", firstword(pszLine)) == 0)
-        static_cast<void>(sscanf(pszLine + __strlen_chk("bmin", sizeof("bmin")), "%f %f %f",
-               &m_vBoundsMin.x, &m_vBoundsMin.y, &m_vBoundsMin.z));
+        Parse(pszLine + __strlen_chk("bmin", sizeof("bmin")), m_vBoundsMin);
     if (_stricmp("bmax", firstword(pszLine)) == 0)
-        static_cast<void>(sscanf(pszLine + __strlen_chk("bmax", sizeof("bmax")), "%f %f %f",
-               &m_vBoundsMax.x, &m_vBoundsMax.y, &m_vBoundsMax.z));
-    if (strncmp(pszLine, "node", __strlen_chk("node", sizeof("node"))) == 0)
-        ParseNode(pszLine + __strlen_chk("node", sizeof("node")), this);
+        Parse(pszLine + __strlen_chk("bmax", sizeof("bmax")), m_vBoundsMax);
+    MaxTree::InternalParseField(pszLine);
 }
 
 // ---- the .mdl file-level callbacks --------------------------------------------------------------
@@ -2634,34 +2282,23 @@ void ImportMaxTree(char* pszName, MaxTree* pTree)
 {
     K2_UNUSED(pszName);
     char szRootName[64];
-    char* pszLine = AurResGetNextLine();
-    while (pszLine != 0) {
-        pszLine = skipspace(pszLine);
+    char* pszLine;
+    while ((pszLine = skipspace(AurResGetNextLine())) != 0) {
         if (strncmp(pszLine, "done", __strlen_chk("done", sizeof("done"))) == 0)
             break;
         if (strncmp(pszLine, "end", __strlen_chk("end", sizeof("end"))) == 0)
             break;
-        if (_stricmp("sModelAnimationRootName", firstword(pszLine)) == 0) {
-            if (sscanf(pszLine + __strlen_chk("sModelAnimationRootName", sizeof("sModelAnimationRootName")),
-                       "%s", szRootName) == 0)
-                szRootName[0] = 0;
-        }
+        if (_stricmp("sModelAnimationRootName", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("sModelAnimationRootName", sizeof("sModelAnimationRootName")),
+                  szRootName);
         pTree->m_pfnParseField(pTree, pszLine);
-        pszLine = AurResGetNextLine();
     }
     Model* pModel = pTree->AsModel();
     if (pModel != 0) {
         pModel->m_pMdlNode->ReorderChildren();
-        // The root pointer is written through one local so the field address is formed once.
-        MdlNode** ppRoot = &pModel->m_pAnimationRoot;
-        if (pTree == 0)
-            *ppRoot = 0;
-        else {
-            *ppRoot = FindMdlNode(pTree->m_pMdlNode, szRootName);
-            if (*ppRoot != 0)
-                return;
-        }
-        *ppRoot = pModel->m_pMdlNode;
+        pModel->m_pAnimationRoot = FindMdlNode(pTree, szRootName);
+        if (pModel->m_pAnimationRoot == 0)
+            pModel->m_pAnimationRoot = pModel->m_pMdlNode;
     }
 }
 
@@ -2789,9 +2426,7 @@ void BinaryInsertModel(Model* pModel, int nLow, int nHigh)
         BinaryInsertModel(pModel, mid + 1, nHigh);
 }
 
-// Appends the model through the sorted-insert helper over the whole list. Kept out of line: its one
-// caller must keep a real call.
-__attribute__((noinline))
+// Appends the model through the sorted-insert helper over the whole list.
 void InsertModel(Model* pModel)
 {
     BinaryInsertModel(pModel, 0, Models.m_count - 1);
@@ -2948,111 +2583,23 @@ char* setanimationscale(char* pszArgs)
 template void List<MaxFace_PostProcess>::allocate(int);
 template void List<MaxFace>::allocate(int);
 
-// The post-parse half of Animation, MaxTree's animation-flavoured subclass.
-
 // The animation half of the parse-trampoline pair; defined beside the console handlers in
 // GobAnimation.cpp.
 void AnimationParseField(void* pAnimation, char* pszLine);
 
-// ==== the post-parse fixup =======================================================================
-
-// Scene.cpp's node lookup, needed to resolve `animroot <name>` against the node hierarchy.
-MdlNode* findnode(MdlNode* pNode, char* pszName);
-
-int pruneanimations = 1;
-
-int countanimnodes;
-int countprunedanimnodes;
-
-// Walks the whole subtree and, on the way out, deletes every leaf that is neither the animation's own
-// root node nor still holding children or controllers. countprunedanimnodes counts the ones actually
-// freed.
-void Animation::Prune(MdlNode* pNode)
-{
-    countanimnodes++;
-
-    int64_t i = pNode->m_listChildren.m_count;
-    while (i--)
-        Prune(pNode->m_listChildren.m_pData[i]);
-
-    if (m_pMdlNode == pNode)
-        return;
-    if (pNode->m_listChildren.m_count)
-        return;
-    if (pNode->m_listControllers.m_count)
-        return;
-
-    reinterpret_cast<MdlNode*>(pNode->m_pParent)->m_listChildren.Remove(pNode);
-    delete pNode;
-
-    countprunedanimnodes++;
-}
-
-// Leaves the node hierarchy holding only the chain from the tree's root down to the node the .mdl's
-// `animroot` field named: it finds that node by name, then walks up the parent links and, at every
-// ancestor, erases and deletes every child except the one it arrived from. Every ancestor's
-// controller list is dropped along the way; the animroot node's own is not.
-//
-// The animroot string's first byte doubles as the `sscanf("%s")` failure flag, and a node tree is
-// only pruned for a real name.
-void Animation::PostProcess()
-{
-    char* pszAnimRoot = m_szAnimRoot;
-    if (!pszAnimRoot[0])
-        return;
-    if (_stricmp(pszAnimRoot, NULL_NAME) == 0)
-        return;
-
-    MdlNode* pNode = findnode(m_pMdlNode, pszAnimRoot);
-    if (!pNode)
-        return;
-
-    MdlNode* pChild = pNode;
-    MdlNode* pParent = reinterpret_cast<MdlNode*>(pChild->m_pParent);
-    while (pParent) {
-        pParent->m_listControllers.SetSize(0);
-
-        int i = pParent->m_listChildren.m_count;
-        while (i--) {
-            MdlNode* pTemp = pParent->m_listChildren.m_pData[i];
-            if (pTemp == pChild)
-                continue;
-            pParent->m_listChildren.DelIndex(i);
-            delete pTemp;
-        }
-
-        pChild = pParent;
-        pParent = reinterpret_cast<MdlNode*>(pChild->m_pParent);
-    }
-
-    if (pruneanimations)
-        Prune(m_pMdlNode);
-
-    if (m_fLength < 0.0f)
-        m_fLength = 0.0f;
-}
-
 // ==== the .mdl text-field parser ==================================================================
 
-// The two small Parse bodies are duplicated here so this unit keeps its own copies; keep them as
-// calls rather than hand-expanded bodies.
-static inline void ParseFloatInlined(char* pszLine, float& fValue)
+// `<time> <value>`: the time, then the value from the first non-blank after it.
+template <class T> void Parse(char* pszLine, AurKey<T>& key)
 {
-    static_cast<void>(sscanf(pszLine, "%f", &fValue));
+    int nOffset;
+    static_cast<void>(sscanf(pszLine, "%f%n", &key.m_fTime, &nOffset));
+    Parse(skipspace(pszLine + nOffset), key.m_value);
 }
 
-static inline void ParseStringInlined(char* pszLine, char* pszValue)
-{
-    if (!sscanf(pszLine, "%s", pszValue))
-        *pszValue = 0;
-}
-
-// The animation tree's field reader. Six independent ifs rather than an else-if chain, opened by a
-// strncmp pair rather than a firstword test, and the event arm carries a list insert instead of a
-// controller add. The strncmp argument order differs between the animlength/event arms and the node
-// arm.
-//
-// The event arm's byte offset lives in its own block so it shares the name scratch slot.
+// The animation tree's field reader: five independent ifs rather than an else-if chain, opened by a
+// strncmp pair rather than a firstword test, then the base tree's `node` reader. The event arm
+// carries a list insert instead of a controller add.
 void Animation::InternalParseField(char* pszLine)
 {
     if (!strncmp("animlength", pszLine, __strlen_chk("animlength", sizeof("animlength")))) {
@@ -3062,14 +2609,9 @@ void Animation::InternalParseField(char* pszLine)
     }
 
     if (!strncmp("event", pszLine, __strlen_chk("event", sizeof("event")))) {
-        AnimationEvent ev;
-        ev.m_szName[0] = 0;
-        char* pszValue = pszLine + __strlen_chk("event", sizeof("event"));
-        {
-            int nOffset;
-            static_cast<void>(sscanf(pszValue, "%f%n", &ev.m_fTime, &nOffset));
-            ParseStringInlined(skipspace(pszValue + nOffset), ev.m_szName);
-        }
+        AurKey<char[32]> ev;
+        ev.m_value[0] = 0;
+        Parse(pszLine + __strlen_chk("event", sizeof("event")), ev);
 
         // Kept sorted by time: walk to the first entry the new event precedes (or the end).
         int nIndex = 0;
@@ -3079,17 +2621,15 @@ void Animation::InternalParseField(char* pszLine)
     }
 
     if (_stricmp("length", firstword(pszLine)) == 0)
-        ParseFloatInlined(pszLine + __strlen_chk("length", sizeof("length")), m_fLength);
+        Parse(pszLine + __strlen_chk("length", sizeof("length")), m_fLength);
 
     if (_stricmp("transtime", firstword(pszLine)) == 0)
-        ParseFloatInlined(pszLine + __strlen_chk("transtime", sizeof("transtime")), m_fTransTime);
+        Parse(pszLine + __strlen_chk("transtime", sizeof("transtime")), m_fTransTime);
 
     if (_stricmp("animroot", firstword(pszLine)) == 0)
-        ParseStringInlined(pszLine + __strlen_chk("animroot", sizeof("animroot")), m_szAnimRoot);
+        Parse(pszLine + __strlen_chk("animroot", sizeof("animroot")), m_szAnimRoot);
 
-    // `node <name>` recurses into the node-tree reader, which owns the new node.
-    if (!strncmp(pszLine, "node", __strlen_chk("node", sizeof("node"))))
-        ParseNode(pszLine + __strlen_chk("node", sizeof("node")), this);
+    MaxTree::InternalParseField(pszLine);
 }
 
 // The camera node's parser hook; the rest of the class's bodies live in the other family units.
@@ -3106,24 +2646,10 @@ void MdlNodeCamera::InternalParseField(char* pszLine)
 void MdlNodeReference::InternalParseField(char* pszLine)
 {
     if (!disablepostprocessing) {
-        if (_stricmp("refModel", firstword(pszLine)) == 0) {
-            if (sscanf(pszLine + __strlen_chk("refModel", sizeof("refModel")), "%s",
-                       m_szRefModel) == 0)
-                m_szRefModel[0] = 0;
-        }
-        if (_stricmp("reattachable", firstword(pszLine)) == 0) {
-            char* pszValue = pszLine + __strlen_chk("reattachable", sizeof("reattachable"));
-            if (sscanf(pszValue, "%d", &m_bReattachable) == 0) {
-                char szValue[64];
-                szValue[0] = 0;
-                static_cast<void>(sscanf(pszValue, "%s", szValue));
-                // Two independent tests, not an else-if; the false test runs unconditionally.
-                if (_stricmp("TRUE", szValue) == 0)
-                    m_bReattachable = 1;
-                if (_stricmp("FALSE", szValue) == 0)
-                    m_bReattachable = 0;
-            }
-        }
+        if (_stricmp("refModel", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("refModel", sizeof("refModel")), m_szRefModel);
+        if (_stricmp("reattachable", firstword(pszLine)) == 0)
+            Parse(pszLine + __strlen_chk("reattachable", sizeof("reattachable")), m_bReattachable);
     }
     MdlNode::InternalParseField(pszLine);
 }

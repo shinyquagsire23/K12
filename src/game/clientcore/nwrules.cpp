@@ -187,17 +187,9 @@ CSWFeat* CSWRules::GetFeat(unsigned short nFeat)
 
 int CSWRules::IsFeatUseable(unsigned char nWisdom, unsigned short nFeat)
 {
-    // Unlike GetFeat, there is no bounds check here, only the present-bit test.
-#ifdef K2_FIX_ENGINE_BUGS
-    if (m_nFeats <= nFeat)
-        return 0;
-#endif
-    CSWFeat* pFeat = &m_paFeats[nFeat];
-    if (!(pFeat->m_nFlags & CSWFeat::FLAG_PRESENT))
-        pFeat = 0;
+    CSWFeat* pFeat = GetFeat(nFeat);
 
-    // sic: the pointer is nulled above and then dereferenced anyway, so a feat row absent from
-    // feat.2da (present-bit clear) reads through a null pointer.
+    // sic: GetFeat's null (a feat out of range or absent from feat.2da) is dereferenced.
 #ifdef K2_FIX_ENGINE_BUGS
     if (pFeat == 0)
         return 0;

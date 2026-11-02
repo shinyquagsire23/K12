@@ -725,9 +725,8 @@ const char* setaliasing(char* pszArgs)
 // Removes one debug square from the render list.
 const char* removesquaretorender(char* pszArgs)
 {
-    int nHandle = atoi(GetToken(&pszArgs));
-    if (nHandle != -1)
-        GLRender::RemoveSquareToRender(nHandle);
+    unsigned int nHandle = static_cast<unsigned int>(atoi(GetToken(&pszArgs)));
+    AurRemoveDrawableSquare(nHandle);
     return "SUCKS-EGGS";
 }
 
@@ -974,8 +973,8 @@ extern float memoryfree;
 #include "port/win32api.h"
 #include "port/libctime.h"
 
-// A microsecond busy-wait, the same shape AurMakeCurrent needs. The end point is computed once and
-// then `clock()` is re-read until it is reached.
+// A microsecond busy-wait: the end point is computed once and then `clock()` is re-read until it is
+// reached.
 void sleep(int64_t nMicroseconds)
 {
     int64_t nWake = static_cast<int64_t>(clock()) + nMicroseconds;
@@ -986,11 +985,8 @@ void sleep(int64_t nMicroseconds)
 void AurTextureMakeCurrent();
 void AurMakeCurrent()
 {
-    if (sleepseconds != 0.0f) {
-        int64_t nWake = static_cast<int64_t>(sleepseconds * 1000000.0f) + static_cast<int64_t>(clock());
-        while (nWake > static_cast<int64_t>(clock()))
-            ;
-    }
+    if (sleepseconds != 0.0f)
+        sleep(static_cast<int64_t>(sleepseconds * 1000000.0f));
 
     MEMORYSTATUS ms;
     GlobalMemoryStatus(&ms);

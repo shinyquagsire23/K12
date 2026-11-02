@@ -185,10 +185,7 @@ void CSWParty::SetFormation(int formation)
 
 CSWCCreature* CSWParty::GetPlayerCharacter()
 {
-    if (m_nCharacterCount < 1) {
-        return 0;
-    }
-    return g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_members[0].id);
+    return GetCharacter(0);
 }
 
 CSWCCreature* CSWParty::GetCharacter(int index)
@@ -254,37 +251,11 @@ CSWCCreature* CSWParty::RemoveCharacter(int index)
 
 int CSWParty::RemoveCharacter(unsigned long long id)
 {
-    if (id == OBJECT_INVALID) {
-        return 0;
-    }
-    if (m_nCharacterCount < 1) {
-        return 0;
-    }
-    int index = -1;
-    for (int i = 0; i < m_nCharacterCount; i++) {
-        if (m_members[i].id == id) {
-            index = i;
-            break;
-        }
-    }
+    int index = GetIndex(id);
     if (index == -1) {
         return 0;
     }
-    if (!g_pAppManager) {
-        return 0;
-    }
-    CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_members[index].id);
-    if (index <= 1) {
-        for (int i = index; i < 2; i++) {
-            m_members[i].id = m_members[i + 1].id;
-        }
-    }
-    m_members[2].id = OBJECT_INVALID;
-    m_nCharacterCount--;
-#if !KOTOR1
-    g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->ResetPartyMemberItemUse();
-#endif
-    if (pCreature) {
+    if (RemoveCharacter(index)) {
         return 1;
     }
     return 0;
@@ -447,7 +418,7 @@ void CSWParty::RecaulateFollowPoint()
 int CSWParty::PartyHasRace(unsigned short race)
 {
     for (int i = 0; i < m_nCharacterCount; i++) {
-        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_members[i].id);
+        CSWCCreature* pCreature = GetCharacter(i);
         if (pCreature->m_pStats->m_nRace == race) {
             return 1;
         }
@@ -529,8 +500,7 @@ CSWPartyFollowData* CSWPartyFollowDataArray::GetPathData(int index)
 float CSWPartyFollowDataArray::PointOnLineDistanceFromLeader(int nMember, int bSquared)
 {
     CSWParty* pParty = m_pParty;
-    CSWCCreature* pLeader =
-        g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(pParty->m_members[0].id);
+    CSWCCreature* pLeader = pParty->GetCharacter(0);
 
     float fDx = pParty->m_members[nMember].m_vPathPoint.x - pLeader->m_position.x;
     float fDy = pParty->m_members[nMember].m_vPathPoint.y - pLeader->m_position.y;
@@ -741,9 +711,7 @@ int CSWParty::TestAndResetPath()
         RecaulateFollowPoint();
 
         for (int i = 1; i < 3; i++) {
-            if (i >= m_nCharacterCount)
-                break;
-            if (g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_members[i].id) != 0) {
+            if (GetCharacter(i) != 0) {
                 switch (m_members[i].m_nFollowState) {
                 case CSWPartyMemberData::FOLLOW_STATE_NEW:
                 case CSWPartyMemberData::FOLLOW_STATE_FIND_PATH:
@@ -1288,12 +1256,11 @@ void CSWParty::Update(float fDelta)
 void CSWPartyFollowDataArray::ProcessPoint(const Vector& vPos, float fYaw, float fUnused)
 {
     K2_UNUSED(fUnused);
-    static Vector m_vLastGoodProcessedPoint;
-
     CWalkHitInfo hitInfo = {};
     hitInfo.m_hitObjectId = OBJECT_INVALID;
 
     int nIndex = m_nWriteIndex + ((m_nWriteIndex < 1) ? 99 : -1);
+    static Vector m_vLastGoodProcessedPoint;
     CSWPartyFollowData* pPrev = GetPathData(nIndex);
 
     float fDx = vPos.x - pPrev->m_pos.x;

@@ -261,16 +261,34 @@ void CSWCTrigger::DisplayTrigger(int a)
     }
 }
 
+#if !KOTOR1  // K2-only (no K1 counterpart)
 int CSWCTrigger::GetMineStrengthLevel(int a)
 {
-    static const int levels[27] = {
-        0, 1, 3, 0, 1, 3, 0, 1, 3, 0, 1, 3, -1, -1,
-        0, 1, 3, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4,
-    };
-    if (static_cast<unsigned int>(a) <= 26)
-        return levels[a];
+    switch (a) {
+    case TRAP_BASE_TYPE_FLASH_STUN_MINOR: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_MINOR:
+    case TRAP_BASE_TYPE_LASER_SLICING_MINOR: case TRAP_BASE_TYPE_POISON_GAS_MINOR:
+    case TRAP_BASE_TYPE_SONIC_CHARGE_MINOR:
+        return 0;
+    case TRAP_BASE_TYPE_FLASH_STUN_AVERAGE: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_AVERAGE:
+    case TRAP_BASE_TYPE_LASER_SLICING_AVERAGE: case TRAP_BASE_TYPE_POISON_GAS_AVERAGE:
+    case TRAP_BASE_TYPE_SONIC_CHARGE_AVERAGE:
+        return 1;
+    case TRAP_BASE_TYPE_FLASH_STUN_STRONG: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_STRONG:
+    case TRAP_BASE_TYPE_LASER_SLICING_STRONG: case TRAP_BASE_TYPE_POISON_GAS_STRONG:
+    case TRAP_BASE_TYPE_SONIC_CHARGE_STRONG:
+        return 2;
+    case TRAP_BASE_TYPE_FLASH_STUN_DEADLY: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_DEADLY:
+    case TRAP_BASE_TYPE_LASER_SLICING_DEADLY: case TRAP_BASE_TYPE_POISON_GAS_DEADLY:
+    case TRAP_BASE_TYPE_SONIC_CHARGE_DEADLY:
+        return 3;
+    case TRAP_BASE_TYPE_FLASH_STUN_DEVASTATING: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_DEVASTATING:
+    case TRAP_BASE_TYPE_LASER_SLICING_DEVASTATING: case TRAP_BASE_TYPE_POISON_GAS_DEVASTATING:
+    case TRAP_BASE_TYPE_SONIC_CHARGE_DEVASTATING:
+        return 4;
+    }
     return -1;
 }
+#endif
 
 void CSWCTrigger::ActionMenuRecoverMine(unsigned int a, CSWCCreature* c)
 {
@@ -352,36 +370,7 @@ void CSWCTrigger::GetTargetActions(CSWCCreature* pCreature, int nType,
 #if !KOTOR1
     }
     {
-        GetServerObject();
-        CSWSTrigger* pServerTrigger = GetServerObject()->AsSWSTrigger();
-        int nLevel = -1;
-        switch (pServerTrigger->m_trapType) {
-        case TRAP_BASE_TYPE_FLASH_STUN_MINOR: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_MINOR:
-        case TRAP_BASE_TYPE_LASER_SLICING_MINOR: case TRAP_BASE_TYPE_POISON_GAS_MINOR:
-        case TRAP_BASE_TYPE_SONIC_CHARGE_MINOR:
-            nLevel = 0;
-            break;
-        case TRAP_BASE_TYPE_FLASH_STUN_AVERAGE: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_AVERAGE:
-        case TRAP_BASE_TYPE_LASER_SLICING_AVERAGE: case TRAP_BASE_TYPE_POISON_GAS_AVERAGE:
-        case TRAP_BASE_TYPE_SONIC_CHARGE_AVERAGE:
-            nLevel = 1;
-            break;
-        case TRAP_BASE_TYPE_FLASH_STUN_STRONG: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_STRONG:
-        case TRAP_BASE_TYPE_LASER_SLICING_STRONG: case TRAP_BASE_TYPE_POISON_GAS_STRONG:
-        case TRAP_BASE_TYPE_SONIC_CHARGE_STRONG:
-            nLevel = 2;
-            break;
-        case TRAP_BASE_TYPE_FLASH_STUN_DEADLY: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_DEADLY:
-        case TRAP_BASE_TYPE_LASER_SLICING_DEADLY: case TRAP_BASE_TYPE_POISON_GAS_DEADLY:
-        case TRAP_BASE_TYPE_SONIC_CHARGE_DEADLY:
-            nLevel = 3;
-            break;
-        case TRAP_BASE_TYPE_FLASH_STUN_DEVASTATING: case TRAP_BASE_TYPE_FRAGMENTATION_MINE_DEVASTATING:
-        case TRAP_BASE_TYPE_LASER_SLICING_DEVASTATING: case TRAP_BASE_TYPE_POISON_GAS_DEVASTATING:
-        case TRAP_BASE_TYPE_SONIC_CHARGE_DEVASTATING:
-            nLevel = 4;
-            break;
-        }
+        int nLevel = GetMineStrengthLevel(GetServerTrigger()->m_trapType);
         int bMatched = 0;
         if (nLevel >= 0 && nLevel <= 2) {
             if (pCreature->m_pStats->HasSpell(0, FORCE_POWER_DROID_DESTROY)) {

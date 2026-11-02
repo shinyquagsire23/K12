@@ -139,9 +139,7 @@ void CSWCProjectile::SetSpawnCombatVisualOnImpact(unsigned char bSpawn, int visu
 CSWCProjectile* CSWCProjectile::AsSWCProjectile() { return this; }
 
 
-#if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
-__attribute__((always_inline))
-#else
+#if !KOTOR1  // K2's SetProjectileType calls this builder; K1's inlines it
 __attribute__((noinline))
 #endif
 void CSWCProjectile::SetBehaviorListHoming()
@@ -166,9 +164,7 @@ void CSWCProjectile::SetBehaviorListHoming()
     m_behaviorList.AddTail(pBehavior);
 }
 
-#if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
-__attribute__((always_inline))
-#else
+#if !KOTOR1  // K2's SetProjectileType calls this builder; K1's inlines it
 __attribute__((noinline))
 #endif
 void CSWCProjectile::SetBehaviorListBallistic()
@@ -193,9 +189,7 @@ void CSWCProjectile::SetBehaviorListBallistic()
     m_behaviorList.AddTail(pBehavior);
 }
 
-#if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
-__attribute__((always_inline))
-#else
+#if !KOTOR1  // K2's SetProjectileType calls this builder; K1's inlines it
 __attribute__((noinline))
 #endif
 void CSWCProjectile::SetBehaviorListBurstUp()
@@ -220,9 +214,7 @@ void CSWCProjectile::SetBehaviorListBurstUp()
     m_behaviorList.AddTail(pBehavior);
 }
 
-#if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
-__attribute__((always_inline))
-#else
+#if !KOTOR1  // K2's SetProjectileType calls this builder; K1's inlines it
 __attribute__((noinline))
 #endif
 void CSWCProjectile::SetBehaviorListBurst()
@@ -247,9 +239,7 @@ void CSWCProjectile::SetBehaviorListBurst()
     m_behaviorList.AddTail(pBehavior);
 }
 
-#if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
-__attribute__((always_inline))
-#else
+#if !KOTOR1  // K2's SetProjectileType calls this builder; K1's inlines it
 __attribute__((noinline))
 #endif
 void CSWCProjectile::SetBehaviorListAccelerating()
@@ -274,9 +264,7 @@ void CSWCProjectile::SetBehaviorListAccelerating()
     m_behaviorList.AddTail(pBehavior);
 }
 
-#if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
-__attribute__((always_inline))
-#else
+#if !KOTOR1  // K2's SetProjectileType calls this builder; K1's inlines it
 __attribute__((noinline))
 #endif
 void CSWCProjectile::SetBehaviorListLinkedBurstUp()
@@ -301,9 +289,7 @@ void CSWCProjectile::SetBehaviorListLinkedBurstUp()
     m_behaviorList.AddTail(pBehavior);
 }
 
-#if KOTOR1  // K1's SetProjectileType inlines this builder; K2's calls it
-__attribute__((always_inline))
-#else
+#if !KOTOR1  // K2's SetProjectileType calls this builder; K1's inlines it
 __attribute__((noinline))
 #endif
 void CSWCProjectile::SetBehaviorListLinked()
@@ -904,11 +890,7 @@ void CSWCProjectile::SetProjectileType(unsigned int nType)
         }
     }
 
-    while (m_behaviorList.m_pInternal->m_pHead != 0) {
-        CProjectileBehavior* pBehavior = m_behaviorList.RemoveHead();
-        if (pBehavior != 0)
-            delete pBehavior;
-    }
+    ClearBehaviorList();
 
     switch (nType) {
     case PROJECTILE_TYPE_HOMING:           SetBehaviorListHoming(); break;

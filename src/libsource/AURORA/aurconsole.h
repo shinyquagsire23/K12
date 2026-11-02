@@ -98,9 +98,8 @@ class OpenResource {
 public:
     OpenResource(int nSize);
     ~OpenResource();
-#if KOTOR1
     void SetupReadBuffer();
-
+#if KOTOR1
     SDL_RWops* m_pFile;
 #else
 

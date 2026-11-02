@@ -152,8 +152,7 @@ void CAurTexture::Bind()
     else
         AurTextureBindTID(nCurrentTID, pTexture->IsCubeMap(), 0);
 #endif
-    TextureController* pController
-        = pTexture->GetReferencedTexture()->AsCAurTextureBasic()->m_pController;
+    TextureController* pController = AurTextureGetController(pTexture);
     if (pController && enabletexturecontrollers)
         pController->Control();
     pTexture->m_bBound = 1;
@@ -912,21 +911,18 @@ void Parse(char* pszLine, List<T>& list)
     int nScan = sscanf(pszLine, "%d %c", &nCount, &cType);
     if (nScan <= 0) {
         // `endlist`-terminated form: one Vector per line until the terminator (or EOF).
-        pszLine = AurResGetNextLine();
-        while (pszLine) {
+        while ((pszLine = AurResGetNextLine()) != 0) {
             if (!strncmp(skipspace(pszLine), "endlist", strlen("endlist")))
                 break;
             if (list.m_count != 0) {
                 if (list.m_count == nCount)
                     list.Add(list.m_pData[list.m_count - 1]);
             } else {
-                list.allocate(1);
-                list.m_count = 1;
+                list.SetSize(1);
             }
             int n = nCount;
             Parse(pszLine, list.m_pData[n]);
             nCount++;
-            pszLine = AurResGetNextLine();
         }
         skipspace(skipspace(pszLine) + strlen("endlist"));
         return;
@@ -1212,16 +1208,10 @@ void CAurTextureBasic::FreeImage()
         nSize = m_nCompressedSize;
 #endif
     m_bTxiLoaded = 0;
-    if (m_bReleaseRaster) {
-        int bProcessed = m_bProcessed;
-        int nRasterSize = m_nRasterSize;
-        int nTxiSize = m_nTxiSize;
-        AurReleaseRaster(m_pImage, m_nWidth, m_nHeight, m_nBPP, nSize, nRasterSize,
-                         nTxiSize, bProcessed);
-    } else {
-        delete[] static_cast<unsigned char*>(m_pImage);
-    }
-    m_bReleaseRaster = 0;
+    bool bReleaseRaster = m_bReleaseRaster;
+    AurTextureFreeImage(static_cast<unsigned char*>(m_pImage), m_nWidth, m_nHeight, m_nBPP, nSize,
+                        m_nRasterSize, m_nTxiSize, &bReleaseRaster, m_bProcessed, false);
+    m_bReleaseRaster = bReleaseRaster;
     m_pImage = 0;
 }
 
@@ -1254,37 +1244,16 @@ void CAurTextureBasic::LoadImageHeader()
         for (int i = 0; i < m_nFileRange; i++)
         {
             char szName[128];
-            int nWidth, nHeight, nMipChainSize, nBPP, nFlags;
-            char cBPP, cMipCount;
+            int nWidth, nHeight, nBPP, nCompressedSize;
 
             AurTextureSprintf(szName, sizeof(szName), "%s%d", m_szResRef, i);
-            nFlags = 0;
-            bLoaded = AurGetProcessedRasterHeader(szName, &nWidth, &nHeight, &cBPP,
-                                                  &nFlags, &nMipChainSize, &m_fAlphaMean, &cMipCount);
-            nBPP = cBPP;
-            if (bLoaded == 0)
-            {
-                nBPP = 2;
-                bLoaded = ImageRead16bitHeader(szName, &nWidth, &nHeight, &m_fAlphaMean,
-                                               reinterpret_cast<int*>(&m_nTextureFormat));
-                if (bLoaded == 0)
-                    bLoaded = AurGetRasterHeader(szName, &nWidth, &nHeight, &nBPP);
-            }
+            bLoaded = AurGetImageHeaderWrapper(szName, &nWidth, &nHeight, &nBPP, &nCompressedSize,
+                                               &m_nTextureFormat, &m_fAlphaMean, 0);
             if (bLoaded == 0)
             {
                 AurTextureSprintf(szName, sizeof(szName), "%s0%d", m_szResRef, i);
-                nFlags = 0;
-                bLoaded = AurGetProcessedRasterHeader(szName, &nWidth, &nHeight, &cBPP,
-                                                      &nFlags, &nMipChainSize, &m_fAlphaMean, &cMipCount);
-                nBPP = cBPP;
-                if (bLoaded == 0)
-                {
-                    nBPP = 2;
-                    bLoaded = ImageRead16bitHeader(szName, &nWidth, &nHeight, &m_fAlphaMean,
-                                                   reinterpret_cast<int*>(&m_nTextureFormat));
-                    if (bLoaded == 0)
-                        bLoaded = AurGetRasterHeader(szName, &nWidth, &nHeight, &nBPP);
-                }
+                bLoaded = AurGetImageHeaderWrapper(szName, &nWidth, &nHeight, &nBPP, &nCompressedSize,
+                                                   &m_nTextureFormat, &m_fAlphaMean, 0);
             }
             if (i == 0)
             {
@@ -1444,11 +1413,9 @@ void CAurTextureBasic::LoadImageA()
     unsigned char* pDest = static_cast<unsigned char*>(m_pImage);
     for (int64_t i = 0; i < m_nFileRange; i++) {
         memcpy(pDest, apFiles[i], m_nWidth * m_nHeight * m_nBPP);  // idiom-exempt: runtime face size
-        if (AurReleaseRaster)
-            AurReleaseRaster(apFiles[i], m_nWidth, m_nHeight, m_nBPP, 0, m_nRasterSize,
-                             m_nTxiSize, m_bProcessed);
-        else if (apFiles[i])
-            delete[] static_cast<unsigned char*>(apFiles[i]);
+        bool bRelease = AurReleaseRaster != 0;
+        AurTextureFreeImage(static_cast<unsigned char*>(apFiles[i]), m_nWidth, m_nHeight, m_nBPP, 0,
+                            m_nRasterSize, m_nTxiSize, &bRelease, m_bProcessed, false);
         pDest += m_nWidth * m_nHeight * m_nBPP;
     }
 
@@ -1539,17 +1506,9 @@ void CAurTextureBasic::ConstructImage()
 {
     ImageGammaCorrect(m_nWidth, m_nHeight, m_nBPP, static_cast<unsigned char*>(m_pImage), m_fGamma);
     if (m_panScheme) {
-        FreeImage();
-        if (m_szResRef[0] == 0)
-            __strcpy_chk(m_szResRef, m_szName, 32);
-        int nFileRange;
-        unsigned char* pRaster =
-            AurGetLayeredRaster(m_szResRef, &m_nWidth, &m_nHeight, &nFileRange);
-        m_pImage = pRaster;
-        m_nBPP = 2;
-        m_nTextureFormat = static_cast<Aurora::AuroraTextureFormats>(0);
+        LoadImagePLT();
         m_nCompressedSize = 0;
-        m_bReleaseRaster = (pRaster != 0) && (AurReleaseRaster != 0);
+        unsigned char* pRaster = static_cast<unsigned char*>(m_pImage);
         if (pRaster) {
             m_pImage = ImageDecode(static_cast<unsigned char*>(pRaster), m_nWidth, m_nHeight, paletteimage,
                                    paletteheight, m_panScheme, m_nNumSchemes);
@@ -2662,6 +2621,7 @@ int AurSetPalette(int nIndex, char* pszName)
     ImageFlipY(pImage, nWidth, nHeight, nBPP);
     int nPageOffset = nIndex << 18;
     ImageCopy(paletteimage + nPageOffset, pImage, nWidth, nHeight, nBPP);
+    bool bRelease = AurReleaseRaster != 0;
 
     int nFaces = nHeight / nWidth;
     int nH = (nFaces == 6) ? nHeight / 6 : nHeight;
@@ -2684,10 +2644,8 @@ int AurSetPalette(int nIndex, char* pszName)
         nSize = 0;
     }
 
-    if (AurReleaseRaster != 0)
-        AurReleaseRaster(pImage, nWidth, nHeight, nBPP, nSize, nRasterSize, nTxiSize, bProcessed);
-    else
-        delete[] pImage;
+    AurTextureFreeImage(pImage, nWidth, nHeight, nBPP, nSize, nRasterSize, nTxiSize, &bRelease,
+                        bProcessed, false);
 
     return nIndex;
 }
@@ -3170,12 +3128,7 @@ const char* texmessage(char* pszArg)
     CAurTexture* pTexture = AurTextureFind(szName, szName, 0, 0);
     if (!pTexture)
         return "no texture by that name";
-    char* pszRest = skipspace(pszArg + nOffset);
-    CAurTextureBasic* pBasic = pTexture->GetReferencedTexture()->AsCAurTextureBasic();
-    if (pBasic) {
-        pBasic->ParseField(pszRest);
-        RefreshTextures.AddUnique(pBasic);
-    }
+    AurTextureMessage(pTexture, skipspace(pszArg + nOffset));
     return "OK";
 }
 

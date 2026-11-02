@@ -161,8 +161,7 @@ void CExoStreamingSoundSourceInternal::SetLooping(int bLooping)
 {
     m_bLooping = bLooping;
 
-    if (m_pSound->m_bInitialized && m_nChannel != static_cast<decltype(m_nChannel)>(-1)
-        && m_pAudioSystem->GetIsChannelPlaying(m_nChannel))
+    if (IsPlaying())
         m_pAudioSystem->SetChannelLoopCount(m_nChannel, m_bLooping == 0);
 }
 
@@ -208,8 +207,7 @@ int CExoStreamingSoundSourceInternal::GetWithinRangeOfListener()
 // low-resolution timer and the requested millisecond count.
 void CExoStreamingSoundSourceInternal::FadeAndStop(unsigned int nMilliseconds)
 {
-    if (m_pSound->m_bInitialized && m_nChannel != static_cast<decltype(m_nChannel)>(-1)
-        && m_pAudioSystem->GetIsChannelPlaying(m_nChannel))
+    if (IsPlaying())
     {
         m_nFadeStartTime = g_pExoBase->m_pTimers->GetLowResolutionTimer();
         m_nFadeDuration = nMilliseconds;
@@ -222,7 +220,7 @@ void CExoStreamingSoundSourceInternal::Resume()
 {
     if (!m_pSound->m_bInitialized || m_nChannel == static_cast<decltype(m_nChannel)>(-1))
         return;
-    if (m_pAudioSystem->GetIsChannelPlaying(m_nChannel))
+    if (IsPlaying())
         return;
 
     SetVolume(m_nVolume, 0, 1.0f);
@@ -243,8 +241,7 @@ void CExoStreamingSoundSourceInternal::Pause()
     if (sResRefName.CompareNoCase("evil_ending") == 0
         || g_pAppManager->m_pClientExoApp->GetCreditSequenceInProgress())
     {
-        if (m_pSound->m_bInitialized && m_nChannel != static_cast<decltype(m_nChannel)>(-1)
-            && m_pAudioSystem->GetIsChannelPlaying(m_nChannel))
+        if (IsPlaying())
         {
             m_pAudioSystem->PauseChannel(m_nChannel);
             m_nPlaybackPosition = m_pAudioSystem->GetChannelPlaybackPosition(m_nChannel);
@@ -589,15 +586,7 @@ int CExoStreamingSoundSourceInternal::Play(const CResRef& resRef, unsigned short
                 break;
         }
 
-        if (m_nChannel != -1)
-            m_pAudioSystem->PauseChannel(m_nChannel);
-        m_nFadeDuration = 0;
-        m_nFadeStartTime = 0;
-        m_nPlaybackPosition = 0;
-        if (m_pListNode)
-            m_pSound->RemoveFromStreamingList(this);
-        else
-            m_pSound->RemoveFromNonPlayingStreamingLoopingList(this);
+        Stop(0);
         if (m_nChannel != -1)
         {
             m_pAudioSystem->StopChannel(m_nChannel);
@@ -609,15 +598,7 @@ int CExoStreamingSoundSourceInternal::Play(const CResRef& resRef, unsigned short
     }
     else
     {
-        if (m_nChannel != -1)
-            m_pAudioSystem->PauseChannel(m_nChannel);
-        m_nFadeDuration = 0;
-        m_nFadeStartTime = 0;
-        m_nPlaybackPosition = 0;
-        if (m_pListNode)
-            m_pSound->RemoveFromStreamingList(this);
-        else
-            m_pSound->RemoveFromNonPlayingStreamingLoopingList(this);
+        Stop(0);
     }
 
     if (m_pSound->m_bInitialized && m_nChannel != -1)
@@ -648,15 +629,10 @@ int CExoStreamingSoundSourceInternal::Play(const CResRef& resRef, unsigned short
             }
         }
 
-        if (m_bLooping != 0 && m_b3D != 0)
+        if (m_bLooping != 0 && !GetWithinRangeOfListener())
         {
-            Vector vDiff = m_pSound->m_vListenerPosition - m_vPosition;
-            // An ordered compare, since `>` would differ for a NaN distance.
-            if (!(magnitude(vDiff) <= m_fMaxDistance))
-            {
-                Stop(1);
-                goto AddToNonPlayingLooping;
-            }
+            Stop(1);
+            goto AddToNonPlayingLooping;
         }
 
         if (m_pSound->AddToStreamingList(this))

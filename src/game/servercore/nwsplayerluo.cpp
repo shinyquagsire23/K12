@@ -259,7 +259,7 @@ CSWSItem* CSWSPlayerLUOInventory::ItemListGetItem(CExoLinkedListNode* pNode, uns
 // StoreValuesInLastPlayerUpdateObject has filled it.
 CSWSPlayerLastUpdateObject::CSWSPlayerLastUpdateObject()
 {
-    // The action-queue sentinels are not written here. CSWActionQueueEntry has a user-provided
+    // The action-queue sentinels are not written here. CSWActionNode has a user-provided
     // default constructor, so m_actionQueue stamps itself at its declaration position.
     m_bCanLevelUp = 0;
     m_pSpellLikeAbilityList = 0;

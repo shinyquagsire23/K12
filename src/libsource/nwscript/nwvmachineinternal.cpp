@@ -354,16 +354,7 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
             int nDst = static_cast<int>(nBase) - (-nVal >> 2);
             if (nDst < 0)
                 return -SCRIPT_ERROR_STACK_UNDERFLOW;
-            if (m_sStack.m_pOwner == 0 || m_sStack.m_pTypeData[nDst] != NCS_TYPE_INTEGER) {
-                *pnOffset += 6;
-                break;
-            }
-            if (nOpcode == NCS_OP_INCISP || nOpcode == NCS_OP_INCIBP)
-                m_sStack.m_pValueData[nDst] =
-                    reinterpret_cast<void*>(reinterpret_cast<long long>(m_sStack.m_pValueData[nDst]) + 1);
-            else
-                m_sStack.m_pValueData[nDst] =
-                    reinterpret_cast<void*>(reinterpret_cast<long long>(m_sStack.m_pValueData[nDst]) - 1);
+            m_sStack.ModifyIntegerAtLocation(nDst, (nOpcode == NCS_OP_INCISP || nOpcode == NCS_OP_INCIBP) ? 1 : -1);
             *pnOffset += 6;
             break;
         }
@@ -386,13 +377,8 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
             default:
                 if (nType < NCS_TYPE_ENGINE_STRUCTURE0 || nType > NCS_TYPE_ENGINE_STRUCTURE9)
                     return -SCRIPT_ERROR_INVALID_AUX_CODE;
-                if (m_pCmdImplementer == 0)
+                if (!StackPushEngineStructure(nType - NCS_TYPE_ENGINE_STRUCTURE0, 0))
                     return -SCRIPT_ERROR_STACK_OVERFLOW;
-                {
-                    void* pNew = m_pCmdImplementer->CopyGameDefinedStructure(nType - NCS_TYPE_ENGINE_STRUCTURE0, 0);
-                    m_sStack.AddToTopOfStack(nType);
-                    m_sStack.m_pValueData[static_cast<int>(m_sStack.m_nStackPointer) - 1] = pNew;
-                }
                 break;
             }
             *pnOffset += 2;
@@ -401,9 +387,9 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
 
         // A literal baked into the instruction, typed by nType.
         case NCS_OP_CONST: {
-            int nOffset = *pnOffset;
             switch (nType) {
             case NCS_TYPE_INTEGER: {
+                int nOffset = *pnOffset;
                 int nValue = (static_cast<unsigned char>(pCode[nOffset + 2]) << 24) |
                              (static_cast<unsigned char>(pCode[nOffset + 3]) << 16) |
                              (static_cast<unsigned char>(pCode[nOffset + 4]) << 8) |
@@ -413,6 +399,7 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                 break;
             }
             case NCS_TYPE_FLOAT: {
+                int nOffset = *pnOffset;
                 int nBits = (static_cast<unsigned char>(pCode[nOffset + 2]) << 24) |
                             (static_cast<unsigned char>(pCode[nOffset + 3]) << 16) |
                             (static_cast<unsigned char>(pCode[nOffset + 4]) << 8) |
@@ -422,13 +409,14 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                 break;
             }
             case NCS_TYPE_STRING: {
+                CExoString sValue;
+                int nOffset = *pnOffset;
                 int nLen = static_cast<short>((static_cast<unsigned char>(pCode[nOffset + 2]) << 8) |
                                    static_cast<unsigned char>(pCode[nOffset + 3]));
                 char* pData = new char[nLen + 1];
                 for (int i = 0; i < nLen; i++)
                     pData[i] = pCode[nOffset + 4 + i];
                 pData[nLen] = 0;
-                CExoString sValue;
                 sValue.Format(const_cast<char*>("%s"), pData);
                 delete[] pData;
                 StackPushString(sValue);
@@ -440,6 +428,7 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
             default: {
                 if (nType != NCS_TYPE_OBJECT)
                     return -SCRIPT_ERROR_INVALID_AUX_CODE;
+                int nOffset = *pnOffset;
                 int nId = (static_cast<unsigned char>(pCode[nOffset + 2]) << 24) |
                           (static_cast<unsigned char>(pCode[nOffset + 3]) << 16) |
                           (static_cast<unsigned char>(pCode[nOffset + 4]) << 8) |
@@ -713,16 +702,13 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
 
             if (nType == NCS_TYPE_STRING_STRING) {
                 CExoString sTop;
-                CExoString sNext;
-                nResult = StackPopString(&sTop);
-                if (nResult)
-                    nResult = StackPopString(&sNext);
-                if (nResult) {
-                    if (nOpcode == NCS_OP_ADD)
-                        StackPushString(sNext + sTop);
-                }
-                if (!nResult)
+                if (!StackPopString(&sTop))
                     return -SCRIPT_ERROR_STACK_UNDERFLOW;
+                CExoString sNext;
+                if (!StackPopString(&sNext))
+                    return -SCRIPT_ERROR_STACK_UNDERFLOW;
+                if (nOpcode == NCS_OP_ADD)
+                    StackPushString(sNext + sTop);
                 *pnOffset += 2;
                 break;
             }

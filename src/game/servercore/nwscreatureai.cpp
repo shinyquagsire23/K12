@@ -197,16 +197,20 @@ int CSWSCreature::CheckItemRaceRestrictions(CSWSItem* pItem, int bSilent) {
     for (int i = 0; i < pItem->m_nPassiveProperties; i++) {
         unsigned char nSlot = pItem->GetPassiveProperty(i)->m_nUpgradeType;
         if (nSlot == CSWItemProperty::UPGRADE_TYPE_NONE || (pItem->m_nUpgrades & (1 << nSlot)) != 0) {
-            if (pItem->GetPassiveProperty(i)->m_type == ITEM_PROPERTY_USE_LIMITATION_RACIAL_TYPE &&
-                m_pStats->m_nRace == pItem->GetPassiveProperty(i)->m_subType)
-                return 1;
+            if (pItem->GetPassiveProperty(i)->m_type == ITEM_PROPERTY_USE_LIMITATION_RACIAL_TYPE) {
+                pItem->GetPassiveProperty(i);
+                if (m_pStats->m_nRace == pItem->GetPassiveProperty(i)->m_subType)
+                    return 1;
+            }
         }
         nSlot = pItem->GetPassiveProperty(i)->m_nUpgradeType;
         if (nSlot == CSWItemProperty::UPGRADE_TYPE_NONE || (pItem->m_nUpgrades & (1 << nSlot)) != 0) {
-            if (pItem->GetPassiveProperty(i)->m_type == ITEM_PROPERTY_LIMIT_USE_BY_SUBRACE &&
-                m_pStats->m_nRace != CSWRace::CRACE_DROID &&
-                m_pStats->m_nSubraceIndex == pItem->GetPassiveProperty(i)->m_subType)
-                return 1;
+            if (pItem->GetPassiveProperty(i)->m_type == ITEM_PROPERTY_LIMIT_USE_BY_SUBRACE) {
+                pItem->GetPassiveProperty(i);
+                if (m_pStats->m_nRace != CSWRace::CRACE_DROID &&
+                    m_pStats->m_nSubraceIndex == pItem->GetPassiveProperty(i)->m_subType)
+                    return 1;
+            }
         }
     }
     return 0;
@@ -931,12 +935,13 @@ foundAilment:
     if (pEffect != 0) {
         // The save DC comes from the ailment's own 2DA row (poison.2da "Save_DC" or disease.2da
         // "Subs_Save"), indexed by the effect's level.
-        if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_POISON)
-            g_pRules->m_p2DArrays->m_pPoison->GetINTEntry(pEffect->GetInteger(0),
-                                                         CExoString("Save_DC"), &nDC);
-        else if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_DISEASE)
-            g_pRules->m_p2DArrays->m_pDisease->GetINTEntry(pEffect->GetInteger(0),
-                                                          CExoString("Subs_Save"), &nDC);
+        if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_POISON) {
+            int nRow = pEffect->GetInteger(0);
+            g_pRules->m_p2DArrays->m_pPoison->GetINTEntry(nRow, CExoString("Save_DC"), &nDC);
+        } else if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_DISEASE) {
+            int nRow = pEffect->GetInteger(0);
+            g_pRules->m_p2DArrays->m_pDisease->GetINTEntry(nRow, CExoString("Subs_Save"), &nDC);
+        }
         nDC = nDC > 1 ? nDC : 1;
         if (nRoll + nSkill >= nDC)
             pTarget->RemoveEffectById(pEffect->m_effectId);
@@ -1405,12 +1410,9 @@ int CSWSCreature::ReplyToInvitation(int nResponse, unsigned long long creatureId
             return 0;
         } else if (nResponse == 0) {
             // A null faction aborts without any cleanup.
-            if (g_pAppManager->m_pServerExoApp->m_pInternal->m_pFactionManager
-                    ->GetFaction(pCreature->m_pStats->m_factionId) == 0)
+            if (pCreature->GetFaction() == 0)
                 return 0;
-            g_pAppManager->m_pServerExoApp->m_pInternal->m_pFactionManager
-                ->GetFaction(pCreature->m_pStats->m_factionId)
-                ->AddMember(m_objectId, 0);
+            pCreature->GetFaction()->AddMember(m_objectId, 0);
         }
         pCreature->RemoveFromInvitationsOffered(m_objectId);
         SetInvitedToParty(0);
@@ -3946,9 +3948,11 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
                 nNowDay, nNowTime, m_pPathfindInfo->m_nForceMoveDeadlineDay, m_pPathfindInfo->m_nForceMoveDeadlineTimeOfDay) >= 0) {
             m_pPathfindInfo->HandlePathfindError(
                 0, const_cast<char*>("Force Timeout, executing a forced move to point."));
+            uint64_t oidGoalArea = m_pPathfindInfo->m_oidGoalArea;
+            Vector vGoal = m_pPathfindInfo->m_goal.m_vPoint;
             CSWSForcedAction forcedAction;
-            forcedAction.m_nTargetArea = m_pPathfindInfo->m_oidGoalArea;
-            forcedAction.m_vPoint = m_pPathfindInfo->m_goal.m_vPoint;
+            forcedAction.m_nTargetArea = oidGoalArea;
+            forcedAction.m_vPoint = vGoal;
             forcedAction.m_nTargetObject = m_pPathfindInfo->m_oidGoalObject;
             m_nMoveState = 1;
             ForceMoveToPoint(&forcedAction);
@@ -4089,10 +4093,11 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
                     pParty2->m_members[0].id));
             // The leader has pulled 7 units away from where this member was last given a path:
             // re-solve the follow point and re-aim at the member's formation slot around it.
-            if (pLeader != 0 && HasAction(AIACTION_PARTY_FOLLOW_LEADER) != 0 && nResult == 0) {
+            if (pLeader != 0) {
                 Vector vPulled = pLeader->m_position
                                - pParty2->m_members[nIndex].m_vLeaderPathOrigin;
-                if (vPulled.x * vPulled.x + vPulled.y * vPulled.y + vPulled.z * vPulled.z
+                if (HasAction(AIACTION_PARTY_FOLLOW_LEADER) != 0 && nResult == 0
+                    && vPulled.x * vPulled.x + vPulled.y * vPulled.y + vPulled.z * vPulled.z
                     >= 49.0f) {
                     g_pAppManager->m_pClientExoApp->GetSWParty()->RecaulateFollowPoint();
                     CSWPartyMemberData* pMemberData = &pParty2->m_members[nIndex];
@@ -4904,14 +4909,10 @@ int CSWSCreature::AIActionStanceTotalDefense(CSWSObjectActionNode* pNode)
 int CSWSCreature::AIActionStanceMeditative(CSWSObjectActionNode* pNode)
 {
     K2_UNUSED(pNode);
-    // inlined CSWSCreature::GetDeadTemp()
-    // inlined CSWSCreature::GetDeadTemp(): the call merges both tests into one orr (LENGTH +4)
-    int bAlive = 1;
-    if (m_bInParty != 0)
-        bAlive = GetCurrentHitPoints(0) > 0;
+    int nDeadTemp = GetDeadTemp();
     int nDead = GetDead();
     int nResult = ACTION_FAILED;
-    if (bAlive != 0 && nDead == 0) {
+    if (nDeadTemp == 0 && nDead == 0) {
         ActivityManager(2);
         if (m_nStancePosture == STANCE_POSTURE_MEDITATIVE) {
             if (m_actionList.m_pInternal->m_nCount >= 2) {
@@ -5156,7 +5157,7 @@ int CSWSCreature::AIActionMoveToPoint(CSWSObjectActionNode* pNode)
                                     fRange, 0.0f, bClientSidePath, nClientPathId,
                                     nFlagD, nFlagE, nFlagF, nFlagG, vOffset,
                                     nDeadlineDay, nDeadlineTod,
-                                    m_pPathfindInfo->m_bCheckSightToTarget);
+                                    bCheckSight);
         m_pPathfindInfo->m_bForceMoveDeadline = 0;
         m_pPathfindInfo->m_nForceMoveDeadlineDay = 0;
         m_pPathfindInfo->m_nForceMoveDeadlineTimeOfDay = 0;
@@ -5824,10 +5825,10 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk_FollowLeader()
                              ->GetCharacter(0)->m_swAnimationSpeed * 1000.0f)
                 fSpeed = GetRunRate();
             else
-                goto leaderPaced;
+                fSpeed = g_pAppManager->m_pClientExoApp->GetSWParty()
+                             ->GetCharacter(0)->m_swAnimationSpeed * 1000.0f;
         }
     } else if (fLeaderRate > 0.1f) {
-    leaderPaced:
         fSpeed = g_pAppManager->m_pClientExoApp->GetSWParty()
                      ->GetCharacter(0)->m_swAnimationSpeed * 1000.0f;
     } else {
@@ -6260,10 +6261,9 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk_FollowLeader_Moving_To_Path(
     CWalkHitInfo hitInfo = {};
     hitInfo.m_hitObjectId = OBJECT_INVALID;
     hitInfo.m_hitSubType = 0;
-    float fRadius = m_pPathfindInfo->m_fPersonalSpace - 0.1f;
     int nLine = static_cast<CSWSArea*>(GetArea())->TestDirectLine(pMemberData->m_safePosition, vNewPos,
-                                                       fRadius, m_pPathfindInfo->m_fHeight,
-                                                       0, &hitInfo);
+                                                       m_pPathfindInfo->m_fPersonalSpace - 0.1f,
+                                                       m_pPathfindInfo->m_fHeight, 0, &hitInfo);
     if (nLine == -3) {
         // Blocked by a non-party object, just switch to TELEPORT_FORWARD, no event (see the header).
         if (g_pAppManager->m_pClientExoApp->GetSWParty()->IsPartyMember(
@@ -6825,17 +6825,8 @@ int CSWSCreature::CheckItemFeatRestrictions(CSWSItem* pItem)
 void CSWSCreature::AddToVisibleList(unsigned long long id, int bSeen, int bHeard,
                                     unsigned char nSanctuaryState, int bInvisible)
 {
-    int nCount = m_visibilityList.m_count;
-    if (nCount > 0) {
-        uint64_t n = static_cast<unsigned int>(nCount);
-        CSWVisibilityNode** ppNode = m_visibilityList.m_pArray;
-        do {
-            CSWVisibilityNode* pNode = *ppNode;
-            if (pNode->m_objectId == id)
-                return;
-            ppNode++;
-        } while (--n != 0);
-    }
+    if (CheckVisibleList(id))
+        return;
     CSWVisibilityNode* pNode = new CSWVisibilityNode();
     pNode->m_objectId = id;
     pNode->m_flags = (bSeen & 1) | ((bHeard & 1) << 1) | ((nSanctuaryState & 3) << 2) | ((bInvisible & 1) << 4);
@@ -7996,8 +7987,13 @@ int CSWSCreature::AIActionItemCastSpell(CSWSObjectActionNode* pAction)
         int nSpellId = ConvertGrenadeSpellID(pProperty->m_subType);
 #endif
         CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
-        if (pSpell == 0)
-            goto castFailed;
+        if (pSpell == 0) {
+            SetAnimation(GetPauseReadyAnimation());
+            m_bItemCastStarted = 0;
+            RemoveSpellActionFromRound();
+            ProcessPendingCombatActions();
+            return CSWSObject::ACTION_FAILED;
+        }
         if (pSpell->m_bHostileActivity != 0) {
             ActivityManager(1);
 #if KOTOR1

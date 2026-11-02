@@ -403,12 +403,12 @@ CSWGuiKeyMapButton* CSWGuiInGameOptKeyMappings::CreateOption(int nActionId, CSWG
     pButton->SetDescription(sActionName);
 
     int nIdealHeight = pButton->m_text.GetIdealHeight();
-    int nBorderDim = pButton->m_border.m_params.GetBorderDim();
     int nHilightDim = pButton->m_borderHilight.m_params.GetBorderDim();
-    if (nHilightDim < nBorderDim)
-        nBorderDim = pButton->m_border.m_params.GetBorderDim();
-    else
+    int nBorderDim = pButton->m_border.m_params.GetBorderDim();
+    if (nHilightDim > nBorderDim)
         nBorderDim = pButton->m_borderHilight.m_params.GetBorderDim();
+    else
+        nBorderDim = pButton->m_border.m_params.GetBorderDim();
     extent.h = (nBorderDim + nIdealHeight) * 2;
     pButton->SetExtent(extent);
 #endif

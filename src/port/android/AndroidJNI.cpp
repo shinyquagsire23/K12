@@ -118,17 +118,8 @@ bool HasTouchScreen()
 #else
 bool HasTouchScreen()
 {
-    if (!g_TouchScreenStatusChecked) {
-        g_TouchScreenStatusChecked = true;
-
-        JNIEnv* env = Android_JNI_GetEnv();
-        jclass cls = env->FindClass("com/aspyr/base/ASPYR");
-        jmethodID mid = env->GetStaticMethodID(cls, "HasTouchScreen", "()Z");
-        jboolean bHasTouch = env->CallStaticBooleanMethod(cls, mid);
-        env->DeleteLocalRef(cls);
-
-        g_HasTouchScreen = bHasTouch != 0;
-    }
+    if (!g_TouchScreenStatusChecked)
+        CheckTouchScreenAvailable();
     return g_HasTouchScreen;
 }
 #endif
@@ -291,24 +282,15 @@ void ReleaseCinematicScreenLock()
 void ASLPlat_ASLEnableDimmer()
 {
     if (--s_nDimmerRefCount <= 0) {
-        JNIEnv* env = Android_JNI_GetEnv();
-        jclass cls = env->FindClass("com/aspyr/base/ASPYR");
-        jmethodID mid = env->GetStaticMethodID(cls, "ReleaseWakeLock", "()V");
-        env->CallStaticVoidMethod(cls, mid);
-        env->DeleteLocalRef(cls);
+        ReleaseCinematicScreenLock();
         s_nDimmerRefCount = 0;
     }
 }
 
 void ASLPlat_ASLDisableDimmer()
 {
-    if (s_nDimmerRefCount == 0) {
-        JNIEnv* env = Android_JNI_GetEnv();
-        jclass cls = env->FindClass("com/aspyr/base/ASPYR");
-        jmethodID mid = env->GetStaticMethodID(cls, "AcquireWakeLock", "()V");
-        env->CallStaticVoidMethod(cls, mid);
-        env->DeleteLocalRef(cls);
-    }
+    if (s_nDimmerRefCount == 0)
+        AcquireCinematicScreenLock();
     ++s_nDimmerRefCount;
 }
 
@@ -818,20 +800,18 @@ void ASLAnalyticsTrackScreen(const char* pszScreen)
     env->DeleteLocalRef(cls);
 }
 
+#if !KOTOR1  // K1's is in Achievements.cpp
 void SubmitScore(const char* pszLeaderboard, int64_t nScore)
 {
     JNIEnv* env = Android_JNI_GetEnv();
-#if KOTOR1
-    jclass cls = env->FindClass("com/aspyr/kotor/KOTOR");
-#else
     jclass cls = env->FindClass("com/aspyr/base/ASPYR");
-#endif
     jmethodID mid = env->GetStaticMethodID(cls, "submitScore", "(Ljava/lang/String;J)V");
     jstring strLeaderboard = env->NewStringUTF(pszLeaderboard);
     env->CallStaticVoidMethod(cls, mid, strLeaderboard, nScore);
     env->DeleteLocalRef(strLeaderboard);
     env->DeleteLocalRef(cls);
 }
+#endif
 
 #ifdef K2_HOST_BUILD
 extern "C" void k2host_unlock_achievement(const char* pszTag);   // platforms/shim/shim_achievements.cpp

@@ -11,6 +11,7 @@
 
 #include "port/libcbase.h"
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 // An ini line's buffer: the longest line the reader and writer handle, terminator included.
 enum {
@@ -137,14 +138,7 @@ int CExoIniInternal::ReadIniEntry(CExoString& result, const CExoString& fileName
                     result = pRealEq + 1;
                     // sic: an unnamed temporary, destroyed before the comparison runs.
                     if (result.Right(1) == "\n") {
-#if KOTOR1  // K1's GetLength is out of line
                         result = result.Left(result.GetLength() - 1);
-#else
-                        int len = 0;
-                        if (result.m_sString != 0)
-                            len = static_cast<int>(strlen(result.m_sString));
-                        result = result.Left(len - 1);
-#endif
                     }
                     return 1;
                 }

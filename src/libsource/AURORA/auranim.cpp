@@ -481,7 +481,7 @@ int Gob::PlayAnimation(char* pszName, float fSpeed, int nFlags, float fStart)
 
     if (pszName == 0 || *pszName == 0 || _stricmp(NULL_NAME, pszName) == 0)
     {
-        for (int i = m_paAnimations.m_count - 1; i >= 0; i--)
+        for (int i = m_paAnimations.m_count; i-- != 0;)
         {
             if (m_pLookAt != 0
                 && static_cast<LookAtAnimation*>(m_pLookAt)->m_pRun == m_paAnimations.m_pData[i])
@@ -730,9 +730,9 @@ void AnimateEvents(Gob* pGob, Animation* pAnim, float fStart, float fEnd, int nF
 
         for (int i = pAnim->m_events.m_count - 1; i >= 0; i--)
         {
-            AnimationEvent* pEvent = &pAnim->m_events.m_pData[i];
+            AurKey<char[32]>* pEvent = &pAnim->m_events.m_pData[i];
             if (pEvent->m_fTime >= fEnd && pEvent->m_fTime < fStart)
-                pGob->DoEvent(pEvent->m_szName, 0);
+                pGob->DoEvent(pEvent->m_value, 0);
         }
     }
     else
@@ -745,9 +745,9 @@ void AnimateEvents(Gob* pGob, Animation* pAnim, float fStart, float fEnd, int nF
 
         for (int i = 0; i < pAnim->m_events.m_count; i++)
         {
-            AnimationEvent* pEvent = &pAnim->m_events.m_pData[i];
+            AurKey<char[32]>* pEvent = &pAnim->m_events.m_pData[i];
             if (pEvent->m_fTime > fStart && pEvent->m_fTime <= fEnd)
-                pGob->DoEvent(pEvent->m_szName, 0);
+                pGob->DoEvent(pEvent->m_value, 0);
         }
     }
 }
@@ -1106,9 +1106,13 @@ void Gob::Animate(float fDelta)
         if (fLife == 0.0f)
         {
             Vector vMove = m_vPosition - m_vPreviousPosition;
+#if KOTOR1  // K1 clamps with fminf, so a NaN magnitude takes the bound
+            fLife = fminf(magnitude(vMove), 1.0f);
+#else
             fLife = magnitude(vMove);
             if (fLife > 1.0f)
                 fLife = 1.0f;
+#endif
         }
         m_pScene->m_pWindManager->AddPointSourceWind(m_vPosition, fRadius, fLife,
                                                      m_fWindStrength);
@@ -1131,6 +1135,11 @@ void Gob::Animate(float fDelta)
     // focus.
     if (m_pScene != 0 && disablegobdist == 0)
     {
+#if KOTOR1  // K1 takes the larger axis with fmaxf, so a NaN axis yields the other one
+        float fDX = m_vPosition.x - m_pScene->m_vSceneFocus.x;
+        float fDY = m_vPosition.y - m_pScene->m_vSceneFocus.y;
+        m_fCheckEventTime = fmaxf(fDX < 0.0f ? -fDX : fDX, fDY < 0.0f ? -fDY : fDY);
+#else
         m_fCheckEventTime =
             max(m_vPosition.x - m_pScene->m_vSceneFocus.x < 0.0f
                     ? -(m_vPosition.x - m_pScene->m_vSceneFocus.x)
@@ -1138,6 +1147,7 @@ void Gob::Animate(float fDelta)
                 m_vPosition.y - m_pScene->m_vSceneFocus.y < 0.0f
                     ? -(m_vPosition.y - m_pScene->m_vSceneFocus.y)
                     : m_vPosition.y - m_pScene->m_vSceneFocus.y);
+#endif
     }
     else
         m_fCheckEventTime = 0.0f;
@@ -2011,11 +2021,114 @@ void MdlNodeReference::InternalControl(Part* pPart, float fA, float fB, float fC
     MdlNode::InternalControl(pPart, fA, fB, fC);
 }
 
-// The trimesh accessor is the one the base's own body also opens with, so it is called twice.
+// The trimesh accessor is the one the base's own body also opens with, so it is called twice. K1
+// inlines it into MdlNodeAnimMesh::InternalControl; K2 tail-calls it.
+#if !KOTOR1
+__attribute__((noinline))
+#endif
 void MdlNodeTriMesh::InternalControl(Part* pPart, float fA, float fB, float fC)
 {
     pPart->AsPartTriMesh();
     MdlNode::InternalControl(pPart, fA, fB, fC);
+}
+
+// Blends this frame's animated vertices into the position and texcoord pools.
+void MdlNodeAnimMesh::InternalControl(Part* pPart, float fA, float fB, float fC)
+{
+    PartAnimMesh* pAnimMesh = pPart->AsPartAnimMesh();
+
+    int nFrame = 0;
+    if (m_fSamplePeriod != 0.0f)
+        nFrame = static_cast<int>(fB / m_fSamplePeriod);
+    float fBlend = fB / m_fSamplePeriod;
+
+    if (nFrame >= 0 && nFrame < m_nVertexFrameCount - 1) {
+        VertexPrimitiveAnim* pPrim = pAnimMesh->m_pVertexPrimitive->AsVertexPrimitiveAnim();
+        Vector3* pDst = static_cast<Vector3*>(GLRender::LockPool(pPrim->m_nVertexPool, 0, 0, 1));
+        if (static_cast<short>(m_nVertexCount) >= 1) {
+            float fFrac = fBlend - static_cast<float>(nFrame);
+            float* pFrames = reinterpret_cast<float*>(m_paVertexFrames);
+            int nCount = m_nVertexFrameCount;
+            int64_t nVerts = static_cast<short>(m_nVertexCount);
+            for (int64_t j = 0; j < nVerts; j++) {
+                float* pF = pFrames;
+                int i = static_cast<int>((nFrame + j * nCount) * 3);
+                Vector3 vA = { pF[i], pF[i + 1], pF[i + 2] };  // raw-offset: float-granular frame index, as the original computes it
+                Vector3 vB = { pF[i + 3], pF[i + 4], pF[i + 5] };  // raw-offset: float-granular frame index, as the original computes it
+                Vector3 v = pDst[j];
+                v.x = v.x * (1.0f - fC) + (vA.x * (1.0f - fFrac) + vB.x * fFrac) * fC;
+                v.y = v.y * (1.0f - fC) + (vA.y * (1.0f - fFrac) + vB.y * fFrac) * fC;
+                v.z = v.z * (1.0f - fC) + (vA.z * (1.0f - fFrac) + vB.z * fFrac) * fC;
+                pDst[j] = v;
+            }
+        }
+        GLRender::UnlockPool(pPrim->m_nVertexPool);
+    } else if (m_nVertexFrameCount != 0) {
+        VertexPrimitiveAnim* pPrim = pAnimMesh->m_pVertexPrimitive->AsVertexPrimitiveAnim();
+        Vector3* pDst = static_cast<Vector3*>(GLRender::LockPool(pPrim->m_nVertexPool, 0, 0, 1));
+        if (nFrame < 0)
+            nFrame = 0;
+        if (nFrame >= m_nVertexFrameCount)
+            nFrame = m_nVertexFrameCount - 1;
+        if (static_cast<short>(m_nVertexCount) >= 1) {
+            for (int j = 0; j < static_cast<short>(m_nVertexCount); j++) {
+                float* pF = reinterpret_cast<float*>(m_paVertexFrames);
+                int i = (nFrame + j * m_nVertexFrameCount) * 3;
+                Vector3 vA = { pF[i], pF[i + 1], pF[i + 2] };  // raw-offset: float-granular frame index, as the original computes it
+                Vector3 v = pDst[j];
+                v.x = v.x * (1.0f - fC) + vA.x * fC;
+                v.y = v.y * (1.0f - fC) + vA.y * fC;
+                v.z = v.z * (1.0f - fC) + vA.z * fC;
+                pDst[j] = v;
+            }
+        }
+        GLRender::UnlockPool(pPrim->m_nVertexPool);
+    }
+
+    if (m_nTexCoordFrameCount != 0) {
+        VertexPrimitiveAnim* pPrim = pAnimMesh->m_pVertexPrimitive->AsVertexPrimitiveAnim();
+        Vector2* pDst = static_cast<Vector2*>(GLRender::LockPool(pPrim->m_nTexCoordPool, 0, 0, 1));
+        if (nFrame >= 0 && nFrame < m_nTexCoordFrameCount - 1) {
+            if (static_cast<short>(m_nVertexCount) >= 1) {
+                float fFrac = fB / m_fSamplePeriod - static_cast<float>(nFrame);
+                float* pFrames = reinterpret_cast<float*>(m_paTexCoordFrames);
+                int nCount = m_nTexCoordFrameCount;
+                int64_t nVerts = static_cast<short>(m_nVertexCount);
+                for (int64_t j = 0; j < nVerts; j++) {
+                    float* pF = pFrames;
+                    int i = static_cast<int>((nFrame + j * nCount) * 2);
+                    Vector2 vA = { pF[i], pF[i + 1] };  // raw-offset: float-granular frame index, as the original computes it
+                    Vector2 vB = { pF[i + 2], pF[i + 3] };  // raw-offset: float-granular frame index, as the original computes it
+                    Vector2 v = pDst[j];
+                    v.u = v.u * (1.0f - fC) + (vA.u * (1.0f - fFrac) + vB.u * fFrac) * fC;
+                    v.v = v.v * (1.0f - fC) + (vA.v * (1.0f - fFrac) + vB.v * fFrac) * fC;
+                    pDst[j] = v;
+                }
+            }
+        } else if (m_nTexCoordFrameCount != 0) {
+            if (nFrame < 0)
+                nFrame = 0;
+            if (nFrame >= m_nTexCoordFrameCount)
+                nFrame = m_nTexCoordFrameCount - 1;
+            if (static_cast<short>(m_nVertexCount) >= 1) {
+                float* pFrames = reinterpret_cast<float*>(m_paTexCoordFrames);
+                int nCount = m_nTexCoordFrameCount;
+                int64_t nVerts = static_cast<short>(m_nVertexCount);
+                for (int64_t j = 0; j < nVerts; j++) {
+                    float* pF = pFrames;
+                    int i = static_cast<int>((nFrame + j * nCount) * 2);
+                    Vector2 vA = { pF[i], pF[i + 1] };  // raw-offset: float-granular frame index, as the original computes it
+                    Vector2 v = pDst[j];
+                    v.u = v.u * (1.0f - fC) + vA.u * fC;
+                    v.v = v.v * (1.0f - fC) + vA.v * fC;
+                    pDst[j] = v;
+                }
+            }
+        }
+        GLRender::UnlockPool(pPrim->m_nTexCoordPool);
+    }
+
+    MdlNodeTriMesh::InternalControl(pPart, fA, fB, fC);
 }
 
 extern int quaternionidentityoptimization;

@@ -192,7 +192,8 @@ void CClientOptions::SetAnisotropy(unsigned int n)
 void CClientOptions::SetVSync(unsigned int b)
 {
     m_bVSync = b;
-    AurSetVSyncState(b != 0);
+    if (b) AurSetVSyncState(true);
+    else AurSetVSyncState(false);
 }
 
 void CClientOptions::SetAntiAlias(unsigned char n)
@@ -534,9 +535,7 @@ void CClientOptions::SetDefaultFeedbackOptions()
     m_bUseSmallFonts = 0;
     m_bHideInGameGui = GAME_OPTION_DEFAULT_HIDEINGAMEGUI;
     m_bEnableToolTips    = 0;
-    m_nFontSize      = 2;
-    if (g_pGuiMan)
-        g_pGuiMan->UpdateAllFonts();
+    SetUseSmallFonts(0);
 }
 
 void CClientOptions::SetDefaultAutopauseOptions()
@@ -571,8 +570,8 @@ void CClientOptions::SetDefaultGraphicsOptions()
     m_nScreenRes = static_cast<unsigned char>(GAME_OPTION_DEFAULT_SCREENRES);
     g_allowForceSpeedEffect = 1;
     m_bGrass = GAME_OPTION_DEFAULT_GRASS;
-    if (m_bGrass) AurEnableGrass(); else AurDisableGrass();
-    if (m_bShadows) AurEnableShadows(); else AurDisableShadows();
+    SetGrass(m_bGrass);
+    SetShadows(m_bShadows);
 #endif
 }
 
@@ -680,8 +679,10 @@ void CClientOptions::SetMovieShown(const CResRef& resRef, int bShown)
 // '\\' and the last '.' is retried: the 2DA lists "movie" where the caller passes "movie.bik".
 void CClientOptions::SetMovieShown(const CExoString& sName, int bShown)
 {
+#if !KOTOR1
     if (g_pRules == 0 || g_pRules->m_p2DArrays == 0)
         return;
+#endif
     int nRow = g_pRules->m_p2DArrays->m_pMovies->GetRowIndex(sName);
     if (nRow < 0) {
         const char* pszDot = strrchr(sName.CStr(), '.');
@@ -803,14 +804,8 @@ unsigned char setnumshadowlights(char* pszArgs) {
         && g_pAppManager->m_pClientExoApp->GetClientOptions() != 0
         && strlen(pszArgs) != 0)
     {
-        CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
-        unsigned char nVal = static_cast<unsigned char>(atoi(pszArgs));
-        if (pOptions->m_nNumShadowLights != nVal) {
-            pOptions->m_nNumShadowLights = nVal;
-            CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
-            if (pModule != 0 && pModule->m_pArea != 0)
-                pModule->m_pArea->m_bShadowLightsChanged = 1;
-        }
+        g_pAppManager->m_pClientExoApp->GetClientOptions()->SetNumShadowLights(
+            static_cast<unsigned char>(atoi(pszArgs)));
     }
     K2_ASSUME(g_pAppManager != 0);   // the app manager outlives every console command
     return g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nNumShadowLights;
@@ -1432,11 +1427,8 @@ int CClientOptions::LoadOptions(int a)
     }
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "Anisotropy"))
         SetAnisotropy(sValue.AsINT());
-    if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "V-Sync")) {
-        m_bVSync = sValue.AsINT();
-        if (m_bVSync) AurSetVSyncState(true);
-        else AurSetVSyncState(false);
-    }
+    if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Graphics Options", "V-Sync"))
+        SetVSync(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Sound Options", "Music Volume"))
         m_nMusicVolume = static_cast<unsigned char>(sValue.AsINT());
     if (ini.ReadIniEntry(sValue, ".\\swkotor2.ini", "Sound Options", "Voiceover Volume"))

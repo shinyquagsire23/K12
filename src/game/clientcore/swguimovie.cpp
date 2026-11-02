@@ -269,8 +269,7 @@ void CSWGuiTitleMovies::PopulateMovies()
     {
         sLive.Format(const_cast<char*>("live%d"), nPkg);
 
-        const char* pszAliasPath = g_pExoBase->m_pAliasList->GetAliasPath(sLive, 0).m_sString;
-        if (pszAliasPath == 0 || static_cast<int>(strlen(pszAliasPath)) < 1)
+        if (g_pExoBase->m_pAliasList->GetAliasPath(sLive, 0).GetLength() < 1)
         {
             continue;
         }

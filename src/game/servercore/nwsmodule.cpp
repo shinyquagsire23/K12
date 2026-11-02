@@ -312,9 +312,7 @@ int CSWSModule::ComputeInterAreaPath(CPathfindInformation* pPathInfo)
     while (bOk) {
         unsigned long long* pIds = pPathInfo->m_paInterAreaIds;
         pIds[0] = pPathInfo->m_oidStartArea;
-        CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetAreaByGameObjectID(m_oidArea);
-        if (pArea != 0)
-            pArea->m_bTransitionTargetMarked = 0;
+        ClearAreaVisitedFlags();
         if (InterAreaDFS(0, i, pPathInfo) == 1)
             pPathInfo->m_bInterAreaPathFound = 1;
         i++;
@@ -444,25 +442,9 @@ int CSWSModule::GenerateInterAreaDFSSuccessors(int nFrom, CPathfindInformation* 
                                               unsigned long long** ppaSuccessors)
 {
     K2_UNUSED(nFrom);
-    CSWSArea* pArea;
-    if (m_cachedAreaId != m_oidArea)
-    {
-        pArea = g_pAppManager->m_pServerExoApp->GetAreaByGameObjectID(m_oidArea);
-        m_pCachedArea = pArea;
-    }
-    else
-    {
-        pArea = m_pCachedArea;
-    }
-
+    CSWSArea* pArea = GetArea();
     if (pArea == 0)
-    {
-        m_pCachedArea = 0;
-        m_cachedAreaId = OBJECT_INVALID;
         return 0;
-    }
-
-    m_cachedAreaId = m_oidArea;
 
     int nCount = pArea->CountAreaTransitionTriggers(
         0, pPathInfo->m_nTraversedTransitions, pPathInfo->m_paTraversedTransitions);
@@ -603,7 +585,6 @@ int CSWSModule::PlotPath(CPathfindInformation* pPathInfo, unsigned int nPathId)
 // arg-different probe.
 unsigned int CSWSModule::PlotPathInArea(CPathfindInformation* pPathInfo, unsigned int nTimeOut)
 {
-    int nResult = CSWSObject::ACTION_FAILED;
     float fHitFraction = pPathInfo->m_fPersonalSpace;
     float fRadius = pPathInfo->m_fHeightAlias;
     float fFromX = pPathInfo->m_vStartPoint.x;
@@ -616,13 +597,13 @@ unsigned int CSWSModule::PlotPathInArea(CPathfindInformation* pPathInfo, unsigne
     {
         m_pCachedArea = 0;
         m_cachedAreaId = OBJECT_INVALID;
-        return nResult;
+        return CSWSObject::ACTION_FAILED;
     }
 
     m_cachedAreaId = m_oidArea;
 
     if (pArea->m_objectId != pPathInfo->m_oidStartArea)
-        return nResult;
+        return CSWSObject::ACTION_FAILED;
 
     ++pPathInfo->m_nPlotInAreaPasses;
     pArea->m_pActivePathfindInfo = pPathInfo;
@@ -648,6 +629,7 @@ unsigned int CSWSModule::PlotPathInArea(CPathfindInformation* pPathInfo, unsigne
         }
     }
 
+    int nResult;
     if (pPathInfo->m_nPlotInAreaPasses == 1)
     {
         nResult = pArea->TestDirectLine(Vector(fFromX, fFromY, 0.0f),
@@ -2462,7 +2444,7 @@ int CSWSModule::SavePlayers(CResGFF* pGFF, CResStruct* pStruct, const CExoString
 {
     K2_UNUSED(sUnused);
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
-    CExoArrayList<int> aPlayerIndices;
+    CExoArrayList<unsigned int> aPlayerIndices;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
     CResList list;
     pGFF->AddList(&list, pStruct, const_cast<char*>("Mod_PlayerList"));
@@ -2495,7 +2477,7 @@ int CSWSModule::SavePlayers(CResGFF* pGFF, CResStruct* pStruct, const CExoString
         pPlayer->SaveServerCharacter();
         nIndex = GetPlayerIndexInPlayerList(pPlayer);
         if (nIndex != -1)
-            aPlayerIndices.Add(nIndex);
+            aPlayerIndices.Add(static_cast<unsigned int>(nIndex));
         pGFF->AddListElement(&sElement, &list, GFF_STRUCT_ID_PLAYER);
         pGFF->WriteFieldCExoString(&sElement, pPlayer->GetPlayerName(), const_cast<char*>("Mod_CommntyName"));
         pGFF->WriteFieldBYTE(&sElement, static_cast<unsigned char>(pPlayer->m_bIsPrimaryPlayer), const_cast<char*>("Mod_IsPrimaryPlr"));
@@ -2529,7 +2511,7 @@ int CSWSModule::SavePlayers(CResGFF* pGFF, CResStruct* pStruct, const CExoString
                 int j;
                 for (j = 0; j < aPlayerIndices.m_count; j++)
                 {
-                    if (aPlayerIndices.m_pArray[j] == static_cast<int>(i))
+                    if (aPlayerIndices.m_pArray[j] == i)
                         break;
                 }
                 if (j < aPlayerIndices.m_count)

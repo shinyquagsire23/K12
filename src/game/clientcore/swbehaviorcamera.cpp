@@ -84,7 +84,7 @@ static inline Vector RotateVector(const Vector& v, const Quaternion& q)
 }
 
 CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFollowPart)
-    : CAurBehavior(pCameraObject)
+    : CSWBehaviorCamera(pCameraObject)
 {
     Vector vNew;
     m_pCameraObject = pCameraObject;
@@ -93,7 +93,7 @@ CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFol
     m_pCombatCamera = 0;
     m_nStyle = -1;
 
-    SetCameraStyle(g_pAppManager->m_pClientExoApp->GetModule()->m_pArea->m_cameraStyle);
+    UpdateCameraStyle();
 
     m_nReserved5 = 0;
     m_vPlayerFacing.x = 0.0f;
@@ -143,7 +143,7 @@ CSWCameraOnAStick::CSWCameraOnAStick(CAurObject* pCameraObject, CAurObject* pFol
 }
 
 CSWCameraOnAStick::CSWCameraOnAStick(CCameraSettings& settings)
-    : CAurBehavior(settings.m_pCameraObject)
+    : CSWBehaviorCamera(settings.m_pCameraObject)
 {
     m_pTargetObject = settings.m_pTarget;
     m_pCameraObject = settings.m_pCameraObject;
@@ -756,7 +756,7 @@ extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObj
 
 CSWCameraFreeLook::CSWCameraFreeLook(CAurObject* pCameraObject, CAurObject* pFollowPart,
                                      int nVideoEffect)
-    : CAurBehavior(pCameraObject)
+    : CSWBehaviorCamera(pCameraObject)
 {
     m_pCameraObject = pCameraObject;
     AddDependency(pFollowPart);
@@ -775,7 +775,7 @@ CSWCameraFreeLook::CSWCameraFreeLook(CAurObject* pCameraObject, CAurObject* pFol
 }
 
 CSWCameraFreeLook::CSWCameraFreeLook(CCameraSettings& settings)
-    : CAurBehavior(settings.m_pCameraObject)
+    : CSWBehaviorCamera(settings.m_pCameraObject)
 {
     m_pFollowPart = settings.m_pTarget;
     m_pCameraObject = settings.m_pCameraObject;
@@ -916,7 +916,7 @@ void  Parse(char* pszLine, float& fValue);
 extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObject>*);
 
 CSWCameraDeath::CSWCameraDeath(CAurObject* pOwner, CAurObject* pTarget)
-    : CAurBehavior(pOwner)
+    : CSWBehaviorCamera(pOwner)
 {
     m_fYaw = 0.0f;
     m_fSpeedYaw = 30.0f;
@@ -1471,7 +1471,7 @@ void CSWCameraStaticTracker::SetPosition(Vector v)
 }
 
 CSWCameraStaticTracker::CSWCameraStaticTracker(CAurObject* pOwner, CAurObject* pTarget)
-    : CAurBehavior(pOwner)
+    : CSWBehaviorCamera(pOwner)
 {
     AddDependency(pTarget);
     m_spTarget = pTarget;
@@ -1480,7 +1480,7 @@ CSWCameraStaticTracker::CSWCameraStaticTracker(CAurObject* pOwner, CAurObject* p
 }
 
 CSWCameraStaticTracker::CSWCameraStaticTracker(CAurObject* pOwner, CAurObject* pTarget, Vector vOffset)
-    : CAurBehavior(pOwner)
+    : CSWBehaviorCamera(pOwner)
 {
     AddDependency(pTarget);
     m_spTarget = pTarget;
@@ -1505,7 +1505,7 @@ void  Parse(char* pszLine, Vector& vValue);
 
 
 CSWBehaviorCameraFollow::CSWBehaviorCameraFollow(CAurObject* pCam, CAurObject* pTarget)
-    : CAurBehavior(pCam)
+    : CSWBehaviorCamera(pCam)
 {
     AddDependency(pTarget);
     m_pTarget = pTarget;

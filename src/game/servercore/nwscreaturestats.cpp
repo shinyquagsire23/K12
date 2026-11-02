@@ -366,17 +366,8 @@ int CSWSCreatureStats::GetDamageRoll(CSWSObject* pTarget, int bOffhand, int bCri
             else if (m_pOwner->m_pCombatRound->GetWeaponAttackType() == CSWSCombatRound::WEAPON_ATTACK_TYPE_UNARMED ||
                      m_pOwner->m_pCombatRound->GetWeaponAttackType() == CSWSCombatRound::WEAPON_ATTACK_TYPE_UNARMED_EXTRA)
             {
-                m_pOwner->GetUseMonkAbilities();
-                anDice[0] = 1;
-                int nCreatureSize = m_pOwner->m_nCreatureSize;
-#if KOTOR1
-                int nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 2 : 1;
-#else
-                int nDie = 4;
-#endif
-                if (m_pOwner->GetUseMonkAbilities() == 1)
-                    nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 4 : 6;
-                anDice[1] = nDie;
+                anDice[0] = GetUnarmedDamageDice();
+                anDice[1] = GetUnarmedDamageDie();
             }
             else
             {
@@ -926,23 +917,8 @@ int CSWSCreatureStats::CheckPowerSuitability(int nTalentId, CSWSpell* pSpell, in
         return 0;
     if (GetCreatureHasTalent(0, nTalentId) == 0)
         return 0;
-    if (m_pOwner->GetArea() != 0)
-    {
-        // Evaluate all four nibble tests up front, then test them one at a time.
-        int nFlags = pSpell->m_nCategory;
-        int bFail0 = ((nMask & TALENT_CATEGORY_DIGIT_0) != TALENT_CATEGORY_DIGIT_0) & ((nMask & TALENT_CATEGORY_DIGIT_0) != (nFlags & TALENT_CATEGORY_DIGIT_0));
-        int bFail1 = ((nMask & TALENT_CATEGORY_DIGIT_1) != TALENT_CATEGORY_DIGIT_1) & ((nMask & TALENT_CATEGORY_DIGIT_1) != (nFlags & TALENT_CATEGORY_DIGIT_1));
-        int bFail2 = ((nMask & TALENT_CATEGORY_DIGIT_2) != TALENT_CATEGORY_DIGIT_2) & ((nMask & TALENT_CATEGORY_DIGIT_2) != (nFlags & TALENT_CATEGORY_DIGIT_2));
-        int bFail3 = ((nMask & TALENT_CATEGORY_DIGIT_3) != TALENT_CATEGORY_DIGIT_3) & ((nMask & TALENT_CATEGORY_DIGIT_3) != (nFlags & TALENT_CATEGORY_DIGIT_3));
-        if (bFail0)
-            return 0;
-        if (bFail1)
-            return 0;
-        if (bFail2)
-            return 0;
-        if (bFail3)
-            return 0;
-    }
+    if (m_pOwner->GetArea() != 0 && CheckForCategoryMatch(pSpell->m_nCategory, nMask) == 0)
+        return 0;
     return 1;
 }
 
@@ -1029,20 +1005,11 @@ void CSWSCreatureStats::AdjustSpellUsesPerDay()
     }
 }
 
-// Both calls' results are discarded.
+// The slot count is computed and discarded.
 void CSWSCreatureStats::ResetSpellsPerDayLeft(unsigned char classIndex, unsigned char nSpellLevel)
 {
     if (classIndex < m_numClasses)
-    {
-        CSWRules* pRules = g_pRules;
-        unsigned char nClassId = m_classInfo[classIndex].m_class;
-        CSWClass* pClass = &pRules->m_paClasses[nClassId];
-        if (pClass != 0)
-        {
-            CSWClass::IsJedi(nClassId);
-            pClass->GetSpellGain(GetClassLevel(classIndex, 0), nSpellLevel);
-        }
-    }
+        GetSpellGainWithBonus(classIndex, nSpellLevel);
 }
 
 #if KOTOR1
@@ -1376,14 +1343,7 @@ unsigned char CSWSCreatureStats::GetPrimaryMod(unsigned char classIndex)
     case ABILITY_STRENGTH:
         return m_nSTRMod;
     case ABILITY_DEXTERITY:
-#if KOTOR1
         return GetDEXMod(0);
-#else
-    {
-        int bDebilitated = m_pOwner->IsDebilitated(1);
-        return (m_nDEXMod >= 0 && bDebilitated) ? 0 : m_nDEXMod;
-    }
-#endif
     case ABILITY_CONSTITUTION:
         return m_nCONMod;
     case ABILITY_INTELLIGENCE:
@@ -1552,15 +1512,8 @@ void CSWSCreatureStats::GetTotalDamageRange(CSWSCreature* pCreature, CSWSItem* p
     }
     else
     {
-        m_pOwner->GetUseMonkAbilities();
-        int nCreatureSize = m_pOwner->m_nCreatureSize;
-        int nDie;
-        if (m_pOwner->GetUseMonkAbilities() == 1)
-            nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 4 : 6;
-        else
-            nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 2 : 1;
-        nMaxBase = nDie;
-        nMinBase = 1;
+        nMinBase = GetUnarmedDamageDice();
+        nMaxBase = GetUnarmedDamageDie();
         if (pCreature != 0)
         {
             nMinBase += static_cast<signed char>(m_nSTRMod);
@@ -1660,13 +1613,8 @@ void CSWSCreatureStats::GetTotalDamageRange(CSWSCreature* pCreature, CSWSItem* p
     }
     else
     {
-        m_pOwner->GetUseMonkAbilities();
-        int nCreatureSize = m_pOwner->m_nCreatureSize;
-        int nDie = 4;
-        if (m_pOwner->GetUseMonkAbilities() == 1)
-            nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 4 : 6;
-        nMaxBase = nDie;
-        nMinBase = 1;
+        nMinBase = GetUnarmedDamageDice();
+        nMaxBase = GetUnarmedDamageDie();
         if (pCreature != 0)
         {
             nMinBase += static_cast<signed char>(m_nSTRMod);
@@ -1915,22 +1863,12 @@ int CSWSCreatureStats::GetUseMonkAttackTables(int a)
 }
 
 // Rolls unarmed damage, scaled by the difficulty option and the autobalance table.
+// EFFECTIVE (K2): the three flag registers (w22/w23/w24) are permuted; same instructions otherwise.
 int CSWSCreatureStats::GetUnarmedDamageRoll(CSWSObject* pObject)
 {
-    int nCreatureSize = m_pOwner->m_nCreatureSize;
-#if KOTOR1
-    int nDie;
-    if (m_pOwner->GetUseMonkAbilities() == 1)
-        nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 4 : 6;
-    else
-        nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 2 : 1;
-#else
-    int nDie = 4;
-    if (m_pOwner->GetUseMonkAbilities() == 1)
-        nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 4 : 6;
-#endif
-    m_pOwner->GetUseMonkAbilities();
-    int nRoll = g_pRules->RollDice(1, static_cast<unsigned char>(nDie));
+    int nDie = GetUnarmedDamageDie();
+    int nDice = GetUnarmedDamageDice();
+    int nRoll = g_pRules->RollDice(static_cast<unsigned char>(nDice), static_cast<unsigned char>(nDie));
 
     int nFlagA = 0, nFlagB = 0, nPercent = 100;
     if (pObject != 0 && pObject->AsSWSCreature() != 0)
@@ -2083,7 +2021,7 @@ short CSWSCreatureStats::GetArmorClassVersus(CSWSCreature* pCreature, int bVersu
     if (g_bEnableCombatDebugging != 0)
     {
         CExoString sLog = pCreature->m_pCombatRound
-                              ->GetAttack(pCreature->m_pCombatRound->m_currentAttack)
+                              ->GetAttack(nCurAttack)
                               ->m_sAttackDebugText;
         CExoString sBonus;
         if (nNaturalAC != 0)
@@ -2137,20 +2075,20 @@ short CSWSCreatureStats::GetArmorClassVersus(CSWSCreature* pCreature, int bVersu
             if (g_bEnableCombatDebugging != 0)
             {
                 CExoString sLog = pCreature->m_pCombatRound
-                                      ->GetAttack(pCreature->m_pCombatRound->m_currentAttack)
+                                      ->GetAttack(nCurAttack)
                                       ->m_sAttackDebugText;
                 CExoString sBonus;
             }
         }
     }
+    pAttack->m_defense.m_nACDexUncapped = static_cast<signed char>(GetDEXMod(0));
     pAttack->m_defense.m_nACDodge = nDexContrib;
     pAttack->m_defense.m_nACDex = nDexMod;
-    pAttack->m_defense.m_nACDexUncapped = static_cast<signed char>(GetDEXMod(0));
 
     if (g_bEnableCombatDebugging != 0)
     {
         CExoString sLog = pCreature->m_pCombatRound
-                              ->GetAttack(pCreature->m_pCombatRound->m_currentAttack)
+                              ->GetAttack(nCurAttack)
                               ->m_sAttackDebugText;
         CExoString sBonus;
         if (nDexMod != 0)
@@ -2253,26 +2191,15 @@ short CSWSCreatureStats::GetArmorClassVersus(CSWSCreature* pCreature, int bVersu
     if (m_pOwner->IsInTotalDefense() != 0)
     {
         nStanceAC = 4;
-        if (m_numClasses != 0)
+        for (int i = 0; i < 2; i++)
         {
-            int nDiff = m_classInfo[0].m_level - m_classInfo[0].m_negativeLevels;
-            if (nDiff < 0)
-                nDiff = 0;
-            if ((m_classInfo[0].m_class == CLASS_TYPE_SCOUNDREL || m_classInfo[0].m_class == CLASS_TYPE_JEDISENTINEL ||
-                 m_classInfo[0].m_class == CLASS_TYPE_JEDIWATCHMAN || m_classInfo[0].m_class == CLASS_TYPE_SITHASSASSIN) &&
-                static_cast<unsigned char>(nDiff) > 3)
+            unsigned char nClass = GetClass(static_cast<unsigned char>(i));
+            if ((nClass == CLASS_TYPE_SCOUNDREL || nClass == CLASS_TYPE_JEDISENTINEL ||
+                 nClass == CLASS_TYPE_JEDIWATCHMAN || nClass == CLASS_TYPE_SITHASSASSIN) &&
+                GetClassLevel(static_cast<unsigned char>(i), 1) > 3)
             {
                 nStanceAC = 6;
-            }
-            else if (m_numClasses > 1)
-            {
-                nDiff = m_classInfo[1].m_level - m_classInfo[1].m_negativeLevels;
-                if (nDiff < 0)
-                    nDiff = 0;
-                if ((m_classInfo[1].m_class == CLASS_TYPE_SCOUNDREL || m_classInfo[1].m_class == CLASS_TYPE_JEDISENTINEL ||
-                     m_classInfo[1].m_class == CLASS_TYPE_JEDIWATCHMAN || m_classInfo[1].m_class == CLASS_TYPE_SITHASSASSIN) &&
-                    static_cast<unsigned char>(nDiff) > 3)
-                    nStanceAC = 6;
+                break;
             }
         }
     }
@@ -2327,7 +2254,7 @@ short CSWSCreatureStats::GetArmorClassVersus(CSWSCreature* pCreature, int bVersu
     if (g_bEnableCombatDebugging != 0)
     {
         CExoString sLog = pCreature->m_pCombatRound
-                              ->GetAttack(pCreature->m_pCombatRound->m_currentAttack)
+                              ->GetAttack(nCurAttack)
                               ->m_sAttackDebugText;
         CExoString sBonus;
         if (nDodgeSum != 0)
@@ -2436,8 +2363,6 @@ void CSWSCreatureStats::UpdateCombatInformation()
     CSWSItem* pOnHand;
     CSWSItem* pOffHand;
     signed char nResistance;
-    int nCreatureSize;
-    int nDie;
     if (m_pCombatInformation != 0)
     {
         delete m_pCombatInformation;
@@ -2574,17 +2499,8 @@ void CSWSCreatureStats::UpdateCombatInformation()
     m_pCombatInformation->m_nForceResistance = nResistance;
     m_pCombatInformation->m_bArmorCheckPenalty =
         -(reinterpret_cast<unsigned char*>(&m_nArmorCheckPenalty)[1] + reinterpret_cast<unsigned char*>(&m_nArmorCheckPenalty)[0]);
-    m_pOwner->GetUseMonkAbilities();
-    m_pCombatInformation->m_nDefaultDamageDie = 1;
-    nCreatureSize = m_pOwner->m_nCreatureSize;
-#if KOTOR1
-    nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 2 : 1;
-#else
-    nDie = 4;
-#endif
-    if (m_pOwner->GetUseMonkAbilities() == 1)
-        nDie = (nCreatureSize < CREATURE_SIZE_MEDIUM) ? 4 : 6;
-    m_pCombatInformation->m_nDefaultDamageDiceCount = static_cast<unsigned char>(nDie);
+    m_pCombatInformation->m_nDefaultDamageDie = static_cast<unsigned char>(GetUnarmedDamageDice());
+    m_pCombatInformation->m_nDefaultDamageDiceCount = static_cast<unsigned char>(GetUnarmedDamageDie());
     m_pCombatInformation->m_nCritMultiplierOnHand = static_cast<unsigned char>(GetCriticalHitMultiplier(0));
     m_pCombatInformation->m_nCritRangeOnHand = static_cast<unsigned char>(21 - GetCriticalHitRoll(0));
     m_pCombatInformation->m_nCritMultiplierOffHand = static_cast<unsigned char>(GetCriticalHitMultiplier(1));
@@ -2824,8 +2740,8 @@ int CSWSCreatureStats::GetRangedAttackBonus(int a1, int a2, int a3)
 #if !KOTOR1
             if (HasFeat(FEAT_SUPERIOR_WEAPON_FOCUS_TWO_WEAPON_3) != 0)
                 nOff |= 1;
-            else if (HasFeat(FEAT_SUPERIOR_WEAPON_FOCUS_TWO_WEAPON_2) != 0) {
-            }
+            else if (HasFeat(FEAT_SUPERIOR_WEAPON_FOCUS_TWO_WEAPON_2) == 0)
+                HasFeat(FEAT_SUPERIOR_WEAPON_FOCUS_TWO_WEAPON_1);
 #endif
         }
     } else {
@@ -2928,9 +2844,7 @@ int CSWSCreatureStats::GetMeleeAttackBonus(int a1, int a2, int a3, int a4)
     int nDex;
     if (GetWeaponFinesse(pItem) != 0) {
         nStr = 0;
-        int nDexMod = m_nDEXMod;
-        int bDebilitated = m_pOwner->IsDebilitated(1);
-        nDex = (nDexMod < 0) ? nDexMod : (bDebilitated ? 0 : nDexMod);
+        nDex = GetDEXMod(0);
     } else {
         nStr = static_cast<signed char>(m_nSTRMod);
         nDex = 0;
@@ -2965,8 +2879,8 @@ int CSWSCreatureStats::GetMeleeAttackBonus(int a1, int a2, int a3, int a4)
 #if !KOTOR1
                 if (HasFeat(FEAT_SUPERIOR_WEAPON_FOCUS_TWO_WEAPON_3) != 0)
                     nOff |= 1;
-                else if (HasFeat(FEAT_SUPERIOR_WEAPON_FOCUS_TWO_WEAPON_2) != 0) {
-                }
+                else if (HasFeat(FEAT_SUPERIOR_WEAPON_FOCUS_TWO_WEAPON_2) == 0)
+                    HasFeat(FEAT_SUPERIOR_WEAPON_FOCUS_TWO_WEAPON_1);
 #endif
             }
         } else {
@@ -3893,9 +3807,9 @@ void CSWSCreatureStats::DecrementFeatRemainingUses(unsigned short nFeat)
 {
     for (unsigned short i = 0; i < m_featRemainingUses.m_count; i++)
     {
-        CSWSStats_FeatRemainingUses* pEntry = m_featRemainingUses.m_pArray[i];
+        CFeatUseListEntry* pEntry = m_featRemainingUses.m_pArray[i];
         if (pEntry->m_nFeat == nFeat)
-            pEntry->m_nUsesUsed++;
+            pEntry->m_nUses++;
     }
 }
 
@@ -4035,7 +3949,7 @@ void CSWSCreatureStats::ClearFeats()
     while (m_featRemainingUses.m_count != 0)
     {
         int nLast = m_featRemainingUses.m_count - 1;
-        CSWSStats_FeatRemainingUses* pEntry = m_featRemainingUses.m_pArray[nLast];
+        CFeatUseListEntry* pEntry = m_featRemainingUses.m_pArray[nLast];
         // inlined CExoArrayList<CFeatUseListEntry*>::DelIndex(m_count - 1)
         m_featRemainingUses.m_count = nLast;
         delete pEntry;
@@ -4332,15 +4246,7 @@ void CSWSCreatureStats::AddClass(unsigned char nClass, unsigned char nLevel)
 
     unsigned char nSlot = m_numClasses - 1;
     m_classInfo[nSlot].m_class = nClass;
-    m_classInfo[nSlot].m_level = nLevel;
-
-#if !KOTOR1
-    if (m_pOwner != 0 && m_pOwner->m_bPlayerMadeCharacter != 0)
-    {
-        if (GetLevel(0) >= 30)
-            Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_LEVEL_30);
-    }
-#endif
+    SetClassLevel(nSlot, nLevel);
 
     if (m_pOwner != 0)
         m_pOwner->UpdatePureGoodEvilPowers();
@@ -4361,27 +4267,18 @@ void CSWSCreatureStats::CalcLevelUpNumberFeats(unsigned char classIndex,
     }
 #endif
     CSWRules* pRules = g_pRules;
-    unsigned char nClass = CLASS_TYPE_INVALID;
-    unsigned char nLevel = 1;
-    if (m_numClasses != 0)
-    {
-        unsigned char nSlot = m_numClasses - 1;
-        CSWSCreatureStats_ClassInfo* pRec = &m_classInfo[nSlot];
-        nLevel = pRec->m_level + 1;
+    unsigned char nSlot = m_numClasses - 1;
+    unsigned char nClass = GetClass(nSlot);
+    unsigned char nLevel = GetClassLevel(nSlot, 0) + 1;
 #if KOTOR1
-        if (nLevel < 21)
+    if (nLevel >= 21)
 #else
-        if (nLevel < 51)
+    if (nLevel >= 51)
 #endif
-        {
-            nClass = pRec->m_class;
-        }
-        else
-        {
-            nNormalFeats = 0;
-            nBonusFeats = 0;
-            return;
-        }
+    {
+        nNormalFeats = 0;
+        nBonusFeats = 0;
+        return;
     }
 
     CSWClass* pClass = &pRules->m_paClasses[nClass];
@@ -4481,14 +4378,7 @@ int CSWSCreatureStats::GetCanUseSkill(unsigned char nSkill)
             }
             return 0;
         }
-#if KOTOR1
         return GetSkillRank(nSkillIdx, 0, 1) > 0;
-#else
-        int nRank = m_pSkillRanks[nSkillIdx];
-        nRank = (nRank < 127) ? nRank : 127;
-        nRank = (nRank > -127) ? nRank : -127;
-        return nRank > 0;
-#endif
     }
     return 0;
 }
@@ -4530,8 +4420,7 @@ void CSWSCreatureStats::SetMovementRate(int nRate)
 // The tag lives on the owning object; the engine lower-cases it on the way in.
 void CSWSCreatureStats::SetTag(const CExoString& sTag)
 {
-    CSWSCreature* pOwner = m_pOwner;
-    pOwner->m_sTag = sTag.LowerCase();
+    m_pOwner->SetTag(sTag);
 }
 
 // Returns the effective ability score, the base byte plus effects and equipment.
@@ -4651,6 +4540,8 @@ unsigned int CSWSCreatureStats::CalculateExpNeededForNextLevel()
 
 // Under the multiclass XP penalty, every class trailing the highest non-favored class by more than
 // one level raises the cost of the next level.
+// EFFECTIVE (K2): the inlined GetClassLevel compares of the favoured-class pick fold into a different
+// cmp/ccmp/csel chain (580 vs 588 B); same reads and result.
 void CSWSCreatureStats::AddExperience(unsigned int nExp)
 {
     uint64_t nClasses = m_numClasses;
@@ -4669,7 +4560,7 @@ void CSWSCreatureStats::AddExperience(unsigned int nExp)
             for (unsigned char i = 1; i < 3; i++)
 #endif
             {
-                unsigned char nLvl = (m_numClasses <= i) ? 0 : m_classInfo[i].m_level;
+                unsigned char nLvl = GetClassLevel(i, 0);
                 if (nBestLvl < nLvl)
                 {
                     nBest = i;
@@ -4678,11 +4569,9 @@ void CSWSCreatureStats::AddExperience(unsigned int nExp)
             }
             nFavored = GetClass(nBest);
 #else
-            unsigned char nBest = (m_classInfo[0].m_level < m_classInfo[1].m_level) ? 1 : 0;
+            unsigned char nBest = (GetClassLevel(0, 0) < GetClassLevel(1, 0)) ? 1 : 0;
 #ifndef K2_FIX_ENGINE_BUGS
-            unsigned char nBestLvl = (m_numClasses <= nBest) ? 0 : m_classInfo[nBest].m_level;
-            unsigned char nLvl2 = (2 < m_numClasses) ? m_classInfo[2].m_level : 0;
-            if (nBestLvl < nLvl2)
+            if (GetClassLevel(nBest, 0) < GetClassLevel(2, 0))
                 nBest = 2;
 #endif
             nFavored = GetClass(nBest);
@@ -4693,14 +4582,15 @@ void CSWSCreatureStats::AddExperience(unsigned int nExp)
         {
             if (nFavored != m_classInfo[i].m_class)
             {
-                if (nMaxLevel <= m_classInfo[i].m_level)
-                    nMaxLevel = m_classInfo[i].m_level;
+                unsigned char nLevel = GetClassLevel(static_cast<unsigned char>(i), 0);
+                if (nMaxLevel <= nLevel)
+                    nMaxLevel = nLevel;
             }
         }
         double fPenalty = 0.0;
         for (int i = 0; static_cast<uint64_t>(i) < nClasses; i++)
         {
-            if (nFavored != m_classInfo[i].m_class && (nMaxLevel - m_classInfo[i].m_level) > 1)
+            if (nFavored != m_classInfo[i].m_class && (nMaxLevel - GetClassLevel(static_cast<unsigned char>(i), 0)) > 1)
                 fPenalty += 1.0;
         }
         nExp = static_cast<unsigned int>(static_cast<double>(nExp) * (1.0L + static_cast<long double>(fPenalty) * -0.2L));
@@ -4746,9 +4636,7 @@ void CSWSCreatureStats::SetExperience(unsigned int nExp, int bLevelUp)
             nPrevLevel = nLevel - 1;
             if (static_cast<unsigned int>(g_pRules->m_aExpTable[nPrevLevel]) <= static_cast<unsigned int>(m_nExperience))
                 break;
-            pLevelStats = 0;
-            if (m_bIsPC != 0 && m_levelStats.m_count > nPrevLevel)
-                pLevelStats = m_levelStats.m_pArray[nPrevLevel];
+            pLevelStats = GetLevelStats(nPrevLevel);
             nLevel--;
             LevelDown(pLevelStats);
         }
@@ -4757,7 +4645,8 @@ void CSWSCreatureStats::SetExperience(unsigned int nExp, int bLevelUp)
     {
         while (CanLevelUp() && m_levelStats.m_count > GetLevel(0))
         {
-            pLevelStats = m_levelStats.m_pArray[GetLevel(0)];
+            nLevel = GetLevel(0);
+            pLevelStats = m_levelStats.m_pArray[nLevel];
             if (pLevelStats != 0)
                 LevelUp(pLevelStats, 0);
         }
@@ -4790,9 +4679,9 @@ void CSWSCreatureStats::ResetFeatRemainingUses()
 {
     for (unsigned short i = 0; i < m_featRemainingUses.m_count; i++)
     {
-        CSWSStats_FeatRemainingUses* pEntry = m_featRemainingUses.m_pArray[i];
+        CFeatUseListEntry* pEntry = m_featRemainingUses.m_pArray[i];
         if (pEntry != 0)
-            pEntry->m_nUsesUsed = 0;
+            pEntry->m_nUses = 0;
     }
 }
 
@@ -4807,12 +4696,12 @@ unsigned char CSWSCreatureStats::GetFeatRemainingUses(unsigned short nFeat)
     unsigned short i = 0;
     while (i < m_featRemainingUses.m_count)
     {
-        CSWSStats_FeatRemainingUses* pEntry = m_featRemainingUses.m_pArray[i++];
+        CFeatUseListEntry* pEntry = m_featRemainingUses.m_pArray[i++];
         if (pEntry->m_nFeat == nFeat)
         {
             if (pEntry == 0)
                 return 100;
-            unsigned char nRemaining = pFeat->m_maxUses - pEntry->m_nUsesUsed;
+            unsigned char nRemaining = pFeat->m_maxUses - pEntry->m_nUses;
             return (nRemaining < 100) ? nRemaining : 100;
         }
     }
@@ -4829,7 +4718,7 @@ void CSWSCreatureStats::RemoveFeat(unsigned short nFeat)
     {
         for (short i = static_cast<short>(nLast); i >= 0; i--)
         {
-            CSWSStats_FeatRemainingUses* pEntry = m_featRemainingUses.m_pArray[i];
+            CFeatUseListEntry* pEntry = m_featRemainingUses.m_pArray[i];
             if (pEntry->m_nFeat == nFeat)
             {
                 m_featRemainingUses.DelIndex(i);
@@ -5016,17 +4905,12 @@ char CSWSCreatureStats::GetReflexSavingThrow(int bIgnoreEffects)
         nEffectBonus = m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nUnused, 0,
                                                      0, 2, 0, CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
     }
-#if KOTOR1  // K1 takes the dex term from GetDEXMod(0)
-    // K1: calls IsDebilitated in both arms.
+#if KOTOR1  // K1's GetDEXMod returns char
     char nDexMod = GetDEXMod(0);
-    return static_cast<char>(nEffectBonus + GetBaseReflexSavingThrow() + nDexMod + m_nReflexSaveBonus);
 #else
-    int bDebilitated = m_pOwner->IsDebilitated(1);
-    int nDexMod = 0;
-    if ((m_nDEXMod < 0) || (bDebilitated == 0))
-        nDexMod = m_nDEXMod;
-    return static_cast<char>(nEffectBonus + GetBaseReflexSavingThrow() + nDexMod + m_nReflexSaveBonus);
+    int nDexMod = GetDEXMod(0);
 #endif
+    return static_cast<char>(nEffectBonus + GetBaseReflexSavingThrow() + nDexMod + m_nReflexSaveBonus);
 }
 
 // Each of the three saving throws is the base value plus the ability modifier plus the effect bonus
@@ -5253,30 +5137,10 @@ void CSWSCreatureStats::SetStatById(int nStatId, float fValue)
         m_nDEXBase = static_cast<unsigned char>(fValue);
         UpdateDEXModifier();
         break;
-    case 7:
-    {
-        m_nCONBase = static_cast<unsigned char>(fValue);
-        short nOldMax = m_pOwner->GetMaxHitPoints(1);
-        m_nCONMod = static_cast<signed char>(CalcStatModifier(GetCONStat()));
-        m_pOwner->SetCurrentHitPoints(m_pOwner->GetCurrentHitPoints(1) +
-                                      (m_pOwner->GetMaxHitPoints(1) - nOldMax));
-        break;
-    }
-    case 8:
-        m_nINTBase = static_cast<unsigned char>(fValue);
-        m_nINTMod = static_cast<unsigned char>(CalcStatModifier(GetINTStat()));
-        AdjustSpellUsesPerDay();
-        break;
-    case 9:
-        m_nWISBase = static_cast<unsigned char>(fValue);
-        m_nWISMod = static_cast<signed char>(CalcStatModifier(GetWISStat()));
-        AdjustSpellUsesPerDay();
-        break;
-    case 10:
-        m_nCHABase = static_cast<unsigned char>(fValue);
-        m_nCHAMod = static_cast<unsigned char>(CalcStatModifier(GetCHAStat()));
-        AdjustSpellUsesPerDay();
-        break;
+    case 7:  SetCONBase(static_cast<unsigned char>(fValue), 1); break;
+    case 8:  SetINTBase(static_cast<unsigned char>(fValue)); break;
+    case 9:  SetWISBase(static_cast<unsigned char>(fValue)); break;
+    case 10: SetCHABase(static_cast<unsigned char>(fValue)); break;
     case 11: m_nOverrideBaseAttackBonus = static_cast<unsigned char>(fValue); break;
     case 12:
         m_forceResistance = static_cast<char>(fValue);
@@ -5290,26 +5154,18 @@ void CSWSCreatureStats::LevelDown(CSWLevelStats* pLevelStats)
 {
     short nOldMaxHP = m_pOwner->GetMaxHitPoints(1);
 
-// K1: lays out the class-slot search loop the other way round.
-    int nClassPos = 0;
-    if (m_numClasses != 0)
+    int nClassPos;
+    for (nClassPos = 0; static_cast<unsigned char>(nClassPos) < m_numClasses; nClassPos++)
     {
-        while (m_classInfo[static_cast<unsigned char>(nClassPos)].m_class != pLevelStats->m_nClass)
+        if (m_classInfo[static_cast<unsigned char>(nClassPos)].m_class == pLevelStats->m_nClass)
         {
-            nClassPos++;
-            if (m_numClasses <= static_cast<unsigned char>(nClassPos))
-                goto LNoClass;
+            SetClassLevel(static_cast<unsigned char>(nClassPos),
+                          GetClassLevel(static_cast<unsigned char>(nClassPos), 0) - 1);
+            break;
         }
-        SetClassLevel(static_cast<unsigned char>(nClassPos), m_classInfo[static_cast<unsigned char>(nClassPos)].m_level - 1);
-        goto LClassDone;
-    LNoClass:
-        if (static_cast<unsigned char>(nClassPos) == 0xff && m_numClasses <= static_cast<unsigned char>(nClassPos))
-        {
-            m_numClasses--;
-            nClassPos = 0xff;
-        }
-    LClassDone:;
     }
+    if (static_cast<unsigned char>(nClassPos) == 0xff && GetClassLevel(static_cast<unsigned char>(nClassPos), 0) == 0)
+        m_numClasses--;
 
     m_pOwner->m_hitPoints = static_cast<short>(m_pOwner->m_hitPoints) - pLevelStats->m_nHitPointGain;
 
@@ -5328,19 +5184,13 @@ void CSWSCreatureStats::LevelDown(CSWLevelStats* pLevelStats)
         UpdateCONModifier();
         break;
     case ABILITY_INTELLIGENCE:
-        m_nINTBase--;
-        UpdateINTModifier();
-        AdjustSpellUsesPerDay();
+        SetINTBase(m_nINTBase - 1);
         break;
     case ABILITY_WISDOM:
-        m_nWISBase--;
-        UpdateWISModifier();
-        AdjustSpellUsesPerDay();
+        SetWISBase(m_nWISBase - 1);
         break;
     case ABILITY_CHARISMA:
-        m_nCHABase--;
-        UpdateCHAModifier();
-        AdjustSpellUsesPerDay();
+        SetCHABase(m_nCHABase - 1);
         break;
     }
 
@@ -5350,19 +5200,7 @@ void CSWSCreatureStats::LevelDown(CSWLevelStats* pLevelStats)
         {
             if (pLevelStats->GetSkillRankChange(static_cast<unsigned short>(i)) != 0)
             {
-#if KOTOR1
                 int nRank = GetSkillRank(static_cast<unsigned char>(i), 0, 1);
-#else
-                int nRank = 0;
-                if (i < g_pRules->m_nNumSkills)
-                {
-                    nRank = m_pSkillRanks[i];
-                    if (nRank > 127)
-                        nRank = 127;
-                    if (nRank < -127)
-                        nRank = -127;
-                }
-#endif
                 SetSkillRank(static_cast<unsigned char>(i), static_cast<char>(nRank - pLevelStats->GetSkillRankChange(static_cast<unsigned short>(i))));
             }
         }
@@ -5424,58 +5262,28 @@ void CSWSCreatureStats::LevelUp(CSWLevelStats* pLevelStats, int bAllowRecalc)
     if (bAllowRecalc != 0)
         m_levelStats.Add(pLevelStats);
 
+    int bNotFound = 1;
     unsigned char nClassPos = 0;
-    if (m_numClasses != 0)
-    {
-        int bNotFound = 1;
 #if KOTOR1
-        for (unsigned char i = 0; i < m_numClasses; i++)
+    for (unsigned char i = 0; i < m_numClasses; i++)
 #else
-        for (int64_t i = 0; i < m_numClasses; i++)
+    for (int64_t i = 0; i < m_numClasses; i++)
 #endif
+    {
+        if (m_classInfo[i].m_class == pLevelStats->m_nClass)
         {
-            if (m_classInfo[i].m_class == pLevelStats->m_nClass)
-            {
-                m_classInfo[i].m_level++;
-#if !KOTOR1
-                if (m_pOwner != 0 && m_pOwner->m_bPlayerMadeCharacter != 0)
-                {
-                    if (GetLevel(0) >= 30)
-                        Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_LEVEL_30);
-                }
-#endif
-                bNotFound = 0;
-                nClassPos = static_cast<unsigned char>(i);
-            }
-        }
-        if (bNotFound != 0)
-        {
-            nClassPos = m_numClasses;
-            unsigned int nNewCount = m_numClasses + 1;
-            m_numClasses = static_cast<unsigned char>(nNewCount);
-            if (nNewCount > 0xff)
-            {
-                nClassPos = 0xff;
-                goto LClassDone;
-            }
-        }
-        else
-        {
-            goto LClassDone;
+            bNotFound = 0;
+            SetClassLevel(static_cast<unsigned char>(i), GetClassLevel(static_cast<unsigned char>(i), 0) + 1);
+            nClassPos = static_cast<unsigned char>(i);
         }
     }
-    else
+    if (bNotFound != 0)
     {
-        nClassPos = 0;
-        m_numClasses = 1;
+        nClassPos = m_numClasses;
+        m_numClasses++;
+        SetClass(nClassPos, pLevelStats->m_nClass);
+        SetClassLevel(nClassPos, 1);
     }
-    m_classInfo[nClassPos].m_class = pLevelStats->m_nClass;
-#if KOTOR1
-    m_classInfo[nClassPos].m_level = 1;
-#else
-    SetClassLevel(nClassPos, 1);
-#endif
-LClassDone:;
 
     m_pOwner->m_hitPoints = static_cast<short>(m_pOwner->m_hitPoints) + pLevelStats->m_nHitPointGain;
     m_nBaseForcePoints += pLevelStats->m_nForcePointGain;
@@ -5495,19 +5303,13 @@ LClassDone:;
         UpdateCONModifier();
         break;
     case ABILITY_INTELLIGENCE:
-        m_nINTBase++;
-        UpdateINTModifier();
-        AdjustSpellUsesPerDay();
+        SetINTBase(m_nINTBase + 1);
         break;
     case ABILITY_WISDOM:
-        m_nWISBase++;
-        UpdateWISModifier();
-        AdjustSpellUsesPerDay();
+        SetWISBase(m_nWISBase + 1);
         break;
     case ABILITY_CHARISMA:
-        m_nCHABase++;
-        UpdateCHAModifier();
-        AdjustSpellUsesPerDay();
+        SetCHABase(m_nCHABase + 1);
         break;
     }
 
@@ -5517,19 +5319,7 @@ LClassDone:;
         {
             if (pLevelStats->GetSkillRankChange(static_cast<unsigned short>(i)) != 0)
             {
-#if KOTOR1
                 int nRank = GetSkillRank(static_cast<unsigned char>(i), 0, 1);
-#else
-                int nRank = 0;
-                if (i < g_pRules->m_nNumSkills)
-                {
-                    nRank = m_pSkillRanks[i];
-                    if (nRank > 127)
-                        nRank = 127;
-                    if (nRank < -127)
-                        nRank = -127;
-                }
-#endif
                 SetSkillRank(static_cast<unsigned char>(i), static_cast<char>(pLevelStats->GetSkillRankChange(static_cast<unsigned short>(i)) + nRank));
             }
         }
@@ -5618,65 +5408,21 @@ void CSWSCreatureStats::UpdateLastStatsObject(uint64_ll_t nUpdateFields,
         pUpdate->m_anAbilityBases[3] = m_nINTBase;
         pUpdate->m_anAbilityBases[4] = m_nWISBase;
         pUpdate->m_anAbilityBases[5] = m_nCHABase;
-        int nTmp;
-        nTmp = 0;
-        pUpdate->m_anAbilityEffectBonuses[0] =
-            static_cast<unsigned char>(m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_ABILITY,
-                                                                     NULL, nTmp, 0, 0, 0, 0, CSWSCreature::EFFECT_BONUS_ANY, 0, 0, NULL));
-        nTmp = 0;
-        pUpdate->m_anAbilityEffectBonuses[1] =
-            static_cast<unsigned char>(m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_ABILITY,
-                                                                     NULL, nTmp, 0, 0, 0, 0, CSWSCreature::EFFECT_BONUS_ANY, 1, 0, NULL));
-        nTmp = 0;
-        pUpdate->m_anAbilityEffectBonuses[2] =
-            static_cast<unsigned char>(m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_ABILITY,
-                                                                     NULL, nTmp, 0, 0, 0, 0, CSWSCreature::EFFECT_BONUS_ANY, 2, 0, NULL));
-        nTmp = 0;
-        pUpdate->m_anAbilityEffectBonuses[3] =
-            static_cast<unsigned char>(m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_ABILITY,
-                                                                     NULL, nTmp, 0, 0, 0, 0, CSWSCreature::EFFECT_BONUS_ANY, 3, 0, NULL));
-        nTmp = 0;
-        pUpdate->m_anAbilityEffectBonuses[4] =
-            static_cast<unsigned char>(m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_ABILITY,
-                                                                     NULL, nTmp, 0, 0, 0, 0, CSWSCreature::EFFECT_BONUS_ANY, 4, 0, NULL));
-        nTmp = 0;
-        pUpdate->m_anAbilityEffectBonuses[5] =
-            static_cast<unsigned char>(m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_ABILITY,
-                                                                     NULL, nTmp, 0, 0, 0, 0, CSWSCreature::EFFECT_BONUS_ANY, 5, 0, NULL));
+        pUpdate->m_anAbilityEffectBonuses[0] = static_cast<unsigned char>(GetTotalSTRBonus());
+        pUpdate->m_anAbilityEffectBonuses[1] = static_cast<unsigned char>(GetTotalDEXBonus());
+        pUpdate->m_anAbilityEffectBonuses[2] = static_cast<unsigned char>(GetTotalCONBonus());
+        pUpdate->m_anAbilityEffectBonuses[3] = static_cast<unsigned char>(GetTotalINTBonus());
+        pUpdate->m_anAbilityEffectBonuses[4] = static_cast<unsigned char>(GetTotalWISBonus());
+        pUpdate->m_anAbilityEffectBonuses[5] = static_cast<unsigned char>(GetTotalCHABonus());
         int nDexAC = GetDEXMod(1);
-        int bDebilitated = m_pOwner->IsDebilitated(1);
-        pUpdate->m_nDexACBonus =
-            static_cast<char>(nDexAC - ((m_nDEXMod < 0) ? m_nDEXMod : (bDebilitated ? 0 : m_nDEXMod)));
+        pUpdate->m_nDexACBonus = static_cast<char>(nDexAC - GetDEXMod(0));
     }
     if (nUpdateFields & STATS_UPDATE_FORT_SAVE)
-    {
-        int nTmp = 0;
-        char nEffectBonus =
-            static_cast<char>(m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, NULL,
-                                                            nTmp, 0, 0, 1, 0, CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, NULL));
-        pUpdate->m_nFortSave = m_nCONMod + nEffectBonus
-            + GetBaseFortSavingThrow() + m_nFortSaveBonus;
-    }
+        pUpdate->m_nFortSave = GetFortSavingThrow(0);
     if (nUpdateFields & STATS_UPDATE_WILL_SAVE)
-    {
-        int nTmp = 0;
-        char nEffectBonus =
-            static_cast<char>(m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, NULL,
-                                                            nTmp, 0, 0, 3, 0, CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, NULL));
-        pUpdate->m_nWillSave = m_nWISMod + nEffectBonus
-            + GetBaseWillSavingThrow() + m_nWillSaveBonus;
-    }
+        pUpdate->m_nWillSave = GetWillSavingThrow(0);
     if (nUpdateFields & STATS_UPDATE_REFLEX_SAVE)
-    {
-        int nTmp = 0;
-        int nEffectBonus =
-            m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, NULL, nTmp, 0, 0, 2, 0,
-                                          CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, NULL);
-        int bDebilitated = m_pOwner->IsDebilitated(1);
-        char nDexMod = (m_nDEXMod < 0) ? m_nDEXMod : (bDebilitated ? 0 : m_nDEXMod);
-        pUpdate->m_nReflexSave = static_cast<unsigned char>(nEffectBonus
-            + GetBaseReflexSavingThrow() + nDexMod + m_nReflexSaveBonus);
-    }
+        pUpdate->m_nReflexSave = static_cast<unsigned char>(GetReflexSavingThrow(0));
     if (nUpdateFields & STATS_UPDATE_EXPERIENCE)
     {
         pUpdate->m_nExperience = m_nExperience;
@@ -5684,11 +5430,7 @@ void CSWSCreatureStats::UpdateLastStatsObject(uint64_ll_t nUpdateFields,
     if (nUpdateFields & STATS_UPDATE_BASE_ATTACK_BONUS)
     {
         pUpdate->m_nBaseAttackBonus = static_cast<unsigned char>(GetBaseAttackBonus());
-        if (m_pOwner->GetUseMonkAbilities())
-            pUpdate->m_bMonkUnarmed =
-                    (m_pOwner->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON) == NULL);
-        else
-            pUpdate->m_bMonkUnarmed = 0;
+        pUpdate->m_bMonkUnarmed = GetUseMonkAttackTables(0);
     }
     if (nUpdateFields & STATS_UPDATE_COMBAT_INFORMATION)
     {
@@ -5722,27 +5464,9 @@ void CSWSCreatureStats::UpdateLastStatsObject(uint64_ll_t nUpdateFields,
 unsigned char CSWSCreatureStats::GetLevel(int bApplyNegativeLevels)
 {
     int nLevel = 0;
-#if KOTOR1
-// K1: the class sum only, through the owner's GetClassLevel.
     for (int i = 0; i < m_numClasses; i++)
         nLevel += m_pOwner->m_pStats->GetClassLevel(static_cast<unsigned char>(i), bApplyNegativeLevels);
-#else
-    if (m_numClasses != 0)
-    {
-        for (int i = 0; i < m_numClasses; i++)
-        {
-            if (m_pOwner->m_pStats->m_numClasses > static_cast<unsigned char>(i))
-            {
-                int nClassLevel = m_pOwner->m_pStats->m_classInfo[i].m_level;
-                if (bApplyNegativeLevels != 0)
-                    nClassLevel -= m_pOwner->m_pStats->m_classInfo[i].m_negativeLevels;
-                if (nClassLevel > 0)
-                    nLevel += static_cast<unsigned char>(nClassLevel);
-            }
-        }
-    }
-#endif
-#if !KOTOR1
+#if !KOTOR1  // K1: the class sum only
     if (m_pOwner != 0 && m_pOwner->m_pStats->m_bIsPC == 0 && m_pOwner->m_bInParty == 0 &&
         m_pOwner->m_nMultiplierSet != 0)
     {
@@ -5917,22 +5641,7 @@ int CSWSCreatureStats::GetCreatureHasTalent(int nType, int nId)
             }
             else
             {
-                int bFound = 0;
-                int64_t nSpellLikes = m_pSpellLikeAbilityList->m_count;
-                CSWSStats_SpellLikeAbility* pSpellLike = m_pSpellLikeAbilityList->m_pArray;
-                if (nSpellLikes > 0)
-                {
-                    do
-                    {
-                        if (pSpellLike->m_nSpellId == static_cast<unsigned int>(nId) && pSpellLike->m_nReady == 1)
-                        {
-                            bFound = 1;
-                            break;
-                        }
-                        pSpellLike++;
-                    } while (--nSpellLikes != 0);
-                }
-                if (bFound != 0)
+                if (GetIsInSpellLikeAbilityList(static_cast<unsigned int>(nId)) != 0)
                 {
                     bHas = 1;
                 }
@@ -6176,18 +5885,7 @@ int CSWSCreatureStats::GetCreatureTalentRandomPowerFromItem(int a1, int a2, int&
                 CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
                 if (pSpell == 0)
                     continue;
-                int nFlags = pSpell->m_nCategory;
-                int bFail0 = ((a1 & TALENT_CATEGORY_DIGIT_0) != TALENT_CATEGORY_DIGIT_0) & ((a1 & TALENT_CATEGORY_DIGIT_0) != (nFlags & TALENT_CATEGORY_DIGIT_0));
-                int bFail1 = ((a1 & TALENT_CATEGORY_DIGIT_1) != TALENT_CATEGORY_DIGIT_1) & ((a1 & TALENT_CATEGORY_DIGIT_1) != (nFlags & TALENT_CATEGORY_DIGIT_1));
-                int bFail2 = ((a1 & TALENT_CATEGORY_DIGIT_2) != TALENT_CATEGORY_DIGIT_2) & ((a1 & TALENT_CATEGORY_DIGIT_2) != (nFlags & TALENT_CATEGORY_DIGIT_2));
-                int bFail3 = ((a1 & TALENT_CATEGORY_DIGIT_3) != TALENT_CATEGORY_DIGIT_3) & ((a1 & TALENT_CATEGORY_DIGIT_3) != (nFlags & TALENT_CATEGORY_DIGIT_3));
-                if (bFail0)
-                    continue;
-                if (bFail1)
-                    continue;
-                if (bFail2)
-                    continue;
-                if (bFail3)
+                if (CheckForCategoryMatch(pSpell->m_nCategory, a1) != 1)
                     continue;
                 if (a2 == -1) {
                     pSpells->Add(nSpellId);
@@ -6239,18 +5937,7 @@ int CSWSCreatureStats::GetCreatureTalentRandomFeat(int a1, int a2, int& a3, int&
         CSWFeat* pFeat = g_pRules->GetFeat(nFeat);
         if (pFeat == 0)
             continue;
-        int nCategory = pFeat->m_nCategory;
-        int bFail0 = ((a1 & TALENT_CATEGORY_DIGIT_0) != TALENT_CATEGORY_DIGIT_0) & ((a1 & TALENT_CATEGORY_DIGIT_0) != (nCategory & TALENT_CATEGORY_DIGIT_0));
-        int bFail1 = ((a1 & TALENT_CATEGORY_DIGIT_1) != TALENT_CATEGORY_DIGIT_1) & ((a1 & TALENT_CATEGORY_DIGIT_1) != (nCategory & TALENT_CATEGORY_DIGIT_1));
-        int bFail2 = ((a1 & TALENT_CATEGORY_DIGIT_2) != TALENT_CATEGORY_DIGIT_2) & ((a1 & TALENT_CATEGORY_DIGIT_2) != (nCategory & TALENT_CATEGORY_DIGIT_2));
-        int bFail3 = ((a1 & TALENT_CATEGORY_DIGIT_3) != TALENT_CATEGORY_DIGIT_3) & ((a1 & TALENT_CATEGORY_DIGIT_3) != (nCategory & TALENT_CATEGORY_DIGIT_3));
-        if (bFail0)
-            continue;
-        if (bFail1)
-            continue;
-        if (bFail2)
-            continue;
-        if (bFail3)
+        if (CheckForCategoryMatch(pFeat->m_nCategory, a1) == 0)
             continue;
         if (!CheckInclusionMatch(1, nFeat, a6))
             continue;
@@ -6305,9 +5992,9 @@ void CSWSCreatureStats::AddFeat(unsigned short nFeat)
             if (m_featRemainingUses.m_pArray[i++]->m_nFeat == nFeat)
                 return;
         }
-        CSWSStats_FeatRemainingUses* pEntry = new CSWSStats_FeatRemainingUses;
+        CFeatUseListEntry* pEntry = new CFeatUseListEntry;
         pEntry->m_nFeat = nFeat;
-        pEntry->m_nUsesUsed = 0;
+        pEntry->m_nUses = 0;
         m_featRemainingUses.Add(pEntry);
     }
 }
@@ -6332,6 +6019,23 @@ int CSWSCreatureStats::GetCreatureTalentRandomKnownPower(int a1, int a2, int& a3
             continue;
         if (nCost > static_cast<short>(m_nTemporaryForcePoints + m_nCurrentForcePoints))
             continue;
+        if (GetCreatureHasTalent(0, nSpellId) == 0)
+            continue;
+        if (m_pOwner->GetArea() != 0) {
+            int nFlags = pSpell->m_nCategory;
+            int bOk0 = ((a1 & TALENT_CATEGORY_DIGIT_0) == TALENT_CATEGORY_DIGIT_0) | ((a1 & TALENT_CATEGORY_DIGIT_0) == (nFlags & TALENT_CATEGORY_DIGIT_0));
+            int bOk1 = ((a1 & TALENT_CATEGORY_DIGIT_1) == TALENT_CATEGORY_DIGIT_1) | ((a1 & TALENT_CATEGORY_DIGIT_1) == (nFlags & TALENT_CATEGORY_DIGIT_1));
+            int bOk2 = ((a1 & TALENT_CATEGORY_DIGIT_2) == TALENT_CATEGORY_DIGIT_2) | ((a1 & TALENT_CATEGORY_DIGIT_2) == (nFlags & TALENT_CATEGORY_DIGIT_2));
+            int bOk3 = ((a1 & TALENT_CATEGORY_DIGIT_3) == TALENT_CATEGORY_DIGIT_3) | ((a1 & TALENT_CATEGORY_DIGIT_3) == (nFlags & TALENT_CATEGORY_DIGIT_3));
+            if (!bOk0)
+                continue;
+            if (!bOk1)
+                continue;
+            if (!bOk2)
+                continue;
+            if (!bOk3)
+                continue;
+        }
 #else
         int nForceRating = 0;
         CSWSArea* pArea = static_cast<CSWSArea*>(m_pOwner->GetArea());
@@ -6351,8 +6055,6 @@ int CSWSCreatureStats::GetCreatureTalentRandomKnownPower(int a1, int a2, int& a3
         int nPct = 0;
         switch (nForceBodyLevel) {
         case CSWSEffectListHandler::FORCE_BODY_LEVEL_NONE:
-            if (nSpellId == a8)
-                continue;
             if (nCost > static_cast<short>(m_nTemporaryForcePoints + m_nCurrentForcePoints))
                 continue;
             goto talent;
@@ -6367,28 +6069,10 @@ int CSWSCreatureStats::GetCreatureTalentRandomKnownPower(int a1, int a2, int& a3
             m_pOwner->GetCurrentHitPoints(0);
             continue;
         }
-        if (nSpellId == a8)
-            continue;
-        goto talent;
     talent:
-#endif
-        if (GetCreatureHasTalent(0, nSpellId) == 0)
+        if (CheckPowerSuitability(nSpellId, pSpell, a1, 0, 0, 0, 0, a8) == 0)
             continue;
-        if (m_pOwner->GetArea() != 0) {
-            int nFlags = pSpell->m_nCategory;
-            int bOk0 = ((a1 & TALENT_CATEGORY_DIGIT_0) == TALENT_CATEGORY_DIGIT_0) | ((a1 & TALENT_CATEGORY_DIGIT_0) == (nFlags & TALENT_CATEGORY_DIGIT_0));
-            int bOk1 = ((a1 & TALENT_CATEGORY_DIGIT_1) == TALENT_CATEGORY_DIGIT_1) | ((a1 & TALENT_CATEGORY_DIGIT_1) == (nFlags & TALENT_CATEGORY_DIGIT_1));
-            int bOk2 = ((a1 & TALENT_CATEGORY_DIGIT_2) == TALENT_CATEGORY_DIGIT_2) | ((a1 & TALENT_CATEGORY_DIGIT_2) == (nFlags & TALENT_CATEGORY_DIGIT_2));
-            int bOk3 = ((a1 & TALENT_CATEGORY_DIGIT_3) == TALENT_CATEGORY_DIGIT_3) | ((a1 & TALENT_CATEGORY_DIGIT_3) == (nFlags & TALENT_CATEGORY_DIGIT_3));
-            if (!bOk0)
-                continue;
-            if (!bOk1)
-                continue;
-            if (!bOk2)
-                continue;
-            if (!bOk3)
-                continue;
-        }
+#endif
         if (a2 == -1) {
             pSpells->Add(nSpellId);
             pClasses->Add(static_cast<unsigned char>(nClassIndex));
@@ -6505,18 +6189,8 @@ int CSWSCreatureStats::HasSpell(unsigned char nSpellLevel, unsigned int nSpellId
 {
     int nFound = 0;
     for (unsigned char i = 0; i < m_numClasses; i++) {
-        CExoArrayList<unsigned int>* pKnown = &m_classInfo[i].m_knownSpells[nSpellLevel];
-        int64_t nCount = static_cast<unsigned short>(pKnown->m_count);
-        if (nCount != 0) {
-            unsigned int* pEntry = pKnown->m_pArray;
-            do {
-                if (*pEntry == nSpellId) {
-                    nFound = 1;
-                    break;
-                }
-                pEntry++;
-            } while (--nCount != 0);
-        }
+        if (m_classInfo[i].HasSpell(nSpellLevel, nSpellId))
+            nFound = 1;
     }
 #if KOTOR1
 // K1: the affordability test is the plain alignment and party cost.
@@ -6602,7 +6276,7 @@ int CSWSCreatureStats::FeatRequirementsMet(unsigned short nFeat,
             unsigned char nClassId = m_classInfo[i].m_class;
             CSWClass* pClass = &g_pRules->m_paClasses[nClassId];
             if (pClass->m_bSpellCaster != 0)
-                bFound = pClass->GetSpellsKnownPerLevel(m_classInfo[i].m_level, pFeat->m_nMinSpellLvl,
+                bFound = pClass->GetSpellsKnownPerLevel(GetClassLevel(static_cast<unsigned char>(i), 0), pFeat->m_nMinSpellLvl,
                                                         nClassId, m_nRace, m_nCHABase) != 0;
         }
     }
@@ -6670,18 +6344,9 @@ int CSWSCreatureStats::CanChooseFeat(unsigned short nFeat, unsigned char nNormal
         return 0;
 #endif
 
-// Both flags start at 0 and are set only under the two null checks.
-    int bNormal = 0;
-    int bBonus = 0;
-    CSWClass* pClass;
-    pFeat = g_pRules->GetFeat(nFeat);
-    if (pFeat != 0) {
-        pClass = &g_pRules->m_paClasses[GetClass(m_numClasses - 1)];
-        if (pClass != 0) {
-            bNormal = pClass->IsNormalFeat(nFeat) != 0;
-            bBonus = pClass->IsBonusFeat(nFeat) != 0;
-        }
-    }
+    int bNormal;
+    int bBonus;
+    SetNormalBonusFlags(nFeat, bNormal, bBonus);
     if ((bNormal | bBonus) == 0)
         return 0;
 
@@ -6691,18 +6356,9 @@ int CSWSCreatureStats::CanChooseFeat(unsigned short nFeat, unsigned char nNormal
         aChosen.m_pArray[i] = 0;
     for (unsigned short i = 0; i < pChosenFeats->m_count; i++)
     {
-        unsigned short nChosen = pChosenFeats->m_pArray[i];
-        CSWClass* pChosenClass;
         int bChosenNormal;
         int bChosenBonus;
-        CSWFeat* pChosenFeat = g_pRules->GetFeat(nChosen);
-        if (pChosenFeat == 0)
-            continue;
-        pChosenClass = &g_pRules->m_paClasses[GetClass(m_numClasses - 1)];
-        if (pChosenClass == 0)
-            continue;
-        bChosenNormal = pChosenClass->IsNormalFeat(nChosen);
-        bChosenBonus = pChosenClass->IsBonusFeat(nChosen);
+        SetNormalBonusFlags(pChosenFeats->m_pArray[i], bChosenNormal, bChosenBonus);
         if (bChosenBonus != 0)
         {
             if (nBonusLeft != 0 && bChosenNormal == 0)
@@ -6721,32 +6377,23 @@ int CSWSCreatureStats::CanChooseFeat(unsigned short nFeat, unsigned char nNormal
     }
 
     int bCanChoose = 0;
-    pFeat = g_pRules->GetFeat(nFeat);
-    if (pFeat != 0)
+    SetNormalBonusFlags(nFeat, bNormal, bBonus);
+    if (bBonus != 0)
     {
-        pClass = &g_pRules->m_paClasses[GetClass(m_numClasses - 1)];
-        if (pClass != 0)
+        if (bNormal == 0)
         {
-            bNormal = pClass->IsNormalFeat(nFeat);
-            bBonus = pClass->IsBonusFeat(nFeat);
-            if (bBonus != 0)
-            {
-                if (bNormal == 0)
-                {
-                    if (nBonusLeft == 0)
-                        return 0;
-                    nBonusLeft--;
-                    bCanChoose = 1;
-                }
-            }
-            else if (bNormal != 0)
-            {
-                if (nNormalLeft == 0)
-                    return 0;
-                nNormalLeft--;
-                bCanChoose = 1;
-            }
+            if (nBonusLeft == 0)
+                return 0;
+            nBonusLeft--;
+            bCanChoose = 1;
         }
+    }
+    else if (bNormal != 0)
+    {
+        if (nNormalLeft == 0)
+            return 0;
+        nNormalLeft--;
+        bCanChoose = 1;
     }
 
     for (unsigned short i = 0; i < pChosenFeats->m_count; i++)
@@ -7104,14 +6751,7 @@ void CSWSCreatureStats::AutoLevelup(int a)
                     nMaxRank = static_cast<unsigned char>(nMaxRankBase) >> static_cast<int>(bFullCost == 0);
                 }
 
-                int nCurRank = 0;
-                if (static_cast<unsigned char>(nSkill) < g_pRules->m_nNumSkills) {
-                    nCurRank = m_pSkillRanks[static_cast<unsigned char>(nSkill)];
-                    if (nCurRank > 127)
-                        nCurRank = 127;
-                    if (nCurRank < -127)
-                        nCurRank = -127;
-                }
+                int nCurRank = GetSkillRank(static_cast<unsigned char>(nSkill), 0, 1);
                 int nAvail = nMaxRank - nCurRank;
 
                 if (!bIsPC) {
@@ -7374,8 +7014,7 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
     m_description = pGFF->ReadFieldCExoLocString(pStruct, const_cast<char*>("Description"), success, m_description);
 
     m_bIsPC = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("IsPC"), success, static_cast<unsigned char>(m_bIsPC));
-    m_pOwner->m_sTag = pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), success, m_pOwner->m_sTag)
-                           .LowerCase();
+    SetTag(pGFF->ReadFieldCExoString(pStruct, const_cast<char*>("Tag"), success, m_pOwner->m_sTag));
     SetDialog(pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Conversation"), success, m_conversation));
     m_nInterruptable = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Interruptable"), success, static_cast<unsigned char>(m_nInterruptable));
     m_nAge = pGFF->ReadFieldINT(pStruct, const_cast<char*>("Age"), success, m_nAge);
@@ -7399,17 +7038,11 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
     UpdateSTRModifier();
     m_nDEXBase = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Dex"), success, m_nDEXBase);
     UpdateDEXModifier();
-    m_nINTBase = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Int"), success, m_nINTBase);
-    UpdateINTModifier();
-    AdjustSpellUsesPerDay();
-    m_nWISBase = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Wis"), success, m_nWISBase);
-    UpdateWISModifier();
-    AdjustSpellUsesPerDay();
+    SetINTBase(pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Int"), success, m_nINTBase));
+    SetWISBase(pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Wis"), success, m_nWISBase));
     m_nCONBase = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Con"), success, m_nCONBase);
     UpdateCONModifier();
-    m_nCHABase = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Cha"), success, m_nCHABase);
-    UpdateCHAModifier();
-    AdjustSpellUsesPerDay();
+    SetCHABase(pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("Cha"), success, m_nCHABase));
 
     m_nACNaturalBase = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("NaturalAC"), success, m_nACNaturalBase);
     m_pOwner->m_nSoundSetFile =
@@ -7518,48 +7151,27 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
         unsigned char nPerceptionRange = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("PerceptionRange"), success, RANGES_ROW_PERCEPTION_DEFAULT);
         if (nPerceptionRange == RANGES_ROW_PERCEPTION_DEFAULT) {
             int nPerceptionDist;
-            {
-                CExoString col(const_cast<char*>("PERCEPTIONDIST"));
-                if (!g_pRules->m_p2DArrays->m_pAppearance->GetINTEntry(
-                        m_nAppearanceType, col, &nPerceptionDist))
-                    return STRREF_INVALID_VISIBILITY_RANGE;
-            }
-            {
-                CExoString col(const_cast<char*>("PrimaryRange"));
-                if (!g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(nPerceptionDist, col, &fRange))
-                    return STRREF_INVALID_VISIBILITY_RANGE;
-            }
+            if (!g_pRules->m_p2DArrays->m_pAppearance->GetINTEntry(
+                    m_nAppearanceType, CExoString(const_cast<char*>("PERCEPTIONDIST")), &nPerceptionDist))
+                return STRREF_INVALID_VISIBILITY_RANGE;
+            if (!g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(nPerceptionDist, CExoString(const_cast<char*>("PrimaryRange")), &fRange))
+                return STRREF_INVALID_VISIBILITY_RANGE;
             m_pOwner->m_fPerceptionPrimaryRange = fRange;
-            {
-                CExoString col(const_cast<char*>("SecondaryRange"));
-                if (!g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(nPerceptionDist, col, &fRange))
-                    return STRREF_INVALID_VISIBILITY_RANGE;
-            }
+            if (!g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(nPerceptionDist, CExoString(const_cast<char*>("SecondaryRange")), &fRange))
+                return STRREF_INVALID_VISIBILITY_RANGE;
         } else if (nPerceptionRange != RANGES_ROW_PERCEPTION_PLAYER) {
-            {
-                CExoString col(const_cast<char*>("PrimaryRange"));
-                if (!g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(nPerceptionRange, col, &fRange))
-                    return STRREF_INVALID_VISIBILITY_RANGE;
-            }
+            if (!g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(nPerceptionRange, CExoString(const_cast<char*>("PrimaryRange")), &fRange))
+                return STRREF_INVALID_VISIBILITY_RANGE;
             m_pOwner->m_fPerceptionPrimaryRange = fRange;
-            {
-                CExoString col(const_cast<char*>("SecondaryRange"));
-                if (!g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(nPerceptionRange, col, &fRange))
-                    return STRREF_INVALID_VISIBILITY_RANGE;
-            }
+            if (!g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(nPerceptionRange, CExoString(const_cast<char*>("SecondaryRange")), &fRange))
+                return STRREF_INVALID_VISIBILITY_RANGE;
         } else {
             return STRREF_INVALID_VISIBILITY_RANGE;
         }
     } else {
-        {
-            CExoString col(const_cast<char*>("PrimaryRange"));
-            g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(RANGES_ROW_PERCEPTION_PLAYER, col, &fRange);
-        }
+        g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(RANGES_ROW_PERCEPTION_PLAYER, CExoString(const_cast<char*>("PrimaryRange")), &fRange);
         m_pOwner->m_fPerceptionPrimaryRange = fRange;
-        {
-            CExoString col(const_cast<char*>("SecondaryRange"));
-            g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(RANGES_ROW_PERCEPTION_PLAYER, col, &fRange);
-        }
+        g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(RANGES_ROW_PERCEPTION_PLAYER, CExoString(const_cast<char*>("SecondaryRange")), &fRange);
     }
     m_pOwner->m_fPerceptionSecondaryRange = fRange;
 
@@ -7584,16 +7196,9 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
                     }
                     if (i < m_numClasses && m_classInfo[i].m_class != CLASS_TYPE_INVALID) {
                         unsigned short nLevel = pGFF->ReadFieldSHORT(
-                            &classElem, const_cast<char*>("ClassLevel"), success, m_classInfo[i].m_level);
-                        if (i < m_numClasses) {
-                            m_classInfo[i].m_level = static_cast<unsigned char>(nLevel);
-#if !KOTOR1
-                            if (m_pOwner != 0 && m_pOwner->m_bPlayerMadeCharacter != 0) {
-                                if (GetLevel(0) >= 30)
-                                    Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_LEVEL_30);
-                            }
-#endif
-                        }
+                            &classElem, const_cast<char*>("ClassLevel"), success,
+                            GetClassLevel(static_cast<unsigned char>(i), 0));
+                        SetClassLevel(static_cast<unsigned char>(i), static_cast<unsigned char>(nLevel));
                         m_classInfo[i].m_negativeLevels = 0;
                         if (CSWClass::IsJedi((i < m_numClasses) ? m_classInfo[i].m_class : CLASS_TYPE_INVALID)) {
                             CResList spellsPerDayList;
@@ -7678,39 +7283,41 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
                 pLvlStats->m_nClass = pGFF->ReadFieldBYTE(&lvlElem, const_cast<char*>("LvlStatClass"), success,
                                                           pLvlStats->m_nClass);
 
-                CExoString label;
-                label.Format(const_cast<char*>("%s%d"), const_cast<char*>("KnownList"), 0);
-                CResList gainedList;
-                if (pGFF->GetList(&gainedList, &lvlElem, static_cast<char*>(label.CStr()))) {
-                    unsigned short j = 0;
-                    while (true) {
-                        unsigned short nSpellCount = static_cast<unsigned short>(pGFF->GetListCount(&gainedList));
-                        if (nSpellCount <= j)
-                            break;
-                        CResStruct spellElem;
-                        if (pGFF->GetListElement(&spellElem, &gainedList, j)) {
-                            unsigned short nSpell =
-                                pGFF->ReadFieldWORD(&spellElem, const_cast<char*>("Spell"), success, 0xffff);
-                            pLvlStats->AddAddedKnownSpell(0, nSpell);
+                {
+                    CExoString label;
+                    label.Format(const_cast<char*>("%s%d"), const_cast<char*>("KnownList"), 0);
+                    CResList gainedList;
+                    if (pGFF->GetList(&gainedList, &lvlElem, static_cast<char*>(label.CStr()))) {
+                        unsigned short j = 0;
+                        while (true) {
+                            unsigned short nSpellCount = static_cast<unsigned short>(pGFF->GetListCount(&gainedList));
+                            if (nSpellCount <= j)
+                                break;
+                            CResStruct spellElem;
+                            if (pGFF->GetListElement(&spellElem, &gainedList, j)) {
+                                unsigned short nSpell =
+                                    pGFF->ReadFieldWORD(&spellElem, const_cast<char*>("Spell"), success, 0xffff);
+                                pLvlStats->AddAddedKnownSpell(0, nSpell);
+                            }
+                            j++;
                         }
-                        j++;
                     }
-                }
-                label.Format(const_cast<char*>("%s%d"), const_cast<char*>("KnownRemoveList"), 0);
-                CResList lostList;
-                if (pGFF->GetList(&lostList, &lvlElem, static_cast<char*>(label.CStr()))) {
-                    unsigned short j = 0;
-                    while (true) {
-                        unsigned short nSpellCount = static_cast<unsigned short>(pGFF->GetListCount(&lostList));
-                        if (nSpellCount <= j)
-                            break;
-                        CResStruct spellElem;
-                        if (pGFF->GetListElement(&spellElem, &lostList, j)) {
-                            unsigned short nSpell =
-                                pGFF->ReadFieldWORD(&spellElem, const_cast<char*>("Spell"), success, 0xffff);
-                            pLvlStats->AddRemovedKnownSpell(0, nSpell);
+                    label.Format(const_cast<char*>("%s%d"), const_cast<char*>("KnownRemoveList"), 0);
+                    CResList lostList;
+                    if (pGFF->GetList(&lostList, &lvlElem, static_cast<char*>(label.CStr()))) {
+                        unsigned short j = 0;
+                        while (true) {
+                            unsigned short nSpellCount = static_cast<unsigned short>(pGFF->GetListCount(&lostList));
+                            if (nSpellCount <= j)
+                                break;
+                            CResStruct spellElem;
+                            if (pGFF->GetListElement(&spellElem, &lostList, j)) {
+                                unsigned short nSpell =
+                                    pGFF->ReadFieldWORD(&spellElem, const_cast<char*>("Spell"), success, 0xffff);
+                                pLvlStats->AddRemovedKnownSpell(0, nSpell);
+                            }
+                            j++;
                         }
-                        j++;
                     }
                 }
 
@@ -8000,22 +7607,7 @@ void CSWSCreatureStats::AddKnownSpell(unsigned char nClass, unsigned int nSpell)
         return;
     if (m_bIsPC != 0 && !CSWClass::IsJedi(GetClass(nClass)))
         return;
-    CExoArrayList<unsigned int>& list = m_classInfo[nClass].m_knownSpells[0];
-    int nCount = list.m_count;
-    int nIndex = -1;
-    int64_t j = 0;
-    while (true) {
-        if (j >= nCount)
-            break;
-        if (list.m_pArray[j] == nSpell) {
-            nIndex = static_cast<int>(j);
-            break;
-        }
-        j++;
-    }
-    if (nIndex != -1)
-        return;
-    list.Add(nSpell);
+    m_classInfo[nClass].AddKnownSpell(0, nSpell);
 }
 
 // The identity half of the .bic GFF write.
@@ -8044,25 +7636,9 @@ void CSWSCreatureStats::SaveStats(CResGFF* pGFF, CResStruct* pStruct)
     pGFF->WriteFieldDWORD(pStruct, m_pOwner->GetComponent(), const_cast<char*>("ItemComponent"));
     pGFF->WriteFieldDWORD(pStruct, m_pOwner->GetChemical(), const_cast<char*>("Chemicals"));
 #endif
-    {
-        int nFx = 0;
-        int nBonus = m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nFx, 0, 0, 2,
-                                                   0, CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-        int nDebilitated = m_pOwner->IsDebilitated(1);
-        int nDexMod = (m_nDEXMod < 0 || nDebilitated == 0) ? m_nDEXMod : 0;
-        pGFF->WriteFieldCHAR(pStruct, static_cast<char>(nBonus + GetBaseReflexSavingThrow() + nDexMod + m_nReflexSaveBonus),
-                             const_cast<char*>("RefSaveThrow"));
-        nFx = 0;
-        nBonus = m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nFx, 0, 0, 3, 0,
-                                               CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-        pGFF->WriteFieldCHAR(pStruct, static_cast<char>(m_nWISMod + nBonus + GetBaseWillSavingThrow() + m_nWillSaveBonus),
-                             const_cast<char*>("WillSaveThrow"));
-        nFx = 0;
-        nBonus = m_pOwner->GetTotalEffectBonus(CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nFx, 0, 0, 1, 0,
-                                               CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-        pGFF->WriteFieldCHAR(pStruct, static_cast<char>(m_nCONMod + nBonus + GetBaseFortSavingThrow() + m_nFortSaveBonus),
-                             const_cast<char*>("FortSaveThrow"));
-    }
+    pGFF->WriteFieldCHAR(pStruct, GetReflexSavingThrow(0), const_cast<char*>("RefSaveThrow"));
+    pGFF->WriteFieldCHAR(pStruct, GetWillSavingThrow(0), const_cast<char*>("WillSaveThrow"));
+    pGFF->WriteFieldCHAR(pStruct, GetFortSavingThrow(0), const_cast<char*>("FortSaveThrow"));
     pGFF->WriteFieldSHORT(pStruct, m_pOwner->GetArmorClass(), const_cast<char*>("ArmorClass"));
     pGFF->WriteFieldBYTE(pStruct, m_nSTRBase, const_cast<char*>("Str"));
     pGFF->WriteFieldBYTE(pStruct, m_nDEXBase, const_cast<char*>("Dex"));
@@ -8167,8 +7743,7 @@ void CSWSCreatureStats::SaveClassInfo(CResGFF* pGFF, CResStruct* pStruct)
         CResStruct classElem;
         pGFF->AddListElement(&classElem, &classList, 2);
         pGFF->WriteFieldINT(&classElem, m_classInfo[i].m_class, const_cast<char*>("Class"));
-        pGFF->WriteFieldSHORT(&classElem,
-                              (i < m_numClasses) ? m_classInfo[i].m_level : 0, const_cast<char*>("ClassLevel"));
+        pGFF->WriteFieldSHORT(&classElem, GetClassLevel(static_cast<unsigned char>(i), 0), const_cast<char*>("ClassLevel"));
         if (CSWClass::IsJedi((i < m_numClasses) ? m_classInfo[i].m_class : CLASS_TYPE_INVALID)) {
             CResList spellsPerDayList;
             pGFF->AddList(&spellsPerDayList, &classElem, const_cast<char*>("SpellsPerDayList"));
@@ -8262,18 +7837,7 @@ void CSWSCreatureStats::SaveClassInfo(CResGFF* pGFF, CResStruct* pStruct)
     for (int i = 0; i < 8; i++) {
         CResStruct skillElem;
         pGFF->AddListElement(&skillElem, &skillList, 0);
-#if KOTOR1
         int nRank = GetSkillRank(static_cast<unsigned char>(i), 0, 1);
-#else
-        int nRank = 0;
-        if (i < g_pRules->m_nNumSkills) {
-            nRank = m_pSkillRanks[i];
-            if (nRank > 127)
-                nRank = 127;
-            if (nRank < -127)
-                nRank = -127;
-        }
-#endif
         pGFF->WriteFieldBYTE(&skillElem, static_cast<unsigned char>(nRank), const_cast<char*>("Rank"));
     }
 

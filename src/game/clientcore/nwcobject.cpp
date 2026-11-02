@@ -848,7 +848,7 @@ int CSWCObject::FadeObject()
         return 0;
     }
 
-    unsigned long long nSnapshotDelta =
+    uint64_ll_t nSnapshotDelta =
         g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTimeDifference();
     unsigned int nElapsed = static_cast<unsigned int>(nSnapshotDelta / 1000);
     if (m_desiredFadeState == 1)
@@ -1159,28 +1159,10 @@ void CSWCObject::ClientServerSyncHandler_Animation(int a, float speed)
 {
     m_animationSpeed = speed;
     if (m_currentAnimation != a) {
-        if (m_objectType == 9 || m_objectType == 5) {
-            if (static_cast<unsigned short>(a - CUTSCENE_ANIMATION_FIRE_FORGET) < CUTSCENE_ANIMATION_BANK_SIZE)
-                goto queue;
-            if (static_cast<unsigned short>(a - CUTSCENE_ANIMATION_FIRE_FORGET_OUT_OF_PLACE) < CUTSCENE_ANIMATION_BANK_SIZE)
-                goto queue;
-        }
-        {
-            int nEntry = 0;
-            unsigned short nRow;
-            if (m_pModel)
-                nRow = m_pModel->ServerToClientAnimation(static_cast<unsigned short>(a));
-            else
-                nRow = static_cast<unsigned short>(a);
-            if (g_pRules->m_p2DArrays->m_pAnimations->GetINTEntry(
-                    nRow, CTwoDimArrays::COL2DA_ANIMATIONS_FIREFORGET, &nEntry) == 0 ||
-                nEntry == 0) {
-                SetAnimation(static_cast<unsigned short>(a), 0, 0);
-                return;
-            }
-        }
-    queue:
-        AddFireForgetAnimation(static_cast<unsigned short>(a), 0);
+        if (AnimationFireAndForget(static_cast<unsigned short>(a)))
+            AddFireForgetAnimation(static_cast<unsigned short>(a), 0);
+        else
+            SetAnimation(static_cast<unsigned short>(a), 0, 0);
     }
 }
 
@@ -1471,8 +1453,7 @@ int CSWCObject::SetAnimation(unsigned short nAnimation, int b, int nForce)
             if ((nAnimation == 0 && m_loopingAnimation == 1) ||
                 (nAnimation == 1 && m_loopingAnimation == 0))
             {
-                if (AnimationLooping(nAnimation) == 1)
-                    m_loopingAnimation = nAnimation;
+                SetLoopingAnimation(nAnimation);
                 return 1;
             }
 
@@ -1615,13 +1596,10 @@ int CSWCObject::SetAnimation(unsigned short nAnimation, int b, int nForce)
             {
                 if (nAttackId == nPauseReady)
                 {
-                    if (AnimationLooping(nAnimation)) {
-                        if (AnimationLooping(nAnimation) == 1)
-                            m_loopingAnimation = nAnimation;
-                    } else {
-                        if (AnimationLooping(SERVER_ANIMATION_PAUSE) == 1)
-                            m_loopingAnimation = SERVER_ANIMATION_PAUSE;
-                    }
+                    if (AnimationLooping(nAnimation))
+                        SetLoopingAnimation(nAnimation);
+                    else
+                        SetLoopingAnimation(SERVER_ANIMATION_PAUSE);
                     AddFireForgetAnimation(static_cast<unsigned short>(nSoundId), 0);
                 }
                 else
@@ -1635,14 +1613,12 @@ int CSWCObject::SetAnimation(unsigned short nAnimation, int b, int nForce)
                     pData->m_reaxnGroup.m_nReaxnDelay = static_cast<unsigned short>(static_cast<int>(fLength));
                     pData->m_fAnimationSpeed = m_animationSpeed;
                     AddFireForgetAnimation(static_cast<unsigned short>(nSoundId), pData);
-                    if (AnimationLooping(nAnimation) == 1)
-                        m_loopingAnimation = nAnimation;
+                    SetLoopingAnimation(nAnimation);
                 }
             }
             else
             {
-                if (AnimationLooping(nAnimation) == 1)
-                    m_loopingAnimation = nAnimation;
+                SetLoopingAnimation(nAnimation);
             }
         }
 
@@ -1755,23 +1731,8 @@ int CSWCObject::AnimationFireAndForget(unsigned short a)
 // two special ranges outright, otherwise the animations.2da looping column must be non-zero.
 void CSWCObject::SetLoopingAnimation(unsigned short a)
 {
-    if (m_objectType == 5) {
-        if (static_cast<unsigned short>(a - CUTSCENE_ANIMATION_LOOPING) < CUTSCENE_ANIMATION_BANK_SIZE)
-            goto store;
-        if (static_cast<unsigned short>(a - CUTSCENE_ANIMATION_LOOPING_OUT_OF_PLACE) < CUTSCENE_ANIMATION_BANK_SIZE)
-            goto store;
-    }
-    {
-        int nEntry = 0;
-        unsigned short nRow = a;
-        if (m_pModel)
-            nRow = m_pModel->ServerToClientAnimation(a);
-        if (!(g_pRules->m_p2DArrays->m_pAnimations->GetINTEntry(
-                  nRow, CTwoDimArrays::COL2DA_ANIMATIONS_LOOPING, &nEntry) && nEntry != 0))
-            return;
-    }
-store:
-    m_loopingAnimation = a;
+    if (AnimationLooping(a))
+        m_loopingAnimation = a;
 }
 
 int CSWCObject::AnimationHideEquippedItems(unsigned short a)

@@ -33,7 +33,6 @@ bool IosIsIphone(int& nScreenWidth, int& nScreenHeight);
 extern CTlkTable* g_pTlkTable;
 #endif
 
-#define CEXO_ARRAYLIST_KEEP_ADDUNIQUE_OUT_OF_LINE
 #include "CExoArrayListImpl.h"
 
 
@@ -45,6 +44,7 @@ extern CTlkTable* g_pTlkTable;
 #include "itemtype.h"
 #include "tutorial.h"
 #include "strref.h"
+#include "exostringinline.h"
 
 // CSWCCreature::IsLeaderUsableItem's check mask: every check.
 enum {
@@ -406,7 +406,10 @@ void CSWGuiInGameInventory::PopulateItemListBox()
         m_lbItems.SetSelectedControl(-1, 0);
         m_labelDescription.m_text.m_params.SetText(CExoString(""));
     } else if (m_bRestoreListPosition) {
-        m_lbItems.SetTopVisible(m_nSavedTopRow);
+        int nMaxTop = m_lbItems.m_aControls.m_count - m_lbItems.m_nVisibleRows;
+        if (nMaxTop < 0)
+            nMaxTop = 0;
+        m_lbItems.m_nTopRow = static_cast<short>(nMaxTop > m_nSavedTopRow ? m_nSavedTopRow : nMaxTop);
         int nLast = aControls.m_count - 1;
         m_lbItems.SetSelectedControl(static_cast<short>(nLast > m_nSavedSelectedIndex ? m_nSavedSelectedIndex : nLast), 0);
         m_bRestoreListPosition = 0;
@@ -526,7 +529,7 @@ void CSWGuiInGameInventory::UpdatePlayerStats()
     if (pCreature == 0)
         return;
 
-    m_labelPort.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+    m_labelPort.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
     m_labelDef.m_text.m_params.SetText(CExoString(static_cast<short>(pCreature->m_pStats->GetArmorClass(0))));
 
     CExoString sVit;
@@ -550,15 +553,15 @@ void CSWGuiInGameInventory::UpdatePortraits()
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
     if (pParty->m_nCharacterCount >= 2) {
         m_btnChange1.m_tail.bVisible = 1;
-        m_btnChange1.m_border.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1), 0);
-        m_btnChange1.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1), 0);
+        m_btnChange1.m_border.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1));
+        m_btnChange1.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(1)->GetPortrait(1));
     } else {
         m_btnChange1.m_tail.bVisible = 0;
     }
     if (pParty->m_nCharacterCount >= 3) {
         m_btnChange2.m_tail.bVisible = 1;
-        m_btnChange2.m_border.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1), 0);
-        m_btnChange2.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1), 0);
+        m_btnChange2.m_border.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1));
+        m_btnChange2.m_borderHilight.m_params.SetFillImage(pParty->GetCharacter(2)->GetPortrait(1));
     } else {
         m_btnChange2.m_tail.bVisible = 0;
     }
@@ -609,8 +612,8 @@ void CSWGuiInGameInventory::OnSwitchLeft(CSWGuiControl* pControl)
     if (nCur == -2)
         return;
 
-    m_btnChange2.m_border.m_params.SetFillImage(m_btnChange1.m_border.m_params.m_fillImage, 0);
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(m_btnChange1.m_borderHilight.m_params.m_fillImage, 0);
+    m_btnChange2.m_border.m_params.SetFillImage(m_btnChange1.m_border.m_params.m_fillImage);
+    m_btnChange2.m_borderHilight.m_params.SetFillImage(m_btnChange1.m_borderHilight.m_params.m_fillImage);
     m_btnChange2.m_tail.m_nUserData = m_btnChange1.m_tail.m_nUserData;
 
     CSWCCreature* pCreature;
@@ -628,9 +631,9 @@ void CSWGuiInGameInventory::OnSwitchLeft(CSWGuiControl* pControl)
     }
     if (m_nNPC != -1 && static_cast<signed char>(m_btnChange2.m_tail.m_nUserData) != -1) {
         m_btnChange1.m_border.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_borderHilight.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
@@ -648,8 +651,8 @@ void CSWGuiInGameInventory::OnSwitchLeft(CSWGuiControl* pControl)
     return;
 
 found:
-    m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+    m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+    m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
     m_btnChange1.m_tail.m_nUserData = i;
 }
 
@@ -661,8 +664,8 @@ void CSWGuiInGameInventory::OnSwitchRight(CSWGuiControl* pControl)
     if (nCur == -2)
         return;
 
-    m_btnChange1.m_border.m_params.SetFillImage(m_btnChange2.m_border.m_params.m_fillImage, 0);
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(m_btnChange2.m_borderHilight.m_params.m_fillImage, 0);
+    m_btnChange1.m_border.m_params.SetFillImage(m_btnChange2.m_border.m_params.m_fillImage);
+    m_btnChange1.m_borderHilight.m_params.SetFillImage(m_btnChange2.m_borderHilight.m_params.m_fillImage);
     m_btnChange1.m_tail.m_nUserData = m_btnChange2.m_tail.m_nUserData;
 
     CSWCCreature* pCreature;
@@ -680,9 +683,9 @@ void CSWGuiInGameInventory::OnSwitchRight(CSWGuiControl* pControl)
     }
     if (m_nNPC != -1) {
         m_btnChange2.m_border.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange2.m_borderHilight.m_params.SetFillImage(
-            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1), 0);
+            g_pAppManager->m_pClientExoApp->GetPlayerCreature()->GetPortrait(1));
         m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
@@ -700,8 +703,8 @@ void CSWGuiInGameInventory::OnSwitchRight(CSWGuiControl* pControl)
     return;
 
 found:
-    m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+    m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+    m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
     m_btnChange2.m_tail.m_nUserData = i;
 }
 #else
@@ -1360,10 +1363,8 @@ void CSWGuiInGameInventory::OnControlEntered(CSWGuiControl* pControl)
         m_bSelectedItemUsable = pControl->m_tail.m_nUserData & 1;
 #endif
 
-        if (pItem->m_bits.m_bNewItem) {
-            if (m_aUsedOid.Contains(oid) == 0)
-                m_aUsedOid.Add(oid);
-        }
+        if (pItem->m_bits.m_bNewItem)
+            m_aUsedOid.AddUnique(oid);
     }
 
     m_lbDescription.ClearItems();
@@ -1373,12 +1374,7 @@ void CSWGuiInGameInventory::OnControlEntered(CSWGuiControl* pControl)
     K2QolFitText(*pText, 0x7fffffff);
 #endif
     CSWGuiExtent extent = m_labelDescription.m_extent;
-#if KOTOR1
     if (m_labelDescription.m_text.m_params.m_sText.GetLength() >= 1)
-#else
-    if (m_labelDescription.m_text.m_params.m_sText.m_sString != 0 &&
-        static_cast<int>(strlen(m_labelDescription.m_text.m_params.m_sText.m_sString)) >= 1)
-#endif
         extent.h = pText->GetIdealHeight();
     else
         extent.h = pText->GetFontHeight();

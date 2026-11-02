@@ -29,7 +29,7 @@ CSoundSet::~CSoundSet()
 
 int CSoundSet::GetStrres(unsigned short nStrres, STR_RES& strRes)
 {
-    unsigned char* pData = static_cast<unsigned char*>(m_pRes->GetData());
+    unsigned char* pData = static_cast<unsigned char*>(GetData());
 
     unsigned int nTableOffset = reinterpret_cast<SSFHeader*>(pData)->nStrRefTableOffset;
     ByteSwap(&nTableOffset);

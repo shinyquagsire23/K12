@@ -757,7 +757,7 @@ inline void CSWGuiMainInterfaceChar::SetHealth(int nCur, int nMax, int bPoisoned
     CResRef sGreen("greenfill");
     CResRef sRed("redfill");
 #endif
-    m_aBars[0].m_borderProgress.m_params.SetFillImage(bPoisoned ? sGreen : sRed, 0);
+    m_aBars[0].m_borderProgress.m_params.SetFillImage(bPoisoned ? sGreen : sRed);
     m_nMaxHP = nMax;
     m_nCurHP = nCur;
     m_bToolTipDirty = 1;

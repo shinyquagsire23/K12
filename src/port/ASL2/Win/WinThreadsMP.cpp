@@ -343,11 +343,7 @@ unsigned int EventHANDLE::WaitForSingleObjectEx(unsigned int dwMilliseconds)
 
 unsigned int EventHANDLE::Signal()
 {
-    pthread_mutex_lock(&m_mutex);
-    m_bSignaled = true;
-    m_nSignalCount++;
-    pthread_cond_broadcast(&m_cond);
-    pthread_mutex_unlock(&m_mutex);
+    SetEvent();
     SetLastError(0);
     return 1;
 }
@@ -470,15 +466,7 @@ unsigned int MutexHANDLE::WaitForSingleObject(unsigned int dwMilliseconds)
 
 unsigned int MutexHANDLE::Signal()
 {
-    int nErr = 0;
-    if (pthread_equal(pthread_self(), m_hOwner)) {
-        if (m_nRecursionCount != 0)
-            m_nRecursionCount--;
-        else
-            m_hOwner = 0;
-    } else {
-        nErr = ERROR_NOT_OWNER;
-    }
+    unsigned int nErr = Release();
     SetLastError(nErr);
     return nErr == 0;
 }

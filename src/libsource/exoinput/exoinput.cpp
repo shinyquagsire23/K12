@@ -2,8 +2,8 @@
 #include "exofile.h"
 #include "restype.h"
 
-int CExoInput::KEYBOARD_START = 6;
-int CExoInput::JOYSTICK_START = 110;
+const int CExoInput::KEYBOARD_START = 6;
+const int CExoInput::JOYSTICK_START = 110;
 
 const int CExoInput::INPUTDEVICE_NONE          = -1;
 const int CExoInput::INPUTDEVICE_KEYBOARD      = 0;

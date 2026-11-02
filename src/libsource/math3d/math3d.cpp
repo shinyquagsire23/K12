@@ -111,18 +111,11 @@ Vector normalize(const Vector& v)
 
 Vector Orth(const Vector& v)
 {
-    // Falls back to the Y axis when the first cross product is shorter than 0.01; a length
-    // below 1e-09 takes the +X default. The length is measured once per candidate.
+    // Falls back to the Y axis when the first cross product is shorter than 0.01.
     Vector vOrth = cross(v, Vector(1.0f, 0.0f, 0.0f));
-    float fLen = magnitude(vOrth);
-    if (fLen < 0.01)
-    {
+    if (magnitude(vOrth) < 0.01)
         vOrth = cross(v, Vector(0.0f, 1.0f, 0.0f));
-        fLen = magnitude(vOrth);
-    }
-    if (fLen < 1e-09)
-        return Vector(1.0f, 0.0f, 0.0f);
-    return vOrth * (1.0f / fLen);
+    return normalize(vOrth);
 }
 
 Vector Orth(const Vector& a, const Vector& b)
@@ -270,6 +263,10 @@ Vector planelineintersection(const Vector& vNormal, float fDist, const Vector& v
     return vLineStart + dif * fT;
 }
 
+// Min/max macros that evaluate the chosen argument a second time for the result.
+#define MATH3D_MIN(a, b) ((a) > (b) ? (b) : (a))
+#define MATH3D_MAX(a, b) ((a) < (b) ? (b) : (a))
+
 Vector planesegmentintersection(const Vector& vNormal, float fDist, const Vector& vLineStart,
                                 const Vector& vLineEnd)
 {
@@ -280,12 +277,8 @@ Vector planesegmentintersection(const Vector& vNormal, float fDist, const Vector
     float fT = 0.0f;
     if (fDenom != 0.0f)
     {
-        fT = -(dot(vNormal, vLineStart) + fDist) / fDenom;
         // Clamp the crossing parameter to the segment.
-        if (fT > 1.0f)
-            fT = 1.0f;
-        else if (fT < 0.0f)
-            fT = 0.0f;
+        fT = MATH3D_MAX(MATH3D_MIN(-(dot(vNormal, vLineStart) + fDist) / fDenom, 1.0f), 0.0f);
     }
     return vLineStart + dif * fT;
 }
@@ -774,18 +767,17 @@ Quaternion pointto(const Vector& n)
 
 Quaternion RotationArc(Vector from, Vector to)
 {
-    static Vector v;
-    v = normalize(from);
-    Vector vTo = normalize(to);
+    static Quaternion q;
+    from.Normalize();
+    to.Normalize();
 
-    float fDot = v.x * vTo.x + v.y * vTo.y + v.z * vTo.z;
+    float fDot = from.x * to.x + from.y * to.y + from.z * to.z;
     if (fDot <= -1.0f)
         return Quaternion(0.0f, 1.0f, 0.0f, 0.0f);
 
-    Vector vAxis = cross(v, vTo);
+    Vector vAxis = cross(from, to);
     float fScale = sqrtf(2.0f * (1.0f + fDot));
 
-    Quaternion q;
     q.x = vAxis.x / fScale;
     q.y = vAxis.y / fScale;
     q.z = vAxis.z / fScale;

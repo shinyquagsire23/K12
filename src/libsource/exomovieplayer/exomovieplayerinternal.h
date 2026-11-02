@@ -39,6 +39,7 @@ public:
 
     int  GetNumberOfMoviesToPlay();
     int  IsMoviePlaying();
+    void ClearMovies() { m_aMovies.SetSize(0); }
 
     int  StartMovie(CExoString const& sMovie);
     void StopMovie();

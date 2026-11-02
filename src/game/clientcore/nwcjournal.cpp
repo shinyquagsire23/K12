@@ -357,12 +357,8 @@ int CSWCSortedJournalArrayList::SortItemsByPriority(int a, int b)
     unsigned int pb = m_entries.m_pArray[b].m_nPriority;
     if (pa > pb)
         return -1;
-    if (pa >= pb) {
-        CWorldTimer* pTimer = g_pAppManager->m_pClientExoApp->GetWorldTimer();
-        SJournalEntry& ea = m_entries.m_pArray[a];
-        SJournalEntry& eb = m_entries.m_pArray[b];
-        return pTimer->CompareWorldTimes(ea.m_nDate, ea.m_nTime, eb.m_nDate, eb.m_nTime);
-    }
+    if (pa >= pb)
+        return SortItemsByDate(a, b);
     return 1;
 }
 
@@ -373,12 +369,8 @@ int CSWCSortedJournalArrayList::SortItemsByPlanet(int a, int b)
     int pb = m_entries.m_pArray[b].m_nPlanetId;
     if (pa > pb)
         return 1;
-    if (pa >= pb) {
-        CWorldTimer* pTimer = g_pAppManager->m_pClientExoApp->GetWorldTimer();
-        SJournalEntry& ea = m_entries.m_pArray[a];
-        SJournalEntry& eb = m_entries.m_pArray[b];
-        return pTimer->CompareWorldTimes(ea.m_nDate, ea.m_nTime, eb.m_nDate, eb.m_nTime);
-    }
+    if (pa >= pb)
+        return SortItemsByDate(a, b);
     return -1;
 }
 
@@ -411,20 +403,12 @@ void CSWCJournal::CallFullUpdateComplete()
 // Display index to record through the sort-order list, or null when the index is out of range.
 SJournalEntry* CSWCJournal::GetDoneEntryAt(int i)
 {
-    if (i < 0)
-        return 0;
-    if (m_done.m_entries.m_count <= i)
-        return 0;
-    return &m_done.m_entries.m_pArray[m_done.m_sortOrder.m_pArray[i]];
+    return m_done.GetEntryAt(i);
 }
 
 SJournalEntry* CSWCJournal::GetActiveEntryAt(int i)
 {
-    if (i < 0)
-        return 0;
-    if (m_active.m_entries.m_count <= i)
-        return 0;
-    return &m_active.m_entries.m_pArray[m_active.m_sortOrder.m_pArray[i]];
+    return m_active.GetEntryAt(i);
 }
 
 // Empties both pages, freeing the storage of each of the four lists.
@@ -571,7 +555,7 @@ void CSWCWorldJournal::DeleteEntry(unsigned int nEntry)
 void CSWCWorldJournal::DeleteAllEntries()
 {
     m_entries.SetSize(0);
-    m_sortOrder.Clear();
+    m_sortOrder.SetSize(0);
     m_bModified = 1;
 }
 

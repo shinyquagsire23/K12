@@ -69,8 +69,8 @@ public:
     int  CheckBreakdownFilter(CSWSItem* pItem, CSWSCreature* pCreature, int nUnused);
     int CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiControl*>& aControls,
                         unsigned long long oidItem, int bInventory, CExoString sTag);
-    int  GetItemSellValue(CSWSItem* pItem);
-    int  GetItemBuyValue(CSWSItem* pItem);
+    unsigned int GetItemSellValue(CSWSItem* pItem);
+    unsigned int GetItemBuyValue(CSWSItem* pItem);
     void SellItemCallback(CSWGuiControl* pControl);
     void BuyItemCallback(CSWGuiControl* pControl);
     void SellItem(CSWSItem* pItem);

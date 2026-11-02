@@ -604,7 +604,7 @@ void ImageFillAlpha(unsigned char* pData, int nWidth, int nHeight, int nBpp, con
     {
         for (int x = 0; x < nWidth; x++)
         {
-            unsigned char* pPixel = pData + static_cast<int64_t>(y * nWidth + x) * nBpp;
+            unsigned char* pPixel = pData + (y * nWidth + x) * nBpp;
             unsigned char nA = pPixel[3];
             float fA = nA / 255.0f;
             float fR = (static_cast<float>(pPixel[0]) / 255.0f * fA + vColor.x * (1.0f - fA)) * 255.0f;
@@ -915,15 +915,8 @@ unsigned char* ImageReadTGA(FILE* pFile, int* pWidth, int* pHeight, int* pBpp)
     if (!pFile)
         return 0;
 
-    TGATail header;
-    fread(&header, 18, 1, pFile);
-    *pWidth = header.m_nWidth;
-    *pHeight = header.m_nHeight;
-    *pBpp = header.m_nBpp >> 3;
-
-    int nSize = *pWidth * *pHeight * *pBpp;
-    unsigned char* pNew = new unsigned char[nSize];
-    fread(pNew, 1, nSize, pFile);
+    ImageReadTGAHeader(pFile, pWidth, pHeight, pBpp);
+    unsigned char* pNew = ImageReadTGAImage(pFile, *pWidth, *pHeight, *pBpp);
     ImageFlipRB(pNew, *pWidth, *pHeight, *pBpp);
     return pNew;
 }
@@ -931,7 +924,6 @@ unsigned char* ImageReadTGA(FILE* pFile, int* pWidth, int* pHeight, int* pBpp)
 unsigned char* ImageReadTGA(char* pszName, int* pWidth, int* pHeight, int* pBpp)
 {
     char szPath[256];
-    TGATail header;
     if (!pszName)
         return 0;
     if (!*pszName)
@@ -947,19 +939,14 @@ unsigned char* ImageReadTGA(char* pszName, int* pWidth, int* pHeight, int* pBpp)
             return 0;
     }
 
-    fread(&header, 18, 1, pFile);
-    *pWidth = header.m_nWidth;
-    *pHeight = header.m_nHeight;
-    *pBpp = header.m_nBpp >> 3;
-
-    int nSize = *pWidth * *pHeight * *pBpp;
-    unsigned char* pNew = new unsigned char[nSize];
-    fread(pNew, 1, nSize, pFile);
+    ImageReadTGAHeader(pFile, pWidth, pHeight, pBpp);
+    unsigned char* pNew = ImageReadTGAImage(pFile, *pWidth, *pHeight, *pBpp);
     fclose(pFile);
     ImageFlipRB(pNew, *pWidth, *pHeight, *pBpp);
     return pNew;
 }
 
+__attribute__((no_stack_protector))
 unsigned char* ImageReadTGAImage(FILE* pFile, int nWidth, int nHeight, int nBpp)
 {
     int nSize = nWidth * nHeight * nBpp;
@@ -1029,7 +1016,6 @@ unsigned char* ImageRead(FILE* pFile, int* pWidth, int* pHeight, int* pBpp)
 int ImageReadHeader(char* pszName, int* pWidth, int* pHeight, int* pBpp)
 {
     char szPath[256];
-    TGATail header;
     if (!pszName)
         return 0;
     if (!*pszName)
@@ -1048,10 +1034,7 @@ int ImageReadHeader(char* pszName, int* pWidth, int* pHeight, int* pBpp)
             return 0;
     }
 
-    fread(&header, 18, 1, pFile);
-    *pWidth = header.m_nWidth;
-    *pHeight = header.m_nHeight;
-    *pBpp = header.m_nBpp >> 3;
+    ImageReadTGAHeader(pFile, pWidth, pHeight, pBpp);
     fclose(pFile);
     return 1;
 }
@@ -1209,8 +1192,7 @@ void ImageWriteTGA(char* pszName, int nWidth, int nHeight, int nBpp, unsigned ch
     fwrite(&header, sizeof(header), 1, pFile);
 
     int nSize = nWidth * nHeight * nBpp;
-    unsigned char* pNew = new unsigned char[nSize];
-    memcpy(pNew, pData, nSize);  // idiom-exempt: runtime length
+    unsigned char* pNew = ImageDup(pData, nWidth, nHeight, nBpp, 0);
     if (bFlipY)
         ImageFlipY(pNew, nWidth, nHeight, nBpp);
     ImageFlipRB(pNew, nWidth, nHeight, nBpp);

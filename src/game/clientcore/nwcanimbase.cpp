@@ -592,9 +592,7 @@ CExoString CSWCAnimBase::GetAnimationName(unsigned short nAnimation)
         if (!g_pRules->m_p2DArrays->m_pAnimations->GetCExoStringEntry(
                 nDefaultId, CTwoDimArrays::COL2DA_ANIMATIONS_NAME, &sResult))
             sResult = "";
-#if KOTOR1  // K1 reads and discards the fallback's length
         sResult.GetLength();
-#endif
     }
     return sResult;
 }

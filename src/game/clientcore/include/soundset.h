@@ -20,6 +20,10 @@ public:
     // Returns 0/1. Slot ids are 1-based and bounded at 28; an all-ones ref means the creature has no
     // sound for that slot.
     int GetStrres(unsigned short nStrres, STR_RES& strRes);
+
+    int Demand() { return m_pRes->Demand() != 0; }
+    int Release() { return m_pRes->Release() != 0; }
+    void* GetData() { return m_pRes->GetData(); }
 };
 
 // Indexes soundset.2da, mapping a creature's SoundSetFile row to a resref, a gender and a name

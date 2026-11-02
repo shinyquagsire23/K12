@@ -1,7 +1,6 @@
 
 #include "k2stdint.h"
 #include "port/sdlapi.h"
-#define CSWGUI_FORCE_WIDGET_INLINE 1
 #include "swguiquickpanel.h"
 #include "appmanager.h"
 #include "clientexoapp.h"
@@ -193,7 +192,7 @@ void CSWGuiQuickPanel::OnSelectNameButton(CSWGuiControl* pControl)
 void CSWGuiQuickPanel::OnSelectPlayButton(CSWGuiControl* pControl)
 {
     if (m_nState > 1 && pControl->m_tail.nCurrentEventArg != 0)
-        static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->BeginPlayGame();
+        PlayGame();
 }
 
 // Raises the shared confirmation box, or cancels the page from the first row.
@@ -309,7 +308,7 @@ void CSWGuiQuickPanel::OnPanelAdded()
 // derived skill ranks.
 void CSWGuiQuickPanel::DoQuickStats()
 {
-    uint64_t nClass = m_pCreature->m_pStats->GetClassLeveledUpIn();
+    uint64_t nClass = m_pCreature->m_pStats->GetClass(m_pCreature->m_pStats->m_nNumClasses - 1);
 
     CSWClass* pClass = &g_pRules->m_paClasses[nClass & 0xff];
 
@@ -449,9 +448,5 @@ void CSWGuiQuickPanel::ConfirmCancel(CSWGuiControl* pControl)
     if (!g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox->m_bAccepted)
         return;
 
-    if (m_pParentPanel) {
-        static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->SetVisiblePanel(CSWGuiMainCharGen::VISIBLE_PANEL_QUICK_OR_CUSTOM);
-        static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->ClearAbilities();
-    }
-    SetState(0);
+    CancelPanel();
 }

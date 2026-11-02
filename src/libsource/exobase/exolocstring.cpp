@@ -44,29 +44,9 @@ CExoLocString& CExoLocString::operator=(const CExoLocString& other)
     return *this;
 }
 
-// EFFECTIVE (K1): K1 tail-duplicates the two `return 0` blocks.
 int CExoLocString::operator==(const CExoLocString& other) const
 {
-    CExoLocStringInternal* pThis = m_pInternal;
-    CExoLocStringInternal* pOther = other.m_pInternal;
-    if (pThis->m_bTlkFetched == 0)
-    {
-        if (pOther->m_bTlkFetched != 0)
-        {
-            if (pThis->m_nCount != 0)
-                return 0;
-        }
-        else if (!pThis->Compare(other))
-        {
-            return 0;
-        }
-    }
-    else if (pOther->m_bTlkFetched == 0)
-    {
-        if (pOther->m_nCount != 0)
-            return 0;
-    }
-    return m_nStrRef == other.m_nStrRef;
+    return Compare(other);
 }
 
 // EFFECTIVE (K1): K1 tail-duplicates the two `return 0` blocks.
@@ -96,46 +76,15 @@ int CExoLocString::Compare(const CExoLocString& other) const
 
 int CExoLocString::operator!=(const CExoLocString& other) const
 {
-    CExoLocStringInternal* pThis = m_pInternal;
-    CExoLocStringInternal* pOther = other.m_pInternal;
-    int eq;
-    if (pThis->m_bTlkFetched == 0)
-    {
-        if (pOther->m_bTlkFetched != 0)
-        {
-            if (pThis->m_nCount != 0)
-                return 1;
-            eq = m_nStrRef == other.m_nStrRef;
-        }
-        else if (!pThis->Compare(other))
-        {
-            return 1;
-        }
-        else
-        {
-            eq = m_nStrRef == other.m_nStrRef;
-        }
-    }
-    else if (pOther->m_bTlkFetched == 0)
-    {
-        if (pOther->m_nCount != 0)
-            return 1;
-        eq = m_nStrRef == other.m_nStrRef;
-    }
-    else
-    {
-        eq = m_nStrRef == other.m_nStrRef;
-    }
-    return !eq;
+    return !Compare(other);
 }
 
 int CExoLocString::AddString(int nLanguage, const CExoString& str, unsigned char gender)
 {
     unsigned char g1 = (nLanguage == 0) ? 0 : gender;
     int nBase = nLanguage * 2;
-    unsigned int g2 = (nLanguage == 0) ? 0 : static_cast<unsigned int>(g1 & 0xff);
 
-    m_pInternal->RemoveString(g2 + nBase);
+    RemoveString(nLanguage, g1);
 
     CExoString cur;
     GetString(nLanguage, &cur, g1);
@@ -155,7 +104,7 @@ int CExoLocString::GetString(int nLanguage, CExoString* pStr, unsigned char gend
 {
     unsigned char g = (nLanguage != 0) ? gender : 0;
     int combined = nLanguage * 2 + g;
-    if (m_pInternal->GetString(combined, pStr))
+    if (GetStringInternal(combined, pStr))
         return 1;
 
     STR_RES res;
@@ -189,7 +138,7 @@ int CExoLocString::GetString(int nLanguage, CExoString* pStr, unsigned char gend
 {
     unsigned char g = (nLanguage != 0) ? gender : 0;
     int combined = nLanguage * 2 + g;
-    if (m_pInternal->GetString(combined, pStr))
+    if (GetStringInternal(combined, pStr))
         return 1;
 
     STR_RES res;
@@ -200,15 +149,15 @@ int CExoLocString::GetString(int nLanguage, CExoString* pStr, unsigned char gend
     return 1;
 }
 
-void CExoLocString::GetStringInternal(int nID, CExoString* pStr) const
+int CExoLocString::GetStringInternal(int nID, CExoString* pStr) const
 {
-    m_pInternal->GetString(nID, pStr);
+    return m_pInternal->GetString(nID, pStr);
 }
 
 int CExoLocString::GetStringLoc(int nLanguage, CExoString* pStr, unsigned char gender) const
 {
     unsigned int g = (nLanguage != 0) ? (gender & 0xff) : 0;
-    return m_pInternal->GetString(g + nLanguage * 2, pStr);
+    return GetStringInternal(g + nLanguage * 2, pStr);
 }
 
 int CExoLocString::GetStringCount() const
@@ -223,8 +172,8 @@ unsigned int CExoLocString::GetStringLength(unsigned int nIndex) const
 
 void CExoLocString::RemoveString(int nID)
 {
-    m_pInternal->RemoveString(nID * 2);
-    m_pInternal->RemoveString((nID != 0 ? 1 : 0) | (nID << 1));
+    RemoveString(nID, 0);
+    RemoveString(nID, 1);
 }
 
 // Estimated seconds to speak the string: markup tokens are parsed out, the ends trimmed, and the

@@ -149,11 +149,7 @@ void CSWGuiUpgrade::HandleInputEvent(int type, int val)
                 m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
                 if (m_bItemsOpen & 1)
                 {
-                    ShowItems(0);
-                    m_bItemsOpen &= 0xfe;
-                    SetActiveControl(m_pActive, 0);
-                    UpdateItems();
-                    OnEnterSlot(m_pActiveControl);
+                    CloseItems();
                 }
                 else
                 {
@@ -203,11 +199,7 @@ void CSWGuiUpgrade::HandleInputEvent(int type, int val)
                 m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
                 if (m_bItemsOpen & 1)
                 {
-                    ShowItems(0);
-                    m_bItemsOpen &= 0xfe;
-                    SetActiveControl(m_pActive, 0);
-                    UpdateItems();
-                    OnEnterSlot(m_pActiveControl);
+                    CloseItems();
                 }
                 else
                 {
@@ -215,20 +207,7 @@ void CSWGuiUpgrade::HandleInputEvent(int type, int val)
                 }
                 break;
             case INPUTEVENT_GUI_X:
-                m_pItemSelect->FinishUpgrading();
-                {
-#if KOTOR1  // K1: the panel state bits sit one higher
-                    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-                    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-                    m_stateFlags = nFlags;
-                }
-                m_pGuiManager->PopModalPanel();
+                OnAssemble(0);
                 break;
             case INPUTEVENT_GUI_SCROLL_UP:
                 m_lbDesc.HandleInputEvent(INPUTEVENT_GUI_DPAD_UP, 1);
@@ -311,25 +290,20 @@ void CSWGuiUpgrade::UpdateItems()
     CExoString sUnused;
 
     CSWGuiLabel* pLabels = NULL;
-    int nSlots = 0;
     switch (m_nMenuType)
     {
     case CSWSItem::UPGRADABLE_TYPE_LIGHTSABER:
         pLabels = m_apRows;
-        nSlots = 6;
         break;
     case CSWSItem::UPGRADABLE_TYPE_RANGED:
+    case CSWSItem::UPGRADABLE_TYPE_MELEE:
     case CSWSItem::UPGRADABLE_TYPE_ARMOR:
         pLabels = m_aslotLbl;
-        nSlots = (m_nMenuType <= CSWSItem::UPGRADABLE_TYPE_MELEE) ? 3 : 2;
-        break;
-    case CSWSItem::UPGRADABLE_TYPE_MELEE:
-        pLabels = m_aslotLbl;
-        nSlots = 3;
         break;
     default:
         break;
     }
+    int nSlots = GetNumUpgrades();
 
     for (int i = 0; i < nSlots; i++)
     {
@@ -345,7 +319,7 @@ void CSWGuiUpgrade::UpdateItems()
         {
             rIcon = const_cast<char*>(SLOT_INFO[m_nMenuType - 1][i].m_szIcon);
         }
-        pLabel->m_border.m_params.SetFillImage(rIcon, 0);
+        pLabel->m_border.m_params.SetFillImage(rIcon);
     }
 
 
@@ -579,11 +553,7 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
     }
 
 FINALIZE:
-    ShowItems(0);
-    m_bItemsOpen = static_cast<unsigned char>(m_bItemsOpen & ~1u);
-    SetActiveControl(m_pActive, 0);
-    UpdateItems();
-    OnEnterSlot(m_pActiveControl);
+    CloseItems();
 }
 #else
 // On a slot click, builds a new item in assemble mode, otherwise moves the slot's item back to the
@@ -727,11 +697,7 @@ P8:
     }
 
 FINALIZE:
-    ShowItems(0);
-    m_bItemsOpen = static_cast<unsigned char>(m_bItemsOpen & ~1u);
-    SetActiveControl(m_pActive, 0);
-    UpdateItems();
-    OnEnterSlot(m_pActiveControl);
+    CloseItems();
 }
 #endif
 
@@ -921,31 +887,7 @@ void CSWGuiUpgrade::OnSlotSelected(CSWGuiControl* pControl)
             }
         }
         m_lbItems.AddControls(list, 1, 0, 0);
-        m_viewItem.m_tail.bVisible = 0;
-        m_viewChar.m_tail.bVisible = 0;
-        m_lblSlotName.m_tail.bVisible = 0;
-        m_lblProperty.m_tail.bVisible = 0;
-        m_btnAssemble.m_tail.bVisible = 0;
-        m_btnOk.m_tail.bVisible = 1;
-        m_abtnSlot[0].m_tail.bVisible = 0;
-        m_aslotLbl[0].m_tail.bVisible = 0;
-        m_abtnSlot[1].m_tail.bVisible = 0;
-        m_aslotLbl[1].m_tail.bVisible = 0;
-        m_abtnSlot[2].m_tail.bVisible = 0;
-        m_aslotLbl[2].m_tail.bVisible = 0;
-        m_abtnRow[0].m_tail.bVisible = 0;
-        m_apRows[0].m_tail.bVisible = 0;
-        m_abtnRow[1].m_tail.bVisible = 0;
-        m_apRows[1].m_tail.bVisible = 0;
-        m_abtnRow[2].m_tail.bVisible = 0;
-        m_apRows[2].m_tail.bVisible = 0;
-        m_abtnRow[3].m_tail.bVisible = 0;
-        m_apRows[3].m_tail.bVisible = 0;
-        m_abtnRow[4].m_tail.bVisible = 0;
-        m_apRows[4].m_tail.bVisible = 0;
-        m_abtnRow[5].m_tail.bVisible = 0;
-        m_apRows[5].m_tail.bVisible = 0;
-        m_lbItems.m_tail.bVisible = 1;
+        ShowItems(1);
         SetActiveControl(&m_lbItems, 0);
     }
     else if (m_nMenuType == CSWSItem::UPGRADABLE_TYPE_LIGHTSABER)
@@ -1016,31 +958,7 @@ void CSWGuiUpgrade::OnSlotSelected(CSWGuiControl* pControl)
             }
         }
         m_lbItems.AddControls(list, 1, 0, 0);
-        m_viewItem.m_tail.bVisible = 0;
-        m_viewChar.m_tail.bVisible = 0;
-        m_lblSlotName.m_tail.bVisible = 0;
-        m_lblProperty.m_tail.bVisible = 0;
-        m_btnAssemble.m_tail.bVisible = 0;
-        m_btnOk.m_tail.bVisible = 1;
-        m_abtnSlot[0].m_tail.bVisible = 0;
-        m_aslotLbl[0].m_tail.bVisible = 0;
-        m_abtnSlot[1].m_tail.bVisible = 0;
-        m_aslotLbl[1].m_tail.bVisible = 0;
-        m_abtnSlot[2].m_tail.bVisible = 0;
-        m_aslotLbl[2].m_tail.bVisible = 0;
-        m_abtnRow[0].m_tail.bVisible = 0;
-        m_apRows[0].m_tail.bVisible = 0;
-        m_abtnRow[1].m_tail.bVisible = 0;
-        m_apRows[1].m_tail.bVisible = 0;
-        m_abtnRow[2].m_tail.bVisible = 0;
-        m_apRows[2].m_tail.bVisible = 0;
-        m_abtnRow[3].m_tail.bVisible = 0;
-        m_apRows[3].m_tail.bVisible = 0;
-        m_abtnRow[4].m_tail.bVisible = 0;
-        m_apRows[4].m_tail.bVisible = 0;
-        m_abtnRow[5].m_tail.bVisible = 0;
-        m_apRows[5].m_tail.bVisible = 0;
-        m_lbItems.m_tail.bVisible = 1;
+        ShowItems(1);
         SetActiveControl(&m_lbItems, 0);
     }
     else
@@ -2476,8 +2394,8 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
     m_nFlags = static_cast<unsigned char>((m_nFlags & ~1u) | (static_cast<unsigned>(nMenu) & 1u));
 
     if (oidItem == OBJECT_INVALID) {
-        m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
-        m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
+        m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
+        m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
         m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NONE_LABEL));
         m_textCount.m_params = CSWGuiTextParams(CExoString(), CResRef("fnt_d16x16"),
                                                 CGuiInGame::COLOR_BLUE, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2487,8 +2405,8 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
         CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
         CSWSItem* pItem = pServerApp->GetItemByGameObjectID(oidItem);
         if (pItem == 0) {
-            m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
-            m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
+            m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
+            m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
             m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NONE_LABEL));
             m_textCount.m_params = CSWGuiTextParams(CExoString(), CResRef("fnt_d16x16"),
                                                     CGuiInGame::COLOR_UPGRADE_TEXT, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2512,16 +2430,16 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
             int nCount = pItem->m_stackCount;
             if (nCount >= 2) {
                 if (nCount >= 100) {
-                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM3"));
                 } else {
-                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"), 0);
-                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"), 0);
+                    m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"));
+                    m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM2"));
                 }
                 sCount.Format(const_cast<char*>("%d"), nCount);
             } else {
-                m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
-                m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"), 0);
+                m_borderFrame.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
+                m_borderFrameHilight.m_params.SetFillImage(CResRef("UIBIT_EQP_ITM1"));
             }
             m_textCount.m_params = CSWGuiTextParams(sCount, CResRef("fnt_d16x16"),
                                                     CGuiInGame::COLOR_UPGRADE_TEXT, SWGUIALIGN_BOTTOM | SWGUIALIGN_CENTER, 1.0f);
@@ -2530,7 +2448,7 @@ void CSWUpgradeItemEntry::SetItem(unsigned long long oidItem, int nMenu, unsigne
         }
     }
     m_borderIcon.m_params.m_flags.nFillStyle = 2;
-    m_borderIcon.m_params.SetFillImage(refIcon, 0);
+    m_borderIcon.m_params.SetFillImage(refIcon);
 }
 #endif
 
@@ -2918,17 +2836,17 @@ CSWGuiCreateItem::CSWGuiCreateItem(CSWGuiManager* pGuiManager, unsigned long lon
 
 // A component is worth a twentieth of the item's cost, and never less than one.
 
-int CSWGuiCreateItem::GetItemSellValue(CSWSItem* pItem)
+unsigned int CSWGuiCreateItem::GetItemSellValue(CSWSItem* pItem)
 {
-    int nValue = 0;
+    unsigned int nValue = 0;
     if (pItem != NULL)
         nValue = pItem->GetCost() < 20 ? 1 : pItem->GetCost() / 20;
     return nValue;
 }
 
-int CSWGuiCreateItem::GetItemBuyValue(CSWSItem* pItem)
+unsigned int CSWGuiCreateItem::GetItemBuyValue(CSWSItem* pItem)
 {
-    int nValue = 0;
+    unsigned int nValue = 0;
     if (pItem != NULL)
         nValue = pItem->GetCost() < 20 ? 1 : pItem->GetCost() / 20;
     return nValue;
@@ -3438,8 +3356,7 @@ void CSWGuiCreateItem::SellItem(CSWSItem* pItem)
 
     m_pGuiManager->PlayGuiSound(static_cast<char>(GUISOUND_INVENTORY_DROP));
 
-    int nGain = CSWGCREATEITEM_MAX(1, static_cast<int>((pItem->GetCost() < 20
-        ? 1.0f : static_cast<float>(pItem->GetCost() / 20)) * m_fBreakdownYield));
+    int nGain = CSWGCREATEITEM_MAX(1, static_cast<int>(static_cast<float>(GetItemSellValue(pItem)) * m_fBreakdownYield));
     m_nComponent = m_nComponent + nGain;
     pCreature->SetComponent(m_nComponent);
 
@@ -3473,7 +3390,7 @@ void CSWGuiCreateItem::BuyItem(CSWSItem* pItem)
 
     m_pGuiManager->PlayGuiSound(GUISOUND_INVENTORY_ADD);
 
-    int nCost = pItem->GetCost() < 20 ? 1 : pItem->GetCost() / 20;
+    int nCost = GetItemBuyValue(pItem);
     m_nComponent = m_nComponent - nCost;
     pCreature->SetComponent(m_nComponent);
 
@@ -3517,7 +3434,7 @@ void CSWGuiCreateItem::OnControlStoreAButton(CSWGuiControl* pControl)
     if (!pItem)
         return;
 
-    if (static_cast<unsigned int>(m_nComponent) < (pItem->GetCost() < 20 ? 1 : pItem->GetCost() / 20))
+    if (static_cast<unsigned int>(m_nComponent) < static_cast<unsigned int>(GetItemBuyValue(pItem)))
     {
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
         CExoString sMessage;
@@ -3534,7 +3451,7 @@ void CSWGuiCreateItem::OnControlStoreAButton(CSWGuiControl* pControl)
     if (pCreature != NULL)
         nLimit = pCreature->m_pStats->GetLevel(0) * 50;
 
-    if (static_cast<unsigned int>(pItem->GetCost() < 20 ? 1 : pItem->GetCost() / 20) > static_cast<unsigned int>(nLimit))
+    if (static_cast<unsigned int>(GetItemBuyValue(pItem)) > static_cast<unsigned int>(nLimit))
     {
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
         CExoString sMessage;
@@ -3569,12 +3486,7 @@ void CSWGuiCreateItem::HandleInputEvent(int nEventType, int nEventArg)
         break;
 
     case INPUTEVENT_GUI_X:
-        m_bViewSwitched = (m_bViewSwitched == 0);
-        m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-        if (m_lbShopItems.m_tail.bVisible)
-            ShowSellGUI();
-        else
-            ShowBuyGUI();
+        OnControlXButton(NULL);
         break;
 
     case INPUTEVENT_GUI_DPAD_LEFT:
@@ -3648,7 +3560,7 @@ void CSWGuiCreateItem::OnControlInvAButton(CSWGuiControl* pControl)
     else
         nLimit = static_cast<unsigned int>(pCreature->m_pStats->GetLevel(0)) * 50;
 
-    float fValue = (pItem->GetCost() < 20 ? 1.0f : static_cast<float>(pItem->GetCost() / 20)) * m_fBreakdownYield;
+    float fValue = static_cast<float>(GetItemSellValue(pItem)) * m_fBreakdownYield;
     if (fValue > static_cast<float>(nLimit))
     {
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
@@ -3903,8 +3815,7 @@ void CSWGuiCreateItem::OnControlEntered(CSWGuiControl* pControl)
         {
             if (m_lbShopItems.m_tail.bVisible)
             {
-                m_lblCostValue.m_text.m_params.SetText(
-                    CExoString(pItem->GetCost() < 20 ? 1 : pItem->GetCost() / 20));
+                m_lblCostValue.m_text.m_params.SetText(CExoString(GetItemBuyValue(pItem)));
 
                 int nRow = pEntry->m_nCreateRow;
                 int nBaseSkill = -1;
@@ -3930,8 +3841,7 @@ void CSWGuiCreateItem::OnControlEntered(CSWGuiControl* pControl)
             }
             else
             {
-                int nValue = static_cast<int>(m_fBreakdownYield *
-                    static_cast<float>(pItem->GetCost() < 20 ? 1 : pItem->GetCost() / 20));
+                int nValue = static_cast<int>(m_fBreakdownYield * static_cast<float>(GetItemSellValue(pItem)));
                 m_lblCostValue.m_text.m_params.SetText(CExoString(CSWGCREATEITEM_MAX(nValue, 1)));
             }
 
@@ -4158,17 +4068,17 @@ CSWGuiCreateMedicalItem::CSWGuiCreateMedicalItem(CSWGuiManager* pGuiManager, uns
 
 // Half the item's cost, floored at one.
 
-int CSWGuiCreateMedicalItem::GetItemSellValue(CSWSItem* pItem)
+unsigned int CSWGuiCreateMedicalItem::GetItemSellValue(CSWSItem* pItem)
 {
-    int nValue = 0;
+    unsigned int nValue = 0;
     if (pItem != NULL)
         nValue = pItem->GetCost() < 2 ? 1 : pItem->GetCost() / 2;
     return nValue;
 }
 
-int CSWGuiCreateMedicalItem::GetItemBuyValue(CSWSItem* pItem)
+unsigned int CSWGuiCreateMedicalItem::GetItemBuyValue(CSWSItem* pItem)
 {
-    int nValue = 0;
+    unsigned int nValue = 0;
     if (pItem != NULL)
         nValue = pItem->GetCost() < 2 ? 1 : pItem->GetCost() / 2;
     return nValue;
@@ -4376,12 +4286,7 @@ void CSWGuiCreateMedicalItem::HandleInputEvent(int nEventType, int nEventArg)
         break;
 
     case INPUTEVENT_GUI_X:
-        m_bViewSwitched = (m_bViewSwitched == 0);
-        m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-        if (m_lbShopItems.m_tail.bVisible)
-            ShowSellGUI();
-        else
-            ShowBuyGUI();
+        OnControlXButton(NULL);
         break;
 
     case INPUTEVENT_GUI_DPAD_LEFT:
@@ -4519,8 +4424,7 @@ void CSWGuiCreateMedicalItem::SellItem(CSWSItem* pItem)
 
     m_pGuiManager->PlayGuiSound(static_cast<char>(GUISOUND_INVENTORY_DROP));
 
-    int nGain = CSWGCREATEMED_MAX(1, static_cast<int>((pItem->GetCost() < 2
-        ? 1.0f : static_cast<float>(pItem->GetCost() / 2)) * m_fBreakdownYield));
+    int nGain = CSWGCREATEMED_MAX(1, static_cast<int>(static_cast<float>(GetItemSellValue(pItem)) * m_fBreakdownYield));
     m_nComponent = m_nComponent + nGain;
     pCreature->SetChemical(m_nComponent);
 
@@ -4554,7 +4458,7 @@ void CSWGuiCreateMedicalItem::BuyItem(CSWSItem* pItem)
 
     m_pGuiManager->PlayGuiSound(GUISOUND_INVENTORY_ADD);
 
-    int nCost = pItem->GetCost() < 2 ? 1 : pItem->GetCost() / 2;
+    int nCost = GetItemBuyValue(pItem);
     m_nComponent = m_nComponent - nCost;
     pCreature->SetChemical(m_nComponent);
 
@@ -4799,7 +4703,7 @@ void CSWGuiCreateMedicalItem::OnControlStoreAButton(CSWGuiControl* pControl)
     if (!pItem)
         return;
 
-    if (static_cast<unsigned int>(m_nComponent) < (pItem->GetCost() < 2 ? 1 : pItem->GetCost() / 2))
+    if (static_cast<unsigned int>(m_nComponent) < static_cast<unsigned int>(GetItemBuyValue(pItem)))
     {
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
         pBox->SetAllowCancel(0);
@@ -4815,7 +4719,7 @@ void CSWGuiCreateMedicalItem::OnControlStoreAButton(CSWGuiControl* pControl)
     if (pCreature != NULL)
         nLimit = pCreature->m_pStats->GetLevel(0) * 50;
 
-    if (static_cast<unsigned int>(pItem->GetCost() < 2 ? 1 : pItem->GetCost() / 2) > static_cast<unsigned int>(nLimit))
+    if (static_cast<unsigned int>(GetItemBuyValue(pItem)) > static_cast<unsigned int>(nLimit))
     {
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
         CExoString sMessage;
@@ -4857,7 +4761,7 @@ void CSWGuiCreateMedicalItem::OnControlInvAButton(CSWGuiControl* pControl)
     else
         nLimit = static_cast<unsigned int>(pCreature->m_pStats->GetLevel(0)) * 50;
 
-    float fValue = (pItem->GetCost() < 2 ? 1.0f : static_cast<float>(pItem->GetCost() / 2)) * m_fBreakdownYield;
+    float fValue = static_cast<float>(GetItemSellValue(pItem)) * m_fBreakdownYield;
     if (fValue > static_cast<float>(nLimit))
     {
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
@@ -4993,7 +4897,7 @@ void CSWGuiCreateMedicalItem::OnControlEntered(CSWGuiControl* pControl)
             if (m_lbShopItems.m_tail.bVisible)
             {
                 m_lblCostValue.m_text.m_params.SetText(
-                    CExoString(pItem->GetCost() < 2 ? 1 : pItem->GetCost() / 2));
+                    CExoString(GetItemBuyValue(pItem)));
 
                 int nRow = pEntry->m_nCreateRow;
                 int nBaseSkill = -1;
@@ -5019,7 +4923,7 @@ void CSWGuiCreateMedicalItem::OnControlEntered(CSWGuiControl* pControl)
             }
             else
             {
-                int nValue = static_cast<int>(static_cast<float>(pItem->GetCost() < 2 ? 1 : pItem->GetCost() / 2) *
+                int nValue = static_cast<int>(static_cast<float>(GetItemSellValue(pItem)) *
                     m_fBreakdownYield);
                 m_lblCostValue.m_text.m_params.SetText(CExoString(CSWGCREATEMED_MAX(nValue, 1)));
             }
@@ -5264,11 +5168,7 @@ void CSWGuiSwoopUpgrade::OnCloseSwoopUpgrade(CSWGuiControl* pControl)
     m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
 
     if (m_bItemsOpen & 1) {
-        ShowItems(0);
-        m_bItemsOpen &= ~1;
-        SetActiveControl(static_cast<CSWGuiControl*>(m_pActiveSlotButton), 0);
-        UpdateItems();
-        OnEnterSlot(m_pActiveControl);
+        CloseItems();
     } else {
         CancelPanel();
         g_pAppManager->m_pClientExoApp->GetInGameGui()->HideSwoopUpgradeScreen();
@@ -5394,20 +5294,7 @@ void CSWGuiSwoopUpgrade::OnSlotSelected(CSWGuiControl* pControl)
         }
 
         m_lbItems.AddControls(list, 1, 0, 0);
-        m_viewItem.m_tail.bVisible = 0;
-        m_viewItemLS.m_tail.bVisible = 0;
-        m_lblSlotName.m_tail.bVisible = 0;
-        m_lblLSSlotName.m_tail.bVisible = 0;
-        m_lblUpgradeCount.m_tail.bVisible = 0;
-        m_lblUpgrades.m_tail.bVisible = 0;
-        m_lblProperty.m_tail.bVisible = 0;
-        m_btnAssemble.m_tail.bVisible = 0;
-        for (int i = 0; i < 6; i++)
-        {
-            m_abtnSlot[i].m_tail.bVisible = 0;
-            m_apRows[i].m_tail.bVisible = 0;
-        }
-        m_lbItems.m_tail.bVisible = 1;
+        ShowItems(1);
         SetActiveControl(&m_lbItems, 0);
         m_pActiveSlotButton = pControl;
         m_bItemsOpen |= 1;
@@ -5440,20 +5327,7 @@ void CSWGuiSwoopUpgrade::OnSlotSelected(CSWGuiControl* pControl)
         }
 
         m_lbItems.AddControls(list, 1, 0, 0);
-        m_viewItem.m_tail.bVisible = 0;
-        m_viewItemLS.m_tail.bVisible = 0;
-        m_lblSlotName.m_tail.bVisible = 0;
-        m_lblLSSlotName.m_tail.bVisible = 0;
-        m_lblUpgradeCount.m_tail.bVisible = 0;
-        m_lblUpgrades.m_tail.bVisible = 0;
-        m_lblProperty.m_tail.bVisible = 0;
-        m_btnAssemble.m_tail.bVisible = 0;
-        for (int i = 0; i < 6; i++)
-        {
-            m_abtnSlot[i].m_tail.bVisible = 0;
-            m_apRows[i].m_tail.bVisible = 0;
-        }
-        m_lbItems.m_tail.bVisible = 1;
+        ShowItems(1);
         SetActiveControl(&m_lbItems, 0);
         m_pActiveSlotButton = pControl;
         m_bItemsOpen |= 1;
@@ -5967,11 +5841,7 @@ void CSWGuiSwoopUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
     }
 
 FINALIZE:
-    ShowItems(0);
-    m_bItemsOpen &= ~1;
-    SetActiveControl(m_pActiveSlotButton, 0);
-    UpdateItems();
-    OnEnterSlot(m_pActiveControl);
+    CloseItems();
 }
 
 // Builds one row widget for an upgrade slot.
@@ -7434,7 +7304,7 @@ void CSWGuiUpgradeItemSelect::FinishUpgrading()
 
     if (nHadItem != 0)
     {
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->HideUpgradeScreen();
+        CSWGuiUpgradeSelection::AutoUpgradeDone();
         m_pItem = NULL;
     }
     else

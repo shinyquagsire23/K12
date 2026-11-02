@@ -22,16 +22,11 @@ enum {
     kOverlappedClippedWindow = 0x06CF0000,  // WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
 };
 
-// A mouse coordinate arrives as a 16-bit word: its sign bit, the word's span, and the high
-// half that sign-extends it.
+// A mouse coordinate arrives as a 16-bit word: its sign bit and the word's span.
 enum
 {
     kCoordSignBit = 0x8000,
     kCoordSpan = 0x10000,
-};
-enum : unsigned int
-{
-    kCoordSignFill = 0xffff0000,
 };
 
 float GlobalTime;
@@ -356,8 +351,7 @@ static void* g_hInstance;
 #endif
 
 // The window procedure, a two-level switch over the message codes, with everything else tailing
-// DefWindowProcA. The mouse coordinate sign-extension here uses a mask idiom rather than
-// ComputeMouseVector's subtraction, because WndProc carries its own copy of that code.
+// DefWindowProcA.
 extern int MouseLeft;
 extern int MouseRight;
 void AurTextureRefreshAll();
@@ -427,27 +421,17 @@ int64_t AurWndProc(HWND__* hwnd, unsigned int nMsg, unsigned long long wParam, i
             return 0;
         }
         break;
-    case WM_MOUSEMOVE: {
-        int nX = static_cast<int>(lParam);
-        int nY = static_cast<int>(lParam >> 16);
-        MouseX = (nX & kCoordSignBit) ? nX | static_cast<int>(kCoordSignFill) : nX & 0xffff;
-        MouseY = g_nScreenHeight - ((nY & kCoordSignBit) ? nY | static_cast<int>(kCoordSignFill) : nY & 0xffff);
+    case WM_MOUSEMOVE:
+        ComputeMouseVector(static_cast<int>(lParam & 0xffff), static_cast<int>((lParam >> 16) & 0xffff));
         return 0;
-    }
     case WM_LBUTTONDOWN: {
         SetCapture(hwnd);
-        int nX = static_cast<int>(lParam);
-        int nY = static_cast<int>(lParam >> 16);
-        MouseX = (nX & kCoordSignBit) ? nX | static_cast<int>(kCoordSignFill) : nX & 0xffff;
-        MouseY = g_nScreenHeight - ((nY & kCoordSignBit) ? nY | static_cast<int>(kCoordSignFill) : nY & 0xffff);
+        ComputeMouseVector(static_cast<int>(lParam & 0xffff), static_cast<int>((lParam >> 16) & 0xffff));
         MouseLeft = 1;
         return 0;
     }
     case WM_LBUTTONUP: {
-        int nX = static_cast<int>(lParam);
-        int nY = static_cast<int>(lParam >> 16);
-        MouseX = (nX & kCoordSignBit) ? nX | static_cast<int>(kCoordSignFill) : nX & 0xffff;
-        MouseY = g_nScreenHeight - ((nY & kCoordSignBit) ? nY | static_cast<int>(kCoordSignFill) : nY & 0xffff);
+        ComputeMouseVector(static_cast<int>(lParam & 0xffff), static_cast<int>((lParam >> 16) & 0xffff));
         MouseLeft = 0;
         if (MouseRight == 0)
             ReleaseCapture();
@@ -455,18 +439,12 @@ int64_t AurWndProc(HWND__* hwnd, unsigned int nMsg, unsigned long long wParam, i
     }
     case WM_RBUTTONDOWN: {
         SetCapture(hwnd);
-        int nX = static_cast<int>(lParam);
-        int nY = static_cast<int>(lParam >> 16);
-        MouseX = (nX & kCoordSignBit) ? nX | static_cast<int>(kCoordSignFill) : nX & 0xffff;
-        MouseY = g_nScreenHeight - ((nY & kCoordSignBit) ? nY | static_cast<int>(kCoordSignFill) : nY & 0xffff);
+        ComputeMouseVector(static_cast<int>(lParam & 0xffff), static_cast<int>((lParam >> 16) & 0xffff));
         MouseRight = 1;
         return 0;
     }
     case WM_RBUTTONUP: {
-        int nX = static_cast<int>(lParam);
-        int nY = static_cast<int>(lParam >> 16);
-        MouseX = (nX & kCoordSignBit) ? nX | static_cast<int>(kCoordSignFill) : nX & 0xffff;
-        MouseY = g_nScreenHeight - ((nY & kCoordSignBit) ? nY | static_cast<int>(kCoordSignFill) : nY & 0xffff);
+        ComputeMouseVector(static_cast<int>(lParam & 0xffff), static_cast<int>((lParam >> 16) & 0xffff));
         MouseRight = 0;
         if (MouseLeft == 0)
             ReleaseCapture();
@@ -524,13 +502,10 @@ char* untrace(char* pszString);
 void AurStringsFree();
 void AurFreeFont();
 
-// The unbind loop is written out here rather than calling unbindall, since the reference expands
-// it, and this compiler will not expand the global function body.
 void AurCloseWindow()
 {
     untrace(0);
-    while (bindings.m_count)
-        delete bindings.m_pData[bindings.m_count - 1];
+    unbindall();
     AurStringsFree();
     AurFreeFont();
     aurlite = 0;
@@ -580,12 +555,7 @@ int AurWindowUp()
 
 void AurSwapBuffers()
 {
-    char szBuf[1024];
-    szBuf[0] = '\0';
-    if (entertext != 0) {
-        snprintff(szBuf, 1024, "> %s", comstring);
-        AurPostString(szBuf, 0, 0, -5.0f);
-    }
+    AurPrintStats();
     AurRenderStrings();
 }
 

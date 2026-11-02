@@ -36,24 +36,14 @@ CRIMRes::CRIMRes()
 
 CRIMRes::~CRIMRes()
 {
-    if (m_pData != 0)
-    {
-        // Allocated with `new unsigned char[]` in Read and freed with scalar `operator delete`.
-        delete static_cast<unsigned char*>(m_pData);
-        m_pData = 0;
-    }
-    m_nType = RESTYPE_INVALID;
-    m_nID = 0;
-    m_nOffset = 0;
-    m_nSize = 0;
-    __builtin_memset(m_szName, 0, sizeof(m_szName));
+    Reset();
 }
 
 int CRIMRes::Reset()
 {
     if (m_pData != 0)
     {
-        // Scalar `operator delete`, as in the destructor.
+        // Allocated with `new unsigned char[]` in Read and freed with scalar `operator delete`.
         delete static_cast<unsigned char*>(m_pData);
         m_pData = 0;
     }
@@ -287,30 +277,10 @@ int CRIMFile::WriteResource(const CExoString& sResRef)
 
     // Split "prefix:name.ext" into a base name and an extension.
     int nColon = sResRef.Find(CExoString(":"), 0);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CExoString sName = sResRef.Right(sResRef.GetLength() - nColon - 1);
-#else
-    int nNameLen;
-#ifdef K2_FIX_ENGINE_BUGS
-    nNameLen = 0;
-#endif
-    if (sResRef.m_sString != 0)
-        nNameLen = static_cast<int>(strlen(sResRef.m_sString));
-    CExoString sName = sResRef.Right(nNameLen - nColon - 1);
-#endif
 
     int nDot = sName.Find(CExoString("."), 0);
-#if KOTOR1  // K1: CExoString::GetLength is out of line
     CExoString sExt = sName.Right(sName.GetLength() - nDot - 1);
-#else
-    int nExtLen;
-#ifdef K2_FIX_ENGINE_BUGS
-    nExtLen = 0;
-#endif
-    if (sName.m_sString != 0)
-        nExtLen = static_cast<int>(strlen(sName.m_sString));
-    CExoString sExt = sName.Right(nExtLen - nDot - 1);
-#endif
     sName = sName.Left(nDot);
 
     unsigned short nType = g_pExoBase->GetResTypeFromExtension(sExt);
@@ -375,8 +345,9 @@ int CRIMFile::WriteResource(char* pszName, unsigned short nType, CRes* pRes, int
         for (int i = 0; i < 6; i++)
             m_pFile->Write(&cZero, 1, 1);
 
+        nRemainder = m_pFile->GetOffset();
         nAlign = (m_header.m_bBlockAlign != 0) ? RIM_BLOCK_ALIGN : 4;
-        nRemainder = m_pFile->GetOffset() & static_cast<unsigned int>(nAlign - 1);
+        nRemainder &= static_cast<unsigned int>(nAlign - 1);
         nAlign -= static_cast<int>(nRemainder);
         if (nRemainder != 0 && nAlign != 0)
         {

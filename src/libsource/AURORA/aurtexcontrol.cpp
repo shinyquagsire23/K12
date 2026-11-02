@@ -285,21 +285,18 @@ void Parse(char* pszLine, List<T>& list)
     int nScan = sscanf(pszLine, "%d %c", &nCount, &cType);
     if (nScan <= 0) {
         // `endlist`-terminated form: one element per line until the terminator (or EOF).
-        pszLine = AurResGetNextLine();
-        while (pszLine) {
+        while ((pszLine = AurResGetNextLine()) != 0) {
             if (!strncmp(skipspace(pszLine), "endlist", strlen("endlist")))
                 break;
             if (list.m_count != 0) {
                 if (list.m_count == nCount)
                     list.Add(list.m_pData[list.m_count - 1]);
             } else {
-                list.allocate(1);
-                list.m_count = 1;
+                list.SetSize(1);
             }
             int n = nCount;
             Parse(pszLine, list.m_pData[n]);
             nCount++;
-            pszLine = AurResGetNextLine();
         }
         skipspace(skipspace(pszLine) + strlen("endlist"));
         return;

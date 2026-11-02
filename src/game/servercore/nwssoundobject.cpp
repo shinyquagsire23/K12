@@ -58,10 +58,7 @@ void CSWSSoundObject::RemoveFromArea() {
 }
 
 void CSWSSoundObject::AddToArea(CSWSArea* pArea, int a2) {
-    if (GetArea() != 0) {
-        static_cast<CSWSArea*>(GetArea())->RemoveObjectFromArea(m_objectId);
-    }
-    SetArea(0);
+    RemoveFromArea();
     if (pArea != 0) {
         SetArea(pArea);
         pArea->AddObjectToArea(m_objectId, a2);
@@ -78,10 +75,7 @@ void* CSWSSoundObject::GetClientSoundObject() {
 
 void CSWSSoundObject::FadeAndStop(unsigned int fadeTime) {
     m_active = 0;
-    CAppManager** const ppMgr = &g_pAppManager;
-    unsigned long long clientId = (*ppMgr)->m_pClientExoApp->ServerToClientObjectId(m_objectId);
-    CSWCSoundObject* pClientObj =
-        static_cast<CSWCSoundObject*>((*ppMgr)->m_pClientExoApp->GetSoundObjectByGameObjectID(clientId));
+    CSWCSoundObject* pClientObj = static_cast<CSWCSoundObject*>(GetClientSoundObject());
     if (pClientObj != 0) {
         pClientObj->FadeAndStop(fadeTime);
     }
@@ -90,10 +84,7 @@ void CSWSSoundObject::FadeAndStop(unsigned int fadeTime) {
 void CSWSSoundObject::ChangePitchVariation(float variation) {
     if (__builtin_expect(m_pitchVariation == variation, 0)) return;
     m_pitchVariation = variation;
-    CAppManager** const ppMgr = &g_pAppManager;
-    unsigned long long clientId = (*ppMgr)->m_pClientExoApp->ServerToClientObjectId(m_objectId);
-    CSWCSoundObject* pClientObj =
-        static_cast<CSWCSoundObject*>((*ppMgr)->m_pClientExoApp->GetSoundObjectByGameObjectID(clientId));
+    CSWCSoundObject* pClientObj = static_cast<CSWCSoundObject*>(GetClientSoundObject());
     if (pClientObj != 0) {
         pClientObj->ChangePitchVariation(variation);
     }
@@ -104,10 +95,7 @@ void CSWSSoundObject::ChangeVolume(int volume) {
     if (v < 0) v = 0;
     if (v == m_volume) return;
     m_volume = v;
-    CAppManager** const ppMgr = &g_pAppManager;
-    unsigned long long clientId = (*ppMgr)->m_pClientExoApp->ServerToClientObjectId(m_objectId);
-    CSWCSoundObject* pClientObj =
-        static_cast<CSWCSoundObject*>((*ppMgr)->m_pClientExoApp->GetSoundObjectByGameObjectID(clientId));
+    CSWCSoundObject* pClientObj = static_cast<CSWCSoundObject*>(GetClientSoundObject());
     if (pClientObj != 0) {
         pClientObj->ChangeVolume(v);
     }
@@ -116,10 +104,7 @@ void CSWSSoundObject::ChangeVolume(int volume) {
 void CSWSSoundObject::ChangeFixedVariance(float variance) {
     if (__builtin_expect(m_fixedVariance == variance, 0)) return;
     m_fixedVariance = variance;
-    CAppManager** const ppMgr = &g_pAppManager;
-    unsigned long long clientId = (*ppMgr)->m_pClientExoApp->ServerToClientObjectId(m_objectId);
-    CSWCSoundObject* pClientObj =
-        static_cast<CSWCSoundObject*>((*ppMgr)->m_pClientExoApp->GetSoundObjectByGameObjectID(clientId));
+    CSWCSoundObject* pClientObj = static_cast<CSWCSoundObject*>(GetClientSoundObject());
     if (pClientObj != 0) {
         pClientObj->ChangeFixedVariance(variance);
     }

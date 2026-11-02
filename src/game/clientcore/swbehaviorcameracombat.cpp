@@ -176,7 +176,7 @@ int CSWBehaviorCameraCombat::Control(float fParam)
     float fNextYaw = GetNextYaw(vDesired, fYaw, fParam, fUnused);
 
     // The shake pair offsets the composed yaw and pitch; the position is the safe one, unmodified.
-    (void)m_pOwner->GetPosition();
+    GetNextPosition(vSafe, fUnused, fParam);
     Quaternion qNext = YawPitchRoll(fNextYaw + m_fShakeYaw, m_fPitch + m_fShakePitch, 0.0f);
     m_pOwner->SetOrientation(qNext);
     m_pOwner->SetPosition(vSafe);

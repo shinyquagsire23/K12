@@ -183,9 +183,7 @@ public:
     CTwoDimArrays();
     ~CTwoDimArrays();
 
-    // Kept out of line: the destructor is its only caller here, and inlining it would put the whole
-    // unload body into the destructor.
-    __attribute__((noinline)) bool UnLoad2DArrays();
+    bool UnLoad2DArrays();
     int  Load2DArrays();
 
     int  Load2DArrays_Appearance();

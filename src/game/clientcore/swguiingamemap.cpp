@@ -269,18 +269,18 @@ void CSWGuiInGameMap::OnPanelAdded()
 #else
     if (pServer->GetPartyTable()->m_disableMap != 0)
     {
-        m_image.m_params.SetImage(CResRef("LBL_STATIC"), 0);
+        m_image.m_params.SetImage(CResRef("LBL_STATIC"));
         nNoteCount = 0;
     }
     else if (pServer->GetModule()->m_pAreaMap->m_nSize != 0)
 #endif
     {
-        m_image.m_params.SetImage(CResRef(sLayoutName), 0);
+        m_image.m_params.SetImage(CResRef(sLayoutName));
         nNoteCount = 1;
     }
     else
     {
-        m_image.m_params.SetImage(CResRef("lbl_mapm28aa"), 0);
+        m_image.m_params.SetImage(CResRef("lbl_mapm28aa"));
         nNoteCount = 0;
     }
     m_image.m_params.SetDrawStyle(0);
@@ -435,17 +435,7 @@ void CSWGuiInGameMap::SetMapNote(const CExoString& sMapNote)
 
 void CSWGuiInGameMap::OnPanelRemoved()
 {
-    // CSWGuiMapHider::ClearMapNotes, written out here: the loop body has to stay visible.
-    while (m_mapHider.m_mapNotes.m_pInternal->m_pHead != 0)
-    {
-        unsigned long long* pNoteId =
-            static_cast<unsigned long long*>(m_mapHider.m_mapNotes.m_pInternal->m_pHead->m_pData);
-        if (pNoteId)
-            operator delete(pNoteId);
-        m_mapHider.m_mapNotes.RemoveHead();
-    }
-    m_mapHider.m_pCurrentMapNote = 0;
-
+    m_mapHider.ClearMapNotes();
     CSWGuiPanel::OnPanelRemoved();
 }
 
@@ -522,27 +512,7 @@ CSWGuiControl* CSWGuiInGameMap::HitCheckMouse(int x, int y)
         y -= (m_pGuiManager->m_nScreenHeight - 480) / 2;
     }
 
-    int nLeft = m_mapHider.m_extent.x;
-    int nLocalX = x - m_lblMap.m_extent.x;
-    if (nLocalX >= nLeft && nLeft + m_mapHider.m_extent.w >= nLocalX)
-    {
-        int nTop = m_mapHider.m_extent.y;
-        int nLocalY = y - m_lblMap.m_extent.y;
-        if (nLocalY >= nTop && nTop + m_mapHider.m_extent.h >= nLocalY)
-        {
-            if (m_mapHider.m_noteButton.HitCheckMouse(nLocalX - nLeft, nLocalY - nTop) != 0)
-                return &m_mapHider.m_noteButton;
-
-            for (int i = 0; i < m_mapHider.m_aButtons.m_count; i++)
-            {
-                CSWGuiButton* pButton = m_mapHider.m_aButtons.m_pArray[i];
-                if (pButton->HitCheckMouse(nLocalX - nLeft, nLocalY - nTop) != 0)
-                    return m_mapHider.m_aButtons.m_pArray[i];
-            }
-            return 0;
-        }
-    }
-    return 0;
+    return m_mapHider.HitCheckMouse(x - m_lblMap.m_extent.x, y - m_lblMap.m_extent.y);
 }
 
 void CSWGuiInGameMap::HandleInputEvent(int type, int val)

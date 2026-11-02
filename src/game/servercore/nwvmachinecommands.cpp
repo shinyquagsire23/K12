@@ -489,9 +489,7 @@ int CSWVirtualMachineCommands::GetEqualGameDefinedStructure(int nType, void* pA,
     {
     case ENGINE_STRUCTURE_EFFECT: return static_cast<CGameEffect*>(pA)->m_effectId == static_cast<CGameEffect*>(pB)->m_effectId;
     case ENGINE_STRUCTURE_EVENT: return *static_cast<CScriptEvent*>(pA) == *static_cast<CScriptEvent*>(pB);
-    case ENGINE_STRUCTURE_LOCATION:
-        return equal(static_cast<CScriptLocation*>(pA)->m_vPosition, static_cast<CScriptLocation*>(pB)->m_vPosition) &&
-               equal(static_cast<CScriptLocation*>(pA)->m_vOrientation, static_cast<CScriptLocation*>(pB)->m_vOrientation);
+    case ENGINE_STRUCTURE_LOCATION: return static_cast<CScriptLocation*>(pA)->Equals(static_cast<CScriptLocation*>(pB));
     case ENGINE_STRUCTURE_TALENT: return static_cast<CScriptTalent*>(pA)->Equals(static_cast<CScriptTalent*>(pB));
     }
     return 0;
@@ -799,8 +797,7 @@ int CSWVirtualMachineCommands::ExecuteCommandResistSpell(int nCommand, int nArgC
     CGameObject* pCasterGO = g_pAppManager->m_pServerExoApp->GetGameObject(oidCaster);
     CGameObject* pTargetGO = g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget);
     if (pCasterGO && pTargetGO) {
-        int nSpellId = pCasterGO->AsSWSObject()->m_castSpellId;
-        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
+        CSWSpell* pSpell = g_pRules->GetSpell(pCasterGO->AsSWSObject()->m_castSpellId);
         if (pSpell) {
             CGameObject* pSelfGO = g_pAppManager->m_pServerExoApp->GetGameObject(m_oidSelf);
             int nCasterLevel;
@@ -1191,8 +1188,13 @@ int CSWVirtualMachineCommands::ExecuteCommandGetSkillRank(int nCommand, int nArg
     CGameObjectArray* pArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     if (pArray->GetGameObject(oidObject, &pObject) == CGameObjectArray::SUCCESS
         && pObject->AsSWSCreature() != 0) {
+#if KOTOR1
+        K2_UNUSED(nCommand);
+        nRank = pObject->AsSWSCreature()->m_pStats->GetSkillRank(static_cast<unsigned char>(nSkill), static_cast<CSWSObject*>(0), 0);
+#else
         nRank = pObject->AsSWSCreature()->m_pStats->GetSkillRank(static_cast<unsigned char>(nSkill), static_cast<CSWSObject*>(0),
                                                                  nCommand == CMD_GetSkillRankBase);
+#endif
     } else {
         nRank = -1;
     }
@@ -2593,8 +2595,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetIsLiveContentAvailable(int nComm
     if (nIndex > 0 && nIndex < 7) {
         sAlias.Format(const_cast<char*>("LIVE%d"), nIndex);
         pRet = &g_pExoBase->m_pAliasList->GetAliasPath(sAlias, 0);
-        if (pRet->m_sString != 0)
-            nValue = static_cast<int>(strlen(pRet->m_sString)) != 0;
+        nValue = pRet->GetLength() != 0;
     }
 #endif
     if (!g_pVirtualMachine->StackPushInteger(nValue))
@@ -2746,44 +2747,59 @@ int CSWVirtualMachineCommands::ExecuteCommandGetLockInfo(int nCommand, int nArgC
     int bPushed;
     switch (nCommand) {
     case CMD_GetLockKeyRequired:
-        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR)
-            bPushed = g_pVirtualMachine->StackPushInteger(pObject->AsSWSDoor()->m_bKeyRequired);
-        else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE)
-            bPushed = g_pVirtualMachine->StackPushInteger(pObject->AsSWSPlaceable()->m_bKeyRequired);
-        else
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            bPushed = g_pVirtualMachine->StackPushInteger(pDoor->m_bKeyRequired);
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            bPushed = g_pVirtualMachine->StackPushInteger(pPlaceable->m_bKeyRequired);
+        } else {
             bPushed = g_pVirtualMachine->StackPushInteger(0);
+        }
         break;
     case CMD_GetLockKeyTag:
-        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR)
-            bPushed = g_pVirtualMachine->StackPushString(pObject->AsSWSDoor()->m_keyName);
-        else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE)
-            bPushed = g_pVirtualMachine->StackPushString(pObject->AsSWSPlaceable()->m_keyName);
-        else
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            bPushed = g_pVirtualMachine->StackPushString(pDoor->m_keyName);
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            bPushed = g_pVirtualMachine->StackPushString(pPlaceable->m_keyName);
+        } else {
             bPushed = g_pVirtualMachine->StackPushString(CExoString(""));
+        }
         break;
     case CMD_GetLockLockable:
-        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR)
-            bPushed = g_pVirtualMachine->StackPushInteger(pObject->AsSWSDoor()->m_bLockable);
-        else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE)
-            bPushed = g_pVirtualMachine->StackPushInteger(pObject->AsSWSPlaceable()->m_bLockable);
-        else
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            bPushed = g_pVirtualMachine->StackPushInteger(pDoor->m_bLockable);
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            bPushed = g_pVirtualMachine->StackPushInteger(pPlaceable->m_bLockable);
+        } else {
             bPushed = g_pVirtualMachine->StackPushInteger(0);
+        }
         break;
     case CMD_GetLockUnlockDC:
-        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR)
-            bPushed = g_pVirtualMachine->StackPushInteger(pObject->AsSWSDoor()->GetOpenLockDC());
-        else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE)
-            bPushed = g_pVirtualMachine->StackPushInteger(pObject->AsSWSPlaceable()->GetOpenLockDC());
-        else
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            bPushed = g_pVirtualMachine->StackPushInteger(pDoor->GetOpenLockDC());
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            bPushed = g_pVirtualMachine->StackPushInteger(pPlaceable->GetOpenLockDC());
+        } else {
             bPushed = g_pVirtualMachine->StackPushInteger(0);
+        }
         break;
     case CMD_GetLockLockDC:
-        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR)
-            bPushed = g_pVirtualMachine->StackPushInteger(pObject->AsSWSDoor()->m_closeLockDC);
-        else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE)
-            bPushed = g_pVirtualMachine->StackPushInteger(pObject->AsSWSPlaceable()->m_closeLockDC);
-        else
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            bPushed = g_pVirtualMachine->StackPushInteger(pDoor->m_closeLockDC);
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            bPushed = g_pVirtualMachine->StackPushInteger(pPlaceable->m_closeLockDC);
+        } else {
             bPushed = g_pVirtualMachine->StackPushInteger(0);
+        }
         break;
     default:
         return 0;
@@ -4027,11 +4043,8 @@ int CSWVirtualMachineCommands::ExecuteCommandGetMineInfo(int nCommand, int nArgC
             return 0;
         }
     pushNoKeyTag:
-        {
-            CExoString sNoKeyTag("");
-            if (!g_pVirtualMachine->StackPushString(sNoKeyTag))
-                return VM_ERROR_PUSH_FAILED;
-        }
+        if (!g_pVirtualMachine->StackPushString(CExoString("")))
+            return VM_ERROR_PUSH_FAILED;
         return 0;
 
     case CMD_GetTrapDisarmDC:  // the trigger's accessor returns int, the other two a byte
@@ -17932,7 +17945,7 @@ int CSWVirtualMachineCommands::ExecuteCommandPrintString(int nCommand, int nArgC
 // PlaySound: queues the play-sound action on OBJECT_SELF with the sound's resref string as its single
 // parameter. Only
 // runs inside an action context, and only while the object is still accepting commands. AddAction's receiver
-// is the raw object cast, not the object probe -- that call only gates the queue.
+// is the raw object cast, not the object probe -- that call only gates the queue (K2 only: K1 has no probe).
 int CSWVirtualMachineCommands::ExecuteCommandPlaySound(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
@@ -17943,7 +17956,10 @@ int CSWVirtualMachineCommands::ExecuteCommandPlaySound(int nCommand, int nArgCou
     if (m_nScriptRunArg == 1
         && g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(m_oidSelf, &pObject)
                == CGameObjectArray::SUCCESS
-        && pObject->AsSWSObject() != 0 && static_cast<CSWSObject*>(pObject)->m_bCommandable != 0) {
+#if !KOTOR1  // K1 reads m_bCommandable with no CSWSObject probe
+        && pObject->AsSWSObject() != 0
+#endif
+        && static_cast<CSWSObject*>(pObject)->m_bCommandable != 0) {
         static_cast<CSWSObject*>(pObject)->AddAction(AIACTION_PLAY_SOUND, ACTION_GROUP_NEW, ACTION_PARAM_STRING, &sSound, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
@@ -18408,7 +18424,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetJournalQuestExperience(int nComm
 
 // SetItemStackSize(oItem, nSize). The requested size is clamped into [1, the base item's stacking column],
 // and a no-op change returns early -- the feedback message and the GUI status are only produced for a real
-// change, and only when the possessor is a party member. The message object is allocated and never deleted on
+// change, and in K2 only when the possessor is a party member. The message object is allocated and never deleted on
 // any normal path, so every stack-size change on a party item leaks it.
 int CSWVirtualMachineCommands::ExecuteCommandSetItemStackSize(int nCommand, int nArgCount)
 {
@@ -18435,13 +18451,25 @@ int CSWVirtualMachineCommands::ExecuteCommandSetItemStackSize(int nCommand, int 
         CSWCCMessageData* pMsg = new CSWCCMessageData;
         pMsg->SetObjectID(0, pItem->m_objectId);
         pMsg->SetInteger(0, 1);
+#if KOTOR1  // K1 has no party test and no received-item name list
+#ifdef K2_FIX_ENGINE_BUGS
+        // An item held by a placeable or a store has no creature possessor to send the feedback to.
+        if (pPossessor == 0)
+            return 0;
+#endif
+        if (nStackSize > nOldStackSize) {
+            pPossessor->SendFeedbackMessage(FEEDBACK_ITEM_ACQUIRED, pMsg);
+            g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_RECEIVED, 0);
+        } else {
+            pPossessor->SendFeedbackMessage(FEEDBACK_ITEM_LOST, pMsg);
+            g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_LOST, 0);
+        }
+#else
         if (nStackSize > nOldStackSize) {
             if (pPossessor != 0 && pPossessor->m_bInParty != 0) {
                 pPossessor->SendFeedbackMessage(FEEDBACK_ITEM_ACQUIRED, pMsg);
-#if !KOTOR1  // K1 has no received-item name list
                 g_pAppManager->m_pClientExoApp->GetInGameGui()->AddReceivedItemToList(
                     pItem->m_localizedName);
-#endif
                 g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_RECEIVED, 0);
             }
         } else {
@@ -18450,6 +18478,7 @@ int CSWVirtualMachineCommands::ExecuteCommandSetItemStackSize(int nCommand, int 
                 g_pAppManager->m_pClientExoApp->GetInGameGui()->UpdateStatus(CGuiInGame::GUI_STATUS_ITEM_LOST, 0);
             }
         }
+#endif
     }
     return 0;
 }

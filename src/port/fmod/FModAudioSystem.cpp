@@ -287,24 +287,14 @@ void FModAudioSystem::CheckAppBackgroundStatus()
     {
         if (m_bBackgroundPaused != 0)
             return;
-        for (std::map<unsigned int, FModAudioSystemChannelInfo*>::iterator it = CHANNEL_MAP.begin();
-             it != CHANNEL_MAP.end(); ++it)
-        {
-            it->second->m_pChannel->setPaused(true);
-        }
+        PauseAllActiveChannels();
         m_bBackgroundPaused = 1;
     }
     else
     {
         if (m_bBackgroundPaused == 0)
             return;
-        for (std::map<unsigned int, FModAudioSystemChannelInfo*>::iterator it = CHANNEL_MAP.begin();
-             it != CHANNEL_MAP.end(); ++it)
-        {
-            FModAudioSystemChannelInfo* pInfo = it->second;
-            if (pInfo->m_bInUse != 0 && pInfo->m_bPaused == 0 && pInfo->m_bDone == 0)
-                pInfo->m_pChannel->setPaused(false);
-        }
+        ResumeAllActiveChannels();
         m_bBackgroundPaused = 0;
     }
 }
@@ -941,102 +931,13 @@ void FModAudioSystem::HandleChannelEnd(FModAudioSystemChannelInfo* pInfo)
     pFmodChannel->setUserData(pInfo);
     pFmodChannel->setCallback(ChannelCallback);
 
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel)
-    {
-        int nPriority = pInfo->m_nPriority;
-        if (nPriority != -1)
-        {
-            FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-            if (pTarget != 0)
-            {
-                m_nLastResult = pTarget->m_pChannel->setPriority(nPriority);
-                if (m_nLastResult == FMOD_OK)
-                    pTarget->m_nPriority = nPriority;
-            }
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fFrequency != kFltMax)
-    {
-        float fFrequency = pInfo->m_fFrequency;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->setFrequency(fFrequency);
-            if (m_nLastResult == FMOD_OK)
-                pTarget->m_fFrequency = fFrequency;
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fVolume != kFltMax)
-    {
-        float fVolume = pInfo->m_fVolume;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->setVolume(fVolume);
-            if (m_nLastResult == FMOD_OK)
-                pTarget->m_fVolume = fVolume;
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fMaxDistance != kFltMax
-        && pInfo->m_fMinDistance != kFltMax)
-    {
-        float fMaxDistance = pInfo->m_fMaxDistance;
-        float fMinDistance = pInfo->m_fMinDistance;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->set3DMinMaxDistance(fMinDistance,
-                                                                     fMaxDistance);
-            if (m_nLastResult == FMOD_OK)
-            {
-                pTarget->m_fMinDistance = fMinDistance;
-                pTarget->m_fMaxDistance = fMaxDistance;
-            }
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fDirectOcclusion != kFltMax
-        && pInfo->m_fReverbOcclusion != kFltMax)
-    {
-        float fDirectOcclusion = pInfo->m_fDirectOcclusion;
-        float fReverbOcclusion = pInfo->m_fReverbOcclusion;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->set3DOcclusion(fDirectOcclusion,
-                                                                fReverbOcclusion);
-            if (m_nLastResult == FMOD_OK)
-            {
-                pTarget->m_fDirectOcclusion = fDirectOcclusion;
-                pTarget->m_fReverbOcclusion = fReverbOcclusion;
-            }
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fPan != kFltMax)
-    {
-        float fPan = pInfo->m_fPan;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->setPan(fPan);
-            if (m_nLastResult == FMOD_OK)
-                pTarget->m_fPan = fPan;
-        }
-    }
-
-    if (pInfo != 0 && pInfo->m_pVec3DPosition != 0)
-    {
-        FMOD_VECTOR* pPosition = pInfo->m_pVec3DPosition;
-        m_nLastResult = pInfo->m_pChannel->set3DAttributes(pPosition, 0);
-        if (m_nLastResult == FMOD_OK)
-        {
-            pInfo->SetPosition(pPosition);
-        }
-    }
+    SetChannelPriority(pInfo->m_nUID, pInfo->m_nPriority);
+    SetChannelFrequency(pInfo->m_nUID, pInfo->m_fFrequency);
+    SetChannelVolume(pInfo->m_nUID, pInfo->m_fVolume);
+    SetChannelDistances(pInfo->m_nUID, pInfo->m_fMaxDistance, pInfo->m_fMinDistance);
+    SetChannelOcclusion(pInfo->m_nUID, pInfo->m_fDirectOcclusion, pInfo->m_fReverbOcclusion);
+    SetChannelPan(pInfo->m_nUID, pInfo->m_fPan);
+    SetChannel3DPosition(pInfo, pInfo->m_pVec3DPosition);
 
     K2_ASSUME(pInfo != 0);   // ChannelCallback, the only caller, always passes a channel
     ResumeChannel(pInfo->m_nUID);
@@ -1053,102 +954,13 @@ int FModAudioSystem::RebootStream(FModAudioSystemChannelInfo* pInfo)
     pFmodChannel->setUserData(pInfo);
     pFmodChannel->setCallback(ChannelCallback);
 
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel)
-    {
-        int nPriority = pInfo->m_nPriority;
-        if (nPriority != -1)
-        {
-            FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-            if (pTarget != 0)
-            {
-                m_nLastResult = pTarget->m_pChannel->setPriority(nPriority);
-                if (m_nLastResult == FMOD_OK)
-                    pTarget->m_nPriority = nPriority;
-            }
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fFrequency != kFltMax)
-    {
-        float fFrequency = pInfo->m_fFrequency;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->setFrequency(fFrequency);
-            if (m_nLastResult == FMOD_OK)
-                pTarget->m_fFrequency = fFrequency;
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fVolume != kFltMax)
-    {
-        float fVolume = pInfo->m_fVolume;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->setVolume(fVolume);
-            if (m_nLastResult == FMOD_OK)
-                pTarget->m_fVolume = fVolume;
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fMaxDistance != kFltMax
-        && pInfo->m_fMinDistance != kFltMax)
-    {
-        float fMaxDistance = pInfo->m_fMaxDistance;
-        float fMinDistance = pInfo->m_fMinDistance;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->set3DMinMaxDistance(fMinDistance,
-                                                                     fMaxDistance);
-            if (m_nLastResult == FMOD_OK)
-            {
-                pTarget->m_fMinDistance = fMinDistance;
-                pTarget->m_fMaxDistance = fMaxDistance;
-            }
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fDirectOcclusion != kFltMax
-        && pInfo->m_fReverbOcclusion != kFltMax)
-    {
-        float fDirectOcclusion = pInfo->m_fDirectOcclusion;
-        float fReverbOcclusion = pInfo->m_fReverbOcclusion;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->set3DOcclusion(fDirectOcclusion,
-                                                                fReverbOcclusion);
-            if (m_nLastResult == FMOD_OK)
-            {
-                pTarget->m_fDirectOcclusion = fDirectOcclusion;
-                pTarget->m_fReverbOcclusion = fReverbOcclusion;
-            }
-        }
-    }
-
-    if (static_cast<FModId>(pInfo->m_nUID) != kInvalidChannel && pInfo->m_fPan != kFltMax)
-    {
-        float fPan = pInfo->m_fPan;
-        FModAudioSystemChannelInfo* pTarget = GetChannelInfoByUID(pInfo->m_nUID);
-        if (pTarget != 0)
-        {
-            m_nLastResult = pTarget->m_pChannel->setPan(fPan);
-            if (m_nLastResult == FMOD_OK)
-                pTarget->m_fPan = fPan;
-        }
-    }
-
-    if (pInfo != 0 && pInfo->m_pVec3DPosition != 0)
-    {
-        FMOD_VECTOR* pPosition = pInfo->m_pVec3DPosition;
-        m_nLastResult = pInfo->m_pChannel->set3DAttributes(pPosition, 0);
-        if (m_nLastResult == FMOD_OK)
-        {
-            pInfo->SetPosition(pPosition);
-        }
-    }
+    SetChannelPriority(pInfo->m_nUID, pInfo->m_nPriority);
+    SetChannelFrequency(pInfo->m_nUID, pInfo->m_fFrequency);
+    SetChannelVolume(pInfo->m_nUID, pInfo->m_fVolume);
+    SetChannelDistances(pInfo->m_nUID, pInfo->m_fMaxDistance, pInfo->m_fMinDistance);
+    SetChannelOcclusion(pInfo->m_nUID, pInfo->m_fDirectOcclusion, pInfo->m_fReverbOcclusion);
+    SetChannelPan(pInfo->m_nUID, pInfo->m_fPan);
+    SetChannel3DPosition(pInfo, pInfo->m_pVec3DPosition);
     return 1;
 }
 #endif

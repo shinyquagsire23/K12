@@ -217,16 +217,11 @@ void CSWGuiControl::HandleFocusChange(int bGaining)
 void CSWGuiControl::HandleLMouseDown()
 {
     if (!GetIsSelectable()) {
-        CSWGuiControl* pParent = m_pParent;
-        while (pParent) {
-            if (pParent->GetIsSelectable()) {
-                pParent->HandleLMouseDown();
-                return;
-            }
-            pParent = pParent->m_pParent;
+        CSWGuiControl* pParent = GetSelectableParent();
+        if (pParent) {
+            pParent->HandleLMouseDown();
+            return;
         }
-        g_pGuiMan->CaptureMouse(this, 1);
-        return;
     }
     g_pGuiMan->CaptureMouse(this, 1);
 }
@@ -269,16 +264,11 @@ void CSWGuiListBox::HandleLMouseUp()
 void CSWGuiControl::HandleRMouseDown()
 {
     if (!GetIsSelectable()) {
-        CSWGuiControl* pParent = m_pParent;
-        while (pParent) {
-            if (pParent->GetIsSelectable()) {
-                pParent->HandleRMouseDown();
-                return;
-            }
-            pParent = pParent->m_pParent;
+        CSWGuiControl* pParent = GetSelectableParent();
+        if (pParent) {
+            pParent->HandleRMouseDown();
+            return;
         }
-        g_pGuiMan->CaptureMouse(this, 4);
-        return;
     }
     g_pGuiMan->CaptureMouse(this, 4);
 }
@@ -289,9 +279,7 @@ void CSWGuiControl::HandleLMouseUp()
     if (pCaptured) {
         CSWGuiControl* pMatch = pCaptured;
         if (pCaptured != this) {
-            pMatch = pCaptured->m_pParent;
-            while (pMatch && !pMatch->GetIsSelectable())
-                pMatch = pMatch->m_pParent;
+            pMatch = pCaptured->GetSelectableParent();
         }
         if (pMatch == this) {
             if (g_pGuiMan->m_nMouseStateFlags & 1)
@@ -310,9 +298,7 @@ void CSWGuiControl::HandleRMouseUp()
     if (pCaptured) {
         CSWGuiControl* pMatch = pCaptured;
         if (pCaptured != this) {
-            pMatch = pCaptured->m_pParent;
-            while (pMatch && !pMatch->GetIsSelectable())
-                pMatch = pMatch->m_pParent;
+            pMatch = pCaptured->GetSelectableParent();
         }
         if (pMatch == this && m_tail.bEnabled)
             HandleInputEvent(INPUTEVENT_MOUSE_RIGHT, 1);
@@ -912,9 +898,7 @@ void CSWGuiRadioButton::HandleLMouseUp()
     if (pCaptured) {
         CSWGuiControl* pMatch = pCaptured;
         if (pCaptured != this) {
-            pMatch = pCaptured->m_pParent;
-            while (pMatch && !pMatch->GetIsSelectable())
-                pMatch = pMatch->m_pParent;
+            pMatch = pCaptured->GetSelectableParent();
         }
         if (pMatch == this) {
             if (g_pGuiMan->m_nMouseStateFlags & 1) {
@@ -1731,10 +1715,10 @@ void CSWGuiScrollBar::Initialize(const CSWGuiExtent& extent, const CSWGuiBorderP
     // One params block, re-pointed at each of the two images.
     CSWGuiImageParams params(CResRef(), 0, 0, 0.0f, 18, 1.0f, Vector{ 1.0f, 1.0f, 1.0f });
 
-    params.SetImage(resRefDir, 0);
+    params.SetImage(resRefDir);
     m_imageDir.Initialize(m_extent, params);
 
-    params.SetImage(resRefThumb, 0);
+    params.SetImage(resRefThumb);
     m_imageThumb.Initialize(m_extent, params);
 
     SetExtent(m_extent);
@@ -2076,10 +2060,7 @@ void CSWGuiListBox::HandleMouseMove()
     if (pControl != pWasOver)
     {
         if (pWasOver)
-        {
-            g_pGuiMan->RemoveToolTip();
-            pWasOver->m_tail.bToolTipShown = 0;
-        }
+            pWasOver->HideToolTip();
         m_pMouseOverControl = pControl;
         if (!pControl)
             return;
@@ -2716,9 +2697,9 @@ void CSWGuiListBox::InitializeScrollBar(CSWGuiExtent& extent, const CSWGuiBorder
 
     CResRef resRefNone;
     CSWGuiImageParams paramsImage(resRefNone, 0, 0, 0.0f, 18, 1.0f, Vector(1.0f, 1.0f, 1.0f));
-    paramsImage.SetImage(resRefDir, 0);
+    paramsImage.SetImage(resRefDir);
     m_scrollBar.m_imageDir.Initialize(m_scrollBar.m_extent, paramsImage);
-    paramsImage.SetImage(resRefThumb, 0);
+    paramsImage.SetImage(resRefThumb);
     m_scrollBar.m_imageThumb.Initialize(m_scrollBar.m_extent, paramsImage);
     // Through a pointer again, and this one is a real virtual dispatch, unlike the direct call the
     // same member takes in SetScrollBarOnLeft. See the note on Initialize(extent, CSWGuiListBox*).
@@ -2743,21 +2724,7 @@ void CSWGuiListBox::SetScrollBarOnLeft(int bOnLeft)
         return;
     bScrollBarOnLeft = bOnLeft;
 
-    if (m_extent.w == 0)
-        return;
-
-    int nWidth = m_scrollBar.m_extent.w;
-    if (m_extent.w < nWidth)
-        nWidth = m_extent.w;
-
-    CSWGuiExtent extent;
-    extent.y = m_extent.y;
-    extent.w = nWidth;
-    extent.h = m_extent.h;
-    extent.x = m_extent.x + (bScrollBarOnLeft ? 0 : m_extent.w - nWidth);
-    m_scrollBar.SetExtent(extent);
-
-    SetExtent(m_extent);
+    SetScrollBarExtent(m_scrollBar.m_extent.w, 1);
 }
 
 void CSWGuiListBox::Load(CResGFF* pGFF, CResStruct& resStruct)
@@ -2839,15 +2806,7 @@ void CSWGuiListBox::SetExtent(const CSWGuiExtent& extent)
 
     m_innerExtent = m_border.GetInnerExtent();
 
-    if (m_extent.w != 0)
-    {
-        CSWGuiExtent scrollBarExtent;
-        scrollBarExtent.w = m_extent.w < nScrollBarWidth ? m_extent.w : nScrollBarWidth;
-        scrollBarExtent.y = m_extent.y;
-        scrollBarExtent.h = m_extent.h;
-        scrollBarExtent.x = m_extent.x + (bScrollBarOnLeft ? 0 : m_extent.w - scrollBarExtent.w);
-        m_scrollBar.SetExtent(scrollBarExtent);
-    }
+    SetScrollBarExtent(nScrollBarWidth, 0);
 
     bLayoutDirty = 1;
     OrganizeControls();

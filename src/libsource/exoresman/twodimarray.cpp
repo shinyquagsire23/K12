@@ -146,19 +146,19 @@ int C2DA::GetFLOATEntry(int nRow, int nColumn, float* pfValue) {
 #else
 int C2DA::GetFLOATEntry(int nRow, int nColumn, float* pfValue) {
     if (nRow < 0) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (nColumn < 0) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (m_nRows <= nRow) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (m_nColumns <= nColumn) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (m_b2daBinary) {
@@ -171,14 +171,12 @@ int C2DA::GetFLOATEntry(int nRow, int nColumn, float* pfValue) {
         *pfValue = 0.0f;
         return 0;
     }
-    *pfValue = m_papasRows[nRow][nColumn].m_sString
-                   ? static_cast<float>(atof(m_papasRows[nRow][nColumn].m_sString)) : 0.0f;
+    *pfValue = m_papasRows[nRow][nColumn].AsFLOAT();
     return 1;
 }
 #endif
 
 
-#if KOTOR1
 int C2DA::GetCExoStringEntry(int nRow, int nColumn, CExoString* pValue) {
     if (nRow < 0) {
         *pValue = m_sDefaultValue;
@@ -207,36 +205,6 @@ int C2DA::GetCExoStringEntry(int nRow, int nColumn, CExoString* pValue) {
     *pValue = m_papasRows[nRow][nColumn];
     return pValue->GetLength() > 0;
 }
-#else
-int C2DA::GetCExoStringEntry(int nRow, int nColumn, CExoString* pValue) {
-    if (nRow < 0) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (nColumn < 0) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_nRows <= nRow) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_nColumns <= nColumn) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_b2daBinary) {
-        unsigned short nOffset = m_paBinaryEntryOffsets[m_nColumns * nRow + nColumn];
-        return (*pValue = static_cast<char*>(m_pBinaryEntryData + nOffset))[0] != '\0';
-    }
-    if (m_papasRows[nRow][nColumn] == const_cast<char*>("")) {
-        *pValue = const_cast<char*>("");
-        return 0;
-    }
-    *pValue = m_papasRows[nRow][nColumn];
-    return (pValue->m_sString ? static_cast<int>(strlen(pValue->m_sString)) : 0) > 0;
-}
-#endif
 
 #if KOTOR1
 int C2DA::GetINTEntry(int nRow, int nColumn, int* pnValue) {
@@ -288,19 +256,19 @@ int C2DA::GetINTEntry(int nRow, int nColumn, int* pnValue) {
 #else
 int C2DA::GetINTEntry(int nRow, int nColumn, int* pnValue) {
     if (nRow < 0) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (nColumn < 0) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (m_nRows <= nRow) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (m_nColumns <= nColumn) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (m_b2daBinary) {
@@ -319,8 +287,7 @@ int C2DA::GetINTEntry(int nRow, int nColumn, int* pnValue) {
             || m_papasRows[nRow][nColumn].CStr()[1] == 'X')) {
         static_cast<void>(sscanf(m_papasRows[nRow][nColumn].CStr(), "%x", pnValue));
     } else {
-        *pnValue = m_papasRows[nRow][nColumn].m_sString
-                       ? atoi(m_papasRows[nRow][nColumn].m_sString) : 0;
+        *pnValue = m_papasRows[nRow][nColumn].AsINT();
     }
     return 1;
 }
@@ -523,7 +490,6 @@ int C2DA::SetFLOATEntry(const CExoString& sRow, const CExoString& sColumn, float
     return bResult;
 }
 
-#if KOTOR1
 int C2DA::GetCExoStringEntry(int nRow, const CExoString& sColumn, CExoString* pValue) {
     int nColumn = GetColumnIndex(sColumn);
     if (nRow < 0) {
@@ -549,35 +515,7 @@ int C2DA::GetCExoStringEntry(int nRow, const CExoString& sColumn, CExoString* pV
     *pValue = m_papasRows[nRow][nColumn];
     return pValue->GetLength() > 0;
 }
-#else
-int C2DA::GetCExoStringEntry(int nRow, const CExoString& sColumn, CExoString* pValue) {
-    int nColumn = GetColumnIndex(sColumn);
-    if (nRow < 0) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (nColumn == -1) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_nRows <= nRow) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_b2daBinary) {
-        unsigned short nOffset = m_paBinaryEntryOffsets[m_nColumns * nRow + nColumn];
-        return (*pValue = static_cast<char*>(m_pBinaryEntryData + nOffset))[0] != '\0';
-    }
-    if (m_papasRows[nRow][nColumn] == const_cast<char*>("")) {
-        *pValue = const_cast<char*>("");
-        return 0;
-    }
-    *pValue = m_papasRows[nRow][nColumn];
-    return (pValue->m_sString ? static_cast<int>(strlen(pValue->m_sString)) : 0) > 0;
-}
-#endif
 
-#if KOTOR1
 int C2DA::GetCExoStringEntry(const CExoString& sRow, int nColumn, CExoString* pValue) {
     int nRow = GetRowIndex(sRow);
     if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
@@ -595,27 +533,7 @@ int C2DA::GetCExoStringEntry(const CExoString& sRow, int nColumn, CExoString* pV
     *pValue = m_papasRows[nRow][nColumn];
     return pValue->GetLength() > 0;
 }
-#else
-int C2DA::GetCExoStringEntry(const CExoString& sRow, int nColumn, CExoString* pValue) {
-    int nRow = GetRowIndex(sRow);
-    if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_b2daBinary) {
-        unsigned short nOffset = m_paBinaryEntryOffsets[m_nColumns * nRow + nColumn];
-        return (*pValue = static_cast<char*>(m_pBinaryEntryData + nOffset))[0] != '\0';
-    }
-    if (m_papasRows[nRow][nColumn] == const_cast<char*>("")) {
-        *pValue = const_cast<char*>("");
-        return 0;
-    }
-    *pValue = m_papasRows[nRow][nColumn];
-    return (pValue->m_sString ? static_cast<int>(strlen(pValue->m_sString)) : 0) > 0;
-}
-#endif
 
-#if KOTOR1
 int C2DA::GetCExoStringEntry(const CExoString& sRow, const CExoString& sColumn,
                              CExoString* pValue) {
     int nRow = GetRowIndex(sRow);
@@ -635,27 +553,6 @@ int C2DA::GetCExoStringEntry(const CExoString& sRow, const CExoString& sColumn,
     *pValue = m_papasRows[nRow][nColumn];
     return pValue->GetLength() > 0;
 }
-#else
-int C2DA::GetCExoStringEntry(const CExoString& sRow, const CExoString& sColumn,
-                             CExoString* pValue) {
-    int nRow = GetRowIndex(sRow);
-    int nColumn = GetColumnIndex(sColumn);
-    if (nRow == -1 || nColumn == -1) {
-        *pValue = m_sDefaultValue;
-        return 0;
-    }
-    if (m_b2daBinary) {
-        unsigned short nOffset = m_paBinaryEntryOffsets[m_nColumns * nRow + nColumn];
-        return (*pValue = static_cast<char*>(m_pBinaryEntryData + nOffset))[0] != '\0';
-    }
-    if (m_papasRows[nRow][nColumn] == const_cast<char*>("")) {
-        *pValue = const_cast<char*>("");
-        return 0;
-    }
-    *pValue = m_papasRows[nRow][nColumn];
-    return (pValue->m_sString ? static_cast<int>(strlen(pValue->m_sString)) : 0) > 0;
-}
-#endif
 
 #if KOTOR1
 int C2DA::GetFLOATEntry(int nRow, const CExoString& sColumn, float* pfValue) {
@@ -698,15 +595,15 @@ int C2DA::GetFLOATEntry(int nRow, const CExoString& sColumn, float* pfValue) {
 int C2DA::GetFLOATEntry(int nRow, const CExoString& sColumn, float* pfValue) {
     int nColumn = GetColumnIndex(sColumn);
     if (nRow < 0) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (nColumn == -1) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (m_nRows <= nRow) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (m_b2daBinary) {
@@ -719,8 +616,7 @@ int C2DA::GetFLOATEntry(int nRow, const CExoString& sColumn, float* pfValue) {
         *pfValue = 0.0f;
         return 0;
     }
-    *pfValue = m_papasRows[nRow][nColumn].m_sString
-                   ? static_cast<float>(atof(m_papasRows[nRow][nColumn].m_sString)) : 0.0f;
+    *pfValue = m_papasRows[nRow][nColumn].AsFLOAT();
     return 1;
 }
 #endif
@@ -756,7 +652,7 @@ int C2DA::GetFLOATEntry(const CExoString& sRow, int nColumn, float* pfValue) {
 int C2DA::GetFLOATEntry(const CExoString& sRow, int nColumn, float* pfValue) {
     int nRow = GetRowIndex(sRow);
     if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (m_b2daBinary) {
@@ -765,8 +661,7 @@ int C2DA::GetFLOATEntry(const CExoString& sRow, int nColumn, float* pfValue) {
         static_cast<void>(sscanf(m_pBinaryEntryData + nOffset, "%f", pfValue));
         return 1;
     }
-    *pfValue = m_papasRows[nRow][nColumn].m_sString
-                   ? static_cast<float>(atof(m_papasRows[nRow][nColumn].m_sString)) : 0.0f;
+    *pfValue = m_papasRows[nRow][nColumn].AsFLOAT();
     return 1;
 }
 #endif
@@ -806,7 +701,7 @@ int C2DA::GetFLOATEntry(const CExoString& sRow, const CExoString& sColumn, float
     int nRow = GetRowIndex(sRow);
     int nColumn = GetColumnIndex(sColumn);
     if (nRow == -1 || nColumn == -1) {
-        *pfValue = m_sDefaultValue.m_sString ? static_cast<float>(atof(m_sDefaultValue.m_sString)) : 0.0f;
+        *pfValue = m_sDefaultValue.AsFLOAT();
         return 0;
     }
     if (m_b2daBinary) {
@@ -819,8 +714,7 @@ int C2DA::GetFLOATEntry(const CExoString& sRow, const CExoString& sColumn, float
         *pfValue = 0.0f;
         return 0;
     }
-    *pfValue = m_papasRows[nRow][nColumn].m_sString
-                   ? static_cast<float>(atof(m_papasRows[nRow][nColumn].m_sString)) : 0.0f;
+    *pfValue = m_papasRows[nRow][nColumn].AsFLOAT();
     return 1;
 }
 #endif
@@ -873,15 +767,15 @@ int C2DA::GetINTEntry(int nRow, const CExoString& sColumn, int* pnValue) {
 int C2DA::GetINTEntry(int nRow, const CExoString& sColumn, int* pnValue) {
     int nColumn = GetColumnIndex(sColumn);
     if (nRow < 0) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (nColumn == -1) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (m_nRows <= nRow) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (m_b2daBinary) {
@@ -900,8 +794,7 @@ int C2DA::GetINTEntry(int nRow, const CExoString& sColumn, int* pnValue) {
             || m_papasRows[nRow][nColumn].CStr()[1] == 'X')) {
         static_cast<void>(sscanf(m_papasRows[nRow][nColumn].CStr(), "%x", pnValue));
     } else {
-        *pnValue = m_papasRows[nRow][nColumn].m_sString
-                       ? atoi(m_papasRows[nRow][nColumn].m_sString) : 0;
+        *pnValue = m_papasRows[nRow][nColumn].AsINT();
     }
     return 1;
 }
@@ -947,7 +840,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, int nColumn, int* pnValue) {
 int C2DA::GetINTEntry(const CExoString& sRow, int nColumn, int* pnValue) {
     int nRow = GetRowIndex(sRow);
     if (nColumn < 0 || nRow == -1 || m_nColumns <= nColumn) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (m_b2daBinary) {
@@ -966,8 +859,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, int nColumn, int* pnValue) {
             || m_papasRows[nRow][nColumn].CStr()[1] == 'X')) {
         static_cast<void>(sscanf(m_papasRows[nRow][nColumn].CStr(), "%x", pnValue));
     } else {
-        *pnValue = m_papasRows[nRow][nColumn].m_sString
-                       ? atoi(m_papasRows[nRow][nColumn].m_sString) : 0;
+        *pnValue = m_papasRows[nRow][nColumn].AsINT();
     }
     return 1;
 }
@@ -1015,7 +907,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, const CExoString& sColumn, int* pn
     int nRow = GetRowIndex(sRow);
     int nColumn = GetColumnIndex(sColumn);
     if (nRow == -1 || nColumn == -1) {
-        *pnValue = m_sDefaultValue.m_sString ? atoi(m_sDefaultValue.m_sString) : 0;
+        *pnValue = m_sDefaultValue.AsINT();
         return 0;
     }
     if (m_b2daBinary) {
@@ -1034,8 +926,7 @@ int C2DA::GetINTEntry(const CExoString& sRow, const CExoString& sColumn, int* pn
             || m_papasRows[nRow][nColumn].CStr()[1] == 'X')) {
         static_cast<void>(sscanf(m_papasRows[nRow][nColumn].CStr(), "%x", pnValue));
     } else {
-        *pnValue = m_papasRows[nRow][nColumn].m_sString
-                       ? atoi(m_papasRows[nRow][nColumn].m_sString) : 0;
+        *pnValue = m_papasRows[nRow][nColumn].AsINT();
     }
     return 1;
 }
@@ -1373,9 +1264,7 @@ int C2DA::Load2DArray() {
 
     SkipNewLines(&pData, &nSize);
 
-    unsigned int nLineLength = 0;
-    while (nLineLength < nSize && pData[nLineLength] != '\n' && pData[nLineLength] != '\r')
-        nLineLength++;
+    unsigned int nLineLength = GetNextLineLength(pData, nSize);
 
     char* pTokenPos = pData;
     unsigned int nTokenRemaining = nLineLength;
@@ -1406,9 +1295,7 @@ int C2DA::Load2DArray() {
 
     SkipNewLines(&pData, &nSize);
 
-    nLineLength = 0;
-    while (nLineLength < nSize && pData[nLineLength] != '\n' && pData[nLineLength] != '\r')
-        nLineLength++;
+    nLineLength = GetNextLineLength(pData, nSize);
 
     char* pCountPos = pData;
     unsigned int nCountRemaining = nLineLength;
@@ -1444,9 +1331,7 @@ int C2DA::Load2DArray() {
         m_nRows = 0;
         if (nRowScanSize != 0) {
             do {
-                unsigned int nRowLineLen = 0;
-                while (nRowLineLen < nRowScanSize && pRowScan[nRowLineLen] != '\n' && pRowScan[nRowLineLen] != '\r')
-                    nRowLineLen++;
+                unsigned int nRowLineLen = GetNextLineLength(pRowScan, nRowScanSize);
                 pRowScan += nRowLineLen;
                 nRowScanSize -= nRowLineLen;
                 SkipNewLines(&pRowScan, &nRowScanSize);
@@ -1473,9 +1358,7 @@ int C2DA::Load2DArray() {
 
         int nRow = 0;
         while (nSize != 0) {
-            unsigned int nRowLineLen = 0;
-            while (nRowLineLen < nSize && pData[nRowLineLen] != '\n' && pData[nRowLineLen] != '\r')
-                nRowLineLen++;
+            unsigned int nRowLineLen = GetNextLineLength(pData, nSize);
 
             char* pLinePos = pData;
             unsigned int nLineRemaining = nSize;

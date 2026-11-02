@@ -201,17 +201,8 @@ public:
     virtual void SetExtent(const CSWGuiExtent& extent);
     virtual void Draw(float f);
     // </VTABLE-GEN>
-// Declared always_inline so the units that destroy these widgets define the body. Declared after
-// SetExtent, which stays the key function: the vtable is emitted once, in swguicontrol.cpp.
-#ifdef CSWGUI_FORCE_WIDGET_INLINE
-    __attribute__((always_inline)) virtual ~CSWGui3DSceneView();
-#endif
     CSWGuiScene  m_scene;
 };
-
-#ifdef CSWGUI_FORCE_WIDGET_INLINE
-inline __attribute__((always_inline)) CSWGui3DSceneView::~CSWGui3DSceneView() {}
-#endif
 
 K2_LAYOUT_ASSERT(sizeof(CSWGuiScene) == 0x48, "CSWGuiScene size drift");
 #if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
@@ -257,7 +248,7 @@ struct CSWGuiExtent;
 // text.
 class CSWGuiButton : public CSWGuiNavigable {
 public:
-    __attribute__((noinline)) CSWGuiButton() = default;
+    CSWGuiButton() = default;
     virtual void SetExtent(const CSWGuiExtent& extent);
 
 #if KOTOR1  // K1 inlines this teardown into its owners
@@ -380,11 +371,6 @@ class CSWGuiLabel : public CSWGuiControl {
 public:
     CSWGuiLabel();
     virtual void SetExtent(const CSWGuiExtent& extent);
-// Declared always_inline so the units that destroy these widgets define the body. Declared after
-// SetExtent, which stays the key function: the vtable is emitted once, in swguicontrol.cpp.
-#ifdef CSWGUI_FORCE_WIDGET_INLINE
-    __attribute__((always_inline)) virtual ~CSWGuiLabel();
-#endif
     virtual void Draw(float f);
     virtual CSWGuiLabel* AsLabel() { return this; }
     virtual void SetEnabled(int flag);
@@ -395,10 +381,6 @@ public:
     CSWGuiBorder m_border;
     CSWGuiText   m_text;
 };
-
-#ifdef CSWGUI_FORCE_WIDGET_INLINE
-inline __attribute__((always_inline)) CSWGuiLabel::~CSWGuiLabel() {}
-#endif
 
 #if !KOTOR1  // K2 sizes: K1's GUI base classes are smaller
 K2_LAYOUT_ASSERT(sizeof(CSWGuiLabel) == 0x1b8, "CSWGuiLabel size drift");

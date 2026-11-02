@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#define PART_DTOR_DECLARED_ONLY  // ~Part is aurmodel.cpp's
 #include "port/aslglapi.h"
 #if KOTOR1
 #define K1_AURORA_LIST
@@ -200,9 +201,7 @@ void PartEmitter::AnimateParticles(float fDeltaT)
                 m_fBirthRate = m_fRadius * m_fLightningSubDiv + 2.0f;
 
                 // The bolt's control-point offsets run along the emitter's own local Z axis.
-                // inlined Quaternion::zdir()
-                Matrix matLocal = m_qLocalOrientation.getmatrix();
-                Vector vZ = Vector(matLocal.m_f[6], matLocal.m_f[7], matLocal.m_f[8]);
+                Vector vZ = m_qLocalOrientation.zdir();
 
                 pBolt->m_lControlPoints.SetSize(nSeg + 2);
                 pBolt->m_lPrevPoints.SetSize(nSeg + 2);
@@ -514,8 +513,7 @@ void PartEmitter::moveParticleStandard(float fDeltaT)
                             (pParticle->m_vSpreadVelocity + vNormal * -2.0f * fDot) * m_fBounceCoeff;
                         fMagnitude = magnitude(pParticle->m_vSpreadVelocity);
                     }
-
-                    if (EmitterBounceType == 1)
+                    else if (EmitterBounceType == 1)
                     {
                         if (m_fBounceCoeff == 0.0f)
                         {
@@ -534,6 +532,10 @@ void PartEmitter::moveParticleStandard(float fDeltaT)
                                        + pParticle->m_vSpreadVelocity.y * pParticle->m_vSpreadVelocity.y
                                        + pParticle->m_vSpreadVelocity.z * pParticle->m_vSpreadVelocity.z;
                         }
+                    }
+
+                    if (EmitterBounceType == 1)
+                    {
                         if (fMagnitude < 0.5f)
                             goto reorient;
                     }
@@ -1651,7 +1653,7 @@ void LightningEmitter::Update(float fDeltaT)
             if (bJittered)
                 m_lControlPoints.m_pData[0] = m_lParticles.m_pData[0]->m_vPosition;
             else
-                m_lControlPoints.m_pData[1] = pLast->m_vPosition;
+                m_lControlPoints.m_pData[1] = m_lParticles.m_pData[m_lParticles.m_count - 1]->m_vPosition;
             UpdateControlPoints();
         }
         else if (bJittered)
@@ -1796,22 +1798,21 @@ void LightningEmitter::Update(float fDeltaT)
             {
                 // Jitter the bolt along its normalized first-to-last axis. The yaw accumulator
                 // spirals the jitter direction down the bolt.
-                Vector vDir = normalize(vDelta);
-                // The yaw axis runs from the emitter's own anchor to the watched target.
-                Vector vAxis = m_spTarget.m_pObject->GetPosition() - m_avVectors[6];
-                int  nParticles = m_lParticles.m_count;
                 float fLen = sqrtf(vDelta.x * vDelta.x + vDelta.y * vDelta.y
                                  + vDelta.z * vDelta.z);
-                float fRate = m_fLightningScale * m_scale.m_fScale * ((fLen / static_cast<float>(nParticles)) * 0.5f);
+                float fRate = m_fLightningScale * m_scale.m_fScale * ((fLen / static_cast<float>(m_lParticles.m_count)) * 0.5f);
+                Vector vDir = normalize(vDelta);
                 Vector vSpread(m_fJitterAxisX, m_fJitterAxisY, m_fJitterAxisZ);
                 int  nSteps = static_cast<int>(m_fLightningZigzag);
+                // The yaw axis runs from the emitter's own anchor to the watched target.
+                Vector vAxis = m_spTarget.m_pObject->GetPosition() - m_avVectors[6];
 
-                if (nParticles > 2)
+                if (m_lParticles.m_count > 2)
                 {
                     vDir = vDir * fRate;
 
                     int nRoll = 0;
-                    for (int i = 1; i < nParticles - 1; i++)
+                    for (int i = 1; i < m_lParticles.m_count - 1; i++)
                     {
                         if (nSteps != 0)
                         {
@@ -1823,7 +1824,7 @@ void LightningEmitter::Update(float fDeltaT)
                             vSpread = RotateVector(vSpread, qYaw);
                         }
 
-                        float fLocal = static_cast<float>(i) / static_cast<float>(nParticles);
+                        float fLocal = static_cast<float>(i) / static_cast<float>(m_lParticles.m_count);
                         if (fLocal > 0.5f)
                             fLocal = 1.0f - fLocal;
                         float fAmp = m_fLightningRadius * (fLocal + fLocal);
@@ -1945,7 +1946,7 @@ void LightningEmitter::Update(float fDeltaT)
                 Vector vHere = pChild->m_spTarget.m_pObject->GetPosition() - m_vBoltOrigin;
                 if (!bIdentity)
                     vHere = RotateVector(vHere, qArc);
-                pChild->m_spTarget.m_pObject->SetPosition(vHere + m_avVectors[6]);
+                m_lBranches.m_pData[i]->m_spTarget.m_pObject->SetPosition(vHere + m_avVectors[6]);
             }
         }
 
@@ -2031,14 +2032,20 @@ extern float s_fLightningLimit     __attribute__((visibility("hidden")));
 
 #if defined(K2_MOBILE_OPT) && !KOTOR1
 static float& Max(float& fA, float& fB) { return fA < fB ? fB : fA; }
+
+inline void ConstrainValue(float& fValue, float& fLimit)
+{
+    if (fValue > fLimit)
+    {
+        float fHalf = fValue * 0.5f;
+        fValue = Max(fLimit, fHalf);
+    }
+}
 #endif
 
 void ConstrainBirthrateSingle(PartEmitter* pEmitter)
 {
 #ifdef K2_MOBILE_OPT
-#if !KOTOR1
-    float fHalf;
-#endif
 #if KOTOR1  // K1 re-reads the limit word for the store
     volatile float& fLimit = s_fSingleLimit;
 #else
@@ -2048,12 +2055,7 @@ void ConstrainBirthrateSingle(PartEmitter* pEmitter)
     if (pEmitter->m_fBirthRate > fLimit)
         pEmitter->m_fBirthRate = fLimit;
 #else
-    // inlined ConstrainValue(float&, float&)
-    if (pEmitter->m_fBirthRate > fLimit)
-    {
-        fHalf = pEmitter->m_fBirthRate * 0.5f;
-        pEmitter->m_fBirthRate = Max(fLimit, fHalf);
-    }
+    ConstrainValue(pEmitter->m_fBirthRate, fLimit);
 #endif
 #else
     K2_UNUSED(pEmitter);
@@ -2063,9 +2065,6 @@ void ConstrainBirthrateSingle(PartEmitter* pEmitter)
 void ConstrainBirthrateLightning(PartEmitter* pEmitter)
 {
 #ifdef K2_MOBILE_OPT
-#if !KOTOR1
-    float fHalf;
-#endif
 #if KOTOR1  // K1 re-reads the limit word for the store
     volatile float& fLimit = s_fLightningLimit;
 #else
@@ -2075,12 +2074,7 @@ void ConstrainBirthrateLightning(PartEmitter* pEmitter)
     if (pEmitter->m_fBirthRate > fLimit)
         pEmitter->m_fBirthRate = fLimit;
 #else
-    // inlined ConstrainValue(float&, float&)
-    if (pEmitter->m_fBirthRate > fLimit)
-    {
-        fHalf = pEmitter->m_fBirthRate * 0.5f;
-        pEmitter->m_fBirthRate = Max(fLimit, fHalf);
-    }
+    ConstrainValue(pEmitter->m_fBirthRate, fLimit);
 #endif
 #else
     K2_UNUSED(pEmitter);
@@ -2090,9 +2084,6 @@ void ConstrainBirthrateLightning(PartEmitter* pEmitter)
 void ConstrainBirthrateFountain(PartEmitter* pEmitter)
 {
 #ifdef K2_MOBILE_OPT
-#if !KOTOR1
-    float fHalf;
-#endif
 #if KOTOR1  // K1 clamps the rate to the limit (re-read) instead of halving it
     if (pEmitter->m_fLifeExp >= 3.0f)
     {
@@ -2104,12 +2095,7 @@ void ConstrainBirthrateFountain(PartEmitter* pEmitter)
 #else
     float fLimit = pEmitter->m_fLifeExp >= 3.0f ? s_fFountainPacked : s_fFountainDefault;
 
-    // inlined ConstrainValue(float&, float&)
-    if (pEmitter->m_fBirthRate > fLimit)
-    {
-        fHalf = pEmitter->m_fBirthRate * 0.5f;
-        pEmitter->m_fBirthRate = Max(fLimit, fHalf);
-    }
+    ConstrainValue(pEmitter->m_fBirthRate, fLimit);
 #endif
 #else
     K2_UNUSED(pEmitter);
@@ -2135,14 +2121,8 @@ void ConstrainBirthrateExplosion(PartEmitter* pEmitter)
         pEmitter->m_fBirthRate = s_fExplosionHigh;
 #else
     float& fLimitRef = !(s_fExplosionThreshold <= fMax) ? s_fExplosionHigh : s_fExplosionLow;
-    float fHalf;
     float fLimit = fLimitRef;
-    // inlined ConstrainValue(float&, float&)
-    if (pEmitter->m_fBirthRate > fLimit)
-    {
-        fHalf = pEmitter->m_fBirthRate * 0.5f;
-        pEmitter->m_fBirthRate = Max(fLimit, fHalf);
-    }
+    ConstrainValue(pEmitter->m_fBirthRate, fLimit);
 #endif
 #else
     K2_UNUSED(pEmitter);
@@ -2219,40 +2199,12 @@ void SingleEmitter::Update(float fDeltaT)
             pParticle->m_vPosition * t + pParticle->m_vTrailPosition * (1.0f - t);
     }
 
-    // Pick the movement integrator from the node's point-to-point flags.
-    MdlNodeEmitter* pDispatch = static_cast<MdlNodeEmitter*>(m_pNode->AsMdlNodeEmitter());
-    if (!(pDispatch->m_nEmitterFlags & 1))
-        return moveParticleStandard(fDeltaT);
-    if (!m_spTarget.m_pObject)
-        return;
-    if (pDispatch->m_nEmitterFlags & 2)
-        return moveParticleP2PBezier(fDeltaT);
-    return moveParticleP2PGrav(fDeltaT);
+    MoveFunc(fDeltaT);
 }
 
 void FountainEmitter::Update(float fDeltaT)
 {
-#ifdef K2_MOBILE_OPT
-#if !KOTOR1
-    float fHalf;
-#endif
-#if KOTOR1  // K1 clamps (re-read) instead of halving
-    if (m_fLifeExp >= 3.0f)
-    {
-        if (m_fBirthRate > s_fFountainPacked)
-            m_fBirthRate = s_fFountainPacked;
-    }
-    else if (m_fBirthRate > s_fFountainDefault)
-        m_fBirthRate = s_fFountainDefault;
-#else
-    float fLimit = m_fLifeExp >= 3.0f ? s_fFountainPacked : s_fFountainDefault;
-    if (m_fBirthRate > fLimit)
-    {
-        fHalf = m_fBirthRate * 0.5f;
-        m_fBirthRate = Max(fLimit, fHalf);
-    }
-#endif
-#endif  // K2_MOBILE_OPT
+    ConstrainBirthrateFountain(this);
     float fBirthrate = m_fBirthRate;
 
     MdlNodeEmitter* pNode = static_cast<MdlNodeEmitter*>(m_pNode);
@@ -2447,20 +2399,7 @@ void ExplosionEmitter::Update(float fDeltaT)
     // For the burst count, a rate below one emission per frame spawns nothing at all.
     int nBirthrate = static_cast<int>(fBirthrate);
 
-    // Pick the movement integrator; the Bezier variant only runs while the watched object is
-    // alive.
-    MdlNodeEmitter* pDispatch = static_cast<MdlNodeEmitter*>(m_pNode->AsMdlNodeEmitter());
-    if (!(pDispatch->m_nEmitterFlags & 1))
-    {
-        moveParticleStandard(fDeltaT);
-    }
-    else if (m_spTarget.m_pObject)
-    {
-        if (pDispatch->m_nEmitterFlags & 2)
-            moveParticleP2PBezier(fDeltaT);
-        else
-            moveParticleP2PGrav(fDeltaT);
-    }
+    MoveFunc(fDeltaT);
 
     // The burst fires once. The detonation callback sets the trigger, and the latch records that it
     // has fired. The wind source is registered at the emitter's world frame, sized by the node's
@@ -2951,6 +2890,7 @@ void PartEmitter::RenderLinked()
     // The camera orientation, copied once here after the empty early-out. Only its matrix rows
     // are needed later, after the GL bracket.
     Quaternion qCam = CurrentCamera->m_qOrientation;
+    float fFPS = m_fFPS;
 
     LightningEmitter* pLightning = AsLightningEmitter();
 
@@ -2983,7 +2923,7 @@ void PartEmitter::RenderLinked()
     if (m_pGob != NULL && m_pGob->m_fObjectScale != 1.0f)
         fScale = m_pGob->m_fObjectScale;
 
-    float fFade = m_fFPS > 0.0f ? 1.0f / m_fFPS : 0.0f;
+    float fFade = fFPS > 0.0f ? 1.0f / fFPS : 0.0f;
 
     m_pParticleMaterial->BindTexture0();
     m_pParticleMaterial->SetBlendingMode(0);
@@ -3528,13 +3468,7 @@ void PartEmitter::RenderStandard()
     int nPassCount = pNode->m_bFrameBlending ? 5 : 1;
 
     if (renderemitterspheres)
-    {
-        Vector vCenter;
-        Quaternion qOrientation;
-        GetWorld(vCenter, qOrientation);
-        Vector vColor = { 1.0f, 0.5f, 1.0f };
-        GLRender::DrawSphereBound(m_fRadius, vCenter, vColor, 1.0f, true);
-    }
+        RenderBoundingSphere();
 
     // Returns on an empty particle list; the bounding sphere above still draws.
     int nCount = m_lParticles.m_count;
@@ -3655,6 +3589,7 @@ void PartEmitter::RenderStandard()
 
     for (int nPass = 0; nPass < nPassCount; nPass++)
     {
+        CurrentCamera->m_qOrientation.zdir();
         int nVert = m_lParticles.m_count * 4 - 4;
         for (int i = 0; i < m_lParticles.m_count; i++)
         {
@@ -3770,114 +3705,40 @@ void PartEmitter::RenderStandard()
             switch (nPass)
             {
             case 1:
-                nFrameA = pParticle->m_nFrame;
-                if (m_fFrameStart != m_fFrameEnd)
+                nFrameA = GetNextParticleFrame(pParticle->m_nFrame);
+                if (nFrameA >= 0)
                 {
-                    if (!(m_fFrameEnd < m_fFrameStart))
-                    {
-                        nFrameA += 1;
-                        if (!(m_fFrameEnd >= static_cast<float>(nFrameA)))
-                            nFrameA = -1;
-                    }
-                    else
-                    {
-                        nFrameA -= 1;
-                        if (!(m_fFrameEnd <= static_cast<float>(nFrameA)))
-                            nFrameA = -1;
-                    }
-                    if (nFrameA >= 0)
-                    {
-                        fBlend = (pParticle->m_fAge - pParticle->m_fFrameTime) / fFade * 0.5f;
-                        nFrame = static_cast<int>(fInvXGrid * static_cast<float>(nFrameA));
-                        nRemainder = nFrameA - nXGrid * nFrame;
-                    }
-                }
-                else
-                {
-                    nFrameA = -1;
+                    fBlend = (pParticle->m_fAge - pParticle->m_fFrameTime) / fFade * 0.5f;
+                    nFrame = static_cast<int>(fInvXGrid * static_cast<float>(nFrameA));
+                    nRemainder = nFrameA - nXGrid * nFrame;
                 }
                 break;
             case 2:
-                nFrameB = pParticle->m_nFrame;
-                if (m_fFrameStart != m_fFrameEnd)
+                nFrameB = GetPreviousParticleFrame(pParticle->m_nFrame);
+                if (nFrameB >= 0)
                 {
-                    if (!(m_fFrameEnd < m_fFrameStart))
-                    {
-                        nFrameB -= 1;
-                        if (!(m_fFrameStart <= static_cast<float>(nFrameB)))
-                            nFrameB = -1;
-                    }
-                    else
-                    {
-                        nFrameB += 1;
-                        if (!(m_fFrameStart >= static_cast<float>(nFrameB)))
-                            nFrameB = -1;
-                    }
-                    if (nFrameB >= 0)
-                    {
-                        fBlend = 1.0f - (pParticle->m_fAge - pParticle->m_fFrameTime) / fFade * 0.5f;
-                        nFrame = static_cast<int>(fInvXGrid * static_cast<float>(nFrameB));
-                        nRemainder = nFrameB - nXGrid * nFrame;
-                    }
-                }
-                else
-                {
-                    nFrameB = -1;
+                    fBlend = 1.0f - (pParticle->m_fAge - pParticle->m_fFrameTime) / fFade * 0.5f;
+                    nFrame = static_cast<int>(fInvXGrid * static_cast<float>(nFrameB));
+                    nRemainder = nFrameB - nXGrid * nFrame;
                 }
                 break;
             case 3:
-                if (m_fFrameStart != m_fFrameEnd)
+                nFrameA = GetNextParticleFrame(nFrameA);
+                if (nFrameA >= 0)
                 {
-                    if (!(m_fFrameEnd < m_fFrameStart))
-                    {
-                        nFrameA += 1;
-                        if (!(m_fFrameEnd >= static_cast<float>(nFrameA)))
-                            nFrameA = -1;
-                    }
-                    else
-                    {
-                        nFrameA -= 1;
-                        if (!(m_fFrameEnd <= static_cast<float>(nFrameA)))
-                            nFrameA = -1;
-                    }
-                    if (nFrameA >= 0)
-                    {
-                        fBlend = (pParticle->m_fAge - pParticle->m_fFrameTime) / fFade * 0.25f;
-                        nFrame = static_cast<int>(fInvXGrid * static_cast<float>(nFrameA));
-                        nRemainder = nFrameA - nXGrid * nFrame;
-                    }
-                }
-                else
-                {
-                    nFrameA = -1;
+                    fBlend = (pParticle->m_fAge - pParticle->m_fFrameTime) / fFade * 0.25f;
+                    nFrame = static_cast<int>(fInvXGrid * static_cast<float>(nFrameA));
+                    nRemainder = nFrameA - nXGrid * nFrame;
                 }
                 break;
             case 4:
-                if (m_fFrameStart != m_fFrameEnd)
+                nFrameB = GetPreviousParticleFrame(nFrameB);
+                if (nFrameB >= 0)
                 {
-                    if (!(m_fFrameEnd < m_fFrameStart))
-                    {
-                        nFrameB -= 1;
-                        if (!(m_fFrameStart <= static_cast<float>(nFrameB)))
-                            nFrameB = -1;
-                    }
-                    else
-                    {
-                        nFrameB += 1;
-                        if (!(m_fFrameStart >= static_cast<float>(nFrameB)))
-                            nFrameB = -1;
-                    }
-                    if (nFrameB >= 0)
-                    {
-                        fBlend = (1.0f - (pParticle->m_fAge - pParticle->m_fFrameTime) / fFade)
-                               * 0.5f * 0.5f;
-                        nFrame = static_cast<int>(fInvXGrid * static_cast<float>(nFrameB));
-                        nRemainder = nFrameB - nXGrid * nFrame;
-                    }
-                }
-                else
-                {
-                    nFrameB = -1;
+                    fBlend = (1.0f - (pParticle->m_fAge - pParticle->m_fFrameTime) / fFade)
+                           * 0.5f * 0.5f;
+                    nFrame = static_cast<int>(fInvXGrid * static_cast<float>(nFrameB));
+                    nRemainder = nFrameB - nXGrid * nFrame;
                 }
                 break;
             default:
@@ -4000,13 +3861,7 @@ void PartEmitter::RenderNothing()
         return;
 
     if (renderemitterspheres)
-    {
-        Vector vCenter;
-        Quaternion qOrientation;
-        GetWorld(vCenter, qOrientation);
-        Vector vColor = { 1.0f, 0.5f, 1.0f };
-        GLRender::DrawSphereBound(m_fRadius, vCenter, vColor, 1.0f, true);
-    }
+        RenderBoundingSphere();
 
     if (m_lParticles.m_count > 0)
     {
@@ -4508,11 +4363,11 @@ void Particle::randomDirection(int nA, int nB)
     K2_UNUSED(nA); K2_UNUSED(nB);
     // Both int arguments are unused by the body; they stay on the signature only.
 
-    // The direction from the camera to this particle.
-    Vector vDir = normalize(m_vPosition - CurrentCamera->m_vPosition);
-
     // Half of the emitter's cone spread, in radians, converted to hundredths below.
     float fSpread = m_pEmitter->m_fSpread * 0.5f;
+
+    // The direction from the camera to this particle.
+    Vector vDir = normalize(m_vPosition - CurrentCamera->m_vPosition);
 
     // Two random spins, a Y-axis tilt of up to half the cone spread, then a roll over a full turn
     // (628 hundredths of a radian).
@@ -4609,45 +4464,10 @@ void ChunkyParticle::initialize(float fA, float fB)
 
 LightningEmitter* LightningEmitter::AsLightningEmitter() { return this; }
 
-// MdlNodeEmitter is the particle-emitter flavor of a parsed .mdl node. This file hosts the node's
-// parser-table trampolines and the one-line accessors over its flag word.
+// MdlNodeEmitter is the particle-emitter flavor of a parsed .mdl node. This file hosts the
+// one-line accessors over its flag word; its parser-table trampolines are aurmodel.cpp's.
 
 extern template SafePointer<CAurObject>& SafePointer<CAurObject>::operator=(CAurObject*);
-
-void MdlNodeEmitterParseField(void* pv, char* pszLine)
-{
-    static_cast<MdlNodeEmitter*>(pv)->InternalParseField(pszLine);
-}
-
-void MdlNodeEmitterPostProcess(void* pv)
-{
-    static_cast<MdlNodeEmitter*>(pv)->InternalPostProcess();
-}
-
-void MdlNodeEmitterControl(void* pv, Part* pPart, float fA, float fB, float fC)
-{
-    static_cast<MdlNodeEmitter*>(pv)->InternalControl(pPart, fA, fB, fC);
-}
-
-Part* MdlNodeEmitterCreateInstance(void* pv, Gob* pGob)
-{
-    return static_cast<MdlNodeEmitter*>(pv)->InternalCreateInstance(pGob);
-}
-
-// The name parameter is never read; the node's name byte is cleared instead.
-
-#if !KOTOR1
-MdlNodeEmitter* MdlNodeEmitterConJoinTwinMysLexia(void* pv)
-{
-#ifdef K2_FIX_ENGINE_BUGS
-    char* pszName = static_cast<char*>(pv);
-#else
-    K2_UNUSED(pv);
-    char* pszName;
-#endif
-    return new MdlNodeEmitter(pszName);
-}
-#endif
 
 void SetEmitterTarget(CAurObject* pObject, char* pszName, void* pContext)
 {

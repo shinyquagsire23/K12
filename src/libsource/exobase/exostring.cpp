@@ -408,14 +408,15 @@ int CExoString::Find(const CExoString& other, int nStart) const
         return -1;
     if (nStart < 0)
         return -1;
-    const char* n = other.m_sString;
-    if (n == NULL)
+    if (other.m_sString == NULL)
         return -1;
     for (int k = nStart; k != 0; k--) {
         if (*h == '\0')
             return -1;
         h++;
     }
+    other.GetLength();
+    const char* n = other.m_sString;
     int j = 0;
     while (h[j] != '\0') {
         if (n[j] == '\0')

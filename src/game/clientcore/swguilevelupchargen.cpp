@@ -107,7 +107,7 @@ CSWGuiLevelUpCharGen::CSWGuiLevelUpCharGen(CSWGuiManager* pGuiManager, unsigned 
     SetNameString(m_pCreature->GetName());
     AbilitiesChanged();
 
-    m_lblPortrait.m_border.m_params.SetFillImage(pOriginal->GetPortrait(1), 0);
+    m_lblPortrait.m_border.m_params.SetFillImage(pOriginal->GetPortrait(1));
 
     CAurScene* pScene = m_view3DChar.m_scene.m_pScene;
     CAurCamera* pCamera = m_view3DChar.m_scene.m_pCamera;

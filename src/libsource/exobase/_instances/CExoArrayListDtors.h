@@ -23,17 +23,6 @@ public:
 
     ~CExoArrayList() { delete[] m_pArray; m_pArray = 0; }
 
-    void Clear()
-    {
-        if (m_pArray)
-        {
-            delete[] m_pArray;
-            m_pArray = 0;
-            m_capacity = 0;
-        }
-        m_count = 0;
-    }
-
     void Allocate(int n);
     CExoArrayList& operator=(const CExoArrayList& other);
 

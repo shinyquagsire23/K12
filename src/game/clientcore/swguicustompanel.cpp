@@ -317,7 +317,7 @@ void CSWGuiCustomPanel::OnSelectNameButton(CSWGuiControl* pControl)
 void CSWGuiCustomPanel::OnSelectPlayButton(CSWGuiControl* pControl)
 {
     if (m_nCurrentRow >= 5 && pControl->m_tail.nCurrentEventArg != 0)
-        static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->BeginPlayGame();
+        PlayGame();
 }
 
 // Backs out. On any row but the first, raises the shared "are you sure?" box, with Cancel allowed
@@ -468,11 +468,7 @@ void CSWGuiCustomPanel::CancelPanel()
     if (m_pParentPanel != 0)
     {
         static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->SetVisiblePanel(CSWGuiMainCharGen::VISIBLE_PANEL_QUICK_OR_CUSTOM);
-
-        if (m_pParentPanel != 0)
-            static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->ClearAbilities();
-
-        m_pCreature->m_pStats->m_nAbilityPointsRemaining = 30;
+        ClearAbilities();
     }
 
     SetState(0);
@@ -495,19 +491,7 @@ void CSWGuiCustomPanel::ConfirmCancel(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
     if (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox->m_bAccepted)
-    {
-        if (m_pParentPanel != 0)
-        {
-            static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->SetVisiblePanel(CSWGuiMainCharGen::VISIBLE_PANEL_QUICK_OR_CUSTOM);
-
-            if (m_pParentPanel != 0)
-                static_cast<CSWGuiMainCharGen*>(m_pParentPanel)->ClearAbilities();
-
-            m_pCreature->m_pStats->m_nAbilityPointsRemaining = 30;
-        }
-
-        SetState(0);
-    }
+        CancelPanel();
 }
 
 // A child page was backed out of: repaints the row it was on and sets its "new" flag. The row

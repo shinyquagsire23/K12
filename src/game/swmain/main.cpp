@@ -1147,8 +1147,8 @@ int HandleWMCharMessage(unsigned short nChar)
         if (g_pAppManager->m_pClientExoApp->GetCaptureEventFile() != 0) {
             CExoString sText;
             sText.Format(const_cast<char*>("%d %c %d\n"),
-                         static_cast<unsigned long long>(g_pAppManager->m_pClientExoApp->GetWorldTimer()
-                             ->GetSnapshotTime()) / 1000,
+                         static_cast<unsigned int>(static_cast<uint64_ll_t>(g_pAppManager->m_pClientExoApp->GetWorldTimer()
+                             ->GetSnapshotTime()) / 1000),
                          'C', nChar);
             static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())->Write(sText);
         }
@@ -1243,8 +1243,8 @@ int HandleWMKeyDownMessage(HWND__* hWnd, unsigned long long nKey, int64_t lParam
         if (g_pAppManager->m_pClientExoApp->GetCaptureEventFile() != 0) {
             CExoString sText;
             sText.Format(const_cast<char*>("%d %c %d\n"),
-                         static_cast<unsigned long long>(g_pAppManager->m_pClientExoApp->GetWorldTimer()
-                             ->GetSnapshotTime()) / 1000,
+                         static_cast<unsigned int>(static_cast<uint64_ll_t>(g_pAppManager->m_pClientExoApp->GetWorldTimer()
+                             ->GetSnapshotTime()) / 1000),
                          'K', nKey);
             static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())->Write(sText);
         }
@@ -2121,10 +2121,7 @@ void GameEnteredBackground()
             g_pAppManager->m_pLoadGameErrorInfo->m_nStallEvent = CLoadGameErrorInfo::STALL_EVENT_NONE;
 
             CExoString sSaveDir;
-            {
-                CExoString sAlias("SAVES:");
-                sSaveDir = g_pExoBase->m_pAliasList->ResolveFileName(sAlias, RESTYPE_INVALID);
-            }
+            sSaveDir = g_pExoBase->m_pAliasList->ResolveFileName(CExoString("SAVES:"), RESTYPE_INVALID);
 
             CExoString sTempSave;
             CExoString sQuickSaveDir;
@@ -2505,6 +2502,8 @@ void GameInit()
 
 // Runs one frame, the WinMain loop body without the message pump, the cursor, the FPS readout or
 // the swap, plus the frame-time stamp.
+// EFFECTIVE (K1): in the frame-limit wait the orig converts the elapsed ticks to float before the timer
+// call and keeps it in s9 (d9 saved); ours keeps the tick difference across the call. Same length, calls.
 void GameUpdate()
 {
     uint64_ll_t nFrameStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
@@ -2574,8 +2573,7 @@ void GameUpdate()
                          * 0.001f;
         uint64_ll_t nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         while (fElapsed < fFrameTime) {
-            fElapsed = static_cast<float>(g_pExoBase->m_pTimers->GetHighResolutionTimer() - s_fpsWaitStamp)
-                       * 0.001f;
+            fElapsed = static_cast<float>(nNow - s_fpsWaitStamp) * 0.001f;
             nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         }
         s_fpsWaitStamp = nNow;

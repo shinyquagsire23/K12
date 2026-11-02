@@ -262,9 +262,6 @@ void MaxTree::SynchronizeTree(MaxTree* pOther)
 
 void MdlNode::InternalPostProcess() {}
 
-// noinline keeps this body out of the file-scope parser trampoline below, which must stay a
-// tail call.
-__attribute__((noinline))
 void MdlNodeSkin::InternalPostProcess()
 {
     if (static_cast<short>(m_nVertexCount) > 0)
@@ -314,7 +311,7 @@ void MdlNodeAnimMesh::InternalGenVertices()
                                                          l0, l1, l2);
 
             for (index = 0; index < static_cast<int64_t>(PostProcess()->m_vertices.m_count); index++) {
-                NodeVertex* pOld = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[index]);
+                NodeVertex* pOld = PostProcess()->m_vertices.m_pData[index];
                 if (*pOld->AsNodeVertexAnim() == *pVertex) {
                     delete pVertex;
                     pVertex = 0;
@@ -324,7 +321,7 @@ void MdlNodeAnimMesh::InternalGenVertices()
             }
             if (pVertex != 0) {
                 m_faces.m_pData[i].m_anVertIndices[j] = static_cast<unsigned short>(PostProcess()->m_vertices.m_count);
-                PostProcess()->m_vertices.Add(reinterpret_cast<unsigned int*>(pVertex));
+                PostProcess()->m_vertices.Add(pVertex);
             }
         }
     }
@@ -502,7 +499,6 @@ void MdlNodeLight::InternalPostProcess()
 }
 
 // Raises the owning model's flare distance to at least 40.0f.
-__attribute__((noinline))
 void MdlNodeEmitter::InternalPostProcess()
 {
     Model* pModel = m_pTree->AsModel();
@@ -514,7 +510,7 @@ void MdlNodeEmitter::InternalPostProcess()
 void MdlNodeAnimMesh::InternalRemoveTemporaryArrays()
 {
     for (int64_t i = 0; i < static_cast<MdlNodeTriMesh_PostProcess*>(m_pPostProcess)->m_vertices.m_count; i++) {
-        NodeVertexAnim* pAnim = reinterpret_cast<NodeVertexAnim*>(static_cast<MdlNodeTriMesh_PostProcess*>(m_pPostProcess)->m_vertices.m_pData[i]);
+        NodeVertexAnim* pAnim = static_cast<NodeVertexAnim*>(static_cast<MdlNodeTriMesh_PostProcess*>(m_pPostProcess)->m_vertices.m_pData[i]);
         if (pAnim != 0) {
             pAnim->~NodeVertexAnim();
             operator delete(pAnim);
@@ -534,6 +530,9 @@ void MdlNodeSkin::InternalRemoveTemporaryArrays()
 
 // libc is opaque in this build, so the epsilon test is spelled as a conditional negate.
 #define SEAM_ABS(f) ((f) < 0.0f ? -(f) : (f))
+
+// A pooled vertex; the seam pass only ever addresses its normal.
+struct RenderVertexN;
 
 void MdlNode::ProcessSkinSeams()
 {
@@ -567,7 +566,7 @@ void MdlNode::ProcessSkinSeams()
         pPool = GLRender::LockPool(meshes.m_pData[0]->m_pTree->AsModel()->m_nPool,
                                    0, 0, 16);
 
-    List<unsigned int*> matchVerts;
+    List<RenderVertexN*> matchVerts;
     List<int> matchMeshes;
 
     for (int64_t i = 0; i < meshes.m_count - 1; i++) {
@@ -586,7 +585,7 @@ void MdlNode::ProcessSkinSeams()
 
             matchVerts.SetSize(0);
             matchMeshes.SetSize(0);
-            matchVerts.Add(reinterpret_cast<unsigned int*>(pVertex + pMesh->m_nNormalOfs));
+            matchVerts.Add(reinterpret_cast<RenderVertexN*>(pVertex + pMesh->m_nNormalOfs));
             matchMeshes.Add(static_cast<int>(i));
 
             for (int64_t j = 0; j < meshes.m_count; j++) {
@@ -607,7 +606,7 @@ void MdlNode::ProcessSkinSeams()
                     if (SEAM_ABS(fDx) < 0.001f && SEAM_ABS(fDy) < 0.001f
                         && SEAM_ABS(fDz) < 0.001f) {
                         matchVerts.Add(
-                            reinterpret_cast<unsigned int*>(pOtherVertex + pOther->m_nNormalOfs));
+                            reinterpret_cast<RenderVertexN*>(pOtherVertex + pOther->m_nNormalOfs));
                         matchMeshes.Add(static_cast<int>(j));
                         vNormal = vNormal + RotateVector(
                             *reinterpret_cast<Vector*>(pOtherVertex + pOther->m_nNormalOfs),
@@ -641,6 +640,82 @@ void MdlNode::ProcessSkinSeams()
 // Explicit instantiation used by ProcessSkinSeams.
 template void List<Vector>::Add(Vector item);
 
+
+// Scene.cpp's node lookup, needed to resolve `animroot <name>` against the node hierarchy.
+MdlNode* findnode(MdlNode* pNode, char* pszName);
+
+int pruneanimations = 1;
+
+int countanimnodes;
+int countprunedanimnodes;
+
+// Walks the whole subtree and, on the way out, deletes every leaf that is neither the animation's own
+// root node nor still holding children or controllers. countprunedanimnodes counts the ones actually
+// freed.
+void Animation::Prune(MdlNode* pNode)
+{
+    countanimnodes++;
+
+    int64_t i = pNode->m_listChildren.m_count;
+    while (i--)
+        Prune(pNode->m_listChildren.m_pData[i]);
+
+    if (m_pMdlNode == pNode)
+        return;
+    if (pNode->m_listChildren.m_count)
+        return;
+    if (pNode->m_listControllers.m_count)
+        return;
+
+    reinterpret_cast<MdlNode*>(pNode->m_pParent)->m_listChildren.Remove(pNode);
+    delete pNode;
+
+    countprunedanimnodes++;
+}
+
+// Leaves the node hierarchy holding only the chain from the tree's root down to the node the .mdl's
+// `animroot` field named: it finds that node by name, then walks up the parent links and, at every
+// ancestor, erases and deletes every child except the one it arrived from. Every ancestor's
+// controller list is dropped along the way; the animroot node's own is not.
+//
+// The animroot string's first byte doubles as the `sscanf("%s")` failure flag, and a node tree is
+// only pruned for a real name.
+void Animation::PostProcess()
+{
+    char* pszAnimRoot = m_szAnimRoot;
+    if (!pszAnimRoot[0])
+        return;
+    if (_stricmp(pszAnimRoot, NULL_NAME) == 0)
+        return;
+
+    MdlNode* pNode = findnode(m_pMdlNode, pszAnimRoot);
+    if (!pNode)
+        return;
+
+    MdlNode* pChild = pNode;
+    MdlNode* pParent = reinterpret_cast<MdlNode*>(pChild->m_pParent);
+    while (pParent) {
+        pParent->m_listControllers.SetSize(0);
+
+        int i = pParent->m_listChildren.m_count;
+        while (i--) {
+            MdlNode* pTemp = pParent->m_listChildren.m_pData[i];
+            if (pTemp == pChild)
+                continue;
+            pParent->m_listChildren.DelIndex(i);
+            delete pTemp;
+        }
+
+        pChild = pParent;
+        pParent = reinterpret_cast<MdlNode*>(pChild->m_pParent);
+    }
+
+    if (pruneanimations)
+        Prune(m_pMdlNode);
+
+    if (m_fLength < 0.0f)
+        m_fLength = 0.0f;
+}
 
 int enabletristrips;
 extern int minstripsize;
@@ -731,13 +806,13 @@ void MdlNodeTriMesh::InternalGenVertices()
             NodeVertex* pVertex = new NodeVertex(pPos, pv0, pv1, pv2, pv3, pNormal, pColor);
             int64_t index;
             for (index = 0; index < static_cast<int64_t>(PostProcess()->m_vertices.m_count); index++) {
-                if (*reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[index]) == *pVertex) {
+                if (*PostProcess()->m_vertices.m_pData[index] == *pVertex) {
                     delete pVertex;
                     break;
                 }
             }
             if (index == static_cast<int64_t>(PostProcess()->m_vertices.m_count))
-                PostProcess()->m_vertices.Add(reinterpret_cast<unsigned int*>(pVertex));
+                PostProcess()->m_vertices.Add(pVertex);
             m_faces.m_pData[i].m_anVertIndices[j] = static_cast<unsigned short>(index);
         }
     }
@@ -750,10 +825,7 @@ void MdlNodeTriMesh::InternalGenVertices()
         if (face.m_anVertIndices[0] == face.m_anVertIndices[1] ||
             face.m_anVertIndices[0] == face.m_anVertIndices[2] ||
             face.m_anVertIndices[1] == face.m_anVertIndices[2]) {
-            // inlined List<MaxFace>::DelIndex(i)
-            m_faces.m_count--;
-            for (int64_t j = i; j < static_cast<int64_t>(m_faces.m_count); j++)
-                m_faces.m_pData[j] = m_faces.m_pData[j + 1];
+            m_faces.DelIndex(static_cast<int>(i));
         }
     }
 }
@@ -962,9 +1034,9 @@ void MdlNodeTriMesh::CalculateTangentSpaceBasis()
     Matrix* paMatrices = new Matrix[m_faces.m_count];
 
     for (int64_t i = 0; i < m_faces.m_count; i++) {
-        NodeVertex* pV0 = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[0]]);
-        NodeVertex* pV1 = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[1]]);
-        NodeVertex* pV2 = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[2]]);
+        NodeVertex* pV0 = PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[0]];
+        NodeVertex* pV1 = PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[1]];
+        NodeVertex* pV2 = PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[2]];
         Vector vE1 = pV1->m_vPos - pV0->m_vPos;
         Vector vE2 = pV2->m_vPos - pV0->m_vPos;
         float fDU1 = pV1->m_vTex0.x - pV0->m_vTex0.x;
@@ -994,7 +1066,7 @@ void MdlNodeTriMesh::CalculateTangentSpaceBasis()
     for (int64_t i = 0; i < m_faces.m_count; i++) {
         for (int j = 0; j < 3; j++) {
             int nIndex = m_faces.m_pData[i].m_nVIndex[j];
-            NodeVertex* pVertex = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[nIndex]);
+            NodeVertex* pVertex = PostProcess()->m_vertices.m_pData[nIndex];
             Vector vRef = pVertex->m_vPos;
             int nFlags = PostProcess()->m_faces.m_pData[i].m_nSmoothGroup;
 
@@ -1004,8 +1076,8 @@ void MdlNodeTriMesh::CalculateTangentSpaceBasis()
                 if (k == i)
                     continue;
                 for (int m = 0; m < 3; m++) {
-                    NodeVertex* pTest = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[
-                        m_faces.m_pData[k].m_nVIndex[m]]);
+                    NodeVertex* pTest = PostProcess()->m_vertices.m_pData[
+                        m_faces.m_pData[k].m_nVIndex[m]];
                     Vector vTest = pTest->m_vPos;
                     if (equal(vRef, vTest) && (nFlags & PostProcess()->m_faces.m_pData[k].m_nSmoothGroup))
                         faces.Add(k);
@@ -1063,7 +1135,7 @@ void MdlNodeTriMesh::InternalPostProcess()
         BuildVertexIndices();
 
         NodeVertex* pFirst = static_cast<short>(m_nVertexCount) >= 1
-            ? reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[0]) : 0;
+            ? PostProcess()->m_vertices.m_pData[0] : 0;
 #ifdef K2_FIX_ENGINE_BUGS
         if (pFirst == 0)
             return;
@@ -1123,7 +1195,7 @@ void MdlNodeTriMesh::InternalPostProcess()
         m_paVertices = reinterpret_cast<float*>(new Vector3[static_cast<short>(m_nVertexCount) + 1]);
 
         for (int64_t i = 0; i < static_cast<short>(m_nVertexCount); i++) {
-            NodeVertex* pVertex = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[i]);
+            NodeVertex* pVertex = PostProcess()->m_vertices.m_pData[i];
             if (pFirst->m_nTexCoordFlags & kNodeVertexTex0) {
                 *reinterpret_cast<float*>(pPool + i * nOfs + m_nTex0Ofs + nGeomBase) = pVertex->m_vTex0.x;
                 *reinterpret_cast<float*>(pPool + i * nOfs + m_nTex0Ofs + 4 + nGeomBase) = pVertex->m_vTex0.y;
@@ -1228,7 +1300,7 @@ void MdlNodeDanglyMesh::InternalPostProcess()
         BuildVertexIndices();
 
         NodeVertex* pFirst = static_cast<short>(m_nVertexCount) >= 1
-            ? reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[0]) : 0;
+            ? PostProcess()->m_vertices.m_pData[0] : 0;
 #ifdef K2_FIX_ENGINE_BUGS
         if (pFirst == 0)
             return;
@@ -1286,7 +1358,7 @@ void MdlNodeDanglyMesh::InternalPostProcess()
         int nStride = m_nVertexStride;
         unsigned int nGeom = m_nGeomBase;
         for (int64_t i = 0; i < nVertsCount; i++) {
-            NodeVertex* pVertex = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[i]);
+            NodeVertex* pVertex = PostProcess()->m_vertices.m_pData[i];
             if (pFirst->m_nTexCoordFlags & kNodeVertexTex0) {
                 *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex0Ofs]) = pVertex->m_vTex0.x;
                 *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex0Ofs + 4]) = pVertex->m_vTex0.y;
@@ -1338,6 +1410,7 @@ void MdlNodeDanglyMesh::InternalGenVertices()
     for (int64_t i = 0; i < static_cast<int64_t>(m_faces.m_count); i++) {
         for (int64_t j = 0; j < 3; j++) {
             int nIdx0 = PostProcess()->m_faces.m_pData[i].m_paVertIndices[j];
+            Vector* pPos = &PostProcess()->m_verts.m_pData[nIdx0];
             Vector* pTex0 = PostProcess()->m_tverts.m_count
                             ? &PostProcess()->m_tverts.m_pData[PostProcess()->m_faces.m_pData[i].m_paTVertIndices[j]] : 0;
             Vector* pTex1 = PostProcess()->m_tverts1.m_count
@@ -1350,13 +1423,13 @@ void MdlNodeDanglyMesh::InternalGenVertices()
 
             int64_t index;
             NodeVertexDangly* pVertex = new NodeVertexDangly(
-                &PostProcess()->m_verts.m_pData[nIdx0],
+                pPos,
                 pTex0, pTex1, pTex2, pTex3, pNormal,
                 0,
                 m_lConstraints.m_pData[nIdx0]);
 
             for (index = 0; index < static_cast<int64_t>(PostProcess()->m_vertices.m_count); index++) {
-                NodeVertex* pOld = reinterpret_cast<NodeVertex*>(PostProcess()->m_vertices.m_pData[index]);
+                NodeVertex* pOld = PostProcess()->m_vertices.m_pData[index];
                 if (*pOld->AsNodeVertexDangly() == *pVertex)
                     break;
             }
@@ -1365,7 +1438,7 @@ void MdlNodeDanglyMesh::InternalGenVertices()
                 m_faces.m_pData[i].m_anVertIndices[j] = static_cast<unsigned short>(index);
             } else {
                 m_faces.m_pData[i].m_anVertIndices[j] = static_cast<unsigned short>(PostProcess()->m_vertices.m_count);
-                PostProcess()->m_vertices.Add(reinterpret_cast<unsigned int*>(pVertex));
+                PostProcess()->m_vertices.Add(pVertex);
                 lConstraints.Add(m_lConstraints.m_pData[nIdx0]);
             }
         }
@@ -1380,7 +1453,7 @@ void MdlNodeDanglyMesh::InternalGenVertices()
 void MdlNodeDanglyMesh::InternalRemoveTemporaryArrays()
 {
     for (int64_t i = 0; i < static_cast<MdlNodeTriMesh_PostProcess*>(m_pPostProcess)->m_vertices.m_count; i++) {
-        unsigned int* pEntry = static_cast<MdlNodeTriMesh_PostProcess*>(m_pPostProcess)->m_vertices.m_pData[i];
+        NodeVertex* pEntry = static_cast<MdlNodeTriMesh_PostProcess*>(m_pPostProcess)->m_vertices.m_pData[i];
         if (pEntry != 0)
             delete pEntry;
     }

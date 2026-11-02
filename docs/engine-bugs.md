@@ -649,8 +649,9 @@ comment. Do NOT "fix" these — matching them exactly is the point.
 - **Impact:** a genuine 12-byte heap over-read in the shipped build; the over-read element
   becomes the new list's last way-point, so the creature may walk to garbage coordinates
   transiently (until the next evaluation rebuilds the list).
-- **Reproduction:** the `// sic:` on the truncate arm's `memcpy` in
-  `src/game/clientcore/CSWCCreature/CSWCCreature.cpp`.
+- **Reproduction:** K1 host ASan, `lev_m40aa` guard-room fight (v2297 smoke leg): a 60-byte `memcpy` read starting
+  48 bytes into a 96-byte way-point array (`HandleServerToPlayerCreatureUpdate_Update`'s `new Vector[8]`).
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** `nNewCount = nCount - i - 1` (`src/game/clientcore/nwccreature.cpp`).
 
 ## `CSWCArea::RestartMiniGame` — the new minigame object leaks when `Load()` fails
 
@@ -4127,3 +4128,24 @@ code-identical) unless it says otherwise.
   `ReorderChildren` on the null tree.
 - **Fixed under `K2_FIX_ENGINE_BUGS`:** `NULL_NAME` is `"NULL"` in both games. Every producer of the
   sentinel in the engine goes through the macro, so they stay consistent with the comparisons.
+
+## K2 `CSWCCreature::StripEquippedItems` — the strip loop passes the slot index where a slot mask belongs
+
+- **Where:** `CSWCCreature::StripEquippedItems` @0x4984b8 (the client's handler for
+  `CreatureUpdate_StripEquippedItems`). The loop runs `i = 0..19` and calls
+  `SetItemUnEquippedByMe(GetEquippedItemID(i))`, but `GetEquippedItemID` switches on a `MSG_SLOT_*`
+  bit mask (`1 << n`). armv7 confirms `r1 = i` at 0x38b136.
+- **Impact:** only the indices that happen to be masks hit a slot: 1 head, 2 body, 4 boots, 8 hands,
+  16 right weapon. The left weapon, cloak, arms, implant, belt, the creature-weapon slots and the
+  second weapon set keep their client-side "equipped by" link after a strip, while the model's two
+  hands are cleared just below.
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** the loop passes `1u << i`.
+
+## K1 `CSWPartyTable::AddNPC` — the joining NPC's UTC writer leaks its `CResGFF`
+
+- **Where:** `CSWPartyTable::AddNPC(int, CSWSCreature*)` @0x536a78 (`libKOTOR.so`). It `new`s a `CResGFF`, saves the
+  creature into it and writes `GAMEINPROGRESS:<npc>.utc`, then returns without deleting it (`0x536cf8`..`0x536d10`:
+  `WriteGFFFile`, the two `~CExoString`, the stack check). K2 deletes it (`0x69c05c`, slot +0x8).
+- **Impact:** one `CResGFF` (and the GFF buffers it still owns) per party join. Small and bounded by the number of
+  joins in a playthrough.
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** the K2 `delete pGff`.

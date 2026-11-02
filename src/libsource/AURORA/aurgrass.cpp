@@ -126,8 +126,8 @@ void AurGrassReadData(char* pszName)
         Vector vDiffuse;
 #endif
 
-        char* pszLine = AurResGetNextLine();
-        while (pszLine) {
+        char* pszLine;
+        while ((pszLine = AurResGetNextLine()) != 0) {
             while (*pszLine == ' ' || *pszLine == '\t')
                 pszLine++;
 
@@ -155,8 +155,6 @@ void AurGrassReadData(char* pszName)
             pInfo->m_bInUse = 1;
             __strcpy_chk(pInfo->m_sName, sName, sizeof(pInfo->m_sName));
 #endif
-
-            pszLine = AurResGetNextLine();
         }
     }
 

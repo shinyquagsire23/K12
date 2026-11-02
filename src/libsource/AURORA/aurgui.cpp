@@ -1962,19 +1962,14 @@ void CAurGUIImageInternal::Draw(float x, float y, float w, float h, unsigned cha
     if (equal(v, Vector(-1.0f, -1.0f, -1.0f))) {
         float fViewportAlpha = GetViewportAlpha() * fAlpha;
         ASLgl::glColor4f(1.0f, 1.0f, 1.0f, fViewportAlpha);
-        // inlined GLRender::SetVertexColor(unsigned long)
-        unsigned char anColor[4];
-        *reinterpret_cast<unsigned int*>(anColor) =
-            kColourWhiteRgb | (static_cast<unsigned int>(GetViewportAlpha() * fAlpha * 255.0f) << 24);
-        ASLgl::glColor4ubv(anColor);
+        GLRender::SetVertexColor(
+            kColourWhiteRgb | (static_cast<unsigned int>(GetViewportAlpha() * fAlpha * 255.0f) << 24));
     } else {
         int nR = static_cast<int>(v.x * 255.0f);
         int nG = static_cast<int>(v.y * 255.0f);
         int nB = static_cast<int>(v.z * 255.0f);
         int nA = static_cast<int>(GetViewportAlpha() * fAlpha * 255.0f);
-        unsigned char anColor[4];
-        *reinterpret_cast<unsigned int*>(anColor) = static_cast<unsigned int>(nR | (nG << 8) | (nB << 16) | (nA << 24));
-        ASLgl::glColor4ubv(anColor);
+        GLRender::SetVertexColor(static_cast<unsigned int>(nR | (nG << 8) | (nB << 16) | (nA << 24)));
     }
     ASLgl::glTexCoord2f(fUV[0][0], fUV[0][1]);
     ASLgl::glVertex4f(x, 1.0f - y, 0.0f, 1.0f);

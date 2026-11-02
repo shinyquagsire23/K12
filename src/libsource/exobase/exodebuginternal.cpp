@@ -153,6 +153,7 @@ bool g_bDisplayServicedResources;
 #include "port/win32api.h"
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
+#include "exostringinline.h"
 
 void CExoDebugInternal::Assert(int nLine, char* sFile, const char* sMsg)
 {
@@ -269,16 +270,14 @@ void CExoDebugInternal::InitializeAssertFile()
 
 
 // strlen with an explicit declaration so the loop below keeps its shape: pure merges the per-iteration
-// length reads into one call, and noduplicate keeps the loop from being rotated.
+// length reads into one call.
 #if !defined(K2_HOST_BUILD)  // a host keeps its C library's declaration
-#if KOTOR1
 extern "C" size_t strlen(const char* s) throw() __attribute__((pure));  // idiom-exempt: the loop's attributes
-#else
-extern "C" size_t strlen(const char* s) throw() __attribute__((pure, noduplicate));  // idiom-exempt: the loop's attributes
-#endif
 #endif
 
 // Narrows a char string into a wide buffer, stopping at the bound or at the source's terminator.
+// EFFECTIVE (K2): the orig tests the length at the loop top, ours rotates it to the latch (116 vs 100 B);
+// same calls and stores.
 K2WChar* ConvertCharToWChar(K2WChar* pDest, const char* pszSrc, unsigned int nMax)
 {
 #if KOTOR1  // K1 keeps a 32-bit index and truncates it at the exit
@@ -332,17 +331,11 @@ void CExoDebugInternal::Warning(int nLine, char* sFile, const char* sMsg)
         goto done;
 
     sRest = sMsg;
-#if KOTOR1  // K1: CExoString::GetLength is out of line, read once per pass
     for (;;)
     {
         int nLen = sRest.GetLength();
         if (nLen == 0)
             break;
-#else
-    while (sRest.m_sString ? static_cast<int>(strlen(sRest.m_sString)) : 0)
-    {
-        int nLen = sRest.m_sString ? static_cast<int>(strlen(sRest.m_sString)) : 0;
-#endif
         if (nLen <= 50)
         {
             sLine = sRest;

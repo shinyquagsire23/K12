@@ -76,13 +76,10 @@ CServerAIList::~CServerAIList()
 {
 }
 
-// Adds an object id to the list and tells the caller whether it was already there.
+// Adds an object id to the list unless it is already there.
 int CServerAIList::AddObject(unsigned long long id)
 {
-    if (m_aObjectIds.Contains(id)) {
-        return 1;
-    }
-    m_aObjectIds.Add(id);
+    m_aObjectIds.AddUnique(id);
     return 1;
 }
 
@@ -148,15 +145,7 @@ CServerAIMaster::CServerAIMaster()
 // handler teardowns are `delete p`, not an explicit destructor call.
 CServerAIMaster::~CServerAIMaster()
 {
-    CExoLinkedListInternal* pQueue = m_eventQueue.m_pInternal;
-    CExoLinkedListNode* pNode = pQueue->m_pHead;
-    while (pNode != 0) {
-        CServerAIEventNode* pEvt = static_cast<CServerAIEventNode*>(pQueue->RemoveHead());
-        DeleteEventData(pEvt->m_nType, pEvt->m_pData);
-        operator delete(pEvt);
-        pQueue = m_eventQueue.m_pInternal;
-        pNode = pQueue->m_pHead;
-    }
+    ClearEventQueue();
 
     if (m_pEffectListHandler != 0) {
         delete m_pEffectListHandler;
@@ -227,9 +216,9 @@ void CServerAIMaster::UpdateState()
     unsigned int nTimeOfDay;
     m_pExoAppInternal->m_pWorldTimer->GetWorldTime(&nDay, &nTimeOfDay);
 
-    unsigned long long nRemaining = AI_UPDATE_TIME_HI_RES;
+    uint64_ll_t nRemaining = AI_UPDATE_TIME_HI_RES;
     for (int i = 4; i >= 0; i--) {
-        unsigned long long nSlice = nRemaining;
+        uint64_ll_t nSlice = nRemaining;
         if (i > 0) {
             nSlice = nSlice * 60 / 100;
         }

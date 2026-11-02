@@ -86,10 +86,7 @@ void MoveNextDoorState(CAurObject* pObject, char* pszEvent, void* pData)
         if (_strnicmp(pszEvent, "opening", 7) != 0 && _strnicmp(pszEvent, "closing", 7) != 0)
             return;
     }
-    CSWCObject* pDoor = static_cast<CSWCObject*>(pData);
-    if (pDoor->GetServerObject() == 0)
-        return;
-    CSWSDoor* pServerDoor = pDoor->GetServerObject()->AsSWSDoor();
+    CSWSDoor* pServerDoor = static_cast<CSWCDoor*>(pData)->GetServerDoor();
     if (pServerDoor != 0)
         pServerDoor->MoveToNextOpenState();
 }
@@ -480,14 +477,12 @@ void CSWCDoor::ActionMenuExamine(unsigned int a, CSWCCreature* pCreature)
     K2_UNUSED(a);
     if (pCreature)
         pCreature->ClearAllActions();
-    if (GetServerObject()) {
-        CSWSDoor* pServerDoor = GetServerObject()->AsSWSDoor();
-        if (pServerDoor) {
-            CExoString text;
-            pServerDoor->m_description.GetString(
-                g_pAppManager->m_pClientExoApp->GetClientLanguage(), &text, 0);
-            g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowExamineBox(text, 0);
-        }
+    CSWSDoor* pServerDoor = GetServerDoor();
+    if (pServerDoor) {
+        CExoString text;
+        pServerDoor->m_description.GetString(
+            g_pAppManager->m_pClientExoApp->GetClientLanguage(), &text, 0);
+        g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowExamineBox(text, 0);
     }
 }
 
@@ -591,8 +586,7 @@ void CSWCDoor::GetUseItems(CSWCCreature* pCreature,
 void CSWCDoor::GetTargetActions(CSWCCreature* pCreature, int nType,
                                 CExoArrayList<CSWGuiInterfaceAction>& list)
 {
-    CSWSDoor* pServerDoor =
-        GetServerObject() ? GetServerObject()->AsSWSDoor() : static_cast<CSWSDoor*>(0);
+    CSWSDoor* pServerDoor = GetServerDoor();
     int nAreaMenuDisabled = m_pArea->GetServerArea()->m_nPlayerRestrictMode;
     int nOldCount = list.m_count;
     CExoString sName;
@@ -679,21 +673,8 @@ void CSWCDoor::GetTargetActions(CSWCCreature* pCreature, int nType,
             list.m_pArray[nOldCount].m_resRef = g_pRules->m_paSkills[6].m_icon;
         }
         if (pServerDoor != 0 && m_bLocked != 0 && pServerDoor->m_bKeyRequired == 0 &&
-            pCreature->m_pStats->GetCanUseSkill(SKILL_SECURITY) != 0) {
-            CSWSCreature* pServerCreature = pCreature->GetServerCreature();
-            if (m_bLocked != 0) {
-                int nSpikeOldCount = list.m_count;
-                if (pCreature->m_pStats->GetCanUseSkill(SKILL_SECURITY) != 0) {
-                    if (pServerCreature != 0)
-                        pServerCreature->GetSpikeDetails(list, 1);
-                    for (int i = nSpikeOldCount; i < list.m_count; i++) {
-                        list.m_pArray[i].m_pfnAction =
-                            static_cast<void (CSWCCreature::*)(unsigned int, CSWCCreature*)>(&CSWCObject::MenuActionUseSecuritySpike);
-                        list.m_pArray[i].m_nObjectId = m_objectId;
-                    }
-                }
-            }
-        }
+            pCreature->m_pStats->GetCanUseSkill(SKILL_SECURITY) != 0)
+            GetUseItems(pCreature, list);
         return;
     }
     if (m_bLocked != 0)

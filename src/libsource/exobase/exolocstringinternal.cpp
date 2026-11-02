@@ -2,6 +2,7 @@
 #include "exolocstringinternal.h"
 
 #include "port/libcstring.h"
+#include "exostringinline.h"
 
 CExoLocStringInternal::CExoLocStringInternal()
 {
@@ -61,18 +62,7 @@ int CExoLocStringInternal::AddString(int nID, const CExoString& str)
 
 int CExoLocStringInternal::Assign(CExoLocStringInternal* pOther)
 {
-    CExoLinkedListInternal* pList = m_List.m_pInternal;
-    while (pList->m_pHead != 0)
-    {
-        void* pData = pList->RemoveHead();
-        if (pData != 0)
-        {
-            static_cast<ExoLocString_st*>(pData)->m_sString.~CExoString();
-            operator delete(pData);
-        }
-        pList = m_List.m_pInternal;
-    }
-    m_nCount = 0;
+    ClearLocString();
 
     CExoLinkedListNode* otherPos = pOther->m_List.m_pInternal->m_pHead;
     void* pOtherData = pOther->m_List.m_pInternal->m_pHead ? pOther->m_List.m_pInternal->m_pHead->m_pData : 0;
@@ -185,13 +175,7 @@ unsigned int CExoLocStringInternal::GetStringLength(unsigned int nIndex) const
     {
         if (i == nIndex)
         {
-#if KOTOR1  // K1 reads the length through CExoString::GetLength
             return pNode->m_sString.GetLength();
-#else
-            if (pNode->m_sString.m_sString == 0)
-                return 0;
-            return static_cast<unsigned int>(strlen(pNode->m_sString.m_sString));
-#endif
         }
         i++;
         pNode = m_List.GetNext(pos);

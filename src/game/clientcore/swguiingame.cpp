@@ -391,11 +391,7 @@ void CSWGuiInGameMenu::OnChangeCharacter(CSWGuiControl* pControl)
     {
         // Ask before swapping with the shared "leave solo mode?" box, OK only, no callback.
         CSWGuiMessageBox* pBox = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
-        pBox->m_bAllowCancel = 0;
-        pBox->m_nOpenSoundIndex = GUISOUND_ERROR_DEFAULT;
-        pBox->m_btnOk.m_tail.bVisible = pBox->m_bAllowDismissal;
-        pBox->m_btnCancel.m_tail.bVisible = pBox->m_bAllowCancel && pBox->m_bAllowDismissal;
-        pBox->m_lblIcon.m_tail.bVisible = pBox->m_bHasIcon;
+        pBox->SetAllowCancel(0);
         pBox->m_pfnCallback = 0;
         pBox->m_pCallbackObject = 0;
         pBox->m_pCallbackControl = 0;
@@ -495,7 +491,7 @@ void CSWGuiInGameMenu::Draw(float f)
 
     CSWSCreature* pServer = pCreature->GetServerCreature();
     CSWSCreatureStats* pStats = pServer->m_pStats;
-    m_charSlot.m_aLabels[4].m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+    m_charSlot.m_aLabels[4].m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
 
     short nCurHP = pServer->GetCurrentHitPoints(0);
     short nMaxHP = pServer->GetMaxHitPoints(1);
@@ -587,7 +583,7 @@ void CSWGuiInGameMenu::Draw(float f)
     {
         pCreature = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
         pServer = pCreature->GetServerCreature();
-        m_lblChar2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+        m_lblChar2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
         m_lblChar2.m_tail.bVisible = 1;
         m_lblBack2.m_tail.bVisible = 1;
         if (pServer->m_pStats->CanLevelUp())
@@ -604,7 +600,7 @@ void CSWGuiInGameMenu::Draw(float f)
     {
         pCreature = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
         pServer = pCreature->GetServerCreature();
-        m_lblChar2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+        m_lblChar2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
         m_lblChar2.m_tail.bVisible = 1;
         m_lblBack2.m_tail.bVisible = 1;
         if (pServer->m_pStats->CanLevelUp())
@@ -614,7 +610,7 @@ void CSWGuiInGameMenu::Draw(float f)
         m_btnChange2.m_tail.bVisible = 1;
         pCreature = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
         pServer = pCreature->GetServerCreature();
-        m_lblChar3.m_border.m_params.SetFillImage(pCreature->GetPortrait(1), 0);
+        m_lblChar3.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
         m_lblChar3.m_tail.bVisible = 1;
         m_lblBack3.m_tail.bVisible = 1;
         if (pServer->m_pStats->CanLevelUp())
@@ -850,7 +846,7 @@ static void K1ConsoleAddBoxGlyphs(CSWGuiMessageBox* pBox)
     static const char* const s_apszGlyph[2] = { "ios_button_a", "ios_button_b" };
     for (int i = 0; i < 2; i++) {
         CSWGuiLabel* pGlyph = new CSWGuiLabel();
-        pGlyph->m_border.m_params.SetFillImage(CResRef(s_apszGlyph[i]), 0);
+        pGlyph->m_border.m_params.SetFillImage(CResRef(s_apszGlyph[i]));
         pGlyph->m_border.m_params.m_flags.nFillStyle = 2;
         pGlyph->m_tail.bVisible = 0;
         pGlyph->m_tail.bIgnoreMouse = 1;   // drawn, never hit
@@ -1136,10 +1132,10 @@ void CSWGuiMessageBox::HandleInputEvent(int nType, int nValue)
                 // 502 is the OK button's own event, 503 the Cancel button's, and 40/46 are the
                 // keyboard escapes, which count as an accept when the box refuses to be
                 // cancelled at all.
-                if (nType == SWGUIEVENT_MSGBOX_OK)
+                if (nType == SWGUIEVENT_MSGBOX_OK || !m_bAllowCancel)
                     m_bAccepted = 1;
                 else
-                    m_bAccepted = !m_bAllowCancel;
+                    m_bAccepted = 0;
                 m_bHasIcon = 0;
                 m_bAllowCancel = 1;
                 m_bAllowDismissal = 1;
@@ -1247,14 +1243,14 @@ void CSWGuiMessageBox::FixMessageLabel()
 #if KOTOR1
     // K1: the scale is the screen height over 768, the button captions may wrap to two lines, and
     // an iPhone screen trims the list by three scaled pixels. No datapad geometry.
+    CSWGuiExtent extentPanel = m_originalPanelExtent;
+    CSWGuiExtent extentList = m_originalListBoxExtent;
+    CSWGuiExtent extent;
 #ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
     float fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
 #else
     static float fScale = static_cast<float>(g_SDL_mode.h) / 768.0f;
 #endif
-    CSWGuiExtent extentPanel = m_originalPanelExtent;
-    CSWGuiExtent extentList = m_originalListBoxExtent;
-    CSWGuiExtent extent;
 
     if (m_bHasIcon)
     {
@@ -1535,8 +1531,9 @@ void CSWGuiMessageBox::FixMessageLabel()
         AddMessageLabel();
     }
 
+    int nCenterX = m_extent.w / 2;
     extent = m_lblIcon.m_extent;
-    extent.x = m_extent.w / 2 - extent.w / 2;
+    extent.x = nCenterX - extent.w / 2;
     m_lblIcon.SetExtent(extent);
 
     if (m_bDatapadStyle)
@@ -1550,13 +1547,13 @@ void CSWGuiMessageBox::FixMessageLabel()
     {
         extent = m_btnOk.m_extent;
         extent.y = m_lbMessage.m_extent.y + m_lbMessage.m_extent.h + 4;
-        extent.x = m_extent.w / 2 - extent.w / 2;
+        extent.x = nCenterX - extent.w / 2;
     }
     m_btnOk.SetExtent(extent);
 
     extent = m_btnCancel.m_extent;
     extent.y = m_btnOk.m_extent.y + m_btnOk.m_extent.h + 2;
-    extent.x = m_extent.w / 2 - extent.w / 2;
+    extent.x = nCenterX - extent.w / 2;
     m_btnCancel.SetExtent(extent);
     CenterPanel();
 #undef K2_MSGBOX_MAX_W
@@ -1576,11 +1573,7 @@ void CSWGuiMessageBox::SetOkButtonMessage(uint64_t nStrRef)
     m_btnOk.m_text.m_params.SetStrRef(nStrRef);
 #if !KOTOR1  // K1: no gamepad caption icon
     if (IsJoystickConnected())
-    {
-        CExoString sText = m_btnOk.m_text.m_params.m_sText;
-        AspyrAddStringIcon(sText, 'a');
-        m_btnOk.m_text.m_params.SetText(sText);
-    }
+        AspyrAddButtonIcon(&m_btnOk, 'a');
 #endif
 }
 
@@ -1589,11 +1582,7 @@ void CSWGuiMessageBox::SetCancelButtonMessage(uint64_t nStrRef)
     m_btnCancel.m_text.m_params.SetStrRef(nStrRef);
 #if !KOTOR1  // K1: no gamepad caption icon
     if (IsJoystickConnected())
-    {
-        CExoString sText = m_btnCancel.m_text.m_params.m_sText;
-        AspyrAddStringIcon(sText, 'b');
-        m_btnCancel.m_text.m_params.SetText(sText);
-    }
+        AspyrAddButtonIcon(&m_btnCancel, 'b');
 #endif
 }
 
@@ -1689,20 +1678,20 @@ void CSWGuiMessageBox::OnPanelAdded()
     // cursor is the player's to move or a pad is driving the UI anyway.
     if (!gDontMoveCursor_Mac && !IsJoystickConnected())
     {
+        int nMouseX;
+        int nMouseY;
         if (m_bAllowCancel && !m_bFocusOkButton)
         {
-            g_pGuiMan->StoreCurrentMousePosition();
-            g_pGuiMan->MoveMouseToPosition(
-                m_extent.x + m_btnCancel.m_extent.x + m_btnCancel.m_extent.w / 2,
-                m_extent.y + m_btnCancel.m_extent.y + m_btnCancel.m_extent.h / 2);
+            nMouseX = m_extent.x + m_btnCancel.m_extent.x + m_btnCancel.m_extent.w / 2;
+            nMouseY = m_extent.y + m_btnCancel.m_extent.y + m_btnCancel.m_extent.h / 2;
         }
         else
         {
-            g_pGuiMan->StoreCurrentMousePosition();
-            g_pGuiMan->MoveMouseToPosition(
-                m_extent.x + m_btnOk.m_extent.x + m_btnOk.m_extent.w / 2,
-                m_extent.y + m_btnOk.m_extent.y + m_btnOk.m_extent.h / 2);
+            nMouseX = m_extent.x + m_btnOk.m_extent.x + m_btnOk.m_extent.w / 2;
+            nMouseY = m_extent.y + m_btnOk.m_extent.y + m_btnOk.m_extent.h / 2;
         }
+        g_pGuiMan->StoreCurrentMousePosition();
+        g_pGuiMan->MoveMouseToPosition(nMouseX, nMouseY);
     }
 #endif
 }
@@ -2681,13 +2670,13 @@ void CSWGuiStatusSummary::OnPanelAdded()
                 {
                     sToken = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NET_LIGHT_SIDE_SHIFT);
                     m_aValueLabels[i].m_border.m_params.SetFillImage(
-                        m_aValueLabels[SUMMARY_ROW_LIGHT_SIDE].m_border.m_params.m_fillImage, 0);
+                        m_aValueLabels[SUMMARY_ROW_LIGHT_SIDE].m_border.m_params.m_fillImage);
                 }
                 else
                 {
                     sToken = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NET_DARK_SIDE_SHIFT);
                     m_aValueLabels[i].m_border.m_params.SetFillImage(
-                        m_aValueLabels[SUMMARY_ROW_DARK_SIDE].m_border.m_params.m_fillImage, 0);
+                        m_aValueLabels[SUMMARY_ROW_DARK_SIDE].m_border.m_params.m_fillImage);
                 }
                 bShow = 1;
                 bSetText = 1;
@@ -2909,13 +2898,13 @@ void CSWGuiStatusSummary::OnPanelAdded()
                 {
                     sToken = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NET_LIGHT_SIDE_SHIFT);
                     m_aValueLabels[i].m_border.m_params.SetFillImage(
-                        m_aValueLabels[SUMMARY_ROW_LIGHT_SIDE].m_border.m_params.m_fillImage, 0);
+                        m_aValueLabels[SUMMARY_ROW_LIGHT_SIDE].m_border.m_params.m_fillImage);
                 }
                 else
                 {
                     sToken = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_NET_DARK_SIDE_SHIFT);
                     m_aValueLabels[i].m_border.m_params.SetFillImage(
-                        m_aValueLabels[SUMMARY_ROW_DARK_SIDE].m_border.m_params.m_fillImage, 0);
+                        m_aValueLabels[SUMMARY_ROW_DARK_SIDE].m_border.m_params.m_fillImage);
                 }
                 bShow = 1;
                 bSetText = 1;
@@ -3492,15 +3481,9 @@ void CSWGuiDeathDisplay::OnLastSavePressed(CSWGuiControl* pControl)
             return;
         }
 
-        // The load failed, so re-arm the shared "are you sure?" box and push it instead. The
-        // SetAllowCancel body, expanded here, sets the open sound to the alert, the cancel flag to
-        // off and the two button/label visibility flags, then clears the dismissal callback.
+        // The load failed, so re-arm the shared "are you sure?" box and push it instead.
         CSWGuiMessageBox* pBox = pInGameGui->m_pSoloModeQueryBox;
-        pBox->m_nOpenSoundIndex = GUISOUND_ERROR_DEFAULT;
-        pBox->m_bAllowCancel = 0;
-        pBox->m_btnOk.m_tail.bVisible = pBox->m_bAllowDismissal;
-        pBox->m_btnCancel.m_tail.bVisible = pBox->m_bAllowCancel && pBox->m_bAllowDismissal;
-        pBox->m_lblIcon.m_tail.bVisible = pBox->m_bHasIcon;
+        pBox->SetAllowCancel(0);
         pBox->m_pfnCallback = 0;
         pBox->m_pCallbackObject = 0;
         pBox->m_pCallbackControl = 0;

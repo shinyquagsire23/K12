@@ -580,20 +580,13 @@ int CAuroraInterface::SetTexturePack(unsigned char nPack, const CExoString& sPac
         return 0;
 
     // The right operand is a temporary copy, which is destroyed as soon as the comparison ends.
-    if (sPack == CExoString(m_pCurrentTexturePack[nPack]))
+    if (sPack == GetCurrentTexturePack(nPack))
         return 1;
 
     if (!UnloadTexturePack(nPack))
         return 0;
 
-    if (sPack.GetLength() == 0)
-        return 0;
-
-    if (!g_pExoResMan->AddEncapsulatedResourceFile(sPack, 2))
-        return 0;
-
-    m_pCurrentTexturePack[nPack] = sPack;
-    return 1;
+    return LoadTexturePack(nPack, sPack);
 }
 void CAuroraInterface::RequestModel(char* sName)
 {
@@ -692,17 +685,10 @@ void CAuroraInterface::GetDesktopResolution(int& nWidth, int& nHeight)
 
 int CAuroraInterface::IsWithinDesktopResolution(unsigned int nWidth, unsigned int nHeight)
 {
-    if (g_nDesktopWidth == 0)
-    {
-        SDL_DisplayMode mode;
-        if (K2_DESKTOP_MODE(&mode) == 0)
-        {
-            g_nDesktopWidth = mode.w;
-            g_nDesktopHeight = mode.h;
-        }
-    }
-    // Both comparisons are always evaluated, never short-circuited.
-    return (static_cast<unsigned int>(g_nDesktopWidth) >= nWidth) & (static_cast<unsigned int>(g_nDesktopHeight) >= nHeight);
+    int nDesktopWidth;
+    int nDesktopHeight;
+    GetDesktopResolution(nDesktopWidth, nDesktopHeight);
+    return static_cast<unsigned int>(nDesktopWidth) >= nWidth && static_cast<unsigned int>(nDesktopHeight) >= nHeight;
 }
 
 // The enumerated video modes. `nMode` is an index into the OS's mode list, or -1.

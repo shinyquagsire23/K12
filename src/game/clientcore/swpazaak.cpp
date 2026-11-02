@@ -109,8 +109,6 @@ void CPazaakPlayer::AddGameCard(CPazaakCard card)
     if (card.m_nCardType == PAZAAK_CARD_FLIP_2_4 || card.m_nCardType == PAZAAK_CARD_FLIP_3_6)
         card.m_nValue = 1;
     CPazaakCard prevCard;
-    prevCard.m_bIsNegative = 0;
-    prevCard.m_nValue = 0;
     int i;
     for (i = 0; i < 9; i++) {
         if (m_cardsPlayed[i].m_nCardType == PAZAAK_CARD_NONE)
@@ -133,14 +131,6 @@ void CPazaakPlayer::AddGameCard(CPazaakCard card)
 
 CSWPazaak::CSWPazaak()
 {
-#if !KOTOR1  // K1: the CPazaakCard ctor zeroes each deck card's sign
-    for (int i = 0; i < 39; i++) {
-        m_deck[i].m_bIsNegative = 0;
-        m_deck[i].m_nValue = 0;
-    }
-    m_deck[39].m_bIsNegative = 0;
-    m_deck[39].m_nValue = 0;
-#endif
     m_nWager = 0;
     m_oidOpponent = OBJECT_INVALID;
     m_nDeckIndex = -1;
@@ -181,10 +171,6 @@ void CSWPazaak::ShuffleDeck()
         localDeck[i] = card;
     }
 #else
-    for (int i = 0; i < 40; i++) {
-        localDeck[i].m_bIsNegative = 0;
-        localDeck[i].m_nValue = 0;
-    }
     for (int i = 0; i < 40; i++) {
         localDeck[i].m_nCardType = PAZAAK_CARD_MAIN_1 + i % 10;
         localDeck[i].m_bIsNegative = 0;
@@ -405,12 +391,7 @@ int CSWPazaak::FindPotentialDoubleTotal(CPazaakPlayer& player, int nTarget)
             break;
         lastCard = player.m_cardsPlayed[i];
     }
-    int total = 0;
-    for (int i = 0; i < 9; i++) {
-        if (player.m_cardsPlayed[i].m_nCardType == PAZAAK_CARD_NONE)
-            break;
-        total += player.m_cardsPlayed[i].GetCardValue();
-    }
+    int total = player.GetTotal();
     return total + lastCard.GetCardValue();
 }
 

@@ -39,7 +39,7 @@ public:
 };
 
 // One entry of the custom-token table, the <CUSTOM0>-style substitutions a module sets at runtime.
-class CTlkTableCustomToken {
+class CTlkTableTokenCustom {
 public:
     int        m_nId;
     CExoString m_sValue;
@@ -76,7 +76,7 @@ public:
     CTlkTableToken* m_pStringTokens;
     unsigned int    m_nStringTokenCount;
 
-    CTlkTableCustomToken* m_pCustomTokens;
+    CTlkTableTokenCustom* m_pCustomTokens;
     unsigned int m_nCustomTokenCount;
     int  m_bSuppressText;
     int  m_bShowStringRefs;

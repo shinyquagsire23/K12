@@ -543,17 +543,7 @@ void* Scene::HitCheckGob(Vector vStart, Vector vEnd, Vector* pvHit, CHitInfo* pI
 
 CHitInfo::CHitInfo(int a, int b, int c)
 {
-    m_bSkipObjects = a;
-    m_nMaterialMask = b;
-    *static_cast<volatile int*>(&m_ignoreList.m_count) = 0;
-    m_bHitBoundingBoxes = c;
-    m_bIgnoreStartInside = 0;
-    m_bSkipCharactersAndItems = 0;
-    m_bSkipFaded = 1;
-    m_bHonorIgnoreHitCheck = 0;
-    m_bSkipRooms = 0;
-    m_bIncludeEffects = 0;
-    ClearOutput();
+    Reset(a, b, c);
 }
 
 void CHitInfo::Reset(int a, int b, int c)
@@ -2166,7 +2156,8 @@ void Scene::RenderLensFlares()
 
         const Quaternion& qCamera = CurrentCamera->m_qOrientation;
 #if KOTOR1
-        Vector vDir = RotateVector(pLight->m_vWorldPosition - CurrentCamera->m_vPosition, -qCamera);
+        Quaternion qInverse = -qCamera;
+        Vector vDir = RotateVector(pLight->m_vWorldPosition - CurrentCamera->m_vPosition, qInverse);
 #else
         Vector vDir = RotateVector(pLight->m_vWorldPosition - CurrentCamera->m_vPosition,
                                    Quaternion(-qCamera.w, qCamera.x, qCamera.y, qCamera.z));
@@ -3865,26 +3856,12 @@ const char* replacetilereferences(char* pszArgs)
 
 const char* enableshadowing(char* pszArgs)
 {
-    Gob* pGob = FindGob(pszArgs);
-    if (pGob == 0)
-        return "no gob by that name";
-    if (pGob->m_nDynamicLights == 0)
-        return "no dynamic lights on that gob - nothing done";
-
-    SetShadows(pGob->m_pPart, 1);
-    return "success";
+    return SetShadowing(pszArgs, 1);
 }
 
 const char* disableshadowing(char* pszArgs)
 {
-    Gob* pGob = FindGob(pszArgs);
-    if (pGob == 0)
-        return "no gob by that name";
-    if (pGob->m_nDynamicLights == 0)
-        return "no dynamic lights on that gob - nothing done";
-
-    SetShadows(pGob->m_pPart, 0);
-    return "success";
+    return SetShadowing(pszArgs, 0);
 }
 
 const char* initscenebsp(char* pszArgs)
@@ -4075,26 +4052,13 @@ char* spawnbinarytile(char* pszArgs)
         pScene = *ppScene++;
     while (_stricmp("mainscene", pScene->m_szName) != 0);
 #else
-    Scene* pScene = 0;
-    int i = 0;
-    do
-    {
-        if (_stricmp("mainscene", Scenes.m_pData[i]->m_szName) == 0)
-        {
-            pScene = Scenes.m_pData[i];
-            break;
-        }
-        i++;
-    } while (i < Scenes.m_count);
+    Scene* pScene = FindScene(const_cast<char*>("mainscene"));
 #ifdef K2_FIX_ENGINE_BUGS
     if (pScene == 0)
         return const_cast<char*>("no mainscene");
 #else
     if (pScene == 0)
-    {
-        for (int j = 0; ; j++)
-            (void)_stricmp("scene", Scenes.m_pData[j]->m_szName);
-    }
+        FindScene(const_cast<char*>("scene"));
 #endif
 #endif
 

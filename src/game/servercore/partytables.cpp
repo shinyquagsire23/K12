@@ -525,13 +525,8 @@ CSWSJournal* CSWPartyTable::GetPartyJournal()
 
 void CSWPartyTable::SaveJournal(CResGFF* pGff, CResStruct* pStruct)
 {
-    CSWSJournal* pJournal = m_pJournal;
-    if (pJournal == 0)
-    {
-        pJournal = new CSWSJournal();
-        m_pJournal = pJournal;
-    }
-    if (pJournal->m_entries.m_count != 0)
+    CSWSJournal* pJournal = GetPartyJournal();
+    if (pJournal != 0 && pJournal->m_entries.m_count != 0)
     {
         pGff->WriteFieldINT(pStruct, g_nJournalSortType, const_cast<char*>("JNL_SortOrder"));
 
@@ -655,7 +650,7 @@ int CSWPartyTable::AssignPUP(int pupIndex, int npcIndex)
         return 0;
     if (m_pupAvailable[pupIndex] == 0)
         return 0;
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_partyMemberID[npcIndex]);
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(GetNPCObject(npcIndex, 0, 1));
     if (pCreature == 0)
         return 0;
     pCreature->m_nAssignedPup = pupIndex;
@@ -702,18 +697,8 @@ int CSWPartyTable::KillPUPObject(int pupIndex, int notify)
 {
     if (static_cast<unsigned>(pupIndex) >= 3)
         return 0;
-    long long puppetCount = m_nNumPuppets;
-    if (puppetCount >= 1)
-    {
-        int* pIndex = m_puppetIndex;
-        do
-        {
-            if (*pIndex == pupIndex)
-                return 0;
-            puppetCount--;
-            pIndex++;
-        } while (puppetCount != 0);
-    }
+    if (GetIsPuppet(pupIndex) != 0)
+        return 0;
 
     CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_puppetID[pupIndex]);
     m_puppetID[pupIndex] = OBJECT_INVALID;
@@ -794,26 +779,15 @@ CSWSCreature* CSWPartyTable::GetPUPOwner(int pupIndex)
         return 0;
 
     CSWSCreature* pCreature;
-    int pos0 = m_partyMemberIndex[0];
-    if (pos0 != -1)
+    for (int i = 0; i < 2; i++)
     {
-        unsigned long long id0 = OBJECT_INVALID;
-        if (static_cast<unsigned>(pos0) < NUM_NPCS && m_npcAvailable[pos0] != 0)
-            id0 = m_partyMemberID[pos0];
-        pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(id0);
-        if (pCreature != 0 && pCreature->m_nAssignedPup == pupIndex)
-            return pCreature;
-    }
-
-    int pos1 = m_partyMemberIndex[1];
-    if (pos1 != -1)
-    {
-        unsigned long long id1 = OBJECT_INVALID;
-        if (static_cast<unsigned>(pos1) < NUM_NPCS && m_npcAvailable[pos1] != 0)
-            id1 = m_partyMemberID[pos1];
-        pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(id1);
-        if (pCreature != 0 && pCreature->m_nAssignedPup == pupIndex)
-            return pCreature;
+        if (m_partyMemberIndex[i] != -1)
+        {
+            unsigned long long id = GetNPCObject(m_partyMemberIndex[i], 0, 1);
+            pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(id);
+            if (pCreature != 0 && pCreature->m_nAssignedPup == pupIndex)
+                return pCreature;
+        }
     }
 
     pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
@@ -1277,7 +1251,6 @@ int CSWPartyTable::LoadTableInfo()
     CResStruct struct1;
     CResList list1;
     int bSuccess;
-    int soloMode;
     int availCount;
 
     pGff->GetList(&list1, &topStruct, const_cast<char*>("PT_MEMBERS"));
@@ -1297,10 +1270,7 @@ int CSWPartyTable::LoadTableInfo()
     if (bSuccess == 0)
         m_nTotalPlayedSecondsAccum = pGff->ReadFieldDWORD(&topStruct, const_cast<char*>("PT_PLAYEDMINUTES"), bSuccess, 0) * 60;
     m_nControlledNPC = pGff->ReadFieldINT(&topStruct, const_cast<char*>("PT_CONTROLLED_NPC"), bSuccess, -1);
-    soloMode = pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("PT_SOLOMODE"), bSuccess, static_cast<unsigned char>(m_soloMode));
-    if (soloMode == 0)
-        UnstealthParty(0);
-    m_soloMode = soloMode;
+    SetSoloMode(pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("PT_SOLOMODE"), bSuccess, static_cast<unsigned char>(m_soloMode)), 1);
     m_cheatUsedFlags = pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("PT_CHEAT_USED"), bSuccess, 0);
     m_nNumPartyMembers = pGff->ReadFieldBYTE(&topStruct, const_cast<char*>("PT_NUM_MEMBERS"), bSuccess, 0);
     if (pGff->GetListCount(&list1) < static_cast<unsigned int>(m_nNumPartyMembers))
@@ -1559,8 +1529,7 @@ void CSWPartyTable::SaveMember(int index, int value)
         pCreature->ClearAllActions(1);
 
     CResStruct topStruct;
-    CExoString name;
-    name.Format(const_cast<char*>("AVAILNPC%d"), index);
+    CExoString name = GetFilename(index);
 
     CResGFF* pGff = new CResGFF();
     {
@@ -1590,8 +1559,7 @@ void CSWPartyTable::SavePuppet(int index, int value)
         pCreature->ClearAllActions(1);
 
     CResStruct topStruct;
-    CExoString name;
-    name.Format(const_cast<char*>("AVAILPUP%d"), index);
+    CExoString name = GetPupFilename(index);
 
     CResGFF* pGff = new CResGFF();
     {
@@ -1621,8 +1589,7 @@ void CSWPartyTable::SaveMemberByObject(int index, unsigned long long id)
     pCreature->ClearAllActions(1);
 
     CResStruct topStruct;
-    CExoString name;
-    name.Format(const_cast<char*>("AVAILNPC%d"), index);
+    CExoString name = GetFilename(index);
 
     CResGFF* pGff = new CResGFF();
     {
@@ -1652,8 +1619,7 @@ void CSWPartyTable::SavePuppetByObject(int index, unsigned long long id)
     pCreature->ClearAllActions(1);
 
     CResStruct topStruct;
-    CExoString name;
-    name.Format(const_cast<char*>("AVAILPUP%d"), index);
+    CExoString name = GetPupFilename(index);
 
     CResGFF* pGff = new CResGFF();
     {
@@ -1767,18 +1733,8 @@ int CSWPartyTable::KillNPCObject(int npcIndex, int notify)
     if (static_cast<unsigned>(npcIndex) >= NUM_NPCS)
         return 0;
 
-    long long memberCount = m_nNumPartyMembers;
-    if (memberCount >= 1)
-    {
-        int* pIndex = m_partyMemberIndex;
-        do
-        {
-            if (*pIndex == npcIndex)
-                return 0;
-            memberCount--;
-            pIndex++;
-        } while (memberCount != 0);
-    }
+    if (GetIsMember(npcIndex) != 0)
+        return 0;
 
     CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_partyMemberID[npcIndex]);
     m_partyMemberID[npcIndex] = OBJECT_INVALID;
@@ -1815,7 +1771,7 @@ int CSWPartyTable::RemovePuppet(int pupIndex)
     if (m_pupAvailable[pupIndex] == 0)
         return 0;
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_puppetID[pupIndex]);
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(GetPUPObject(pupIndex, 0, 1));
     if (pCreature != 0)
     {
         pCreature->ClearAllEffects(0);
@@ -1888,22 +1844,15 @@ int CSWPartyTable::RemoveMember(int npcIndex)
     if (m_npcAvailable[npcIndex] == 0)
         return 0;
 
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_partyMemberID[npcIndex]);
+    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(GetNPCObject(npcIndex, 0, 1));
     if (pCreature != 0)
     {
         pCreature->ClearAllEffects(0);
         int pupIndex = pCreature->m_nAssignedPup;
-        if (pupIndex != -1 && m_nNumPuppets >= 1)
+        if (pupIndex != -1 && GetIsPuppet(pupIndex) != 0)
         {
-            for (int k = 0; k < m_nNumPuppets; k++)
-            {
-                if (m_puppetIndex[k] == pupIndex)
-                {
-                    RemovePuppet(pupIndex);
-                    KillPUPObject(pupIndex, 1);
-                    break;
-                }
-            }
+            RemovePuppet(pupIndex);
+            KillPUPObject(pupIndex, 1);
         }
         SaveMember(npcIndex, 0);
     }
@@ -2266,12 +2215,7 @@ int CSWPartyTable::AddNPC(int index, CSWSCreature* pCreature)
 #endif
 
     CExoString gipPath;
-    {
-        CExoString availName;
-        availName.Format(const_cast<char*>("AVAILNPC%d"), index);
-        char* pszAvailName = availName.CStr();
-        gipPath.Format(const_cast<char*>("GAMEINPROGRESS:%s"), pszAvailName);
-    }
+    gipPath.Format(const_cast<char*>("GAMEINPROGRESS:%s"), GetFilename(index).CStr());
 
     CResStruct topStruct;
     CResGFF* pGff = new CResGFF();
@@ -2287,7 +2231,9 @@ int CSWPartyTable::AddNPC(int index, CSWSCreature* pCreature)
         CExoString finalPath(gipPath.CStr());
         result = pGff->WriteGFFFile(finalPath, RESTYPE_UTC);
     }
+#if !KOTOR1 || defined(K2_FIX_ENGINE_BUGS)  // K1 leaks the GFF
     delete pGff;
+#endif
     return result;
 }
 
@@ -2329,12 +2275,7 @@ int CSWPartyTable::AddPUP(int index, CSWSCreature* pCreature)
     pCreature->m_pStats->SetMovementRate(6);
 
     CExoString gipPath;
-    {
-        CExoString availName;
-        availName.Format(const_cast<char*>("AVAILPUP%d"), index);
-        char* pszAvailName = availName.CStr();
-        gipPath.Format(const_cast<char*>("GAMEINPROGRESS:%s"), pszAvailName);
-    }
+    gipPath.Format(const_cast<char*>("GAMEINPROGRESS:%s"), GetPupFilename(index).CStr());
 
     CResStruct topStruct;
     CResGFF* pGff = new CResGFF();
@@ -2424,13 +2365,7 @@ unsigned long long CSWPartyTable::GetNPCObject(int index, int create, int notify
 
     AddGameInProgress();
 
-    int loaded;
-    {
-        CExoString availName;
-        availName.Format(const_cast<char*>("AVAILNPC%d"), index);
-        CResRef resRef(availName);
-        loaded = pCreature->LoadFromTemplate(resRef, 0);
-    }
+    int loaded = pCreature->LoadFromTemplate(CResRef(GetFilename(index)), 0);
 
     if (loaded == 0)
     {
@@ -2480,13 +2415,7 @@ unsigned long long CSWPartyTable::GetPUPObject(int index, int create, int notify
 
     AddGameInProgress();
 
-    int loaded;
-    {
-        CExoString availName;
-        availName.Format(const_cast<char*>("AVAILPUP%d"), index);
-        CResRef resRef(availName);
-        loaded = pCreature->LoadFromTemplate(resRef, 0);
-    }
+    int loaded = pCreature->LoadFromTemplate(CResRef(GetPupFilename(index)), 0);
 
     if (loaded == 0)
     {
@@ -2634,7 +2563,7 @@ void CSWPartyTable::PositionParty()
 {
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
     CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-    CSWSCreature* pPlayer = pServerApp->GetPlayerCreature();
+    CSWSCreature* pPlayer = pServerApp->GetCreatureByGameObjectID(pServerApp->GetPlayerCreatureId());
     Vector orient = pPlayer->m_orientation;
     pParty->ResetAllFollowData(pPlayer->m_position, Yaw(orient), 0);
     if (m_bKeepSavedPositions == 0)
@@ -2665,12 +2594,7 @@ void CSWPartyTable::PositionParty()
             safePos.x = followPoint.x + offset.x;
             safePos.y = followPoint.y + offset.y;
             safePos.z = followPoint.z + offset.z;
-            int index = m_partyMemberIndex[i];
-            unsigned long long memberId;
-            if (static_cast<unsigned int>(index) < NUM_NPCS && m_npcAvailable[index] != 0)
-                memberId = m_partyMemberID[index];
-            else
-                memberId = OBJECT_INVALID;
+            unsigned long long memberId = GetNPCObject(m_partyMemberIndex[i], 0, 1);
             g_pAppManager->m_pServerExoApp->ComputeSafeLocation(safePos, 10.0f, memberId, 0, &safePos);
             CSWSCreature* pMember = pServerApp->GetCreatureByGameObjectID(memberId);
             pMember->SetPosition(safePos, 1, 1, 0);
@@ -2720,7 +2644,6 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
     Vector pos = {};
     bool bFromTemplate = false;
     CSWSCreature* pNewPC;
-    unsigned long long newId;
     CSWParty* pParty;
     int curPCIndex = m_nControlledNPC;
     if (index == -1)
@@ -2780,11 +2703,7 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
             pCurPC->m_bPlayerCharacter = 0;
             SaveMember(m_nControlledNPC, 0);
         }
-        if (m_npcAvailable[index] != 0)
-            newId = m_partyMemberID[index];
-        else
-            newId = OBJECT_INVALID;
-        pNewPC = pServerApp->GetCreatureByGameObjectID(newId);
+        pNewPC = pServerApp->GetCreatureByGameObjectID(GetNPCObject(index, 0, 1));
         if (pNewPC == 0)
         {
             pNewPC = pServerApp->GetCreatureByGameObjectID(GetNPCObject(index, 1, 1));
@@ -2965,10 +2884,7 @@ void CSWPartyTable::CreateParty()
         if (m_pItemRepository == 0)
             m_pItemRepository = new CItemRepository(pServerApp->GetPlayerCreatureId(), 1);
         else
-        {
-            m_pItemRepository->ClearItems();
-            m_bPartyCreated = 0;
-        }
+            ClearInventory();
         pGff->GetTopLevelStruct(&topStruct);
         pGff->GetList(&itemList, &topStruct, const_cast<char*>("ItemList"));
         for (unsigned int i = 0; i < pGff->GetListCount(&itemList); i++)

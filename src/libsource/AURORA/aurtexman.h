@@ -241,7 +241,7 @@ public:
     unsigned char          m_bNormalizationCubeMap;
     unsigned char          m_bReleaseRaster;
     unsigned char          m_bMemoryDirty;
-    unsigned char          m_bProcessed;
+    bool                   m_bProcessed;
     unsigned char          m_bTxiLoaded;
     unsigned char          m_bBound;
     int                    m_nMemoryUsage;

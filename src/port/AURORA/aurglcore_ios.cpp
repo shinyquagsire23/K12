@@ -22,8 +22,7 @@ RenderModificationQuadSetup::RenderModificationQuadSetup()
 
 RenderModificationQuadSetup::~RenderModificationQuadSetup()
 {
-    // inlined GLRender::SetBlendFunc(): blendTranslationTable is not visible here (the call loads it, LENGTH +4)
-    ASLgl::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
     GLRender::Enable(Aurora::kCapAlphaTest);
     GLRender::Enable(Aurora::kCapDepthTest);
     GLRender::Enable(Aurora::kCapLighting);

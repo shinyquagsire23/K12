@@ -255,7 +255,8 @@ int CSWSExpression::ParseString(CExoString sString)
                     break;
             }
             CSWSExpressionNode* pNode = NewNode(CSWSExpressionNode::NODE_LITERAL);
-            pNode->m_sText = CExoString(aChars.m_pArray, aChars.m_count);
+            CExoString sText(aChars.m_pArray, aChars.m_count);
+            pNode->m_sText = sText;
             aChars.m_count = 0;
             aLists.m_pArray[nDepth]->AddNode(pNode);
             break;

@@ -115,8 +115,8 @@ CSWGuiClassSelection::CSWGuiClassSelection(CSWGuiManager* pGuiManager, const CEx
     pPortraits->Load2DArray();
     int nRows = pPortraits->m_nRows;
 
-    List<int> aPortraitsFemale;
-    List<int> aPortraitsMale;
+    CExoArrayList<int> aPortraitsFemale;
+    CExoArrayList<int> aPortraitsMale;
     int nSex;
     for (int i = 0; i < nRows; i++)
     {
@@ -653,30 +653,32 @@ void CSWGuiClassSelection::OnSelectButton(CSWGuiControl* pControl)
             for (int i = 0; i < 6; i++)
                 m_aOptions[i].m_nSlideState = 0;
 
-            CExoString sLabel;
-            if (CHAR_TYPES[nIndex].m_nGender == GENDER_MALE)
-                sLabel = g_pTlkTable->GetSimpleString(STRREF_MALE);
-            else
-                sLabel = g_pTlkTable->GetSimpleString(STRREF_FEMALE);
+            {
+                CExoString sLabel;
+                if (CHAR_TYPES[nIndex].m_nGender == GENDER_MALE)
+                    sLabel = g_pTlkTable->GetSimpleString(STRREF_MALE);
+                else
+                    sLabel = g_pTlkTable->GetSimpleString(STRREF_FEMALE);
 
-#if KOTOR1
-            if (CHAR_TYPES[nIndex].m_nClass == CSWClass::CCLASS_SCOUNDREL)
-                sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_SCOUNDREL);
-            else if (CHAR_TYPES[nIndex].m_nClass == CSWClass::CCLASS_SCOUT)
-                sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_SCOUT);
-            else
-                sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_SOLDIER);
-#else
-            if (CHAR_TYPES[nIndex].m_nClass == CSWClass::CCLASS_JEDICONSULAR)
-                sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_JEDI_CONSULAR);
-            else if (CHAR_TYPES[nIndex].m_nClass == CSWClass::CCLASS_JEDISENTINEL)
-                sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_JEDI_SENTINEL);
-            else
-                sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_JEDI_GUARDIAN);
-#endif
+    #if KOTOR1
+                if (CHAR_TYPES[nIndex].m_nClass == CSWClass::CCLASS_SCOUNDREL)
+                    sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_SCOUNDREL);
+                else if (CHAR_TYPES[nIndex].m_nClass == CSWClass::CCLASS_SCOUT)
+                    sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_SCOUT);
+                else
+                    sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_SOLDIER);
+    #else
+                if (CHAR_TYPES[nIndex].m_nClass == CSWClass::CCLASS_JEDICONSULAR)
+                    sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_JEDI_CONSULAR);
+                else if (CHAR_TYPES[nIndex].m_nClass == CSWClass::CCLASS_JEDISENTINEL)
+                    sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_JEDI_SENTINEL);
+                else
+                    sLabel = sLabel + CExoString(" ") + g_pTlkTable->GetSimpleString(STRREF_JEDI_GUARDIAN);
+    #endif
 
-            m_lblDesc.m_text.m_params.SetStrRef(CHAR_TYPES[nIndex].m_nStrRef);
-            m_lblClass.m_text.m_params.SetText(sLabel);
+                m_lblDesc.m_text.m_params.SetStrRef(CHAR_TYPES[nIndex].m_nStrRef);
+                m_lblClass.m_text.m_params.SetText(sLabel);
+            }
             m_aOptions[nIndex].m_nSlideState = 1;
         }
         else

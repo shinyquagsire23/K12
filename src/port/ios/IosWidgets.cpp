@@ -168,7 +168,7 @@ IosLabel::IosLabel()
     m_pImage = 0;
     m_nMaxLines = 12;
     m_nFontSize = 24;
-    m_pImage = NewCAurGUIImage(const_cast<char*>("ipho_dialog"));
+    SetImage(const_cast<char*>("ipho_dialog"));
     m_bFilterNewline = 1;
     m_bCenterText = 1;
     m_fScaleX = 1.0f;
@@ -341,40 +341,19 @@ CSWGuiExtent IosDialogReplies::GetContentFrame(int bAbsolute)
 // m_nReplyHeight.
 CSWGuiExtent IosDialogReplies::GetReplyExtent(int bAbsolute, int nIndex)
 {
-    const unsigned char bNoBg = m_bNoBackground;
-    int nTop = s_nReplyTopBg;
-    static_cast<void>(s_nReplyBottomBg);
-    int nSide = s_nReplySideBg;
-    if (bNoBg)
-    {
-        nTop = s_nReplyTopNoBg;
-        static_cast<void>(s_nReplyBottomNoBg);
-        nSide = s_nReplySideNoBg;
-    }
-
-    float fOffX = 0.0f;
-    if (bAbsolute)
-        fOffX = static_cast<float>(m_extent.x);
-    const float fScale = GetHeightScale();
-    const int nX = static_cast<int>(fOffX + fScale * nSide);
-    float fOffY = 0.0f;
-    if (bAbsolute)
-        fOffY = static_cast<float>(m_extent.y);
-    const float fTopScaled = fScale * nTop;
-    int nY = static_cast<int>(fTopScaled + fOffY);
-    const int nContentW = static_cast<int>(static_cast<float>(m_extent.w) - 2.0f * fScale * nSide);
+    const CSWGuiExtent frame = GetContentFrame(bAbsolute);
 
     // Only y carries the vertical scroll offset.
     int nScroll = 0;
     if (bAbsolute)
         nScroll = m_nVertScroll;
-    nY += nScroll;
+    const int nY = frame.y + nScroll;
 
     const int nColumns = m_nColumns;
     CSWGuiExtent extent;
-    extent.w = nContentW / nColumns;
+    extent.w = frame.w / nColumns;
     extent.y = (m_replyLayout.h + m_nReplyHeight) * (nIndex / nColumns) + nY;
-    extent.x = (nIndex % nColumns) * extent.w + nX;
+    extent.x = (nIndex % nColumns) * extent.w + frame.x;
     extent.h = m_nReplyHeight;
     return extent;
 }
@@ -383,23 +362,8 @@ CSWGuiExtent IosDialogReplies::GetReplyExtent(int bAbsolute, int nIndex)
 // row (the list is centred), plus the top inset scaled to the screen.
 float IosDialogReplies::GetScrollableHeight()
 {
-    const int nColumns = m_nColumns;
-    const int nReplyTotal = m_aReplies.m_count + nColumns - 1;
-
-    int nTop = s_nReplyTopBg;
-    static_cast<void>(s_nReplyBottomBg);
-    static_cast<void>(s_nReplySideBg);
-    if (m_bNoBackground)
-    {
-        nTop = s_nReplyTopNoBg;
-        static_cast<void>(s_nReplyBottomNoBg);
-        static_cast<void>(s_nReplySideNoBg);
-    }
-
-    const int nRows = nReplyTotal / nColumns;
-    const int nPitch = m_replyLayout.h + m_nReplyHeight;
-    const int nHeight = nPitch * nRows - m_nReplyHeight / 2;
-    return static_cast<float>(nHeight + static_cast<int>(GetHeightScale() * nTop + 0.0f));
+    const CSWGuiExtent extent = GetReplyExtent(0, m_aReplies.m_count + m_nColumns - 1);
+    return static_cast<float>(extent.y - extent.h / 2);
 }
 
 // True when the reply list's total scrollable height is at least 20 pixels taller than the
@@ -602,10 +566,11 @@ void IosDialogReplies::Draw(float fAlpha)
 
     {
         const Vector vTint(-1.0f, -1.0f, -1.0f);
+        const float fScrollRange = GetScrollableHeight() - static_cast<float>(frame.h);
         m_pScrollbarImage->Draw(
             nThumbX,
             static_cast<int>(static_cast<float>(nThumbY) - (1.0f - fThumb) * fTrackH *
-                      (static_cast<float>(m_nVertScroll) / (GetScrollableHeight() - static_cast<float>(frame.h)))),
+                      (static_cast<float>(m_nVertScroll) / fScrollRange)),
             nThumbW, static_cast<int>(fThumb * fTrackH), 0, 0.0f, vTint, 1.0f);
     }
 
@@ -712,22 +677,10 @@ void IosDialogReplies::Draw(float fAlpha)
                 (i == m_nSelectedReply) ? m_pReplyDownImage : m_pReplyUpImage;
             const char* pszText = m_aReplies[static_cast<int>(i)].CStr();
 
-            const int nPadX = static_cast<int>(GetWidthScale() * 18.0f);
-            const int nPadY = static_cast<int>(GetHeightScale() * 15.0f);
-            int nViewportH =
-                CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport].nHeight;
-            int nViewportW =
-                CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport].nWidth;
-
-            if (pArrow != 0)
-            {
-                const Vector vTint(-1.0f, -1.0f, -1.0f);
-                pArrow->Draw(nX, nY, nCellW, m_nReplyHeight, 0, 0.0f, vTint, 1.0f);
-            }
-
-            ::DrawTextWrapped(pszText, false, m_nFontSize, nViewportW, nViewportH,
-                              nX + nPadX, nY + nPadY, nCellW - 2 * nPadX,
-                              m_nReplyHeight - 2 * nPadY, 3, true);
+            DrawTextWithBackground(pArrow, pszText, m_nFontSize,
+                                   static_cast<int>(GetWidthScale() * 18.0f),
+                                   static_cast<int>(GetHeightScale() * 15.0f), nX, nY, nCellW,
+                                   m_nReplyHeight, 3, true);
         }
     }
 

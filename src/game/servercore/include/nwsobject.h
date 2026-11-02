@@ -56,6 +56,11 @@ struct CScriptLocation {
     void CopyScriptLocation(CScriptLocation* pSource);
     int  LoadLocation(CResGFF* pGFF, CResStruct* pStruct);
     int  SaveLocation(CResGFF* pGFF, CResStruct* pStruct);
+
+    int Equals(CScriptLocation* pOther)
+    {
+        return equal(m_vPosition, pOther->m_vPosition) && equal(m_vOrientation, pOther->m_vOrientation);
+    }
 };
 
 // A script-visible talent handle: a feat, spell or item property the AI may choose to use.
@@ -726,7 +731,7 @@ public:
 
 // One slot of the ten-entry action-queue snapshot the server keeps so it can tell the client's
 // action-queue GUI what changed.
-struct CSWActionQueueEntry {
+struct CSWActionNode {
     // The group and action ids of an empty slot.
     enum {
         SLOT_EMPTY = 0xffff,
@@ -744,7 +749,7 @@ struct CSWActionQueueEntry {
 
     unsigned long long m_targetId;
 
-    CSWActionQueueEntry() { ClearData(); }
+    CSWActionNode() { ClearData(); }
 
     // Back to an empty slot.
     void ClearData()

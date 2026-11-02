@@ -51,8 +51,8 @@ CSWPlayerControl::CSWPlayerControl()
 
 CSWPlayerControl::CSWPlayerControl(unsigned long long id, CAurCamera* pAurCamera)
 {
-    m_objectId = id;
-    m_bEnabled = 0;
+    Initialize();
+    SetPlayer(id);
     m_pCamera = pAurCamera;
 }
 

@@ -1226,8 +1226,9 @@ extern "C" int SDL_main(int argc, char** argv)
                                       static_cast<int>(fY * static_cast<float>(g_SDL_mode.h)));
                     } else {
                         auto_run_active = 0;
-                        mouseCameraMovement = __builtin_fminf(
-                            __builtin_fmaxf(static_cast<float>(ev.motion.xrel) / 80.0f, -1.0f), 1.0f);
+                        float fMove = static_cast<float>(ev.motion.xrel) / 80.0f;
+                        fMove = fMove < -1.0f ? -1.0f : fMove;
+                        mouseCameraMovement = fMove > 1.0f ? 1.0f : fMove;
                         if (__builtin_abs(ev.motion.xrel) <= 2) {
                             if (ev.motion.x + 2 == nWindowW)
                                 mouseCameraMovement = 1.0f;

@@ -55,9 +55,7 @@ CGameEffect::CGameEffect(int bIsExposed)
     m_pLinkedEffect2 = 0;
     m_pIntegers = 0;
     m_nCasterLevel = -1;
-    m_numIntegers = 8;
-    // Value-initialised, so the zero-fill is a compiler-synthesised memset.
-    m_pIntegers = new int[8]();
+    SetNumIntegers(8);
     for (int i = 0; i < 4; i++)
         m_fParams[i] = 0.0f;
     for (int i = 0; i < 6; i++)

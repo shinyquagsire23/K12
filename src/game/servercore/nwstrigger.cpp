@@ -902,12 +902,7 @@ void CSWSTrigger::EventHandler(unsigned int nEventType, unsigned long long nCall
             CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
             if (pEnterer != 0 &&
                 g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nGlobalDialogState == 0) {
-#if KOTOR1  // K1 calls CExoString::GetLength out of line
                 if (pArea != 0 && m_linkedToModule.GetLength() > 0) {
-#else
-                if (pArea != 0 && m_linkedToModule.m_sString != 0 &&
-                    static_cast<int>(strlen(m_linkedToModule.m_sString)) > 0) {
-#endif
                     if (pArea->m_bTransitionPending != 0) {
                         // A transition is already armed (this is the re-fired event): the id must
                         // match and the traveller must still be alive.

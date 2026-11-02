@@ -69,12 +69,16 @@ CSWGuiScriptSelect::CSWGuiScriptSelect(CSWGuiManager* pGuiManager)
     p2DA->Load2DArray();
 
     nSize = p2DA->m_nRows;
+#if KOTOR1
+    buttons.SetSize(nSize);
+#else
     if (nSize != 0)
     {
         buttons.m_capacity = nSize;
         buttons.m_pArray = new CSWGuiButtonToggle*[nSize];
     }
     buttons.m_count = nSize;
+#endif
     m_aScripts.SetSize(nSize);
 
     int64_t i;

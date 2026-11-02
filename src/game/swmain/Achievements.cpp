@@ -40,9 +40,7 @@ void Achievements::OnDialogOptionChosen(int nOption)
     s_findersKeeperDialog = false;
     if (nOption != 1)
         return;
-    char szTag[100];
-    FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_NIHILUS_MASK);
-    UnlockAchievement(szTag);
+    UnlockAchievement(ACHIEVEMENT_NIHILUS_MASK);
 }
 
 bool Achievements::UnlockAchievement(AchievementId id)
@@ -54,16 +52,13 @@ bool Achievements::UnlockAchievement(AchievementId id)
 
 void Achievements::OnEndDialog()
 {
-    char szTag[100];
     if (s_buildLightsaberDialog) {
         s_buildLightsaberDialog = false;
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_FIRST_LIGHTSABER);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_FIRST_LIGHTSABER);
     }
     if (s_itsATrapDialog) {
         s_itsATrapDialog = false;
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_TRAPPED_QUEST);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_TRAPPED_QUEST);
     }
 }
 
@@ -79,65 +74,51 @@ void Achievements::ResetAchievements()
 // their flag and return; the guarded case is the only one that tests a second latch.
 void Achievements::EvaluateAchievement(uint64_t strRef)
 {
-    char szTag[100];
-
     switch (strRef) {
     case STRREF_CHAMP_AGREES_TO_LOSE:
     case STRREF_CHAMP_LOSES_THIS_TIME:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_CHAMP_THROWS_GAME);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_CHAMP_THROWS_GAME);
         break;
     case STRREF_EBON_HAWK_DOOR_SLICED:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_COMPLETE_PROLOGUE);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_COMPLETE_PROLOGUE);
         break;
     case STRREF_TEACH_ME_TO_BE_A_JEDI:
     case STRREF_TEACH_ME_TO_WIELD_THE_FORCE:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_TEACH_HANDMAIDEN);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_TEACH_HANDMAIDEN);
         break;
     case STRREF_BRING_ME_THE_MASK:
         s_findersKeeperDialog = true;
         break;
     case STRREF_FIRST_STEPS_TO_DARK_SIDE:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_FIRST_DARK_SIDE_POINTS);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_FIRST_DARK_SIDE_POINTS);
         break;
     case STRREF_HANDMAIDEN_JOINS_PARTY:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_RECRUIT_HANDMAIDEN);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_RECRUIT_HANDMAIDEN);
         break;
     case STRREF_GUIDE_YOUR_DESTINY:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_PRESTIGE_CLASS);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_PRESTIGE_CLASS);
         break;
     case STRREF_YOU_HAVE_WON_TALIA:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_ONDERON_SIDE_WITH_QUEEN);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_ONDERON_SIDE_WITH_QUEEN);
         break;
     case STRREF_HK47_ELECTRONIC_BUTCHERY:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_HK47_UNIQUE_MODULE);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_HK47_UNIQUE_MODULE);
         break;
     case STRREF_DANTOOINE_WILL_REBUILD:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_KHOONDA_SIDE_WITH_SETTLERS);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_KHOONDA_SIDE_WITH_SETTLERS);
         break;
     case STRREF_CRYSTAL_RESPONDS:
     case STRREF_CRYSTAL_OFFERED:
     case STRREF_CRYSTAL_RESPONDS_2:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_NAMED_LIGHTSABER_CRYSTAL);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_NAMED_LIGHTSABER_CRYSTAL);
         break;
     case STRREF_CARRY_YOUR_OWN_WEIGHT:
     case STRREF_WELCOME_YOUR_COMPANY:
     case STRREF_HE_SEEMS_CAPABLE:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_RECRUIT_DISCIPLE);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_RECRUIT_DISCIPLE);
         break;
     case STRREF_TAKE_THIS_GOLDEN_CARD:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_BEAT_PAZAAK_CHAMP);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_BEAT_PAZAAK_CHAMP);
         break;
     case STRREF_SHE_IS_HERE:
     case STRREF_HER_APPRENTICE_IS_HERE:
@@ -147,126 +128,96 @@ void Achievements::EvaluateAchievement(uint64_t strRef)
         s_dontGetCockyStarted = true;
         break;
     case STRREF_HANHARR_BROKEN:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_BREAK_HANHARR);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_BREAK_HANHARR);
         break;
     case STRREF_NO_MORE_UNKNOWNS:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_KILL_JEDI_MASTERS);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_KILL_JEDI_MASTERS);
         break;
     case STRREF_DISTURBED_THE_SPIRITS:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_LOOT_KORRIBAN_BODY);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_LOOT_KORRIBAN_BODY);
         break;
     case STRREF_KORRIBAN_RUNS_THROUGH_HIM:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_FLEE_KORRIBAN);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_FLEE_KORRIBAN);
         break;
     case STRREF_IMPOSSIBLE_ORDER:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_GOTO_IDENTITY);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_GOTO_IDENTITY);
         break;
     case STRREF_MEN_WILL_LEAVE_YOU_BE:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_KHOONDA_ABANDON_SETTLERS);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_KHOONDA_ABANDON_SETTLERS);
         break;
     case STRREF_VISAS_WHAT_ARE_YOU_DOING:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_DEFEAT_NIHILUS);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_DEFEAT_NIHILUS);
         break;
     case STRREF_MOVING_MEDITATION_LEARNED:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_LEARN_MOVING_MEDITATION);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_LEARN_MOVING_MEDITATION);
         break;
     case STRREF_FORCE_SIGHT_LEARNED:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_LEARN_FORCE_SIGHT);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_LEARN_FORCE_SIGHT);
         break;
     case STRREF_TRADE_WITH_TELOSIANS:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_VOGGA_FUEL);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_VOGGA_FUEL);
         break;
     case STRREF_MIRA_JOINS_PARTY:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_RECRUIT_MIRA);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_RECRUIT_MIRA);
         break;
     case STRREF_PERMIT_ME_TO_KILL_JEDI:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_HK47_KILL_JEDI);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_HK47_KILL_JEDI);
         break;
     case STRREF_BATTLE_CIRCLE_CHAMPION:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_MANDALORIAN_BATTLE_CIRCLE);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_MANDALORIAN_BATTLE_CIRCLE);
         break;
     case STRREF_HER_SACRIFICE_WAS_NECESSARY:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_ONDERON_SIDE_WITH_VAKLU);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_ONDERON_SIDE_WITH_VAKLU);
         break;
     case STRREF_DROID_POWER_RESTORED:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_REPAIR_EBON_HAWK_DROID);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_REPAIR_EBON_HAWK_DROID);
         break;
     case STRREF_WHAT_LIGHTSABER_TO_CREATE:
         s_buildLightsaberDialog = true;
         break;
     case STRREF_DEFINITION_OF_LOVE:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_HK47_LOVE);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_HK47_LOVE);
         break;
     case STRREF_GLAD_TO_LEAVE_THIS_PLACE:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_DEFEAT_SION);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_DEFEAT_SION);
         break;
     case STRREF_FIRST_STEPS_TO_LIGHT_SIDE:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_FIRST_LIGHT_SIDE_POINTS);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_FIRST_LIGHT_SIDE_POINTS);
         break;
     case STRREF_HANHARR_JOINS_PARTY:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_RECRUIT_HANHARR);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_RECRUIT_HANHARR);
         break;
     case STRREF_LETS_GET_OUT_OF_HERE:
         if (s_dontGetCockyStarted && !s_dontGetCockyFailed) {
-            FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_DONT_GET_COCKY);
-            UnlockAchievement(szTag);
+            UnlockAchievement(ACHIEVEMENT_DONT_GET_COCKY);
         }
 #ifndef K2_FIX_ENGINE_BUGS
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_DANCE_FOR_VOGGA);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_DANCE_FOR_VOGGA);
 #endif
         break;
     case STRREF_WEVE_GOT_COMPANY:
         s_dontGetCockyFailed = true;
         break;
     case STRREF_CONVEY_HIS_COMPLIMENTS:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_DANCE_FOR_VOGGA);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_DANCE_FOR_VOGGA);
         break;
     case STRREF_NO_MORE_MATCHES:
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_HANDMAIDEN_BATTLE_CIRCLE);
-        UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_HANDMAIDEN_BATTLE_CIRCLE);
         break;
     }
 }
 
-// Maps four movie names to a cloud achievement id and ignores anything else. It has the same shape
-// as the dialog-end handler: format the tag into a 100-byte local, then hand it to the unlock call.
+// Maps four movie names to a cloud achievement id and ignores anything else.
 void Achievements::EvaluateAchievementMovie(const char* movie)
 {
-    char szTag[100];
-
     if (!_stricmp(movie, "malmov12"))
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_LIGHT_SIDE_ENDING);
+        UnlockAchievement(ACHIEVEMENT_LIGHT_SIDE_ENDING);
     else if (!_stricmp(movie, "malmov14"))
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_DARK_SIDE_ENDING);
+        UnlockAchievement(ACHIEVEMENT_DARK_SIDE_ENDING);
     else if (!_stricmp(movie, "permov07"))
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_DESTROY_PERAGUS_ASTEROIDS);
+        UnlockAchievement(ACHIEVEMENT_DESTROY_PERAGUS_ASTEROIDS);
     else if (!_stricmp(movie, "permov06"))
-        FormatAchievementTag(szTag, 0, 0, ACHIEVEMENT_SITH_DESTROY_PERAGUS_ASTEROIDS);
-    else
-        return;
-
-    UnlockAchievement(szTag);
+        UnlockAchievement(ACHIEVEMENT_SITH_DESTROY_PERAGUS_ASTEROIDS);
 }
 
 #if KOTOR1
@@ -377,5 +328,16 @@ void UnlockAchievement(const char* pszName)
     env->DeleteLocalRef(strName);
     env->DeleteLocalRef(cls);
 #endif
+}
+
+void SubmitScore(const char* pszLeaderboard, int64_t nScore)
+{
+    JNIEnv* env = Android_JNI_GetEnv();
+    jclass cls = env->FindClass("com/aspyr/kotor/KOTOR");
+    jmethodID mid = env->GetStaticMethodID(cls, "submitScore", "(Ljava/lang/String;J)V");
+    jstring strLeaderboard = env->NewStringUTF(pszLeaderboard);
+    env->CallStaticVoidMethod(cls, mid, strLeaderboard, nScore);
+    env->DeleteLocalRef(strLeaderboard);
+    env->DeleteLocalRef(cls);
 }
 #endif

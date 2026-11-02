@@ -14,6 +14,7 @@ class CAurObject;
 // "the current one".
 enum {
     BEHAVIOR_CURRENT               = -1,
+    BEHAVIOR_CAMERA                = 0x1068,
     BEHAVIOR_CAMERA_ON_A_STICK     = 0x106a,
     BEHAVIOR_CAMERA_STATIC_TRACKER = 0x106b,
     BEHAVIOR_CAMERA_FOLLOW         = 0x106c,
@@ -49,3 +50,16 @@ public:
     void AddDependency(CAurObject* pObject);
     void RemoveDependency(CAurObject* pObject);
 };
+
+#if !KOTOR1
+// The common base of the client's on-a-stick, static-tracker, follow, free-look and death cameras.
+class CSWBehaviorCamera : public CAurBehavior {
+public:
+    CSWBehaviorCamera(CAurObject* pOwner) : CAurBehavior(pOwner) {}
+    virtual int Control(float fParam) { return CAurBehavior::Control(fParam); }
+    virtual int GetType() { return BEHAVIOR_CAMERA; }
+};
+#else
+// K1's cameras derive from CAurBehavior directly.
+typedef CAurBehavior CSWBehaviorCamera;
+#endif

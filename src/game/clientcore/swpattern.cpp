@@ -111,107 +111,39 @@ void CSWRumblePattern::LoadPattern(int nRow, C2DA* p2DA)
         int nSamples = 0;
 
         p2DA->GetINTEntry(nRow, CExoString("LSamples"), &nSamples);
-        int nCount = nSamples;
-        if (nCount <= 1) {
-            m_left.m_nNumSamplePoints = 0;
-        } else {
-            m_left.m_nNumSamplePoints = nCount;
-            m_left.m_paMagnitudes = new float[nCount];
-            m_left.m_paSamplePoints = new float[nCount];
-            memset(m_left.m_paMagnitudes, 0, nCount * sizeof(float));
-            memset(m_left.m_paSamplePoints, 0, nCount * sizeof(float));
+        m_left.SetNumSamplePoints(nSamples);
+        for (int i = 0; i < m_left.m_nNumSamplePoints; i++) {
+            float fMagnitude;
+            float fTime;
 
-            for (int i = 0; i < nCount; i++) {
-                float fMagnitude;
-                float fTime;
+            sColumn.Format(const_cast<char*>("LMagnitude%d"), i + 1);
+            p2DA->GetFLOATEntry(nRow, sColumn, &fMagnitude);
+            sColumn.Format(const_cast<char*>("LTime%d"), i + 1);
+            p2DA->GetFLOATEntry(nRow, sColumn, &fTime);
 
-                sColumn.Format(const_cast<char*>("LMagnitude%d"), i + 1);
-                p2DA->GetFLOATEntry(nRow, sColumn, &fMagnitude);
-                sColumn.Format(const_cast<char*>("LTime%d"), i + 1);
-                p2DA->GetFLOATEntry(nRow, sColumn, &fTime);
-
-                if (i < m_left.m_nNumSamplePoints && m_left.m_paSamplePoints != NULL && m_left.m_paMagnitudes != NULL) {
-                    m_left.m_paMagnitudes[i] = fMagnitude;
-                    m_left.m_paSamplePoints[i] = fTime;
-                }
-            }
+            m_left.SetSamplePoint(i, fMagnitude, fTime);
         }
 
         p2DA->GetINTEntry(nRow, CExoString("RSamples"), &nSamples);
-        nCount = nSamples;
-        if (nCount <= 1) {
-            m_right.m_nNumSamplePoints = 0;
-        } else {
-            m_right.m_nNumSamplePoints = nCount;
-            m_right.m_paMagnitudes = new float[nCount];
-            m_right.m_paSamplePoints = new float[nCount];
-            memset(m_right.m_paMagnitudes, 0, nCount * sizeof(float));
-            memset(m_right.m_paSamplePoints, 0, nCount * sizeof(float));
+        m_right.SetNumSamplePoints(nSamples);
+        for (int i = 0; i < m_right.m_nNumSamplePoints; i++) {
+            float fMagnitude;
+            float fTime;
 
-            for (int i = 0; i < nCount; i++) {
-                float fMagnitude;
-                float fTime;
+            sColumn.Format(const_cast<char*>("RMagnitude%d"), i + 1);
+            p2DA->GetFLOATEntry(nRow, sColumn, &fMagnitude);
+            sColumn.Format(const_cast<char*>("RTime%d"), i + 1);
+            p2DA->GetFLOATEntry(nRow, sColumn, &fTime);
 
-                sColumn.Format(const_cast<char*>("RMagnitude%d"), i + 1);
-                p2DA->GetFLOATEntry(nRow, sColumn, &fMagnitude);
-                sColumn.Format(const_cast<char*>("RTime%d"), i + 1);
-                p2DA->GetFLOATEntry(nRow, sColumn, &fTime);
-
-                if (i < m_right.m_nNumSamplePoints && m_right.m_paSamplePoints != NULL && m_right.m_paMagnitudes != NULL) {
-                    m_right.m_paMagnitudes[i] = fMagnitude;
-                    m_right.m_paSamplePoints[i] = fTime;
-                }
-            }
+            m_right.SetSamplePoint(i, fMagnitude, fTime);
         }
     }
-}
-
-// Interpolated magnitude for one channel; the same computation as CSWRumbleMotorData::GetMagnitude.
-static inline __attribute__((always_inline)) float GetChannelMagnitude(
-    float* pSamplePoints, float* pMagnitudes, int nCount, int& nCurrentIndex,
-    float fSamplePoint, int bLoop)
-{
-    if (pSamplePoints == NULL || pMagnitudes == NULL)
-        return 0.0f;
-
-    int64_t nLast = static_cast<int64_t>(nCount) - 1;
-    float fLast = pSamplePoints[nLast];
-
-    if (bLoop == 0) {
-        if (fLast < fSamplePoint)
-            return 0.0f;
-    } else {
-        while (fSamplePoint > fLast)
-            fSamplePoint = fSamplePoint - fLast;
-    }
-
-    int64_t nCurrent = static_cast<int64_t>(nCurrentIndex);
-    int i;
-
-    for (i = static_cast<int>(nCurrent); i < nLast; i++) {
-        if (fSamplePoint >= pSamplePoints[i] && fSamplePoint < pSamplePoints[i + 1])
-            goto found;
-    }
-
-    for (i = 0; i < nCurrent; i++) {
-        if (fSamplePoint >= pSamplePoints[i] && fSamplePoint < pSamplePoints[i + 1])
-            goto found;
-    }
-
-    return 0.0f;
-
-found:
-    nCurrentIndex = i;
-    return pMagnitudes[i] + (pMagnitudes[i + 1] - pMagnitudes[i]) *
-           ((fSamplePoint - pSamplePoints[i]) / (pSamplePoints[i + 1] - pSamplePoints[i]));
 }
 
 int CSWRumblePattern::GetMagnitudes(float fSamplePoint, float& fMagLeft, float& fMagRight)
 {
-    fMagLeft = GetChannelMagnitude(m_left.m_paSamplePoints, m_left.m_paMagnitudes, m_left.m_nNumSamplePoints,
-                                   m_left.m_nCurrentIndex, fSamplePoint, m_nLooping);
-    fMagRight = GetChannelMagnitude(m_right.m_paSamplePoints, m_right.m_paMagnitudes, m_right.m_nNumSamplePoints,
-                                    m_right.m_nCurrentIndex, fSamplePoint, m_nLooping);
+    fMagLeft = m_left.GetMagnitude(fSamplePoint, m_nLooping);
+    fMagRight = m_right.GetMagnitude(fSamplePoint, m_nLooping);
 
     // A looping pattern stays alive; otherwise it ends past the last sample of either channel.
     if (m_nLooping != 0)

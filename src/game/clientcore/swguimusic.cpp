@@ -44,8 +44,6 @@ CSWGuiTitleMusic::CSWGuiTitleMusic(CSWGuiManager* pGuiManager)
 {
     m_pSelectedRow = 0;
     CSWGuiControl* pVolumeControl = &m_sliderVolume;
-    int nMax;
-    int nCur;
 
     StartLoadFromLayout(CResRef("titlemusic_p"), 1, 1, 1);
 
@@ -108,10 +106,7 @@ CSWGuiTitleMusic::CSWGuiTitleMusic(CSWGuiManager* pGuiManager)
     m_sliderVolume.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiTitleMusic::OnMoveVolumeSlider));
 
     m_sliderVolume.SetCurValue(m_nMusicVolume);
-    nMax = pVolumeControl->AsSlider()->m_nMaxValue;
-    nCur = pVolumeControl->AsSlider()->m_nCurValue;
-    g_pExoSound->SetMusicVolume(static_cast<float>(nCur) / static_cast<float>(nMax) + 0.0f, 0);
-    g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nMusicVolume = static_cast<unsigned char>(nCur);
+    OnMoveVolumeSlider(pVolumeControl);
 
     // The "UnlockedPlanetSongs" bit field. Element 0 is always unlocked; elements 1..10 each take
     // their own bit.
@@ -350,8 +345,7 @@ void CSWGuiTitleMusic::HandleInputEvent(int type, int val)
             break;
         case INPUTEVENT_GUI_Y:
             m_btnStop.m_tail.nCurrentEventArg = 1;
-            if (m_aSongs.m_count > 0 && m_pMusic->IsPlaying())
-                StopMusic();
+            OnStopPicked(&m_btnStop);
             break;
         case INPUTEVENT_GUI_DPAD_LEFT:
             m_sliderVolume.HandleInputEvent(INPUTEVENT_GUI_DPAD_LEFT, 1);

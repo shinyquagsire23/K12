@@ -424,7 +424,7 @@ void PostTraceStrings()
         TraceString* pTrace = TraceStrings.m_pData[i];
         sprintf(szLine, "%s: %s", pTrace->m_szText, FuncInterp(pTrace->m_szText));
 #if !KOTOR1  // K1 formats the line and never posts it
-        new PostedString(szLine, 0, -1 - static_cast<int>(i), 0.0f);
+        AurPostString(szLine, 0, -1 - static_cast<int>(i), 0.0f);
 #endif
     }
 

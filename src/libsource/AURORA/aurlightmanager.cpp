@@ -714,10 +714,7 @@ void LightManager::EnableLightsDynamicOnly()
 // those already being bump-mapped.
 void LightManager::EnablePhongLights(int nMaxLights, int bSkipBumpMapped)
 {
-    for (int64_t i = m_phongLights.m_count - 1; i != -1; i--)
-        EnableThisLight(m_phongLights.m_pData[i]);
-
-    m_phongLights.m_count = 0;
+    DisablePhongLights();
 
     for (int64_t i = 0; i < m_fadingDynamicLights.m_count; i++)
     {
@@ -1197,6 +1194,7 @@ void LightManager::ControlLightsFade(List<PartLight*>& fading, List<PartLight*>&
         } else {
             fading.Add(pLight);
             if (static_cast<MdlNodeLight*>(pLight->m_pNode)->m_nFadingEnabled != 0) {
+                previous.Contains(pLight);  // the result is unused
                 *pfWeight = 0.0f;
                 fWeight = 0.0f;
             } else {

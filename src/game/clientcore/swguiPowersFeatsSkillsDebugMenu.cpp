@@ -199,8 +199,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::OnPowerPicked(CSWGuiControl* pControl)
         CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pSpell && pCreature)
             AddPrerequisiteSpells(nSpell, pCreature);
-        CreateMainPowersFeatsSkillsMenu();
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->HidePowersFeatsSkillsDebugMenu();
+        HideMenu();
     }
 }
 
@@ -319,8 +318,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::OnSkillPicked(CSWGuiControl* pControl)
             CSWSCreatureStats* pStats = pCreature->m_pStats;
             pStats->SetSkillRank(static_cast<unsigned char>(nSkill), static_cast<char>(pStats->GetLevel(0) + 3));
         }
-        CreateMainPowersFeatsSkillsMenu();
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->HidePowersFeatsSkillsDebugMenu();
+        HideMenu();
     }
 }
 
@@ -338,7 +336,6 @@ void CSWGuiPowersFeatsSkillsDebugMenu::OnFeatPicked(CSWGuiControl* pControl)
         CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pFeat && pCreature)
             AddPrerequisiteFeats(nFeat, pCreature);
-        CreateMainPowersFeatsSkillsMenu();
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->HidePowersFeatsSkillsDebugMenu();
+        HideMenu();
     }
 }

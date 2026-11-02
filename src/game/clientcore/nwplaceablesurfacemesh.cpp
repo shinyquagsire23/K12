@@ -157,11 +157,21 @@ int CSWPlaceableSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int siz
                             }
                             // A face is three vertex indices plus a trailing attribute record.
                             int f0, f1, f2, f3, f4, f5, f6;
+#if KOTOR1  // K1: the material lands in a local and every store goes through the aligned-pointer setter
+                            int nMaterial;
+                            static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%d %d %d %d %d %d %d %d", &f0, &f1, &f2, &f3,
+                                   &f4, &f5, &f6, &nMaterial));
+                            m_paTriMaterials.Set(i, nMaterial);
+                            m_paTriVertIndices.Set(i * 3 + 0, f0);
+                            m_paTriVertIndices.Set(i * 3 + 1, f1);
+                            m_paTriVertIndices.Set(i * 3 + 2, f2);
+#else
                             static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%d %d %d %d %d %d %d %d", &f0, &f1, &f2, &f3,
                                    &f4, &f5, &f6, &m_paTriMaterials[i]));
                             m_paTriVertIndices[i * 3 + 0] = f0;
                             m_paTriVertIndices[i * 3 + 1] = f1;
                             m_paTriVertIndices[i * 3 + 2] = f2;
+#endif
                         }
                     }
                 }

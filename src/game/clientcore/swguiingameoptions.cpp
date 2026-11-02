@@ -275,17 +275,14 @@ void CSWGuiInGameOptions::OnPanelAdded()
     CSWGuiControl* pControl = m_pGuiManager->m_pMouseOverControl;
     if (pControl != 0 && pControl->AsButton() != 0)
     {
-        int nIndex = -1;
-        if (pControl == &m_aButtons[0]) nIndex = 0;
-        else if (pControl == &m_aButtons[1]) nIndex = 1;
-        else if (pControl == &m_aButtons[2]) nIndex = 2;
-        else if (pControl == &m_aButtons[3]) nIndex = 3;
-        else if (pControl == &m_aButtons[4]) nIndex = 4;
-        else if (pControl == &m_aButtons[5]) nIndex = 5;
-        else if (pControl == &m_aButtons[6]) nIndex = 6;
-        else if (pControl == &m_aButtons[7]) nIndex = 7;
-        if (nIndex != -1)
-            SetActiveControl(&m_aButtons[nIndex], 0);
+        for (int i = 0; i < 8; i++)
+        {
+            if (pControl == &m_aButtons[i])
+            {
+                SetActiveButton(i);
+                break;
+            }
+        }
     }
 
     if (GetActiveControl() == 0)

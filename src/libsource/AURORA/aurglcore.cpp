@@ -1685,8 +1685,7 @@ void GLRender::InitializeImageSpaceSoftShadows()
         }
         else
         {
-            cm_nScreenWidthPow2 = 2 << log2integer(g_nScreenWidth);
-            cm_nScreenHeightPow2 = 2 << log2integer(g_nScreenHeight);
+            FindSmallestPowerOf2WidthHeight(g_nScreenWidth, g_nScreenHeight, cm_nScreenWidthPow2, cm_nScreenHeightPow2);
             if (cm_nTargetTexture == 0)
             {
                 ASLgl::glGenTextures(1, &cm_nTargetTexture);
@@ -2155,10 +2154,7 @@ void GLRender::InitializeFrameBufferModifications()
     }
     if (AurATIFrameBufferModificationsAvailable())
     {
-        unsigned int nPow2Width = 2 << log2integer(g_nScreenWidth);
-        unsigned int nPow2Height = 2 << log2integer(g_nScreenHeight);
-        cm_nScreenWidthPow2 = nPow2Width;
-        cm_nScreenHeightPow2 = nPow2Height;
+        FindSmallestPowerOf2WidthHeight(g_nScreenWidth, g_nScreenHeight, cm_nScreenWidthPow2, cm_nScreenHeightPow2);
         if (cm_nTargetTexture == 0)
         {
             ASLgl::glGenTextures(1, &cm_nTargetTexture);
@@ -2369,11 +2365,7 @@ void GLRender::RemoveSquareToRender(unsigned int nHandle)
 void GLRender::RemoveAllDrawableSquares()
 {
     for (uint64_t i = cm_listSquaresToRender.m_count; i > 0; i--)
-    {
-        unsigned int nHandle = cm_listSquaresToRender.m_pData[i - 1];
-        if (nHandle != static_cast<unsigned int>(-1) && cm_listSquaresToRender.Contains(nHandle))
-            cm_listSquaresToRender.Remove(nHandle);
-    }
+        RemoveSquareToRender(cm_listSquaresToRender.m_pData[i - 1]);
 }
 
 // Draws one square as four consecutive V/C vertices.
@@ -3585,41 +3577,10 @@ inline void GLRender::DisableCombiners(CAurTexture* pTexture)
 void GLRender::RenderObjectsVNTCQuad(unsigned int nVertexPool, unsigned int nNormalPool,
                                      unsigned int nTexCoordPool, unsigned int nColorPool, int nCount)
 {
-    int bVBO = AurVertexBufferObjectARBAvailable();
-    char* pVertex = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nVertexPool)));
-    if (bVBO)
-    {
-        ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pVertex)));
-        pVertex = static_cast<char*>(0);
-    }
-    ASLgl::glVertexPointer(3, GL_FLOAT, 12, pVertex);
-
-    bVBO = AurVertexBufferObjectARBAvailable();
-    char* pNormal = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nNormalPool)));
-    if (bVBO)
-    {
-        ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pNormal)));
-        pNormal = static_cast<char*>(0);
-    }
-    ASLgl::glNormalPointer(GL_FLOAT, 12, pNormal);
-
-    bVBO = AurVertexBufferObjectARBAvailable();
-    char* pTexCoord = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nTexCoordPool)));
-    if (bVBO)
-    {
-        ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pTexCoord)));
-        pTexCoord = static_cast<char*>(0);
-    }
-    ASLgl::glTexCoordPointer(2, GL_FLOAT, 8, pTexCoord);
-
-    bVBO = AurVertexBufferObjectARBAvailable();
-    char* pColor = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nColorPool)));
-    if (bVBO)
-    {
-        ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pColor)));
-        pColor = static_cast<char*>(0);
-    }
-    ASLgl::glColorPointer(4, GL_UNSIGNED_BYTE, 4, pColor);
+    SetVertexBuffer(12, 0, nVertexPool, nCount);
+    SetNormalBuffer(12, 0, nNormalPool, nCount);
+    SetTexCoordBuffer(8, 0, nTexCoordPool, nCount);
+    SetColorBuffer(4, 0, nColorPool, nCount);
 
     ASLgl::glDrawArrays(7, 0, nCount);
 }
@@ -5183,11 +5144,7 @@ void GLRender::RenderAccumulationBlurATI(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    if (AuroraUseARBShaders())
-    {
-        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nAccumulationBlurShaderARB);
-    }
+    FrameBufferModificationPixelShadersATI(kFBShaderAccumulationBlur,  0, 0, 0, 0);
     ASLgl::glDisable(GL_LIGHTING);
 
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
@@ -5386,14 +5343,7 @@ void GLRender::RenderSaturationAdjustmentATI(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    if (AuroraUseARBShaders())
-    {
-        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 3, s_afSaturationBasisR);
-        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 4, s_afSaturationBasisG);
-        ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 5, s_afSaturationBasisB);
-        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nSaturationShaderARB);
-    }
+    FrameBufferModificationPixelShadersATI(kFBShaderSaturation,  0, 0, 0, 0);
     ASLgl::glBegin(7);
 
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
@@ -5443,11 +5393,7 @@ void GLRender::RenderFrameToTextureATI(unsigned int nTexture)
     ASLgl::glOrtho(0.0, 128.0, 0.0, 128.0, -1.0, 1.0);
     GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
-    if (AuroraUseARBShaders())
-    {
-        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nDecalShaderARB);
-    }
+    FrameBufferModificationPixelShadersATI(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glDisable(GL_DEPTH_TEST);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_TEXTURE_2D);
@@ -5544,11 +5490,7 @@ void GLRender::RenderOverlayFilmNoiseATI(unsigned int nTexture, bool bScanNoise)
     cm_pFilmNoiseTexture->Bind();
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    if (AuroraUseARBShaders())
-    {
-        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nFilmNoiseShaderARB);
-    }
+    FrameBufferModificationPixelShadersATI(kFBShaderFilmNoise,  0, 0, 0, 0);
 
     float fU = static_cast<float>(g_nScreenWidth) / static_cast<float>(cm_nScreenWidthPow2);
     float fV = static_cast<float>(g_nScreenHeight) / static_cast<float>(cm_nScreenHeightPow2);
@@ -5788,11 +5730,7 @@ void GLRender::RenderOverlayConvolutionATI(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    if (AuroraUseARBShaders())
-    {
-        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nDecalShaderARB);
-    }
+    FrameBufferModificationPixelShadersATI(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glBegin(7);
 
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -5910,11 +5848,7 @@ void GLRender::MipmapFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    if (AuroraUseARBShaders())
-    {
-        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nDecalShaderARB);
-    }
+    FrameBufferModificationPixelShadersATI(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBegin(7);
 
@@ -5979,21 +5913,9 @@ void GLRender::BloomFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     }
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     if (bSoftShadow)
-    {
-        if (AuroraUseARBShaders())
-        {
-            ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-            ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nSoftShadowShaderARB);
-        }
-    }
+        FrameBufferModificationPixelShadersATI(kFBShaderSoftShadow,  0, 0, 0, 0);
     else
-    {
-        if (AuroraUseARBShaders())
-        {
-            ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-            ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_n4DecalShaderARB);
-        }
-    }
+        FrameBufferModificationPixelShadersATI(kFBShaderDecal4,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
 
     int nRow = 0;
@@ -6315,11 +6237,7 @@ void GLRender::BloomFilterFromTextureATI(HDC__* hDC, HGLRC__* hGLRC, float fWidt
         ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    if (AuroraUseARBShaders())
-    {
-        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nSoftShadowShaderARB);
-    }
+    FrameBufferModificationPixelShadersATI(kFBShaderSoftShadow,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
 
     int nRow = 0;
@@ -6448,8 +6366,7 @@ void GLRender::BloomFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
         ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
-    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, bSoftShadow ? cm_nSoftShadowShaderARB : cm_n4DecalShaderARB);
+    FrameBufferModificationPixelShadersARB(bSoftShadow ? kFBShaderSoftShadow : kFBShaderDecal4,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
 
     int nRow = 0;
@@ -6642,11 +6559,7 @@ void GLRender::RenderForceDistortionATI(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    if (AuroraUseARBShaders())
-    {
-        ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-        ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nForceDistortionShaderARB);
-    }
+    FrameBufferModificationPixelShadersATI(kFBShaderForceDistortion,  0, 0, 0, 0);
     GLRender::Enable(Aurora::kCapStencilTest);
     GLRender::SetStencilFunc(Aurora::kCmpLess, 0, 1);
     GLRender::SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilKeep);
@@ -7702,23 +7615,17 @@ void GLRender::SetUpSoftShadowsATI()
 #if !KOTOR1 // K1: an empty body
     if (AuroraUseARBShaders())
     {
-        ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
-        ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, cm_nBufferRegionTexture);
-        ASLgl::glCopyTexSubImage2D(GL_TEXTURE_RECTANGLE, 0, 0, 0, 0, 0, g_nScreenWidth, g_nScreenHeight);
-        ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, 0);
-        ASLgl::glDisable(GL_TEXTURE_RECTANGLE);
-    }
-    else
-    {
-        ASLgl::glEnable(GL_TEXTURE_2D);
-        ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nBufferRegionTexture);
-        ASLgl::glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, cm_nScreenWidthPow2,
-                                   cm_nScreenHeightPow2);
-        ASLgl::glDisable(GL_TEXTURE_2D);
-        ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
-        ASLgl::glFlush();
+        SetUpSoftShadowsARB();
+        return;
     }
 
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, cm_nBufferRegionTexture);
+    ASLgl::glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, cm_nScreenWidthPow2,
+                               cm_nScreenHeightPow2);
+    ASLgl::glDisable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, 0);
+    ASLgl::glFlush();
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_COLOR_BUFFER_BIT);
 #endif
@@ -8535,9 +8442,7 @@ void FrameBufferModificationsStartIos(bool bEnable)
     K2_UNUSED(bEnable);
     if (!s_frameBufferModificationsStarted)
         return;
-    PBUFFERARB_IOS* pPBuffer = s_pPBuffer;
-    ASLgl::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &s_nSavedFramebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, pPBuffer->m_nFramebuffer);
+    _aglSetCurrentPBuffer(s_pPBuffer);
     ASLgl::glClearDepth(1.0);
     ASLgl::glClearStencil(0);
     ASLgl::glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -9175,7 +9080,7 @@ void GLRender::InitializeFrameBufferModificationsARB()
     IosSetDistortBuffer(true);
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-    glBindFramebuffer(GL_FRAMEBUFFER, s_nSavedDistortFramebuffer);
+    IosSetDistortBuffer(false);
     nWidth /= 2;
     nHeight /= 2;
     s_pHalfPBuffer1 = CreatePBufferIos(nWidth, nHeight, false);
@@ -9269,8 +9174,7 @@ void GLRender::RenderAccumulationBlurARB(unsigned int nTexture)
     Vector vInvRatio(1.0f - vRatio.x, 1.0f - vRatio.y, 1.0f - vRatio.z);
     ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, Homogenize(vInvRatio, 0.0f));
 
-    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nAccumulationBlurShaderARB);
+    FrameBufferModificationPixelShadersARB(kFBShaderAccumulationBlur,  0, 0, 0, 0);
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glBegin(7);
 
@@ -9347,9 +9251,13 @@ void GLRender::RenderDreamDistortionARB(unsigned int nTexture, bool bFury)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#if KOTOR1 // K1: FrameBufferModificationPixelShadersARB has no dream arm
     ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
     ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 7, s_afDreamDistortParam);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nDreamDistortShaderARB);
+#else
+    FrameBufferModificationPixelShadersARB(kFBShaderDreamDistort,  0, 0, 0, 0);
+#endif
     ASLgl::glDisable(GL_LIGHTING);
     ASLgl::glBegin(7);
 
@@ -9629,8 +9537,7 @@ void GLRender::RenderFrameToTextureARB(unsigned int nTexture)
     ASLgl::glOrtho(0.0, 128.0, 0.0, 128.0, -1.0, 1.0);
     GLRender::SetMatrixMode(Aurora::kMatrixModelView);
     ASLgl::glLoadIdentity();
-    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nDecalShaderRectARB);
+    FrameBufferModificationPixelShadersARB(kFBShaderDecalRect,  0, 0, 0, 0);
     ASLgl::glDisable(GL_DEPTH_TEST);
 #if KOTOR1
     android_port_glActiveTextureARB(GL_TEXTURE0);
@@ -9708,8 +9615,7 @@ void GLRender::RenderForceDistortionARB(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nForceDistortionShaderARB);
+    FrameBufferModificationPixelShadersARB(kFBShaderForceDistortion,  0, 0, 0, 0);
     GLRender::Enable(Aurora::kCapStencilTest); // GL_STENCIL_TEST
     SetStencilFunc(Aurora::kCmpLess, 0, 1);
     SetStencilOp(Aurora::kStencilKeep, Aurora::kStencilKeep, Aurora::kStencilKeep);
@@ -9772,11 +9678,7 @@ void GLRender::RenderSaturationAdjustmentARB(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 #endif
-    ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 3, s_afSaturationBasisR);
-    ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 4, s_afSaturationBasisG);
-    ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 5, s_afSaturationBasisB);
-    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nSaturationShaderARB);
+    FrameBufferModificationPixelShadersARB(kFBShaderSaturation,  0, 0, 0, 0);
 
     Vector vColumn0, vColumn1, vColumn2;
     float fInvSaturation = 1.0f - m_fSaturation;
@@ -9973,8 +9875,7 @@ void GLRender::RenderOverlayConvolutionARB(unsigned int nTexture)
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nDecalShaderARB);
+    FrameBufferModificationPixelShadersARB(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glBegin(7);
 
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -10033,8 +9934,7 @@ void GLRender::MipmapFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float f
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nDecalShaderARB);
+    FrameBufferModificationPixelShadersARB(kFBShaderDecal,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
     ASLgl::glBegin(7);
     ASLgl::glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -10082,8 +9982,7 @@ void GLRender::RenderOverlayFilmNoiseARB(unsigned int nTexture, bool bScanNoise)
     cm_pFilmNoiseTexture->Bind();
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    ASLgl::glEnable(GL_FRAGMENT_PROGRAM_ARB);
-    ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, cm_nFilmNoiseShaderARB);
+    FrameBufferModificationPixelShadersARB(kFBShaderFilmNoise,  0, 0, 0, 0);
     ASLgl::glBegin(7);
 
     float fOffset = bScanNoise ? 0.0f : 7.5f;
@@ -10271,7 +10170,6 @@ int GLRender::SetUpImposters(int nCount, float* pOffsets)
 }
 
 // Fills one imposter slot: three floats per imposter, uploaded as a unit-0 texture.
-__attribute__((noinline))
 void ImposterManager::AllocateImposter(unsigned int nSlot, int nCount, float* pOffsets)
 {
     Imposter* pImposter = &manRefImposter.m_pImposters[nSlot];
@@ -10768,7 +10666,8 @@ void GLRender::CreateProcessedTexture(CAurTexture* pTexture, bool bParam, int nI
                 ASLgl::glCompressedTexImage2DARB(GL_TEXTURE_2D, nLevel, eFormat, nWidth, nHeight, 0, nLevelSize, pSub);
                 pSub += nLevelSize;
                 nRemaining -= nLevelSize;
-                nLevelSize = (nLevelSize / 4 > 32) ? nLevelSize / 4 : 32;
+                int nQuarter = nLevelSize / 4;
+                nLevelSize = (nQuarter > 32) ? nQuarter : 32;
                 nWidth /= 2;
                 nHeight /= 2;
                 nLevel++;

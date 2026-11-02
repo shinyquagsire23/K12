@@ -1722,9 +1722,11 @@ int CSWSItemPropertyHandler::RemoveAttackBonus(CSWSItem* pItem, CSWItemProperty*
 int CSWSItemPropertyHandler::ApplyEnhancementBonus(CSWSItem* pItem, CSWItemProperty* pProp,
                                                    CSWSCreature* pCreature, unsigned int a, int b)
 {
+#if !KOTOR1  // K1: no second weapon set
 // The second weapon set's two slots never take an enhancement bonus this way.
     if (a == CSWInventory::SLOT_RIGHTWEAPON2 || a == CSWInventory::SLOT_LEFTWEAPON2)
         return 0;
+#endif
 
     g_pRules->GetBaseItem(pItem->m_baseItem);
 
@@ -2518,6 +2520,8 @@ int CSWSItemPropertyHandler::RemoveChangedSavingThrow(int nValue, CSWSItem* pIte
 int CSWSItemPropertyHandler::RemoveChangedSavingThrowVsX(int nValue, CSWSItem* pItem,
                                                          CSWItemProperty* pProp, CSWSCreature* pCreature)
 {
+    unsigned short nVsType = pProp->m_subType;
+
     for (int i = 0; i < pCreature->m_effects.m_count; i++)
     {
         CGameEffect* pEffect = pCreature->m_effects.m_pArray[i];
@@ -2535,8 +2539,8 @@ int CSWSItemPropertyHandler::RemoveChangedSavingThrowVsX(int nValue, CSWSItem* p
         if (pEffect->GetInteger(3) != g_pRules->m_nNumRaces)
             continue;
 
-        int nVs = pEffect->GetInteger(2);
-        if (pProp->m_subType == nVs || (pProp->m_subType | nVs) == 0) {
+        int nVs = pCreature->m_effects.m_pArray[i]->GetInteger(2);
+        if (nVsType == nVs || (nVsType == 0 && nVs == 0)) {
             pCreature->RemoveEffectById(pEffect->m_effectId);
             break;
         }

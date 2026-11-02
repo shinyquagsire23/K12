@@ -71,17 +71,9 @@ CSWGuiLoadModuleDebugMenu::CSWGuiLoadModuleDebugMenu(CSWGuiManager* pGuiManager)
     CExoString sLive;
     for (int nPkg = 1; nPkg < CTlkTable::NUM_CONTENT_PKGS; nPkg++)
     {
-#if !KOTOR1
-        const char* pszAliasPath;
-#endif
         sLive.Format(const_cast<char*>("live%d"), nPkg);
 
-#if KOTOR1  // K1: CExoString::GetLength is out of line
         if (g_pExoBase->m_pAliasList->GetAliasPath(sLive, 0).GetLength() < 1)
-#else
-        pszAliasPath = g_pExoBase->m_pAliasList->GetAliasPath(sLive, 0).m_sString;
-        if (pszAliasPath == 0 || static_cast<int>(strlen(pszAliasPath)) < 1)
-#endif
         {
             continue;
         }

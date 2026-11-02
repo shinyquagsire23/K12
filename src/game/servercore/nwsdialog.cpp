@@ -68,7 +68,7 @@ bool s_oondarDone;
 #include "port/crtapi.h"
 #include "exostringinline.h"
 #if !KOTOR1
-static void __attribute__((noinline)) FormatPath(char* pBuf, int nLen, const char* pszFmt, ...) {
+static void FormatPath(char* pBuf, int nLen, const char* pszFmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, pszFmt);
     __vsprintf_chk(pBuf, 0, nLen, pszFmt, ap);
@@ -82,6 +82,37 @@ unsigned char g_bVODebugEnabled;
 extern char sOut[255];
 #if !KOTOR1
 char sOut[255] = "                                                  ";
+#endif
+
+#if !KOTOR1
+// The 16 key-binding strrefs that belong to the PC controls list, in the original's table order.
+static const int s_aPCControlStrRefs[] = {
+    STRREF_TUTORIAL_MOVE_T3M4,
+    STRREF_TUTORIAL_NEW_QUESTS,
+    STRREF_TUTORIAL_TARGET_OBJECTS,
+    STRREF_TUTORIAL_BASH,
+    STRREF_TUTORIAL_MAP,
+    STRREF_TUTORIAL_LOCKER_KEYCARD,
+    STRREF_TUTORIAL_LOCKER_KEYCARD_2,
+    STRREF_TUTORIAL_EQUIP_WEAPON,
+    STRREF_TUTORIAL_TARGETING,
+    STRREF_TUTORIAL_DIALOG,
+    STRREF_TUTORIAL_PARTY_MEMBER,
+    STRREF_TUTORIAL_SOLO_MODE,
+    STRREF_TUTORIAL_REPAIR_KIT,
+    STRREF_TUTORIAL_DROID_FLAMETHROWER,
+    STRREF_TUTORIAL_DROID_FLAMETHROWER_2,
+    STRREF_TUTORIAL_PLOT_COURSE,
+};
+
+int StringContainsPCControls(int nStrRef)
+{
+    for (int i = 0; i < 16; i++) {
+        if (s_aPCControlStrRefs[i] == nStrRef)
+            return 1;
+    }
+    return 0;
+}
 #endif
 
 CSWSDialog::CSWSDialog()
@@ -1776,7 +1807,6 @@ void CSWSDialog::BarkOneLine(int nEntry)
     unsigned long long nPlayerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
     unsigned long long nSpeakerId;
     unsigned long long nClientId;
-    int nStrRef;
 
     m_paEntries[nEntry].m_sText.GetString(
         g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText, m_nPlayerGender);
@@ -1804,28 +1834,8 @@ void CSWSDialog::BarkOneLine(int nEntry)
 
     rSound = m_paEntries[nEntry].m_rVO_ResRef;
 
-    nStrRef = static_cast<int>(m_paEntries[nEntry].m_sText.m_nStrRef);
-    switch (nStrRef)
-    {
-    case STRREF_TUTORIAL_LOCKER_KEYCARD:
-    case STRREF_TUTORIAL_NEW_QUESTS:
-    case STRREF_TUTORIAL_PARTY_MEMBER:
-    case STRREF_TUTORIAL_DIALOG:
-    case STRREF_TUTORIAL_TARGETING:
-    case STRREF_TUTORIAL_EQUIP_WEAPON:
-    case STRREF_TUTORIAL_SOLO_MODE:
-    case STRREF_TUTORIAL_DROID_FLAMETHROWER:
-    case STRREF_TUTORIAL_LOCKER_KEYCARD_2:
-    case STRREF_TUTORIAL_DROID_FLAMETHROWER_2:
-    case STRREF_TUTORIAL_REPAIR_KIT:
-    case STRREF_TUTORIAL_BASH:
-    case STRREF_TUTORIAL_PLOT_COURSE:
-    case STRREF_TUTORIAL_MAP:
-    case STRREF_TUTORIAL_MOVE_T3M4:
-    case STRREF_TUTORIAL_TARGET_OBJECTS:
+    if (StringContainsPCControls(m_paEntries[nEntry].m_sText.m_nStrRef))
         rSound = CResRef();
-        break;
-    }
 
     if (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bHoldFadeInForDialog)
     {
@@ -2473,6 +2483,7 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
 
     // The camera angle this line would play on, drawn once for the whole list.
     int nAssignedAngle = AssignPseudoRandomCameraAngle();
+    CClientExoApp* pClientApp = g_pAppManager->m_pClientExoApp;
 
     for (int i = 0; i < nReplyCount; i++)
     {
@@ -2487,18 +2498,18 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
         {
             if (pReplies[i].m_camera.m_sListener.CompareNoCase("OWNER"))
             {
-                listenerId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(m_ownerId);
+                listenerId = pClientApp->ServerToClientObjectId(m_ownerId);
             }
             else if (pReplies[i].m_camera.m_sListener.CompareNoCase("PLAYER"))
             {
-                g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(
-                    g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+                uint64_t playerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
+                g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
             }
             else
             {
                 CSWSObject* pSpeaker = GetSpeaker(pOwner, pReplies[i].m_camera.m_sListener);
                 if (pSpeaker != 0)
-                    listenerId = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
+                    listenerId = pClientApp->ServerToClientObjectId(
                         pSpeaker->m_objectId);
             }
         }
@@ -2547,7 +2558,7 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
                 }
                 if (g_pAppManager->m_pServerExoApp->GetGameObject(animObjectId) != 0)
                 {
-                    paU[i][j] = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(animObjectId);
+                    paU[i][j] = pClientApp->ServerToClientObjectId(animObjectId);
                     paT[i][j] = pReplies[i].m_paAnimList[j].m_nAnimation;
                 }
                 else
@@ -2605,9 +2616,9 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
         }
     }
 
-    g_pAppManager->m_pClientExoApp->GetInGameGui()->HandleDialogReplies(
+    pClientApp->GetInGameGui()->HandleDialogReplies(
         nPlayerId,
-        g_pAppManager->m_pClientExoApp->ServerToClientObjectId(objectId),
+        pClientApp->ServerToClientObjectId(objectId),
         nGender, paText, paA, paB, paC, paD, paE, paF, paG, paH, paI, paJ, paK,
         paPos, paM, paN, nParam5, nParam6, nEntry, paCount, paU, paT, bBark);
 
@@ -2733,19 +2744,8 @@ located:
 
             AddJournalEntry(m_paReplies[nReply].m_sQuest, m_paReplies[nReply].m_nQuestEntry,
                             pMember->m_nPlayerId);
-#if KOTOR1  // goes through GiveDialogPlotXP
             GiveDialogPlotXP(m_paReplies[nReply].m_nPlotIndex,
                              m_paReplies[nReply].m_fPlotXPPercentage);
-#else
-            if (m_paReplies[nReply].m_nPlotIndex != -1
-                && m_paReplies[nReply].m_fPlotXPPercentage > 0.0f)
-            {
-                if (g_pAppManager->m_pServerExoApp->GetPartyTable() != 0)
-                    g_pAppManager->m_pServerExoApp->GetPartyTable()->GivePlotXP(
-                        m_paReplies[nReply].m_nPlotIndex,
-                        static_cast<int>(ceilf(m_paReplies[nReply].m_fPlotXPPercentage * 100.0f)));
-            }
-#endif
         }
     }
     if (m_lstParticipants.m_pInternal->m_pHead != 0)
@@ -3234,14 +3234,7 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
     }
 
     // The entry's plot XP goes to the whole party.
-    if (m_paEntries[nEntry].m_nPlotIndex != -1
-        && m_paEntries[nEntry].m_fPlotXPPercentage > 0.0f)
-    {
-        if (g_pAppManager->m_pServerExoApp->GetPartyTable() != 0)
-            g_pAppManager->m_pServerExoApp->GetPartyTable()->GivePlotXP(
-                m_paEntries[nEntry].m_nPlotIndex,
-                static_cast<int>(ceilf(m_paEntries[nEntry].m_fPlotXPPercentage * 100.0f)));
-    }
+    GiveDialogPlotXP(m_paEntries[nEntry].m_nPlotIndex, m_paEntries[nEntry].m_fPlotXPPercentage);
 
     // A VO resref that names an alien-race variation gets its index appended, once.
     if ((m_paEntries[nEntry].m_nSoundExists & 6) == 2)
@@ -3267,21 +3260,11 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
         g_pExoSound->GetSoundMode();
     }
 
-    // The StrRefs whose lines the client must not be told to play.
-    int nStrRef = static_cast<int>(m_paEntries[nEntry].m_sText.m_nStrRef);
     int nVORejected = m_paEntries[nEntry].m_bVOResRefUnused;
-    switch (nStrRef)
-    {
-        case STRREF_TUTORIAL_PARTY_MEMBER: case STRREF_TUTORIAL_DIALOG: case STRREF_TUTORIAL_NEW_QUESTS: case STRREF_TUTORIAL_LOCKER_KEYCARD: case STRREF_TUTORIAL_TARGETING: case STRREF_TUTORIAL_EQUIP_WEAPON:
-        case STRREF_TUTORIAL_SOLO_MODE: case STRREF_TUTORIAL_DROID_FLAMETHROWER: case STRREF_TUTORIAL_LOCKER_KEYCARD_2: case STRREF_TUTORIAL_DROID_FLAMETHROWER_2: case STRREF_TUTORIAL_REPAIR_KIT: case STRREF_TUTORIAL_BASH:
-        case STRREF_TUTORIAL_PLOT_COURSE: case STRREF_TUTORIAL_MAP: case STRREF_TUTORIAL_MOVE_T3M4: case STRREF_TUTORIAL_TARGET_OBJECTS:
-            break;
-        default:
-            g_pAppManager->m_pClientExoApp->GetInGameGui()->HandleDialogSound(
-                g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pSpeaker->m_objectId),
-                m_paEntries[nEntry].m_rVO_ResRef);
-            break;
-    }
+    if (!StringContainsPCControls(m_paEntries[nEntry].m_sText.m_nStrRef))
+        g_pAppManager->m_pClientExoApp->GetInGameGui()->HandleDialogSound(
+            g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pSpeaker->m_objectId),
+            m_paEntries[nEntry].m_rVO_ResRef);
 
     CExoString aPaths[MAX_OVERRIDE_PATHS];
 
@@ -3298,8 +3281,8 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
             // Build the override-path candidate list for the VO.
             CExoString sSound;
             m_paEntries[nEntry].m_rVO_ResRef.CopyToString(sSound);
-            int nLen;
-            if (sSound.m_sString == 0 || (nLen = static_cast<int>(strlen(sSound.m_sString))) == 0)
+            int nLen = sSound.GetLength();
+            if (nLen == 0)
                 sSound = "HD0:STREAMVOICE\\";
             else
             {

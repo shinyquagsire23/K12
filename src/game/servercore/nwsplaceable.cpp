@@ -574,11 +574,7 @@ void CSWSPlaceable::DropItemsIntoArea() {
     unsigned int i = 0;
     do {
         CSWSItem* pItem = repo->ItemListGetItem(i);
-        int found = m_pItemRepository->GetItemInRepository(pItem, 0);
-        if (found == 1) {
-            m_pItemRepository->RemoveItem(pItem);
-            pItem->SetPossessor(OBJECT_INVALID, 1, 1, OBJECT_INVALID);
-        }
+        RemoveItem(pItem);
         CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
         pItem->AddToArea(pArea, x, y, z, 1);
         repo = m_pItemRepository;
@@ -1343,26 +1339,13 @@ int CSWSPlaceable::SavePlaceable(CResGFF* pGFF, CResStruct* pStruct)
     pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(m_bTrapDisarmable), const_cast<char*>("TrapDisarmable"));
     pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(m_bTrapDetectable), const_cast<char*>("TrapDetectable"));
 
-    // Both trap DCs are saved difficulty-adjusted (Easy -5 / Difficult +5) and clamped to a
-    // minimum of 1, the same adjustment the getters apply on read. Unlike CSWSDoor::SaveDoor,
-    // whose detect clamp is a signed test, both clamps here are the unsigned-byte == 0 form.
+    // K2 saves both trap DCs difficulty-adjusted (Easy -5 / Difficult +5, at least 1), through the getters.
 #if KOTOR1  // K1 stores the raw base DCs
     pGFF->WriteFieldBYTE(pStruct, m_baseDisarmDC, const_cast<char*>("DisarmDC"));
     pGFF->WriteFieldBYTE(pStruct, m_baseDetectDC, const_cast<char*>("TrapDetectDC"));
 #else
-    unsigned char baseDisarm = m_baseDisarmDC;
-    unsigned char diffDisarm = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
-    int adjDisarm = (diffDisarm == 0) ? -5 : ((diffDisarm == 2) ? 5 : 0);
-    unsigned char disarmDC = static_cast<unsigned char>(adjDisarm + baseDisarm);
-    if (disarmDC == 0) disarmDC = 1;
-    pGFF->WriteFieldBYTE(pStruct, disarmDC, const_cast<char*>("DisarmDC"));
-
-    unsigned char baseDetect = m_baseDetectDC;
-    unsigned char diffDetect = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
-    int adjDetect = (diffDetect == 0) ? -5 : ((diffDetect == 2) ? 5 : 0);
-    unsigned char detectDC = static_cast<unsigned char>(adjDetect + baseDetect);
-    if (detectDC == 0) detectDC = 1;
-    pGFF->WriteFieldBYTE(pStruct, detectDC, const_cast<char*>("TrapDetectDC"));
+    pGFF->WriteFieldBYTE(pStruct, GetDisarmDC(), const_cast<char*>("DisarmDC"));
+    pGFF->WriteFieldBYTE(pStruct, GetDetectDC(), const_cast<char*>("TrapDetectDC"));
 #endif
 
     pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(m_bTrapFlag), const_cast<char*>("TrapFlag"));
@@ -1407,17 +1390,7 @@ int CSWSPlaceable::SavePlaceable(CResGFF* pGFF, CResStruct* pStruct)
     pGFF->WriteFieldBYTE(pStruct, m_bodyBagAppearanceRow, const_cast<char*>("BodyBag"));
     pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(m_bDieWhenEmpty), const_cast<char*>("DieWhenEmpty"));
 
-    // "LightState" is only meaningful for an appearance that actually has a light: the 2DA lookup
-    // is a pure existence gate (its out-value is discarded), exactly as in GetLightIsOn/SetLightIsOn.
-    C2DA* pTable = g_pRules->m_p2DArrays->m_pPlaceables;
-    int appearance = m_appearanceType;
-    int hasLight;
-    {
-        int outVal;
-        CExoString col("LightColor");
-        hasLight = pTable->GetINTEntry(appearance, col, &outVal);
-    }
-    pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(hasLight ? m_lightIsOn : 0), const_cast<char*>("LightState"));
+    pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(GetLightIsOn()), const_cast<char*>("LightState"));
 
     pGFF->WriteFieldCExoLocString(pStruct, m_description, const_cast<char*>("Description"));
     pGFF->WriteFieldCResRef(pStruct, CResRef(m_scriptsOn[ON_SCRIPT_CLOSED]), const_cast<char*>("OnClosed"));
@@ -1727,29 +1700,4 @@ int CSWSPlaceable::LoadPlaceable(CResGFF* pGFF, CResStruct* pStruct, int bFromTe
     g_pAppManager->m_pServerExoApp->GetModule()->AddObjectToLookupTable(m_sTag, m_objectId);
     PostProcess();
     return 1;
-}
-
-// True for the 16 key-binding strrefs that belong to the PC controls list.
-int StringContainsPCControls(int nStrRef)
-{
-    switch (nStrRef) {
-    case STRREF_TUTORIAL_LOCKER_KEYCARD:
-    case STRREF_TUTORIAL_NEW_QUESTS:
-    case STRREF_TUTORIAL_PARTY_MEMBER:
-    case STRREF_TUTORIAL_DIALOG:
-    case STRREF_TUTORIAL_TARGETING:
-    case STRREF_TUTORIAL_EQUIP_WEAPON:
-    case STRREF_TUTORIAL_SOLO_MODE:
-    case STRREF_TUTORIAL_DROID_FLAMETHROWER:
-    case STRREF_TUTORIAL_LOCKER_KEYCARD_2:
-    case STRREF_TUTORIAL_DROID_FLAMETHROWER_2:
-    case STRREF_TUTORIAL_REPAIR_KIT:
-    case STRREF_TUTORIAL_BASH:
-    case STRREF_TUTORIAL_PLOT_COURSE:
-    case STRREF_TUTORIAL_MAP:
-    case STRREF_TUTORIAL_MOVE_T3M4:
-    case STRREF_TUTORIAL_TARGET_OBJECTS:
-        return 1;
-    }
-    return 0;
 }

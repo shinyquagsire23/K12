@@ -83,11 +83,7 @@ public:
     void UpdateCharacter();
     void SetCharacter(CSWCCreature* pCreature);
     void UpdatePortraits();
-#if KOTOR1
     int  DisplayPowers();
-#else
-    void DisplayPowers();
-#endif
     void UpdateView();
     void OnEnterSkill(CSWGuiControl* pControl);
     void OnAbilitySelectionChanged(CSWGuiControl* pControl);

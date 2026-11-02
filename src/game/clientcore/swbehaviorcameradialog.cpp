@@ -287,6 +287,7 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
         }
     } else {
         float fHookZ = m_fHookHeadHeight;
+        float fTargetZ = m_fTargetHeadHeight;
         if (nType == 1) {
             float fAngle = (nSide == 2) ? -30.0f : 30.0f;
             vA.z = fHookZ + vA.z;
@@ -312,7 +313,7 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
             float fCamHeightOffset = *reinterpret_cast<float*>(&m_fCamHeightOffset);
             float fTarHeightOffset = *reinterpret_cast<float*>(&m_fTarHeightOffset);
             float fExtraZ = fExtraM + fTarHeightOffset;
-            float fVbZ = fTargetM + (m_fTargetHeadHeight + vB.z);
+            float fVbZ = fTargetM + (fTargetZ + vB.z);
             vA.z = fHookM + (fHookZ + vA.z);
             vB.z = fVbZ;
             float fBaseX = vB.x + fFocus * (vA.x - vB.x);
@@ -384,9 +385,9 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
         }
     }
 
-    Vector vDirN = normalize(vDir);
-    Vector vAim(vBase.x - vOut.x, vBase.y - vOut.y, fBaseZ - vOut.z);
-    qOut = YawPitchRoll(Yaw(vDirN), Pitch(normalize(vAim)) + 90.0f, 0.0f);
+    qOut = YawPitchRoll(Yaw(normalize(vDir)),
+                        Pitch(normalize(Vector(vBase.x - vOut.x, vBase.y - vOut.y, fBaseZ - vOut.z))) + 90.0f,
+                        0.0f);
 }
 
 // Which side of the line of action the shot is unobstructed from: 2 when side 2's probe from hook to

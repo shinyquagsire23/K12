@@ -135,10 +135,7 @@ void CSWCVisualEffectOnObject::SetEffectDone(CAurObject* pEffect)
 void CSWCVisualEffectOnObject::RemoveSelfIllumination(unsigned short nId)
 {
     K2_UNUSED(nId);
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return;
     pClient->UnHilite(3);
@@ -148,10 +145,7 @@ void CSWCVisualEffectOnObject::RemoveSelfIllumination(unsigned short nId)
 void CSWCVisualEffectOnObject::RemoveSelfIlluminationPulse(unsigned short nId)
 {
     K2_UNUSED(nId);
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return;
     pClient->UnHilite(3);
@@ -168,10 +162,7 @@ void CSWCVisualEffectOnObject::RemoveBeam(unsigned short nId)
 
 void CSWCVisualEffectOnObject::RemoveAlpha(unsigned short nId)
 {
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return;
     switch (nId)
@@ -192,10 +183,7 @@ void CSWCVisualEffectOnObject::RemoveAlpha(unsigned short nId)
 
 void CSWCVisualEffectOnObject::RemoveMotionBlur()
 {
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return;
     short nCount = m_nMotionBlurVFXCount - 1;
@@ -539,10 +527,7 @@ void CSWCVisualEffectOnObject::UpdateHardCodedVisualEffect(unsigned short nId, u
 void CSWCVisualEffectOnObject::RemoveEnvironmentMap(unsigned short nId)
 {
     K2_UNUSED(nId);
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return;
     pClient->RestoreEnvMap();
@@ -551,10 +536,7 @@ void CSWCVisualEffectOnObject::RemoveEnvironmentMap(unsigned short nId)
 
 void CSWCVisualEffectOnObject::RemoveDistortion(unsigned short nId)
 {
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (nId == PROGFX_DISTORTION && pClient != 0)
         pClient->DisableDistortion();
 }
@@ -687,7 +669,6 @@ void CSWCVisualEffectOnObject::ReAttachVisualEffect()
     CSWCPlaceable* pPlaceable;
     CSWCDoor* pDoor;
     Gob* pSlotModel;
-    CSWCObject* pDistortTarget;
 
     pTarget = GetTargetCSWCObject();
     if (pTarget == 0)
@@ -804,11 +785,7 @@ void CSWCVisualEffectOnObject::ReAttachVisualEffect()
     else if (nId >= PROGFX_BUMPED_OUT_SHELL && nId < PROGFX_BUMPED_OUT_SHELL + PROGFX_BAND_SIZE)
         ApplyBumpedOutShell(nId);
     else if (nId >= PROGFX_DISTORTION && nId < PROGFX_DISTORTION + PROGFX_BAND_SIZE)
-    {
-        pDistortTarget = GetTargetCSWCObject();
-        if (nId == PROGFX_DISTORTION && pDistortTarget != 0)
-            pDistortTarget->EnableDistortion();
-    }
+        ApplyDistortion(nId);
 }
 
 // Asks each live slot effect to play the "cessation" animation and turns its remaining length into
@@ -999,23 +976,9 @@ void CSWCVisualEffectOnObject::ApplyHardCodedVisualEffect(unsigned short nId)
     else if (nId < PROGFX_SELF_ILLUMINATION_PULSE)
         ApplyAlpha(nId);
     else if (nId < PROGFX_BEAM)
-    {
-        if (nId == PROGFX_SELF_ILLUMINATION_PULSE_RED)
-        {
-            m_vSelfIllum = Vector(1.0f, 0.0f, 0.0f);
-            m_vSelfIllumTarget = Vector(1.0f, 1.0f, 1.0f);
-        }
-        else if (nId == PROGFX_SELF_ILLUMINATION_PULSE_BLUE)
-        {
-            m_vSelfIllum = Vector(0.0f, 0.0f, 1.0f);
-            m_vSelfIllumTarget = Vector(1.0f, 1.0f, 1.0f);
-        }
-    }
+        ApplySelfIlluminationPulse(nId);
     else if (nId < PROGFX_DELETE_MODEL)
-    {
-        AttachBeam();
-        m_pLight->PlayAnimation(const_cast<char*>("cast01"), 1.0f, 0, 0.0f);
-    }
+        ApplyBeam(nId);
     else if (nId < PROGFX_CHUNK)
         ApplyDeleteModel(nId);
     else if (nId < PROGFX_MIRV)
@@ -1400,10 +1363,7 @@ CSWCVisualEffectOnObject::~CSWCVisualEffectOnObject()
 
 void CSWCVisualEffectOnObject::ApplyDistortion(unsigned short nId)
 {
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (nId == PROGFX_DISTORTION && pClient != 0)
         pClient->EnableDistortion();
 }
@@ -1438,10 +1398,7 @@ int CSWCVisualEffectOnObject::LoadSpellVisual(unsigned short nId)
 int CSWCVisualEffectOnObject::LoadLightSource(unsigned short nId)
 {
     K2_UNUSED(nId);
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return 0;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return 0;
     m_pLight = NewCAurObject(const_cast<char*>("fx_light_clr"), const_cast<char*>("fx_light"), 0, 0);
@@ -1453,10 +1410,7 @@ int CSWCVisualEffectOnObject::LoadLightSource(unsigned short nId)
 
 void CSWCVisualEffectOnObject::RestoreObjectPosition()
 {
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return;
     pClient->GetModel(CSWCObject::ANIM_MODEL_BODY, 1)->SetPartLocalPosition(const_cast<char*>("root"), Vector(0.0f, 0.0f, 0.0f),
@@ -1487,10 +1441,7 @@ int CSWCVisualEffectOnObject::LoadModelAttachment(unsigned short nId)
 
 void CSWCVisualEffectOnObject::RemoveBumpedOutShell()
 {
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return;
     pClient->DisableBumpedOutShell();
@@ -1507,10 +1458,7 @@ void CSWCVisualEffectOnObject::RemoveBumpedOutShell()
 void CSWCVisualEffectOnObject::RemoveTextureReplace(unsigned short nId)
 {
     K2_UNUSED(nId);
-    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(m_gameObjectId);
-    if (pObject == 0)
-        return;
-    CSWCObject* pClient = pObject->AsSWCObject();
+    CSWCObject* pClient = GetTargetCSWCObject();
     if (pClient == 0)
         return;
     if (pClient->m_bStoneTexture == 1)

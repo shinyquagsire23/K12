@@ -109,16 +109,8 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
                         {
                             do
                             {
-#if KOTOR1
                                 if (pScan->AsINT() == nSlot)
                                     goto slotFound;
-#else
-                                if (pScan->m_sString != 0)
-                                {
-                                    if (atoi(pScan->m_sString) == nSlot)
-                                        goto slotFound;
-                                }
-#endif
                                 --nSlots;
                                 ++pScan;
                             } while (nSlots != 0);

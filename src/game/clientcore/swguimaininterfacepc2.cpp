@@ -134,7 +134,7 @@ void K2ConsoleStartScroll(CSWGuiMainInterface* pMain, int nIndex, bool bNext, co
         return;
     CSWGuiBorderParams& params = s.pOld->m_border.m_params;
     if (params.m_fillImage != sOld)
-        params.SetFillImage(sOld, 0);
+        params.SetFillImage(sOld);
     params.m_fAlpha = fOldAlpha;
     s.fTime = 0.1f;
     s.bFromTop = bNext;
@@ -316,10 +316,7 @@ void CSWGuiMainInterface::UpdateActionDescription() {
         static_cast<void>(widget);
         if (nIndex >= 0) {
 #else
-        // inlined CSWGuiMainInterfaceAction::GetActive()
-        if ((widget.m_icon.m_tail.bActive || widget.m_btnUp.m_tail.bActive ||
-             widget.m_btnDown.m_tail.bActive || widget.m_button.m_tail.bActive) &&
-            nIndex >= 0) {
+        if (widget.GetActive() && nIndex >= 0) {
 #endif
             int nCount = m_personalActions[nIndex].m_count;
             if (nCount >= 1) {
@@ -780,7 +777,7 @@ static void K1ConsoleDrawPlate(CSWGuiLabel& plate, const CSWGuiControl& cap, flo
 }
 
 // Sizes the selected box large and the rest small; an empty box takes the dark frame. The arrow
-// pair is set up by SetupActionWidget.
+// pair is set up by PopulateMenus.
 static void K1ConsoleSetBox(CSWGuiMainInterfaceAction& widget, int nBox, bool bSelected,
                             bool bEmpty) {
     if (!bSelected)
@@ -794,7 +791,7 @@ static void K1ConsoleSetBox(CSWGuiMainInterfaceAction& widget, int nBox, bool bS
     }
     CResRef sFrame(bEmpty ? "lbl_mibox03" : "lbl_mibox01");
     if (widget.m_button.m_border.m_params.m_fillImage != sFrame)
-        widget.m_button.m_border.m_params.SetFillImage(sFrame, 0);
+        widget.m_button.m_border.m_params.SetFillImage(sFrame);
     widget.m_button.SetActive(bSelected && !bEmpty);
 }
 
@@ -807,7 +804,7 @@ static void K1ConsoleStartScroll(CSWGuiMainInterfaceAction& widget, int nBox, bo
         return;
     CSWGuiBorderParams& params = s.pOld->m_border.m_params;
     if (params.m_fillImage != sOld)
-        params.SetFillImage(sOld, 0);
+        params.SetFillImage(sOld);
     params.m_flags.nFillStyle = 2;
     params.m_fAlpha = fOldAlpha;
     s.fTime = 0.1f;
@@ -960,9 +957,9 @@ void CSWGuiMainInterface::GatherAndroidHelpPanelConstants() {
 #if KOTOR1
 // K1: one help/tutorial image skin, both states.
 static inline void SetHelpButtonImage(CSWGuiButton& button, const CResRef& image) {
-    button.m_borderHilight.m_params.SetFillImage(image, 0);
+    button.m_borderHilight.m_params.SetFillImage(image);
     button.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    button.m_border.m_params.SetFillImage(image, 0);
+    button.m_border.m_params.SetFillImage(image);
     button.m_border.m_params.m_flags.nFillStyle = 2;
 }
 
@@ -1107,14 +1104,14 @@ void CSWGuiMainInterface::HideHelp(CSWGuiControl* pControl) {
     CResRef sNoBackground;
     m_helpPanel.SetBackground(sNoBackground);
     if (g_nHelpPage == 1) {
-        m_btnHelpTopLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpTopLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpTopRight.m_border.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpTopRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpBottomLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpBottomLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpBottomRight.m_border.m_params.SetFillImage(CResRef(""), 0);
-        m_btnHelpBottomRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+        m_btnHelpTopLeft.m_border.m_params.SetFillImage(CResRef(""));
+        m_btnHelpTopLeft.m_borderHilight.m_params.SetFillImage(CResRef(""));
+        m_btnHelpTopRight.m_border.m_params.SetFillImage(CResRef(""));
+        m_btnHelpTopRight.m_borderHilight.m_params.SetFillImage(CResRef(""));
+        m_btnHelpBottomLeft.m_border.m_params.SetFillImage(CResRef(""));
+        m_btnHelpBottomLeft.m_borderHilight.m_params.SetFillImage(CResRef(""));
+        m_btnHelpBottomRight.m_border.m_params.SetFillImage(CResRef(""));
+        m_btnHelpBottomRight.m_borderHilight.m_params.SetFillImage(CResRef(""));
     }
     int nPages = ASLPlat_GetControllerPlugged() ? 4 : 3;
     if (++g_nHelpPage < nPages)
@@ -1233,7 +1230,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         AndroidExtentShift(extent, 1, 0);
         m_lblCombatModeMsg.SetExtent(extent);
     }
-    m_miniMap.m_border.m_params.SetFillImage(CResRef("ios_lbl_minimap"), 0);
+    m_miniMap.m_border.m_params.SetFillImage(CResRef("ios_lbl_minimap"));
     m_miniMap.m_border.m_params.m_flags.nFillStyle = 2;
 #else
     ShiftControlExtent(m_lblCombatModeMsg, 0, 1);   // pc / xbox: the banner, top centre
@@ -1475,26 +1472,26 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 #ifdef K2_UI_TOUCH
     int nW;
     int nH;
-    m_btnEquip.m_border.m_params.SetFillImage(CResRef("ios_lbl_miequ"), 0);
+    m_btnEquip.m_border.m_params.SetFillImage(CResRef("ios_lbl_miequ"));
     m_btnEquip.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnEquip.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miequ2"), 0);
+    m_btnEquip.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miequ2"));
     m_btnEquip.m_borderHilight.m_params.m_flags.nFillStyle = 2;
     CSWGuiExtent sExtent = { 927, 0, 96, 96 };
     if (IosIsIphone(nW, nH))
         IosAnchorRightTop(sExtent, nW, nH);
     AndroidExtentShift(sExtent, -1, 1);
     m_btnEquip.SetExtent(sExtent);
-    m_btnInventory.m_border.m_params.SetFillImage(CResRef("ios_lbl_miinv"), 0);
+    m_btnInventory.m_border.m_params.SetFillImage(CResRef("ios_lbl_miinv"));
     m_btnInventory.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnInventory.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miinv2"), 0);
+    m_btnInventory.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miinv2"));
     m_btnInventory.m_borderHilight.m_params.m_flags.nFillStyle = 2;
     CSWGuiExtent sHidden = { 0, 10, 0, 0 };
     sExtent = sHidden;
     AndroidExtentShift(sExtent, 1, 1);
     m_btnInventory.SetExtent(sExtent);
-    m_btnOptions.m_border.m_params.SetFillImage(CResRef("ios_lbl_miopt"), 0);
+    m_btnOptions.m_border.m_params.SetFillImage(CResRef("ios_lbl_miopt"));
     m_btnOptions.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnOptions.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miopt2"), 0);
+    m_btnOptions.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miopt2"));
     m_btnOptions.m_borderHilight.m_params.m_flags.nFillStyle = 2;
     sExtent = sHidden;
     AndroidExtentShift(sExtent, 1, 1);
@@ -1503,7 +1500,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     if (IosIsIphone(nW, nH))
         IosAnchorLeftBottom(sExtent, nW, nH);
     AndroidExtentShift(sExtent, 1, -1);
-    m_lblMoulding1.m_border.m_params.SetFillImage(CResRef("ios_lower_left"), 0);
+    m_lblMoulding1.m_border.m_params.SetFillImage(CResRef("ios_lower_left"));
     m_lblMoulding1.m_border.m_params.m_flags.nFillStyle = 2;
     CSWGuiControl* pMoulding = &m_lblMoulding1;
     pMoulding->SetExtent(sExtent);
@@ -1574,9 +1571,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         sExtent.h = 768;
         AndroidExtentShift(sExtent, -1, 1);
         CResRef sBg(i ? "ios_action_bg2" : "ios_action_bg");
-        m_actionMenuHalves[i].m_border.m_params.SetFillImage(sBg, 0);
+        m_actionMenuHalves[i].m_border.m_params.SetFillImage(sBg);
         m_actionMenuHalves[i].m_border.m_params.m_flags.nFillStyle = 2;
-        m_actionMenuHalves[i].m_borderHilight.m_params.SetFillImage(sBg, 0);
+        m_actionMenuHalves[i].m_borderHilight.m_params.SetFillImage(sBg);
         m_actionMenuHalves[i].m_borderHilight.m_params.m_flags.nFillStyle = 2;
         m_actionMenuHalves[i].SetExtent(sExtent);
         m_actionMenuHalves[i].m_text.m_params.SetText(CExoString(""));
@@ -1590,9 +1587,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
             IosAnchorRightBottom(sExtent, nCloseW, nCloseH);
         AndroidExtentShift(sExtent, -1, -1);
         CResRef sClose(i ? "ios_action_x2" : "ios_action_x");
-        m_actionMenuCloseButtons[i].m_border.m_params.SetFillImage(sClose, 0);
+        m_actionMenuCloseButtons[i].m_border.m_params.SetFillImage(sClose);
         m_actionMenuCloseButtons[i].m_border.m_params.m_flags.nFillStyle = 2;
-        m_actionMenuCloseButtons[i].m_borderHilight.m_params.SetFillImage(sClose, 0);
+        m_actionMenuCloseButtons[i].m_borderHilight.m_params.SetFillImage(sClose);
         m_actionMenuCloseButtons[i].m_borderHilight.m_params.m_flags.nFillStyle = 2;
         m_actionMenuCloseButtons[i].SetExtent(sExtent);
         m_actionMenuCloseButtons[i].m_text.m_params.SetText(CExoString(""));
@@ -1646,9 +1643,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     AndroidExtentShift(sExtent, -1, 1);
     m_btnCornerPlate.SetExtent(sExtent);
     m_btnCornerPlate.m_text.m_params.SetText(CExoString(""));
-    m_btnCornerPlate.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_upper_right") : CResRef("ios_upper_right"), 0);
+    m_btnCornerPlate.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_upper_right") : CResRef("ios_upper_right"));
     m_btnCornerPlate.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnCornerPlate.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_upper_right") : CResRef("ios_upper_right"), 0);
+    m_btnCornerPlate.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_upper_right") : CResRef("ios_upper_right"));
     m_btnCornerPlate.m_borderHilight.m_params.m_flags.nFillStyle = 2;
     m_btnCornerPlate.m_tail.bFocusOnHover = 0;
     m_btnCornerPlate.SetEnabled(0);
@@ -1689,9 +1686,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     AndroidExtentShift(sExtent, -1, 1);
     m_btnCornerHelp.SetExtent(sExtent);
     m_btnCornerHelp.m_text.m_params.SetText(CExoString(""));
-    m_btnCornerHelp.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_help") : CResRef("ios_help"), 0);
+    m_btnCornerHelp.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_help") : CResRef("ios_help"));
     m_btnCornerHelp.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnCornerHelp.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_help2") : CResRef("ios_help2"), 0);
+    m_btnCornerHelp.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_help2") : CResRef("ios_help2"));
     m_btnCornerHelp.m_borderHilight.m_params.m_flags.nFillStyle = 2;
     m_btnCornerHelp.m_tail.bFocusOnHover = 0;
     AddControl(&m_btnCornerHelp);
@@ -1705,9 +1702,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     AndroidExtentShift(sExtent, -1, 1);
     m_btnQuickSave.SetExtent(sExtent);
     m_btnQuickSave.m_text.m_params.SetText(CExoString(""));
-    m_btnQuickSave.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_quicksave") : CResRef("ios_quicksave"), 0);
+    m_btnQuickSave.m_border.m_params.SetFillImage(bIphone ? CResRef("ipho_quicksave") : CResRef("ios_quicksave"));
     m_btnQuickSave.m_border.m_params.m_flags.nFillStyle = 2;
-    m_btnQuickSave.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_quicksave2") : CResRef("ios_quicksave2"), 0);
+    m_btnQuickSave.m_borderHilight.m_params.SetFillImage(bIphone ? CResRef("ipho_quicksave2") : CResRef("ios_quicksave2"));
     m_btnQuickSave.m_borderHilight.m_params.m_flags.nFillStyle = 2;
     m_btnQuickSave.m_tail.bFocusOnHover = 0;
     AddControl(&m_btnQuickSave);
@@ -1760,39 +1757,39 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 #endif
     m_btnHelpClose.SetExtent(sExtent);
     m_btnHelpClose.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpClose.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpClose.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpClose.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpClose.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpClose.m_tail.bFocusOnHover = 0;
     m_btnHelpClose.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_btnHelpPage.SetExtent(sExtent);
     m_btnHelpPage.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpPage.m_tail.bFocusOnHover = 0;
     m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     GatherAndroidHelpPanelConstants();
     m_btnHelpTopLeft.SetExtent(sExtent);
     m_btnHelpTopLeft.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpTopLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpTopLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpTopLeft.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpTopLeft.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpTopLeft.m_tail.bFocusOnHover = 0;
     m_btnHelpTopLeft.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_btnHelpTopRight.SetExtent(sExtent);
     m_btnHelpTopRight.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpTopRight.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpTopRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpTopRight.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpTopRight.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpTopRight.m_tail.bFocusOnHover = 0;
     m_btnHelpTopRight.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_btnHelpBottomLeft.SetExtent(sExtent);
     m_btnHelpBottomLeft.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpBottomLeft.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpBottomLeft.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpBottomLeft.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpBottomLeft.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpBottomLeft.m_tail.bFocusOnHover = 0;
     m_btnHelpBottomLeft.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_btnHelpBottomRight.SetExtent(sExtent);
     m_btnHelpBottomRight.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpBottomRight.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpBottomRight.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpBottomRight.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpBottomRight.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpBottomRight.m_tail.bFocusOnHover = 0;
     m_btnHelpBottomRight.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
     m_helpPanel.SetExtent(sExtent);
@@ -1807,8 +1804,8 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_helpPanel.AddControl(&m_btnHelpBottomRight);
     m_btnHelpHint.m_tail.bFocusOnHover = 0;
     m_btnHelpHint.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpHint.m_border.m_params.SetFillImage(CResRef(""), 0);
-    m_btnHelpHint.m_borderHilight.m_params.SetFillImage(CResRef(""), 0);
+    m_btnHelpHint.m_border.m_params.SetFillImage(CResRef(""));
+    m_btnHelpHint.m_borderHilight.m_params.SetFillImage(CResRef(""));
     m_btnHelpHint.m_tail.bFocusOnHover = 0;
     m_helpPanel.AddControl(&m_btnHelpHint);
     m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
@@ -1881,9 +1878,7 @@ void CSWGuiMainInterface::ShowActionQueue(int nParam) {
 #else
     for (int i = 0; i < 13; i++) {
 #endif
-        sTmp = m_statusIcons[i].m_label.m_extent;
-        sTmp.y += nShift;
-        m_statusIcons[i].m_label.CSWGuiLabel::SetExtent(sTmp);
+        m_statusIcons[i].ShiftControl(nShift);
     }
 }
 
@@ -1975,9 +1970,7 @@ void CSWGuiMainInterface::Update(float fDelta) {
     if (g_pGuiMan->PanelExists(&m_actionMenuIos)) {
         if (m_nActionMenuGraceFrames > 0) {
             m_nActionMenuGraceFrames = m_nActionMenuGraceFrames - 1;
-            int nSlot = GetActiveActionIdx(g_nSelectedAction);
-            m_pGuiManager->HandleMouseMove(m_actionSlots[nSlot].m_extent.x + 1,
-                                           m_actionSlots[nSlot].m_extent.y + 1);
+            SetActionMenuSelected(GetActiveActionIdx(g_nSelectedAction));
         }
         CSWGuiControl* pCaptured =
             g_pGuiMan->m_pMouseCaptureObject
@@ -2343,7 +2336,7 @@ void CSWGuiMainInterface::UpdateIndicator(float fDelta) {
                 sExtent.w = sExtent.h = static_cast<int>(s_fReticleScale * nW);
                 m_lblTargetIndicator.SetExtent(sExtent);
                 m_lblTargetIndicator.m_border.m_params.m_fRotate = fRot;
-                m_lblTargetIndicator.m_border.m_params.SetFillImage(sImage, 0);
+                m_lblTargetIndicator.m_border.m_params.SetFillImage(sImage);
                 m_lblTargetIndicator.m_border.m_params.m_flags.nFillStyle = 2;
                 bLive = true;
                 bVisible = true;
@@ -2450,9 +2443,9 @@ void CSWGuiMainInterface::UpdateStickyTarget() {
             CSWSObject* pTargetSrv = pObject->AsSWCPlaceable()->GetServerObject();
             CSWSObject* pPlayerSrv = pPlayer->GetServerObject();
             nFriendly = pTargetSrv->GetReputation(pPlayerSrv->m_objectId, 0) > 10;
-        }
-        else
+        } else {
             nFriendly = 1;
+        }
     }
 #if !KOTOR1 && defined(K2_QOL_IMPROVEMENTS)
     nSize = K2QolReticlePixels(m_pGuiManager, nSize);
@@ -2521,7 +2514,7 @@ void CSWGuiMainInterface::UpdateIndicator(float fDelta) {
         bVisible = false;
         bLive = true;
     } else {
-        unsigned char nType = pObject->m_objectType;
+        unsigned char nType = pGameObject->m_objectType;
         if (nType - GAME_OBJECT_TYPE_PLACEABLE < 2u || nType == GAME_OBJECT_TYPE_TRIGGER) {
             CSWCDoor* pDoor = pObject->AsSWCDoor();
             CSWCPlaceable* pPlaceable = pObject->AsSWCPlaceable();
@@ -2538,9 +2531,9 @@ void CSWGuiMainInterface::UpdateIndicator(float fDelta) {
                 CSWSObject* pSrv = pPlaceable->GetServerObject();
                 CSWSObject* pPlayerSrv = pPlayer->GetServerObject();
                 nFriendly = pSrv->GetReputation(pPlayerSrv->m_objectId, 0) > 10;
-            }
-            else
+            } else {
                 nFriendly = 1;
+            }
             float fDX = pPlayer->m_position.x - pObject->m_position.x;
             float fDY = pPlayer->m_position.y - pObject->m_position.y;
             float fDZ = pPlayer->m_position.z - pObject->m_position.z;
@@ -2944,9 +2937,7 @@ void CSWGuiMainInterface::UpdateActionMenuSelected(int nStep) {
         m_actionSlots[i].SetActive(0);
     int nDelta = (nSelected == -1) ? 1 : nStep;
     int nCount = IosActionMenuCount;
-    int nNew = (nSelected + nDelta + nCount) % nCount;
-    m_pGuiManager->HandleMouseMove(m_actionSlots[nNew].m_extent.x + 1,
-                                   m_actionSlots[nNew].m_extent.y + 1);
+    SetActionMenuSelected((nSelected + nDelta + nCount) % nCount);
 }
 
 int CSWGuiMainInterface::GetActionMenuSelected() {
@@ -3081,16 +3072,8 @@ void CSWGuiTargetActionMenu::Draw(float fDelta) {
         m_progressBar.Draw(fDelta);
 #endif
 
-        for (int nI = 0; nI < 3; nI++) {
-            if (m_widgets[nI].m_button.m_tail.bVisible)
-                m_widgets[nI].m_button.Draw(fDelta);
-            if (m_widgets[nI].m_btnUp.m_tail.bVisible)
-                m_widgets[nI].m_btnUp.Draw(fDelta);
-            if (m_widgets[nI].m_btnDown.m_tail.bVisible)
-                m_widgets[nI].m_btnDown.Draw(fDelta);
-            if (m_widgets[nI].m_icon.m_tail.bVisible)
-                m_widgets[nI].m_icon.Draw(fDelta);
-        }
+        for (int nI = 0; nI < 3; nI++)
+            m_widgets[nI].Draw(fDelta);
 
         AurGUICloseViewport();
     }
@@ -3199,16 +3182,8 @@ CSWGuiControl* CSWGuiTargetActionMenu::HitCheckMouse(int x, int y)
                 nI++;
             } while (nCount == 0 && nI < 3);
             if (nCount != 0) {
-                for (int i = 0; i < 3 && !pControl; i++) {
-                    if (m_widgets[i].m_btnUp.HitCheckMouse(nX, nY))
-                        pControl = &m_widgets[i].m_btnUp;
-                    else if (m_widgets[i].m_btnDown.HitCheckMouse(nX, nY))
-                        pControl = &m_widgets[i].m_btnDown;
-                    else if (m_widgets[i].m_icon.HitCheckMouse(nX, nY))
-                        pControl = &m_widgets[i].m_icon;
-                    else if (m_widgets[i].m_button.HitCheckMouse(nX, nY))
-                        pControl = &m_widgets[i].m_button;
-                }
+                for (int i = 0; i < 3 && !pControl; i++)
+                    pControl = m_widgets[i].HitCheckMouse(nX, nY);
             }
         }
     }
@@ -3299,13 +3274,7 @@ void CSWGuiMainInterface::ClearOneAction() {
         return;
     if (g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_IN_COMBAT_Y_BUTTON, OBJECT_INVALID, OBJECT_INVALID, 0))
         return;
-    CSWSCreature* pCreature = g_pAppManager->m_pClientExoApp->GetSWParty()
-                                  ->GetPlayerCharacter()->GetServerCreature();
-    if (pCreature) {
-        CSWSCombatRound* pRound = pCreature->m_pCombatRound;
-        if (pRound && !pRound->RemoveLastAction())
-            pCreature->ClearAllActions(1);
-    }
+    OnCombatYButton();
 }
 
 void CSWGuiMainInterface::ClearAllActions() {
@@ -3429,9 +3398,9 @@ void CSWGuiMainInterface::ShowActionIcon(int& nCount, const CResRef& resRef,
 #if KOTOR1
     int bValid = resRef.IsValid();
     if (bValid)
-        m_actionQueueIcons[nCount].m_border.m_params.SetFillImage(resRef, 0);
+        m_actionQueueIcons[nCount].m_border.m_params.SetFillImage(resRef);
     else
-        m_actionQueueIcons[nCount].m_border.m_params.SetFillImage(resFallback, 0);
+        m_actionQueueIcons[nCount].m_border.m_params.SetFillImage(resFallback);
     m_actionQueueIcons[nCount].m_border.m_params.m_flags.nFillStyle = 2;
     if ((nCount | nQueued) == 0)
         m_actionQueueIcons[0].m_border.m_params.m_fAlpha = 0.75f;
@@ -3440,9 +3409,9 @@ void CSWGuiMainInterface::ShowActionIcon(int& nCount, const CResRef& resRef,
 #else
     int bValid = resRef.IsValid();
     if (bValid)
-        m_actionQueueIcons[nCount].m_border.m_params.SetFillImage(resRef, 0);
+        m_actionQueueIcons[nCount].m_border.m_params.SetFillImage(resRef);
     else
-        m_actionQueueIcons[nCount].m_border.m_params.SetFillImage(resFallback, 0);
+        m_actionQueueIcons[nCount].m_border.m_params.SetFillImage(resFallback);
     if ((nCount | nQueued) == 0)
         m_actionQueueIcons[0].m_border.m_params.m_fAlpha = 0.25f;
     else
@@ -3656,10 +3625,7 @@ void CSWGuiMainInterface::ShowFlashingStatus(unsigned char nStatus) {
     case CSWGuiMainInterfaceStatus::STATUS_DARK_SHIFT: m_statusIcons[CSWGuiMainInterfaceStatus::STATUS_LIGHT_SHIFT].m_label.m_tail.bVisible = 0; break;
     case CSWGuiMainInterfaceStatus::STATUS_LIGHT_SHIFT: m_statusIcons[CSWGuiMainInterfaceStatus::STATUS_DARK_SHIFT].m_label.m_tail.bVisible = 0; break;
     }
-    if (!m_statusIcons[nStatus].m_label.m_tail.bVisible)
-        m_statusIcons[nStatus].m_label.m_tail.bVisible = 1;
-    m_statusIcons[nStatus].m_flashTimer = 4.0f;
-    m_statusIcons[nStatus].m_nShowFlags |= 1;
+    m_statusIcons[nStatus].Show(1);
 }
 
 void CSWGuiMainInterfaceStatus::Show(int n) {
@@ -4214,11 +4180,7 @@ void CSWGuiMainInterface::ShowHelpForString(int nStrRef) {
         break;
     case STRREF_HELP_T3_MOVEMENT:
         ShowHelpInternal(0, false);
-        if (!HasJoystick())
-            return;
-        g_nQueuedHelpPage = 3;
-        g_bQueuedHelpGamepad = 1;
-        g_nQueuedHelpDelay = 1;
+        QueueHelpGui(3, true);
         return;
     default:
         return;
@@ -4313,13 +4275,13 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::InitGamepadMenu() {
     m_nSelectedEntry = 0;
     m_nSelectedPartySlot = 0;
     if (g_pAppManager->m_pServerExoApp->GetPartyTable()->m_soloMode) {
-        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("ios_gpad_solox"), 0);
+        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("ios_gpad_solox"));
         m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_solox2"), 0);
+        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_solox2"));
     } else {
-        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("ios_gpad_solo"), 0);
+        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("ios_gpad_solo"));
         m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_solo2"), 0);
+        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_solo2"));
     }
     m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.m_flags.nFillStyle = 2;
     UpdateStealth();
@@ -4335,9 +4297,9 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::InitGamepadMenu() {
             m_nLastPartySlot = i;
             rPortrait.m_tail.bVisible = 1;
             rFrame.m_tail.bVisible = 1;
-            rPortrait.m_border.m_params.SetFillImage(pMember->GetPortrait(1), 0);
+            rPortrait.m_border.m_params.SetFillImage(pMember->GetPortrait(1));
             rPortrait.m_border.m_params.m_flags.nFillStyle = 2;
-            rPortrait.m_borderHilight.m_params.SetFillImage(pMember->GetPortrait(1), 0);
+            rPortrait.m_borderHilight.m_params.SetFillImage(pMember->GetPortrait(1));
             rPortrait.m_borderHilight.m_params.m_flags.nFillStyle = 2;
         } else {
             rPortrait.m_tail.bVisible = 0;
@@ -4408,11 +4370,11 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::InitGamepadMenu() {
     m_nSelectedEntry = 0;
     m_nSelectedPartySlot = 0;
     if (g_pAppManager->m_pServerExoApp->GetPartyTable()->m_soloMode) {
-        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("cus_gpad_solox"), 0);
-        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_solox2"), 0);
+        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("cus_gpad_solox"));
+        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_solox2"));
     } else {
-        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("cus_gpad_solo"), 0);
-        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_solo2"), 0);
+        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("cus_gpad_solo"));
+        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_solo2"));
     }
     UpdateStealth();
     m_nLastPartySlot = 0;
@@ -4425,8 +4387,8 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::InitGamepadMenu() {
             m_nLastPartySlot = i;
             m_portraitButtons[i].m_tail.bVisible = 1;
             m_frameButtons[i].m_tail.bVisible = 1;
-            m_portraitButtons[i].m_border.m_params.SetFillImage(pMember->GetPortrait(1), 0);
-            m_portraitButtons[i].m_borderHilight.m_params.SetFillImage(pMember->GetPortrait(1), 0);
+            m_portraitButtons[i].m_border.m_params.SetFillImage(pMember->GetPortrait(1));
+            m_portraitButtons[i].m_borderHilight.m_params.SetFillImage(pMember->GetPortrait(1));
         } else {
             m_portraitButtons[i].m_tail.bVisible = 0;
             m_frameButtons[i].m_tail.bVisible = 0;
@@ -4458,22 +4420,22 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::UpdateStealth() {
     m_bStealthCapable = (bStealthCapable != 0);
 #if KOTOR1
     if (bStealthCapable) {
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("ios_gpad_ste"), 0);
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("ios_gpad_ste"));
         m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_ste2"), 0);
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_ste2"));
     } else {
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("ios_gpad_ste3"), 0);
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("ios_gpad_ste3"));
         m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_ste3"), 0);
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_ste3"));
     }
     m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.m_flags.nFillStyle = 2;
 #else
     if (bStealthCapable) {
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("cus_gpad_ste"), 0);
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_ste2"), 0);
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("cus_gpad_ste"));
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_ste2"));
     } else {
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("cus_gpad_ste3"), 0);
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_ste3"), 0);
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("cus_gpad_ste3"));
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_ste3"));
     }
 #endif
 }
@@ -4482,36 +4444,36 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::UpdateStealth() {
 void CSWGuiMainInterface::CSWGamepadMenuIos::LayoutGamepadMenu(bool bInitImages) {
     CSWGuiExtent extent(0, 0, 0, 0);
     if (bInitImages) {
-        m_buttonBackground.m_border.m_params.SetFillImage(CResRef("ios_gpad_bg"), 0);
+        m_buttonBackground.m_border.m_params.SetFillImage(CResRef("ios_gpad_bg"));
         m_buttonBackground.m_border.m_params.m_flags.nFillStyle = 2;
-        m_buttonBackground.m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_bg"), 0);
+        m_buttonBackground.m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_bg"));
         m_buttonBackground.m_borderHilight.m_params.m_flags.nFillStyle = 2;
         AddControl(&m_buttonBackground);
         for (int j = 0; j < 3; j++) {
-            m_frameButtons[j].m_border.m_params.SetFillImage(CResRef("ios_gpad_gen"), 0);
+            m_frameButtons[j].m_border.m_params.SetFillImage(CResRef("ios_gpad_gen"));
             m_frameButtons[j].m_border.m_params.m_flags.nFillStyle = 2;
-            m_frameButtons[j].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_gen2"), 0);
+            m_frameButtons[j].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_gen2"));
             m_frameButtons[j].m_borderHilight.m_params.m_flags.nFillStyle = 2;
         }
-        m_menuButtons[GPAD_ENTRY_MAP].m_border.m_params.SetFillImage(CResRef("ios_gpad_map"), 0);
+        m_menuButtons[GPAD_ENTRY_MAP].m_border.m_params.SetFillImage(CResRef("ios_gpad_map"));
         m_menuButtons[GPAD_ENTRY_MAP].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_MAP].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_map2"), 0);
+        m_menuButtons[GPAD_ENTRY_MAP].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_map2"));
         m_menuButtons[GPAD_ENTRY_MAP].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("ios_gpad_solo"), 0);
+        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("ios_gpad_solo"));
         m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_solo2"), 0);
+        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_solo2"));
         m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("ios_gpad_ste"), 0);
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("ios_gpad_ste"));
         m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_ste2"), 0);
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_ste2"));
         m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_border.m_params.SetFillImage(CResRef("ios_gpad_save"), 0);
+        m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_border.m_params.SetFillImage(CResRef("ios_gpad_save"));
         m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_save2"), 0);
+        m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_save2"));
         m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_HELP].m_border.m_params.SetFillImage(CResRef("ios_gpad_help"), 0);
+        m_menuButtons[GPAD_ENTRY_HELP].m_border.m_params.SetFillImage(CResRef("ios_gpad_help"));
         m_menuButtons[GPAD_ENTRY_HELP].m_border.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_HELP].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_help2"), 0);
+        m_menuButtons[GPAD_ENTRY_HELP].m_borderHilight.m_params.SetFillImage(CResRef("ios_gpad_help2"));
         m_menuButtons[GPAD_ENTRY_HELP].m_borderHilight.m_params.m_flags.nFillStyle = 2;
         if (SDL_IsChromebook()) {
             m_menuButtons[GPAD_ENTRY_MAP].AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
@@ -4600,37 +4562,37 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::LayoutGamepadMenu(bool bInitImages)
     CSWGuiExtent extentRoot;
 
     if (bInitImages) {
-        m_buttonBackground.m_border.m_params.SetFillImage(CResRef("cus_gpad_bg"), 0);
+        m_buttonBackground.m_border.m_params.SetFillImage(CResRef("cus_gpad_bg"));
         m_buttonBackground.m_border.m_params.m_flags.nFillStyle = 2;
-        m_buttonBackground.m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_bg"), 0);
+        m_buttonBackground.m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_bg"));
         m_buttonBackground.m_borderHilight.m_params.m_flags.nFillStyle = 2;
         AddControl(&m_buttonBackground);
-        m_frameButtons[0].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"), 0);
+        m_frameButtons[0].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"));
         m_frameButtons[0].m_border.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[0].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"), 0);
+        m_frameButtons[0].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"));
         m_frameButtons[0].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[1].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"), 0);
+        m_frameButtons[1].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"));
         m_frameButtons[1].m_border.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[1].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"), 0);
+        m_frameButtons[1].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"));
         m_frameButtons[1].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[2].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"), 0);
+        m_frameButtons[2].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"));
         m_frameButtons[2].m_border.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[2].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"), 0);
+        m_frameButtons[2].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"));
         m_frameButtons[2].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_menuButtons[GPAD_ENTRY_MAP].m_border.m_params.SetFillImage(CResRef("cus_gpad_map"), 0);
-        m_menuButtons[GPAD_ENTRY_MAP].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_map2"), 0);
-        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("cus_gpad_solo"), 0);
-        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_solo2"), 0);
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("cus_gpad_ste"), 0);
-        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_ste2"), 0);
-        m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_border.m_params.SetFillImage(CResRef("cus_gpad_save"), 0);
-        m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_save2"), 0);
-        m_menuButtons[GPAD_ENTRY_FREE_LOOK].m_border.m_params.SetFillImage(CResRef("cus_gpad_fper"), 0);
-        m_menuButtons[GPAD_ENTRY_FREE_LOOK].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_fper2"), 0);
-        m_menuButtons[GPAD_ENTRY_SWITCH_WEAPONS].m_border.m_params.SetFillImage(CResRef("cus_gpad_hand"), 0);
-        m_menuButtons[GPAD_ENTRY_SWITCH_WEAPONS].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_hand2"), 0);
-        m_menuButtons[GPAD_ENTRY_HELP].m_border.m_params.SetFillImage(CResRef("cus_gpad_help"), 0);
-        m_menuButtons[GPAD_ENTRY_HELP].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_help2"), 0);
+        m_menuButtons[GPAD_ENTRY_MAP].m_border.m_params.SetFillImage(CResRef("cus_gpad_map"));
+        m_menuButtons[GPAD_ENTRY_MAP].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_map2"));
+        m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("cus_gpad_solo"));
+        m_menuButtons[GPAD_ENTRY_SOLO].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_solo2"));
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_border.m_params.SetFillImage(CResRef("cus_gpad_ste"));
+        m_menuButtons[GPAD_ENTRY_STEALTH].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_ste2"));
+        m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_border.m_params.SetFillImage(CResRef("cus_gpad_save"));
+        m_menuButtons[GPAD_ENTRY_QUICKSAVE].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_save2"));
+        m_menuButtons[GPAD_ENTRY_FREE_LOOK].m_border.m_params.SetFillImage(CResRef("cus_gpad_fper"));
+        m_menuButtons[GPAD_ENTRY_FREE_LOOK].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_fper2"));
+        m_menuButtons[GPAD_ENTRY_SWITCH_WEAPONS].m_border.m_params.SetFillImage(CResRef("cus_gpad_hand"));
+        m_menuButtons[GPAD_ENTRY_SWITCH_WEAPONS].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_hand2"));
+        m_menuButtons[GPAD_ENTRY_HELP].m_border.m_params.SetFillImage(CResRef("cus_gpad_help"));
+        m_menuButtons[GPAD_ENTRY_HELP].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_help2"));
         for (int i = 0; i < GPAD_ENTRY_COUNT; i++) {
             AddControl(&m_labelButtons[i]);
             m_labelButtons[i].m_text.m_params.SetColor(Vector(0.0f, 0.66f, 0.98f));
@@ -4762,11 +4724,7 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::HandleInputEvent(int nType, int nVa
         case GPAD_ENTRY_HELP:
             if (!HasTouchScreen())
                 g_nHelpMode = 0;
-            if (HasJoystick()) {
-                g_nQueuedHelpPage = 0;
-                g_bQueuedHelpGamepad = 0;
-                g_nQueuedHelpDelay = 1;
-            }
+            QueueHelpGui(0, false);
             g_nHelpSavedPausedByCombat = m_bWasPausedByCombat;
             break;
         default:
@@ -5102,9 +5060,9 @@ void CSWGuiMainInterfaceAction::SetSelected(bool bSelected) {
 #endif
     {
     if (bSelected)
-        m_button.m_border.m_params.SetFillImage(CResRef("ios_self_box2"), 0);
+        m_button.m_border.m_params.SetFillImage(CResRef("ios_self_box2"));
     else
-        m_button.m_border.m_params.SetFillImage(CResRef("ios_self_box"), 0);
+        m_button.m_border.m_params.SetFillImage(CResRef("ios_self_box"));
     m_button.m_border.m_params.m_flags.nFillStyle = 2;
     }
 #else
@@ -5164,13 +5122,13 @@ void CSWGuiMainInterfaceAction::SetIcon(const CResRef& resRef, const CExoString&
     K2_UNUSED(str); K2_UNUSED(bDimmed);
     if (resRef != m_icon.m_border.m_params.m_fillImage) {
 #if KOTOR1
-        m_icon.m_border.m_params.SetFillImage(resRef, 0);
+        m_icon.m_border.m_params.SetFillImage(resRef);
         m_icon.m_border.m_params.m_flags.nFillStyle = 2;
-        m_icon.m_borderHilight.m_params.SetFillImage(resRef, 0);
+        m_icon.m_borderHilight.m_params.SetFillImage(resRef);
         m_icon.m_borderHilight.m_params.m_flags.nFillStyle = 2;
 #else
-        m_icon.m_border.m_params.SetFillImage(resRef, 0);
-        m_icon.m_borderHilight.m_params.SetFillImage(resRef, 0);
+        m_icon.m_border.m_params.SetFillImage(resRef);
+        m_icon.m_borderHilight.m_params.SetFillImage(resRef);
 #endif
         m_nPulseSteps = 0;
     }
@@ -5212,9 +5170,9 @@ void CSWGuiMainInterfaceAction::Show(int bEmpty, int bShowArrows) {
         CResRef resClear("");
         CExoString strClear("");
         if (resClear != m_icon.m_border.m_params.m_fillImage) {
-            m_icon.m_border.m_params.SetFillImage(resClear, 0);
+            m_icon.m_border.m_params.SetFillImage(resClear);
             m_icon.m_border.m_params.m_flags.nFillStyle = 2;
-            m_icon.m_borderHilight.m_params.SetFillImage(resClear, 0);
+            m_icon.m_borderHilight.m_params.SetFillImage(resClear);
             m_icon.m_borderHilight.m_params.m_flags.nFillStyle = 2;
             m_nPulseSteps = 0;
         }
@@ -5237,13 +5195,7 @@ void CSWGuiMainInterfaceAction::Show(int bEmpty, int bShowArrows) {
     if (bEmpty) {
         CResRef resClear("");
         CExoString strClear("");
-        if (resClear != m_icon.m_border.m_params.m_fillImage) {
-            m_icon.m_border.m_params.SetFillImage(resClear, 0);
-            m_icon.m_borderHilight.m_params.SetFillImage(resClear, 0);
-            m_nPulseSteps = 0;
-        }
-        m_icon.m_border.m_params.m_fAlpha = 1.0f;
-        m_icon.m_borderHilight.m_params.m_fAlpha = 1.0f;
+        SetIcon(resClear, strClear, 1, 0);
     }
     m_button.m_border.m_params.m_fAlpha = 1.0f;
     m_button.m_borderHilight.m_params.m_fAlpha = 1.0f;
@@ -5491,15 +5443,15 @@ void CSWGuiMainInterfaceAction::Initialize(CSWGuiMainInterface* pInterface, int 
     m_btnDown.SetExtent(sDown);
     m_btnUp.SetExtent(sUp);
     if (nMode == 0) {
-        m_button.m_border.m_params.SetFillImage(CResRef("ios_self_box"), 0);
+        m_button.m_border.m_params.SetFillImage(CResRef("ios_self_box"));
         m_button.m_border.m_params.m_flags.nFillStyle = 2;
         m_button.m_border.m_params.m_fAlpha = 1.0f;
         m_button.m_border.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
         m_button.m_border.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
         m_button.m_border.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
-        m_btnUp.m_border.m_params.SetFillImage(CResRef("ios_self_expand"), 0);
+        m_btnUp.m_border.m_params.SetFillImage(CResRef("ios_self_expand"));
         m_btnUp.m_border.m_params.m_flags.nFillStyle = 2;
-        m_btnUp.m_borderHilight.m_params.SetFillImage(CResRef("ios_self_expand"), 0);
+        m_btnUp.m_borderHilight.m_params.SetFillImage(CResRef("ios_self_expand"));
         m_btnUp.m_borderHilight.m_params.m_flags.nFillStyle = 2;
     }
     }
@@ -5704,16 +5656,7 @@ void CSWGuiTargetActionMenu::DoTargetAction(int nIndex, int nTarget) {
                 CSWGuiMainInterface* pInterface = m_pInterface;
                 K2_ASSUME(pInterface != 0);   // the owning main interface, set by Initialize(this)
                 pInterface->m_fCombatMessageTimer = -1.0f;
-#if KOTOR1  // K1: the shared combat-message setter, K1's own string
                 pInterface->SetCombatMessage(STRREF_COMBAT_MODE_ENGAGED);
-#else
-                pInterface->m_lblCombatModeMsg.m_text.m_params.SetColor(
-                    CGuiInGame::COLOR_NEW_HIGHLIGHT);
-                pInterface->m_combatMessage = STRREF_COMBAT_MODE_ENGAGED;
-                pInterface->m_lblCombatModeMsg.m_text.m_params.SetText(
-                    g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_COMBAT_MODE_ENGAGED));
-                pInterface->m_lblCombatModeMsg.m_text.m_params.m_fAlpha = 1.0f;
-#endif
             }
         }
         g_pAppManager->m_pClientExoApp->GetSWGuiManager()->PlayGuiSound(GUISOUND_ACTION_MENU_USE);
@@ -6130,53 +6073,6 @@ void CSWGuiMainInterface::HandleInputEvent(int nType, int nValue) {
 }
 #endif
 
-#if KOTOR1  // K1: no left-mouse gate on the deactivate, and the new icon is stretched (fill style 2)
-static __attribute__((always_inline)) void
-SetupActionWidget(CSWGuiMainInterfaceAction& widget, CSWGuiInterfaceAction* pAction,
-                  int64_t nCount, int bDimmed) {
-#ifndef K2_UI_PC  // pc: only the mouse leaving the box deactivates it
-    widget.m_button.SetActive(0);
-#endif
-    widget.m_button.m_border.m_params.m_fAlpha = 1.0f;
-    widget.m_button.m_borderHilight.m_params.m_fAlpha = 1.0f;
-    widget.m_btnUp.m_tail.bVisible = nCount > 1;
-    widget.m_btnDown.m_tail.bVisible = nCount > 1;
-    widget.m_bEmpty = 0;
-    if (pAction->m_resRef != widget.m_icon.m_border.m_params.m_fillImage) {
-        widget.m_icon.m_border.m_params.SetFillImage(pAction->m_resRef, 0);
-        widget.m_icon.m_border.m_params.m_flags.nFillStyle = 2;
-        widget.m_icon.m_borderHilight.m_params.SetFillImage(pAction->m_resRef, 0);
-        widget.m_icon.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        widget.m_nPulseSteps = 0;
-    }
-    float fAlpha = (pAction->m_nFlags & 1) == 0 || bDimmed ? 0.25f : 1.0f;
-    widget.m_icon.m_border.m_params.m_fAlpha = fAlpha;
-    widget.m_icon.m_borderHilight.m_params.m_fAlpha = fAlpha;
-}
-#else
-static __attribute__((always_inline)) void
-SetupActionWidget(CSWGuiMainInterfaceAction& widget, CSWGuiInterfaceAction* pAction,
-                  int64_t nCount, int bDimmed) {
-#ifndef K2_UI_PC  // pc: only the mouse leaving the box deactivates it
-    if (!g_bLeftMouseDown)
-        widget.m_button.SetActive(0);
-#endif
-    widget.m_button.m_border.m_params.m_fAlpha = 1.0f;
-    widget.m_button.m_borderHilight.m_params.m_fAlpha = 1.0f;
-    widget.m_btnUp.m_tail.bVisible = nCount > 1;
-    widget.m_btnDown.m_tail.bVisible = nCount > 1;
-    widget.m_bEmpty = 0;
-    if (pAction->m_resRef != widget.m_icon.m_border.m_params.m_fillImage) {
-        widget.m_icon.m_border.m_params.SetFillImage(pAction->m_resRef, 0);
-        widget.m_icon.m_borderHilight.m_params.SetFillImage(pAction->m_resRef, 0);
-        widget.m_nPulseSteps = 0;
-    }
-    float fAlpha = (pAction->m_nFlags & 1) == 0 || bDimmed ? 0.25f : 1.0f;
-    widget.m_icon.m_border.m_params.m_fAlpha = fAlpha;
-    widget.m_icon.m_borderHilight.m_params.m_fAlpha = fAlpha;
-}
-#endif
-
 #ifdef K2_UI_XBOX
 extern int g_aConsoleSlotList[6] = { 2, 3, 0, 1, 5, 4 };
 #endif
@@ -6321,10 +6217,13 @@ void CSWGuiMainInterface::PopulateMenus() {
                 pAction = &m_personalActions[i].m_pArray[0];
                 m_personalActionIds[i] = pAction->m_nActionId;
             }
-            if (pAction)
-                SetupActionWidget(m_personalActionWidgets[i], pAction, nCount, bDimmed);
-            else
+            if (pAction) {
+                m_personalActionWidgets[i].Show(0, nCount > 1);
+                m_personalActionWidgets[i].SetIcon(pAction->m_resRef, pAction->m_sName,
+                                                   (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
+            } else {
                 m_personalActionWidgets[i].Show(1, 0);
+            }
             K1ConsoleSetBox(m_personalActionWidgets[i], i, i == rSel, nCount == 0);
         }
         m_nFocusedAction = rSel >= 0 ? rSel : 0;
@@ -6367,13 +6266,18 @@ void CSWGuiMainInterface::PopulateMenus() {
                 break;
             }
         }
-        if (pAction)
-            SetupActionWidget(m_personalActionWidgets[i], pAction, nCount, bDimmed);
-        else if (nCount >= 1)
-            SetupActionWidget(m_personalActionWidgets[i], &m_personalActions[i].m_pArray[0],
-                              nCount, bDimmed);
-        else
+        if (pAction) {
+            m_personalActionWidgets[i].Show(0, nCount > 1);
+            m_personalActionWidgets[i].SetIcon(pAction->m_resRef, pAction->m_sName,
+                                               (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
+        } else if (nCount >= 1) {
+            pAction = &m_personalActions[i].m_pArray[0];
+            m_personalActionWidgets[i].Show(0, nCount > 1);
+            m_personalActionWidgets[i].SetIcon(pAction->m_resRef, pAction->m_sName,
+                                               (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
+        } else {
             m_personalActionWidgets[i].Show(1, 0);
+        }
     }
     UpdateActionDescription();
 }
@@ -6443,13 +6347,18 @@ void CSWGuiMainInterface::PopulateMenus(int nUnused) {
                 break;
             }
         }
-        if (pAction)
-            SetupActionWidget(m_personalActionWidgets[i], pAction, nCount, bDimmed);
-        else if (nCount >= 1)
-            SetupActionWidget(m_personalActionWidgets[i], &m_personalActions[i].m_pArray[0],
-                              nCount, bDimmed);
-        else
+        if (pAction) {
+            m_personalActionWidgets[i].Show(0, nCount > 1);
+            m_personalActionWidgets[i].SetIcon(pAction->m_resRef, pAction->m_sName,
+                                               (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
+        } else if (nCount >= 1) {
+            pAction = &m_personalActions[i].m_pArray[0];
+            m_personalActionWidgets[i].Show(0, nCount > 1);
+            m_personalActionWidgets[i].SetIcon(pAction->m_resRef, pAction->m_sName,
+                                               (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
+        } else {
             m_personalActionWidgets[i].Show(1, 0);
+        }
     }
 
     UpdateActionDescription();
@@ -6545,17 +6454,8 @@ void CSWGuiMainInterface::DoPersonalAction(int nIndex, int nTarget) {
     if (static_cast<unsigned int>(nIndex) > 6)
         return;
 #endif
-    if (g_bShiftActionState) {
-        CSWCCreature* pShiftPlayer =
-            g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-        if (pShiftPlayer) {
-            pShiftPlayer->SetCombatMode(0);
-            pShiftPlayer->ClearAllActions();
-            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            m_fReticlePulseTimer = -1.0f;
-            m_fChallengeRating = -1.0f;
-        }
-    }
+    if (g_bShiftActionState)
+        ClearAllActions();
 #if !KOTOR1
     ResetPartyMemberItemUse();
 #endif
@@ -6665,12 +6565,10 @@ void CSWGuiTargetActionMenu::Initialize(CSWGuiMainInterface* pInterface) {
 
 void CSWGuiTargetActionMenu::Initialize(CSWGuiMainInterface* pInterface, int bOffsetToEdge) {
     m_pInterface = pInterface;
-    m_widgets[0].Initialize(pInterface, 0, 1, bOffsetToEdge);
-    m_widgets[0].SetSelected(false);
-    m_widgets[1].Initialize(pInterface, 1, 1, bOffsetToEdge);
-    m_widgets[1].SetSelected(false);
-    m_widgets[2].Initialize(pInterface, 2, 1, bOffsetToEdge);
-    m_widgets[2].SetSelected(false);
+    for (int i = 0; i < 3; i++) {
+        m_widgets[i].Initialize(pInterface, i, 1, bOffsetToEdge);
+        m_widgets[i].SetSelected(false);
+    }
 
     pInterface->InitControl(m_lblName, CExoString("LBL_NAME"), 0, 1, bOffsetToEdge, 0, 0);
     pInterface->InitControl(m_lblNameBg, CExoString("LBL_NAMEBG"), 0, 1, bOffsetToEdge, 0, 0);
@@ -6706,16 +6604,16 @@ void CSWGuiTargetActionMenu::SetFriend(int bFriendly, int bPoisoned) {
     CExoString sMain;
     if (bFriendly) {
         if (bPoisoned)
-            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("POISON_BAR"), 0);
+            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("POISON_BAR"));
         else
-            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("FRIEND_BAR"), 0);
+            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("FRIEND_BAR"));
         m_progressBar.m_borderProgress.m_params.m_flags.nFillStyle = 2;
         sMain = "lbl_miscroll_f";
     } else {
         if (bPoisoned)
-            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("POISON_BAR"), 0);
+            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("POISON_BAR"));
         else
-            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("ENEMY_BAR"), 0);
+            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("ENEMY_BAR"));
         m_progressBar.m_borderProgress.m_params.m_flags.nFillStyle = 2;
         sMain = "lbl_miscroll_h";
     }
@@ -6725,13 +6623,13 @@ void CSWGuiTargetActionMenu::SetFriend(int bFriendly, int bPoisoned) {
         if (m_widgets[i].m_bSelected)
             sImage = "ios_self_box2";
 #endif
-        m_widgets[i].m_button.m_border.m_params.SetFillImage(CResRef(sImage), 0);
+        m_widgets[i].m_button.m_border.m_params.SetFillImage(CResRef(sImage));
         m_widgets[i].m_button.m_border.m_params.m_flags.nFillStyle = 2;
     }
 #ifdef K1_UI_XBOX
     CResRef sPlate(bFriendly ? "lbl_miindic01f" : "lbl_miindic01e");
     if (m_lblNameBg.m_border.m_params.m_fillImage != sPlate)
-        m_lblNameBg.m_border.m_params.SetFillImage(sPlate, 0);
+        m_lblNameBg.m_border.m_params.SetFillImage(sPlate);
 #endif
 #else
     CExoString sMain, sArrow0, sArrow1;
@@ -6740,9 +6638,9 @@ void CSWGuiTargetActionMenu::SetFriend(int bFriendly, int bPoisoned) {
 #ifdef K2_UI_XBOX
 #else
         if (bPoisoned)
-            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("POISON_BAR"), 0);
+            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("POISON_BAR"));
         else
-            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("FRIEND_BAR"), 0);
+            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("FRIEND_BAR"));
 #endif
         sMain    = "lbl_miscroll_f";
         sArrow0  = "lbl_miarr_1";
@@ -6751,9 +6649,9 @@ void CSWGuiTargetActionMenu::SetFriend(int bFriendly, int bPoisoned) {
     } else {
 #ifndef K2_UI_XBOX
         if (bPoisoned)
-            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("POISON_BAR"), 0);
+            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("POISON_BAR"));
         else
-            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("ENEMY_BAR"), 0);
+            m_progressBar.m_borderProgress.m_params.SetFillImage(CResRef("ENEMY_BAR"));
 #endif
         sMain    = "ios_self_box_r";
         sArrow0  = "ios_self_expand";
@@ -6774,11 +6672,11 @@ void CSWGuiTargetActionMenu::SetFriend(int bFriendly, int bPoisoned) {
         if (i == 0)
             continue;
 #endif
-        m_widgets[i].m_button.m_border.m_params.SetFillImage(CResRef(sMain), 0);
-        m_widgets[i].m_button.m_borderHilight.m_params.SetFillImage(CResRef(sMain), 0);
+        m_widgets[i].m_button.m_border.m_params.SetFillImage(CResRef(sMain));
+        m_widgets[i].m_button.m_borderHilight.m_params.SetFillImage(CResRef(sMain));
 #ifdef K2_UI_TOUCH  // pc / xbox: the layout's own arrows, turned over by ActionInit (as the macOS SetFriend)
-        m_widgets[i].m_btnDown.m_border.m_params.SetFillImage(CResRef(sArrow0), 0);
-        m_widgets[i].m_btnDown.m_borderHilight.m_params.SetFillImage(CResRef(sArrow1), 0);
+        m_widgets[i].m_btnDown.m_border.m_params.SetFillImage(CResRef(sArrow0));
+        m_widgets[i].m_btnDown.m_borderHilight.m_params.SetFillImage(CResRef(sArrow1));
         m_widgets[i].m_btnDown.m_border.m_params.m_flags.nFlipStyle = nBarMode;
         m_widgets[i].m_btnDown.m_borderHilight.m_params.m_flags.nFlipStyle = nBarMode;
 #endif
@@ -6858,11 +6756,7 @@ void CSWGuiTargetActionMenu::UpdateNameLabel(CSWCObject* pTarget) {
                     sName = g_pAppManager->m_pClientExoApp->GetGUIString(m_nHintStrRef);
                 } else {
                     int nIndex = static_cast<signed char>(m_nFocusedAction);
-                    // inlined CSWGuiMainInterfaceAction::GetActive()
-                    if ((m_widgets[nIndex].m_icon.m_tail.bActive ||
-                         m_widgets[nIndex].m_btnUp.m_tail.bActive ||
-                         m_widgets[nIndex].m_btnDown.m_tail.bActive ||
-                         m_widgets[nIndex].m_button.m_tail.bActive) &&
+                    if (m_widgets[nIndex].GetActive() &&
                         nIndex >= 0 && m_actions[nIndex].m_count >= 1) {
                         int nActionId = m_actionIds[static_cast<signed char>(m_actionRow)][nIndex];
                         CSWGuiInterfaceAction* pAction = 0;
@@ -7197,10 +7091,16 @@ void CSWGuiTargetActionMenu::PopulateMenus(CSWCCreature* pPC, int bDimmed, CSWCO
                     break;
                 }
             }
-            if (pAction)
-                SetupActionWidget(widget, pAction, nCount, bDimmed);
-            else
-                SetupActionWidget(widget, &m_actions[i].m_pArray[0], nCount, bDimmed);
+            if (pAction) {
+                widget.Show(0, nCount > 1);
+                widget.SetIcon(pAction->m_resRef, pAction->m_sName,
+                               (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
+            } else {
+                pAction = &m_actions[i].m_pArray[0];
+                widget.Show(0, nCount > 1);
+                widget.SetIcon(pAction->m_resRef, pAction->m_sName,
+                               (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
+            }
         } else {
             widget.Show(1, 0);
         }
@@ -7405,13 +7305,10 @@ void CSWGuiTargetActionMenu::SetNameLabel(const CExoString& sName) {
     int nRowH = nBarY + m_nActionRowGap - m_widgets[0].m_button.m_extent.y + 5;
 #endif
     for (int i = 0; i < 3; i++) {
-        CSWGuiButton* apButton[4] = { &m_widgets[i].m_icon, &m_widgets[i].m_button, &m_widgets[i].m_btnUp,
-                                      &m_widgets[i].m_btnDown };
-        for (int j = 0; j < 4; j++) {
-            CSWGuiExtent eB = apButton[j]->m_extent;
-            eB.y += nRowH;
-            apButton[j]->SetExtent(eB);
-        }
+        m_pInterface->ShiftControl(m_widgets[i].m_icon, nRowH);
+        m_pInterface->ShiftControl(m_widgets[i].m_button, nRowH);
+        m_pInterface->ShiftControl(m_widgets[i].m_btnUp, nRowH);
+        m_pInterface->ShiftControl(m_widgets[i].m_btnDown, nRowH);
     }
 #endif
 }
@@ -7430,17 +7327,8 @@ CSWGuiTargetActionMenu::CSWGuiTargetActionMenu() : m_aViewport() {
 
 void CSWGuiMainInterface::DoTargetAction(int nIndex, int nTarget) {
     if (static_cast<unsigned int>(nIndex) <= 2) {
-        if (g_bShiftActionState) {
-            CSWCCreature* pPlayer =
-                g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
-            if (pPlayer) {
-                pPlayer->SetCombatMode(0);
-                pPlayer->ClearAllActions();
-                m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-                m_fReticlePulseTimer = -1.0f;
-                m_fChallengeRating = -1.0f;
-            }
-        }
+        if (g_bShiftActionState)
+            ClearAllActions();
         m_targetActionMenu.DoTargetAction(nIndex, nTarget);
     }
 }
@@ -7525,8 +7413,8 @@ void CSWGuiMainInterface::PopupActionMenu(int nIndex) {
     for (int64_t i = 0; i < 32; i++, ++pAction) {
         CSWGuiButton& slot = m_actionSlots[i];
         if (i < nCount) {
-            slot.m_border.m_params.SetFillImage(pAction->m_resRef, 0);
-            slot.m_borderHilight.m_params.SetFillImage(pAction->m_resRef, 0);
+            slot.m_border.m_params.SetFillImage(pAction->m_resRef);
+            slot.m_borderHilight.m_params.SetFillImage(pAction->m_resRef);
             slot.m_border.m_params.m_flags.nFillStyle = 2;
             slot.m_borderHilight.m_params.m_flags.nFillStyle = 2;
             CExoString strText;
@@ -7943,10 +7831,10 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 
     for (int i = 0; i < 6; i++) {
         m_personalActionWidgets[i].Initialize(this, i, 0, 1);
+#ifdef K2_UI_XBOX
         m_personalActionWidgets[i].m_bSelected = 0;
-#ifndef K2_UI_XBOX
-        static const CSWGuiColor sColor(0.4f, 0.4f, 0.4f);
-        m_personalActionWidgets[i].m_button.m_border.m_params.m_color = sColor;
+#else
+        m_personalActionWidgets[i].SetSelected(false);
 #endif
     }
 #ifdef K2_UI_XBOX
@@ -8170,7 +8058,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     }
 #endif
     AddControl(&m_lblCombatModeMsg2);
-    if (m_pGuiManager->m_nScreenWidth >= 1024) {
+    if (pGuiManager->m_nScreenWidth >= 1024) {
         CSWGuiExtent sExtent;
         sExtent.x = m_extent.x;
         sExtent.y = m_extent.y;
@@ -8187,19 +8075,23 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_nMapWidth = m_miniMapImage.m_extent.w;
     m_nMapHeight = m_miniMapImage.m_extent.h;
     m_mapViewExtent = sScratch.m_extent;
-    CSWGuiExtent sArrow = m_lblArrow.m_extent;
-    sArrow.x = (m_mapViewExtent.w - sArrow.w) / 2;
-    sArrow.y = (m_mapViewExtent.h - sArrow.h) / 2;
-    m_lblArrow.SetExtent(sArrow);
+    {
+        CSWGuiExtent sArrow = m_lblArrow.m_extent;
+        sArrow.x = (m_mapViewExtent.w - sArrow.w) / 2;
+        sArrow.y = (m_mapViewExtent.h - sArrow.h) / 2;
+        m_lblArrow.SetExtent(sArrow);
+    }
     m_lblTargetIndicator.m_tail.bIgnoreMouse = 1;
     m_lblTargetIndicator.m_border.m_params.m_flags.nFillStyle = 2;
     AddControl(&m_lblTargetIndicator);
-    CSWGuiExtent sReticle;
-    sReticle.x = 0;
-    sReticle.y = 0;
-    sReticle.w = 16;
-    sReticle.h = 16;
-    m_reticleLabel.SetExtent(sReticle);
+    {
+        CSWGuiExtent sReticle;
+        sReticle.x = 0;
+        sReticle.y = 0;
+        sReticle.w = 16;
+        sReticle.h = 16;
+        m_reticleLabel.SetExtent(sReticle);
+    }
     m_reticleLabel.m_tail.bIgnoreMouse = 1;
     m_reticleLabel.m_border.m_params.m_flags.nFillStyle = 2;
     AddControl(&m_reticleLabel);
@@ -8254,24 +8146,12 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 #endif
     m_btnSwapWeapons.m_tail.bFocusOnHover = 0;
     m_pFogOfWarImage = NewCAurGUIImage(const_cast<char*>("blackdot"));
-    CSWGuiText* pDescText = &m_actionDescLabel.m_text;
     m_nFocusedAction = 0;
     m_lblCombatModeMsg.m_text.m_params.SetText(CExoString(""));
     m_nActionDescBottom = m_actionDescLabel.m_extent.y + m_actionDescLabel.m_extent.h;
     {
         CExoString sCaption("");
-        m_actionDescLabel.m_text.m_params.SetText(sCaption);
-        CSWGuiExtent sExtent;
-        sExtent.x = m_actionDescLabel.m_extent.x;
-        sExtent.w = m_actionDescLabel.m_extent.w;
-        sExtent.h = pDescText->GetIdealHeight();
-        sExtent.y = m_nActionDescBottom - sExtent.h;
-        m_actionDescLabel.SetExtent(sExtent);
-#ifdef K2_UI_XBOX
-        SizeActionDescPlate(m_actionDescLabel2, sExtent.y);   // the plate, not the caption
-#else
-        m_actionDescLabel2.SetExtent(sExtent);
-#endif
+        SetActionDescription(sCaption);
     }
     UpdateActionDescription();
     m_btnEquip.m_nToolTipStrRef = STRREF_TIP_EQUIP;   m_btnEquip.m_nBoundInputEventId = INPUTEVENT_PANEL_EQUIP;
@@ -8392,27 +8272,29 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_gamepadMenu.m_vColor.y = -2.0f;
     m_gamepadMenu.m_vColor.z = -2.0f;
     m_gamepadMenu.LayoutGamepadMenu(true);
-    CSWGuiExtent sFullScreen;
-    sFullScreen.x = 0;
-    sFullScreen.w = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
-    sFullScreen.h = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenHeight;
-    m_btnHelpClose.SetExtent(sFullScreen);
-    m_btnHelpClose.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpClose.m_border.m_params.SetFillImage(CResRef(""));
-    m_btnHelpClose.m_borderHilight.m_params.SetFillImage(CResRef(""));
-    m_btnHelpClose.m_tail.bFocusOnHover = 0;
-    m_btnHelpClose.AddEvent(INPUTEVENT_GUI_BACK, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpClose.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpClose.AddEvent(INPUTEVENT_GUI_B, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpPage.SetExtent(sFullScreen);
-    m_btnHelpPage.m_text.m_params.SetText(CExoString(""));
-    m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(""));
-    m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(""));
-    m_btnHelpPage.m_tail.bFocusOnHover = 0;
-    m_btnHelpPage.AddEvent(INPUTEVENT_GUI_BACK, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_btnHelpPage.AddEvent(INPUTEVENT_GUI_B, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
-    m_helpPanel.SetExtent(sFullScreen);
+    {
+        CSWGuiExtent sFullScreen;
+        sFullScreen.x = 0;
+        sFullScreen.w = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
+        sFullScreen.h = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenHeight;
+        m_btnHelpClose.SetExtent(sFullScreen);
+        m_btnHelpClose.m_text.m_params.SetText(CExoString(""));
+        m_btnHelpClose.m_border.m_params.SetFillImage(CResRef(""));
+        m_btnHelpClose.m_borderHilight.m_params.SetFillImage(CResRef(""));
+        m_btnHelpClose.m_tail.bFocusOnHover = 0;
+        m_btnHelpClose.AddEvent(INPUTEVENT_GUI_BACK, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+        m_btnHelpClose.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+        m_btnHelpClose.AddEvent(INPUTEVENT_GUI_B, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+        m_btnHelpPage.SetExtent(sFullScreen);
+        m_btnHelpPage.m_text.m_params.SetText(CExoString(""));
+        m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(""));
+        m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(""));
+        m_btnHelpPage.m_tail.bFocusOnHover = 0;
+        m_btnHelpPage.AddEvent(INPUTEVENT_GUI_BACK, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+        m_btnHelpPage.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+        m_btnHelpPage.AddEvent(INPUTEVENT_GUI_B, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HideHelp));
+        m_helpPanel.SetExtent(sFullScreen);
+    }
     m_helpPanel.AddControl(&m_btnHelpPage);
     m_btnHelpHint.m_tail.bFocusOnHover = 0;
     m_btnHelpHint.m_text.m_params.SetText(CExoString(""));
@@ -8438,53 +8320,55 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_oidPartyItemUse = OBJECT_INVALID;
     m_feedbackTimer = 0.0f;
     m_feedbackStrRef = 0;
-    CSWGuiExtent sCorner;
     {
-        float fX = 0.0f;
-        float fY = 0.0f;
-        CSWGuiManager* pMgr2 = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
-        if (pMgr2) {
-            pMgr2 = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
-            fX = static_cast<float>(pMgr2->m_nScreenWidth) / static_cast<float>(static_cast<unsigned int>(g_nGUIWidth));
-            pMgr2 = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
-            fY = static_cast<float>(pMgr2->m_nScreenHeight) / static_cast<float>(static_cast<unsigned int>(g_nGUIHeight));
-        }
-        int nX = 0;
-        if (static_cast<int>(fX * 4.0f) + static_cast<int>(g_bAddEdgeOffset) != 0) {
-            nX = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nUIEdgeInset;
-        }
-        sCorner.x = nX;
-        sCorner.y = static_cast<int>(fY * 398.0f);
-        sCorner.w = static_cast<int>(fX * 252.0f);
-        sCorner.h = static_cast<int>(fY * 96.0f);
-        m_btnFeedback.m_border.m_params.SetCornerImage(CResRef("uibit_brdr_16bct"));
-        m_btnFeedback.m_border.m_params.SetEdgeImage(CResRef("uibit_brdr_16bet"));
-        m_btnFeedback.m_border.m_params.SetFillImage(CResRef("uibit_fill_2bt"));
-        m_btnFeedback.m_border.m_params.m_nBorderDim = 16;
-        m_btnFeedback.m_border.m_params.m_color.r = CGuiInGame::COLOR_NEW_GREEN.x;
-        m_btnFeedback.m_border.m_params.m_color.g = CGuiInGame::COLOR_NEW_GREEN.y;
-        m_btnFeedback.m_border.m_params.m_color.b = CGuiInGame::COLOR_NEW_GREEN.z;
-        m_btnFeedback.m_border.m_params.m_nInnerOffset = 10;
+        CSWGuiExtent sCorner;
+        {
+            float fX = 0.0f;
+            float fY = 0.0f;
+            CSWGuiManager* pMgr2 = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
+            if (pMgr2) {
+                pMgr2 = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
+                fX = static_cast<float>(pMgr2->m_nScreenWidth) / static_cast<float>(static_cast<unsigned int>(g_nGUIWidth));
+                pMgr2 = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
+                fY = static_cast<float>(pMgr2->m_nScreenHeight) / static_cast<float>(static_cast<unsigned int>(g_nGUIHeight));
+            }
+            int nX = 0;
+            if (static_cast<int>(fX * 4.0f) + static_cast<int>(g_bAddEdgeOffset) != 0) {
+                nX = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nUIEdgeInset;
+            }
+            sCorner.x = nX;
+            sCorner.y = static_cast<int>(fY * 398.0f);
+            sCorner.w = static_cast<int>(fX * 252.0f);
+            sCorner.h = static_cast<int>(fY * 96.0f);
+            m_btnFeedback.m_border.m_params.SetCornerImage(CResRef("uibit_brdr_16bct"));
+            m_btnFeedback.m_border.m_params.SetEdgeImage(CResRef("uibit_brdr_16bet"));
+            m_btnFeedback.m_border.m_params.SetFillImage(CResRef("uibit_fill_2bt"));
+            m_btnFeedback.m_border.m_params.m_nBorderDim = 16;
+            m_btnFeedback.m_border.m_params.m_color.r = CGuiInGame::COLOR_NEW_GREEN.x;
+            m_btnFeedback.m_border.m_params.m_color.g = CGuiInGame::COLOR_NEW_GREEN.y;
+            m_btnFeedback.m_border.m_params.m_color.b = CGuiInGame::COLOR_NEW_GREEN.z;
+            m_btnFeedback.m_border.m_params.m_nInnerOffset = 10;
 #if !KOTOR1  // K2-only: K1's CSWGuiBorderParams lacks this field
-        m_btnFeedback.m_border.m_params.m_nInnerOffsetY = 12;
+            m_btnFeedback.m_border.m_params.m_nInnerOffsetY = 12;
 #endif
-        m_btnFeedback.m_borderHilight.m_params.SetCornerImage(CResRef("uibit_brdr_16bct"));
-        m_btnFeedback.m_borderHilight.m_params.SetEdgeImage(CResRef("uibit_brdr_16bet"));
-        m_btnFeedback.m_borderHilight.m_params.SetFillImage(CResRef("uibit_fill_2bt"));
-        m_btnFeedback.m_borderHilight.m_params.m_nBorderDim = 16;
-        m_btnFeedback.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_NEW_GREEN.x;
-        m_btnFeedback.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_NEW_GREEN.y;
-        m_btnFeedback.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_NEW_GREEN.z;
-        m_btnFeedback.m_borderHilight.m_params.m_nInnerOffset = 10;
+            m_btnFeedback.m_borderHilight.m_params.SetCornerImage(CResRef("uibit_brdr_16bct"));
+            m_btnFeedback.m_borderHilight.m_params.SetEdgeImage(CResRef("uibit_brdr_16bet"));
+            m_btnFeedback.m_borderHilight.m_params.SetFillImage(CResRef("uibit_fill_2bt"));
+            m_btnFeedback.m_borderHilight.m_params.m_nBorderDim = 16;
+            m_btnFeedback.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_NEW_GREEN.x;
+            m_btnFeedback.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_NEW_GREEN.y;
+            m_btnFeedback.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_NEW_GREEN.z;
+            m_btnFeedback.m_borderHilight.m_params.m_nInnerOffset = 10;
 #if !KOTOR1  // K2-only: K1's CSWGuiBorderParams lacks this field
-        m_btnFeedback.m_borderHilight.m_params.m_nInnerOffsetY = 12;
+            m_btnFeedback.m_borderHilight.m_params.m_nInnerOffsetY = 12;
 #endif
-    }
+        }
 #if !KOTOR1  // K1 has no party item-use selection to cancel
-    m_btnFeedback.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnCancelPartyItemSelect));
+        m_btnFeedback.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::OnCancelPartyItemSelect));
 #endif
-    m_btnFeedback.m_tail.bFocusOnHover = 0;
-    m_btnFeedback.SetExtent(sCorner);
+        m_btnFeedback.m_tail.bFocusOnHover = 0;
+        m_btnFeedback.SetExtent(sCorner);
+    }
     AddControl(&m_btnFeedback);
     m_bActionMenuLatch = 0;
 #ifdef K2_UI_XBOX
@@ -8989,17 +8873,8 @@ void CSWGuiMainInterface::Draw(float fDelta) {
             m_aCharacters[1].Adjust(0.25f);
             m_aCharacters[2].Adjust(0.25f);
             m_charOffscreen.Adjust(0.25f);
-            m_charOffscreen.m_aLabels[4].m_tail.bVisible = 0;
-            m_charOffscreen.m_aLabels[0].m_tail.bVisible = 0;
-            m_charOffscreen.m_aBars[0].m_tail.bVisible = 0;
-            m_charOffscreen.m_aBars[1].m_tail.bVisible = 0;
-            m_charOffscreen.m_aLabels[1].m_tail.bVisible = 0;
-            m_charOffscreen.m_aLabels[2].m_tail.bVisible = 0;
-            m_charOffscreen.m_nGoodEffectCount = 0;
-            m_charOffscreen.m_nBadEffectCount = 0;
+            m_charOffscreen.Show(0, 0, 0, 0);
             m_fRotationTimer = 0.0f;
-            m_charOffscreen.m_aLabels[3].m_tail.bVisible = 0;
-            m_charOffscreen.m_btnChar.m_tail.bVisible = 0;
         }
     }
 
@@ -9072,30 +8947,9 @@ void CSWGuiMainInterface::Draw(float fDelta) {
             }
             AurGUICloseViewport();
         }
-        if (m_aCharacters[0].m_aLabels[4].m_tail.bVisible) {
-            if (m_aCharacters[0].m_nGoodEffectCount)
-                m_aCharacters[0].DrawStack(fDelta, 1, 1);
-            if (m_aCharacters[0].m_nBadEffectCount)
-                m_aCharacters[0].DrawStack(fDelta, 1, 0);
-        }
-        if (m_aCharacters[1].m_aLabels[4].m_tail.bVisible) {
-            if (m_aCharacters[1].m_nGoodEffectCount)
-                m_aCharacters[1].DrawStack(fDelta, 0, 1);
-            if (m_aCharacters[1].m_nBadEffectCount)
-                m_aCharacters[1].DrawStack(fDelta, 0, 0);
-        }
-        if (m_aCharacters[2].m_aLabels[4].m_tail.bVisible) {
-            if (m_aCharacters[2].m_nGoodEffectCount)
-                m_aCharacters[2].DrawStack(fDelta, 0, 1);
-            if (m_aCharacters[2].m_nBadEffectCount)
-                m_aCharacters[2].DrawStack(fDelta, 0, 0);
-        }
-        if (m_charOffscreen.m_aLabels[4].m_tail.bVisible) {
-            if (m_charOffscreen.m_nGoodEffectCount)
-                m_charOffscreen.DrawStack(fDelta, 0, 1);
-            if (m_charOffscreen.m_nBadEffectCount)
-                m_charOffscreen.DrawStack(fDelta, 0, 0);
-        }
+        for (int nI = 0; nI < 3; nI++)
+            m_aCharacters[nI].DrawEffects(fDelta, nI == 0);
+        m_charOffscreen.DrawEffects(fDelta, 0);
         AurGUIStopLayer();
     }
 }
@@ -9249,7 +9103,7 @@ void CSWGuiMainInterface::UpdatePortraits() {
         if (pServer != 0) {
             m_aCharacters[nSlot].m_sFirstName = pChar->m_pStats->GetFirstName();
             m_aCharacters[nSlot].m_sLastName = pChar->m_pStats->GetLastName();
-            m_aCharacters[nSlot].m_aLabels[4].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
+            m_aCharacters[nSlot].m_aLabels[4].m_border.m_params.SetFillImage(pChar->GetPortrait(1));
             m_aCharacters[nSlot].SetHealth(pServer->GetCurrentHitPoints(0), pServer->GetMaxHitPoints(1),
                                            pServer->m_bPoisoned);
             m_aCharacters[nSlot].SetForce(static_cast<short>(pServer->m_pStats->m_nTemporaryForcePoints
@@ -9306,7 +9160,7 @@ void CSWGuiMainInterface::UpdatePortraits() {
             if (nSlot == 0 && m_fRotationTimer > 0.0f) {
                 m_charOffscreen.m_sFirstName = pChar->m_pStats->GetFirstName();
                 m_charOffscreen.m_sLastName = pChar->m_pStats->GetLastName();
-                m_charOffscreen.m_aLabels[4].m_border.m_params.SetFillImage(pChar->GetPortrait(1), 0);
+                m_charOffscreen.m_aLabels[4].m_border.m_params.SetFillImage(pChar->GetPortrait(1));
                 m_charOffscreen.SetHealth(pServer->GetCurrentHitPoints(0), pServer->GetMaxHitPoints(1),
                                           pServer->m_bPoisoned);
                 m_charOffscreen.SetForce(static_cast<short>(pServer->m_pStats->m_nTemporaryForcePoints
@@ -9434,17 +9288,17 @@ void CSWGuiMainInterfaceChar::Initialize(CSWGuiMainInterface* pInterface, int nS
 #ifdef K2_UI_TOUCH  // pc / xbox: the layout's own portrait frames (lbl_miport1/3)
     switch (nSlot) {
     case 3:
-        m_aLabels[0].m_border.m_params.SetFillImage(CResRef("ios_lbl_miport1"), 0);
+        m_aLabels[0].m_border.m_params.SetFillImage(CResRef("ios_lbl_miport1"));
         m_aLabels[0].m_border.m_params.m_flags.nFillStyle = 2;
         extent.h -= 1;
         break;
     case 2:
-        m_aLabels[0].m_border.m_params.SetFillImage(CResRef("ios_lbl_miport3"), 0);
+        m_aLabels[0].m_border.m_params.SetFillImage(CResRef("ios_lbl_miport3"));
         m_aLabels[0].m_border.m_params.m_flags.nFillStyle = 2;
         extent.h -= 1;
         break;
     case 1:
-        m_aLabels[0].m_border.m_params.SetFillImage(CResRef("ios_lbl_miport2"), 0);
+        m_aLabels[0].m_border.m_params.SetFillImage(CResRef("ios_lbl_miport2"));
         m_aLabels[0].m_border.m_params.m_flags.nFillStyle = 2;
         extent.y += 1;
         extent.w += 1;

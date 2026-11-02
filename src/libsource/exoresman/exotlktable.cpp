@@ -385,13 +385,7 @@ void CTlkTable::ParseStr(CExoString& sText)
                             nLow = nMid + 1;
                         else
                         {
-#if KOTOR1  // K1: CExoString::GetLength is out of line
                             unsigned int nNameSize = m_pStringTokens[nMid].m_sName.GetLength();
-#else
-                            unsigned int nNameSize = 0;
-                            if (m_pStringTokens[nMid].m_sName.m_sString != 0)
-                                nNameSize = static_cast<unsigned int>(strlen(m_pStringTokens[nMid].m_sName.m_sString));
-#endif
                             if (nNameSize != nNameLen ||
                                 strncmp(m_pStringTokens[nMid].m_sName.CStr(), &pStr[j], nNameLen) != 0)
                                 break;
@@ -522,7 +516,7 @@ int CTlkTable::OpenFile(const CExoString& sPath)
 #endif
     delete[] m_pStringTokens;
 
-    CExoString sValue;
+    CTlkTableToken tmp;
 
     CResRef refTokens("StringTokens");
     C2DA tokens(refTokens, 0);
@@ -534,29 +528,25 @@ int CTlkTable::OpenFile(const CExoString& sPath)
 
     for (int row = 0; static_cast<unsigned int>(row) < m_nStringTokenCount; row++)
     {
-        CTlkTableToken* pToken = &m_pStringTokens[row];
         int nValue = 0;
 
-        tokens.GetCExoStringEntry(row, 0, &pToken->m_sName);
+        tokens.GetCExoStringEntry(row, 0, &m_pStringTokens[row].m_sName);
         tokens.GetINTEntry(row, 1, &nValue);
-        pToken->m_nLanguage = nValue;
+        m_pStringTokens[row].m_nLanguage = nValue;
         tokens.GetINTEntry(row, 2, &nValue);
-        pToken->m_nStringRef = nValue;
-        tokens.GetINTEntry(row, 3, &nValue);
-        pToken->m_StrRefs[0] = nValue;
-        tokens.GetINTEntry(row, 4, &nValue);
-        pToken->m_StrRefs[1] = nValue;
-        tokens.GetINTEntry(row, 5, &nValue);
-        pToken->m_StrRefs[2] = nValue;
-        tokens.GetINTEntry(row, 6, &nValue);
-        pToken->m_StrRefs[3] = nValue;
+        m_pStringTokens[row].m_nStringRef = nValue;
+        for (int j = 0; j < 4; j++)
+        {
+            tokens.GetINTEntry(row, j + 3, &nValue);
+            m_pStringTokens[row].m_StrRefs[j] = nValue;
+        }
 
 #if KOTOR1  // K1: CExoString::GetLength is out of line
-        pToken->m_nNameHash = CResGFFFieldIDHash::Hash(pToken->m_sName.CStr(),
-            pToken->m_sName.GetLength());
+        m_pStringTokens[row].m_nNameHash = CResGFFFieldIDHash::Hash(m_pStringTokens[row].m_sName.CStr(),
+            m_pStringTokens[row].m_sName.GetLength());
 #else
-        pToken->m_nNameHash = CResGFFFieldIDHash::Hash(pToken->m_sName.CStr(),
-            static_cast<unsigned int>(pToken->m_sName.GetLength()));
+        m_pStringTokens[row].m_nNameHash = CResGFFFieldIDHash::Hash(m_pStringTokens[row].m_sName.CStr(),
+            static_cast<unsigned int>(m_pStringTokens[row].m_sName.GetLength()));
 #endif
 
         // Insertion sort by name hash (the table is binary-searched).
@@ -564,36 +554,9 @@ int CTlkTable::OpenFile(const CExoString& sPath)
         {
             if (m_pStringTokens[k].m_nNameHash >= m_pStringTokens[k - 1].m_nNameHash)
                 break;
-            CTlkTableToken& a = m_pStringTokens[k];
-            CTlkTableToken& b = m_pStringTokens[k - 1];
-
-            unsigned int nHash = b.m_nNameHash;
-            sValue = b.m_sName;
-            unsigned int nLang = b.m_nLanguage;
-            unsigned int nRefs[4];
-            nRefs[0] = b.m_StrRefs[0];
-            nRefs[1] = b.m_StrRefs[1];
-            nRefs[2] = b.m_StrRefs[2];
-            nRefs[3] = b.m_StrRefs[3];
-            int nStringRef = b.m_nStringRef;
-
-            b.m_nNameHash = a.m_nNameHash;
-            b.m_sName = a.m_sName;
-            b.m_nLanguage = a.m_nLanguage;
-            b.m_StrRefs[0] = a.m_StrRefs[0];
-            b.m_StrRefs[1] = a.m_StrRefs[1];
-            b.m_StrRefs[2] = a.m_StrRefs[2];
-            b.m_StrRefs[3] = a.m_StrRefs[3];
-            b.m_nStringRef = a.m_nStringRef;
-
-            a.m_nNameHash = nHash;
-            a.m_sName = sValue;
-            a.m_nLanguage = nLang;
-            a.m_StrRefs[0] = nRefs[0];
-            a.m_StrRefs[1] = nRefs[1];
-            a.m_StrRefs[2] = nRefs[2];
-            a.m_StrRefs[3] = nRefs[3];
-            a.m_nStringRef = nStringRef;
+            tmp = m_pStringTokens[k - 1];
+            m_pStringTokens[k - 1] = m_pStringTokens[k];
+            m_pStringTokens[k] = tmp;
         }
     }
 
@@ -708,7 +671,7 @@ void CTlkTable::SetCustomToken(int nId, const CExoString& sValue)
     }
 
     const unsigned int nNewCount = nCount + 1;
-    CTlkTableCustomToken* pNew = new CTlkTableCustomToken[nNewCount];
+    CTlkTableTokenCustom* pNew = new CTlkTableTokenCustom[nNewCount];
 
     // nIndex is the search's insertion point, at most nCount, and the table holds nCount tokens.
     unsigned int i;

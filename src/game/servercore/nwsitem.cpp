@@ -853,17 +853,10 @@ int CItemRepository::CalculateContentsWeight()
     int nTotal = 0;
     for (int64_t i = 0; i < m_aItems.m_count; i++)
     {
-        CSWSItem* pItem =
-            g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(m_aItems.m_pArray[i]);
+        CSWSItem* pItem = ItemListGetItem(static_cast<int>(i));
         if (pItem == 0)
             continue;
-        int nWeight;
-        if (pItem->m_pItemRepository != 0)
-            nWeight = pItem->m_nWeight +
-                      pItem->m_pItemRepository->CalculateContentsWeight();
-        else
-            nWeight = (pItem->m_stackCount > 1 ? pItem->m_stackCount : 1) * pItem->m_nWeight;
-        nTotal += nWeight;
+        nTotal += pItem->GetWeight();
     }
     return nTotal;
 }
@@ -3418,9 +3411,7 @@ unsigned short CSWSItem::GetUsedActivePropertyUsesLeft(unsigned char nIndex)
 
 int CSWSItem::ShowModel()
 {
-    if (GetClientObject() == 0)
-        return 0;
-    CSWCItem* pItem = GetClientObject()->AsSWCItem();
+    CSWCItem* pItem = GetClientItem();
     if (pItem == 0)
         return 0;
     if (pItem->LoadModel(pItem->m_modelResRef, CSWCObject::ANIM_MODEL_BODY, 0) != 0)
@@ -3791,10 +3782,7 @@ void CSWSItem::LoadDataFromGff(CResGFF* pGFF, CResStruct* pStruct)
     UpdateUsedActiveProperties();
     if (m_nActiveProperties == 0 && m_nPassiveProperties == 0)
         m_flags |= FLAG_IDENTIFIED;
-    if (GetBaseItem()->m_nModelType == 1)
-        m_nBaseArmorClass = GetBaseItem()->m_nBaseAC;
-    else
-        m_nBaseArmorClass = 0;
+    m_nBaseArmorClass = ComputeArmorClass();
     g_pAppManager->m_pServerExoApp->GetModule()->AddObjectToLookupTable(m_sTag, m_objectId);
     m_nWeight = GetBaseItem()->m_nTenthLbs;
 }

@@ -466,6 +466,16 @@ unsigned char* AurResGetDataBytes(unsigned int nBytes, void* pRes) {
     return pData;
 }
 
+#if !KOTOR1
+// K2 defines the read-buffer setup inline: the arm64 image exports no copy of it.
+inline void OpenResource::SetupReadBuffer() {
+    if (!m_pData) {
+        m_pData = new char[m_nSize];
+        m_pData[0] = 0;
+    }
+}
+#endif
+
 // Reads nSize bytes out of a resource, filling the line buffer from disk or from the memory
 // blob and advancing the cursor.
 unsigned char* AurResGetData(int nBytes) {
@@ -490,17 +500,11 @@ unsigned char* AurResGetData(int nBytes) {
         pRes->SetupReadBuffer();
 #else
     if (pRes->m_pFile) {
-        if (!pRes->m_pData) {
-            pRes->m_pData = new char[pRes->m_nSize];
-            pRes->m_pData[0] = 0;
-        }
+        pRes->SetupReadBuffer();
         fread(pRes->m_pData, 1, nBytes, pRes->m_pFile);
     } else {
         char* pCursor = pRes->m_pCursor;
-        if (!pRes->m_pData) {
-            pRes->m_pData = new char[pRes->m_nSize];
-            pRes->m_pData[0] = 0;
-        }
+        pRes->SetupReadBuffer();
 #endif
 #ifdef K2_FIX_ENGINE_BUGS
         K2_ASSUME(nBytes < pRes->m_nSize);   // the reallocation above
@@ -563,10 +567,7 @@ static char* getnextline_file(void* pResource) {
 static char* getnextline_file(void* pResource) {
     OpenResource* p = static_cast<OpenResource*>(GetResource(pResource));
     p->m_nLine++;
-    if (!p->m_pData) {
-        p->m_pData = new char[p->m_nSize];
-        p->m_pData[0] = 0;
-    }
+    p->SetupReadBuffer();
     K2_ASSUME(p->m_nSize >= 4000);   // resource buffers are at least 8 KB
     return fgets(p->m_pData, 4000, p->m_pFile);
 }
@@ -601,10 +602,7 @@ static char* getnextline_res(void* pResource) {
     p->m_nLength -= i;
     p->m_pCursor = pNext;
 #else
-    if (!p->m_pData) {
-        p->m_pData = new char[p->m_nSize];
-        p->m_pData[0] = 0;
-    }
+    p->SetupReadBuffer();
     int i = 0;
     do {
         p->m_pData[i] = pCursor[i];
@@ -859,10 +857,7 @@ char* converttobinary(char* pszArgs) {
         }
         if (!SetCurrentDirectoryA(pszSecond))
             return const_cast<char*>("FAILURE");
-        char* pszCursor = szFile + i + 1;
-        Model* pModel = FindModel(GetToken(&pszCursor));
-        if (pModel != 0)
-            IODispatcher::GetRef()->Write(pModel, 0);
+        outputmodel(szFile + i + 1);
         SetCurrentDirectoryA(szCurDir);
         if (!FindNextFileA(hFind, &findData)) {
             if (GetLastError() != ERROR_NO_MORE_FILES)

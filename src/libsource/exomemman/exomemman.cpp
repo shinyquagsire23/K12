@@ -25,8 +25,6 @@ extern int   usedtexturememory;
 extern int   g_nTotalNewAllocated;
 extern int   g_nTotalContiguousMemory;
 
-static char szComment[128];
-
 int s_nLastFreeComment;
 
 // Instantiated on first use; the destructor runs at exit.
@@ -59,13 +57,7 @@ void CExoMemMan::SetLastLine(int line)
 
 int SetComment(const char* pszComment)
 {
-    GetMemMan();
-
-    if (pszComment != 0)
-        strncpy(szComment, pszComment, sizeof(szComment));
-    else
-        szComment[0] = 0;
-
+    GetMemMan()->SetLastComment(pszComment);
     return 0;
 }
 
@@ -77,15 +69,12 @@ void CExoMemMan::SetLastComment(const char* pszComment)
         m_szLastComment[0] = 0;
 }
 
-// Formats "file:line" into the comment buffer directly, without going through SetComment().
 int SetLineFileComment(const char* pszFile, int nLine)
 {
     char szBuffer[1024];
 
     sprintf(szBuffer, "%s:%d", pszFile, nLine);
-
-    GetMemMan();
-    __strncpy_chk2(szComment, szBuffer, sizeof(szComment), sizeof(szComment), sizeof(szBuffer));
+    SetComment(szBuffer);
 
     return 0;
 }
@@ -96,7 +85,7 @@ CExoMemMan::CExoMemMan()
 
     Clear();
 
-    m_aFileNames[0] = "none";
+    GetFileIndex(const_cast<char*>("none"));
     m_bTrackFileLine = 1;
     m_bMemTrackEnabled = 0;
 

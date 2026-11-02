@@ -120,29 +120,9 @@ void CSWSAreaMap::SetWorldPointExplored(Vector vPos, int nFlag)
     if (!m_nSize)
         return;
 
-    // Rotate by the north-axis quadrant: 0 identity, 1 = 180 degrees, 2 = (x,y) -> (y,-x),
-    // 3 = (x,y) -> (-y,x). The step order matters: the chain assigns both outputs, so it
-    // compiles to selects rather than branches.
-    float fY1 = (m_nNorthAxis == 3) ?  vPos.x : vPos.y;
-    float fX1 = (m_nNorthAxis == 3) ? -vPos.y : vPos.x;
-    float fY2 = (m_nNorthAxis == 1) ? -fY1 : fY1;
-    float fX2 = (m_nNorthAxis == 1) ? -fX1 : fX1;
-    float fY  = (m_nNorthAxis == 2) ? -fX2 : fY2;
-    float fX  = (m_nNorthAxis == 2) ? fY2 : fX2;
-
-    int nMapX = static_cast<int>((fX - m_fOffsetX) / m_fScaleX + 0.5f);
-#if KOTOR1
-    if (static_cast<unsigned int>(nMapX) > 440)
-#else
-    if (static_cast<unsigned int>(nMapX) > 708)
-#endif
-        return;
-    int nMapY = static_cast<int>((fY - m_fOffsetY) / m_fScaleY + 0.5f);
-#if KOTOR1
-    if (static_cast<unsigned int>(nMapY) > 256)
-#else
-    if (static_cast<unsigned int>(nMapY) > 354)
-#endif
+    int nMapX = 0;
+    int nMapY = 0;
+    if (!GetMapPixelFromWorldCoord(vPos, nMapX, nMapY))
         return;
 
     for (int nX = -nFlag; nX <= nFlag; nX++)
@@ -217,15 +197,10 @@ void CSWSAreaMap::SetMapPointExplored(int nMapX, int nMapY)
 #endif
         return;
 
-#if KOTOR1
-    float fScaleX = 440.0f / static_cast<float>(m_nResX);
-    float fScaleY = 256.0f / static_cast<float>(m_nResY);
-#else
-    float fScaleX = 708.0f / static_cast<float>(m_nResX);
-    float fScaleY = 354.0f / static_cast<float>(m_nResY);
-#endif
-    int nGridX = static_cast<int>(static_cast<float>(nMapX) / fScaleX + 0.5f);
-    int nGridY = static_cast<int>(static_cast<float>(nMapY) / fScaleY + 0.5f);
+    int nGridX = 0;
+    int nGridY = 0;
+    if (!GetGridPixelFromMapPixel(nMapX, nMapY, nGridX, nGridY))
+        return;
     int nIndex = (m_nResX + 1) * nGridY + nGridX;
     int nWord = nIndex / 32;
     if (nWord > static_cast<int>(m_nSize))
@@ -290,29 +265,9 @@ void CSWSAreaMap::SetPartyMemberWorldLocation(int index, Vector vPos)
     if (!m_nSize)
         return;
 
-    // Rotate by the north-axis quadrant: 0 identity, 1 = 180 degrees, 2 = (x,y) -> (y,-x),
-    // 3 = (x,y) -> (-y,x). The step order matters: the chain assigns both outputs, so it
-    // compiles to selects rather than branches.
-    float fY1 = (m_nNorthAxis == 3) ?  vPos.x : vPos.y;
-    float fX1 = (m_nNorthAxis == 3) ? -vPos.y : vPos.x;
-    float fY2 = (m_nNorthAxis == 1) ? -fY1 : fY1;
-    float fX2 = (m_nNorthAxis == 1) ? -fX1 : fX1;
-    float fY  = (m_nNorthAxis == 2) ? -fX2 : fY2;
-    float fX  = (m_nNorthAxis == 2) ? fY2 : fX2;
-
-    int nMapX = static_cast<int>((fX - m_fOffsetX) / m_fScaleX + 0.5f);
-#if KOTOR1
-    if (static_cast<unsigned int>(nMapX) > 440)
-#else
-    if (static_cast<unsigned int>(nMapX) > 708)
-#endif
-        return;
-    int nMapY = static_cast<int>((fY - m_fOffsetY) / m_fScaleY + 0.5f);
-#if KOTOR1
-    if (static_cast<unsigned int>(nMapY) > 256)
-#else
-    if (static_cast<unsigned int>(nMapY) > 354)
-#endif
+    int nMapX = 0;
+    int nMapY = 0;
+    if (!GetMapPixelFromWorldCoord(vPos, nMapX, nMapY))
         return;
 
     m_anPartyMapX[index] = nMapX;
@@ -349,47 +304,20 @@ float CSWSAreaMap::GetPartyMemberMapOrientation(int nSlot)
     return m_afPartyOrientation[nSlot];
 }
 
-// The inverse of SetWorldPointExplored for a single point. The Y map coordinate is computed and
-// range-checked before the X one here, unlike GetMapPixelFromWorldCoord.
+// The inverse of SetWorldPointExplored for a single point.
 int CSWSAreaMap::IsWorldPointExplored(Vector vPos)
 {
     if (!m_nSize)
         return false;
 
-    // Rotate by the north-axis quadrant: 0 identity, 1 = 180 degrees, 2 = (x,y) -> (y,-x),
-    // 3 = (x,y) -> (-y,x). The step order matters: the chain assigns both outputs, so it
-    // compiles to selects rather than branches.
-    float fY1 = (m_nNorthAxis == 3) ?  vPos.x : vPos.y;
-    float fX1 = (m_nNorthAxis == 3) ? -vPos.y : vPos.x;
-    float fY2 = (m_nNorthAxis == 1) ? -fY1 : fY1;
-    float fX2 = (m_nNorthAxis == 1) ? -fX1 : fX1;
-    float fY  = (m_nNorthAxis == 2) ? -fX2 : fY2;
-    float fX  = (m_nNorthAxis == 2) ? fY2 : fX2;
-
-    int nMapY = static_cast<int>((fY - m_fOffsetY) / m_fScaleY + 0.5f);
-#if KOTOR1
-    if (static_cast<unsigned int>(nMapY) > 256)
-#else
-    if (static_cast<unsigned int>(nMapY) > 354)
-#endif
+    int nMapX;
+    int nMapY;
+    if (!GetMapPixelFromWorldCoord(vPos, nMapX, nMapY))
         return false;
-    int nMapX = static_cast<int>((fX - m_fOffsetX) / m_fScaleX + 0.5f);
-#if KOTOR1
-    if (static_cast<unsigned int>(nMapX) > 440)
-#else
-    if (static_cast<unsigned int>(nMapX) > 708)
-#endif
+    int nGridX;
+    int nGridY = 0;
+    if (!GetGridPixelFromMapPixel(nMapX, nMapY, nGridX, nGridY))
         return false;
-
-#if KOTOR1
-    float fScaleX = 440.0f / static_cast<float>(m_nResX);
-    float fScaleY = 256.0f / static_cast<float>(m_nResY);
-#else
-    float fScaleX = 708.0f / static_cast<float>(m_nResX);
-    float fScaleY = 354.0f / static_cast<float>(m_nResY);
-#endif
-    int nGridX = static_cast<int>(static_cast<float>(nMapX) / fScaleX + 0.5f);
-    int nGridY = static_cast<int>(static_cast<float>(nMapY) / fScaleY + 0.5f);
     int nIndex = (m_nResX + 1) * nGridY + nGridX;
     int nWord = nIndex / 32;
     if (nWord > static_cast<int>(m_nSize))

@@ -179,7 +179,7 @@ void ClearIosControl(bool b);
 
 extern unsigned char g_gameMenuCancelledActivateInGameGuiButton;
 int g_nHSMode;
-long long g_lLastLButtonSnapshot;
+static long long g_lLastLButtonSnapshot;
 
 extern Quaternion YawPitchRoll(float, float, float);
 
@@ -291,7 +291,8 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
     }
 
     // Per-frame mouse delta comes from the pause timer, not the world timer.
-    g_pExoInput->UpdateMouseDelta(static_cast<float>(static_cast<int>(m_pPauseTimer->GetSnapshotTimeDifference())) / 1000000.0f);
+    float fMouseDelta = static_cast<float>(static_cast<int>(m_pPauseTimer->GetSnapshotTimeDifference())) / 1000000.0f;
+    g_pExoInput->UpdateMouseDelta(fMouseDelta);
 
     // The "107PER" long-perk module forces the event walk and skips the hit check.
     bool b107per = false;
@@ -367,7 +368,7 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
                 if (g_pAppManager->m_pClientExoApp->GetCaptureEvents() != 0 &&
                     g_pAppManager->m_pClientExoApp->GetCaptureEventFile() != 0) {
                     CWorldTimer* pCapTimer = g_pAppManager->m_pClientExoApp->GetWorldTimer();
-                    unsigned int nCapTime = static_cast<unsigned int>(static_cast<unsigned long long>(pCapTimer->GetSnapshotTime()) / 1000);
+                    unsigned int nCapTime = static_cast<unsigned int>(static_cast<uint64_ll_t>(pCapTimer->GetSnapshotTime()) / 1000);
                     CExoFile* pCapFile = static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile());
                     g_pExoInput->WriteEventToFile(nCapTime, static_cast<int>(uEventIdx & 0xffffffff), pCapFile);
                 }
@@ -675,12 +676,13 @@ mouseover_scan:
                     // The best candidate always gets the mouse-over. The HUD target takes its id
                     // only off a GUI control, and on a re-hover of the current target only while
                     // its personal-action menu has entries.
-                    if (pBest != 0 && m_pSWGuiManager->m_pMouseOverControl == 0 &&
+                    if (pBest != 0 &&
                         (pBest->m_objectId != m_lastTarget ||
                          (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface
                               ->m_personalActions[0].m_count >= 1 &&
                           g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface
-                              ->m_personalActions[0].m_pArray != 0)))
+                              ->m_personalActions[0].m_pArray != 0)) &&
+                        m_pSWGuiManager->m_pMouseOverControl == 0)
                         m_pInGameGui->m_pMainInterface->m_mouseOverTargetId = pBest->m_objectId;
                     else
                         m_pInGameGui->m_pMainInterface->m_mouseOverTargetId = OBJECT_INVALID;
@@ -722,7 +724,7 @@ mouse_over_joint:
         if (pPC != 0) {
             float fPX = pPC->m_position.x, fPY = pPC->m_position.y, fPZ = pPC->m_position.z;
             CWorldTimer* pWT = pApp->GetWorldTimer();
-            sLog.Format(const_cast<char*>("%d %c %f %f %f\n"), static_cast<unsigned int>(static_cast<unsigned long long>(pWT->GetSnapshotTime()) / 1000),
+            sLog.Format(const_cast<char*>("%d %c %f %f %f\n"), static_cast<unsigned int>(static_cast<uint64_ll_t>(pWT->GetSnapshotTime()) / 1000),
                         'X', fPX, fPY, fPZ);
             static_cast<CExoFile*>(pApp->GetCaptureEventFile())->Write(sLog);
         }
@@ -815,10 +817,10 @@ mouse_over_joint:
                 if (fCamAxisX == 0.0f && fCamAxisY == 0.0f) {
                     fCamAxisY = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_LEFT_RIGHT, 0));
                     fCamAxisX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_UP_DOWN, 0));
-                    if (fCamAxisY <= -1.0f) fCamAxisY = -1.0f;
-                    if (fCamAxisX <= -1.0f) fCamAxisX = -1.0f;
-                    if (fCamAxisY > 1.0f) fCamAxisY = 1.0f;
-                    if (fCamAxisX > 1.0f) fCamAxisX = 1.0f;
+                    fCamAxisY = fCamAxisY <= -1.0f ? -1.0f : fCamAxisY;
+                    fCamAxisX = fCamAxisX <= -1.0f ? -1.0f : fCamAxisX;
+                    fCamAxisY = fCamAxisY > 1.0f ? 1.0f : fCamAxisY;
+                    fCamAxisX = fCamAxisX > 1.0f ? 1.0f : fCamAxisX;
                 }
                 int nRotate = g_bMouseCameraRotateToggle;
                 if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay1 != 0)
@@ -1372,16 +1374,9 @@ int CClientExoAppInternal::HandleInputEvent(int nAction, int nParam)
             g_bMouseCameraRotateToggle = nParam;
         return 0;
 #else
-        if (g_pGuiMan->PanelExists(g_pAppManager->m_pClientExoApp->GetInGameGui()
-                                       ->m_pMainInterface) == 0)
+        if (!AllowMouseLookToggle())
             return handled;
-        if (g_pGuiMan->m_modalPanels.m_count != 0)
-            return 0;
-        g_bMouseCameraRotateToggle = (nParam != 0);
-        MSG_Mac::CaptureMouse((nParam != 0) !=
-                              (g_pAppManager->m_pClientExoApp->GetClientOptions()
-                                   ->m_bGameplay1 !=
-                               0));
+        EnableMouseCameraRotateToggle(nParam != 0);
         return 0;
 #endif
 
@@ -1761,39 +1756,20 @@ int CClientExoAppInternal::HandleInputEvent(int nAction, int nParam)
 
     // R button up/down, the rotate toggle and mouse grab.
     case INPUTEVENT_MOUSE_RIGHT:
-#if KOTOR1
-        if (nParam == 0) {
-            g_bMouseCameraRotateToggle = 0;
-            g_pGuiMan->HandleRMouseUp();
-        } else {
-            g_bMouseCameraRotateToggle = 1;
-            g_pGuiMan->HandleRMouseDown();
-        }
-        return 0;
-#else
-        if (g_pGuiMan->PanelExists(g_pAppManager->m_pClientExoApp->GetInGameGui()
-                                       ->m_pMainInterface) == 0)
+#if !KOTOR1
+        if (!AllowMouseLookToggle())
             return handled;
-        if (g_pGuiMan->m_modalPanels.m_count != 0)
-            return 0;
+#endif
         if (nParam == 0) {
-            g_bMouseCameraRotateToggle = 0;
-            MSG_Mac::CaptureMouse(g_pAppManager->m_pClientExoApp->GetClientOptions()
-                                      ->m_bGameplay1);
-            g_pGuiMan->HandleRMouseUp();
+            PerformRButtonUpAction();
         } else {
-            g_bMouseCameraRotateToggle = 1;
-            MSG_Mac::CaptureMouse(g_pAppManager->m_pClientExoApp->GetClientOptions()
-                                      ->m_bGameplay1 == 0);
-            g_pGuiMan->HandleRMouseDown();
+            PerformRButtonDownAction();
         }
         return 0;
 
     // Mouse wheel.
-#endif
-
     case INPUTEVENT_MOUSE_WHEEL:
-        g_pGuiMan->HandleZMouse(nParam);
+        PerformZMouseMoveAction(nParam);
         return 0;
 
     // Screenshot.
@@ -1871,74 +1847,60 @@ int CClientExoAppInternal::HandleInputEvent(int nAction, int nParam)
     // Target-action menu left, right and down.
     case INPUTEVENT_TARGET_LEFT_ACTION:
         if (nParam != 0) {
-            CSWGuiMainInterface* pMain =
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface;
             if (g_bShiftActionState == 0)
-                pMain->DoTargetAction(0, 1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->DoTargetAction(0, 1);
             else
-                pMain->m_targetActionMenu.SelectNextAction(0);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->m_targetActionMenu.SelectNextAction(0);
         }
         return 0;
     case INPUTEVENT_TARGET_MIDDLE_ACTION:
         if (nParam != 0) {
-            CSWGuiMainInterface* pMain =
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface;
             if (g_bShiftActionState == 0)
-                pMain->DoTargetAction(1, 1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->DoTargetAction(1, 1);
             else
-                pMain->m_targetActionMenu.SelectNextAction(1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->m_targetActionMenu.SelectNextAction(1);
         }
         return 0;
     case INPUTEVENT_TARGET_RIGHT_ACTION:
         if (nParam != 0) {
-            CSWGuiMainInterface* pMain =
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface;
             if (g_bShiftActionState == 0)
-                pMain->DoTargetAction(2, 1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->DoTargetAction(2, 1);
             else
-                pMain->m_targetActionMenu.SelectNextAction(2);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->m_targetActionMenu.SelectNextAction(2);
         }
         return 0;
 
     // Personal-action menu left, right, down and up.
     case INPUTEVENT_PERSONAL_POWER_ACTION:
         if (nParam != 0) {
-            CSWGuiMainInterface* pMain =
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface;
             if (g_bShiftActionState == 0)
-                pMain->DoPersonalAction(0, 1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->DoPersonalAction(0, 1);
             else
-                pMain->SelectNextPersonalAction(0);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->SelectNextPersonalAction(0);
         }
         return 0;
     case INPUTEVENT_PERSONAL_MEDICAL_ACTION:
         if (nParam != 0) {
-            CSWGuiMainInterface* pMain =
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface;
             if (g_bShiftActionState == 0)
-                pMain->DoPersonalAction(1, 1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->DoPersonalAction(1, 1);
             else
-                pMain->SelectNextPersonalAction(1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->SelectNextPersonalAction(1);
         }
         return 0;
     case INPUTEVENT_PERSONAL_MINES_ACTION:
         if (nParam != 0) {
-            CSWGuiMainInterface* pMain =
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface;
             if (g_bShiftActionState == 0)
-                pMain->DoPersonalAction(3, 1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->DoPersonalAction(3, 1);
             else
-                pMain->SelectNextPersonalAction(3);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->SelectNextPersonalAction(3);
         }
         return 0;
     case INPUTEVENT_PERSONAL_OTHER_ACTION:
         if (nParam != 0) {
-            CSWGuiMainInterface* pMain =
-                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface;
             if (g_bShiftActionState == 0)
-                pMain->DoPersonalAction(2, 1);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->DoPersonalAction(2, 1);
             else
-                pMain->SelectNextPersonalAction(2);
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pMainInterface->SelectNextPersonalAction(2);
         }
         return 0;
 
@@ -1947,10 +1909,10 @@ int CClientExoAppInternal::HandleInputEvent(int nAction, int nParam)
         if (nParam != 0 && g_pAppManager->m_pLoadGameErrorInfo->m_flag == 0) {
             g_pExoInput->ClearEvents();
             g_bLeftMouseDown = 0;
+#if KOTOR1
             g_bMouseCameraRotateToggle = 0;
-#if !KOTOR1
-            MSG_Mac::CaptureMouse(g_pAppManager->m_pClientExoApp->GetClientOptions()
-                                      ->m_bGameplay1);
+#else
+            EnableMouseCameraRotateToggle(false);
 #endif
             g_pAppManager->m_pClientExoApp->ResetDriveAcceleration();
             g_pAppManager->m_pClientExoApp->GetInGameGui()->DoQuickLoad();
@@ -2063,9 +2025,9 @@ void CClientExoAppInternal::PlayBackInputEvents()
         do {
             CPlayBackEventNode* pEvt = m_playbackEvents.GetAtPos(m_playbackEvents.m_pInternal->m_pHead);
             long long lTime = static_cast<long long>(pEvt->m_nTime);
-            unsigned long long nSnap = static_cast<unsigned long long>(
+            uint64_ll_t nSnap = static_cast<uint64_ll_t>(
                 g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime());
-            if (nSnap / 1000 <= static_cast<unsigned long long>(lTime))
+            if (nSnap / 1000 <= static_cast<uint64_ll_t>(lTime))
                 break;
             pEvt = m_playbackEvents.RemoveHead();
             if (pEvt->m_type == 'K') {
@@ -2151,9 +2113,7 @@ store_class:
         }
         if (pMini != 0) {
             IndicateObject(0, 0);
-            m_mouseHideMask |= 1;
-            if (g_pExoInput) g_pExoInput->HideMouse();
-            if (m_pSWGuiManager) m_pSWGuiManager->HideSoftwareMouse();
+            HideMouse(MOUSEHIDE_MINIGAME);
             if (m_pInGameGui) m_pInGameGui->SetSWGuiStatus(CGuiInGame::SWGUI_TOGGLE_OFF, 0);
             pMini->SetCamera(m_pModule->m_pCamera);
             pMini->Go();
@@ -2165,8 +2125,7 @@ store_class:
     case INPUTCLASS_GAME: {
         if (m_sceneCreatureId != OBJECT_INVALID) {
             CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-            if (CSWSCreature* pCreature =
-                    pServer->GetCreatureByGameObjectID(pServer->GetPlayerCreatureId())) {
+            if (CSWSCreature* pCreature = pServer->GetPlayerCreature()) {
                 SetPlayerCreature(g_pAppManager->m_pClientExoApp
                                       ->ServerToClientObjectId(pCreature->m_objectId));
                 m_sceneCreatureId = OBJECT_INVALID;
@@ -2192,12 +2151,7 @@ store_class:
         }
         if (m_pPlayerControl != 0)
             m_pPlayerControl->SetEnabled(1);
-        if ((m_mouseHideMask &= ~MOUSEHIDE_MINIGAME) == 0 && m_fMouseShowTimer <= 0.0f) {
-            g_pExoInput->ShowMouse();
-            if (m_pSWGuiManager != 0 && !m_pClientOptions->m_bHardwareMouseCursor)
-                m_pSWGuiManager->ShowSoftwareMouse();
-            g_pExoInput->RefreshMouseCursor(g_bLeftMouseDown);
-        }
+        ShowMouse(MOUSEHIDE_MINIGAME);
         m_pInGameGui->SetSWGuiStatus(CGuiInGame::SWGUI_UNCOVER, 1);
         m_pInGameGui->m_bInGameMenuShown = 0;
         return;
@@ -2209,12 +2163,7 @@ store_class:
         if (m_pInGameGui != 0 && m_pInGameGui->m_swGuiToggleState == CGuiInGame::SWGUI_STATE_SHOWN) {
             if (flag != 0)
                 m_pInGameGui->SetSWGuiStatus(CGuiInGame::SWGUI_COVER, 1);
-            if ((m_mouseHideMask &= ~MOUSEHIDE_MINIGAME) == 0 && m_fMouseShowTimer <= 0.0f) {
-                g_pExoInput->ShowMouse();
-                if (m_pSWGuiManager != 0 && !m_pClientOptions->m_bHardwareMouseCursor)
-                    m_pSWGuiManager->ShowSoftwareMouse();
-                g_pExoInput->RefreshMouseCursor(g_bLeftMouseDown);
-            }
+            ShowMouse(MOUSEHIDE_MINIGAME);
         }
         m_pInGameGui->m_bInGameMenuShown = 1;
         return;
@@ -2224,6 +2173,8 @@ store_class:
 }
 
 // Picks the cursor to show for the object under the mouse.
+int NearestObjectCompare(void* pObjectId, CNearestStruct nearest);
+
 void CClientExoAppInternal::HandleMouseOver(unsigned long long nObjectID, const Vector& rPos, int bPick)
 {
     m_mouseOverPos = rPos;
@@ -2235,11 +2186,7 @@ void CClientExoAppInternal::HandleMouseOver(unsigned long long nObjectID, const 
         (m_pInGameGui->m_bInGameMenuShown != 0 || m_pInGameGui->m_nGlobalDialogState == 1 ||
          m_pClientOptions->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK))
     {
-        int nGuiCursor = MOUSECURSOR_DEFAULT;
-        if (g_pExoInput != 0)
-            nGuiCursor = g_pExoInput->SetMouseCursor(MOUSECURSOR_DEFAULT, 0, 0);
-        if (m_pSWGuiManager != 0)
-            m_pSWGuiManager->SetSoftwareMouseCursor(nGuiCursor, 0, 0);
+        SetMouseCursor(MOUSECURSOR_DEFAULT, 0, 0);
         return;
     }
 
@@ -2258,20 +2205,8 @@ void CClientExoAppInternal::HandleMouseOver(unsigned long long nObjectID, const 
             goto show_walk;
         if (pFirst == 0)
             nCursor = MOUSECURSOR_DEFAULT;
-        else {
-            nCursor = MOUSECURSOR_ATTACK;
-            switch (pFirst->m_nActionId & INTERFACE_ACTION_ID_MASK) {
-            case INTERFACE_ACTION_USE_OBJECT:
-            case INTERFACE_ACTION_USE_PLACEABLE: nCursor = MOUSECURSOR_USE; break;
-            case INTERFACE_ACTION_DIALOG: nCursor = MOUSECURSOR_TALK; break;
-            case INTERFACE_ACTION_ATTACK: break;          // keeps the default cursor
-            case INTERFACE_ACTION_OPEN_DOOR: nCursor = MOUSECURSOR_DOOR; break;
-            case INTERFACE_ACTION_DISABLE_MINE: nCursor = MOUSECURSOR_DISABLE_MINE; break;
-            case INTERFACE_ACTION_BASH: nCursor = MOUSECURSOR_BASH; break;
-            case INTERFACE_ACTION_RECOVER_MINE: nCursor = MOUSECURSOR_RECOVER_MINE; break;
-            default: nCursor = MOUSECURSOR_INVALID; break;
-            }
-        }
+        else
+            nCursor = ActionIconToMouseCursor(pFirst->m_nActionId, 0);
         goto show_cursor;
     }
 
@@ -2294,21 +2229,9 @@ check_sentinel:
             if (nObjectID == OBJECT_INVALID)
                 goto show_default;
         }
-        // Backward scan of the visible-object table for the candidate id.
-        // inlined CExoArrayList<CNearestStruct>::IndexOf(void*, int (*)(void*, CNearestStruct))
-        if (m_visibleTable.m_count >= 1) {
-            CNearestStruct* pRow = m_visibleTable.m_pArray;
-            int64_t i = 0;
-            do {
-                if (pRow->m_objectId == nObjectID) {
-                    if (pMouseOverControl == 0 && i != 1)
-                        goto show_walk;
-                    break;
-                }
-                i--;
-                pRow++;
-            } while (-i != m_visibleTable.m_count);
-        }
+        int nVisible = m_visibleTable.IndexOf(reinterpret_cast<void*>(nObjectID), NearestObjectCompare);
+        if (pMouseOverControl == 0 && nVisible != -1)
+            goto show_walk;
     }
 
 show_default:
@@ -2317,20 +2240,11 @@ show_default:
     goto show_cursor;
 
 show_cursor:
-    if (g_pExoInput != 0)
-        nCursor = g_pExoInput->SetMouseCursor(nCursor, 0, nDown);
-    if (m_pSWGuiManager != 0)
-        m_pSWGuiManager->SetSoftwareMouseCursor(nCursor, 0, nDown);
+    SetMouseCursor(nCursor, 0, nDown);
     return;
 
 show_walk:
-    {
-        int nWalkCursor =
-            (g_pExoInput != 0) ? g_pExoInput->SetMouseCursor(MOUSECURSOR_SELECT, 0, 0) : MOUSECURSOR_SELECT;
-        if (m_pSWGuiManager != 0)
-            m_pSWGuiManager->SetSoftwareMouseCursor(nWalkCursor, 0, 0);
-        return;
-    }
+    SetMouseCursor(MOUSECURSOR_SELECT, 0, 0);
 }
 
 // Handles the per-frame drive (vehicle and swoop) input, turning the held movement keys and the
@@ -2910,18 +2824,20 @@ mouseclick:
 
 void CClientExoAppInternal::PerformRButtonDownAction()
 {
+#if KOTOR1
     g_bMouseCameraRotateToggle = 1;
-#if !KOTOR1
-    MSG_Mac::CaptureMouse(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay1 == 0);
+#else
+    EnableMouseCameraRotateToggle(true);
 #endif
     g_pGuiMan->HandleRMouseDown();
 }
 
 void CClientExoAppInternal::PerformRButtonUpAction()
 {
+#if KOTOR1
     g_bMouseCameraRotateToggle = 0;
-#if !KOTOR1
-    MSG_Mac::CaptureMouse(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay1);
+#else
+    EnableMouseCameraRotateToggle(false);
 #endif
     g_pGuiMan->HandleRMouseUp();
 }
@@ -3532,17 +3448,5 @@ int CClientExoAppInternal::ActionIconToMouseCursor(int nAction, int b)
 
 CResRef CClientExoAppInternal::ActionIconToCursorResref(int nAction, int b)
 {
-    K2_UNUSED(b);
-    int idx = MOUSECURSOR_ATTACK;
-    switch (nAction & INTERFACE_ACTION_ID_MASK) {
-    case INTERFACE_ACTION_ATTACK: break;
-    case INTERFACE_ACTION_USE_OBJECT: case INTERFACE_ACTION_USE_PLACEABLE: idx = MOUSECURSOR_USE; break;
-    case INTERFACE_ACTION_DIALOG: idx = MOUSECURSOR_TALK; break;
-    case INTERFACE_ACTION_OPEN_DOOR: idx = MOUSECURSOR_DOOR; break;
-    case INTERFACE_ACTION_DISABLE_MINE: idx = MOUSECURSOR_DISABLE_MINE; break;
-    case INTERFACE_ACTION_BASH: idx = MOUSECURSOR_BASH; break;
-    case INTERFACE_ACTION_RECOVER_MINE: idx = MOUSECURSOR_RECOVER_MINE; break;
-    default: idx = MOUSECURSOR_INVALID; break;
-    }
-    return CResRef(g_asMouseCursorNames[idx]);
+    return CResRef(g_asMouseCursorNames[ActionIconToMouseCursor(nAction, b)]);
 }

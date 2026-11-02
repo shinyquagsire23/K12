@@ -17,7 +17,11 @@ class Part;
 class CAurPart {
 public:
 
+#if KOTOR1  // K1 has no hologram / per-object illumination flags
+    CAurPart() { __builtin_memset(&m_nNodeID, 0, sizeof(m_nNodeID) + sizeof(m_bDrawEnabled)); }
+#else
     CAurPart() { __builtin_memset(&m_nNodeID, 0, sizeof(m_nNodeID) + 3 * sizeof(m_bDrawEnabled)); }
+#endif
 
     virtual ~CAurPart() {}
 
@@ -42,8 +46,10 @@ public:
     } m_scale;
     int  m_nNodeID = 0;
     bool m_bDrawEnabled = false;
+#if !KOTOR1  // K2-only: Gob::EnableHologramRendering / EnablePerObjectIllumination
     bool m_bHologramRendering = false;
     bool m_bPerObjectIllumination = false;
+#endif
     Part** m_paChildren = 0;
     int  m_nChildren = 0;
     int  m_nCapacity = 0;
@@ -1369,8 +1375,8 @@ public:
 #if !KOTOR1  // the dirt and hologram block is K2-only
     bool m_bDirtEnabled;
     char _pad1cb[0x1cc - 0x1cb];
-    unsigned short m_nDirtTexture;
-    unsigned short m_nDirtWorldspace;
+    short m_nDirtTexture;
+    short m_nDirtWorldspace;
     bool m_bHologramDoNotDraw;
     char _pad1d1[0x1d4 - 0x1d1];
 #endif
@@ -1614,6 +1620,7 @@ public:
 #endif
 
 // MeshSmooth post-process parameters baked next to a tri-mesh node.
+class NodeVertex;
 class MdlNodeTriMesh_PostProcess {
 public:
 
@@ -1627,7 +1634,7 @@ public:
     List<Vector> m_colors;
     List<MaxFace_PostProcess> m_faces;
     List<Vector> m_normals;
-    List<unsigned int*> m_vertices;
+    List<NodeVertex*> m_vertices;
 };
 
 class Gob;
@@ -1722,9 +1729,10 @@ public:
 
 struct Animation32;
 
-struct AnimationEvent {
+// A value keyed by time. The animation's event list is AurKey<char[32]>: the event name.
+template <class T> struct AurKey {
     float m_fTime = 0.0f;
-    char  m_szName[32];
+    T     m_value;
 };
 
 // Root of an animation file: the node hierarchy that overrides a model's.
@@ -1740,7 +1748,7 @@ public:
     float m_fLength;
     float m_fTransTime;
     char m_szAnimRoot[32];
-    List<AnimationEvent> m_events;
+    List<AurKey<char[32]> > m_events;
     Model*   m_pModel;
 };
 

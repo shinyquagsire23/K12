@@ -407,7 +407,7 @@ MaxTree* InputBinary::Read(void* pRes, void* pMdx)
             ResetMdlNode(pAnimation->m_pMdlNode, pMdl);
             UpdateAnimFootprint(pAnimation->m_pMdlNode, 1);
             animationfootprint = animationfootprint
-                               + pAnimation->m_events.m_count * static_cast<int>(sizeof(AnimationEvent))
+                               + pAnimation->m_events.m_count * static_cast<int>(sizeof(AurKey<char[32]>))
                                + static_cast<int>(sizeof(Animation) + sizeof(Animation*));
             pAnimation->m_pfnDestructor = MaxTreeDestructor;
             pAnimation->m_pfnParseField = MaxTreeParseField;
@@ -1543,7 +1543,7 @@ bool IODispatcher::Write(MaxTree* pTree, FILE* pFile, FILE* pOut) {
         memcpy(pAnimImage, pAnim, sizeof(Animation));
         nOffset = nOffset + sizeof(Animation);
 
-        uint64_t nEventSize = sizeof(AnimationEvent) * static_cast<uint64_t>(pAnim->m_events.m_count);
+        uint64_t nEventSize = sizeof(AurKey<char[32]>) * static_cast<uint64_t>(pAnim->m_events.m_count);
         if (pAnim->m_events.m_count != 0) {
             pAnimImage->m_nEventTable = nOffset;
             memcpy(pMdlBuf + nOffset, pAnim->m_events.m_pData,  // idiom-exempt: the size is a count

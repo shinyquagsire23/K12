@@ -44,7 +44,7 @@ public:
     void         RemoveFromArea();
     void          AddToArea(CSWSArea* pArea, float x, float y, float z, int a5);
     void          RemoveItem(CSWSItem* pItem);
-    void          RemoveItemFromInventory(CSWSItem* pItem);
+    int           RemoveItemFromInventory(CSWSItem* pItem);
     void          RemoveCustomer(CSWSPlayer* pPlayer);
     void          AddCustomer(CSWSPlayer* pPlayer);
     int            CalculateItemSellPrice(CSWSItem* pItem, unsigned long long qty);

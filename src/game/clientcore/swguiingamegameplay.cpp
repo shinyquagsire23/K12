@@ -547,9 +547,7 @@ void CSWGuiInGameGameplay::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_Y:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_btnDefault.m_tail.nCurrentEventArg = 1;
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetDefaultGameplayOptions();
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetDefaultMouseSen();
-            SetUpOptions();
+            OnDefault(&m_btnDefault);
             break;
 #endif
         case INPUTEVENT_GUI_START: {

@@ -759,12 +759,7 @@ void CSWGuiOptionsGraphicsAdvanced::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_Y:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_btnDefault.m_tail.nCurrentEventArg = 1;
-#ifdef K2_QOL_ADVANCED_ROWS
             OnDefault(&m_btnDefault);
-#else
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetDefaultAdvancedGraphicsOptions();
-            SetUpOptions();
-#endif
             break;
 
         case INPUTEVENT_GUI_START:
@@ -1129,8 +1124,7 @@ CSWGuiOptionsFeedback::CSWGuiOptionsFeedback(CSWGuiManager* pGuiManager)
 
     SetActiveControl(&m_listBox, false);
 
-    if (SWGUI_NUM_FEEDBACK_OPTIONS >= 1)
-        m_listBox.SetActiveControl(m_listBox.GetControl(0), false);
+    SetActiveButton(0);
 
     SetUpOptions();
 #if KOTOR1
@@ -1163,8 +1157,7 @@ void CSWGuiOptionsFeedback::HandleInputEvent(int type, int val)
 #else
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_btnDefault.m_tail.nCurrentEventArg = 1;
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetDefaultFeedbackOptions();
-            SetUpOptions();
+            OnDefault(&m_btnDefault);
             break;
 #endif
         case INPUTEVENT_GUI_START: {
@@ -1600,35 +1593,7 @@ CSWGuiOptionsGraphics::CSWGuiOptionsGraphics(CSWGuiManager* pGuiManager, int bIn
     m_cbFramerateLock.m_pParent = m_cbForceSpeed.m_pParent;
     m_cbFramerateLock.m_pContainer = this;
 
-    // The 25x25 glyph, vertically centred in the row and 2 px below its top edge.
-    m_cbFramerateLock.m_border.m_extent.x = nRowX;
-    m_cbFramerateLock.m_border.m_extent.y = nRowY + (nRowH - 25) / 2 + 52;
-    m_cbFramerateLock.m_border.m_extent.w = 25;
-    m_cbFramerateLock.m_border.m_extent.h = 25;
-    m_cbFramerateLock.m_borderHilight.m_extent.x = nRowX;
-    m_cbFramerateLock.m_borderHilight.m_extent.y = nRowY + (nRowH - 25) / 2 + 52;
-    m_cbFramerateLock.m_borderHilight.m_extent.w = 25;
-    m_cbFramerateLock.m_borderHilight.m_extent.h = 25;
-    m_cbFramerateLock.m_borderToggledHilight.m_extent.x = nRowX;
-    m_cbFramerateLock.m_borderToggledHilight.m_extent.y = nRowY + (nRowH - 25) / 2 + 52;
-    m_cbFramerateLock.m_borderToggledHilight.m_extent.w = 25;
-    m_cbFramerateLock.m_borderToggledHilight.m_extent.h = 25;
-    m_cbFramerateLock.m_borderToggled.m_extent.x = nRowX;
-    m_cbFramerateLock.m_borderToggled.m_extent.y = nRowY + (nRowH - 25) / 2 + 52;
-    m_cbFramerateLock.m_borderToggled.m_extent.w = 25;
-    m_cbFramerateLock.m_borderToggled.m_extent.h = 25;
-
-    CSWGuiExtent extentText;
-    extentText.x = nRowX + 30;
-    extentText.y = nRowY + 50;
-    extentText.w = nRowW - 30;
-    extentText.h = nRowH;
-    m_cbFramerateLock.m_text.SetExtent(extentText);
-
-    m_cbFramerateLock.m_extent.x = nRowX;
-    m_cbFramerateLock.m_extent.y = nRowY + 50;
-    m_cbFramerateLock.m_extent.w = nRowW;
-    m_cbFramerateLock.m_extent.h = nRowH;
+    m_cbFramerateLock.SetExtent(CSWGuiExtent(nRowX, nRowY + 50, nRowW, nRowH));
 
     InitControl(m_cbFramerateLock, 1, 1, CExoString(static_cast<char*>(0)), 0);
 #ifdef K2_QOL_IMPROVEMENTS
@@ -1638,16 +1603,7 @@ CSWGuiOptionsGraphics::CSWGuiOptionsGraphics(CSWGuiManager* pGuiManager, int bIn
     m_cbFramerateLock.m_tail.m_nUserData = SWGUI_STRREF_CUSTOM_FRAMERATELOCK;
 #endif
 
-#if !defined(K2_UI_PC)   // pc: the layout's width holds the caption (no pad glyph beside it)
-    // BTN_DEFAULT has to be wide enough for its own caption plus three row-heights.
-    CSWGuiControl* pDefault = &m_btnDefault;
-    CSWGuiExtent extentDefault = m_btnDefault.m_extent;
-    int nIdealWidth = extentDefault.h * 3;
-    CSWGuiExtent extentIdeal = m_btnDefault.m_text.GetIdealWidthAndHeight();
-    nIdealWidth += extentIdeal.w;
-    extentDefault.w = (extentDefault.w > nIdealWidth) ? extentDefault.w : nIdealWidth;
-    pDefault->SetExtent(extentDefault);
-#endif
+    ExpandButtonToFitText(m_btnDefault);
 
     m_labelDesc.Initialize(m_listBoxDesc.m_pProtoItem->m_extent,
                            static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem), 1.0f);
@@ -2194,8 +2150,7 @@ void CSWGuiOptionsGraphics::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_Y:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_btnDefault.m_tail.nCurrentEventArg = 1;
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetDefaultGraphicsOptions();
-            SetUpOptions();
+            OnDefault(&m_btnDefault);
             break;
         case INPUTEVENT_GUI_START:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
@@ -2427,11 +2382,7 @@ void CSWGuiOptionsSoundAdvanced::OnForceSoftware(CSWGuiControl* pControl)
         } else {
             bEnabled = 0;
         }
-        m_btnEAX.SetEnabled(bEnabled);
-        m_btnEAX.m_text.m_params.SetColor(bEnabled ? CGuiInGame::COLOR_NEW_TEXT
-                                                   : CGuiInGame::DISABLED_TEXT);
-        m_btnEAXRight.SetEnabled(bEnabled);
-        m_btnEAXLeft.SetEnabled(bEnabled);
+        EnableEAXControls(bEnabled);
         m_nOptionsChanged = 1;
 #endif
     }
@@ -2505,17 +2456,7 @@ void CSWGuiOptionsSoundAdvanced::SetUpOptions()
         int nForce = pOptions->m_bForceSoftware;
         m_nForceSoftware = nForce;
         m_checkForceSoftware.bToggledOn = (nForce & 1);
-        int bEnabled = (pOptions->m_bForceSoftware == 0);
-        m_btnEAX.SetEnabled(bEnabled);
-#if KOTOR1
-        m_btnEAX.m_text.m_params.SetColor(bEnabled ? CGuiInGame::COLOR_BLUE  // K1: COLOR_BLUE
-                                                   : CGuiInGame::DISABLED_TEXT);
-#else
-        m_btnEAX.m_text.m_params.SetColor(bEnabled ? CGuiInGame::COLOR_NEW_TEXT
-                                                   : CGuiInGame::DISABLED_TEXT);
-#endif
-        m_btnEAXRight.SetEnabled(bEnabled);
-        m_btnEAXLeft.SetEnabled(bEnabled);
+        EnableEAXControls(pOptions->m_bForceSoftware == 0);
     }
     m_nOptionsChanged = 0;
 }
@@ -2663,9 +2604,7 @@ void CSWGuiOptionsSoundAdvanced::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_Y:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_btnDefault.m_tail.nCurrentEventArg = 1;
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetDefaultAdvancedSoundOptions();
-            SetUpOptions();
-            m_nOptionsChanged = 1;
+            OnDefault(&m_btnDefault);
             break;
 #endif
         case INPUTEVENT_GUI_START:
@@ -2866,8 +2805,7 @@ void CSWGuiOptionsMouse::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_Y:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_btnDefault.m_tail.nCurrentEventArg = 1;
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetDefaultMouseOptions();
-            SetUpOptions();
+            OnDefault(&m_btnDefault);
             break;
 #endif
         case INPUTEVENT_GUI_START:
@@ -3041,7 +2979,7 @@ void CSWGuiOptionsMain::HandleInputEvent(int type, int val) {
 #endif
             m_pGuiManager->PopModalPanel();
             SetToBeDeleted(0);
-            g_pAppManager->m_pClientExoApp->SaveOptions();
+            ClosePanel();
             break;
         }
         case INPUTEVENT_GUI_START:
@@ -3405,8 +3343,7 @@ void CSWGuiOptionsSound::HandleInputEvent(int type, int val)
 #else
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_btnDefault.m_tail.nCurrentEventArg = 1;
-            g_pAppManager->m_pClientExoApp->GetClientOptions()->SetDefaultSoundOptions();
-            SetUpOptions();
+            OnDefault(&m_btnDefault);
             break;
 #endif
         case INPUTEVENT_GUI_START:

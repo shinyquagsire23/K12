@@ -68,7 +68,7 @@ CSWGuiSkillsCharGen::CSWGuiSkillsCharGen(CSWGuiManager* pGuiManager, CSWCCreatur
                         && g_pAppManager->m_pServerExoApp->GetPartyTable()->m_nControlledNPC == -1));
     m_bIsDroid = (m_pCreature->m_pStats->m_nRace == CSWRace::CRACE_DROID);
 
-    m_pCreature->m_pStats->GetClassLeveledUpIn();
+    m_pCreature->m_pStats->GetClass(m_pCreature->m_pStats->m_nNumClasses - 1);
 
     StartLoadFromLayout(CResRef("SKCHRGEN"));
 
@@ -280,7 +280,7 @@ CSWGuiSkillsCharGen::CSWGuiSkillsCharGen(CSWGuiManager* pGuiManager, CSWCCreatur
     m_bIsDroid = (m_pCreature->m_pStats->m_nRace == CSWRace::CRACE_DROID);
 
     // Called for its side effect.
-    m_pCreature->m_pStats->GetClassLeveledUpIn();
+    m_pCreature->m_pStats->GetClass(m_pCreature->m_pStats->m_nNumClasses - 1);
 
     StartLoadFromLayout(CResRef("SKCHRGEN_p"), 1, 1, 1);
 
@@ -411,17 +411,8 @@ CSWGuiSkillsCharGen::CSWGuiSkillsCharGen(CSWGuiManager* pGuiManager, CSWCCreatur
         // The ceiling for this row is (level + 3), halved unless the creature may buy the skill as
         // a class skill.
         int nMaxRank = m_pCreature->m_pStats->GetLevel() + 3;
-        if (!m_pCreature->m_pStats->HasClassSkillFeat(static_cast<unsigned short>(i)))
-        {
-            for (int nClass = 0; nClass < m_pCreature->m_pStats->m_nNumClasses; nClass++)
-            {
-                unsigned char nClassId = m_pCreature->m_pStats->GetClass(static_cast<unsigned char>(nClass));
-                if (g_pRules->m_paClasses[nClassId].IsSkillClassSkill(static_cast<unsigned short>(i)))
-                    goto lClassSkillRank;
-            }
+        if (!IsClassSkill(static_cast<unsigned short>(i)))
             nMaxRank >>= 1;
-        }
-    lClassSkillRank:;
 
         // The arrows are shown only on a row that can move; the minus needs a rank to give back,
         // the plus needs headroom under the ceiling.
@@ -991,7 +982,7 @@ void CSWGuiSkillsCharGen::OnAcceptButton()
 // snapshot, lets the package grant its skills and then repaints every row.
 void CSWGuiSkillsCharGen::OnRecommendButton()
 {
-    unsigned char nClass = m_pCreature->m_pStats->GetClassLeveledUpIn();
+    unsigned char nClass = m_pCreature->m_pStats->GetClass(m_pCreature->m_pStats->m_nNumClasses - 1);
 
     // Create mode throws the pool away and lets the level's allowance re-seed it; level-up mode
     // restores the allowance the constructor recorded and keeps the ranks already bought.

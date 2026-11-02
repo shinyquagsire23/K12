@@ -99,8 +99,8 @@ CSWGuiSaveLoad::CSWGuiSaveLoad(CSWGuiManager* pGuiManager, int nSaveMode, int nE
         extentCloud.h = 77;
         m_btnCloud.SetExtent(extentCloud);
         m_btnCloud.m_text.m_params.SetText(CExoString(""));
-        m_btnCloud.m_border.m_params.SetFillImage(CResRef("ipho_cloud"), 0);
-        m_btnCloud.m_borderHilight.m_params.SetFillImage(CResRef("ipho_cloud2"), 0);
+        m_btnCloud.m_border.m_params.SetFillImage(CResRef("ipho_cloud"));
+        m_btnCloud.m_borderHilight.m_params.SetFillImage(CResRef("ipho_cloud2"));
         m_btnCloud.AddEvent(INPUTEVENT_GUI_A, this,
             static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiPanel::OnYButtonPressed));
         AddControl(&m_btnCloud);
@@ -462,9 +462,9 @@ void CSWGuiSaveLoad::PopulateGameList()
             if (pRow->m_nTimePlayed == pCloud->m_nTimePlayed &&
                 pRow->m_moduleName == pCloud->m_moduleName && pRow != pCloud)
             {
-                pRow->m_border.m_params.SetFillImage(CResRef("ipho_mcloud"), 0);
+                pRow->m_border.m_params.SetFillImage(CResRef("ipho_mcloud"));
                 pRow->m_border.m_params.m_flags.nFillStyle = 2;
-                pRow->m_borderHilight.m_params.SetFillImage(CResRef("ipho_mcloud"), 0);
+                pRow->m_borderHilight.m_params.SetFillImage(CResRef("ipho_mcloud"));
                 pRow->m_borderHilight.m_params.m_flags.nFillStyle = 2;
             }
         }
@@ -477,9 +477,8 @@ void CSWGuiSaveLoad::PopulateGameList()
     CExoArrayList<CExoString> fileList;
     CSWGuiExtent extent(0, 0, 0, 36);
     CExoArrayList<CSWGuiControl*> aEntries;
-    CExoString unused;
-
     pCloudSave = 0;
+    CExoString unused;
 
     g_pExoBase->GetDirectoryList(&fileList, CExoString("SAVES:"), RESTYPE_INVALID, 1, 1);
     if (g_pExoResMan->CreateDirectory2(CExoString("TEMP:")) == 0)
@@ -1237,11 +1236,7 @@ void CSWGuiSaveLoad::Update(float f)
 #else
     if (g_cloudSaveChanged) {
         g_cloudSaveChanged = 0;
-
-        int nSelected = m_saveList.m_nSelectedIndex;
-        PopulateGameList();
-        int nLast = m_saveList.m_aControls.m_count - 1;
-        m_saveList.SetSelectedControl(nLast < nSelected ? nLast : nSelected, 0);
+        ReloadGamesList(0);
     }
 #endif
 }
@@ -2413,22 +2408,22 @@ void CSWGuiSaveLoad::ShowGame(CSWGuiControl* pControl)
         }
 
         for (int i = 0; i < 3; i++)
-            m_aPMLabels[i].m_border.m_params.SetFillImage(pEntry->GetPlayerPortrait(i), 0);
+            m_aPMLabels[i].m_border.m_params.SetFillImage(pEntry->GetPlayerPortrait(i));
 
         if (pEntry->m_bRebootAutoSave || pEntry->m_bPCAutoSave || pEntry->m_nSaveSlot == 0)
         {
-            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(pEntry->m_screenshot), 0);
+            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(pEntry->m_screenshot));
         }
         else
         {
-            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(""), 0);
+            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(""));
             if (!m_sResourceDir.IsEmpty())
                 g_pExoResMan->RemoveResourceDirectory(m_sResourceDir);
             m_sResourceDir = pEntry->GetGameDirectory();
             g_pExoResMan->AddResourceDirectory(m_sResourceDir);
-            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef("screen"), 0);
+            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef("screen"));
             if (!g_pExoResMan->Exists(CResRef("screen"), RESTYPE_TGA))
-                m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(pEntry->m_screenshot), 0);
+                m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(pEntry->m_screenshot));
         }
 
         m_lblScreenshot.m_text.m_params.SetText(CExoString(""));
@@ -2444,8 +2439,8 @@ void CSWGuiSaveLoad::ShowGame(CSWGuiControl* pControl)
         m_lblPlanetName.m_text.m_params.SetText(CExoString(""));
         m_lblAreaName.m_text.m_params.SetText(CExoString(""));
         for (int i = 0; i < 3; i++)
-            m_aPMLabels[i].m_border.m_params.SetFillImage(CResRef(), 0);
-        m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(), 0);
+            m_aPMLabels[i].m_border.m_params.SetFillImage(CResRef());
+        m_lblScreenshot.m_border.m_params.SetFillImage(CResRef());
         m_lblScreenshot.m_text.m_params.SetStrRef(STRREF_NEW_SLOT);
         m_btnDelete.SetEnabled(0);
     }
@@ -2528,21 +2523,21 @@ void CSWGuiSaveLoad::ShowGame(CSWGuiControl* pControl)
         }
 
         for (int i = 0; i < 3; i++)
-            m_aPMLabels[i].m_border.m_params.SetFillImage(pEntry->GetPlayerPortrait(i), 0);
+            m_aPMLabels[i].m_border.m_params.SetFillImage(pEntry->GetPlayerPortrait(i));
 
         // Mount the slot's resource directory so "screen" resolves.
         if (pEntry->m_bRebootAutoSave || pEntry->m_bPCAutoSave)
         {
-            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(pEntry->m_screenshot), 0);
+            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(pEntry->m_screenshot));
         }
         else
         {
-            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(""), 0);
+            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(""));
             if (m_sResourceDir.m_sString != 0 && *m_sResourceDir.m_sString != 0)
                 g_pExoResMan->RemoveResourceDirectory(m_sResourceDir);
             m_sResourceDir = pEntry->GetGameDirectory();
             g_pExoResMan->AddResourceDirectory(m_sResourceDir);
-            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef("screen"), 0);
+            m_lblScreenshot.m_border.m_params.SetFillImage(CResRef("screen"));
         }
 
         m_lblScreenshot.m_text.m_params.SetText(CExoString(""));
@@ -2559,8 +2554,8 @@ void CSWGuiSaveLoad::ShowGame(CSWGuiControl* pControl)
         m_lblPlanetName.m_text.m_params.SetText(CExoString(""));
         m_lblAreaName.m_text.m_params.SetText(CExoString(""));
         for (int i = 0; i < 3; i++)
-            m_aPMLabels[i].m_border.m_params.SetFillImage(CResRef(), 0);
-        m_lblScreenshot.m_border.m_params.SetFillImage(CResRef(), 0);
+            m_aPMLabels[i].m_border.m_params.SetFillImage(CResRef());
+        m_lblScreenshot.m_border.m_params.SetFillImage(CResRef());
         m_lblScreenshot.m_text.m_params.SetStrRef(STRREF_NEW_SLOT);
         m_btnDelete.SetEnabled(0);
     }

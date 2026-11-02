@@ -282,6 +282,10 @@ extern "C" int SDL_GetDisplayMode(int nDisplay, int nMode, SDL_DisplayMode* pMod
 // An event watch sees what SDL_main pumps (and what the scripted input pushes); K1's
 // CExoRawInputInternal::GetKeyboardBuffer drains it once per engine poll.
 extern "C" unsigned char k2shim_dik_from_scancode(int nScancode);   // shim/shim_dinput.cpp
+#if K2P_COV   // platforms/compat/k2cov.cpp
+extern "C" void k2cov_dump(const char* szPath);
+extern "C" void k2cov_reset(void);
+#endif
 namespace {
 std::mutex s_keyLock;
 std::vector<std::pair<unsigned char, unsigned char>> s_keyQueue;   // (DIK code, 0x80 down / 0 up)
@@ -449,6 +453,7 @@ namespace {
 //                                            con:CMD (a console command, `+` = space: con:warp+end_m01ab)
 //                                            jump:X,Y,Z (the player to a point in its area)
 //                                            achieve:TAG (unlock it, as the engine does: shim_achievements.cpp)
+//                                            cov:PATH / cov:reset (K2P_COV builds: dump / zero the counts)
 //   K2_CTL=<file>   the same actions, live: the file is read and removed each frame; one action per
 //                   line, `+N:action:arg` delays it N frames.
 std::vector<std::pair<int, std::string>> s_queue;   // (frame, "action:arg")
@@ -642,7 +647,21 @@ void DoAction(SDL_Window* pWindow, int nFrame, const std::string& sAction, const
         k2host_unlock_achievement(sArg.c_str());   // as the engine's unlock (shim_achievements.cpp)
     } else if (sAction == "shot") {
         WriteShot(pWindow, ("k2shot_" + sArg + ".ppm").c_str());
+    } else if (sAction == "cov") {
+#if K2P_COV
+        if (sArg == "reset")
+            k2cov_reset();
+        else
+            k2cov_dump(sArg.c_str());
+#endif
     } else if (sAction == "quit") {
+#if K2P_COV
+        {   // _exit() below skips the atexit handler k2cov.cpp registers
+            const char* szCov = getenv("K2_COV");
+            if (szCov && *szCov)
+                k2cov_dump(szCov);
+        }
+#endif
         fprintf(stderr, "k1: quit requested\n");
         _exit(0);
     }

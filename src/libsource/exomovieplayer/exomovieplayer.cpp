@@ -100,7 +100,7 @@ void CExoMoviePlayer::WindowsPosChanged() {}
 void CExoMoviePlayer::ClearMovies()
 {
     if (m_pInternal)
-        m_pInternal->m_aMovies.Clear();
+        m_pInternal->ClearMovies();
 }
 
 int CExoMoviePlayer::Initialize(void* p)

@@ -107,8 +107,7 @@ public:
     CSWGuiButton m_btnOptions;
     CSWGuiButton m_btnReserved1;
     CSWGuiLabel m_lblNewContent;
-    CSWGuiLabel m_lblGameLogo;
-    CSWGuiLabel m_lblMenuBG;
+    CSWGuiLabel m_lblLogos[2];  // LBL_GAMELOGO, LBL_MENUBG
     CSWGuiButton m_btnExit;
     CSWGuiButton m_btnWarp;
     int m_bInputReady;
@@ -135,8 +134,7 @@ public:
     CSWGuiButton m_btnReserved1;
 
     CSWGuiLabel m_lblNewContent;
-    CSWGuiLabel m_lblGameLogo;
-    CSWGuiLabel m_lblMenuBG;
+    CSWGuiLabel m_lblLogos[2];  // LBL_GAMELOGO, LBL_MENUBG
     CSWGuiLabel m_lblBW;
     CSWGuiLabel m_lblLucas;
 

@@ -440,8 +440,9 @@ void CSWGuiBarkBubble::Draw(float fAlpha)
         extent.y = nLimit + 20;
 #endif
 
+    int nScreenWidth = m_pGuiManager->m_nScreenWidth;
     m_pGuiManager->GetSafeMargin(nMarginX, nMarginY);
-    int nMaxW = m_pGuiManager->m_nScreenWidth - nMarginX * 2 - extent.x;
+    int nMaxW = nScreenWidth - nMarginX * 2 - extent.x;
     if (nMaxW < extent.w)
         extent.w = nMaxW;
 

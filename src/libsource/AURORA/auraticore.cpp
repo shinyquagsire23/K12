@@ -1804,8 +1804,8 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SetActiveTexture(2);
         tex1on = 1;
+        SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -1822,8 +1822,8 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SetActiveTexture(2);
         tex1on = 1;
+        SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -1845,8 +1845,8 @@ void GLRender::EnableFragmentShadersARB(int nShaderID, CAurTexture* pTex0, CAurT
         SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        SetActiveTexture(2);
         tex1on = 1;
+        SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);

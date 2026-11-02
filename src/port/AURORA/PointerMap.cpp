@@ -188,7 +188,7 @@ Animation::Animation(Animation32& p) : MaxTree(p)
     m_fLength = p.m_fLength;
     m_fTransTime = p.m_fTransTime;
     __builtin_memcpy(m_szAnimRoot, p.m_szAnimRoot, sizeof(p.m_szAnimRoot));
-    m_events.m_pData = reinterpret_cast<AnimationEvent*>(static_cast<int64_t>(p.m_pEvents));
+    m_events.m_pData = reinterpret_cast<AurKey<char[32]>*>(static_cast<int64_t>(p.m_pEvents));
     __builtin_memcpy(&m_events.m_count, &p.m_nEventCount, sizeof(int));
     __builtin_memcpy(&m_events.m_capacity, &p.m_nEventCap, sizeof(int));
     m_pModel = reinterpret_cast<Model*>(static_cast<int64_t>(p.m_pModel));

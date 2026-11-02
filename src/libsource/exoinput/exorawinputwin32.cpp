@@ -211,11 +211,7 @@ void CExoRawInputInternal::ShutDownDirectInput() noexcept
             m_pKeyboardDevice->Release();
             m_pKeyboardDevice = 0;
         }
-        if (m_pMouseDevice != 0) {
-            m_pMouseDevice->Unacquire();
-            m_pMouseDevice->Release();
-            m_pMouseDevice = 0;
-        }
+        ShutDownDirectInputMouse();
         int n = m_nNumJoysticks;
         for (int i = 0; i < n; i++) {
             if (m_paJoystickDevices[i] != 0) {
@@ -735,19 +731,8 @@ void CExoRawInputInternal::SetActive(int active)
     }
 
     m_bActive = active;
-    if (active != 0 && m_nKeyboardMode == 0 && m_pKeyboardDevice != 0) {
-    retry:
-        unsigned int count = static_cast<unsigned int>(-1);
-        int64_t result = m_pKeyboardDevice->GetDeviceData(DIDEVICEOBJECTDATA_SIZE, 0, &count, 0);
-        if (result == DIERR_NOTACQUIRED) {
-            int64_t acqResult = m_pKeyboardDevice->Acquire();
-            if (acqResult == DIERR_INPUTLOST) {
-                goto retry;
-            }
-        } else if (result == DIERR_INPUTLOST) {
-            m_pKeyboardDevice->Acquire();
-        }
-    }
+    if (active != 0)
+        ClearKeyboardBuffer();
 #endif
 }
 

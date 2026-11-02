@@ -209,10 +209,10 @@ public:
 
     CExoArrayList<unsigned short> m_feats;
     CExoArrayList<unsigned short> m_bonusFeats;
-    CExoArrayList<CSWSStats_FeatRemainingUses*> m_featRemainingUses;
+    CExoArrayList<CFeatUseListEntry*> m_featRemainingUses;
     unsigned short m_nPlayerState;
 
-    CSWActionQueueEntry m_actionQueue[NUM_ACTION_QUEUE_ENTRIES];
+    CSWActionNode m_actionQueue[NUM_ACTION_QUEUE_ENTRIES];
 
     CExoArrayList<CSWVisibilityNode*> m_visibilityList;
 

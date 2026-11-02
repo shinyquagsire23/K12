@@ -453,11 +453,8 @@ int CExoResMan::ReleaseResObject(CRes* pRes)
     if (pRes->m_pKeyEntry != 0) {
         pRes->m_pKeyEntry->m_pRes = 0;
     }
+    pRes->Dump(1);
     unsigned int dwFlags = pRes->m_dwFlags;
-    if ((dwFlags & CRes::RESFLAG_HAS_DATA) != 0 && pRes->m_pFileData != 0) {
-        g_pExoResMan->Free(pRes);
-        dwFlags = pRes->m_dwFlags;
-    }
     if ((dwFlags >> 3 & 1) != 0) {
         pRes->m_dwFlags = dwFlags | CRes::RESFLAG_ORPHANED;
     }
@@ -614,66 +611,22 @@ bool CExoResMan::UpdateKeyTable(const CExoString& path, unsigned int sourceType)
 
 bool CExoResMan::UpdateFixedKeyTableFile(const CExoString& path)
 {
-    CExoLinkedListNode* pNode = m_fixedKeyTables.m_pInternal->m_pHead;
-    if (pNode == 0) {
-        return false;
-    }
-    CExoKeyTable* pTable = m_fixedKeyTables.GetAtPos(pNode);
-    while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
-        pTable = m_fixedKeyTables.GetNext(pNode);
-        if (pNode == 0) return false;
-    }
-
-    pTable->RebuildTable();
-    return true;
+    return UpdateKeyTable(path, KEYTABLE_SOURCE_FIXED);
 }
 
 bool CExoResMan::UpdateResourceDirectory(const CExoString& path)
 {
-    CExoLinkedListNode* pNode = m_resourceDirectories.m_pInternal->m_pHead;
-    if (pNode == 0) {
-        return false;
-    }
-    CExoKeyTable* pTable = m_resourceDirectories.GetAtPos(pNode);
-    while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
-        pTable = m_resourceDirectories.GetNext(pNode);
-        if (pNode == 0) return false;
-    }
-
-    pTable->RebuildTable();
-    return true;
+    return UpdateKeyTable(path, KEYTABLE_SOURCE_DIRECTORY);
 }
 
 bool CExoResMan::UpdateEncapsulatedResourceFile(const CExoString& path)
 {
-    CExoLinkedListNode* pNode = m_encapsulatedFiles.m_pInternal->m_pHead;
-    if (pNode == 0) {
-        return false;
-    }
-    CExoKeyTable* pTable = m_encapsulatedFiles.GetAtPos(pNode);
-    while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
-        pTable = m_encapsulatedFiles.GetNext(pNode);
-        if (pNode == 0) return false;
-    }
-
-    pTable->RebuildTable();
-    return true;
+    return UpdateKeyTable(path, KEYTABLE_SOURCE_ENCAPSULATED);
 }
 
 bool CExoResMan::UpdateResourceImageFile(const CExoString& path)
 {
-    CExoLinkedListNode* pNode = m_resourceImageFiles.m_pInternal->m_pHead;
-    if (pNode == 0) {
-        return false;
-    }
-    CExoKeyTable* pTable = m_resourceImageFiles.GetAtPos(pNode);
-    while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
-        pTable = m_resourceImageFiles.GetNext(pNode);
-        if (pNode == 0) return false;
-    }
-
-    pTable->RebuildTable();
-    return true;
+    return UpdateKeyTable(path, KEYTABLE_SOURCE_IMAGE);
 }
 
 void CExoResMan::RemoveFixedKeyTableFile(const CExoString& path)
@@ -825,54 +778,20 @@ bool CExoResMan::FileCopy(const CExoString& srcPath, const CExoString& dstPath,
 
 int CExoResMan::GetTableCount(CRes* pRes, int resType)
 {
-    CExoLinkedList<CExoKeyTable>* pList = 0;
-    switch (pRes->m_dwResID >> RESID_SOURCE_SHIFT) {
-    case RESSOURCE_BIF: pList = &m_fixedKeyTables; break;
-    case RESSOURCE_IMAGE: pList = &m_resourceImageFiles; break;
-    case RESSOURCE_ENCAPSULATED: pList = &m_encapsulatedFiles; break;
-    case RESSOURCE_DIRECTORY: pList = &m_resourceDirectories; break;
-    }
-    K2_ASSUME(pList != 0);   // m_dwResID >> 30 is 0..3, and every value has a case
-
-    CExoLinkedListNode* pNode = pList->GetHeadPos();
-    if (pNode == 0) {
+    CExoKeyTable* pTable = GetTable(pRes);
+    if (pTable == 0) {
         return -1;
     }
-    CExoKeyTable* pTable = pList->GetAtPos(pNode);
-    if (pTable != 0) goto check;
-next:
-    pTable = pList->GetNext(pNode);
-    if (pNode == 0) return -1;
-    if (pTable == 0) goto next;
-check:
-    if ((pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) != ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) goto next;
 
     return pTable->GetEntryCount(resType);
 }
 
 void* CExoResMan::GetResOfType(unsigned short resType, CRes* pRes)
 {
-    CExoLinkedList<CExoKeyTable>* pList = 0;
-    switch (pRes->m_dwResID >> RESID_SOURCE_SHIFT) {
-    case RESSOURCE_BIF: pList = &m_fixedKeyTables; break;
-    case RESSOURCE_IMAGE: pList = &m_resourceImageFiles; break;
-    case RESSOURCE_ENCAPSULATED: pList = &m_encapsulatedFiles; break;
-    case RESSOURCE_DIRECTORY: pList = &m_resourceDirectories; break;
-    }
-    K2_ASSUME(pList != 0);   // m_dwResID >> 30 is 0..3, and every value has a case
-
-    CExoLinkedListNode* pNode = pList->GetHeadPos();
-    if (pNode == 0) {
+    CExoKeyTable* pTable = GetTable(pRes);
+    if (pTable == 0) {
         return 0;
     }
-    CExoKeyTable* pTable = pList->GetAtPos(pNode);
-    if (pTable != 0) goto check;
-next:
-    pTable = pList->GetNext(pNode);
-    if (pNode == 0) return 0;
-    if (pTable == 0) goto next;
-check:
-    if ((pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) != ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) goto next;
     if (pTable->m_bLookupDisabled != 0) {
         return 0;
     }
@@ -1050,8 +969,8 @@ int CExoResMan::WipeDirectory(const CExoString& path, int a, int b, int c, int d
             char c0 = name[0];
             if (resType != RESTYPE_INVALID || c0 == '.') {
                 int len = name.Find('.', 0);
-                if (len == 0 && name.m_sString != NULL) {
-                    len = static_cast<int>(strlen(name.m_sString));
+                if (len == 0) {
+                    len = name.GetLength();
                 }
 #endif
                 if (len < 0)
@@ -1295,28 +1214,10 @@ done:
 
 int CExoResMan::ServiceCurrentAsyncRes()
 {
-    CRes* pRes = static_cast<CRes*>(m_pDemandQueueHeadCache);
-    CExoLinkedList<CExoKeyTable>* pList = 0;
-    switch (pRes->m_dwResID >> RESID_SOURCE_SHIFT) {
-    case RESSOURCE_BIF: pList = &m_fixedKeyTables; break;
-    case RESSOURCE_IMAGE: pList = &m_resourceImageFiles; break;
-    case RESSOURCE_ENCAPSULATED: pList = &m_encapsulatedFiles; break;
-    case RESSOURCE_DIRECTORY: pList = &m_resourceDirectories; break;
-    }
-    K2_ASSUME(pList != 0);   // m_dwResID >> 30 is 0..3, and every value has a case
-
-    CExoLinkedListNode* pNode = pList->GetHeadPos();
-    if (pNode == 0) {
+    CExoKeyTable* pTable = GetTable(static_cast<CRes*>(m_pDemandQueueHeadCache));
+    if (pTable == 0) {
         return 0;
     }
-    CExoKeyTable* pTable = pList->GetAtPos(pNode);
-    if (pTable != 0) goto check;
-next:
-    pTable = pList->GetNext(pNode);
-    if (pNode == 0) return 0;
-    if (pTable == 0) goto next;
-check:
-    if ((pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) != ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) goto next;
 
     {
         unsigned int dwResID = static_cast<CRes*>(m_pDemandQueueHeadCache)->m_dwResID;
@@ -1794,8 +1695,7 @@ int CExoResMan::GetNewResRef(const CResRef& resRef, unsigned short resType, CRes
     resRefNew = resRef;
 
     char szResRef[20];
-    __builtin_memcpy(szResRef, &resRefNew, sizeof(CResRef));
-    szResRef[16] = '\0';
+    resRefNew.CopyToString(szResRef);
 
     int nLength = static_cast<int>(__strlen_chk(szResRef, sizeof(szResRef)));
 
@@ -1857,9 +1757,7 @@ int CExoResMan::GetNewResRef(const CResRef& resRef, unsigned short resType, CRes
         }
         resRefNew = szResRef;
 
-        CExoKeyTable* pTable = NULL;
-        CKeyTableEntry* pEntry = NULL;
-        int bExists = GetKeyEntry(resRefNew, resType, &pTable, &pEntry);
+        int bExists = Exists(resRefNew, resType);
         sprintf(szNumber, "%d", nCount);
         nCount++;
         if (bExists == 0) {
@@ -1971,31 +1869,21 @@ int CExoResMan::GetResourcesInMemory(int* pnResourceCount, int* pnKeyEntryCount,
                     resRef = pEntry->m_resRef;
                     unsigned short resType = pEntry->m_resType;
 
-                    CExoLinkedListNode* pImageNode = m_resourceImageFiles.m_pInternal->m_pHead;
-                    if (pImageNode != 0) {
-                        CExoKeyTable* pImageTable =
-                            static_cast<CExoKeyTable*>(m_resourceImageFiles.GetAtPos(pImageNode));
-                        while (pImageNode != 0) {
-                            CKeyTableEntry* pImageEntry;
-                            if (pImageTable != 0 && pImageTable->m_bLookupDisabled == 0 &&
-                                (pImageEntry = pImageTable->FindKey(resRef, resType)) != 0) {
-                                int nPacked = static_cast<CExoPackedFile*>(pImageTable->m_paDependentFiles[0])
-                                                  ->GetResourceSize(pImageEntry->m_dwResID);
-                                nTotalBytes -= nPacked;
-                                (*pnResourceCount)--;
-                                switch (pImageEntry->m_resType) {
+                    CExoKeyTable* pImageTable;
+                    CKeyTableEntry* pImageEntry = 0;
+                    if (GetKeyEntryFromTable(m_resourceImageFiles, resRef, resType, &pImageTable, &pImageEntry, 0)) {
+                        int nPacked = static_cast<CExoPackedFile*>(pImageTable->m_paDependentFiles[0])
+                                          ->GetResourceSize(pImageEntry->m_dwResID);
+                        nTotalBytes -= nPacked;
+                        (*pnResourceCount)--;
+                        switch (pImageEntry->m_resType) {
 #if !KOTOR1  // K1 has no TXB bucket
-                                case RESTYPE_TXB: *pnTextureBytes -= nPacked; break;
+                        case RESTYPE_TXB: *pnTextureBytes -= nPacked; break;
 #endif
-                                case RESTYPE_TPC: *pnTextureBytes -= nPacked; break;
-                                case RESTYPE_MDX: *pnModelExtBytes -= nPacked; break;
-                                case RESTYPE_WAV: *pnSoundBytes -= nPacked; break;
-                                case RESTYPE_MDL: *pnModelBytes -= nPacked; break;
-                                }
-                                break;
-                            }
-                            pImageTable =
-                                static_cast<CExoKeyTable*>(m_resourceImageFiles.GetNext(pImageNode));
+                        case RESTYPE_TPC: *pnTextureBytes -= nPacked; break;
+                        case RESTYPE_MDX: *pnModelExtBytes -= nPacked; break;
+                        case RESTYPE_WAV: *pnSoundBytes -= nPacked; break;
+                        case RESTYPE_MDL: *pnModelBytes -= nPacked; break;
                         }
                     }
 
@@ -2037,32 +1925,22 @@ int CExoResMan::GetResourcesInMemory(int* pnResourceCount, int* pnKeyEntryCount,
                         resRef = pEntry->m_resRef;
                         unsigned short resType = pEntry->m_resType;
 
-                        CExoLinkedListNode* pImageNode = m_resourceImageFiles.m_pInternal->m_pHead;
-                        if (pImageNode != 0) {
-                            CExoKeyTable* pImageTable =
-                                static_cast<CExoKeyTable*>(m_resourceImageFiles.GetAtPos(pImageNode));
-                            while (pImageNode != 0) {
-                                CKeyTableEntry* pImageEntry;
-                                if (pImageTable != 0 && pImageTable->m_bLookupDisabled == 0 &&
-                                    (pImageEntry = pImageTable->FindKey(resRef, resType)) != 0) {
-                                    int nPacked =
-                                        static_cast<CExoPackedFile*>(pImageTable->m_paDependentFiles[0])
-                                            ->GetResourceSize(pImageEntry->m_dwResID);
-                                    nTotalBytes -= nPacked;
-                                    (*pnResourceCount)--;
-                                    switch (pImageEntry->m_resType) {
+                        CExoKeyTable* pImageTable;
+                        CKeyTableEntry* pImageEntry = 0;
+                        if (GetKeyEntryFromTable(m_resourceImageFiles, resRef, resType, &pImageTable, &pImageEntry, 0)) {
+                            int nPacked =
+                                static_cast<CExoPackedFile*>(pImageTable->m_paDependentFiles[0])
+                                    ->GetResourceSize(pImageEntry->m_dwResID);
+                            nTotalBytes -= nPacked;
+                            (*pnResourceCount)--;
+                            switch (pImageEntry->m_resType) {
 #if !KOTOR1  // K1 has no TXB bucket
-                                    case RESTYPE_TXB: *pnTextureBytes -= nPacked; break;
+                            case RESTYPE_TXB: *pnTextureBytes -= nPacked; break;
 #endif
-                                    case RESTYPE_TPC: *pnTextureBytes -= nPacked; break;
-                                    case RESTYPE_MDX: *pnModelExtBytes -= nPacked; break;
-                                    case RESTYPE_WAV: *pnSoundBytes -= nPacked; break;
-                                    case RESTYPE_MDL: *pnModelBytes -= nPacked; break;
-                                    }
-                                    break;
-                                }
-                                pImageTable = static_cast<CExoKeyTable*>(m_resourceImageFiles.m_pInternal
-                                                  ->GetNext(pImageNode));
+                            case RESTYPE_TPC: *pnTextureBytes -= nPacked; break;
+                            case RESTYPE_MDX: *pnModelExtBytes -= nPacked; break;
+                            case RESTYPE_WAV: *pnSoundBytes -= nPacked; break;
+                            case RESTYPE_MDL: *pnModelBytes -= nPacked; break;
                             }
                         }
                     }
@@ -2278,12 +2156,12 @@ void CExoResMan::AsyncLoad()
         m_nModuleResourceFlags |= MODULERES_ADX_RIM;
     }
 
-    AddKeyTable(CExoString("MODULES:"), KEYTABLE_SOURCE_DIRECTORY, 0);
+    AddResourceDirectory(CExoString("MODULES:"));
     AddModuleOverrideResourceDirectories();
 
     if (Exists(CResRef(m_sAsyncModuleName), RESTYPE_MOD) != 0) {
         sPath = CExoString("MODULES:") + m_sAsyncModuleName;
-        bResult = AddKeyTable(sPath, KEYTABLE_SOURCE_ENCAPSULATED, 2);
+        bResult = AddEncapsulatedResourceFile(sPath, 2);
         for (i = 0;; i++) {
             char szBuf[200];
             pOverridePath = GetOverridePath(i, false);
@@ -2291,7 +2169,7 @@ void CExoResMan::AsyncLoad()
                 break;
             }
             sprintf(szBuf, "%s\\modules\\%s", pOverridePath, m_sAsyncModuleName.CStr());
-            bResult |= AddKeyTable(CExoString(szBuf), KEYTABLE_SOURCE_ENCAPSULATED, 2);
+            bResult |= AddEncapsulatedResourceFile(CExoString(szBuf), 2);
         }
         bOverrideLayer = 0;
         if (bResult != 0) {
@@ -2327,7 +2205,7 @@ void CExoResMan::AsyncLoad()
     }
 
     sPath = CExoString("MODULES:") + m_sAsyncModuleName + CExoString("_dlg");
-    AddKeyTable(CExoString(sPath), KEYTABLE_SOURCE_ENCAPSULATED, 2);
+    AddEncapsulatedResourceFile(CExoString(sPath), 2);
     for (i = 0;; i++) {
         char szBuf[200];
         pOverridePath = GetOverridePath(i, false);
@@ -2336,18 +2214,18 @@ void CExoResMan::AsyncLoad()
         }
         sprintf(szBuf, "%s\\modules\\%s_dlg", pOverridePath, m_sAsyncModuleName.CStr());
         CExoString sDialogPath(szBuf);
-        AddKeyTable(CExoString(sDialogPath), KEYTABLE_SOURCE_ENCAPSULATED, 2);
+        AddEncapsulatedResourceFile(CExoString(sDialogPath), 2);
     }
 
 unmountModules:
     RemoveModuleOverrideResourceDirectories();
-    RemoveKeyTable(CExoString("MODULES:"), KEYTABLE_SOURCE_DIRECTORY);
+    RemoveResourceDirectory(CExoString("MODULES:"));
     if (bResult == 0 || m_bAsyncIsSaveGame != 0) {
         goto currentGameOnly;
     }
 
     sPath = CExoString("CURRENTGAME:") + m_sAsyncModuleName;
-    AddKeyTable(CExoString("CURRENTGAME:"), KEYTABLE_SOURCE_DIRECTORY, 0);
+    AddResourceDirectory(CExoString("CURRENTGAME:"));
 
     if (Exists(CResRef(m_sAsyncModuleName), RESTYPE_RSV) != 0 ||
         Exists(CResRef(m_sAsyncModuleName), RESTYPE_RIM) != 0) {
@@ -2357,12 +2235,12 @@ unmountModules:
         }
     }
 
-    RemoveKeyTable(CExoString("CURRENTGAME:"), KEYTABLE_SOURCE_DIRECTORY);
+    RemoveResourceDirectory(CExoString("CURRENTGAME:"));
     goto finish;
 
 currentGameOnly:
     sPath = CExoString("CURRENTGAME:") + m_sAsyncModuleName;
-    bResult = AddKeyTable(sPath, KEYTABLE_SOURCE_ENCAPSULATED, 2);
+    bResult = AddEncapsulatedResourceFile(sPath, 2);
     if (bResult != 0) {
         m_nModuleResourceFlags |= MODULERES_SAVED_ARCHIVE;
     }
@@ -2464,17 +2342,10 @@ CRes* CExoResMan::GetResObject(const CResRef& resRef, unsigned short resType)
                 if (pTable->m_nSourceType == KEYTABLE_SOURCE_ENCAPSULATED) {
                     sType = "ERF";
                 } else if (pTable->m_nSourceType == KEYTABLE_SOURCE_DIRECTORY) {
-                    CExoKeyTable* pScan;
-                    CExoLinkedListNode* pNode = m_resourceImageFiles.m_pInternal->m_pHead;
-                    if (pNode != 0) {
-                        pScan = m_resourceImageFiles.GetAtPos(pNode);
-                        while (1) {
-                            if (pScan != 0 && pScan->m_bLookupDisabled == 0 && pScan->FindKey(resRef, resType) != 0)
-                                goto done;
-                            pScan = m_resourceImageFiles.GetNext(pNode);
-                            if (pNode == 0) break;
-                        }
-                    }
+                    CExoKeyTable* pImageTable;
+                    CKeyTableEntry* pImageEntry;
+                    if (GetKeyEntryFromTable(m_resourceImageFiles, resRef, resType, &pImageTable, &pImageEntry, 0))
+                        goto done;
                     sType = "DIR";
                 } else if (pTable->m_nSourceType == KEYTABLE_SOURCE_FIXED) {
                     sType = "BIF";
@@ -2498,6 +2369,8 @@ CRes* CExoResMan::GetResObject(const CResRef& resRef, unsigned short resType)
 }
 int CExoResMan::Exists(const CResRef& resRef, unsigned short resType, unsigned int sourceType)
 {
+    CExoKeyTable* pTable = 0;
+    CKeyTableEntry* pEntry = 0;
     CExoLinkedList<CExoKeyTable>* pList;
     switch (sourceType) {
     case KEYTABLE_SOURCE_FIXED: pList = &m_fixedKeyTables; break;
@@ -2507,17 +2380,7 @@ int CExoResMan::Exists(const CResRef& resRef, unsigned short resType, unsigned i
     default: return 0;
     }
 
-    CExoLinkedListNode* pNode = pList->GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = pList->GetAtPos(pNode);
-    while (1) {
-        if (pTable != 0 && pTable->m_bLookupDisabled == 0 && pTable->FindKey(resRef, resType) != 0)
-            return 1;
-        pTable = pList->GetNext(pNode);
-        if (pNode == 0) return 0;
-    }
+    return GetKeyEntryFromTable(*pList, resRef, resType, &pTable, &pEntry, 0);
 }
 void CExoResMan::DumpTable(CExoLinkedList<CExoKeyTable>& list)
 {
@@ -2530,18 +2393,8 @@ void CExoResMan::DumpTable(CExoLinkedList<CExoKeyTable>& list)
         if (pTable != 0) {
             for (unsigned int i = 0; i < pTable->m_nTableSize; i++) {
                 CKeyTableEntry* pEntry = &pTable->m_paEntries[i];
-                if (pEntry == 0 || pEntry->m_pRes == 0)
-                    continue;
-                CRes* pRes = pEntry->m_pRes;
-                if (pRes->m_nDemandCount != 0) {
-                    pRes->m_dwFlags |= CRes::RESFLAG_FREE_PENDING;
-                    continue;
-                }
-                if ((pRes->m_dwFlags & CRes::RESFLAG_HAS_DATA) == 0)
-                    continue;
-                if (pRes->m_pFileData == 0)
-                    continue;
-                Free(pRes);
+                if (pEntry != 0 && pEntry->m_pRes != 0)
+                    Dump(pEntry->m_pRes, 0);
             }
         }
         pTable = list.GetNext(pNode);

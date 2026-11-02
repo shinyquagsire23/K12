@@ -314,23 +314,14 @@ short CSWSCreature::GetMaxForcePoints() {
 #endif
         for (int i = 0; i < m_pStats->m_numClasses; i++) {
             unsigned char nClass = m_pStats->m_classInfo[i].m_class;
-            if (nClass == CSWClass::CCLASS_JEDICONSULAR ||
-                nClass == CSWClass::CCLASS_SITHLORD ||
-                nClass == CSWClass::CCLASS_JEDIMASTER) {
-                CGameEffect** ppEffect = m_effects.m_pArray;
-                int64_t j = m_effects.m_count;
-                if (j > 0) {
-                    do {
-                        if (CSWSEffectListHandler::EFFECT_PUREEVILPOWERS == (*ppEffect)->m_subType) {
-                            nForcePoints += 50;
-                            goto legacyDone;
-                        }
-                        ppEffect++;
-                    } while (--j != 0);
-                }
+            if ((nClass == CSWClass::CCLASS_JEDICONSULAR ||
+                 nClass == CSWClass::CCLASS_SITHLORD ||
+                 nClass == CSWClass::CCLASS_JEDIMASTER) &&
+                HasEffect(CSWSEffectListHandler::EFFECT_PUREEVILPOWERS) != 0) {
+                nForcePoints += 50;
+                break;
             }
         }
-    legacyDone:
         if (m_pStats->GetIsJedi() == 0)
             return 0;
         return nLevel > nForcePoints ? nLevel : nForcePoints;
@@ -356,23 +347,14 @@ short CSWSCreature::GetMaxForcePoints() {
 #endif
     for (int i = 0; i < m_pStats->m_numClasses; i++) {
         unsigned char nClass = m_pStats->m_classInfo[i].m_class;
-        if (nClass == CSWClass::CCLASS_JEDICONSULAR ||
-            nClass == CSWClass::CCLASS_SITHLORD ||
-            nClass == CSWClass::CCLASS_JEDIMASTER) {
-            CGameEffect** ppEffect = m_effects.m_pArray;
-            int64_t j = m_effects.m_count;
-            if (j > 0) {
-                do {
-                    if (CSWSEffectListHandler::EFFECT_PUREEVILPOWERS == (*ppEffect)->m_subType) {
-                        nForcePoints += 50;
-                        goto perLevelDone;
-                    }
-                    ppEffect++;
-                } while (--j != 0);
-            }
+        if ((nClass == CSWClass::CCLASS_JEDICONSULAR ||
+             nClass == CSWClass::CCLASS_SITHLORD ||
+             nClass == CSWClass::CCLASS_JEDIMASTER) &&
+            HasEffect(CSWSEffectListHandler::EFFECT_PUREEVILPOWERS) != 0) {
+            nForcePoints += 50;
+            break;
         }
     }
-perLevelDone:
     return static_cast<short>(nForcePoints < 0 ? 0 : nForcePoints);
 }
 #else  // K1: WIS and CHA modifiers both count; NPC totals truncate to a byte
@@ -626,16 +608,7 @@ void CSWSCreature::SetMovementRateFactor(float f) {
 void CSWSCreature::GetSpikeDetails(CExoArrayList<CSWGuiInterfaceAction>& list, unsigned char b)
 {
     CItemRepository* pRepo;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
     pRepo = GetItemRepository(1);
-#else
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-        (m_bInParty == 0)) {
-        pRepo = m_pItemRepository;
-    } else {
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-    }
-#endif
     CExoString sName;
     CSWItemProperty* pProp;
     int nLanguage = g_pAppManager->m_pClientExoApp->GetClientLanguage();
@@ -1775,13 +1748,7 @@ int CSWSCreature::EquipMostDamagingMeleeWeapon(unsigned long long oidTarget, int
         if (pBaseItem == 0 || pBaseItem->m_nWeaponType == 0)
             continue;
         unsigned int nTrySlot = nSlot;
-        // Per GetRelativeWeaponSize, out of the [-2, 1] band the candidate is unwieldable and the
-        // difference collapses to the -10 sentinel that the strict test below rejects.
-        int nCreatureSize = m_nCreatureSize;
-        int nSizeDiff = g_pRules->GetBaseItem(pItem->m_baseItem)->m_nWeaponSize
-                        - nCreatureSize;
-        if (nSizeDiff < -2 || nSizeDiff > 1)
-            nSizeDiff = -10;
+        int nSizeDiff = GetRelativeWeaponSize(pItem);
         unsigned char bCanEquip = CanEquipItem(pItem, &nTrySlot, 0, 0, 1);
         if (bStrict != 0) {
             if (bCanEquip != CAN_EQUIP_YES)
@@ -2217,11 +2184,8 @@ int CSWSCreature::AddStanceActions(int nStance, unsigned long long oidTarget, in
             BroadcastCombatStateToParty(m_objectId);
         } else {
             m_pCombatRound->AddStanceAction(STANCE_POSTURE_TOTAL_DEFENSE, oidTarget, a3);
-            if (m_bCombatState == 0
-                && g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(m_objectId) != 0) {
-                ComputeAIState();
-                ClearAllActions(1);
-            }
+            if (m_bCombatState == 0)
+                ActionManager(4);
             if (GetNodeById(AIACTION_COMBAT) == 0) {
                 int nOne = 1;
                 AddActionToFront(AIACTION_COMBAT, ACTION_GROUP_NEW, ACTION_PARAM_INT, &nOne, 0, 0,
@@ -2320,16 +2284,9 @@ int CSWSCreature::UseSkill(unsigned char nSkill, unsigned char nMineType,
         if (m_pStats->GetCanUseSkill(SKILL_STEALTH) != 0)
             ToggleMode(TOGGLE_MODE_STEALTH);
         break;
-#if KOTOR1  // K1: awareness toggles detect mode, which ToggleMode ignores
     case SKILL_AWARENESS:
         ToggleMode(TOGGLE_MODE_DETECT);
         break;
-#else
-    case SKILL_AWARENESS:
-        if (GetDead() == 0 && m_bInParty != 0)
-            GetCurrentHitPoints(0);
-        break;
-#endif
     case SKILL_SECURITY:
         ActionManager(2);
         AddUnlockObjectAction(oidTarget, a6, a7);
@@ -3401,11 +3358,9 @@ void CSWSCreature::SetAnimation(int nAnimation)
         return;
 
     int bFired = 0;
-    if (GetClientObject() != 0) {
-        CSWCObject* pClient = static_cast<CSWCObject*>(GetClientObject()->AsSWCCreature());
-        if (pClient != 0)
-            bFired = pClient->AnimationFireAndForget(static_cast<unsigned short>(nNewAnimation));
-    }
+    CSWCObject* pClient = GetClientCreature();
+    if (pClient != 0)
+        bFired = pClient->AnimationFireAndForget(static_cast<unsigned short>(nNewAnimation));
     if (bFired == 0 || m_nAnimation != nNewAnimation)
         SetDirtyFlag(0);
     m_nAnimation = nNewAnimation;
@@ -4609,9 +4564,9 @@ static inline __attribute__((always_inline)) void K1StackEffectValue(CGameEffect
     }
 }
 
-static inline __attribute__((always_inline)) void K1StackEffectValueSum(CGameEffect* pEffect, int nSlot,
-                                                                      unsigned long long* paItem,
-                                                                      int* paValue, int* paSpell)
+static inline void K1StackEffectValueSum(CGameEffect* pEffect, int nSlot,
+                                         unsigned long long* paItem,
+                                         int* paValue, int* paSpell)
 {
     CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pEffect->m_creatorId);
     int bFound = 0;
@@ -5200,18 +5155,7 @@ CResRef CSWSCreature::GetPortrait()
 int CSWSCreature::ComputeTotalWeightCarried()
 {
     int nWeight = m_nEquippedWeight;
-#if KOTOR1  // K1: always the creature's own inventory view (GetItemRepository(1))
     return GetItemRepository(1)->CalculateContentsWeight() + nWeight;
-#else
-    CItemRepository* pRepo;
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-        (m_bInParty == 0)) {
-        pRepo = m_pItemRepository;
-    } else {
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-    }
-    return pRepo->CalculateContentsWeight() + nWeight;
-#endif
 }
 
 void CSWSCreature::SetGold(int nGold)
@@ -5304,8 +5248,7 @@ void CSWSCreature::CancelRest(unsigned short nFeedbackMessage)
 {
     SetAnimation(SERVER_ANIMATION_PAUSE);
     SendFeedbackMessage(nFeedbackMessage, 0);
-    if ((m_nLockedActivityFlags & ACTIVITY_RESTING) == 0)
-        m_activityFlags &= ~static_cast<unsigned int>(ACTIVITY_RESTING);
+    SetActivity(ACTIVITY_RESTING, 0, 0);
     if (m_bPlayerCharacter != 0) {
         CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
         CScriptEvent* pEvent = new CScriptEvent();
@@ -5420,13 +5363,7 @@ int CSWSCreature::LoadCreature(CResGFF* pGff, CResStruct* pStruct, int bFromSave
     m_bPlayerMadeCharacter = pGff->ReadFieldINT(pStruct, const_cast<char*>("PlayerCreated"), bSuccess, 0);
 #endif
 
-    // The two "idle/talk" ambient states are remapped to 14 for three specific animation ids:
-    // the creature is already playing an animation those states would fight with.
-    unsigned char nAmbientState = pGff->ReadFieldBYTE(pStruct, const_cast<char*>("AmbientAnimState"), bSuccess, 0);
-    if ((nAmbientState == 3 || nAmbientState == 4)
-        && (m_nAnimation == SERVER_ANIMATION_WHIRLWIND || m_nAnimation == SERVER_ANIMATION_PRONE || m_nAnimation == SERVER_ANIMATION_KNOCKED_DOWN_LOOP))
-        nAmbientState = 14;
-    m_ambientAnimationState = nAmbientState;
+    SetAmbientAnimationState(pGff->ReadFieldBYTE(pStruct, const_cast<char*>("AmbientAnimState"), bSuccess, 0));
 
     SetAnimation(pGff->ReadFieldINT(pStruct, const_cast<char*>("Animation"), bSuccess, 10000));
 
@@ -5917,16 +5854,7 @@ int CSWSCreature::ResetCombatAnimations(int a)
         return 0;
     if (m_pCombatRound->m_bCutsceneAttack != 0)
         return 0;
-    int nAnimation;
-    CSWCCreature* pCCreature = 0;
-    if (GetClientObject() != 0)
-        pCCreature = static_cast<CSWCCreature*>(GetClientObject()->AsSWCCreature());
-    if (pCCreature != 0) {
-        nAnimation = pCCreature->GetPauseReadyAnimation();
-    } else {
-        nAnimation = m_bCombatState != 0 ? SERVER_ANIMATION_READY : SERVER_ANIMATION_PAUSE;
-    }
-    SetAnimation(nAnimation);
+    SetAnimation(GetPauseReadyAnimation());
     return 1;
 }
 
@@ -6829,8 +6757,7 @@ int CSWSCreature::DoListenDetection(CSWSCreature* pTarget, int a)
 #else
     float fDistSq = fDeltaX * fDeltaX + fDeltaY * fDeltaY + fDeltaZ * fDeltaZ;
 
-    if (a != 0 || (m_nVisionFlags & VISION_BLINDNESS) != 0
-        || (m_nVisionFlags & (VISION_ULTRAVISION | VISION_DARKNESS)) == VISION_DARKNESS) {
+    if (a != 0 || GetBlind() != 0) {
         float fReach = MaxAttackRange(pTarget->m_objectId, 0, 0);
         if (fDistSq > fReach * fReach)
             return 0;
@@ -6977,9 +6904,7 @@ int CSWSCreature::DoListenDetection(CSWSCreature* pTarget, int a)
 
 int CSWSCreature::DoSpotDetection(CSWSCreature* pTarget, int a)
 {
-    if ((m_nVisionFlags & VISION_BLINDNESS) != 0)
-        return 0;
-    if (a != 0 || (m_nVisionFlags & (VISION_ULTRAVISION | VISION_DARKNESS)) == VISION_DARKNESS)
+    if (GetBlind() != 0 || a != 0)
         return 0;
 
     // Both positions are lifted a metre before the range test (eye height).
@@ -7497,16 +7422,7 @@ int CSWSCreature::GetItemCount(int a, int b, int c)
         }
     }
     CItemRepository* pRepo;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
     pRepo = GetItemRepository(1);
-#else
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-        (m_bInParty == 0)) {
-        pRepo = m_pItemRepository;
-    } else {
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-    }
-#endif
     if (pRepo != 0 && pRepo->ItemListGetCount() != 0) {
         for (unsigned int nItem = 0; nItem < pRepo->ItemListGetCount(); nItem++) {
             CSWSItem* pItem = pRepo->ItemListGetItem(nItem);
@@ -7649,16 +7565,7 @@ void CSWSCreature::ClearHostileActionsVersus(CSWSCreature* pCreature)
 int CSWSCreature::GetHasPlotItemUseableOnObject()
 {
     CItemRepository* pRepo;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
     pRepo = GetItemRepository(1);
-#else
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1)
-        & (m_bInParty == 0)) {
-        pRepo = m_pItemRepository;
-    } else {
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-    }
-#endif
     if (pRepo->ItemListGetCount() != 0) {
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
             CSWSItem* pItem = pRepo->ItemListGetItem(i);
@@ -7789,16 +7696,7 @@ void CSWSCreature::CancelGoldTransfer(unsigned long long objectId)
         CSWSItem* pItem = pObject->AsSWSItem();
         if (pItem != 0 && static_cast<CSWItem*>(pItem)->GetBaseItem()->m_nItemType == ITEM_TYPE_CREDITS) {
             CItemRepository* pRepo;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
             pRepo = GetItemRepository(1);
-#else
-            if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-                (m_bInParty == 0)) {
-                pRepo = m_pItemRepository;
-            } else {
-                pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-            }
-#endif
             pRepo->AddItem(&pItem, 1, 0, 1);
         }
     }
@@ -7889,16 +7787,7 @@ void CSWSCreature::RestoreItemProperties()
         }
     }
     CItemRepository* pRepo;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
     pRepo = GetItemRepository(1);
-#else
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-        (m_bInParty == 0)) {
-        pRepo = m_pItemRepository;
-    } else {
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-    }
-#endif
     while (pRepo->ItemListGetCount() != 0) {
         CSWSItem* pItem = pRepo->ItemListGetItem(0);
         if (pItem != 0) {
@@ -7911,22 +7800,9 @@ void CSWSCreature::RestoreItemProperties()
 void CSWSCreature::ActivityManager(unsigned int nActivity)
 {
     if (nActivity == 4) {
-        if ((m_activityFlags & ACTIVITY_STEALTH) && !(m_nLockedActivityFlags & ACTIVITY_STEALTH)) {
-            m_activityFlags &= ~ACTIVITY_STEALTH;
-            SetStealthMode(0, 0);
-        }
-        if ((m_activityFlags & ACTIVITY_CONVERSATION) && !(m_nLockedActivityFlags & ACTIVITY_CONVERSATION)) {
-            m_activityFlags &= ~ACTIVITY_CONVERSATION;
-            StopDialog();
-        }
-        if ((m_activityFlags & ACTIVITY_RESTING) && !(m_nLockedActivityFlags & ACTIVITY_RESTING)) {
-            m_activityFlags &= ~ACTIVITY_RESTING;
-        }
+        ClearActivities(0x0f);
     } else {
-        if (~m_nLockedActivityFlags & ACTIVITY_COMBAT_MODE_MASK) {
-            ClearActivities(ACTIVITY_COMBAT_MODE_MASK);
-            m_activityFlags &= ~ACTIVITY_COMBAT_MODE_MASK;
-        }
+        SetActivity(ACTIVITY_COMBAT_MODE_MASK, 0, 0);
         if (nActivity == 1) {
             ClearActivities(0xff);
         }
@@ -8124,16 +8000,7 @@ void CSWSCreature::AddPureEvilPowers()
 int CSWSCreature::GetHasSpike(unsigned char bParam)
 {
     CItemRepository* pRepo;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
     pRepo = GetItemRepository(1);
-#else
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-        (m_bInParty == 0)) {
-        pRepo = m_pItemRepository;
-    } else {
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-    }
-#endif
     if (pRepo == 0)
         return 0;
     for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
@@ -8553,15 +8420,7 @@ void CSWSCreature::SetLockOrientationToObject(unsigned long long objectId, int a
 void CSWSCreature::SplitItem(CSWSItem* pItem, int nCount)
 {
     CItemRepository* pRepo;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
     pRepo = GetItemRepository(1);
-#else
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-        (m_bInParty == 0))
-        pRepo = m_pItemRepository;
-    else
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-#endif
     if (pItem->m_possessorId != m_objectId) {
         CGameObject* pPossessor = g_pAppManager->m_pServerExoApp->GetGameObject(pItem->m_possessorId);
         if (pPossessor->AsSWSItem() == 0)
@@ -8687,15 +8546,7 @@ int CSWSCreature::RequestSell(unsigned long long itemId, unsigned long long stor
         return 0;
     }
     CItemRepository* pRepo;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
     pRepo = GetItemRepository(1);
-#else
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-        (m_bInParty == 0))
-        pRepo = m_pItemRepository;
-    else
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-#endif
     if (pRepo->GetItemInRepository(pItem, 0) != 0)
         return 1;
     if (m_pInventory->GetItemInInventory(pItem) == 1)
@@ -8703,15 +8554,7 @@ int CSWSCreature::RequestSell(unsigned long long itemId, unsigned long long stor
     pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(pItem->m_possessorId);
     if (pItem == 0)
         return 0;
-#if KOTOR1  // K1: the out-of-line GetItemRepository(1)
     pRepo = GetItemRepository(1);
-#else
-    if ((g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter() == -1) &
-        (m_bInParty == 0))
-        pRepo = m_pItemRepository;
-    else
-        pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
-#endif
     return pRepo->GetItemInRepository(pItem, 0) != 0;
 }
 
@@ -10699,13 +10542,8 @@ void CSWSCreature::RecomputeAmbientAnimationState()
     if (GetDead() != 0 || GetDeadTemp() != 0) {
 #endif
         if (m_ambientAnimationState != 3 && m_ambientAnimationState != 4 &&
-            m_ambientAnimationState != 14) {
-            if (m_nAnimation == SERVER_ANIMATION_WHIRLWIND || m_nAnimation == SERVER_ANIMATION_KNOCKED_DOWN_LOOP
-                || m_nAnimation == SERVER_ANIMATION_PRONE)
-                m_ambientAnimationState = 14;
-            else
-                m_ambientAnimationState = 4;
-        }
+            m_ambientAnimationState != 14)
+            SetAmbientAnimationState(4);
     } else {
         switch (m_nState) {
         case EFFECT_STATE_DROID_STUN:      m_ambientAnimationState = 8;   break;
@@ -11197,12 +11035,7 @@ int CSWSCreature::UnequipItem(CSWSItem* pItem)
     pItem->RemoveItemProperties(this, nSlotFromItem);
     m_pInventory->RemoveItem(pItem);
 
-    CSWItem* pEquipped = m_pInventory->GetItemInSlot(CSWInventory::SLOT_BODY);
-    CSWBaseItem* pEquippedBase = pEquipped == NULL ? NULL : pEquipped->GetBaseItem();
-    if (pEquippedBase == NULL)
-        m_pStats->m_nACArmorBase = 0;
-    else
-        m_pStats->m_nACArmorBase = pEquippedBase->m_nBaseAC;
+    ComputeArmourClass(pItem, 0, 0);
 
     int nWeight = m_nEquippedWeight;
     m_bUpdateCombatInformation = 1;
@@ -12094,7 +11927,7 @@ void CSWSCreature::LoadJournal(CResGFF* pGff, CResStruct* pStruct)
     int state;
     unsigned int date;
     unsigned int time;
-    CSWSJournal* pJournal = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyJournal();
+    CSWSJournal* pJournal = GetJournal();
     if (pJournal != 0 && pJournal->m_entries.m_count == 0)
     {
         CResList entryList;
@@ -12113,13 +11946,13 @@ void CSWSCreature::LoadJournal(CResGFF* pGff, CResStruct* pStruct)
                 plotId = pGff->ReadFieldCExoString(&elemStruct, const_cast<char*>("JNL_PlotID"), bSuccess, CExoString(""));
 
                 state = pGff->ReadFieldINT(&elemStruct, const_cast<char*>("JNL_State"), bSuccess, 0);
-                g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyJournal()->SetState(plotId, state, 1);
+                GetJournal()->SetState(plotId, state, 1);
 
                 date = pGff->ReadFieldDWORD(&elemStruct, const_cast<char*>("JNL_Date"), bSuccess, 0);
-                g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyJournal()->SetDate(plotId, date, 1);
+                GetJournal()->SetDate(plotId, date, 1);
 
                 time = pGff->ReadFieldDWORD(&elemStruct, const_cast<char*>("JNL_Time"), bSuccess, 0);
-                g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyJournal()->SetTime(plotId, time, 1);
+                GetJournal()->SetTime(plotId, time, 1);
             }
         }
     }

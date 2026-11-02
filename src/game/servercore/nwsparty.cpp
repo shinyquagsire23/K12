@@ -89,10 +89,7 @@ int CSWSFaction::GetIsInvited(unsigned long long gameObjectId)
 
 void CSWSFaction::AttemptJoin(unsigned long long gameObjectId)
 {
-    CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(GetLeader());
-    if (pCreature == 0)
-        return;
-    if (!pCreature->GetIsInInvitationsOffered(gameObjectId))
+    if (!GetIsInvited(gameObjectId))
         return;
     AddMember(gameObjectId, 0);
 }
@@ -291,8 +288,7 @@ void CSWSFaction::AddMember(unsigned long long gameObjectId, int a)
         pOldFaction->RemoveMember(gameObjectId);
     if (a == 0)
         SendFactionUpdateAdd(gameObjectId);
-    if (m_members.Contains(gameObjectId) == 0)
-        m_members.Add(gameObjectId);
+    m_members.AddUnique(gameObjectId);
     pCreature->m_pStats->m_factionId = m_nFactionId;
     CSWSMessage* pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
     CSWSPlayer* pPlayer =

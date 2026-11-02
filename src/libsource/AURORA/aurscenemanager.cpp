@@ -526,13 +526,7 @@ void SceneBSPGetObjectTextures(Part* pPart, List<CAurTexture*>& out)
 // The tile-level half of the texture gather.
 void SceneBSPGetTileTextures(Scene* pScene, const Vector& vTile, List<CAurTexture*>& out)
 {
-    BSPNode* pRoot = pScene->m_pBSPRoot;
-    if (pRoot == 0) {
-        out.m_count = 0;
-        return;
-    }
-
-    TileData* pTileData = BSPFitSphere(pRoot, vTile, 0.0f)->m_pNodeData->m_pTileData;
+    TileData* pTileData = SceneBSPGetTileData(pScene, vTile);
     out.m_count = 0;
     if (pTileData == 0)
         return;
@@ -773,40 +767,15 @@ char* GetToken(char** ppszCursor)
 // Console handler for "setbsphere <model> <radius>".
 const char* setbsphere(char* pszArgs)
 {
-    char* pszCursor = pszArgs;
-    char c;
-
-    while ((c = *pszCursor) == ' ')
-        pszCursor++;
-    if (c == 0)
-        return "0";
-
-    pszCursor++;
-    do
-        c = *pszCursor++;
-    while ((c == ' ') != (c != 0));
-    if (c == ' ')
-        pszCursor[-1] = 0;
-
-    if (pszArgs != 0) {
-        Model* pModel = FindModel(pszArgs);
-
-        char* pszValue = pszCursor;
-        while ((c = *pszValue) == ' ')
-            pszValue++;
-        if (c != 0) {
-            pszValue++;
-            do
-                c = *pszValue++;
-            while ((c == ' ') != (c != 0));
-            if (c == ' ')
-                pszValue[-1] = 0;
-
-            pModel->m_fRadius = static_cast<float>(atof(pszCursor));
+    char* pszName = GetToken(&pszArgs);
+    if (pszName != 0) {
+        Model* pModel = FindModel(pszName);
+        char* pszValue = GetToken(&pszArgs);
+        if (pszValue != 0) {
+            pModel->m_fRadius = static_cast<float>(atof(pszValue));
             return "1";
         }
     }
-
     return "0";
 }
 
@@ -1012,15 +981,13 @@ void LightNodeMeshes(BSPNode* pNode, void* pData)
     List<PartLight*> lights;
     lights = static_cast<Scene*>(pData)->m_pLightManager->m_staticLights;
 
-    List<Part*> meshes;
-    for (int64_t i = 0; i < pNodeData->m_meshes.m_count; i++)
-        meshes.Add(pNodeData->m_meshes.m_pData[i]);
+    List<PartTriMesh*> meshes(pNodeData->m_meshes);
     if (pNodeData->m_pPartAABB != 0)
         meshes.Add(pNodeData->m_pPartAABB);
 
     List<PartLight*> bucket;
     for (int64_t m = 0; m < meshes.m_count; m++) {
-        PartTriMesh* pMesh = static_cast<PartTriMesh*>(meshes.m_pData[m]);
+        PartTriMesh* pMesh = meshes.m_pData[m];
         MdlNodeTriMesh* pTriMesh = pMesh->m_pNode->AsMdlNodeTriMesh();
         Vector v = RotateVector(pTriMesh->m_vCentroid, pMesh->m_qLocalOrientation)
                    + pMesh->m_vLocalPosition;
@@ -1439,8 +1406,14 @@ void LightManager::CollectLightsForGivenRoom(CAurRoom* pRoom)
                 m_setupLights.Add(pLight);
         }
 
-        for (int i = 0; i < pNodeData->m_movingLights.m_count; i++) {
-            PartLight* pLight = pNodeData->m_movingLights.m_pData[i];
+#if KOTOR1  // K1 walks a by-value copy of the moving lights
+        List<PartLight*> movingLights;
+        movingLights = pNodeData->m_movingLights;
+#else
+        List<PartLight*>& movingLights = pNodeData->m_movingLights;
+#endif
+        for (int i = 0; i < movingLights.m_count; i++) {
+            PartLight* pLight = movingLights.m_pData[i];
             if (static_cast<MdlNodeLight*>(pLight->m_pNode)->m_lFlareColourShifts.m_count >= 1)
                 m_lensFlareLights.AddUnique(pLight);
             if (pLight->m_vLightColour.x != 0.0f || pLight->m_vLightColour.y != 0.0f ||
@@ -1494,13 +1467,12 @@ void LightPartTriMesh(PartTriMesh* pPart, List<PartLight*> lights, Scene* pScene
     unsigned char* pVerts = static_cast<unsigned char*>(GLRender::LockPool(pNode->m_pTree->AsModel()->m_nPool,
                                                                0, 0, 16));
 
-    static Vector accumulator;
-
     for (int i = 0; i < static_cast<short>(pNode->m_nVertexCount); i++) {
         unsigned char* pVertex = pVerts + pNode->m_nGeomBase + pNode->m_nVertexStride * i;
         Vector r1 = RotateVector(*reinterpret_cast<Vector*>(pVertex + pNode->m_nVertexOfs), q) + vWorldPos;
         Vector r2 = RotateVector(*reinterpret_cast<Vector*>(pVertex + pNode->m_nNormalOfs), q);
 
+        static Vector accumulator;
         accumulator = Vector(0.0f, 0.0f, 0.0f);
         if (pPart->m_pMaterial->m_bDecal)
             accumulator = Vector(1.0f, 1.0f, 1.0f);

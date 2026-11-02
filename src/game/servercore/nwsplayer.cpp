@@ -464,14 +464,7 @@ void CSWSPlayer::SetGameObject(CSWSObject* pObject)
         {
             m_pJournalState->m_bFullUpdateNeeded = 1;
 
-            if (m_pLastUpdateObject != 0)
-            {
-                m_pLastUpdateObject->ClearActionQueue();
-                m_pLastUpdateObject->ClearKnownSpells();
-                m_pLastUpdateObject->ClearKnownSpellUsesLeft();
-                m_pLastUpdateObject->ClearSpellAddDeleteLists();
-                m_pLastUpdateObject->ClearFeats();
-            }
+            ClearPlayerLastUpdateObject();
         }
 
         if (g_pAppManager->m_pServerExoApp != 0

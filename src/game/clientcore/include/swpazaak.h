@@ -38,6 +38,9 @@ public:
     CPazaakCard() : m_bIsNegative(0) {}
 #else
     int m_nValue;
+
+    // Every card is default-constructed with a clear sign and no value override.
+    CPazaakCard() : m_bIsNegative(0), m_nValue(0) {}
 #endif
 
     int GetCardValue();

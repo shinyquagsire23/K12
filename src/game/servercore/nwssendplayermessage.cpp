@@ -1,6 +1,7 @@
 #include "k2stdint.h"
 #include "strref.h"
 #include "nwssendplayermessage.h"
+#include "CExoArrayListImpl.h"
 
 #include "appmanager.h"
 #include "Vector.h"
@@ -436,8 +437,8 @@ int CSWSMessage::ComputeUpdateRequired(CSWSPlayer* pPlayer, CSWSObject* pObject,
         }
 
         // Walk and run rates drifted by more than 10.0.
-        if (__builtin_fabsf(pCreature->GetWalkRate() - pLast->m_fWalkRate) > 10.0f ||
-            __builtin_fabsf(pCreature->GetRunRate() - pLast->m_fRunRate) > 10.0f)
+        if (__builtin_fabsf(pLast->m_fWalkRate - pCreature->GetWalkRate()) > 10.0f ||
+            __builtin_fabsf(pLast->m_fRunRate - pCreature->GetRunRate()) > 10.0f)
             nFlags |= MSG_OBJECT_UPDATE_MOVE_RATES;
 
         // Hit points and force points are gated on the viewer's party. For anyone but the local
@@ -516,7 +517,7 @@ int CSWSMessage::ComputeUpdateRequired(CSWSPlayer* pPlayer, CSWSObject* pObject,
         }
 
         // Damage level and portrait.
-        if (pLast->m_nDamageLevel != pCreature->GetDamageLevel())
+        if (pCreature->GetDamageLevel() != pLast->m_nDamageLevel)
             nFlags |= MSG_OBJECT_UPDATE_DAMAGE_LEVEL;
 
         int bPortraitChanged = pLast->m_nPortraitId != pObject->GetPortraitId();
@@ -574,47 +575,23 @@ int CSWSMessage::ComputeUpdateRequired(CSWSPlayer* pPlayer, CSWSObject* pObject,
 
         if (pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR)
         {
-            CExoArrayList<unsigned long long>* pDoorList =
-                &pObject->AsSWSDoor()->m_objectsAtDoor;
             if (pObject->AsSWSDoor()->m_bLocked != pLast->m_bLocked ||
                 pObject->AsSWSDoor()->m_bPlot != pLast->m_bPlot ||
                 pObject->AsSWSDoor()->m_bTrapFlag != pLast->m_bTrapFlag ||
                 static_cast<unsigned char>(pObject->AsSWSDoor()->m_bMineFlagged) != pLast->m_bMineFlagged ||
-                pDoorList->m_count != pLast->m_lstObjectsOnObject.m_count)
+                CompareCreatureLists(&pObject->AsSWSDoor()->m_objectsAtDoor,
+                                     &pLast->m_lstObjectsOnObject) == 0)
                 nFlags |= MSG_OBJECT_UPDATE_STATE;
-            else
-            {
-                for (int i = 0; i < static_cast<int>(pLast->m_lstObjectsOnObject.m_count); i++)
-                {
-                    if (pDoorList->m_pArray[i] != pLast->m_lstObjectsOnObject.m_pArray[i])
-                    {
-                        nFlags |= MSG_OBJECT_UPDATE_STATE;
-                        break;
-                    }
-                }
-            }
         }
         else if (pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE)
         {
-            CExoArrayList<unsigned long long>* pPlaceableList =
-                &pObject->AsSWSPlaceable()->m_objectsOnPlaceable;
             if (pObject->AsSWSPlaceable()->m_bLocked != pLast->m_bLocked ||
                 pObject->AsSWSPlaceable()->m_bPlot != pLast->m_bPlot ||
                 pObject->AsSWSPlaceable()->m_bTrapFlag != pLast->m_bTrapFlag ||
                 static_cast<unsigned char>(pObject->AsSWSPlaceable()->m_bMineFlagged) != pLast->m_bMineFlagged ||
-                pPlaceableList->m_count != pLast->m_lstObjectsOnObject.m_count)
+                CompareCreatureLists(&pObject->AsSWSPlaceable()->m_objectsOnPlaceable,
+                                     &pLast->m_lstObjectsOnObject) == 0)
                 nFlags |= MSG_OBJECT_UPDATE_STATE;
-            else
-            {
-                for (int i = 0; i < static_cast<int>(pLast->m_lstObjectsOnObject.m_count); i++)
-                {
-                    if (pPlaceableList->m_pArray[i] != pLast->m_lstObjectsOnObject.m_pArray[i])
-                    {
-                        nFlags |= MSG_OBJECT_UPDATE_STATE;
-                        break;
-                    }
-                }
-            }
         }
     }
 
@@ -825,22 +802,11 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
             nCount++;
         WriteBYTE(static_cast<unsigned char>(nCount), 8);
 
-        WriteCHAR('D', 8);
-        WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-        WriteDWORD(MSG_SLOT_BODY, 32);
-        WriteCHAR('D', 8);
-        WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-        WriteDWORD(MSG_SLOT_HEAD, 32);
-        WriteCHAR('D', 8);
-        WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-        WriteDWORD(MSG_SLOT_LEFT_WEAPON, 32);
-        WriteBOOL(pCreature->GetLastInstantEquip(MSG_SLOT_LEFT_WEAPON));
-        WriteCHAR('D', 8);
-        WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-        WriteDWORD(MSG_SLOT_RIGHT_WEAPON, 32);
-        WriteBOOL(pCreature->GetLastInstantEquip(MSG_SLOT_RIGHT_WEAPON));
+        WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_BODY);
+        WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_HEAD);
+        WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_LEFT_WEAPON);
+        WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_RIGHT_WEAPON);
 
-#if KOTOR1  // K1: the slot adds go through WriteGameObjUpdate_WriteInventorySlotAdd
         CSWSItem* pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_BODY));
         if (pItem)
             WriteGameObjUpdate_WriteInventorySlotAdd(pCreature, pItem, MSG_SLOT_BODY);
@@ -853,46 +819,6 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
         pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_RIGHT_WEAPON));
         if (pItem)
             WriteGameObjUpdate_WriteInventorySlotAdd(pCreature, pItem, MSG_SLOT_RIGHT_WEAPON);
-#else
-        CSWSItem* pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_BODY));
-        if (pItem)
-        {
-            WriteCHAR('A', 8);
-            WriteOBJECTIDServer(pItem->m_objectId);
-            WriteDWORD(MSG_SLOT_BODY, 32);
-            AddItemAppearanceToMessage(pItem);
-            AddActiveItemPropertiesToMessage(pItem, pCreature);
-        }
-        pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD));
-        if (pItem)
-        {
-            WriteCHAR('A', 8);
-            WriteOBJECTIDServer(pItem->m_objectId);
-            WriteDWORD(MSG_SLOT_HEAD, 32);
-            AddItemAppearanceToMessage(pItem);
-            AddActiveItemPropertiesToMessage(pItem, pCreature);
-        }
-        pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_LEFT_WEAPON));
-        if (pItem)
-        {
-            WriteCHAR('A', 8);
-            WriteOBJECTIDServer(pItem->m_objectId);
-            WriteDWORD(MSG_SLOT_LEFT_WEAPON, 32);
-            WriteBOOL(pCreature->GetLastInstantEquip(MSG_SLOT_LEFT_WEAPON));
-            AddItemAppearanceToMessage(pItem);
-            AddActiveItemPropertiesToMessage(pItem, pCreature);
-        }
-        pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_RIGHT_WEAPON));
-        if (pItem)
-        {
-            WriteCHAR('A', 8);
-            WriteOBJECTIDServer(pItem->m_objectId);
-            WriteDWORD(MSG_SLOT_RIGHT_WEAPON, 32);
-            WriteBOOL(pCreature->GetLastInstantEquip(MSG_SLOT_RIGHT_WEAPON));
-            AddItemAppearanceToMessage(pItem);
-            AddActiveItemPropertiesToMessage(pItem, pCreature);
-        }
-#endif
 
         pCreature->SetLastInstantEquip(MSG_SLOT_RIGHT_WEAPON, 0);
         pCreature->SetLastInstantEquip(MSG_SLOT_LEFT_WEAPON, 0);
@@ -959,18 +885,12 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
     {
         if (pApp->m_itemId[0].m_a == OBJECT_INVALID)
         {
-            WriteCHAR('D', 8);
-            WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-            WriteDWORD(MSG_SLOT_LEFT_WEAPON, 32);
-            WriteBOOL(pCreature->GetLastInstantEquip(MSG_SLOT_LEFT_WEAPON));
+            WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_LEFT_WEAPON);
             bChangedRight = true;
         }
         else
         {
-            WriteCHAR('D', 8);
-            WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-            WriteDWORD(MSG_SLOT_LEFT_WEAPON, 32);
-            WriteBOOL(pCreature->GetLastInstantEquip(MSG_SLOT_LEFT_WEAPON));
+            WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_LEFT_WEAPON);
             aSlots.Allocate(16);
             aSlots.Add(MSG_SLOT_LEFT_WEAPON);
             bChangedRight = true;
@@ -982,18 +902,12 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
     {
         if (pApp->m_itemId[0].m_b == OBJECT_INVALID)
         {
-            WriteCHAR('D', 8);
-            WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-            WriteDWORD(MSG_SLOT_RIGHT_WEAPON, 32);
-            WriteBOOL(pCreature->GetLastInstantEquip(MSG_SLOT_RIGHT_WEAPON));
+            WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_RIGHT_WEAPON);
             bChangedLeft = true;
         }
         else
         {
-            WriteCHAR('D', 8);
-            WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-            WriteDWORD(MSG_SLOT_RIGHT_WEAPON, 32);
-            WriteBOOL(pCreature->GetLastInstantEquip(MSG_SLOT_RIGHT_WEAPON));
+            WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_RIGHT_WEAPON);
             aSlots.Add(MSG_SLOT_RIGHT_WEAPON);
             bChangedLeft = true;
         }
@@ -1011,15 +925,11 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
         {
             if (pApp->m_itemId[1].m_a == OBJECT_INVALID)
             {
-                WriteCHAR('D', 8);
-                WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-                WriteDWORD(MSG_SLOT_BODY, 32);
+                WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_BODY);
             }
             else
             {
-                WriteCHAR('D', 8);
-                WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-                WriteDWORD(MSG_SLOT_BODY, 32);
+                WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_BODY);
                 aSlots.Add(MSG_SLOT_BODY);
             }
         }
@@ -1027,55 +937,26 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
         {
             if (pApp->m_itemId[1].m_b == OBJECT_INVALID)
             {
-                WriteCHAR('D', 8);
-                WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-                WriteDWORD(MSG_SLOT_HEAD, 32);
+                WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_HEAD);
             }
             else
             {
-                WriteCHAR('D', 8);
-                WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-                WriteDWORD(MSG_SLOT_HEAD, 32);
+                WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_HEAD);
                 aSlots.Add(MSG_SLOT_HEAD);
             }
         }
     }
     else
     {
-        WriteCHAR('D', 8);
-        WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-        WriteDWORD(MSG_SLOT_BODY, 32);
-        WriteCHAR('D', 8);
-        WriteOBJECTIDServer(CGameObjectArray::INVALIDOBJID);
-        WriteDWORD(MSG_SLOT_HEAD, 32);
+        WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_BODY);
+        WriteGameObjUpdate_WriteInventorySlotDelete(pCreature, MSG_SLOT_HEAD);
 
-#if KOTOR1
         pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD));
         if (pItem)
             WriteGameObjUpdate_WriteInventorySlotAdd(pCreature, pItem, MSG_SLOT_HEAD);
         pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_BODY));
         if (pItem)
             WriteGameObjUpdate_WriteInventorySlotAdd(pCreature, pItem, MSG_SLOT_BODY);
-#else
-        pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_HEAD));
-        if (pItem)
-        {
-            WriteCHAR('A', 8);
-            WriteOBJECTIDServer(pItem->m_objectId);
-            WriteDWORD(MSG_SLOT_HEAD, 32);
-            AddItemAppearanceToMessage(pItem);
-            AddActiveItemPropertiesToMessage(pItem, pCreature);
-        }
-        pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(MSG_SLOT_BODY));
-        if (pItem)
-        {
-            WriteCHAR('A', 8);
-            WriteOBJECTIDServer(pItem->m_objectId);
-            WriteDWORD(MSG_SLOT_BODY, 32);
-            AddItemAppearanceToMessage(pItem);
-            AddActiveItemPropertiesToMessage(pItem, pCreature);
-        }
-#endif
     }
 
     int64_t nOff;
@@ -1249,6 +1130,10 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
             CLoopingVisualEffect* pVisualEffect;
             unsigned char nChangeType;
             char _pad[7];
+            bool operator==(const Change& o) const
+            {
+                return pVisualEffect == o.pVisualEffect && nChangeType == o.nChangeType;
+            }
         };
         CExoArrayList<Change> changes;
         CExoArrayList<unsigned short> ids;
@@ -1303,17 +1188,10 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                 }
                 if (bFoundInSnapshot == 0)
                 {
-                    int bHasAdd = 0;
-                    for (int j = 0; j < static_cast<int>(changes.m_count); j++)
-                        bHasAdd |= (changes.m_pArray[j].pVisualEffect == pVis &&
-                                    changes.m_pArray[j].nChangeType == 'A');
-                    if (bHasAdd == 0)
-                    {
-                        Change addChg;
-                        addChg.pVisualEffect = pVis;
-                        addChg.nChangeType = 'A';
-                        changes.Add(addChg);
-                    }
+                    Change addChg;
+                    addChg.pVisualEffect = pVis;
+                    addChg.nChangeType = 'A';
+                    changes.AddUnique(addChg);
                     ids.Add(nVisId);
                 }
             }
@@ -1343,17 +1221,10 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
             }
             if (bStillActive == 0)
             {
-                int bHasDelete = 0;
-                for (int j = 0; j < static_cast<int>(changes.m_count); j++)
-                    bHasDelete |= (changes.m_pArray[j].pVisualEffect == pLastVis &&
-                                   changes.m_pArray[j].nChangeType == 'D');
-                if (bHasDelete == 0)
-                {
-                    Change delChg;
-                    delChg.pVisualEffect = pLastVis;
-                    delChg.nChangeType = 'D';
-                    changes.Add(delChg);
-                }
+                Change delChg;
+                delChg.pVisualEffect = pLastVis;
+                delChg.nChangeType = 'D';
+                changes.AddUnique(delChg);
             }
         }
 
@@ -1801,8 +1672,8 @@ int CSWSMessage::ComputeLastUpdate_GuiFeats(CSWSCreature* pCreature,
             != pLast->m_featRemainingUses.m_pArray[i]->m_nFeat)
             return 1;
 
-        if (pCreature->m_pStats->m_featRemainingUses.m_pArray[i]->m_nUsesUsed
-            != pLast->m_featRemainingUses.m_pArray[i]->m_nUsesUsed)
+        if (pCreature->m_pStats->m_featRemainingUses.m_pArray[i]->m_nUses
+            != pLast->m_featRemainingUses.m_pArray[i]->m_nUses)
             return 1;
     }
 
@@ -1880,19 +1751,13 @@ void CSWSMessage::ComputeLastUpdate_StoreUpdateSpellLikeAbility(CSWSCreature* pC
     }
 
     if (nCount != 0)
+        pDst->SetSize(nCount);
+
+    for (int i = 0; i < nCount; i++)
     {
-        pDst->Allocate(nCount);
-        pDst->m_count = nCount;
-
-        CSWSStats_SpellLikeAbility* paDst = pDst->m_pArray;
-        CSWSStats_SpellLikeAbility* paSrc = pSrc->m_pArray;
-
-        for (int i = 0; i < nCount; i++)
-        {
-            paDst[i].m_nCasterLevel = paSrc[i].m_nCasterLevel;
-            paDst[i].m_nSpellId     = paSrc[i].m_nSpellId;
-            paDst[i].m_nReady       = paSrc[i].m_nReady;
-        }
+        pDst->m_pArray[i].m_nReady       = pSrc->m_pArray[i].m_nReady;
+        pDst->m_pArray[i].m_nCasterLevel = pSrc->m_pArray[i].m_nCasterLevel;
+        pDst->m_pArray[i].m_nSpellId     = pSrc->m_pArray[i].m_nSpellId;
     }
 }
 
@@ -2841,39 +2706,15 @@ int CSWSMessage::SendServerToPlayerServerStatus_Status(unsigned int nPlayerId)
 {
     short mode = g_pAppManager->m_pServerExoApp->GetServerMode();
     switch (mode) {
-    case 0: {
-        unsigned char* pMsg = new unsigned char[3];
-        m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-        pMsg[0] = MSG_SERVER_TO_PLAYER;
-        pMsg[1] = MSG_MAJOR_SERVER_STATUS;
-        pMsg[2] = MSG_SERVER_STATUS_IDLE;
-        int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                       3, 0);
-        delete[] pMsg;
-        return bSent;
-    }
-    case 1: {
-        unsigned char* pMsg = new unsigned char[3];
-        m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-        pMsg[0] = MSG_SERVER_TO_PLAYER;
-        pMsg[1] = MSG_MAJOR_SERVER_STATUS;
-        pMsg[2] = MSG_SERVER_STATUS_MODULE_LOADING;
-        int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                       3, 0);
-        delete[] pMsg;
-        return bSent;
-    }
-    case 2: {
-        unsigned char* pMsg = new unsigned char[3];
-        m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-        pMsg[0] = MSG_SERVER_TO_PLAYER;
-        pMsg[1] = MSG_MAJOR_SERVER_STATUS;
-        pMsg[2] = MSG_SERVER_STATUS_MODULE_RUNNING;
-        int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                       3, 0);
-        delete[] pMsg;
-        return bSent;
-    }
+    case 0:
+        return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_SERVER_STATUS, MSG_SERVER_STATUS_IDLE,
+                                         0, 0);
+    case 1:
+        return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_SERVER_STATUS,
+                                         MSG_SERVER_STATUS_MODULE_LOADING, 0, 0);
+    case 2:
+        return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_SERVER_STATUS,
+                                         MSG_SERVER_STATUS_MODULE_RUNNING, 0, 0);
     default:
         return 0;
     }
@@ -3019,7 +2860,7 @@ int CSWSMessage::SendServerToPlayerChatStrRefMessage(unsigned char nVolume,
 // own client, 5 server-tell goes to the named player as a server message, 6 faction goes to every
 // member of the speaker's faction, and 13 and 14 are the silent variants of 1 and 2. Any other
 // volume sends nothing.
-__attribute__((noinline)) int CSWSMessage::SendServerToPlayerChatMessage(unsigned char nChatVolume,
+int CSWSMessage::SendServerToPlayerChatMessage(unsigned char nChatVolume,
                                                unsigned long long speakerId,
                                                CExoString sText, unsigned int nTellPlayerId,
                                                const CExoString& sTellTargetName)
@@ -3709,7 +3550,7 @@ int CSWSMessage::SendServerToPlayerJournalFullUpdate(CSWSPlayer* pPlayer)
         return 0;
 
     if (pUpdates != 0)
-        pUpdates->Clear();
+        pUpdates->SetSize(0);
 
     pPlayer->m_pJournalState->m_bFullUpdateNeeded = 0;
 
@@ -5694,97 +5535,38 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
                                      pMsg, nSize);
 }
 
-// The three-byte send family builds a buffer, writes the three header bytes and the payload, sends
-// and frees. Members differ only in the header bytes, where the player id comes from, and whether
-// the send's result is returned.
-int __attribute__((noinline)) CSWSMessage::SendServerToPlayerLogin_NeedCharacter(unsigned int nPlayerId)
+// The empty-payload send family: SendServerToPlayerMessage ships a bare three-byte header. Members
+// differ only in the header bytes, where the player id comes from, and whether the send's result is
+// returned.
+int CSWSMessage::SendServerToPlayerLogin_NeedCharacter(unsigned int nPlayerId)
 {
-    unsigned char* pMsg = new unsigned char[3];
-    m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-    pMsg[0] = MSG_SERVER_TO_PLAYER;
-    pMsg[1] = MSG_MAJOR_LOGIN;
-    pMsg[2] = MSG_LOGIN_NEED_CHARACTER;
-
-    int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                   3, 0);
-    delete[] pMsg;
-    return bSent;
+    return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_LOGIN, MSG_LOGIN_NEED_CHARACTER, 0, 0);
 }
 
-int __attribute__((noinline)) CSWSMessage::SendServerToPlayerModule_Loading(CSWSPlayer* pPlayer)
+int CSWSMessage::SendServerToPlayerModule_Loading(CSWSPlayer* pPlayer)
 {
-    unsigned int nPlayerId = pPlayer->m_nPlayerId;
-
-    unsigned char* pMsg = new unsigned char[3];
-    m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-    pMsg[0] = MSG_SERVER_TO_PLAYER;
-    pMsg[1] = MSG_MAJOR_MODULE;
-    pMsg[2] = MSG_MODULE_START_START_NEW_MODULE;
-
-    int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                   3, 0);
-    delete[] pMsg;
-    return bSent;
+    return SendServerToPlayerMessage(pPlayer->m_nPlayerId, MSG_MAJOR_MODULE, MSG_MODULE_START_START_NEW_MODULE, 0, 0);
 }
 
 // The only member of the family that broadcasts rather than targeting one player.
 int CSWSMessage::SendServerToPlayerModule_StartStartNewModule()
 {
-    unsigned int nPlayerId = CNetLayer::PLAYERID_ALL_PLAYERS;
-
-    unsigned char* pMsg = new unsigned char[3];
-    m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-    pMsg[0] = MSG_SERVER_TO_PLAYER;
-    pMsg[1] = MSG_MAJOR_MODULE;
-    pMsg[2] = MSG_MODULE_DUMP_PLAYER;
-
-    int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                   3, 0);
-    delete[] pMsg;
-    return bSent;
+    return SendServerToPlayerMessage(CNetLayer::PLAYERID_ALL_PLAYERS, MSG_MAJOR_MODULE,
+                                     MSG_MODULE_DUMP_PLAYER, 0, 0);
 }
 
-// The sub-opcode is computed rather than constant: 1 on success, 2 on failure. The send is
-// written out once per arm.
+// The sub-opcode is computed rather than constant: 1 on success, 2 on failure.
 int CSWSMessage::SendServerToPlayerLevelUp_Confirmation(unsigned int nPlayerId, int bSuccess)
 {
-    unsigned char* pMsg = new unsigned char[3];
-    m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-    pMsg[0] = MSG_SERVER_TO_PLAYER;
-    pMsg[1] = MSG_MAJOR_LEVEL_UP;
-
-    int bSent;
     if (bSuccess)
-    {
-        pMsg[2] = MSG_LEVEL_UP_CONFIRMED;
-        bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                   3, 0);
-    }
+        return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_LEVEL_UP, MSG_LEVEL_UP_CONFIRMED, 0, 0);
     else
-    {
-        pMsg[2] = MSG_LEVEL_UP_REFUSED;
-        bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                   3, 0);
-    }
-
-    delete[] pMsg;
-    return bSent;
+        return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_LEVEL_UP, MSG_LEVEL_UP_REFUSED, 0, 0);
 }
 
 int CSWSMessage::SendServerToPlayerModule_DumpPlayer(CSWSPlayer* pPlayer)
 {
-    unsigned int nPlayerId = pPlayer->m_nPlayerId;
-
-    unsigned char* pMsg = new unsigned char[3];
-    m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-    pMsg[0] = MSG_SERVER_TO_PLAYER;
-    pMsg[1] = MSG_MAJOR_MODULE;
-    pMsg[2] = MSG_MODULE_LOADING;
-
-    int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                   3, 0);
-    delete[] pMsg;
-    return bSent;
+    return SendServerToPlayerMessage(pPlayer->m_nPlayerId, MSG_MAJOR_MODULE, MSG_MODULE_LOADING, 0, 0);
 }
 
 void CSWSMessage::ComputeGameObjectUpdateForYourself(CSWSPlayer* pPlayer, CSWSObject* pObject,
@@ -5822,8 +5604,8 @@ void CSWSMessage::ComputeGameObjectUpdateForObject(CSWSPlayer* pPlayer, CSWSObje
                 if ((nUpdateFlags | nUpdateType) != 0)
                     WriteGameObjUpdate_UpdateObject(pPlayer, pObj, pLastUpdateObject, nUpdateType,
                                                     nUpdateFlags);
-                UpdateLastUpdateObject(pPlayer, pObj, pLastUpdateObject, nUpdateType);
-                UpdateLastUpdateObjectAppearance(pObj, pLastUpdateObject, nUpdateFlags);
+                StoreValuesInLastUpdateObject(pPlayer, pLastUpdateObject, pObj, nUpdateType,
+                                              nUpdateFlags);
             }
             else
             {
@@ -6067,11 +5849,7 @@ CLastUpdateObject* CSWSMessage::CreateNewLastUpdateObject(CSWSPlayer* pPlayer, C
     }
     else if (CGameObject::OBJECT_TYPE_DOOR == nType)
     {
-        CSWSDoor* pDoor = pObject->AsSWSDoor();
-        WriteBOOL(pDoor->m_bStatic);
-        WriteBYTE(pDoor->m_appearance, 8);
-        if (pDoor->m_appearance == 0)
-            WriteBYTE(pDoor->m_genericType, 8);
+        AddDoorAppearanceToMessage(pObject->AsSWSDoor());
         int bIsOwned;
         if (pObject->GetReputation(pPlayer->GetGameObject()->m_objectId, 0) <= kReputationMaxNeutral
             && pObject->AsSWSDoor()->m_nFaction
@@ -6093,9 +5871,7 @@ CLastUpdateObject* CSWSMessage::CreateNewLastUpdateObject(CSWSPlayer* pPlayer, C
     }
     else if (CGameObject::OBJECT_TYPE_AREAOFEFFECTOBJECT == nType)
     {
-        CSWSAreaOfEffectObject* pAOE = pObject->AsSWSAreaOfEffectObject();
-        WriteINT(pAOE->m_nAreaEffectId, 32);
-        WriteOBJECTIDServer(pAOE->m_oidLinkedToObject);
+        AddAreaOfEffectObjectToMessage(pObject->AsSWSAreaOfEffectObject());
     }
     else if (CGameObject::OBJECT_TYPE_TRIGGER == nType)
     {
@@ -6143,30 +5919,12 @@ CLastUpdateObject* CSWSMessage::CreateNewLastUpdateObject(CSWSPlayer* pPlayer, C
 
 int CSWSMessage::SendServerToPlayerDialogClose(unsigned int nPlayerId)
 {
-    unsigned char* pMsg = new unsigned char[3];
-    m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-    pMsg[0] = MSG_SERVER_TO_PLAYER;
-    pMsg[1] = MSG_MAJOR_DIALOG;
-    pMsg[2] = MSG_DIALOG_CLOSE;
-
-    int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                   3, 0);
-    delete[] pMsg;
-    return bSent;
+    return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_DIALOG, MSG_DIALOG_CLOSE, 0, 0);
 }
 
 int CSWSMessage::SendServerToPlayerLogin_Confirm(unsigned int nPlayerId)
 {
-    unsigned char* pMsg = new unsigned char[3];
-    m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-    pMsg[0] = MSG_SERVER_TO_PLAYER;
-    pMsg[1] = MSG_MAJOR_LOGIN;
-    pMsg[2] = MSG_LOGIN_CONFIRM;
-
-    int bSent = g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg,
-                                                                                   3, 0);
-    delete[] pMsg;
-    return bSent;
+    return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_LOGIN, MSG_LOGIN_CONFIRM, 0, 0);
 }
 
 // Party invites are a dead multiplayer hook; the body is a bare `return 1`.
@@ -6179,14 +5937,8 @@ int CSWSMessage::SendServerToPlayerParty_Invite(unsigned int nPlayerId,
 
 int CSWSMessage::SendServerToPlayerDestroyDeathGUI(unsigned int nPlayerId)
 {
-    unsigned char* pMsg = new unsigned char[3];
-    m_nPlayerId = MSG_PLAYERID_ALL_CLIENTS;
-    pMsg[0] = MSG_SERVER_TO_PLAYER;
-    pMsg[1] = MSG_MAJOR_POPUP_GUI_PANEL;
-    pMsg[2] = MSG_POPUP_GUI_PANEL_DESTROY_DEATH;
-
-    g_pAppManager->m_pServerExoApp->GetNetLayer()->SendMessageToPlayer(nPlayerId, pMsg, 3, 0);
-    delete[] pMsg;
+    SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_POPUP_GUI_PANEL,
+                              MSG_POPUP_GUI_PANEL_DESTROY_DEATH, 0, 0);
     return 1;
 }
 
@@ -7860,7 +7612,7 @@ void CSWSMessage::WriteGameObjUpdate_PlayerUpdate(CSWSPlayer* pPlayer,
         // Slots the client still shows that no live action matches.
         for (int i = 0; i < NUM_ACTION_QUEUE_ENTRIES; i++)
         {
-            if (pLast->m_actionQueue[i].m_nGroupId == CSWActionQueueEntry::SLOT_EMPTY)
+            if (pLast->m_actionQueue[i].m_nGroupId == CSWActionNode::SLOT_EMPTY)
                 continue;
 
             int bFound = 0;
@@ -7886,7 +7638,7 @@ void CSWSMessage::WriteGameObjUpdate_PlayerUpdate(CSWSPlayer* pPlayer,
         // whose group id is not ships as 'S' rather than 'A'.
         for (int i = 0; i < NUM_ACTION_QUEUE_ENTRIES; i++)
         {
-            if (pCreature->m_actionQueue[i].m_nGroupId == CSWActionQueueEntry::SLOT_EMPTY)
+            if (pCreature->m_actionQueue[i].m_nGroupId == CSWActionNode::SLOT_EMPTY)
                 continue;
 
             int bFound = 0;
@@ -7903,8 +7655,8 @@ void CSWSMessage::WriteGameObjUpdate_PlayerUpdate(CSWSPlayer* pPlayer,
 
             if (!bFound)
             {
-                if (pCreature->m_actionQueue[i].m_nActionId == CSWActionQueueEntry::SLOT_EMPTY
-                    && pCreature->m_actionQueue[i].m_nAltActionId != CSWActionQueueEntry::SLOT_EMPTY)
+                if (pCreature->m_actionQueue[i].m_nActionId == CSWActionNode::SLOT_EMPTY
+                    && pCreature->m_actionQueue[i].m_nAltActionId != CSWActionNode::SLOT_EMPTY)
                 {
                     listOps.Add('S');
                     listSlots.Add(static_cast<unsigned char>(i));
@@ -7928,7 +7680,7 @@ void CSWSMessage::WriteGameObjUpdate_PlayerUpdate(CSWSPlayer* pPlayer,
             // do not reorder them.
             if (listOps.m_pArray[i] == 'D')
             {
-                if (pLast->m_actionQueue[nSlot].m_nActionId != CSWActionQueueEntry::SLOT_EMPTY)
+                if (pLast->m_actionQueue[nSlot].m_nActionId != CSWActionNode::SLOT_EMPTY)
                 {
                     WriteWORD(pLast->m_actionQueue[nSlot].m_nActionId, 16);
                     WriteWORD(pLast->m_actionQueue[nSlot].m_nGroupId, 16);
@@ -8178,9 +7930,9 @@ void CSWSMessage::StoreValuesInLastPlayerUpdateObject(CSWSPlayer* pPlayer,
         CSWSCreatureStats* pStats = pCreature->m_pStats;
         for (int i = 0; i < pStats->m_featRemainingUses.m_count; i++)
         {
-            CSWSStats_FeatRemainingUses* pEntry = new CSWSStats_FeatRemainingUses;
+            CFeatUseListEntry* pEntry = new CFeatUseListEntry;
             pEntry->m_nFeat = pStats->m_featRemainingUses.m_pArray[i]->m_nFeat;
-            pEntry->m_nUsesUsed = pStats->m_featRemainingUses.m_pArray[i]->m_nUsesUsed;
+            pEntry->m_nUses = pStats->m_featRemainingUses.m_pArray[i]->m_nUses;
             pLast->m_featRemainingUses.Add(pEntry);
         }
     }

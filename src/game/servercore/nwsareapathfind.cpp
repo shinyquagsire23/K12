@@ -631,7 +631,11 @@ void CSWSArea::PathPointDFSTransTableInitialize()
 #endif
         m_paPathPointDFSTransTable = new CSWSAreaPathPointTransEntry[PATH_POINT_TRANS_TABLE_SIZE];
 
+#if KOTOR1  // K1's sentinel is FLT_MAX
+    static const CSWSAreaPathPointTransEntry kBlank = { 0.0f, 0.0f, 3.402823466e+38f, 0.0f };
+#else
     static const CSWSAreaPathPointTransEntry kBlank = { 0.0f, 0.0f, 3.40282347e+37f, 0.0f };
+#endif
     CSWSAreaPathPointTransEntry* const pEnd = m_paPathPointDFSTransTable + PATH_POINT_TRANS_TABLE_SIZE;
     for (CSWSAreaPathPointTransEntry* p = m_paPathPointDFSTransTable; p != pEnd; p += 8) {
         p[2] = kBlank;
@@ -759,16 +763,12 @@ int CSWSArea::GridDFSearch(int nPathIndex, int nCost, int nCostBound, int nTileX
     if (nManhattan - pPathInfo->m_nStepTolerance > nCostBound)
         return 0;
 
-    int h = (nTileX * 17 + nTileY * 23 + 6000) % 256;
-    CSWSAreaGridTransEntry* pEntry = &m_paGridDFSTransTable[h];
-    if (pEntry->m_nKeyX == nTileX && pEntry->m_nKeyY == nTileY) goto probe;
-    pEntry = &m_paGridDFSTransTable[h + 256];
-    if (pEntry->m_nKeyX == nTileX && pEntry->m_nKeyY == nTileY) goto probe;
-    goto expand;
-probe:
-    if (pEntry->m_nCostB >= nCostBound || pEntry->m_nCostA < nCost)
+    int nTransCostA;
+    int nTransCostB;
+    if (GridDFSTransTableGet(nTileX, nTileY, &nTransCostA, &nTransCostB) &&
+        (nTransCostA < nCost || nTransCostB >= nCostBound))
         return 0;
-expand:
+
     {
         int nCount = m_nGridDFSExpansions;
         m_nGridDFSExpansions = nCount + 1;
@@ -834,16 +834,12 @@ int CSWSArea::PathPointDFSearch(int nPathIndex, float fCost, float fCostBound,
     if (fGap > fCostBound)
         return 0;
 
-    int h = (static_cast<int>(vFrom.x) * 17 + static_cast<int>(vFrom.y) * 23 + 6000) % 256;
-    CSWSAreaPathPointTransEntry* pEntry = &m_paPathPointDFSTransTable[h];
-    if (pEntry->m_fKeyX == vFrom.x && pEntry->m_fKeyY == vFrom.y) goto probe;
-    pEntry = &m_paPathPointDFSTransTable[h + 256];
-    if (pEntry->m_fKeyX == vFrom.x && pEntry->m_fKeyY == vFrom.y) goto probe;
-    goto expand;
-probe:
-    if (pEntry->m_fCostA < fCost || pEntry->m_fCostB >= fCostBound)
+    float fTransCostA;
+    float fTransCostB;
+    if (PathPointDFSTransTableGet(vFrom.x, vFrom.y, &fTransCostA, &fTransCostB) &&
+        (fTransCostA < fCost || fTransCostB >= fCostBound))
         return 0;
-expand:
+
 #if !KOTOR1
     // K2 caps the recursion depth.
     if (nPathIndex >= PATH_POINT_DFS_DEPTH_LIMIT)
@@ -862,18 +858,7 @@ expand:
         int nSuccessors = PathPointDFSGenerateSuccessors(fGap, nPathIndex, nCurrent,
                                                          &pSuccessors);
 
-        CSWSAreaPathPointTransEntry* pSlot = &m_paPathPointDFSTransTable[h];
-        if (pSlot->m_fKeyX == vFrom.x && pSlot->m_fKeyY == vFrom.y)
-            goto write;
-        if (pSlot->m_fCostA > fCost ||
-            (pSlot->m_fCostA == fCost && pSlot->m_fCostB > fCostBound))
-            goto write;
-        pSlot = &m_paPathPointDFSTransTable[h + 256];
-    write:
-        pSlot->m_fCostA = fCost;
-        pSlot->m_fCostB = fCostBound;
-        pSlot->m_fKeyX = vFrom.x;
-        pSlot->m_fKeyY = vFrom.y;
+        PathPointDFSTransTablePut(vFrom.x, vFrom.y, fCost, fCostBound);
 
         int nResult = 0;
         if (nSuccessors >= 1)
@@ -1269,8 +1254,8 @@ void CSWSArea::SmoothSelectNodes(int nCount, float* pFloats, int* pOutCount,
             nAdvance = 0;
             while (j > 0)
             {
-                float fLastX = pOut[*pOutCount - 2];
-                float fLastY = pOut[*pOutCount - 1];
+                float fLastX = (*ppOutFloats)[*pOutCount - 2];
+                float fLastY = (*ppOutFloats)[*pOutCount - 1];
                 Vector vLast(fLastX, fLastY, 0.0f);
                 Vector vNext(pFloats[(j + i) * 2], pFloats[(j + i) * 2 + 1], 0.0f);
                 if (TestDirectLine(vLast, vNext, fPersonalSpace, fHeight, 0, 0) == 1)
@@ -1315,14 +1300,14 @@ void CSWSArea::SmoothSelectNodes(int nCount, float* pFloats, int* pOutCount,
 
         if (bSubdivide)
         {
-            float fDx = pOut[*pOutCount - 2] - fSelX;
-            float fDy = pOut[*pOutCount - 1] - fSelY;
+            float fDx = (*ppOutFloats)[*pOutCount - 2] - fSelX;
+            float fDy = (*ppOutFloats)[*pOutCount - 1] - fSelY;
             Vector vDelta(fDx, fDy, 0.0f);
             float fMag = magnitude(vDelta);
             if (static_cast<double>(fMag) >= 1.1)
             {
-                float fLastX = pOut[*pOutCount - 2];
-                float fLastY = pOut[*pOutCount - 1];
+                float fLastX = (*ppOutFloats)[*pOutCount - 2];
+                float fLastY = (*ppOutFloats)[*pOutCount - 1];
                 if (pScratch)
                     delete[] pScratch;
                 int n = static_cast<int>(fMag) * 2 + 2;
@@ -1585,9 +1570,8 @@ int CSWSArea::ClosestPathPoint(const Vector& v, unsigned int& nOut)
         return 1;
     }
 
-    unsigned int nCount = m_nPathPointCount;
     float fFirstX = m_paPathPoints[0].m_node.m_x;
-    float fLastX = m_paPathPoints[nCount - 1].m_node.m_x;
+    float fLastX = m_paPathPoints[m_nPathPointCount - 1].m_node.m_x;
     float fHitFraction = m_pActivePathfindInfo->m_fPersonalSpace;
 
     float fMinX = v.x - 10.0f;
@@ -1610,7 +1594,7 @@ int CSWSArea::ClosestPathPoint(const Vector& v, unsigned int& nOut)
     do {
         fMaxY += 10.0f;
         fMinY -= 10.0f;
-        if (i >= nCount)
+        if (i >= m_nPathPointCount)
             goto expand;
 
         j = i;
@@ -1662,7 +1646,7 @@ int CSWSArea::ClosestPathPoint(const Vector& v, unsigned int& nOut)
         i = j;
     step:
         j++;
-        if (static_cast<unsigned int>(j) >= nCount)
+        if (static_cast<unsigned int>(j) >= m_nPathPointCount)
             goto done;
         goto inner;
 
@@ -1716,7 +1700,6 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
     int nStartPathPoint;
     int nEndPathPoint;
     int nAction = nState;  // returned unchanged when no arm assigns an action
-    const char* sGridFailMsg;
 
     // In the start-points state, snap both endpoints onto the walkmesh and resolve them to the
     // nearest walk-route path points.
@@ -1815,21 +1798,7 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
             m_paPathPointDFSTransTable =
                 static_cast<CSWSAreaPathPointTransEntry*>(pPathInfo->m_pPathPointTable);
             if (m_paPathPointDFSTransTable == 0)
-            {
-                m_paPathPointDFSTransTable = new CSWSAreaPathPointTransEntry[PATH_POINT_TRANS_TABLE_SIZE];
-                static const CSWSAreaPathPointTransEntry kBlankPath = { 0.0f, 0.0f, 3.40282347e+37f, 0.0f };
-                CSWSAreaPathPointTransEntry* const pEnd = m_paPathPointDFSTransTable + PATH_POINT_TRANS_TABLE_SIZE;
-                for (CSWSAreaPathPointTransEntry* p = m_paPathPointDFSTransTable; p != pEnd; p += 8) {
-                    p[2] = kBlankPath;
-                    p[3] = kBlankPath;
-                    p[0] = kBlankPath;
-                    p[1] = kBlankPath;
-                    p[6] = kBlankPath;
-                    p[7] = kBlankPath;
-                    p[4] = kBlankPath;
-                    p[5] = kBlankPath;
-                }
-            }
+                PathPointDFSTransTableInitialize();
             fSearchRadius = fScale + pPathInfo->m_fCurrentRadius;
         }
         else
@@ -1842,14 +1811,14 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
             pPathInfo->m_fSearchRadius = fSearchRadius;
         }
 
+        // The clock is sampled once before the loop and re-sampled at the end of each body,
+        // so every budget test reads the previous body's clock.
+        uint64_ll_t nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         m_nPathPointDFSExpansions = 0;
         m_bPathPointDFSAborted = 0;
         if (pPathInfo->m_fMinGap > fGap)
             pPathInfo->m_fMinGap = fGap;
         nAction = CSWSObject::ACTION_IN_PROGRESS;
-        // The clock is sampled once before the loop and re-sampled at the end of each body,
-        // so every budget test reads the previous body's clock.
-        uint64_ll_t nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         int nLoopCount = 0;
         for (;;)
         {
@@ -1973,8 +1942,9 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
         {
             if (pPathInfo->m_nPathPointCount < 2)
             {
-                sGridFailMsg = const_cast<char*>("    failed to grid based pathfind from the creatures position to the starting path point.");
-                goto GridPointFail;
+                pPathInfo->m_nPathState = CPathfindInformation::PATH_POINT_STARTPOINTS;
+                pPathInfo->HandlePathfindError(0, const_cast<char*>("    failed to grid based pathfind from the creatures position to the starting path point."));
+                return CSWSObject::ACTION_FAILED;
             }
             int* pList = pPathInfo->m_pPathPointList;
             for (int i = 1; i < pPathInfo->m_nPathPointCount; i++)
@@ -2047,8 +2017,9 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
         {
             if (pPathInfo->m_nPathPointCount < 2)
             {
-                sGridFailMsg = const_cast<char*>("    failed to grid based pathfind from the ending path point ot the destiantion.");
-                goto GridPointFail;
+                pPathInfo->m_nPathState = CPathfindInformation::PATH_POINT_STARTPOINTS;
+                pPathInfo->HandlePathfindError(0, const_cast<char*>("    failed to grid based pathfind from the ending path point ot the destiantion."));
+                return CSWSObject::ACTION_FAILED;
             }
             --pPathInfo->m_nPathPointCount;
             pPathInfo->m_nDestPathPoint = pPathInfo->m_pPathPointList[pPathInfo->m_nPathPointCount - 1];
@@ -2117,11 +2088,6 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
 
     return nAction;
 
-GridPointFail:
-    // Both "not enough path points to grid-solve" errors land here.
-    pPathInfo->m_nPathState = CPathfindInformation::PATH_POINT_STARTPOINTS;
-    pPathInfo->HandlePathfindError(0, const_cast<char*>(sGridFailMsg));
-    return CSWSObject::ACTION_FAILED;
 }
 
 // Walks the creature over the grid for one leg. Seeds the grid transform frame from the goal
@@ -2602,10 +2568,15 @@ int CSWSArea::ComputeSafeLocation(const Vector& pos, float fRadius, CPathfindInf
         flag = 0;
     }
 
+#if KOTOR1
+    if (fRadius > 1.0f)
+    {
+#else
     if (fRadius > 0.0f)
     {
         if (!(fRadius > 1.0f))
             return 0;
+#endif
         float fR = 1.0f;
         do
         {

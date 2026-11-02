@@ -221,6 +221,7 @@ int CSWCItem::GetActivePropertySpellID(int nIndex)
 
 void CSWCItem::SetOrientation(const Vector& v) {
     m_orientation = v;
+    dot(v, v);
     UpdateOrientation(v);
 }
 
@@ -539,8 +540,8 @@ CExoString CSWCItem::GetName(int nForm)
     if (m_sDisplayName.GetLength() > 0
         && m_bIdentified != 0)
         return m_sDisplayName;
-    g_pTlkTable->Fetch(static_cast<unsigned int>(g_pRules->GetBaseItem(m_baseItem)->m_nNameStrRef),
-                       strRes, CTlkTable::GENDER_MALE);
+    unsigned int nNameStrRef = static_cast<unsigned int>(g_pRules->GetBaseItem(m_baseItem)->m_nNameStrRef);
+    g_pTlkTable->Fetch(nNameStrRef, strRes, CTlkTable::GENDER_MALE);
     sName = strRes.text;
     if (m_bIdentified == 0)
     {
@@ -589,12 +590,7 @@ void CSWCItem::PowerItem(int nPowered, int b, int c, int d)
     // A running minigame suppresses the whole effect; the item keeps its unpowered visuals.
     if (g_pAppManager->m_pClientExoApp->GetModule()->m_pArea->m_pMiniGame != 0)
         return;
-    if (m_equippedByObjectId != OBJECT_INVALID
-        && g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_equippedByObjectId) != 0
-        && g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_equippedByObjectId)
-                   ->m_bOverrideLightsaberState
-               == 1
-        && b == 0)
+    if (GetEquippedBy() != 0 && GetEquippedBy()->m_bOverrideLightsaberState == 1 && b == 0)
         return;
     // While an area transition is still fading in, powering down is deferred: the creature would be
     // re-equipped the moment the area becomes displayable.

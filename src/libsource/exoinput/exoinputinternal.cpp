@@ -36,7 +36,7 @@ CExoInputInternal::~CExoInputInternal()
         if (pDesc != 0)
             ::operator delete(pDesc);
     }
-    m_aEvents.Clear();
+    m_aEvents.SetSize(0);
     // The repeat-timer list nodes belong to the member's own destructor; the records do not.
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
     while (pNode != 0) {
@@ -650,23 +650,7 @@ int CExoInputInternal::SetMouseMode(unsigned char mode)
             g_cursorShouldBeVisible = 0;
 #endif
         }
-        unsigned int cid = m_nCursorId;
-        m_nLastMouseDownState = 0;
-        if (cid == MOUSECURSOR_NONE)
-            cid = MOUSECURSOR_DEFAULT;
-        m_nCursorId = cid;
-#if KOTOR1
-        if (m_nMouseMode == 0) {
-#else
-        if (mode == 0) {
-#endif
-            void* h = LoadCursorA(g_hInst, cid & 0xffff);
-            if (h != 0) {
-                void* prev = SetCursor_Win32(h);
-                if (prev != h)
-                    DestroyCursor(prev);
-            }
-        }
+        RefreshMouseCursor(0);
     }
     return 1;
 }
@@ -696,24 +680,9 @@ void CExoInputInternal::RefreshMouseCursor(int p1)
 {
     unsigned int cid = m_nCursorId;
     m_nCursorId = MOUSECURSOR_NONE;
-    m_nLastMouseDownState = p1;
     if (cid == MOUSECURSOR_NONE)
         cid = MOUSECURSOR_DEFAULT;
-    unsigned int idx = cid;
-    if (p1 != 0) {
-        idx = cid + static_cast<int>(cid) % 2;
-        if (idx == MOUSECURSOR_NONE)
-            return;
-    }
-    m_nCursorId = cid;
-    if (m_nMouseMode == 0) {
-        void* h = LoadCursorA(g_hInst, idx & 0xffff);
-        if (h != 0) {
-            void* prev = SetCursor_Win32(h);
-            if (prev != h)
-                DestroyCursor(prev);
-        }
-    }
+    SetMouseCursor(cid, 0, p1);
 }
 
 // The port's cursor-visibility hooks, three free functions implementing the policy of hiding the
@@ -1196,13 +1165,7 @@ float CExoInputInternal::PollInput(unsigned int nEvent, int nEventClass)
     if (!IsEventInClass(nEvent, nEventClass))
         return 0.0f;
 
-#if KOTOR1
     CExoInputEventDesc* pDesc = static_cast<CExoInputEventDesc*>(GetEvent(nEvent, nEventClass));
-#else
-    CExoInputEventDesc* pDesc = 0;
-    if (IsEventInClass(nEvent, nEventClass))
-        pDesc = m_aEvents.m_pArray[static_cast<int>(nEvent)];
-#endif
     K2_ASSUME(pDesc != 0);   // a registered event's slot is never empty (AddEvent tests it)
     float fValue = 0.0f;
     switch (pDesc->m_nEventClass) {
@@ -1871,24 +1834,10 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
     // Synthesise the pending mouse-axis events.
     int* pnEventQueueCount = &m_nEventQueueCount;
     if (m_pMainDevice != 0 && m_pMainDevice->m_bActive != 0) {
-        if (m_nMouseX != -1) {
-            CExoInputEvent* pEvent = static_cast<CExoInputEvent*>(::operator new(sizeof(CExoInputEvent)));
-            *pEvent = CExoInputEvent();
-            pEvent->m_nValue = m_nMouseX;
-            CExoInputEventDesc* pDesc = new CExoInputEventDesc(0, 0, CExoInput::INPUTDEVICE_MOUSE);
-            pEvent->m_pEvent = pDesc;
-            pDesc->m_nKeyCode = CExoInput::MOUSE_XAXIS;
-            m_mouseEventList.AddHead(pEvent);
-        }
-        if (m_nMouseY != -1) {
-            CExoInputEvent* pEvent = static_cast<CExoInputEvent*>(::operator new(sizeof(CExoInputEvent)));
-            *pEvent = CExoInputEvent();
-            pEvent->m_nValue = m_nMouseY;
-            CExoInputEventDesc* pDesc = new CExoInputEventDesc(0, 0, CExoInput::INPUTDEVICE_MOUSE);
-            pEvent->m_pEvent = pDesc;
-            pDesc->m_nKeyCode = CExoInput::MOUSE_YAXIS;
-            m_mouseEventList.AddHead(pEvent);
-        }
+        if (m_nMouseX != -1)
+            BufferEvent(CExoInput::INPUTDEVICE_MOUSE, CExoInput::MOUSE_XAXIS, m_nMouseX);
+        if (m_nMouseY != -1)
+            BufferEvent(CExoInput::INPUTDEVICE_MOUSE, CExoInput::MOUSE_YAXIS, m_nMouseY);
     }
 
     // Drain the queued mouse events into the per-device bound descriptors.
@@ -1901,12 +1850,12 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
             int* pnId = static_cast<int*>(pBound->GetAtPos(pNode));
             CExoInputEventDesc* pFound = m_aEvents.m_pArray[*pnId];
             if (static_cast<int>(static_cast<unsigned char>(pFound->m_nKeyCode)) == pEvent->m_pEvent->m_nKeyCode) {
-                if (pFound->IsDetailed() != 0)
-                    static_cast<CExoInputEventDescDetailed*>(pFound)->m_nAxisState = pEvent->m_nValue;
                 CExoInputEvent sEvent;
                 sEvent.m_nValue = pEvent->m_nValue;
                 sEvent.m_nTimeStamp = pEvent->m_nTimeStamp;
                 sEvent.m_nSequence = pEvent->m_nSequence;
+                if (pFound->IsDetailed() != 0)
+                    static_cast<CExoInputEventDescDetailed*>(pFound)->m_nAxisState = sEvent.m_nValue;
                 sEvent.m_pEvent = pFound;
                 m_eventQueue.Add(sEvent);
                 *pnEventQueueCount = *pnEventQueueCount + 1;

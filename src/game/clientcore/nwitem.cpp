@@ -279,8 +279,13 @@ void CSWBaseItemArray::Load()
         m_pItems[nRow].m_nBodyVar = 1;
         // The returned copy is discarded.
         sValue.UpperCase();
+#if KOTOR1
+        if (sValue.GetLength() == 1
+            && sValue[0] >= 'A' && sValue[0] <= 'J')
+#else
         if (sValue.GetLength() == 1
             && sValue[0] >= 'A' && sValue[0] <= 'Z')
+#endif
             m_pItems[nRow].m_nBodyVar = sValue[0] - '@';
 
         unsigned char nReqFeatCount = 0;

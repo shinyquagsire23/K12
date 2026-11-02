@@ -457,10 +457,7 @@ void CSWSJournal::Destroy(const CExoString& sPlotId)
 
     bEnd = m_entries.m_pArray[i].m_bEnd;
     locName = m_entries.m_pArray[i].m_locName;
-    // inlined CExoArrayList<SJournalEntry>::DelIndex(i)
-    m_entries.m_count--;
-    for (int64_t j = i + 1; j <= m_entries.m_count; j++)
-        m_entries.m_pArray[j - 1] = m_entries.m_pArray[j];
+    m_entries.DelIndex(static_cast<int>(i));
 
     pApp = g_pAppManager->m_pServerExoApp;
     pPlayer = pApp->GetClientObjectByObjectId(pApp->GetPlayerCreatureId());

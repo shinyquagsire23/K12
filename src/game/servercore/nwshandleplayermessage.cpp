@@ -325,7 +325,7 @@ int CSWSMessage::HandlePlayerToServerCheatMessage(CSWSPlayer* pPlayer, unsigned 
             if (MessageReadOverflow(1))
                 return 0;
 
-            unsigned long long nTarget = CGameObjectArray::INVALIDOBJID;
+            unsigned long long nTarget = OBJECT_INVALID;
             if (nFlags & 1)
             {
                 nTarget = ReadOBJECTIDServer();
@@ -1865,11 +1865,11 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
             if (pCreature == 0)
                 return nResult;
 
-            CSWSArea* pArea = static_cast<CSWSArea*>(pCreature->GetArea());
+            uint64_t oidArea = static_cast<CSWSArea*>(pCreature->GetArea())->m_objectId;
             if (pCreature->m_bCombatState == 0)
                 pCreature->ActionManager(1);
             if (pCreature->UseItem(oidItem, nProp, nInvSlot, oidTarget, vTarget,
-                                   pArea->m_objectId, 1) == 0)
+                                   oidArea, 1) == 0)
             {
                 pCreature->SendFeedbackMessage(FEEDBACK_CANNOT_USE_ITEM, 0);
             }
@@ -1946,7 +1946,11 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
                 if (pObj->AsSWSDoor() != 0 && pObj->AsSWSDoor()->m_bLocked != 0)
                     pCreature->AddUnlockObjectAction(oidTarget, oidLocker, 0);
                 if (pObj->AsSWSPlaceable() != 0 && pObj->AsSWSPlaceable()->m_bLocked != 0)
+#if KOTOR1  // K1 unlocks a placeable with no item
+                    pCreature->AddUnlockObjectAction(oidTarget, OBJECT_INVALID, 0);
+#else
                     pCreature->AddUnlockObjectAction(oidTarget, oidLocker, 0);
+#endif
             }
             return 1;
         }
@@ -2407,7 +2411,7 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
             else
             {
                 pCreature->AddUseTalentOnObjectActions(0, nSpellId, oidTarget, 0xfe,
-                                                       OBJECT_INVALID, -1,
+                                                       CGameObjectArray::INVALIDOBJID, -1,
                                                        nByte, 0);
             }
             return nResult;
@@ -3045,10 +3049,7 @@ int CSWSMessage::HandlePlayerToServerMessage(unsigned int nPlayerId, unsigned ch
         {
             case MSG_MAJOR_SERVER_STATUS - 1:
                 sMessageType = "ServerStatus";
-                bOverflow = MessageReadOverflow(1);
-                nRet = 0;
-                if (nSub == MSG_SERVER_STATUS_REQUEST && !bOverflow)
-                    nRet = SendServerToPlayerServerStatus_Status(pPlayer->m_nPlayerId);
+                nRet = HandlePlayerToServerServerStatusMessage(pPlayer, nSub);
                 break;
             case MSG_MAJOR_CHAR_LIST - 1:
                 sMessageType = "CharList";
@@ -3060,14 +3061,7 @@ int CSWSMessage::HandlePlayerToServerMessage(unsigned int nPlayerId, unsigned ch
                 break;
             case MSG_MAJOR_MAP_PIN - 1:
                 sMessageType = "MapPin";
-                if (nSub == MSG_MAP_PIN_ADD)
-                    nRet = HandlePlayerToServerMapPinSetMapPinAt(pPlayer);
-                else if (nSub == MSG_MAP_PIN_REMOVE)
-                    nRet = HandlePlayerToServerMapPinDestroyMapPin(pPlayer);
-                else if (nSub == MSG_MAP_PIN_CHANGE)
-                    nRet = HandlePlayerToServerMapPinChangePin(pPlayer);
-                else
-                    nRet = 1;
+                nRet = HandlePlayerToServerMapPinMessage(pPlayer, nSub);
                 break;
             case MSG_MAJOR_LOGIN - 1:
                 sMessageType = "Login";
@@ -3108,15 +3102,7 @@ int CSWSMessage::HandlePlayerToServerMessage(unsigned int nPlayerId, unsigned ch
                 break;
             case MSG_MAJOR_GUI_INVENTORY - 1:
                 sMessageType = "GuiInventory";
-                nRet = ReadBYTE(8);
-                if (MessageReadOverflow(1) || MessageReadUnderflow(1))
-                    nRet = 0;
-                else
-                {
-                    if (nSub == MSG_GUI_INVENTORY_STATUS)
-                        pPlayer->m_pInventoryGUI->SetOpen(nRet != 0);
-                    nRet = 1;
-                }
+                nRet = HandlePlayerToServerGuiInventoryMessage(pPlayer, nSub);
                 break;
             case MSG_MAJOR_PARTY - 1:
                 sMessageType = "Party";
@@ -3149,15 +3135,7 @@ int CSWSMessage::HandlePlayerToServerMessage(unsigned int nPlayerId, unsigned ch
                 break;
             case MSG_MAJOR_CHARACTER_DOWNLOAD - 1:
                 sMessageType = "Character_Download";
-                bOverflow = MessageReadOverflow(1);
-                nRet = 0;
-                if (nSub == MSG_CHARACTER_DOWNLOAD_REQUEST && !bOverflow)
-                {
-                    if (pPlayer->m_state == 1)
-                        nRet = SendServerToPlayerCharacterDownloadReply(pPlayer);
-                    else
-                        nRet = SendServerToPlayerCharacterDownloadFail(pPlayer);
-                }
+                nRet = HandlePlayerToServerCharacterDownload(pPlayer, nSub);
                 break;
             case MSG_MAJOR_SHUTDOWN_SERVER - 1:
                 sMessageType = "ShutDownServer";
@@ -3165,22 +3143,7 @@ int CSWSMessage::HandlePlayerToServerMessage(unsigned int nPlayerId, unsigned ch
                 break;
             case MSG_MAJOR_PLAY_MODULE_CHARACTER_LIST - 1:
                 sMessageType = "PlayModuleCharacterList";
-                if (MessageReadOverflow(1))
-                    nRet = 0;
-                else if (nSub == MSG_PLAY_MODULE_CHARACTER_LIST_START)
-                    nRet = HandlePlayerToServerPlayModuleCharacterList_Start(pPlayer);
-                else if (nSub == MSG_PLAY_MODULE_CHARACTER_LIST_STOP)
-                {
-                    if (MessageReadOverflow(1) || MessageReadUnderflow(1))
-                        nRet = 0;
-                    else
-                    {
-                        pPlayer->m_bPlayModuleListingCharacters = 0;
-                        nRet = 1;
-                    }
-                }
-                else
-                    nRet = 0;
+                nRet = HandlePlayerToServerPlayModuleCharacterList(pPlayer, nSub);
                 break;
             case MSG_MAJOR_QUICK_CHAT - 1:
                 sMessageType = "QuickChat";

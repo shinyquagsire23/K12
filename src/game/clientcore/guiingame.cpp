@@ -157,12 +157,7 @@ char* ShowGUI(char* pszName)
     if (*pszName == 0)
         return const_cast<char*>("need to specify the GUI to create");
 
-    if (g_pDynamicGUI != 0) {
-        g_pAppManager->m_pClientExoApp->GetSWGuiManager()->RemovePanel(g_pDynamicGUI);
-        g_pAppManager->m_pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
-        delete g_pDynamicGUI;
-        g_pDynamicGUI = 0;
-    }
+    HideGUI(pszName);
 
     g_pDynamicGUI = new CSWGuiDynamic(g_pAppManager->m_pClientExoApp->GetSWGuiManager(),
                                       CResRef(pszName));
@@ -481,24 +476,8 @@ void CGuiInGame::ShutDown()
 
     m_stuntModelCount = 0;
     ClearRepliesData();
-    m_dialogAnimCount = 0;
-    if (m_paDialogAnimData != 0) {
-        operator delete[](m_paDialogAnimData);
-        m_paDialogAnimData = 0;
-    }
-    if (m_paDialogAnimFlags != 0) {
-        operator delete[](m_paDialogAnimFlags);
-        m_paDialogAnimFlags = 0;
-    }
-    m_lastDialogAnimCount = 0;
-    if (m_paLastDialogAnimData != 0) {
-        operator delete[](m_paLastDialogAnimData);
-        m_paLastDialogAnimData = 0;
-    }
-    if (m_paLastDialogAnimFlags != 0) {
-        operator delete[](m_paLastDialogAnimFlags);
-        m_paLastDialogAnimFlags = 0;
-    }
+    ClearDialogAnimationData();
+    ClearLastDialogAnimationData();
 
 #if !KOTOR1  // K1 has no Ios_minigamePaused
     Ios_minigamePaused = false;
@@ -1121,8 +1100,7 @@ int CGuiInGame::HandleDialogSound(unsigned long long objId, const CResRef& resRe
                     return 0;
                 }
             }
-            m_dialogLipSyncObjId = objId;
-            m_dialogLipSyncResRef = resRef;
+            SetDialogLipSync(objId, resRef);
         }
         K2_ASSUME(pObj != 0);   // the object's AsSWCObject() was tested non-null above
         m_oidDialogSoundSpeaker = pObj->m_objectId;
@@ -1294,15 +1272,9 @@ CExoString CGuiInGame::DialogNodeSpanningTextParse(const CExoString& text)
     m_dialogSpanCount = 0;
 
     char* origBuf;
-#if KOTOR1  // K1: GetLength is out of line
     origBuf = new char[text.GetLength() + 1];
     strcpy(origBuf, text.CStr());
     origBuf[text.GetLength()] = '\0';
-#else
-    origBuf = text.m_sString ? new char[strlen(text.m_sString) + 1] : new char[1];
-    strcpy(origBuf, text.CStr());
-    origBuf[text.GetLength()] = '\0';
-#endif
 
     char* buf;
     buf = origBuf;
@@ -1348,10 +1320,7 @@ CExoString CGuiInGame::DialogNodeSpanningTextParse(const CExoString& text)
 #ifdef K2_FIX_ENGINE_BUGS
             if (!isDelim) goto finish;   // buf[i] is the terminator
 #endif
-            if (buf[i + 1] == '\0') {
-                if (!isDelim) goto finish;
-                continue;
-            }
+            if (buf[i + 1] == '\0') continue;
             if (buf[i + 2] == '\0') goto finish;
             buf = buf + i + 3;
             i = 0;
@@ -1466,20 +1435,10 @@ void CGuiInGame::ShowSoloModeQuery(int text)
         g_pAppManager->m_pClientExoApp->GetAreaNotReadyToDisplay() == 0) {
         if (pServerCreature != 0) {
             if (pServerCreature->GetDead() != 0) goto playSound;
-#if KOTOR1  // K1: GetDeadTemp instead of the in-party hit-point test
             int bDeadTemp = pServerCreature->GetDeadTemp();
             if (!bMultiPartyMember) goto playSound;
             if (bDeadTemp != 0) goto playSound;
             goto doQuery;
-#else
-            // inlined CSWSCreature::GetDeadTemp()
-            if (pServerCreature->m_bInParty != 0) {
-                short hp = pServerCreature->GetCurrentHitPoints(0);
-                if (!bMultiPartyMember) goto playSound;
-                if (hp < 1) goto playSound;
-                goto doQuery;
-            }
-#endif
         }
         if (bMultiPartyMember) {
 doQuery:
@@ -1931,17 +1890,8 @@ skipParticipantB:;
                             static_cast<CSWCObject*>(pCreature)->m_pModel->SetInCutscene(1);
                             pCreature->LookAt(OBJECT_INVALID, 0.0f);
                             if (static_cast<CSWCObject*>(pCreature)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
-                                if (static_cast<unsigned short>(flags >> 4) >= DIALOG_ANIM_2DA_BASE / 16 &&
-                                    g_pRules->m_p2DArrays->m_pDialogAnimations->m_nRows + DIALOG_ANIM_2DA_BASE > flags) {
-                                    unsigned short row = static_cast<unsigned short>(flags - DIALOG_ANIM_2DA_BASE);
-                                    int overlayEntry, dialogEntry;
-                                    if (g_pRules->m_p2DArrays->m_pDialogAnimations->GetINTEntry(
-                                            row, CTwoDimArrays::COL2DA_DIALOGANIMATIONS_OVERLAY, &overlayEntry) &&
-                                        g_pRules->m_p2DArrays->m_pDialogAnimations->GetINTEntry(
-                                            row, CTwoDimArrays::COL2DA_DIALOGANIMATIONS_DIALOG, &dialogEntry) &&
-                                        overlayEntry != 0 && dialogEntry != 0) {
-                                        static_cast<CSWCObject*>(pCreature)->AbortFireForgetAnimation(0);
-                                    }
+                                if (IsOverlayDialogAnimation(flags)) {
+                                    static_cast<CSWCObject*>(pCreature)->AbortFireForgetAnimation(0);
                                 }
                                 static_cast<CSWCObject*>(pCreature)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
                             }
@@ -2290,13 +2240,7 @@ int CGuiInGame::CloseDialog()
     }
 
     g_pAppManager->m_pClientExoApp->DisableVideoEffect();
-    while (m_dialogNonDependantList.m_pInternal->m_pHead != 0) {
-        void* pData = m_dialogNonDependantList.RemoveHead();
-        if (pData != 0) {
-            static_cast<CExoString*>(pData)->~CExoString();
-            operator delete(pData);
-        }
-    }
+    ClearDialogNonDependantList();
     m_bConversationUseLeader = 0;
 
     if (m_oidPostDialogCharacterSwitch != OBJECT_INVALID) {
@@ -2376,19 +2320,7 @@ int CGuiInGame::CloseDialog()
     }
     static_cast<CSWGuiDialog*>(pActiveCam2)->EndDialog();
     m_pActiveDialogPanel = m_pDialogCinematicPanel;
-    g_pAppManager->m_pClientExoApp->GetModule()->RestoreCamera();
-
-    m_bDialogCameraSet = 0;
-    m_bAnimatedCameraActive = 0;
-    m_bAnimatedCameraLoaded = 0;
-    m_fAnimatedCameraLength = 0.0f;
-    m_startConversationCount = 0;
-    m_nCameraAnimation = CAMERA_ANIMATION_NONE;
-    m_oidDialogPlayer = OBJECT_INVALID;
-    m_dialogParticipantIdA = OBJECT_INVALID;
-    m_dialogParticipantIdB = OBJECT_INVALID;
-    m_oidPrevDialogParticipantA = OBJECT_INVALID;
-    m_oidPrevDialogParticipantB = OBJECT_INVALID;
+    EndDialogCamera();
     UnloadStuntModelsForDialog();
     ClearRepliesData();
     ClearDialogAnimationData();
@@ -2791,7 +2723,6 @@ bool CGuiInGame::HandleDialogEntry(unsigned int a1, unsigned long long objIdA, u
                                     const Vector& fadePos, float fadeB, float fadeC, int bForceText)
 {
     K2_UNUSED(a1); K2_UNUSED(a6);
-    CSWCModule* pModule;
 #if KOTOR1  // K1: GetInGameGui is re-fetched for each use
     if (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bHoldFadeInForDialog != 0) {
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bHoldFadeInForDialog = 0;
@@ -2874,21 +2805,12 @@ bool CGuiInGame::HandleDialogEntry(unsigned int a1, unsigned long long objIdA, u
         } else {
             flag = 1;
         }
-        CSWGuiDialogLetterbox* pLetterbox = m_pDialogLetterbox;
-        if (pLetterbox != 0) {
-            pLetterbox->SetFade(flag, fadeB, fadeC, fadePos);
-        }
+        SetDialogFade(flag, fadeB, fadeC, fadePos);
     }
 
     if (m_pActiveDialogPanel == 0 || m_pActiveDialogPanel != m_pDialogCinematicPanel) {
         if (nCameraAngle == 6) {
-            if (m_bDialogCameraSet == 0) {
-                pModule = g_pAppManager->m_pClientExoApp->GetModule();
-                if (pModule != 0) {
-                    pModule->SetDialogCamera(m_bOldHitCheck);
-                }
-                m_bDialogCameraSet = 1;
-            }
+            InitializeShotCamera();
             SetComputerCameraShot(charId, arg, effectFlag);
 #if !KOTOR1  // K1 has no ApplyCameraShot after the computer shot
             CSWBehaviorCameraDialog* pDialog = static_cast<CSWBehaviorCameraDialog*>(
@@ -2898,13 +2820,7 @@ bool CGuiInGame::HandleDialogEntry(unsigned int a1, unsigned long long objIdA, u
         }
     } else {
         if (!SetAnimatedCamera(cameraId, speed)) {
-            if (m_bDialogCameraSet == 0) {
-                pModule = g_pAppManager->m_pClientExoApp->GetModule();
-                if (pModule != 0) {
-                    pModule->SetDialogCamera(m_bOldHitCheck);
-                }
-                m_bDialogCameraSet = 1;
-            }
+            InitializeShotCamera();
             UpdateShotCamera(nCameraAngle, charId, floatC, floatD, arg, effectFlag);
         }
     }
@@ -3423,15 +3339,7 @@ void CGuiInGame::StoreLastDialogAnimationData()
 bool CGuiInGame::InitializeDialogAnimationData(unsigned int count)
 {
     StoreLastDialogAnimationData();
-    m_dialogAnimCount = 0;
-    if (m_paDialogAnimData != 0) {
-        operator delete[](m_paDialogAnimData);
-        m_paDialogAnimData = 0;
-    }
-    if (m_paDialogAnimFlags != 0) {
-        operator delete[](m_paDialogAnimFlags);
-        m_paDialogAnimFlags = 0;
-    }
+    ClearDialogAnimationData();
     if (count == 0) {
         return false;
     }
@@ -3649,8 +3557,6 @@ bool CGuiInGame::ShowTutorialWindow(unsigned char reason, unsigned long long ins
     if (GetTutorialWindowHasBeenShown(reason) != 0) {
         return false;
     }
-    unsigned char byteIndex = reason >> 3;
-    unsigned char bitIndex = reason & 7;
 #else
     if (pOpts->m_bTutorialWindows == 0) {
         return false;
@@ -3662,7 +3568,7 @@ bool CGuiInGame::ShowTutorialWindow(unsigned char reason, unsigned long long ins
     }
 #endif
 
-    m_tutorialWindowShown[byteIndex] |= (1 << bitIndex);
+    SetTutorialWindowHasBeenShown(reason, 1);
     m_pTutorialBox->SetTutorialInstigator(instigatorId, targetId, type);
 
     if (g_pAppManager->m_pClientExoApp->GetSWGuiManager()->PanelExists(m_pTutorialBox) != 0) {
@@ -4277,9 +4183,7 @@ void CGuiInGame::AppendToCombatBuffer(const CExoString& text, unsigned int a, un
             do {
                 CGuiInGameMessage* dest = &m_pCombatMessageBuffer[i];
                 CGuiInGameMessage* src = &m_pCombatMessageBuffer[i + 1];
-                dest->m_text = src->m_text;
-                dest->m_param4 = src->m_param4;
-                dest->m_param3 = src->m_param3;
+                *dest = *src;
                 i++;
                 size = m_combatMessageBufferSize;
             } while (i < size);
@@ -4303,9 +4207,7 @@ void CGuiInGame::AppendToMsgBuffer(const CExoString& text, unsigned int a, unsig
                 CGuiInGameMessage* dest = &m_pMessageBuffer[i];
                 unsigned int next = i + 1;
                 CGuiInGameMessage* src = &m_pMessageBuffer[next];
-                dest->m_text = src->m_text;
-                dest->m_param4 = src->m_param4;
-                dest->m_param3 = src->m_param3;
+                *dest = *src;
                 i = static_cast<unsigned short>(next);
                 size = m_messageBufferSize;
             } while (i < size);
@@ -4346,17 +4248,8 @@ void CGuiInGame::CleanUpEntryNode()
 {
     __builtin_memset(&m_lastShotValid, 0, offsetof(CGuiInGame, m_pMessageBuffer) - offsetof(CGuiInGame, m_lastShotValid));
     m_pDialogLetterbox->ResetFade();
-    if ((m_pActiveDialogPanel == 0 || m_pActiveDialogPanel != m_pDialogCinematicPanel) &&
-        m_pGuiManager->PanelExists(static_cast<CSWGuiPanel*>(m_pDialogComputerCameraPanel)) != 0) {
-        m_pGuiManager->RemovePanel(static_cast<CSWGuiPanel*>(m_pDialogComputerCameraPanel));
-        m_pGuiManager->AddPanel(static_cast<CSWGuiPanel*>(m_pActiveDialogPanel), 2, 1);
-#if KOTOR1  // K1: no override flag, the video effect goes off unconditionally
-        g_pAppManager->m_pClientExoApp->DisableVideoEffect();
-#else
-        if (m_bScriptVideoEffect == 0) {
-            g_pAppManager->m_pClientExoApp->DisableVideoEffect();
-        }
-#endif
+    if (m_pActiveDialogPanel == 0 || m_pActiveDialogPanel != m_pDialogCinematicPanel) {
+        ResetComputerCameraShot();
     }
     m_fAnimatedCameraLength = 0;
     g_pExoInput->CoolDownEvent(INPUTEVENT_MOUSE_LEFT, 750);
@@ -4368,17 +4261,8 @@ void CGuiInGame::CleanUpReplyNode()
     __builtin_memset(&m_lastShotValid, 0, offsetof(CGuiInGame, m_pMessageBuffer) - offsetof(CGuiInGame, m_lastShotValid));
     m_pDialogLetterbox->ResetFade();
     ClearRepliesData();
-    if ((m_pActiveDialogPanel == 0 || m_pActiveDialogPanel != m_pDialogCinematicPanel) &&
-        m_pGuiManager->PanelExists(static_cast<CSWGuiPanel*>(m_pDialogComputerCameraPanel)) != 0) {
-        m_pGuiManager->RemovePanel(static_cast<CSWGuiPanel*>(m_pDialogComputerCameraPanel));
-        m_pGuiManager->AddPanel(static_cast<CSWGuiPanel*>(m_pActiveDialogPanel), 2, 1);
-#if KOTOR1  // K1: no override flag, the video effect goes off unconditionally
-        g_pAppManager->m_pClientExoApp->DisableVideoEffect();
-#else
-        if (m_bScriptVideoEffect == 0) {
-            g_pAppManager->m_pClientExoApp->DisableVideoEffect();
-        }
-#endif
+    if (m_pActiveDialogPanel == 0 || m_pActiveDialogPanel != m_pDialogCinematicPanel) {
+        ResetComputerCameraShot();
     }
     m_fAnimatedCameraLength = 0;
     g_pExoInput->CoolDownEvent(INPUTEVENT_MOUSE_LEFT, 750);
@@ -4590,7 +4474,7 @@ int CGuiInGame::ShowSWInGameGui(int panelIndex)
             if (m_bPaused == 0) {
                 g_pAppManager->m_pClientExoApp->GetSWCMessage()->SendPlayerToServerInput_TogglePauseRequest();
             }
-            m_pBarkBubble->Pause();
+            PauseBarkBubble();
             if (g_pVirtualMachine != 0) {
                 CExoString scriptName2("k_pend_screenchg");
                 g_pVirtualMachine->RunScript(&scriptName2, OBJECT_INVALID, 0);
@@ -4620,28 +4504,12 @@ int CGuiInGame::HideSWInGameGui(int notify)
     SetSWGuiStatus(SWGUI_UNCOVER, 1);
     pGuiManager->RemovePanel(static_cast<CSWGuiPanel*>(m_pInGameMenu));
 
-    bool removedScreenPanel = false;
     if (g_bCreateAllGUIs != 0) {
         pGuiManager->RemovePanel(m_apScreenPanels[m_lastGuiPanel]);
-        removedScreenPanel = g_bCreateAllGUIs != 0;
     }
 
     m_bInGameMenuShown = 0;
-    if (!removedScreenPanel && m_lastGuiPanel != -1) {
-        CSWGuiPanel*& rSlot = m_apScreenPanels[m_lastGuiPanel];
-        CSWGuiPanel* p = rSlot;
-        if (p != 0) {
-#if KOTOR1  // K1: no panel chain, one stamp
-            p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-#else
-            do {
-                p->m_stateFlags = (p->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-                p = p->m_pNextInChain;
-            } while (p != 0);
-#endif
-            rSlot = 0;
-        }
-    }
+    UpdateCreatedInGameGUI(m_lastGuiPanel, -1);
 
     if (m_bPaused == 0) {
         g_pAppManager->m_pClientExoApp->GetSWCMessage()->SendPlayerToServerInput_TogglePauseRequest();
@@ -4662,7 +4530,7 @@ int CGuiInGame::HideSWInGameGui(int notify)
         m_pPauseGuiPanel->SetToBeRemoved(0);
     }
 
-    m_pBarkBubble->Resume();
+    ResumeBarkBubble();
     m_pGuiManager->PlayGuiSound(GUISOUND_FULLSCREEN_PANEL_REMOVED);
 #if KOTOR1
     g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC);
@@ -4880,11 +4748,16 @@ void CGuiInGame::UpdateShotCamera(unsigned int nShotType, int nCharId, float fC,
                     Vector vDir = normalize(pObjA->m_position - pObjB->m_position);
                     Vector vHead = normalize(pObjB->m_orientation);
                     float fDot = vDir.x * vHead.x + vDir.y * vHead.y + vDir.z * vHead.z;
+#if KOTOR1
+                    float fDotC = fDot > 1.0f ? 1.0f : fDot;
+                    fDotC = fDotC < -1.0f ? -1.0f : fDotC;
+#else
                     float fDotC = 1.0f;
                     if (!(fDot > 1.0f)) {
                         fDotC = -1.0f;
                         if (!(fDot < -1.0f)) fDotC = fDot;
                     }
+#endif
                     float fAngle = acosf(fDotC) * 57.295776f;
                     float fHeadTurn = pObjB->AsSWCCreature()->GetHeadTurnHorizontal();
                     float fMaxTurn = 0.0f;
@@ -4945,11 +4818,16 @@ void CGuiInGame::UpdateShotCamera(unsigned int nShotType, int nCharId, float fC,
                     Vector vDir = normalize(pObjB->m_position - pObjA->m_position);
                     Vector vHead = normalize(pObjA->m_orientation);
                     float fDot = vDir.x * vHead.x + vDir.y * vHead.y + vDir.z * vHead.z;
+#if KOTOR1
+                    float fDotC = fDot > 1.0f ? 1.0f : fDot;
+                    fDotC = fDotC < -1.0f ? -1.0f : fDotC;
+#else
                     float fDotC = 1.0f;
                     if (!(fDot > 1.0f)) {
                         fDotC = -1.0f;
                         if (!(fDot < -1.0f)) fDotC = fDot;
                     }
+#endif
                     float fAngle = acosf(fDotC) * 57.295776f;
                     float fHeadTurn = pObjA->AsSWCCreature()->GetHeadTurnHorizontal();
                     float fMaxTurn = 0.0f;
@@ -5328,17 +5206,12 @@ bool CGuiInGame::UnpackQuickSaveGame(unsigned int a, const CExoString& b)
 
     g_pExoResMan->NukeDirectory("GAMEINPROGRESS:", 1, 1);
 
-#if KOTOR1  // K1: GetLength is out of line; the move goes through the port's _rename
     futureGamePath = futureGamePath.Left(futureGamePath.GetLength() - 1);
     gameInProgressPath = gameInProgressPath.Left(gameInProgressPath.GetLength() - 1);
 
+#if KOTOR1  // K1: the move goes through the port's _rename
     _rename(futureGamePath.CStr(), gameInProgressPath.CStr());
 #else
-    futureGamePath = futureGamePath.Left(
-        futureGamePath.m_sString != 0 ? static_cast<int>(strlen(futureGamePath.m_sString)) - 1 : -1);
-    gameInProgressPath = gameInProgressPath.Left(
-        gameInProgressPath.m_sString != 0 ? static_cast<int>(strlen(gameInProgressPath.m_sString)) - 1 : -1);
-
     static_cast<void>(rename(futureGamePath.CStr(), gameInProgressPath.CStr()));
 #endif
 

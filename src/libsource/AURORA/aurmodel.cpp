@@ -72,6 +72,7 @@ Model* LoadModel(FILE* pFile, FILE* pAux);
 #endif
 
 Part* CreateInstanceTreeR(MdlNode* pNode, Gob* pGob);
+Part* CreateInstanceTree(MdlNode* pNode, Gob* pGob);
 void  PartInitMaterial(Gob* pGob, Part* pPart, char* pszName);
 void  CreateReferenceObjects(Gob* pGob, Part* pPart);
 
@@ -104,10 +105,7 @@ void MaxTree::foobar(void* pTree)
         p->FreeTheFreeList();
         Model* pModel = static_cast<Model*>(p);
         if (pModel->m_pSuperModel != 0) {
-            if (removedelref == 0) {
-                if (--pModel->m_pSuperModel->m_nRefCount == 0)
-                    p->foobar(pModel->m_pSuperModel);
-            }
+            pModel->m_pSuperModel->DelRef(pModel);
             pModel->m_pSuperModel = 0;
         }
         p->m_pfnDestructor(p);
@@ -188,6 +186,7 @@ bool TreeSetGeometryFlags(Part* pPart);
 bool TreeHasTransparency(Part* pPart);
 
 extern int enabletransform;
+void Transform(const Vector& v, const Quaternion& q, int n);
 
 extern int systemmemoryshadows;
 
@@ -284,11 +283,6 @@ Gob::Gob(char* pszName)
     m_bRenderingEnabled = true;
 #endif
 
-    m_vPosition = Vector(0.0f, 0.0f, 0.0f);
-    m_qOrientation = Quaternion();
-    m_vPreviousPosition = Vector(0.0f, 0.0f, 0.0f);
-    m_qPreviousOrientation = Quaternion();
-
     m_nDynamicLights = 0;
     m_cCanDownSample = 1;
     m_nShadows = 1;
@@ -382,41 +376,16 @@ Gob::~Gob()
     }
 
     for (int i = 0; i < m_listModels.m_count; i++)
-    {
-        Model* pModel = m_listModels.m_pData[i];
-        if (removedelref == 0)
-        {
-            if (--pModel->m_nRefCount == 0)
-                pModel->foobar(pModel);
-        }
-    }
+        m_listModels.m_pData[i]->DelRef(this);
 
     m_listModels.m_count = 0;
     m_listParts.m_count = 0;
     if (m_pModel != 0)
-    {
-        if (removedelref == 0)
-        {
-            if (--m_pModel->m_nRefCount == 0)
-                m_pModel->foobar(m_pModel);
-        }
-    }
+        m_pModel->DelRef(this);
     if (m_pLodModelX != 0)
-    {
-        if (removedelref == 0)
-        {
-            if (--m_pLodModelX->m_nRefCount == 0)
-                m_pLodModelX->foobar(m_pLodModelX);
-        }
-    }
+        m_pLodModelX->DelRef(this);
     if (m_pLodModelZ != 0)
-    {
-        if (removedelref == 0)
-        {
-            if (--m_pLodModelZ->m_nRefCount == 0)
-                m_pLodModelZ->foobar(m_pLodModelZ);
-        }
-    }
+        m_pLodModelZ->DelRef(this);
 
     for (int i = 0; i < m_callbacks.m_count; i++)
     {
@@ -830,7 +799,7 @@ static inline Vector LocalToWorldDir(const Vector& v, const Quaternion& q)
 {
     float w = q.w, x = q.x, y = q.y, z = q.z;
     Vector r;
-    if (quaternionidentityoptimization == 0 || (w != -1.0f && w != 1.0f)) {
+    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -930,15 +899,14 @@ void* Gob::HitCheck(Vector a, Vector b, Vector* c, CHitInfo* d)
         }
     }
 
-    Part* pPart = m_pPart;
     Vector v1Local = WorldToLocal(a, m_qOrientation, m_vPosition);
     Vector v2Local = WorldToLocal(b, m_qOrientation, m_vPosition);
 
     if (!SphereIntersect(v1Local, v2Local, m_vMinSphereCenter, m_fMinSphereRadius))
         return 0;
-    if (pPart == 0)
+    if (m_pPart == 0)
         return 0;
-    if (pPart->HitCheck(v1Local, v2Local, &v2Local, d, m_fObjectScale) == 0)
+    if (m_pPart->HitCheck(v1Local, v2Local, &v2Local, d, m_fObjectScale) == 0)
         return 0;
 
     Vector vHitWorld = LocalToWorld(v2Local, m_qOrientation, m_vPosition);
@@ -1038,8 +1006,10 @@ void Gob::GetMinimumSphere()
     Part* pPart = m_pPart;
     if (pPart == 0)
         return;
+#if !KOTOR1  // K1 recomputes the sphere on every call
     if (m_fMinSphereRadius != 1.0f)
         return;
+#endif
     pPart->GetMinimumSphere(m_vMinSphereCenter, m_fMinSphereRadius);
     Vector v = m_vMinSphereCenter;
     Vector vLocal = m_pPart->m_vLocalPosition;
@@ -1096,8 +1066,7 @@ bool Gob::Append(char* pszModelName, char* pszPartName)
         return false;
 
     pModel->m_nRefCount++;
-    Part* pNode = CreateInstanceTreeR(pModel->m_pMdlNode, this);
-    pNode->PostProcess(pNode);
+    Part* pNode = CreateInstanceTree(pModel->m_pMdlNode, this);
     pNode->m_vLocalPosition = Vector(0.0f, 0.0f, 0.0f);
     pNode->m_qLocalOrientation = Quaternion();
 
@@ -1184,15 +1153,8 @@ bool Gob::LoadAddInAnimations(char* pszName)
 
 void Gob::RemoveAddInAnimations()
 {
-    Model* pModel = m_pAddInModel;
-    if (pModel != 0)
-    {
-        if (removedelref == 0)
-        {
-            if (--pModel->m_nRefCount == 0)
-                pModel->foobar(pModel);
-        }
-    }
+    if (m_pAddInModel != 0)
+        m_pAddInModel->DelRef(this);
     m_pAddInModel = 0;
 }
 
@@ -1229,24 +1191,6 @@ void Gob::ProcessGob()
     m_bHasTransparency = TreeHasTransparency(m_pPart);
     GetMinimumSphere();
     m_bProcessFlag = false;
-}
-
-void Gob::RenderBoundingBox()
-{
-    GLRender::Disable(Aurora::kCapCullFace);
-    ASLgl::glPushMatrix();
-    const Vector& v = m_vPosition;
-    const Quaternion& q = m_qOrientation;
-    if (enabletransform)
-        GLRender::Transform(v, q, 1);
-    if (m_fObjectScale != 1.0f)
-        ASLgl::glScalef(m_fObjectScale, m_fObjectScale, m_fObjectScale);
-    Vector vMax = m_vBoundingBoxMax;
-    if (m_vBoundingBoxMax.z <= 0.1f)
-        vMax.z = 0.1f;
-    GLRender::DrawAxisAlignedFrame(m_vBoundingBoxMin, vMax, m_vGobBBox);
-    ASLgl::glPopMatrix();
-    GLRender::Enable(Aurora::kCapCullFace);
 }
 
 Vector Gob::GetCutsceneDummyPosition()
@@ -1802,25 +1746,6 @@ static void snprintff(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_end(ap);
 }
 
-// A part's display name lives in its model's string table, indexed by the node's name index;
-// for an animation tree the table belongs to the animation's model.
-static char* GetPartNodeName(Part* pPart)
-{
-    // inlined MdlNode::TranslateNodeName()
-    MdlNode* pNode = pPart->m_pNode;
-    MaxTree* pTree = pNode->m_pTree;
-    int nKind = pTree->m_cType & MaxTree::kTreeTypeMask;
-    Animation* pAnim = nKind == MaxTree::kTreeAnimation ? static_cast<Animation*>(pTree) : static_cast<Animation*>(0);
-    K2_ASSUME(pTree != 0 && (nKind == MaxTree::kTreeModel || pAnim != 0));   // a node's tree is the model or animation that loaded it
-    List<char*>* pStrings;
-    if (pTree != 0 && nKind == MaxTree::kTreeModel)
-        pStrings = &static_cast<Model*>(pTree)->m_listStrings;
-    else
-        pStrings = &pAnim->m_pModel->m_listStrings;
-    int nNameIndex = pNode->m_nNameIndex;
-    return pStrings->m_pData[nNameIndex];
-}
-
 static void findalltrimeshparts(Part* pPart, List<PartTriMesh*>& out)
 {
     PartTriMesh* pMesh = pPart->AsPartTriMesh();
@@ -1928,20 +1853,8 @@ int Gob::ReplaceTexture(char* pszPublicName, char* pszTexName, int n, unsigned s
     for (int i = 0; i < parts.m_count; i++)
     {
         PartTriMesh* pMesh = parts.m_pData[i];
-        MdlNode* pNode = pMesh->m_pNode;
-        // inlined MdlNode::TranslateNodeName()
-        MaxTree* pTree = pNode->m_pTree;
-        int nKind = pTree->m_cType & MaxTree::kTreeTypeMask;
-        Animation* pAnim = nKind == MaxTree::kTreeAnimation ? static_cast<Animation*>(pTree) : static_cast<Animation*>(0);
-        K2_ASSUME(pTree != 0 && (nKind == MaxTree::kTreeModel || pAnim != 0));   // a node's tree is the model or animation that loaded it
-        List<char*>* pStrings;
-        if (pTree != 0 && nKind == MaxTree::kTreeModel)
-            pStrings = &static_cast<Model*>(pTree)->m_listStrings;
-        else
-            pStrings = &pAnim->m_pModel->m_listStrings;
-        int nNameIndex = pNode->m_nNameIndex;
         pMesh->m_pMaterial->ReplaceTexture(pPublicName, pszTexName,
-            pStrings->m_pData[nNameIndex], paSizes, n);
+            pMesh->m_pNode->TranslateNodeName(), paSizes, n);
         if (this->m_texWatch.m_pObject != 0)
             parts.m_pData[i]->m_pMaterial->Textures(0).m_pObject->SetIsEnvironmentMapped(true);
     }
@@ -1988,11 +1901,11 @@ void exportparts(Gob* pGob, Part* pPart)
     char szBuf[256];
     if (pGob == 0 || pPart == 0)
         return;
-    snprintff(szBuf, 256, "%s.%s.position", pGob->m_szName, GetPartNodeName(pPart));
+    snprintff(szBuf, 256, "%s.%s.position", pGob->m_szName, pPart->m_pNode->TranslateNodeName());
     new ConsoleFunc(szBuf, &pPart->m_vLocalPosition);
-    snprintff(szBuf, 256, "%s.%s.orientation", pGob->m_szName, GetPartNodeName(pPart));
+    snprintff(szBuf, 256, "%s.%s.orientation", pGob->m_szName, pPart->m_pNode->TranslateNodeName());
     new ConsoleFunc(szBuf, &pPart->m_qLocalOrientation);
-    snprintff(szBuf, 256, "%s.%s.controlmode", pGob->m_szName, GetPartNodeName(pPart));
+    snprintff(szBuf, 256, "%s.%s.controlmode", pGob->m_szName, pPart->m_pNode->TranslateNodeName());
     new ConsoleFunc(szBuf, static_cast<int*>(&pPart->m_nLocalPositionSet));
     for (int64_t i = 0; i < pPart->m_nChildren; i++)
         exportparts(pGob, pPart->m_paChildren[i]);
@@ -2158,23 +2071,20 @@ CAurObject* NewCAurObject(char* pszResRef, char* pszParam2, FILE* pFile, FILE* p
     if (pSuper2 != 0)
         pSuper2->m_nRefCount++;
 
-    Part* pRoot = CreateInstanceTreeR(pModel->m_pMdlNode, pGob);
-    pRoot->PostProcess(pRoot);
+    Part* pRoot = CreateInstanceTree(pModel->m_pMdlNode, pGob);
     pGob->m_pPart = pRoot;
     pRoot->m_pNode->ProcessSkinSeams();
     pGob->m_pPart->m_pGob = pGob;
 
     if (pSuper1 != 0)
     {
-        Part* pPart1 = CreateInstanceTreeR(pSuper1->m_pMdlNode, pGob);
-        pPart1->PostProcess(pPart1);
+        Part* pPart1 = CreateInstanceTree(pSuper1->m_pMdlNode, pGob);
         pGob->m_pLodPartX = pPart1;
         pPart1->m_pGob = pGob;
     }
     if (pSuper2 != 0)
     {
-        Part* pPart2 = CreateInstanceTreeR(pSuper2->m_pMdlNode, pGob);
-        pPart2->PostProcess(pPart2);
+        Part* pPart2 = CreateInstanceTree(pSuper2->m_pMdlNode, pGob);
         pGob->m_pLodPartZ = pPart2;
         pPart2->m_pGob = pGob;
     }
@@ -2620,26 +2530,13 @@ char* attach(char* pszArgs)
     if (_stricmp(szThingName, "null") == 0)
     {
         pGob->SetBehavior(0);
-        Scene* pOldScene = pGob->m_pScene;
-        if (pOldScene != 0)
-        {
-            pOldScene->ChildRemove(pGob);
-            pGob->m_pScene = 0;
-            pGob->DoEvent(const_cast<char*>("UpdateScenes"), 0);
-        }
+        pGob->SetScene(0);
         return const_cast<char*>("unattached object from everything");
     }
     Scene* pScene = FindScene(szThingName);
     if (pScene != 0)
     {
-        if (pGob->m_pScene != pScene)
-        {
-            if (pGob->m_pScene != 0)
-                pGob->m_pScene->ChildRemove(pGob);
-            pGob->m_pScene = pScene;
-            pScene->ChildAdd(pGob);
-            pGob->DoEvent(const_cast<char*>("UpdateScenes"), 0);
-        }
+        pGob->SetScene(pScene);
         return const_cast<char*>("attached to scene");
     }
     Gob* pTarget = FindGob(szThingName);
@@ -2841,41 +2738,37 @@ void MdlNodeAABBParseField(void* pv, char* pszLine)
 
 MdlNode* MdlNodeConJoinTwinMysLexia(void* pv)
 {
-    return new MdlNode(static_cast<char*>(pv));
+    return static_cast<MdlNode*>(pv)->InternalConJoin();
 }
 
 MdlNodeLight* MdlNodeLightConJoinTwinMysLexia(void* pv)
 {
-    return new MdlNodeLight(static_cast<char*>(pv));
+    return static_cast<MdlNodeLight*>(pv)->InternalConJoin();
 }
 
 MdlNodeReference* MdlNodeReferenceConJoinTwinMysLexia(void* pv)
 {
-    return new MdlNodeReference(static_cast<char*>(pv));
+    return static_cast<MdlNodeReference*>(pv)->InternalConJoin();
 }
 
 MdlNodeSkin* MdlNodeSkinConJoinTwinMysLexia(void* pv)
 {
-    return new MdlNodeSkin(static_cast<char*>(pv));
+    return static_cast<MdlNodeSkin*>(pv)->InternalConJoin();
 }
 
 MdlNodeAnimMesh* MdlNodeAnimMeshConJoinTwinMysLexia(void* pv)
 {
-    return new MdlNodeAnimMesh(static_cast<char*>(pv));
+    return static_cast<MdlNodeAnimMesh*>(pv)->InternalConJoin();
 }
 
 MdlNodeTriMesh* MdlNodeTriMeshConJoinTwinMysLexia(void* pv)
 {
-    return new MdlNodeTriMesh(static_cast<char*>(pv));
+    return static_cast<MdlNodeTriMesh*>(pv)->InternalConJoin();
 }
 
 Part* MdlNodeCreateInstance(void* pv, Gob* pGob)
 {
-    K2_UNUSED(pGob);
-    Part* pPart = new Part;
-    pPart->m_pNode = static_cast<MdlNode*>(pv);
-    countpart++;
-    return pPart;
+    return static_cast<MdlNode*>(pv)->InternalCreateInstance(pGob);
 }
 
 Part* MdlNode::InternalCreateInstance(Gob* pGob)
@@ -3465,7 +3358,7 @@ MdlNodeCamera* MdlNodeCamera::InternalConJoin()
 
 MdlNode* MdlNodeCameraConJoinTwinMysLexia(void* pv)
 {
-    return new MdlNodeCamera(static_cast<char*>(pv));
+    return static_cast<MdlNodeCamera*>(pv)->InternalConJoin();
 }
 
 MdlNodeLight::MdlNodeLight(char* pszName) : MdlNode(pszName)
@@ -3688,20 +3581,38 @@ MdlNodeEmitter* MdlNodeEmitter::InternalConJoin()
 #endif
 }
 
-#if KOTOR1  // K1's ConJoin twin factory
+void MdlNodeEmitterParseField(void* pv, char* pszLine)
+{
+    static_cast<MdlNodeEmitter*>(pv)->InternalParseField(pszLine);
+}
+
+void MdlNodeEmitterPostProcess(void* pv)
+{
+    static_cast<MdlNodeEmitter*>(pv)->InternalPostProcess();
+}
+
+void MdlNodeEmitterControl(void* pv, Part* pPart, float fA, float fB, float fC)
+{
+    static_cast<MdlNodeEmitter*>(pv)->InternalControl(pPart, fA, fB, fC);
+}
+
 MdlNodeEmitter* MdlNodeEmitterConJoinTwinMysLexia(void* pv)
 {
+#if KOTOR1  // K1's twin factory names the copy from its argument
     return new MdlNodeEmitter(static_cast<char*>(pv));
-}
+#else
+    return static_cast<MdlNodeEmitter*>(pv)->InternalConJoin();
 #endif
+}
+
+Part* MdlNodeEmitterCreateInstance(void* pv, Gob* pGob)
+{
+    return static_cast<MdlNodeEmitter*>(pv)->InternalCreateInstance(pGob);
+}
 
 Part* MdlNodeCameraCreateInstance(void* pv, Gob* pGob)
 {
-    K2_UNUSED(pGob);
-    PartCamera* pPart = new PartCamera;
-    pPart->m_pNode = static_cast<MdlNode*>(pv);
-    countpart++;
-    return pPart;
+    return static_cast<MdlNodeCamera*>(pv)->InternalCreateInstance(pGob);
 }
 
 PartCamera* MdlNodeCamera::InternalCreateInstance(Gob* pGob)
@@ -3804,8 +3715,7 @@ void MdlNodeDanglyMeshDestructor(void* pv)
 
 Part* MdlNodeDanglyMeshCreateInstance(void* pv, Gob* pGob)
 {
-    K2_UNUSED(pGob);
-    return new PartDanglyMesh(static_cast<MdlNode*>(pv));
+    return static_cast<MdlNodeDanglyMesh*>(pv)->InternalCreateInstance(pGob);
 }
 
 void MdlNodeTriMeshDestructor(void* pv)
@@ -3815,8 +3725,7 @@ void MdlNodeTriMeshDestructor(void* pv)
 
 Part* MdlNodeTriMeshCreateInstance(void* pv, Gob* pGob)
 {
-    K2_UNUSED(pGob);
-    return new PartTriMesh(static_cast<MdlNode*>(pv));
+    return static_cast<MdlNodeTriMesh*>(pv)->InternalCreateInstance(pGob);
 }
 
 void MdlNodeAABBDestructor(void* pv)
@@ -3826,8 +3735,7 @@ void MdlNodeAABBDestructor(void* pv)
 
 Part* MdlNodeAABBCreateInstance(void* pv, Gob* pGob)
 {
-    K2_UNUSED(pGob);
-    return new PartAABB(static_cast<MdlNode*>(pv));
+    return static_cast<MdlNodeAABB*>(pv)->InternalCreateInstance(pGob);
 }
 
 void MdlNodeLightsaberDestructor(void* pv)
@@ -3837,17 +3745,12 @@ void MdlNodeLightsaberDestructor(void* pv)
 
 Part* MdlNodeLightsaberCreateInstance(void* pv, Gob* pGob)
 {
-    K2_UNUSED(pGob);
-    return new PartLightsaber(static_cast<MdlNode*>(pv));
+    return static_cast<MdlNodeLightsaber*>(pv)->InternalCreateInstance(pGob);
 }
 
 Part* MdlNodeReferenceCreateInstance(void* pv, Gob* pGob)
 {
-    K2_UNUSED(pGob);
-    PartReference* pPart = new PartReference;
-    pPart->m_pNode = static_cast<MdlNode*>(pv);
-    countpart++;
-    return pPart;
+    return static_cast<MdlNodeReference*>(pv)->InternalCreateInstance(pGob);
 }
 
 
@@ -4142,14 +4045,14 @@ void Part::GetMinimumBoundingBox(Vector& outMin, Vector& outMax, float scale)
         && (mesh = node->AsMdlNodeTriMesh())->m_nVertexCount) {
         Vector worldPos;
         Quaternion worldOrient(1.0f, 0.0f, 0.0f, 0.0f);
-        trimesh->GetWorld(worldPos, worldOrient);
         scale *= m_scale.m_fScale;
+        trimesh->GetWorld(worldPos, worldOrient);
 
         mesh = trimesh->m_pNode->AsMdlNodeTriMesh();
 #if KOTOR1  // K1 inlines the downcast here
-        Model* model = K1AsModelInline(node->m_pTree);
+        Model* model = K1AsModelInline(mesh->m_pTree);
 #else
-        Model* model = node->m_pTree->AsModel();
+        Model* model = mesh->m_pTree->AsModel();
 #endif
         void* pool = GLRender::LockPool(model->m_nPool, 0, 0, 8);
 
@@ -4182,8 +4085,8 @@ int Part::HitCheckGeom(Vector const&, Vector&, Vector*, CHitInfo*, float)
 
 void* Part::HitCheck(Vector a, Vector b, Vector* c, CHitInfo* d, float scale)
 {
-    static Vector vTemp;
     float s = m_scale.m_fScale * scale;
+    static Vector vTemp;
 // The transformed endpoints are written back into the by-value parameters; b shares the
 // block after the scale split.
     if (s == 1.0f) {
@@ -4240,33 +4143,11 @@ const char* setcolorshifting(char* pszParams)
     if (static_cast<unsigned>(nFields - 4) > 2)
         return "Usage:  setcolorshifting <gobname> <red> <green> <blue> <optional alpha> <optional propagate>";
 
-    int nLow = 0;
-    int nHigh = gobs.m_count - 1;
-    while (nLow <= nHigh)
+    Gob* pGob = FindGob(szName);
+    if (pGob != 0)
     {
-        int nMid = (nHigh + nLow) >> 1;
-        int nCmp = _stricmp(gobs.m_pData[nMid]->m_szName, szName);
-        if (nCmp > 0)
-            nHigh = nMid - 1;
-        else if (nCmp < 0)
-            nLow = nMid + 1;
-        else
-        {
-            nLow = nMid;
-            nHigh = nMid - 1;
-        }
-    }
-    if (nLow < gobs.m_count)
-    {
-        if (_stricmp(gobs.m_pData[nLow]->m_szName, szName) == 0)
-        {
-            Gob* pGob = gobs.m_pData[nLow];
-            if (pGob != 0)
-            {
-                pGob->SetColorShifting(Vector(fRed, fGreen, fBlue), fAlpha, nPropagate);
-                return "Success";
-            }
-        }
+        pGob->SetColorShifting(Vector(fRed, fGreen, fBlue), fAlpha, nPropagate);
+        return "Success";
     }
     return "Error:  No gob by that name";
 }
@@ -4282,33 +4163,11 @@ const char* setillumination(char* pszParams)
     if ((nFields | 1) != 5)
         return "Usage:  setillumination <gobname> <red> <green> <blue> <optional alpha>";
 
-    int nHigh = gobs.m_count - 1;
-    int nLow = 0;
-    while (nLow <= nHigh)
+    Gob* pGob = FindGob(szName);
+    if (pGob != 0)
     {
-        int nMid = (nHigh + nLow) >> 1;
-        int nCmp = _stricmp(gobs.m_pData[nMid]->m_szName, szName);
-        if (nCmp > 0)
-            nHigh = nMid - 1;
-        else if (nCmp < 0)
-            nLow = nMid + 1;
-        else
-        {
-            nLow = nMid;
-            nHigh = nMid - 1;
-        }
-    }
-    if (nLow < gobs.m_count)
-    {
-        if (_stricmp(gobs.m_pData[nLow]->m_szName, szName) == 0)
-        {
-            Gob* pGob = gobs.m_pData[nLow];
-            if (pGob != 0)
-            {
-                pGob->SetIllumination(Vector(fRed, fGreen, fBlue), 1);
-                return "Success";
-            }
-        }
+        pGob->SetIllumination(Vector(fRed, fGreen, fBlue), 1);
+        return "Success";
     }
     return "Error:  No gob by that name";
 }
@@ -4381,6 +4240,18 @@ static inline char* ListStringAt(List<char*>* pList, int nIndex)
     return pList->m_pData[nIndex];
 }
 
+#if KOTOR1
+// K1: the comparison lowercases the first characters before calling strcasecmp (as auranim.cpp's).
+static inline unsigned char K1AsciiLower(unsigned char c)
+{
+    return static_cast<unsigned int>(c - 'A') < 26 ? c + ('a' - 'A') : c;
+}
+static inline bool K1NameEq(const char* a, const char* b)
+{
+    return K1AsciiLower(a[0]) == K1AsciiLower(b[0]) && strcasecmp(a, b) == 0;
+}
+#endif
+
 Part* FindPart(Part* pPart, char* pszName)
 {
     if (!pPart || !pszName)
@@ -4394,7 +4265,7 @@ Part* FindPart(Part* pPart, char* pszName)
     Model* pModel = (pTree != 0 && nTag == MaxTree::kTreeModel) ? static_cast<Model*>(pTree)
                                              : (nTag == MaxTree::kTreeAnimation ? static_cast<Animation*>(pTree) : 0)->m_pModel;
 
-    if (!_stricmp(ListStringAt(&pModel->m_listStrings, pPart->m_pNode->m_nNameIndex), pszName))
+    if (K1NameEq(ListStringAt(&pModel->m_listStrings, pPart->m_pNode->m_nNameIndex), pszName))
         return pPart;
 #else
     if (!_stricmp(pPart->m_pNode->TranslateNodeName(), pszName))
@@ -4511,23 +4382,27 @@ void Part::GetLocal(Vector& outPos, Quaternion& outOrient)
     } else if (m_pGob != 0) {
 #if KOTOR1  // K1 rotates through the out-of-line Quaternion inverse operator
         outOrient = -m_pGob->m_qOrientation * outOrient;
+        Quaternion qGobInverse = -m_pGob->m_qOrientation;
+        outPos = RotateVector(outPos - m_pGob->m_vPosition, qGobInverse);
 #else
         outOrient = Quaternion(-m_pGob->m_qOrientation.w, m_pGob->m_qOrientation.x,
                                m_pGob->m_qOrientation.y, m_pGob->m_qOrientation.z)
                     * outOrient;
-#endif
         outPos = RotateByTransposeModel(outPos - m_pGob->m_vPosition, m_pGob->m_qOrientation);
+#endif
         fScale = m_pGob->m_fObjectScale;
     }
 
 #if KOTOR1  // K1 rotates through the out-of-line Quaternion inverse operator
     outOrient = -m_qLocalOrientation * outOrient;
+    Quaternion qLocalInverse = -m_qLocalOrientation;
+    outPos = RotateVector(outPos - m_vLocalPosition, qLocalInverse);
 #else
     outOrient = Quaternion(-m_qLocalOrientation.w, m_qLocalOrientation.x, m_qLocalOrientation.y,
                            m_qLocalOrientation.z)
                 * outOrient;
-#endif
     outPos = RotateByTransposeModel(outPos - m_vLocalPosition, m_qLocalOrientation);
+#endif
     outPos = outPos * (1.0f / fScale);
 }
 
@@ -4552,9 +4427,7 @@ MdlNodeLight* MdlNode::AsMdlNodeLight()
 
 void MaxTreeDestructor(void* pTree)
 {
-    MaxTree* p = static_cast<MaxTree*>(pTree);
-    if (p->m_pMdlNode != 0)
-        p->m_pMdlNode->DestructorDispatch();
+    static_cast<MaxTree*>(pTree)->InternalDestructor();
 }
 
 void MaxTree::InternalDestructor()
@@ -4671,10 +4544,7 @@ void Model::InternalDestructor()
     if (Models.Contains(this))
         Models.Remove(this);
     if (m_pSuperModel != 0) {
-        if (removedelref == 0) {
-            if (--m_pSuperModel->m_nRefCount == 0)
-                foobar(m_pSuperModel);
-        }
+        m_pSuperModel->DelRef(this);
         m_pSuperModel = 0;
     }
     animationfootprint -= m_animations.m_count * 8;
@@ -5134,8 +5004,7 @@ void MdlNodeAnimMeshControl(void* pv, Part* pPart, float fA, float fB, float fC)
 
 PartAnimMesh* MdlNodeAnimMeshCreateInstance(void* pv, Gob* pGob)
 {
-    K2_UNUSED(pGob);
-    return new PartAnimMesh(static_cast<MdlNode*>(pv));
+    return static_cast<MdlNodeAnimMesh*>(pv)->InternalCreateInstance(pGob);
 }
 
 void MdlNodeAnimMeshGenVertices(void* pv)

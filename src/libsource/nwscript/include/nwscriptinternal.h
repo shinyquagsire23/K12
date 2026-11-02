@@ -137,6 +137,31 @@ enum ScriptIdentifierType {
 // The include-file stack's depth.
 enum { INCLUDE_FILE_COUNT = 16 };
 
+// The identifier table's capacity (m_pIdentifierList).
+enum { IDENTIFIER_LIST_COUNT = 4096 };
+
+// The switch-label table's capacity (m_nSwitchLabelCapacity, m_pSwitchLabels).
+enum { SWITCH_LABEL_COUNT = 16 };
+
+// m_nVarStackVariableType outside a declaration: a NODE_VARIABLE then names an existing variable.
+enum { DECLARATION_TYPE_NONE = 2 };
+
+// GenerateIdentifierList's state (m_nIdentifierListState) while it reads the identifier file.
+enum IdentifierListState {
+    IDLIST_IDLE                  = 0,
+    IDLIST_RETURN_TYPE           = 1,    // a type read; the name follows
+    IDLIST_NAME                  = 2,    // a name read; '(' or '=' follows
+    IDLIST_PARAMETERS            = 3,
+    IDLIST_CONSTANT_VALUE        = 4,    // `name =` read; the constant's value follows
+    IDLIST_CONSTANT_DONE         = 5,
+    IDLIST_DEFINE                = 6,    // `#define` read
+    IDLIST_ENGINE_NUM_STRUCTURES = 7,
+    IDLIST_ENGINE_STRUCTURE      = 8,    // ENGINE_STRUCTURE_<n> read; its name follows
+    IDLIST_PARAMETER_VECTOR      = 9,    // a parameter's default `[x, y, z]`
+    IDLIST_CONSTANT_VECTOR       = 10,   // a constant's `[x, y, z]`
+    IDLIST_PARAMETER_DEFAULT     = 11,   // a parameter's `=` read; its default follows
+};
+
 // The most parameters a function may declare (ExpandParameterSpace's ceiling).
 enum { MAX_PARAMETER_COUNT = 32 };
 
@@ -470,8 +495,9 @@ enum ScriptErrorStrRef {
 // source position, two child links and a name.
 class CScriptParseTreeNode {
 public:
-    // Inlined at every call site, so the body belongs in the class.
-    __attribute__((always_inline)) CScriptParseTreeNode()
+    // The body is in the class: the arm64 image inlines it at every call site, the armv7 one calls
+    // its weak copy.
+    CScriptParseTreeNode()
     {
         m_nType = 0;
         m_sName = "";
@@ -576,21 +602,8 @@ public:
     // </VTABLE-GEN>
 
     // Loads the named .nss through this handle and publishes its text and size. Returns 0 on
-    // success and a negative code when the resource cannot be demanded. noinline: only one of the
-    // two callers uses this copy.
-    __attribute__((noinline))
-    int  LoadScript(const CExoString& sName, char** ppSourceText, unsigned int* pnSize)
-    {
-        CResRef resRef(sName);
-        SetResRef(resRef, 0);
-
-        if (m_pRes->Demand() == 0)
-            return -SCRIPT_ERROR_FILE_NOT_FOUND;
-
-        *ppSourceText = static_cast<char*>(m_pRes->GetNSSDataPtr());
-        *pnSize = m_pRes->GetNSSSize();
-        return 0;
-    }
+    // success and a negative code when the resource cannot be demanded.
+    int  LoadScript(const CExoString& sName, char** ppSourceText, unsigned int* pnSize);
     // Releases the underlying resource; m_pRes itself is left alone.
     void UnloadScript();
 };
@@ -783,11 +796,7 @@ public:
     void DeleteCompileStack();
 
     int  AddUserDefinedIdentifier(CScriptParseTreeNode* pNode, int nFlags);
-#if KOTOR1  // K1 keeps it out of line
-    void ClearAllSymbolLists() __attribute__((noinline));
-#else
     void ClearAllSymbolLists();
-#endif
     void ClearUserDefinedIdentifiers();
     void ClearSwitchLabelList();
     int  GetStructureSize(const CExoString& sName);

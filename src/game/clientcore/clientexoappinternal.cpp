@@ -445,7 +445,6 @@ int CClientExoAppInternal::GetPausedByCombat()
     return pServer->GetPauseState(2);
 }
 
-__attribute__((noinline))
 void CClientExoAppInternal::SetLastTarget(unsigned long long id, int b)
 {
     unsigned long long old = m_lastTarget;
@@ -457,13 +456,7 @@ int TestNearestStruct(void* pObjectId, CNearestStruct nearest);
 
 CSWCObject* CClientExoAppInternal::SelectNearestObject(int nForward, unsigned char nMode)
 {
-    if (m_pInGameGui->TutorialReasonWillShowWindow(TUTORIAL_CYCLE_TARGETS) &&
-        m_pInGameGui->SetTutorialReason(TUTORIAL_CYCLE_TARGETS)) {
-        m_tutorialObjA = OBJECT_INVALID;
-        m_tutorialObjB = OBJECT_INVALID;
-        m_tutorialTimerSpan = 0;
-        m_tutorialReason = TUTORIAL_CYCLE_TARGETS;
-    }
+    ShowTutorialWindow(TUTORIAL_CYCLE_TARGETS, OBJECT_INVALID, OBJECT_INVALID, 0);
 
     if (m_visibleTable.m_count == 0)
         return 0;
@@ -580,21 +573,15 @@ CSWCObject* CClientExoAppInternal::SelectNearestObject(int nForward, unsigned ch
 
 void CClientExoAppInternal::UpdateHostileHilite(float fDelta)
 {
-    unsigned char cSuccess = CGameObjectArray::SUCCESS;
-    unsigned char cCreatureType = CGameObject::OBJECT_TYPE_CREATURE;
     for (int i = m_hiliteList.m_count; i-- > 0; ) {
         CHostileHilite& rRow = m_hiliteList.m_pArray[i];
         rRow.m_fHiliteSize -= fDelta;
         if (!(rRow.m_fHiliteSize <= 0.0f))
             continue;
 
-        CGameObject* pObj = 0;
-        unsigned char cOk = m_pGameObjectArray->GetGameObject(rRow.m_dwObjectId, &pObj);
-        if (cSuccess == cOk && pObj != 0 && pObj->m_objectType == cCreatureType) {
-            CSWCCreature* pCreature = pObj->AsSWCCreature();
-            if (pCreature)
-                pCreature->UnHilite(0);
-        }
+        CSWCCreature* pCreature = GetCreatureByGameObjectID(rRow.m_dwObjectId);
+        if (pCreature)
+            pCreature->UnHilite(0);
 
         m_hiliteList.DelIndex(i);
     }
@@ -732,15 +719,8 @@ loop_cont:
     }
 
 creature_cache:
-    if (m_oidCreatureCache == m_playerCreatureId) {
-        // The cache is still valid.
-    } else {
-        m_pCreatureCache = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
-            m_playerCreatureId);
-        m_oidCreatureCache = m_playerCreatureId;
-    }
-    if (m_pCreatureCache != 0 && (static_cast<CSWCCreature*>(m_pCreatureCache)->m_nStateFlags & 1) != 0) {
-        int iIndex = m_pParty->GetIndex(m_oidCreatureCache);
+    if (GetPlayerCreature() != 0 && (GetPlayerCreature()->m_nStateFlags & 1) != 0) {
+        int iIndex = m_pParty->GetIndex(m_playerCreatureId);
 #if KOTOR1  // K1's "no combat message" strref is 48208
         if (iIndex >= 0 &&
             m_pParty->m_members[iIndex].m_nCombatMessageStrRef != STRREF_COMBAT_MODE_ENGAGED) {
@@ -776,7 +756,7 @@ int CClientExoAppInternal::Initialize()
 
     m_pInGameGui->InitializeGlobal();
     SetEventDescriptions();
-    if (m_pMoviePlayer != 0 && m_pMoviePlayer->IsMoviePlaying() != 0) {
+    if (IsMoviePlaying() != 0) {
         m_pInGameGui->SetGlobalUnpauseableState(1);
         g_pExoInput->ClearEvents();
         g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_PAUSE_ALL, 0);
@@ -792,9 +772,9 @@ int CClientExoAppInternal::HandleMessage(unsigned int nType, unsigned char* pMes
         if (g_pAppManager->m_pClientExoApp->GetCaptureEventFile() != 0) {
             CExoString sText;  // default ctor then Format'ed in place
             sText.Format(const_cast<char*>("%d %c %d %d %d "),
-                         static_cast<unsigned long long>(g_pAppManager->m_pClientExoApp->GetWorldTimer()
+                         static_cast<unsigned int>(static_cast<uint64_ll_t>(g_pAppManager->m_pClientExoApp->GetWorldTimer()
                              ->GetSnapshotTime()) /
-                             1000,
+                             1000),
                          'M', nType, nArg4, nSize);
             static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())->Write(sText);
             static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())
@@ -821,13 +801,7 @@ void CClientExoAppInternal::UpdateSoundEngine()
     CAurCamera* pCamera;
     pCamera = m_pModule->m_pCamera;
     CSWCCreature* pPlayer;
-    if (m_oidCreatureCache == m_playerCreatureId) {
-        pPlayer = static_cast<CSWCCreature*>(m_pCreatureCache);
-    } else {
-        pPlayer = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_playerCreatureId);
-        m_pCreatureCache = pPlayer;
-        m_oidCreatureCache = m_playerCreatureId;
-    }
+    pPlayer = GetPlayerCreature();
 
     if (pCamera == 0)
         goto lblRender;
@@ -897,14 +871,13 @@ void CClientExoAppInternal::UpdateRumble(float fRumble)
     if (fRumble > 0.0f && m_bAreaNotReadyToDisplay == 0 &&
         m_pInGameGui->IsGlobalFadeObscuring() == 0 &&
         m_pInGameGui->IsGlobalFading() == 0) {
-        if (m_pLoadScreenObj == 0 || m_pSWGuiManager == 0 ||
-            m_pSWGuiManager->PanelExists(m_pLoadScreenObj) == 0) {
+        if (GetLoadScreenVisible() == 0) {
             int nCount = m_rumblePatterns.m_count;
             fHigh = 0.0f;
             if (nCount > 0) {
                 fLow = 0.0f;
                 for (int i = nCount - 1; i >= 0; --i) {
-                    SRumblePattern& r = m_rumblePatterns.m_pArray[i];
+                    CSWRumbleInstance& r = m_rumblePatterns.m_pArray[i];
                     float fPos;
                     if (r.nState != 0) {
                         r.nState = 0;
@@ -938,8 +911,7 @@ void CClientExoAppInternal::SetAutoPaused(int nAutoPaused, unsigned char nLevel)
         return;
 
     if (nAutoPaused != 0) {
-        if (g_pAppManager->m_pServerExoApp != 0 &&
-            g_pAppManager->m_pServerExoApp->GetPauseState(2) != 0)
+        if (GetPausedByCombat() != 0)
             return;
 
         if (m_fEnemyAutoPauseDelay > 0.0f) {
@@ -949,7 +921,6 @@ void CClientExoAppInternal::SetAutoPaused(int nAutoPaused, unsigned char nLevel)
             return;
         }
 
-#if KOTOR1  // the pause itself is SetPausedByCombat's (no mode-13 / mode-3 cases)
         if (m_pInGameGui->m_nGlobalDialogState != 0)
             return;
         if (nLevel == PAUSE_MODE_PARTY_MEMBER_DOWN) {
@@ -961,63 +932,10 @@ void CClientExoAppInternal::SetAutoPaused(int nAutoPaused, unsigned char nLevel)
         SetPausedByCombat(1, nLevel, 0);
         return;
     }
-#else
-        if (m_pInGameGui->m_nGlobalDialogState != 0)
-            return;
-        if (nLevel == PAUSE_MODE_PARTY_MEMBER_DOWN) {
-            if (m_fPartyDownPauseCooldown > 0.0f)
-                return;
-            m_fPartyDownPauseCooldown = 2.0f;
-            m_bAutoPaused = 1;
-            if (m_pInGameGui->m_nGlobalDialogState != 0)
-                return;
-        } else {
-            m_bAutoPaused = 1;
-            if (nLevel != PAUSE_MODE_HELP) {
-                if (m_pInGameGui->m_nGlobalDialogState != 0)
-                    return;
-            }
-        }
-
-        // Both paths end here, and only actually grip the pause if the engine isn't already
-        // server-paused.
-        if (g_pAppManager->m_pServerExoApp != 0 &&
-            g_pAppManager->m_pServerExoApp->GetPauseState(2) == 1)
-            return;
-        if (m_bTogglePauseAtEndOfFrame)
-            return;
-
-        m_combatPauseMode = nLevel;
-        m_bTogglePauseAtEndOfFrame = 1;
-        m_combatPauseRequest = 1;
-        if (nLevel == PAUSE_MODE_SILENT)
-            return;
-        g_pExoInput->PauseRumble();
-        g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_PAUSE, 0);
-        m_bSoundPausedByCombat = 1;
-        return;
-    }
-#endif
 
     m_bAutoPaused = 0;
-    if (g_pAppManager->m_pServerExoApp != 0 &&
-        g_pAppManager->m_pServerExoApp->GetPauseState(2) != 0)
-    {
-        if (m_pInGameGui->m_nGlobalDialogState > 1)
-            return;
-        if (g_pAppManager->m_pServerExoApp != 0 &&
-            g_pAppManager->m_pServerExoApp->GetPauseState(2) != 0)
-        {
-            if (m_bTogglePauseAtEndOfFrame)
-                return;
-            m_combatPauseMode = 0;
-            m_bTogglePauseAtEndOfFrame = 1;
-            m_combatPauseRequest = 0;
-            g_pExoInput->UnpauseRumble();
-            g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
-            m_bSoundPausedByCombat = 0;
-        }
-    }
+    if (GetPausedByCombat() != 0)
+        SetPausedByCombat(0, 0, 0);
 }
 
 void CClientExoAppInternal::PlayerListChange(unsigned int a, int b, int c)
@@ -1231,21 +1149,8 @@ void CClientExoAppInternal::UnloadModule()
 {
     SetClearColor(const_cast<char*>("0 0 0"));
 
-    m_playerCreatureId = CGameObjectArray::INVALIDOBJID;
-    if (m_pParty)
-        m_pParty->AddCharacter(CGameObjectArray::INVALIDOBJID);
-
-    unsigned int nGuiState = m_pInGameGui->m_nGlobalDialogState;
-    if (nGuiState <= 1 && g_pAppManager->m_pServerExoApp
-        && g_pAppManager->m_pServerExoApp->GetPauseState(2)
-        && !m_bTogglePauseAtEndOfFrame) {
-        m_bTogglePauseAtEndOfFrame = 1;
-        m_combatPauseMode = 0;
-        m_combatPauseRequest = 0;
-        g_pExoInput->UnpauseRumble();
-        g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
-        m_bSoundPausedByCombat = 0;
-    }
+    SetPlayerCreature(CGameObjectArray::INVALIDOBJID);
+    SetPausedByCombat(0, 0, 0);
 
     SetPauseState(2, 0, 0);
     SetPauseState(1, 0, 0);
@@ -1265,14 +1170,7 @@ void CClientExoAppInternal::UnloadModule()
     }
 
     m_pWalkToRingVFX = 0;
-    if (m_pWorldJournal)
-        m_pWorldJournal->DeleteAllEntries();
-    if (m_pQuestJournal)
-        m_pQuestJournal->ClearAll();
-    if (m_pInGameGui)
-        m_pInGameGui->ShutDown();
-    if (m_pPlayerControl)
-        m_pPlayerControl->Initialize();
+    CleanUpModuleServices();
 
     m_pGameObjectArray = new CGameObjectArray(1);
     g_pAppManager->m_pClientExoApp->SetAreaNotReadyToDisplay(1);
@@ -1440,9 +1338,8 @@ void CClientExoAppInternal::BusyWaitMenuMusic()
 
 void CClientExoAppInternal::EnableMouseAtEndOfLoadModuleMovie()
 {
-    if (m_pMoviePlayer)
-        if (m_pMoviePlayer->IsMoviePlaying())
-            return;
+    if (IsMoviePlaying())
+        return;
     if (m_bShowMouseAtMovieEnd) {
         m_bShowMouseAtMovieEnd = 0;
         ShowMouse(MOUSEHIDE_MOVIE);
@@ -1552,7 +1449,6 @@ void CClientExoAppInternal::ReprocessExclusionList()
     }
 }
 
-__attribute__((noinline))
 void CClientExoAppInternal::AddObjectToHitcheckIgnoreList(unsigned long long oid)
 {
     CExoLinkedListNode* node = m_hitCheckIgnoreList.m_pInternal->m_pHead;
@@ -1782,9 +1678,7 @@ void CClientExoAppInternal::SetPausedByCombat(int bPause, unsigned char nMode, i
     }
 #else
     if ((nGuiState == 1 && bPause == 0) || nGuiState == 0 || bForce == 1 || nMode == PAUSE_MODE_HELP) {
-        int pauseState = 0;
-        if (g_pAppManager->m_pServerExoApp)
-            pauseState = g_pAppManager->m_pServerExoApp->GetPauseState(2);
+        int pauseState = GetPausedByCombat();
         if (pauseState != bPause && !m_bTogglePauseAtEndOfFrame) {
             m_bTogglePauseAtEndOfFrame = 1;
             m_combatPauseMode = nMode;
@@ -1816,12 +1710,7 @@ void CClientExoAppInternal::SetHitcheckIgnoreList(List<CAurObject*>* pList)
         while (pNode) {
             if (pData) {
                 unsigned long long oid = *static_cast<unsigned long long*>(pData);
-#if KOTOR1  // the member lookup (SUCCESS-gated)
                 pGameObject = GetGameObject(oid);
-#else
-                pGameObject = 0;
-                m_pGameObjectArray->GetGameObject(oid, &pGameObject);
-#endif
                 if (pGameObject) {
                     CSWCObject* pObj = pGameObject->AsSWCObject();
                     if (pObj) {
@@ -1895,15 +1784,7 @@ void CClientExoAppInternal::SetHitcheckIgnoreList(List<CAurObject*>* pList)
 
 void CClientExoAppInternal::AddCreatureModelDirectlyToIgnoreList(unsigned long long creatureId, List<CAurObject*>* pList)
 {
-    CGameObject* pGameObject = 0;
-    if (m_pGameObjectArray->GetGameObject(creatureId, &pGameObject) != CGameObjectArray::SUCCESS)
-        return;
-    if (!pGameObject)
-        return;
-    if (pGameObject->m_objectType != CGameObject::OBJECT_TYPE_CREATURE)
-        return;
-
-    CSWCCreature* pCreature = pGameObject->AsSWCCreature();
+    CSWCCreature* pCreature = GetCreatureByGameObjectID(creatureId);
     if (!pCreature)
         return;
 
@@ -1937,15 +1818,7 @@ void CClientExoAppInternal::AddCreatureModelDirectlyToIgnoreList(unsigned long l
 
 void CClientExoAppInternal::AddItemModelDirectlyToIgnoreList(unsigned long long itemId, List<CAurObject*>* pList)
 {
-    CGameObject* pGameObject = 0;
-    if (m_pGameObjectArray->GetGameObject(itemId, &pGameObject) != CGameObjectArray::SUCCESS)
-        return;
-    if (!pGameObject)
-        return;
-    if (pGameObject->m_objectType != CGameObject::OBJECT_TYPE_ITEM)
-        return;
-
-    CSWCItem* pItem = pGameObject->AsSWCItem();
+    CSWCItem* pItem = GetItemByGameObjectID(itemId);
     if (!pItem)
         return;
 
@@ -2345,10 +2218,7 @@ void CClientExoAppInternal::UpdateCamera(float fFrameTime)
     m_pModule->ScrollCamera(vScroll);
 
     g_bKeepHistory = bKeepHistory;
-    if (m_oidCreatureCache != m_playerCreatureId) {
-        m_pCreatureCache = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_playerCreatureId);
-        m_oidCreatureCache = m_playerCreatureId;
-    }
+    GetPlayerCreature();
 
     m_pModule->UpdateCameraBumpAndShake(fDeltaSeconds);
     if (m_combatMode == 0)
@@ -2362,9 +2232,9 @@ void CClientExoAppInternal::UpdateCamera(float fFrameTime)
         float fB = pCamera->GetPitch();
         float fC = pCamera->GetYaw();
         CExoString sCapture;
-        unsigned long long uTime = static_cast<unsigned long long>(
+        uint64_ll_t uTime = static_cast<uint64_ll_t>(
             g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime());
-        sCapture.Format(const_cast<char*>("%d %c %f %f %f\n"), uTime / 1000, 'V', fA, fB, fC);
+        sCapture.Format(const_cast<char*>("%d %c %f %f %f\n"), static_cast<unsigned int>(uTime / 1000), 'V', fA, fB, fC);
         static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())->Write(sCapture);
         m_pModule->m_bCameraMoved = 0;
     }
@@ -2521,10 +2391,7 @@ done_zoom:
     m_pModule->ScrollCamera(vScroll);
 
     g_bKeepHistory = bKeepHistory;
-    if (m_oidCreatureCache != m_playerCreatureId) {
-        m_pCreatureCache = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_playerCreatureId);
-        m_oidCreatureCache = m_playerCreatureId;
-    }
+    GetPlayerCreature();
 
     m_pModule->UpdateCameraBumpAndShake(fDeltaSeconds);
     if (m_combatMode == 0)
@@ -2538,9 +2405,9 @@ done_zoom:
         float fB = pCamera->GetPitch();
         float fC = pCamera->GetYaw();
         CExoString sCapture;
-        unsigned long long uTime = static_cast<unsigned long long>(
+        uint64_ll_t uTime = static_cast<uint64_ll_t>(
             g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime());
-        sCapture.Format(const_cast<char*>("%d %c %f %f %f\n"), uTime / 1000, 'V', fA, fB, fC);
+        sCapture.Format(const_cast<char*>("%d %c %f %f %f\n"), static_cast<unsigned int>(uTime / 1000), 'V', fA, fB, fC);
         static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())->Write(sCapture);
         m_pModule->m_bCameraMoved = 0;
     }
@@ -2621,27 +2488,11 @@ char* FindMovieInOverrides(const char* pszMovieName)
 char* testmovie(char* pszMovie)
 {
     K2_UNUSED(pszMovie);
-    {
-        CClientExoAppInternal* p = static_cast<CClientExoAppInternal*>(g_pAppManager->m_pClientExoApp->m_pInternal);
-        CExoString sMovie("55");
-        p->m_movieFlags.Add(0);
-        p->AddMovieToExoArrayList(sMovie, p->m_moviesToPlay);
-    }
-    {
-        CClientExoAppInternal* p = static_cast<CClientExoAppInternal*>(g_pAppManager->m_pClientExoApp->m_pInternal);
-        CExoString sCredits("credits");
-        p->m_movieFlags.Add(1);
-        p->AddMovieToExoArrayList(sCredits, p->m_moviesToPlay);
-    }
-#if KOTOR1  // plays the queue through PlayMovieQueue(1)
+    static_cast<CClientExoAppInternal*>(g_pAppManager->m_pClientExoApp->m_pInternal)
+        ->AddMovieToMovieQueue(CExoString("55"), 0);
+    static_cast<CClientExoAppInternal*>(g_pAppManager->m_pClientExoApp->m_pInternal)
+        ->AddMovieToMovieQueue(CExoString("credits"), 1);
     static_cast<CClientExoAppInternal*>(g_pAppManager->m_pClientExoApp->m_pInternal)->PlayMovieQueue(1);
-#else
-    CClientExoAppInternal* p = static_cast<CClientExoAppInternal*>(g_pAppManager->m_pClientExoApp->m_pInternal);
-    int nUnused;  // passed by reference to PlayMoviesInExoArrayList, which writes it; unread here
-    p->PlayMoviesInExoArrayList(p->m_moviesToPlay, nUnused, 0, 1, &p->m_movieFlags, 0);
-    p->m_moviesToPlay.m_count = 0;
-    p->m_movieFlags.m_count = 0;
-#endif
     return const_cast<char*>("Success");
 }
 
@@ -2705,11 +2556,8 @@ int CClientExoAppInternal::PlayMoviesInExoArrayList(CExoArrayList<CExoString>& r
     m_pInGameGui->SetGlobalUnpauseableState(1);
     nPlayed = 0;
     int bInputActive = g_pExoInput->GetActive();
-    if (!bInputActive) {
-        if (g_pExoInput)
-            g_pExoInput->SetActive(1);
-        ShowMouse(0);
-    }
+    if (!bInputActive)
+        SetInputActive(1, 0);
     g_pExoInput->ClearEvents();
     g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_PAUSE_ALL, nSoundArg);
     HideMouse(MOUSEHIDE_MOVIE);
@@ -2822,9 +2670,7 @@ int CClientExoAppInternal::WaitForMovie(int a)
 {
     int bInputActive = g_pExoInput->GetActive();
     auto bRenderActive = g_bRenderWindowActive;
-    if (g_pExoInput)
-        g_pExoInput->SetActive(1);
-    ShowMouse(0);
+    SetInputActive(1, 0);
 
 #if KOTOR1  // no evil-ending music, and a tight wait with no message pump
     while (m_pMoviePlayer && m_pMoviePlayer->IsMoviePlaying() == 1)
@@ -2847,7 +2693,7 @@ int CClientExoAppInternal::WaitForMovie(int a)
     if (m_pMoviePlayer) {
         int bStop = 0;
         int nCount = 0;
-        while (m_pMoviePlayer && m_pMoviePlayer->IsMoviePlaying() == 1) {
+        while (IsMoviePlaying() == 1) {
             if (bStop || nCount != 500) {
                 // Skip the pump on this frame.
             } else {
@@ -2938,7 +2784,7 @@ int CClientExoAppInternal::PlayMovie(const CExoString& sMovie, int& nPlayingMovi
     K2_UNUSED(a); K2_UNUSED(b);
     if (m_bDisableMovies)
         return 0;
-    if (!AddMovieToExoArrayList(sMovie, m_moveToModuleMovies))
+    if (!AddMoveToModuleMovie(sMovie))
         return 0;
     return PlayMoviesInExoArrayList(m_moveToModuleMovies, nPlayingMovies, 1, 0, 0, c);
 }
@@ -3188,9 +3034,7 @@ int CClientExoAppInternal::CrownFutureLeader()
     } else if (nIndex == 0) {
         CExoLinkedListNode* pNode = pServer->GetPlayerList()->m_pInternal->m_pHead;
         CSWSPlayer* pPlayer = pNode != 0 ? static_cast<CSWSPlayer*>(pNode->m_pData) : 0;
-        m_playerCreatureId = m_futureLeader;
-        if (m_pParty)
-            m_pParty->AddCharacter(m_futureLeader);
+        SetPlayerCreature(m_futureLeader);
         pPlayer->SetGameObject(pTarget);
     }
     if (oldLeader != m_futureLeader) {
@@ -3285,11 +3129,11 @@ int CClientExoAppInternal::ChangeCharacterToNextLivingPartyMember(int bOverride,
     } else {
 #if KOTOR1
         int nPick = rand() % 3;
-#else
-        int nPick = rand_wincompatible() % 3;
-#endif
         int nSound = nPick == 0 ? 7 : (nPick == 1 ? 8 : 9);
         pNew->PlaySoundSetSound(static_cast<unsigned short>(nSound), 1);
+#else
+        PlayCharacterSelectSound(pNew);
+#endif
         return 1;
     }
 
@@ -4563,10 +4407,7 @@ void CClientExoAppInternal::HideLoadScreen(int a, int b, int c)
         CSWGuiLoadScreen* pPanel = m_pLoadScreenObj;
         pPanel->SetBackground(CResRef(""));
 
-        if (g_pExoInput)
-            g_pExoInput->SetActive(1);
-
-        ShowMouse(0);
+        SetInputActive(1, 0);
 
         if (a == 0 && c != 0)
         {
@@ -4743,17 +4584,9 @@ void CClientExoAppInternal::DisableVideoEffect()
 #if !KOTOR1
 bool CClientExoAppInternal::CanFlourish()
 {
-    CSWCCreature* pClient;
-    if (m_oidCreatureCache == m_playerCreatureId) {
-        pClient = static_cast<CSWCCreature*>(m_pCreatureCache);
-    } else {
-        pClient = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_playerCreatureId);
-        m_pCreatureCache = pClient;
-        m_oidCreatureCache = m_playerCreatureId;
-    }
     CSWSCreature* pServer;
-    if (pClient &&
-        (pServer = pClient->GetServerCreature()) != 0 &&
+    if (GetPlayerCreature() &&
+        (pServer = GetPlayerCreature()->GetServerCreature()) != 0 &&
         pServer->GetDead() == 0 &&
         pServer->GetDeadTemp() == 0)
     {
@@ -4768,15 +4601,6 @@ bool CClientExoAppInternal::CanFlourish()
     return 1;
 }
 #endif
-
-inline int CClientExoAppInternal::GetPlayerMovementInput()
-{
-    if (m_pPlayerControl == 0)
-        return 0;
-    if (m_pPlayerControl->GetLeftRight() != 0.0f)
-        return 1;
-    return m_pPlayerControl->GetUpDown() != 0.0f;
-}
 
 void CClientExoAppInternal::PlayerFlourishWeapons()
 {
@@ -4832,7 +4656,7 @@ lblMusic:
     if (pPlayer->m_nSwitchWeaponsCooldown > 0)
         return;
 
-    pPlayer->ComputeWeaponOverlays(0, 1);
+    GetPlayerCreature()->ComputeWeaponOverlays(0, 1);
 
     CSWSCreature* pServer = GetPlayerCreature()->GetServerCreature();
     if (pServer == 0)
@@ -5029,11 +4853,7 @@ int CClientExoAppInternal::ReadVideoModeSettings(unsigned int* pWidth, unsigned 
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"),
                          CExoString("Graphics Options"), CExoString("RefreshRate"))) {
-        // inlined CExoString::AsINT()
-        if (sValue.m_sString == 0)
-            g_nDesiredFullScreenRefreshRate = 0;
-        else
-            g_nDesiredFullScreenRefreshRate = atoi(sValue.m_sString);
+        g_nDesiredFullScreenRefreshRate = sValue.AsINT();
     }
     *pRefresh = g_nDesiredFullScreenRefreshRate;
 
@@ -5372,12 +5192,7 @@ void CClientExoAppInternal::InitializeSoundOptions()
 void CClientExoAppInternal::StopSoundPlayingInDialog()
 {
     unsigned long long nSpeakerId = m_pInGameGui->m_oidDialogSoundSpeaker;
-#if KOTOR1  // the member lookup (SUCCESS-gated)
     CGameObject* pGameObject = GetGameObject(nSpeakerId);
-#else
-    CGameObject* pGameObject = 0;
-    m_pGameObjectArray->GetGameObject(nSpeakerId, &pGameObject);
-#endif
     if (pGameObject)
     {
         CSWCObject* pObject = pGameObject->AsSWCObject();
@@ -5396,11 +5211,7 @@ void CClientExoAppInternal::StopMenuMusic()
     CExoStreamingSoundSource* pMusic = m_pMenuMusic;
     if (pMusic)
     {
-        unsigned int nStart = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
-        pMusic->FadeAndStop(500);
-        do {
-            g_pExoSound->Render();
-        } while (static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000) - nStart < 500);
+        FadeAndStopStreamingSoundSource(pMusic, 500);
         if (m_pMenuMusic) {
             delete m_pMenuMusic;
             m_pMenuMusic = 0;
@@ -5519,6 +5330,15 @@ long long GetGameHighResTime()
     return g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime();
 }
 
+#if KOTOR1
+void MacHack::HandleExitGameButton(CSWGuiControl* pControl)
+{
+    K2_UNUSED(pControl);
+    if (g_pAppManager && g_pAppManager->m_pClientExoApp)
+        g_pAppManager->m_pClientExoApp->HandleExitGameButton();
+}
+#endif
+
 void CSWCPlayer::SetPrimaryPCPortraitId(unsigned short nPortraitId) {
     CExoString sPrefix;
     CExoString sBaseResRef;
@@ -5534,17 +5354,9 @@ void CSWCPlayer::SetPrimaryPCPortraitId(unsigned short nPortraitId) {
 }
 
 CClientExoAppInternal::CClientExoAppInternal()
+    : m_bPazaakIsRunning(0), m_pazaakResultB(0), m_pazaakResultA(0), m_nPazaakOpponentDeck(0),
+      m_aReserved1()
 {
-    m_bPazaakIsRunning = 0;
-    m_pazaakResultB = 0;
-    m_pazaakResultA = 0;
-    m_nPazaakOpponentDeck = 0;
-    m_aReserved1[0] = 0;
-    m_aReserved1[1] = 0;
-    m_aReserved1[2] = 0;
-    m_aReserved1[3] = 0;
-    m_aReserved1[4] = 0;
-    m_aReserved1[5] = 0;
     m_bStartMenuMusicOnMovieEnd = 1;
     m_viewTriggers = 1;
     m_mouseOverPos = Vector(0.0f, 0.0f, 0.0f);
@@ -5596,6 +5408,9 @@ CClientExoAppInternal::CClientExoAppInternal()
     m_bClientImeUI = 0;
     m_pImeUI = 0;
     m_bScreenShotPending = 0;
+#if KOTOR1
+    m_nScreenShotIndex = 0;
+#endif
     m_pCaptureEventFile = 0;
     m_captureEvents = 0;
     m_captureEventPlayBack = 0;
@@ -5779,14 +5594,7 @@ void CClientExoAppInternal::UnloadSuperModelSet()
 
 void CClientExoAppInternal::AttachPlayerGameObjectToArea()
 {
-    CSWCCreature* pCreature;
-    if (m_oidCreatureCache == m_playerCreatureId) {
-        pCreature = static_cast<CSWCCreature*>(m_pCreatureCache);
-    } else {
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_playerCreatureId);
-        m_pCreatureCache = pCreature;
-        m_oidCreatureCache = m_playerCreatureId;
-    }
+    CSWCCreature* pCreature = GetPlayerCreature();
     if (pCreature == 0)
         return;
 
@@ -5828,12 +5636,7 @@ void CClientExoAppInternal::SetCharacterFile(unsigned int nLength, unsigned char
 void CClientExoAppInternal::AddObjectModelDirectlyToIgnoreList(unsigned long long id,
                                                               List<CAurObject*>* pList)
 {
-#if KOTOR1  // the member lookup (SUCCESS-gated)
     CGameObject* pObj = GetGameObject(id);
-#else
-    CGameObject* pObj = 0;
-    m_pGameObjectArray->GetGameObject(id, &pObj);
-#endif
     if (pObj != 0) {
         if (pObj->m_objectType == 5)
             AddCreatureModelDirectlyToIgnoreList(id, pList);
@@ -5969,16 +5772,14 @@ void CClientExoAppInternal::UpdateLoadingScreenHint()
         {
             CExoString sStep = g_pAppManager->m_pServerExoApp->GetModuleName();
             uint64_t nHint = GetNextLoadScreenHintSTRREF(sStep, 2);
-            if (m_pLoadScreenObj)
-                m_pLoadScreenObj->SetHint(nHint);
+            SetLoadScreenHint(nHint);
             goto lblDone;
         }
     lblDefault:
         {
             CExoString sDefault("");
             uint64_t nHint = GetNextLoadScreenHintSTRREF(sDefault, 1);
-            if (m_pLoadScreenObj)
-                m_pLoadScreenObj->SetHint(nHint);
+            SetLoadScreenHint(nHint);
             goto lblDone;
         }
     lblDone: ;
@@ -6226,12 +6027,7 @@ void CClientExoAppInternal::Uninitialize()
             delete pAnim;  // runs ~CExoString on m_sName, then frees
     }
 
-    while (m_hitCheckIgnoreList.m_pInternal->m_pHead != 0) {
-        unsigned long long* pId =
-            static_cast<unsigned long long*>(m_hitCheckIgnoreList.RemoveHead());
-        if (pId)
-            delete pId;
-    }
+    EmptyHitcheckIgnoreList();
 
     if (g_pDialogIconModel != 0) {
         delete static_cast<Gob*>(g_pDialogIconModel);
@@ -6257,7 +6053,6 @@ void CClientExoAppInternal::Uninitialize()
     SetTexturePack(0xff, 0);
 }
 
-__attribute__((noinline))
 void CClientExoAppInternal::EmptyHitcheckIgnoreList()
 {
     while (m_hitCheckIgnoreList.m_pInternal->m_pHead != 0) {
@@ -6402,15 +6197,7 @@ void CClientExoAppInternal::QueryExitProgram()
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bAnimatedCut == 0) {
         g_pAppManager->m_pClientExoApp->StopMovie();
         if (m_pClientOptions->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK) {
-            CSWCCreature* pCreature;
-            if (m_oidCreatureCache == m_playerCreatureId) {
-                pCreature = static_cast<CSWCCreature*>(m_pCreatureCache);
-            } else {
-                pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(m_playerCreatureId);
-                m_pCreatureCache = pCreature;
-                m_oidCreatureCache = m_playerCreatureId;
-            }
-            if (pCreature && !pCreature->m_bInCombat && !m_nGameOverReason && m_pModule) {
+            if (GetPlayerCreature() && !GetPlayerCreature()->m_bInCombat && !m_nGameOverReason && m_pModule) {
                 g_bShowIndicator = 1;
                 m_pModule->RestoreCamera();
                 SetInputClass(INPUTCLASS_GAME, 1);
@@ -6465,8 +6252,12 @@ void CClientExoAppInternal::SetCanSendDialog(int bCan)
 void CClientExoAppInternal::PlayCharacterSelectSound(CSWCCreature* pCreature)
 {
     int nPick = rand_wincompatible() % 3;
-    int nSound = nPick == 0 ? 7 : (nPick == 1 ? 8 : 9);
-    pCreature->PlaySoundSetSound(static_cast<unsigned short>(nSound), 1);
+    if (nPick == 0)
+        pCreature->PlaySoundSetSound(7, 1);
+    else if (nPick == 1)
+        pCreature->PlaySoundSetSound(8, 1);
+    else
+        pCreature->PlaySoundSetSound(9, 1);
 }
 
 void CClientExoAppInternal::HurryDeathSequence()
@@ -6594,28 +6385,11 @@ void CClientExoAppInternal::BeginIntro()
 {
     if (m_bDisableIntroMovies == 0)
     {
-        {
-            CExoString sMovie1("leclogo");
-            m_movieFlags.Add(1);
-            AddMovieToExoArrayList(sMovie1, m_moviesToPlay);
-        }
-        {
-            CExoString sMovie2("obsidianent");
-            m_movieFlags.Add(1);
-            AddMovieToExoArrayList(sMovie2, m_moviesToPlay);
-        }
-        {
-            CExoString sMovie3("Aspyr");
-            m_movieFlags.Add(1);
-            AddMovieToExoArrayList(sMovie3, m_moviesToPlay);
-        }
+        AddMovieToMovieQueue(CExoString("leclogo"), 1);
+        AddMovieToMovieQueue(CExoString("obsidianent"), 1);
+        AddMovieToMovieQueue(CExoString("Aspyr"), 1);
         RevealAndroidWindowIfNeeded();
-        {
-            int nUnused;
-            PlayMoviesInExoArrayList(m_moviesToPlay, nUnused, 0, 1, &m_movieFlags, 0);
-        }
-        m_moviesToPlay.m_count = 0;
-        m_movieFlags.m_count = 0;
+        PlayMovieQueue(1);
         if (g_bExitProgram)
             return;
 
@@ -6793,15 +6567,15 @@ void CClientExoAppInternal::ChangeCharacter(int nLeader, int bPlaySound)
             if (bPlaySound) {
 #if KOTOR1
                 int nSel = rand() % 3;
-#else
-                int nSel = rand_wincompatible() % 3;
-#endif
                 if (nSel == 0)
                     pCharacter->PlaySoundSetSound(7, 1);
                 else if (nSel == 1)
                     pCharacter->PlaySoundSetSound(8, 1);
                 else
                     pCharacter->PlaySoundSetSound(9, 1);
+#else
+                PlayCharacterSelectSound(pCharacter);
+#endif
             }
         }
         if (m_pPlayerControl)
@@ -6850,6 +6624,8 @@ void CClientExoAppInternal::TurnOffKeyboardModal()
         m_pModule->m_pArea->HiliteAreaObjects(0);
 }
 
+// EFFECTIVE (K2 arm64 DIFF(11)): calls the GetGameObject helper as the orig does; the lookup's slot and
+// `buf` share sp+0 where the orig puts them at sp+0x10 under the CResRef temporary (stack-slot order only).
 int CClientExoAppInternal::IsSoundPlayingInDialog()
 {
 #if KOTOR1  // no VO-debug block; the speaker lookup must return SUCCESS
@@ -6867,14 +6643,11 @@ int CClientExoAppInternal::IsSoundPlayingInDialog()
 #else
     if (m_pInGameGui->m_bDialogSoundPolled != 0) {
         unsigned long long nId = m_pInGameGui->m_oidDialogSoundSpeaker;
-        // The pointer and the string never overlap in live time, since the pointer is dead before
-        // CopyToString runs.
-        union { CGameObject* pObj; char buf[17]; } u;  // CopyToString writes 17 bytes (NUL at [16])
-        u.pObj = 0;
-        m_pGameObjectArray->GetGameObject(nId, &u.pObj);
-        if (u.pObj != 0 && u.pObj->AsSWCObject() != 0 && m_pInGameGui->m_pDialogSound != 0) {
+        CGameObject* pObj = GetGameObject(nId);
+        if (pObj != 0 && pObj->AsSWCObject() != 0 && m_pInGameGui->m_pDialogSound != 0) {
             if (g_bVODebugEnabled) {
-                m_pInGameGui->m_pDialogSound->GetFilePlaying().CopyToString(u.buf);
+                char buf[17];  // CopyToString writes 17 bytes (NUL at [16])
+                m_pInGameGui->m_pDialogSound->GetFilePlaying().CopyToString(buf);
                 g_pExoSound->GetSoundMode();
             }
             return m_pInGameGui->m_pDialogSound->IsPlaying();
@@ -6922,7 +6695,7 @@ int CClientExoAppInternal::PlayRumblePattern(int nPattern)
     if (nPattern < 0 || nPattern >= m_rumblePatternList.m_count)
         return 0;
 
-    SRumblePattern* pScan = m_rumblePatterns.m_pArray;
+    CSWRumbleInstance* pScan = m_rumblePatterns.m_pArray;
     if (m_rumblePatternList.m_pArray[nPattern].m_nLooping != 0 &&
         m_rumblePatterns.m_count >= 1) {
         for (int i = 0; i < m_rumblePatterns.m_count; ++i) {
@@ -6933,7 +6706,7 @@ int CClientExoAppInternal::PlayRumblePattern(int nPattern)
 
     int nOldCount = m_rumblePatterns.m_count;
     m_rumblePatterns.SetSize(nOldCount + 1);
-    SRumblePattern& rNew = m_rumblePatterns.m_pArray[nOldCount];
+    CSWRumbleInstance& rNew = m_rumblePatterns.m_pArray[nOldCount];
     rNew.nPattern = nPattern;
     rNew.fPhase = 0.0f;
     rNew.nState = 1;
@@ -7020,24 +6793,24 @@ int CClientExoAppInternal::GetControlledCharacterDead()
     CSWSCreature* pServer = pMember->GetServerCreature();
     if (pServer == 0)
         return 0;
-#if KOTOR1  // K1 returns GetDeadTemp()
     return pServer->GetDeadTemp();
-#else
-    if (pServer->m_bInParty == 0)
-        return 0;
-    return pServer->GetCurrentHitPoints(0) < 1;
-#endif
 }
 
-class CImeUI {
+class CExoImeUI {
 public:
 #if !KOTOR1  // K1's is an empty object
     char                _pad00[0x208];
-    unsigned long long  m_nReserved1 = 0;
-    int                 m_nReserved2 = 0;
+    unsigned long long  m_nReserved1;
+    int                 m_nReserved2;
     CExoString m_sReserved1;
     CExoString m_sReserved2;
     CExoString m_sReserved3;
+
+    CExoImeUI()
+    {
+        m_nReserved2 = 0;
+        m_nReserved1 = 0;
+    }
 #endif
 };
 #include "exofileinternal.h"
@@ -7231,7 +7004,7 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
     }
     if (999 < nLang) {
         m_bClientImeUI = 1;
-        m_pImeUI = new CImeUI;
+        m_pImeUI = new CExoImeUI;
     }
 
     if (m_pQuestJournal == 0)
@@ -7286,8 +7059,7 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
 
     g_pAurora = NewCAurora();
 
-    if (m_pWorldJournal == 0)
-        m_pWorldJournal = new CSWCWorldJournal;
+    CreateWorldJournal();
 
     m_pNetLayer = new CNetLayer;
 
@@ -7387,8 +7159,10 @@ tex_done:;
         FindClose(hFind);
     }
 
-    if (!ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Graphics Options"),
-                          CExoString("FullScreen"))) {
+    if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Graphics Options"),
+                         CExoString("FullScreen"))) {
+        sValue.AsINT();
+    } else {
         sValue.Format(const_cast<char*>("%d"), 1);
         ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Graphics Options"),
                           CExoString("FullScreen"));
@@ -7419,12 +7193,10 @@ intro_done:;
 
     m_pClientOptions->SetDefaultOptions();
 #if KOTOR1
-    if (!m_pClientOptions->LoadOptions())
+    LoadOptions();
 #else
-    if (!m_pClientOptions->LoadOptions(0))
+    LoadOptions(0);
 #endif
-        m_pClientOptions->SetDefaultOptions();
-    g_pAurora->ResetGammaRamp(g_pAppManager->m_pClientExoApp->GetClientOptions()->GetGammaSetting(), 0);
     ReadAndSetVideoMode(static_cast<int>(a), 0);
 
     m_clientName = g_pTlkTable->GetSimpleString(0);
@@ -7438,11 +7210,10 @@ intro_done:;
     }
     if (999 < nLang) {
         m_bClientImeUI = 1;
-        m_pImeUI = new CImeUI;
+        m_pImeUI = new CExoImeUI;
     }
 
-    if (m_pQuestJournal == 0)
-        m_pQuestJournal = new CSWCJournal;
+    CreateQuestJournal();
 
     m_pSoundSetList = new CSoundSetList;
     LoadItemDropSoundList();
@@ -7459,9 +7230,7 @@ intro_done:;
     m_pSWGuiManager->LoadGuiSounds();
 
     m_pInGameGui = new CGuiInGame;
-    m_pMoviePlayer = 0;
-    m_pMoviePlayer = new CExoMoviePlayer;
-    m_pMoviePlayer->Initialize(0);
+    InitializeMoviePlayer();
 
 #ifdef K2_QOL_CONTROLLER
     K2QolLoadRumblePatterns(m_rumblePatternList);
@@ -7509,10 +7278,7 @@ void CClientExoAppInternal::StopServices()
         m_pGameObjectArray = 0;
     }
 
-    if (m_pWorldJournal) {
-        delete m_pWorldJournal;
-        m_pWorldJournal = 0;
-    }
+    DestroyWorldJournal();
 
     if (m_pImeUI) {
         delete m_pImeUI;
@@ -7726,7 +7492,7 @@ int CClientExoAppInternal::MainLoop()
                     sName.CStr();
                 }
 #if KOTOR1  // no wait before the test, no mouse/resolution restore, no minigame gate
-                if ((m_pMoviePlayer ? m_pMoviePlayer->IsMoviePlaying() : 0) | static_cast<int>(g_bRenderWindowActive))
+                if (IsMoviePlaying() | static_cast<int>(g_bRenderWindowActive))
                     HideLoadScreen(1, 1);
                 if (m_pMoviePlayer && m_pMoviePlayer->IsMoviePlaying() == 1) {
                     WaitForMovie(1);
@@ -7739,9 +7505,9 @@ int CClientExoAppInternal::MainLoop()
                 HideLoadScreen(1, 1);
 #else
                 WaitForMovie(1);
-                if ((m_pMoviePlayer ? m_pMoviePlayer->IsMoviePlaying() : 0) | g_bRenderWindowActive)
+                if (IsMoviePlaying() | g_bRenderWindowActive)
                     HideLoadScreen(1, 1, 1);
-                if (m_pMoviePlayer && m_pMoviePlayer->IsMoviePlaying() == 1) {
+                if (IsMoviePlaying() == 1) {
                     WaitForMovie(1);
                 } else {
                     m_moveToModuleMovies.m_count = 0;
@@ -7792,9 +7558,7 @@ int CClientExoAppInternal::MainLoop()
                     if (GetPlayerCreature()) {
                         GetPlayerCreature()->AttachToScene(static_cast<CAurScene*>(0));
                         m_sceneCreatureId = GetPlayerCreature()->m_objectId;
-                        m_playerCreatureId = OBJECT_INVALID;
-                        if (m_pParty)
-                            m_pParty->AddCharacter(OBJECT_INVALID);
+                        SetPlayerCreature(OBJECT_INVALID);
                     }
                 }
                 ::ClearLogCounters(static_cast<char*>(0));
@@ -7911,8 +7675,8 @@ update_phase:
         g_pVirtualMachine->RunScript(&m_runScript, 0, 0);
         m_bRunScriptSet = 0;
     }
-    CSWCCreature* pPlayer = GetPlayerCreature();
-    if (pPlayer && pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1)) {
+    CSWCCreature* pPlayer;
+    if (GetPlayerCreature() && GetPlayerCreature()->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1)) {
         if (!(m_fQueuedAnimDelay <= DeltaT)) {
             m_fQueuedAnimDelay -= DeltaT;
         } else {
@@ -8023,8 +7787,7 @@ update_phase:
             && m_inputClass != INPUTCLASS_MINIGAME)
             UpdateCamera(DeltaT);
         else if (bPanelExists) {
-            m_pModule->TurnCamera(0.0f, 0.0f);
-            m_pModule->AcclTurnCamera(0.0f, 0.0f);
+            ClearCameraInput();
         }
         g_starttime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
 #if !KOTOR1  // no Harbinger room update before the AI tick
@@ -8203,15 +7966,9 @@ update_phase:
                 bSkipPause = 1;
         }
         if (!bSkipPause) {
-            if ((g_pAppManager->m_pServerExoApp
-                     ? g_pAppManager->m_pServerExoApp->GetPauseState(2)
-                     : 0) != m_combatPauseRequest)
+            if (GetPausedByCombat() != m_combatPauseRequest)
                 m_pSWCMessage->SendPlayerToServerInput_TogglePauseRequest();
-            m_pInGameGui->SetPaused(
-                g_pAppManager->m_pServerExoApp
-                    ? g_pAppManager->m_pServerExoApp->GetPauseState(2)
-                    : 0,
-                m_combatPauseMode);
+            m_pInGameGui->SetPaused(GetPausedByCombat(), m_combatPauseMode);
         }
         m_bTogglePauseAtEndOfFrame = 0;
     }
@@ -8272,8 +8029,7 @@ int CClientExoAppInternal::GetCanSendDialog(unsigned long long nSenderId,
     }
 
     // Pause and dialog-state gates.
-    if (g_pAppManager->m_pServerExoApp != 0
-        && g_pAppManager->m_pServerExoApp->GetPauseState(2) != 0)
+    if (GetPausedByCombat() != 0)
         return 0;
     if (m_bAutoPaused)
         return 0;
@@ -8451,9 +8207,9 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
                                                 0, 0, 0.0f, 0.0f);
             pPlaceable->SetFeedbackInfo(GetGUIString(STRREF_LOCKED));
         }
+    }
         sMessage = GetGUIString(STRREF_OBJECT_LOCKED);
         break;
-    }
     case FEEDBACK_OBJECT_NOT_LOCKED:
         sMessage = GetGUIString(STRREF_OBJECT_NOT_LOCKED);
         break;
@@ -9528,9 +9284,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         else
             sMessage = g_pSWTlkTable->Fetch(STRREF_ACTION_LIST_OVERFLOW, 0, 0, 0);
         sMessage.CStr();  // argument to the removed log call
-        if (pData != 0)
-            delete pData;
-        return;
+        goto done;
     }
     case FEEDBACK_EFFECT_LIST_OVERFLOW: case FEEDBACK_EFFECT_LIST_ERASED:
     {
@@ -9554,9 +9308,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         sDebug.CStr();
         sMessage.CStr();
         sDebug.CStr();
-        if (pData != 0)
-            delete pData;
-        return;
+        goto done;
     }
     case FEEDBACK_AI_UPDATE_TIME_OVERFLOW:
     {
@@ -9581,9 +9333,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         g_pTlkTable->SetCustomToken(0, sDebug);
         sMessage = g_pSWTlkTable->Fetch(STRREF_AI_UPDATE_TIME_OVERFLOW, 0, 0, 0);
         sMessage.CStr();  // argument to the removed log call
-        if (pData != 0)
-            delete pData;
-        return;
+        goto done;
     }
     case FEEDBACK_XP_GAINED:
     {
@@ -9816,6 +9566,7 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
             pInGameGui->AppendToMsgBuffer(sMessage, kMessageTypeFeedback, 0);
     }
 #endif
+done:
     if (pData != 0)
         delete pData;
 }
@@ -9826,14 +9577,13 @@ void CClientExoAppInternal::ShowObject(CSWCObject* pObject, int nPartyIndex, int
     static unsigned int nPathNumbers[200];
     static unsigned char InitArray;
 
+    IndicateObject(pObject, 0);
     if (pObject == 0) {
-        m_pInGameGui->SetMainInterfaceTarget(OBJECT_INVALID, 0);
         CSWCCreature* pPC = m_pParty->GetCharacter(0);
         if (pPC)
             pPC->LookAt(OBJECT_INVALID, 10.0f);
         return;
     }
-    m_pInGameGui->SetMainInterfaceTarget(pObject->m_objectId, 0);
     if (nPartyIndex != 0) {
         CSWCCreature* pPC = m_pParty->GetCharacter(0);
         if (pPC)
@@ -10019,8 +9769,14 @@ hilited:;
                         if (g_pRules->GetFeat(static_cast<unsigned short>(i)))
                             g_pRules->GetFeat(static_cast<unsigned short>(i))->GetNameText().CStr();
                 }
-                for (int i = 0; i < 8; i++)
-                    pServer->AsSWSCreature()->m_pStats->GetSkillRank(static_cast<unsigned char>(i), 0, 0);
+                pServer->AsSWSCreature()->m_pStats->GetSkillRank(0, 0, 0);
+                pServer->AsSWSCreature()->m_pStats->GetSkillRank(1, 0, 0);
+                pServer->AsSWSCreature()->m_pStats->GetSkillRank(2, 0, 0);
+                pServer->AsSWSCreature()->m_pStats->GetSkillRank(3, 0, 0);
+                pServer->AsSWSCreature()->m_pStats->GetSkillRank(4, 0, 0);
+                pServer->AsSWSCreature()->m_pStats->GetSkillRank(5, 0, 0);
+                pServer->AsSWSCreature()->m_pStats->GetSkillRank(6, 0, 0);
+                pServer->AsSWSCreature()->m_pStats->GetSkillRank(7, 0, 0);
             }
             if (pServer->AsSWSDoor())
                 pServer->AsSWSDoor();
@@ -10188,8 +9944,7 @@ loop2:
                 else
                     nFoundOther = 1;
                 {
-                    CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
-                    if (pServerApp == 0 || pServerApp->GetPauseState(2) == 0) {
+                    if (GetPausedByCombat() == 0) {
                         if (m_nPendingAutoPauseReason == PAUSE_MODE_NO_PENDING) {
                             if (pObj->AsSWCTrigger() != 0 &&
                                 pObj->AsSWCTrigger()->m_bIsTrap != 0) {
@@ -10422,13 +10177,7 @@ loop2:
                 listNear.m_pArray[i] = nMasked;
                 pObj = GetGameObject(nMasked);
                 if (pObj) {
-                    int k = -1;
-                    for (int j = 0; j < listAround.m_count; j++) {
-                        if (listAround.m_pArray[j] == nMasked) {
-                            k = j;
-                            break;
-                        }
-                    }
+                    int k = listAround.IndexOf(nMasked);
                     unsigned char c = m_visibleTable.m_pArray[k].m_canSee;
                     if (c == static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN))
                         m_visibleTable.m_pArray[k].m_canSee =
@@ -10455,13 +10204,8 @@ cleanup_return:
 }
 
 final_reset:
-    m_pInGameGui->SetMainInterfaceTarget(OBJECT_INVALID, 0);
     m_lastTarget = OBJECT_INVALID;
-    {
-        CSWCCreature* pCh = m_pParty->GetCharacter(0);
-        if (pCh)
-            pCh->LookAt(OBJECT_INVALID, 10.0f);
-    }
+    ShowObject(0, 0, 0, 0);
 
 epilogue:
     if (m_pParty)

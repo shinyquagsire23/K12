@@ -188,11 +188,11 @@ CSWGuiPazaakGame::CSWGuiPazaakGame(CSWGuiManager* pManager, CSWPazaak* pPazaak,
     // The turn-indicator card art goes into both turn labels' fill image.
     {
         CResRef res("PZ_PLAYERLITEOFF");
-        m_lbl6.m_border.m_params.SetFillImage(res, 0);
+        m_lbl6.m_border.m_params.SetFillImage(res);
     }
     {
         CResRef res("PZ_PLAYERLITEOFF");
-        m_lbl7.m_border.m_params.SetFillImage(res, 0);
+        m_lbl7.m_border.m_params.SetFillImage(res);
     }
 #endif
     {
@@ -466,11 +466,11 @@ CSWGuiPazaakGame::CSWGuiPazaakGame(CSWGuiManager* pManager, CSWPazaak* pPazaak,
     // bumper events, so the badges show the left and right trigger glyphs.
     {
         CResRef res("uibut_LTrig");
-        m_blbl3.m_border.m_params.SetFillImage(res, 0);
+        m_blbl3.m_border.m_params.SetFillImage(res);
     }
     {
         CResRef res("uibut_RTrig");
-        m_btnForfeitGame.m_border.m_params.SetFillImage(res, 0);
+        m_btnForfeitGame.m_border.m_params.SetFillImage(res);
     }
 
     // Every caption is also a tap target. End Turn and Stand keep the PC handlers; Play, Flip and
@@ -608,26 +608,6 @@ void CSWGuiPazaakGame::HandleTutorialStand() {
 }
 #endif
 
-// Local copy of CSWGuiTutorial::PlaceAbove; the explicit tutorial parameter keeps SetExtent a
-// virtual dispatch.
-static void PlaceBubbleAbove(CSWGuiTutorial* pTutorial, CSWGuiControl* pControl) {
-    pTutorial->m_pAnchorControl = pControl;
-    CSWGuiExtent extent = pControl->m_extent;
-    int nX = extent.x;
-    int nY = extent.y;
-    if (pControl->m_pContainer) {
-        CSWGuiPanel* pPanel = pControl->m_pContainer->AsSWGuiPanel();
-        if (pPanel)
-            pPanel->GetExtentAccountingForPanelOffset(&extent);
-        nX = extent.x + nX;
-        nY = extent.y + nY;
-    }
-    extent = pTutorial->m_extent;
-    extent.x = nX;
-    extent.y = nY - extent.h;
-    pTutorial->SetExtent(extent);
-}
-
 // The tutorial bubble's OK callback. The action depends on the page the bubble was showing when
 // it closed: the intro pages chain into the next explain-a-rule page, the stand and side-deck pages
 // perform that action, and the end-of-game pages walk the dialog chain and tear the match down.
@@ -642,14 +622,14 @@ void CSWGuiPazaakGame::HandleTutorialClose(CSWGuiControl* pControl) {
         case STRREF_TUT_FIRST_DRAW: {
             const uint64_t anEndRefs[5] = {STRREF_TUT_HAND, STRREF_TUT_PLAY_HAND_CARD, STRREF_TUT_NEGATIVE_CARD_TIP, STRREF_TUT_FLIP_CARDS, STRREF_TUT_DECLARE_SIGN};
             m_tutorial.ShowMultipleHelp(anEndRefs, 5);
-            PlaceBubbleAbove(&m_tutorial, &m_aPlrHand[0]);
+            m_tutorial.PlaceAbove(&m_aPlrHand[0]);
             break;
         }
         case STRREF_TUT_NEGATIVE_CARD_TIP:
         case STRREF_TUT_DECLARE_SIGN: {
             const uint64_t anDeckRefs[3] = {STRREF_TUT_TURN_OVER, STRREF_TUT_STAND, STRREF_TUT_CHOOSE_ACTION};
             m_tutorial.ShowMultipleHelp(anDeckRefs, 3);
-            PlaceBubbleAbove(&m_tutorial, &m_actbtn0);
+            m_tutorial.PlaceAbove(&m_actbtn0);
             break;
         }
         case STRREF_TUT_STAND_CONFIRM:
@@ -889,18 +869,8 @@ void CSWGuiPazaakGame::HandleChangeHandCard() {
 #if !KOTOR1
 void CSWGuiPazaakGame::HandleChangeButtons(CSWGuiControl* pControl) {
     CSWGuiControl* pSaved = m_pActiveControl;
-    int n = pControl->m_tail.nControlId;
-    CSWGuiPazaakCard* pNew = &m_aPlrHand[n];
-    m_pActiveControl = pNew;
-    int n2 = pNew->m_tail.nControlId;
-    if (n2 >= 0 && n2 <= 3 && n2 == n) {
-        CPazaakCard* pCard = &m_pPazaak->m_players[0].m_hand[n2];
-        if (pCard->m_nCardType == PAZAAK_CARD_PLUS_MINUS_1_2) {
-            pCard->m_nValue = static_cast<unsigned int>(pCard->m_nValue) < 2 ? 2 : 1;
-            m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-            RefreshDisplay();
-        }
-    }
+    m_pActiveControl = &m_aPlrHand[pControl->m_tail.nControlId];
+    HandleChangeHandCard();
     m_pActiveControl = pSaved;
 }
 #endif
@@ -990,25 +960,8 @@ void CSWGuiPazaakGame::HandleFlipHandCard() {
 
 void CSWGuiPazaakGame::HandleFlipButtons(CSWGuiControl* pControl) {
     CSWGuiControl* pSaved = m_pActiveControl;
-    int64_t n = pControl->m_tail.nControlId;
-    CSWGuiPazaakCard* pNew = &m_aPlrHand[n];
-    m_pActiveControl = pNew;
-    int n2 = pNew->m_tail.nControlId;
-    if (n2 >= 0 && n2 <= 3 && n == n2 &&
-        m_pPazaak->m_players[0].m_hand[n2].m_nCardType >= PAZAAK_CARD_PLUS_MINUS_1 &&
-#if KOTOR1  // K1: only the six flippable cards flip
-        m_pPazaak->m_players[0].m_hand[n2].m_nCardType < PAZAAK_CARD_MAIN_1) {
-#else
-        (m_pPazaak->m_players[0].m_hand[n2].m_nCardType < PAZAAK_CARD_TIEBREAKER ||
-         (m_pPazaak->m_players[0].m_hand[n2].m_nCardType | 4) == PAZAAK_CARD_PLUS_MINUS_1_2)) {
-#endif
-        m_actbtn3.m_fFlashTimer = 0.8f;
-        m_actbtn3.m_labelPos = CGuiInGame::COLOR_CYAN;
-        m_pPazaak->m_players[0].m_hand[n2].m_bIsNegative =
-            m_pPazaak->m_players[0].m_hand[n2].m_bIsNegative == 0;
-        m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-        RefreshDisplay();
-    }
+    m_pActiveControl = &m_aPlrHand[pControl->m_tail.nControlId];
+    HandleFlipHandCard();
     m_pActiveControl = pSaved;
 }
 
@@ -1031,7 +984,7 @@ void CSWGuiPazaakGame::HandleContinue(CSWGuiControl* pControl) {
 
 // Enables or disables the four hand-action buttons. Empty main-deck slots lose their selectable
 // flag, and a disabled button's label drops to the disabled tint.
-__attribute__((noinline)) void CSWGuiPazaakGame::SetHandEnabled(int bEnabled) {
+void CSWGuiPazaakGame::SetHandEnabled(int bEnabled) {
 #if KOTOR1  // K1: the focus moves to End Turn, or to the first live hand card
     int nFocus = -1;
     if (m_aPlrHand[3].m_card.m_nCardType < 0)
@@ -1239,7 +1192,7 @@ void CSWGuiPazaakGame::RefreshDisplay() {
 #else
             CResRef resOn("pz_rounds_on");
 #endif
-            m_aPlrScore[nW0 - 1].m_border.m_params.SetFillImage(resOn, 0);
+            m_aPlrScore[nW0 - 1].m_border.m_params.SetFillImage(resOn);
         }
         const int nW1 = m_pPazaak->m_players[1].m_nRoundsWon;
         if (static_cast<unsigned int>(nW1 - 1) < 3) {
@@ -1248,7 +1201,7 @@ void CSWGuiPazaakGame::RefreshDisplay() {
 #else
             CResRef resOn2("pz_rounds_on");
 #endif
-            m_aNpcScore[nW1 - 1].m_border.m_params.SetFillImage(resOn2, 0);
+            m_aNpcScore[nW1 - 1].m_border.m_params.SetFillImage(resOn2);
         }
     }
 
@@ -1432,24 +1385,7 @@ void CSWGuiPazaakGame::HandleHandCardDrop(CSWGuiControl* pControl) {
     if (pDragged == &m_actbtn3) {
         CSWGuiControl* pSaved = m_pActiveControl;
         m_pActiveControl = pControl;
-        if (pControl) {
-            int64_t n = pControl->m_tail.nControlId;
-            if (n >= 0 && n <= 3 && pControl == &m_aPlrHand[n] &&
-                m_pPazaak->m_players[0].m_hand[n].m_nCardType >= PAZAAK_CARD_PLUS_MINUS_1 &&
-#if KOTOR1
-                m_pPazaak->m_players[0].m_hand[n].m_nCardType < PAZAAK_CARD_MAIN_1) {
-#else
-                (m_pPazaak->m_players[0].m_hand[n].m_nCardType < PAZAAK_CARD_TIEBREAKER ||
-                 (m_pPazaak->m_players[0].m_hand[n].m_nCardType | 4) == PAZAAK_CARD_PLUS_MINUS_1_2)) {
-#endif
-                m_actbtn3.m_fFlashTimer = 0.8f;
-                m_actbtn3.m_labelPos = CGuiInGame::COLOR_CYAN;
-                m_pPazaak->m_players[0].m_hand[n].m_bIsNegative =
-                    m_pPazaak->m_players[0].m_hand[n].m_bIsNegative == 0;
-                m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-                RefreshDisplay();
-            }
-        }
+        HandleFlipHandCard();
         m_pActiveControl = pSaved;
     } else if (m_nGameState == GAME_STATE_PLAYER_PLAY &&
                (pDragged == &m_aPlrBoard[7] || pDragged == &m_aPlrBoard[8] ||
@@ -2001,12 +1937,10 @@ CSWGuiPazaakStart::CSWGuiPazaakStart(CSWGuiManager* pManager, int nWager, int nO
     }
 
     CPazaakCard anInitial[10];
-    for (int i = 0; i < 10; i++) {
+#if KOTOR1
+    for (int i = 0; i < 10; i++)
         anInitial[i].m_bIsNegative = 0;
-#if !KOTOR1
-        anInitial[i].m_nValue      = 0;
 #endif
-    }
     m_pPazaak->LoadInitialSideDeck(nOpponentDeck, anInitial);
     m_pPazaak->m_players[1].ChooseSidedeck(anInitial);
 
@@ -2738,7 +2672,9 @@ void CSWGuiPazaakStart::OnPanelAdded()
         m_anCopies[i] = pPartyTable->m_pazaakCards[i];
         if (m_anCopies[i] == 0) {
             m_anCopies[i] = -1;
-            m_aAvail[i].SetCard(CPazaakCard{PAZAAK_CARD_NONE, 0, 0});
+            CPazaakCard empty;
+            empty.m_nCardType = PAZAAK_CARD_NONE;
+            m_aAvail[i].SetCard(empty);
         }
     }
 #endif
@@ -3009,7 +2945,7 @@ void CSWGuiPazaakCard::SetCard(CPazaakCard card) {
             res = const_cast<char*>("lbl_cardback");
             break;
     }
-    m_border.m_params.SetFillImage(res, 0);
+    m_border.m_params.SetFillImage(res);
 #else
 
     if (static_cast<unsigned int>(card.m_nCardType) <= PAZAAK_CARD_MAIN_10) {
@@ -3105,7 +3041,7 @@ void CSWGuiPazaakCard::SetCard(CPazaakCard card) {
             res = const_cast<char*>("PCARDS_BACK_P");
             break;
     }
-    m_border.m_params.SetFillImage(res, 0);
+    m_border.m_params.SetFillImage(res);
 #endif
 }
 
@@ -3540,7 +3476,7 @@ void CSWGuiWagerPopup::HandleInputEvent(int nEvent, int nParam)
             if (m_nWager >= 2) {
                 m_pGuiManager->PlayGuiSound(GUISOUND_ENTERED_DEFAULT);
                 --m_nWager;
-                m_lblWagerVal.m_text.m_params.SetText(CExoString(m_nWager));
+                UpdateWagerText();
             }
             break;
         case INPUTEVENT_GUI_DPAD_RIGHT:
@@ -3552,7 +3488,7 @@ void CSWGuiWagerPopup::HandleInputEvent(int nEvent, int nParam)
             if (m_nWager < m_nWagerMax) {
                 m_pGuiManager->PlayGuiSound(GUISOUND_ENTERED_DEFAULT);
                 ++m_nWager;
-                m_lblWagerVal.m_text.m_params.SetText(CExoString(m_nWager));
+                UpdateWagerText();
             }
             break;
         case INPUTEVENT_GUI_B:
@@ -3637,3 +3573,21 @@ void CSWGuiActivatedButton::Draw(float dt) {
     }
     CSWGuiButton::Draw(dt);
 }
+
+void CSWGuiActivatedButton::SetEnabled(int bEnabled) {
+    CSWGuiButton::SetEnabled(bEnabled);
+    if (m_fFlashTimer < 0.0f) {
+#if KOTOR1  // K1 uses blue text and leaves the border colour alone
+        m_text.m_params.SetColor(m_tail.bEnabled ? CGuiInGame::COLOR_BLUE
+                                                 : CGuiInGame::DISABLED_TEXT);
+#else
+        m_text.m_params.SetColor(m_tail.bEnabled ? CGuiInGame::COLOR_PAZAAK_GOLD
+                                                 : CGuiInGame::DISABLED_TEXT);
+        m_border.m_params.m_color =
+            *reinterpret_cast<const CSWGuiColor*>(&(m_tail.bEnabled ? CGuiInGame::COLOR_PAZAAK_GOLD
+                                                   : CGuiInGame::DISABLED_TEXT));
+#endif
+        SetActive(m_tail.bEnabled && this == g_pGuiMan->m_pMouseOverControl);
+    }
+}
+

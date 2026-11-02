@@ -15,8 +15,8 @@ class CSWCCreature;
 class CSWGuiControl;
 class CSWGuiManager;
 
-#if KOTOR1
-// K1 declares the tile struct at namespace scope.
+// One class tile, holding the preview button, the live 3D model behind it and the creature that
+// model is built from.
 struct CSWGuiClassSelChar {
     CSWGuiButton m_button;
     CSWGui3DSceneView m_sceneView;
@@ -24,24 +24,13 @@ struct CSWGuiClassSelChar {
     float m_fSlideTimer;
     int m_nSlideState;
 };
+#if KOTOR1
 K2_LAYOUT_ASSERT(sizeof(CSWGuiClassSelChar) == 0x330, "CSWGuiClassSelChar size drift");  // K1 stride
 #endif
 
 class CSWGuiClassSelection : public CSWGuiPanel {
 public:
-    // One class tile, holding the preview button, the live 3D model behind it and the creature
-    // that model is built from.
-#if KOTOR1
     typedef CSWGuiClassSelChar ClassOption;
-#else
-    struct ClassOption {
-        CSWGuiButton m_button;
-        CSWGui3DSceneView m_sceneView;
-        CSWCCreature* m_pCreature;
-        float m_fSlideTimer;
-        int m_nSlideState;
-    };
-#endif
 
     // Loads ClassSel_p and builds the six preview creatures off the portraits 2DA.
     CSWGuiClassSelection(CSWGuiManager* pGuiManager, const CExoString& sModule);

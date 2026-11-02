@@ -796,26 +796,20 @@ unsigned int CSWSDoor::GetMeshBoundingBox(Vector p1, Vector p2, Vector& outMin, 
         if (nRenderDoorBBox != 0) {
             switch (state) {
             case 0:
-                m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->LocalToWorld(
-                    m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->m_headerVec[0]);
-                m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->LocalToWorld(
-                    m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->m_headerVec[1]);
+                GetActionPoint(SERVER_ANIMATION_CLOSED, 0);
+                GetActionPoint(SERVER_ANIMATION_CLOSED, 1);
                 nRenderDoorBBox = 2;
                 m_meshVariants[state]->RenderMesh(0, DEBUG_COLOR_RED, DEBUG_COLOR_GREEN);
                 break;
             case 1:
-                m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN1]->LocalToWorld(
-                    m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN1]->m_headerVec[0]);
-                m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN1]->LocalToWorld(
-                    m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN1]->m_headerVec[1]);
+                GetActionPoint(SERVER_ANIMATION_DOOR_OPEN1, 0);
+                GetActionPoint(SERVER_ANIMATION_DOOR_OPEN1, 1);
                 nRenderDoorBBox = 3;
                 m_meshVariants[state]->RenderMesh(0, DEBUG_COLOR_RED, DEBUG_COLOR_GREEN);
                 break;
             case 2:
-                m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN2]->LocalToWorld(
-                    m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN2]->m_headerVec[0]);
-                m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN2]->LocalToWorld(
-                    m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_OPEN2]->m_headerVec[1]);
+                GetActionPoint(SERVER_ANIMATION_DOOR_OPEN2, 0);
+                GetActionPoint(SERVER_ANIMATION_DOOR_OPEN2, 1);
                 nRenderDoorBBox = 4;
                 m_meshVariants[state]->RenderMesh(0, DEBUG_COLOR_RED, DEBUG_COLOR_GREEN);
                 break;
@@ -856,30 +850,9 @@ Vector CSWSDoor::GetNearestActionPoint(const Vector& pos, int stateOverride) {
     int curState = m_nAnimation;
     CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
     int state = (stateOverride == 0) ? curState : SERVER_ANIMATION_CLOSED;
-    int meshIdxClosed = CSWDoorSurfaceMesh::DOOR_STATE_CLOSED;
 
-    int meshIdx = meshIdxClosed;
-    int bHaveMesh = 1;
-    if (state == SERVER_ANIMATION_DOOR_OPEN2) {
-        meshIdx = CSWDoorSurfaceMesh::DOOR_STATE_OPEN2;
-    } else if (state == SERVER_ANIMATION_DOOR_OPEN1) {
-        meshIdx = CSWDoorSurfaceMesh::DOOR_STATE_OPEN1;
-    } else if (state == SERVER_ANIMATION_CLOSED) {
-        meshIdx = meshIdxClosed;
-    } else {
-        bHaveMesh = 0;
-    }
-
-    Vector candA, candB;
-    if (bHaveMesh) {
-        CSWCollisionMesh* pMesh = m_meshVariants[meshIdx];
-        candA = pMesh->LocalToWorld(pMesh->m_headerVec[0]);
-        pMesh = m_meshVariants[meshIdx];
-        candB = pMesh->LocalToWorld(pMesh->m_headerVec[1]);
-    } else {
-        candA.x = candA.y = candA.z = -9999999.0f;
-        candB.x = candB.y = candB.z = -9999999.0f;
-    }
+    Vector candA = GetActionPoint(state, 0);
+    Vector candB = GetActionPoint(state, 1);
 
     float distSqB = (pos.x - candB.x) * (pos.x - candB.x)
                    + (pos.y - candB.y) * (pos.y - candB.y)
@@ -910,10 +883,8 @@ Vector CSWSDoor::GetNearestActionPoint(const Vector& pos, int stateOverride) {
     if (state == SERVER_ANIMATION_CLOSED) {
         result = chosen;
     } else {
-        CSWCollisionMesh* pClosedMesh = m_meshVariants[meshIdxClosed];
-        Vector candC = pClosedMesh->LocalToWorld(pClosedMesh->m_headerVec[0]);
-        pClosedMesh = m_meshVariants[meshIdxClosed];
-        Vector candD = pClosedMesh->LocalToWorld(pClosedMesh->m_headerVec[1]);
+        Vector candC = GetActionPoint(SERVER_ANIMATION_CLOSED, 0);
+        Vector candD = GetActionPoint(SERVER_ANIMATION_CLOSED, 1);
 
         float distSqC = (pos.x - candC.x) * (pos.x - candC.x)
                        + (pos.y - candC.y) * (pos.y - candC.y)
@@ -1208,24 +1179,13 @@ int CSWSDoor::SaveDoor(CResGFF* pGFF, CResStruct* pStruct)
     pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(m_bTrapDisarmable), const_cast<char*>("TrapDisarmable"));
     pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(m_bTrapDetectable), const_cast<char*>("TrapDetectable"));
 
-    // The two trap DCs are saved difficulty-adjusted, easy -5 and difficult +5, each clamped to a
-    // minimum of 1, the same adjustment the getters apply when reading.
+    // The two trap DCs are saved difficulty-adjusted, through the getters.
 #if KOTOR1  // K1: the raw base DCs
     pGFF->WriteFieldBYTE(pStruct, m_baseDisarmDC, const_cast<char*>("DisarmDC"));
     pGFF->WriteFieldBYTE(pStruct, m_baseDetectDC, const_cast<char*>("TrapDetectDC"));
 #else
-    unsigned char baseDisarm = m_baseDisarmDC;
-    unsigned char diffDisarm = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
-    int adjDisarm = (diffDisarm == 0) ? -5 : ((diffDisarm == 2) ? 5 : 0);
-    unsigned char disarmDC = static_cast<unsigned char>(adjDisarm + baseDisarm);
-    if (disarmDC == 0) disarmDC = 1;
-    pGFF->WriteFieldBYTE(pStruct, disarmDC, const_cast<char*>("DisarmDC"));
-
-    unsigned char baseDetect = m_baseDetectDC;
-    unsigned char diffDetect = g_pAppManager->m_pClientExoApp->GetClientOptions()->m_difficultyLevel;
-    int adjDetect = (diffDetect == 0) ? -5 : ((diffDetect == 2) ? 5 : 0);
-    int detectDC = adjDetect + baseDetect;
-    pGFF->WriteFieldBYTE(pStruct, static_cast<unsigned char>(detectDC > 1 ? detectDC : 1), const_cast<char*>("TrapDetectDC"));
+    pGFF->WriteFieldBYTE(pStruct, GetDisarmDC(), const_cast<char*>("DisarmDC"));
+    pGFF->WriteFieldBYTE(pStruct, GetDetectDC(), const_cast<char*>("TrapDetectDC"));
 
     pGFF->WriteFieldINT(pStruct, m_nOwnerDemolitionsSkill, const_cast<char*>("OwnerDemolitionsSkill"));
 #endif

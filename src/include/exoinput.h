@@ -258,8 +258,8 @@ struct CExoInput {
     // </VTABLE-GEN>
     CExoInputInternal* m_pInternal;
 
-    static int KEYBOARD_START;
-    static int JOYSTICK_START;
+    static const int KEYBOARD_START;
+    static const int JOYSTICK_START;
 
     // Device-class tags, distinct from the key-map index boundaries above.
     static const int INPUTDEVICE_KEYBOARD;

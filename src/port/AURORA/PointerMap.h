@@ -127,8 +127,8 @@ struct MdlNodeTriMesh32 : MdlNode32 {
 #if !KOTOR1  // K1 has no dirt or hologram block
     bool m_bDirtEnabled;
     char _pad18b[1];
-    unsigned short m_nDirtTexture;
-    unsigned short m_nDirtWorldspace;
+    short m_nDirtTexture;
+    short m_nDirtWorldspace;
     bool m_bHologramDoNotDraw;
     char _pad191[3];
 #endif

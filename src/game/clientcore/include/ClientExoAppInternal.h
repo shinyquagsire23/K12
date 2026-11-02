@@ -23,7 +23,11 @@ public:
     CExoString           m_sCharacterName;
 
     CSWCPlayer(unsigned int nPlayerId)
-        : m_nPlayerId(nPlayerId), m_nReserved1(0), m_nPortraitId(0xffff) {}
+    {
+        m_nPlayerId = nPlayerId;
+        m_nReserved1 = 0;
+        m_nPortraitId = 0xffff;
+    }
 
     void SetPrimaryPCPortraitId(unsigned short nPortraitId);
     void SetPrimaryPCPortraitResRef(CResRef resRef) { m_portrait.SetPortrait(resRef); }
@@ -55,7 +59,7 @@ struct CWorldTimer;
 class CGuiAreaLoadscreen;
 class CGuiInGame;
 class CGuiPanel;
-class CImeUI;
+class CExoImeUI;
 class CConnectionLib;
 class CModuleDescription;
 #include "serverexoapp.h"
@@ -104,7 +108,7 @@ struct CQueuedAnim {
 
 // One entry of the idle-rumble table, holding a pattern index, the playback time into it, and a
 // latch that restarts the pattern (the frame it clears does not advance the time).
-struct SRumblePattern {
+struct CSWRumbleInstance {
     int   nPattern;
     float fPhase;
     int   nState;
@@ -268,7 +272,7 @@ public:
     int                 m_nScrollSpeedY;
     void*               m_pReserved1;
     int                 m_bClientImeUI;
-    CImeUI*             m_pImeUI;
+    CExoImeUI*             m_pImeUI;
 #if !KOTOR1
     char                _pad180[0x184-0x180];
 #endif
@@ -392,7 +396,7 @@ public:
     unsigned long long  m_futureLeader;
     int                 m_bLoadingSaveGame;
     CExoArrayList<CSWRumblePattern> m_rumblePatternList;
-    CExoArrayList<SRumblePattern> m_rumblePatterns;
+    CExoArrayList<CSWRumbleInstance> m_rumblePatterns;
     CExoArrayList<CGuiStringStruct> m_stringStructs;
     unsigned long long  m_oidReserved2;
     float               m_fTargetHiddenTime;
@@ -473,7 +477,7 @@ public:
 
     void             EnableInput();
     void             DisableInput();
-    CSWCModule*      GetModule() __attribute__((noinline));
+    CSWCModule*      GetModule();
     void             SetDebugMode(int mode);
     int              GetDebugMode();
     void             SetViewTriggers(int b);
@@ -496,7 +500,7 @@ public:
     void             DelayNextEnemyAutoPause();
     int              IsMoviePlaying();
     CExoString*      GetPlayerCharacterName();
-    __attribute__((noinline)) int GetPausedByCombat();
+    int GetPausedByCombat();
     void             SetLastTarget(unsigned long long id, int b);
     void BeginIntro();
     int GetVideoModeSpec(unsigned int a, unsigned int* b, unsigned int* c, unsigned char* d, unsigned int* e);
@@ -580,14 +584,14 @@ public:
     CWorldTimer* GetActiveTimer(unsigned long long id);
     void ClearPauseExclusionList();
     void AddToPauseExclusionList(unsigned long long id);
-    void AttachPlayerGameObjectToArea() __attribute__((noinline));
+    void AttachPlayerGameObjectToArea();
     void InitializeInGameGUI();
     void AddObjectToHitcheckIgnoreList(unsigned long long id);
     void RemoveObjectFromHitcheckIgnoreList(unsigned long long id);
     void HandleMouseClickInWorld();
     void HandleMouseOver(unsigned long long id, const Vector& rPos, int b);  // b: pick mode
     void EmptyHitcheckIgnoreList();
-    void SetPlayerCreature(unsigned long long id) __attribute__((noinline));
+    void SetPlayerCreature(unsigned long long id);
     int  ContinueMessageProcessing();
     int  Initialize();
     int  MainLoop();
@@ -606,10 +610,13 @@ public:
     void UnloadSuperModelSet();
     CSWCObject* SelectNearestObject(int a, unsigned char b);
     int GetClientRangedAnimation(unsigned long long a, int b, int c, int d);
-    __attribute__((noinline)) int GetControlledCharacterDead();
+    int GetControlledCharacterDead();
     void PlayerFlourishWeapons();
-    // Whether the player control has any stick deflection; inline in clientexoappinternal.cpp.
+    // Whether the player control has any stick deflection.
     int  GetPlayerMovementInput();
+    void SetRunScript(const CExoString& script);
+    void AddCDKey(const CExoString& sKey);
+    void ClearAllCDKeys();
     void GetDefaultActions();   // builds the radial menu for the current target
     int ShowTutorialWindow(unsigned char a, unsigned long long b, unsigned long long c, unsigned int d);
     uint64_t GetNextLoadScreenHintSTRREF(const CExoString& a, unsigned char b);
@@ -648,13 +655,13 @@ public:
     int IsPlayerCreature(CSWCCreature* a);
     int GetCanSendDialog(unsigned long long a, unsigned long long b, CSWSDialog* c);
     void SetLoadScreenByModuleName(const CExoString& a);
-    __attribute__((noinline)) void HurryDeathSequence();
+    void HurryDeathSequence();
 #if KOTOR1
     int LoadOptions();
 #else
     int LoadOptions(int a);
 #endif
-    __attribute__((noinline)) void DoScreenShot();
+    void DoScreenShot();
     void SaveOptions();
     void SetPausedByCombat(int a, unsigned char b, int c);
     void StartCreditSequence(const Vector& a, const CExoString& b);
@@ -668,7 +675,7 @@ public:
     void StopSoundPlayingInDialog();
     void ResumeStreamMusicForMovie();
     void HideMouse(int a) __attribute__((noinline));
-    void IndicateObject(CSWCObject* a, int b) __attribute__((noinline));
+    void IndicateObject(CSWCObject* a, int b);
     void ClearCachedCreatures(CSWCCreature* a);
     void SetLoadScreenHint(uint64_t a);
     int  PerformXMouseMoveAction(int nX);
@@ -753,7 +760,7 @@ public:
     void             SetHitcheckIgnoreList(List<CAurObject*>* pList);
     void             AddCreatureModelDirectlyToIgnoreList(unsigned long long creatureId, List<CAurObject*>* pList);
     void             AddItemModelDirectlyToIgnoreList(unsigned long long itemId, List<CAurObject*>* pList);
-    __attribute__((noinline)) void SetToolTipInstantMode(int a);
+    void SetToolTipInstantMode(int a);
     void             StallServerCode();
     int              AddMovieToExoArrayList(const CExoString& a, CExoArrayList<CExoString>& b);
     int              WaitForMovie(int a);
@@ -805,3 +812,30 @@ inline CGameObject* CClientExoAppInternal::GetGameObject(unsigned long long id)
     return pObject;
 }
 #endif
+
+#include "swplayercontrol.h"
+
+inline int CClientExoAppInternal::GetPlayerMovementInput()
+{
+    if (m_pPlayerControl == 0)
+        return 0;
+    if (m_pPlayerControl->GetLeftRight() != 0.0f)
+        return 1;
+    return m_pPlayerControl->GetUpDown() != 0.0f;
+}
+
+inline void CClientExoAppInternal::SetRunScript(const CExoString& script)
+{
+    m_bRunScriptSet = 1;
+    m_runScript = script;
+}
+
+inline void CClientExoAppInternal::AddCDKey(const CExoString& sKey)
+{
+    m_sCDKeys.Add(sKey.UpperCase());
+}
+
+inline void CClientExoAppInternal::ClearAllCDKeys()
+{
+    m_sCDKeys.SetSize(0);
+}

@@ -425,7 +425,7 @@ void CSWGuiPartySelection::OnEnter(CSWGuiControl* pControl)
                     g_pExoResMan->Exists(CResRef(sDark), RESTYPE_TPC, static_cast<unsigned int*>(0)))
                     sPortrait = sDark;
             }
-            m_view3D.m_border.m_params.SetFillImage(CResRef(sPortrait), 0);
+            m_view3D.m_border.m_params.SetFillImage(CResRef(sPortrait));
 
             CExoString sLevel;
             sLevel.Format(const_cast<char*>("%s %d %s"),
@@ -677,7 +677,7 @@ void CSWGuiPartySelection::OnPanelAdded()
             }
 
             pData->m_lblNA.m_tail.bVisible = 1;
-            pData->m_lblNA.m_border.m_params.SetFillImage(resRef, 0);
+            pData->m_lblNA.m_border.m_params.SetFillImage(resRef);
             pData->m_lblChar.m_tail.bVisible = 0;
         }
         else
@@ -852,7 +852,7 @@ void CSWGuiPartySelection::OnPanelAdded()
 
             // Placed at the end of the available branch, so an unavailable slot keeps its previous
             // fill image.
-            pData->m_lblNA.m_border.m_params.SetFillImage(resRef, 0);
+            pData->m_lblNA.m_border.m_params.SetFillImage(resRef);
         }
         else
         {

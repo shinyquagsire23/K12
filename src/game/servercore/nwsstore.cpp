@@ -32,8 +32,8 @@ void CSWSStore::RemoveItem(CSWSItem* pItem) {
     m_pItemRepository->RemoveItem(pItem);
 }
 
-void CSWSStore::RemoveItemFromInventory(CSWSItem* pItem) {
-    m_pItemRepository->RemoveItem(pItem);
+int CSWSStore::RemoveItemFromInventory(CSWSItem* pItem) {
+    return m_pItemRepository->RemoveItem(pItem);
 }
 
 void CSWSStore::RemoveCustomer(CSWSPlayer* pPlayer) {
@@ -149,7 +149,7 @@ void CSWSStore::SellItem(CSWSItem* pItem, CSWSCreature* pCreature) {
             local48 = pItem->SplitItem(1);
             goto shared;
         }
-        if (!m_pItemRepository->RemoveItem(pItem)) return;
+        if (!RemoveItemFromInventory(pItem)) return;
         pCreature->AcquireItem(&local40, m_objectId, OBJECT_INVALID, 1);
         return;
     } else {

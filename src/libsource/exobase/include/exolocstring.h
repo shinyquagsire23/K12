@@ -29,10 +29,8 @@ public:
     int  GetString(int nLanguage, CExoString* pStr, unsigned char gender);
     void ClearLocString();
     int  GetString(unsigned int nIndex, int* pLanguage, CExoString* pStr, unsigned char* pGender) const;
-    // Kept out of line on purpose: GetSpokenTimeEstimate calls it from this same translation unit.
-    __attribute__((noinline))
     int  GetString(int nLanguage, CExoString* pStr, unsigned char gender) const;
-    void GetStringInternal(int nID, CExoString* pStr) const;
+    int  GetStringInternal(int nID, CExoString* pStr) const;
     // Returns int: callers such as HasValidString test the result.
     int  GetStringLoc(int nLanguage, CExoString* pStr, unsigned char gender) const;
     int  GetStringCount() const;

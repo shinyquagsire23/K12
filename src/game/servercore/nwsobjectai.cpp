@@ -426,8 +426,10 @@ void CSWSObject::RunActions(unsigned int nDay, unsigned int nTod, uint64_ll_t nS
                     nResult = ACTION_IN_PROGRESS;
                     break;
                 }
+#if !KOTOR1  // K1 has no probe ahead of the creature test
                 if (AsSWSCreature() != 0)
                     AsSWSCreature();
+#endif
                 if (nObjectType == GAME_OBJECT_TYPE_CREATURE && AsSWSCreature() != 0 &&
                     AsSWSCreature()->m_bInParty != 0)
                     nResult = AsSWSCreature()->AIActionPartyFollowLeader(pNode);
@@ -488,7 +490,8 @@ void CSWSObject::RunActions(unsigned int nDay, unsigned int nTod, uint64_ll_t nS
             }
 
             m_pCurrentActionNode = 0;
-            g_pAppManager->m_pServerExoApp->GetServerAIMaster()->m_nLastActionId = m_nCurrentActionId;
+            CServerAIMaster* pAIMaster = g_pAppManager->m_pServerExoApp->GetServerAIMaster();
+            pAIMaster->m_nLastActionId = m_nCurrentActionId;
             m_nCurrentActionId = AIACTION_NONE;
             m_nLastAIUpdateDay = nDay;
             m_nLastAIUpdateTod = nTod;
@@ -1127,11 +1130,15 @@ partyReady:
     {
     CGameObject* pSpeakerGO = g_pAppManager->m_pServerExoApp->GetGameObject(oidSpeaker);
     if (pSpeakerGO != 0 && pSpeakerGO->AsSWSCreature() != 0) {
+#if KOTOR1  // K1 re-fetches the speaker for each read
+        Vector vMyPos = m_position;
+        Vector vSpeakerPos = pSpeakerGO->AsSWSCreature()->m_position;
+        Vector vSpeakerFacing = pSpeakerGO->AsSWSCreature()->m_orientation;
+#else
         CSWSCreature* pSpeaker = pSpeakerGO->AsSWSCreature();
         Vector vMyPos = m_position;
         Vector vSpeakerPos = pSpeaker->m_position;
         Vector vSpeakerFacing = pSpeaker->m_orientation;
-#if !KOTOR1
         if (pSpeaker->m_bInParty != 0) {
             pSpeaker->m_bRestoreDialogPose = 1;
             pSpeaker->m_vDialogStartPosition = vSpeakerPos;
@@ -2061,9 +2068,11 @@ int CSWSObject::AIActionPlayAnimation(CSWSObjectActionNode* pNode) {
             case SERVER_ANIMATION_SET_MINE:
                 nSoundDelay = 750;
                 break;
+#if !KOTOR1  // K1 has no door-saber animation
             case SERVER_ANIMATION_DOOR_SABER:
                 nSoundDelay = 0;
                 break;
+#endif
             default:
                 bSoundPlayed = 1;
                 pNode->m_args.m_bAnimSoundPlayed = bSoundPlayed;
@@ -2291,7 +2300,11 @@ int CSWSObject::AIActionUseObject(CSWSObjectActionNode* pNode) {
                                            CResRef(sSound), pPlaceable->m_position, 0.0f, PRIORITY_GROUP_SINGLE_SHOT_POSITIONAL, 0,
                                            0, 0.0f, 0.0f))) /
                                        1000.0f;
+#if KOTOR1
+                        if (fSound > fWait)
+#else
                         if (fSound > fWait && fWait != 0.0f)
+#endif
                             fWait = fSound;
                     }
                     AddActionToFront(AIACTION_WAIT, pNode->m_nGroupId, ACTION_PARAM_FLOAT, &fWait,
@@ -2344,7 +2357,11 @@ int CSWSObject::AIActionUseObject(CSWSObjectActionNode* pNode) {
                                                CResRef(sSound), pPlaceable->m_position, 0.0f, PRIORITY_GROUP_SINGLE_SHOT_POSITIONAL,
                                                0, 0, 0.0f, 0.0f))) /
                                            1000.0f;
+#if KOTOR1
+                            if (fSound > fWait)
+#else
                             if (fSound > fWait && fWait != 0.0f)
+#endif
                                 fWait = fSound;
                         }
                         AddActionToFront(AIACTION_WAIT, pNode->m_nGroupId,

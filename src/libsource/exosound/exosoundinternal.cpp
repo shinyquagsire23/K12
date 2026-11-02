@@ -171,28 +171,20 @@ void CExoSoundInternal::LoadPriorityGroups()
         if (p2DA->GetINTEntry(i, CExoString("FadeTime"), &nValue))
             m_paGroups[i].m_nFadeTime = static_cast<unsigned short>(nValue);
 
-        {
 #if KOTOR1  // K1's distance columns have no _PC suffix
-            CExoString sMaxVolumeColumn("MaxVolumeDist");
+#define PRIORITYGROUP_DIST_COLUMN(s) s
 #else
-            CExoString sMaxVolumeColumn("MaxVolumeDist_PC");
+#define PRIORITYGROUP_DIST_COLUMN(s) s "_PC"
 #endif
-            if (p2DA->GetFLOATEntry(i, sMaxVolumeColumn, &fMaxVolumeDistance))
-            {
-#if KOTOR1
-                CExoString sMinVolumeColumn("MinVolumeDist");
-#else
-                CExoString sMinVolumeColumn("MinVolumeDist_PC");
-#endif
-                // The columns are named for the volume; MinVolumeDist is where the sound fades out
-                // (the maximum distance), MaxVolumeDist the radius it stays full inside.
-                if (p2DA->GetFLOATEntry(i, sMinVolumeColumn, &fMinVolumeDistance))
-                {
-                    m_paGroups[i].m_fMaxDistance = fMinVolumeDistance;
-                    m_paGroups[i].m_fMinDistance = fMaxVolumeDistance;
-                }
-            }
+        // The columns are named for the volume; MinVolumeDist is where the sound fades out (the
+        // maximum distance), MaxVolumeDist the radius it stays full inside.
+        if (p2DA->GetFLOATEntry(i, CExoString(PRIORITYGROUP_DIST_COLUMN("MaxVolumeDist")), &fMaxVolumeDistance) &&
+            p2DA->GetFLOATEntry(i, CExoString(PRIORITYGROUP_DIST_COLUMN("MinVolumeDist")), &fMinVolumeDistance))
+        {
+            m_paGroups[i].m_fMaxDistance = fMinVolumeDistance;
+            m_paGroups[i].m_fMinDistance = fMaxVolumeDistance;
         }
+#undef PRIORITYGROUP_DIST_COLUMN
 
         if (p2DA->GetFLOATEntry(i, CExoString("PlaybackVariance"), &fPlaybackVariance))
         {
@@ -407,14 +399,13 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
         m_audioSystem.InitSystem(n3D + n2D);
     }
 
-    m_bInitialized = 1;
-
     if (!m_audioSystem.m_bInitialized)
     {
         m_audioSystem.ShutdownSystem();
         m_bInitialized = 0;
         return false;
     }
+    m_bInitialized = 1;
 
     unsigned char n3D = n3DVoices;
     if (n3D > MAX_VOICES)
@@ -849,7 +840,11 @@ void CExoSoundInternal::Render()
 
         while (pNode != 0)
         {
+#if KOTOR1
+            if (!pStream->IsPlaying() && !g_bSoundPaused)
+#else
             if (!pStream->IsPlaying() && !g_bSoundPaused && !pStream->m_bLooping)
+#endif
             {
                 RemoveFromStreamingList(pStream);
                 break;

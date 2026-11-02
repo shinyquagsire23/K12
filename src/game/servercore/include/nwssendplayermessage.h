@@ -90,7 +90,6 @@ public:
     // Handles the client driving its own creature: heading plus two flag bytes, then, if the
     // creature is commandable and not in transit, reset combat state and queue a drive action.
     int HandlePlayerToServerInputDriveControl(CSWSPlayer* pPlayer);
-    __attribute__((noinline))
     int HandlePlayerToServerInputAbortDriveControl(CSWSPlayer* pPlayer);
     // Cancels a running GUI timing bar: only a creature flagged m_bCommandable has its action
     // queue cleared.
@@ -217,7 +216,7 @@ public:
                                 CSWSPlayerLastUpdateObject* pLast);
 
     // In the action-queue snapshot pair, Compute* diffs the live queue against the snapshot,
-    // Update* copies the live queue over it. Both walk the creature's CSWActionQueueEntry array and
+    // Update* copies the live queue over it. Both walk the creature's CSWActionNode array and
     // the snapshot's.
     int  ComputeLastUpdate_ActionQueue(CSWSCreature* pCreature,
                                        CSWSPlayerLastUpdateObject* pLast);
