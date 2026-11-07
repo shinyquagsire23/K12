@@ -34,8 +34,13 @@ public:
     int  LoadStack(CResGFF* pGff, CResStruct* pStruct);
     int  SaveStack(CResGFF* pGff, CResStruct* pStruct);
 
-    uint64_t m_nStackPointer;
-    uint64_t m_nBasePointer;
+#if defined(__arm__)  // the 32-bit source's pointers are ints (an int store may alias them)
+    typedef int      StackIndex;
+#else
+    typedef uint64_t StackIndex;
+#endif
+    StackIndex m_nStackPointer;
+    StackIndex m_nBasePointer;
     int       m_nCapacity;
     char*     m_pTypeData;
     void**    m_pValueData;

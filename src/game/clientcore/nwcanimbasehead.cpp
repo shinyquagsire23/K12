@@ -1,5 +1,6 @@
 
 #include "k2stdint.h"
+#include <string.h>
 #include "nwcanimbasehead.h"
 #include "AURORA/aurmodel.h"
 #include "nwcitem.h"
@@ -24,9 +25,8 @@ CSWCAnimBaseHead::CSWCAnimBaseHead()
     m_resTexture = const_cast<char*>("");
     m_bTextureDataCached = 0;
     m_nTextureCount = 0;
+    __builtin_memset(static_cast<void*>(m_anTextureData), 0, sizeof(m_anTextureData));
     m_nTextureOffset = 0;
-    for (int i = 0; i < 10; i++)
-        m_anTextureData[i] = 0;
     m_resEnvMap = const_cast<char*>("");
     m_bEnvMapEnabled = 0;
     m_headItemId = OBJECT_INVALID;
@@ -77,6 +77,7 @@ Gob* CSWCAnimBaseHead::GetModel(unsigned char which)
 // EFFECTIVE: the head-less exit gets its own copy of the `return 1` block (tail duplication, 8 B).
 int CSWCAnimBaseHead::LoadModel(CResRef const& cResRef, unsigned char which)
 {
+    char szName[17];
     if (which == ANIM_MODEL_BODY)
     {
         if (!CSWCAnimBaseTW::LoadModel(cResRef, ANIM_MODEL_BODY))
@@ -87,7 +88,6 @@ int CSWCAnimBaseHead::LoadModel(CResRef const& cResRef, unsigned char which)
     }
     else if (which == ANIM_MODEL_HEAD)
     {
-        char szName[17];
         cResRef.CopyToString(szName);
         m_pHeadModel = NewCAurObject(szName, const_cast<char*>("head"), 0, 0);
         if (!m_pHeadModel)
@@ -107,8 +107,8 @@ int CSWCAnimBaseHead::LoadModel(CResRef const& cResRef, unsigned char which)
 // records the pair so RestoreTexture can undo it.
 int CSWCAnimBaseHead::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, int bCache)
 {
-    char szOld[20];
-    char szNew[20];
+    char szOld[17];
+    char szNew[17];
     sOld.CopyToString(szOld);
     sNew.CopyToString(szNew);
     _strlwr(szNew);
@@ -126,12 +126,12 @@ int CSWCAnimBaseHead::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, i
 int CSWCAnimBaseHead::ReplaceTexture(unsigned char which, CResRef const& sOld, CResRef const& sNew,
                                      int bCache)
 {
+    char szOld[17];
+    char szNew[17];
     if (which == ANIM_MODEL_HEAD)
     {
         if (!m_pHeadModel)
             return 0;
-        char szOld[20];
-        char szNew[20];
         sOld.CopyToString(szOld);
         sNew.CopyToString(szNew);
         _strlwr(szOld);
@@ -150,8 +150,8 @@ int CSWCAnimBaseHead::ReplaceTexture(unsigned char which, CResRef const& sOld, C
 int CSWCAnimBaseHead::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, unsigned int nCount,
                                      unsigned short* paData, int bCache, unsigned int nOffset)
 {
-    char szOld[20];
-    char szNew[20];
+    char szOld[17];
+    char szNew[17];
     sOld.CopyToString(szOld);
     sNew.CopyToString(szNew);
     _strlwr(szOld);
@@ -173,13 +173,13 @@ int CSWCAnimBaseHead::ReplaceTexture(unsigned char which, CResRef const& sOld, C
                                      unsigned int nCount, unsigned short* paData, int bCache,
                                      unsigned int nOffset)
 {
+    char szOld[17];
+    char szNew[17];
     int nResult = 0;
     if (which == ANIM_MODEL_HEAD)
     {
         if (m_pHeadModel)
         {
-            char szOld[20];
-            char szNew[20];
             sOld.CopyToString(szOld);
             sNew.CopyToString(szNew);
             _strlwr(szOld);
@@ -236,11 +236,11 @@ int CSWCAnimBaseHead::RestoreTexture(unsigned char which)
 
 int CSWCAnimBaseHead::SetEnvMap(int nIndex, int bCache, CResRef const& cResRef)
 {
+    char szName[17];
     if (!m_pHeadModel)
         return 0;
     if (nIndex)
     {
-        char szName[17];
         cResRef.CopyToString(szName);
         m_pHeadModel->SetEnvironmentMap(szName);
     }
@@ -257,13 +257,13 @@ int CSWCAnimBaseHead::SetEnvMap(int nIndex, int bCache, CResRef const& cResRef)
 // EFFECTIVE: the orig keeps a second `return 1` block for the bCache arm (tail duplication, 8 B).
 int CSWCAnimBaseHead::SetEnvMap(unsigned char which, int nIndex, int bCache, CResRef const& cResRef)
 {
+    char szName[17];
     if (which != ANIM_MODEL_HEAD)
         return CSWCAnimBaseTW::SetEnvMap(which, nIndex, bCache, cResRef);
     if (!m_pHeadModel)
         return 0;
     if (nIndex)
     {
-        char szName[17];
         cResRef.CopyToString(szName);
         m_pHeadModel->SetEnvironmentMap(szName);
     }
@@ -279,11 +279,11 @@ int CSWCAnimBaseHead::SetEnvMap(unsigned char which, int nIndex, int bCache, CRe
 
 int CSWCAnimBaseHead::RestoreEnvMap()
 {
+    char szName[17];
     if (!m_pHeadModel)
         return 0;
     if (m_bEnvMapEnabled)
     {
-        char szName[17];
         m_resEnvMap.CopyToString(szName);
         m_pHeadModel->SetEnvironmentMap(szName);
     }

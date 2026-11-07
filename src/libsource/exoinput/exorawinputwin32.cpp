@@ -2,6 +2,7 @@
 // devices, acquires and releases them, and turns their snapshots into input events.
 
 #include "k2stdint.h"
+#include <string.h>
 #include "exorawinputinternal.h"
 
 #include "exoinputinternal.h"
@@ -35,10 +36,11 @@ enum {
     DI8DEVCLASS_GAMECTRL = 4,
     DIEDFL_ATTACHEDONLY = 1,
     DIDC_ATTACHED = 1,
-    // Device-state sizes: the keyboard's key array, a DIJOYSTATE2, a DIDEVICEOBJECTDATA (LP64).
+    // Device-state sizes: the keyboard's key array, a DIJOYSTATE2, a DIDEVICEOBJECTDATA (four DWORDs and a
+    // pointer-width UINT_PTR: the record CExoInputKeyEvent mirrors).
     KEYBOARD_STATE_SIZE = 256,
     DIJOYSTATE2_SIZE = 272,
-    DIDEVICEOBJECTDATA_SIZE = 24,
+    DIDEVICEOBJECTDATA_SIZE = sizeof(CExoInputKeyEvent),
     MAX_PATH = 260,
 };
 
@@ -187,6 +189,8 @@ int CExoRawInputInternal::InitializeDirectInputMouse()
     if (result != DI_OK) goto fail;
 
     result = m_pMouseDevice->Acquire();
+    // EFFECTIVE: both images keep this `ShutDownDirectInput` apart from the fail label's; ours sinks the
+    // two into one call with a 0/1 result (direct returns and a function-scope `prop` give the same bytes).
     if (result != DI_OK) {
         ShutDownDirectInput();
     }
@@ -226,9 +230,7 @@ void CExoRawInputInternal::ShutDownDirectInput() noexcept
             m_pJoystickState = 0;
         }
 
-        if (m_pLastJoystickState != 0) {
-            operator delete[](m_pLastJoystickState);
-        }
+        delete[] m_pLastJoystickState;
         if (m_paJoystickDevices != 0) {
             operator delete[](m_paJoystickDevices);
             m_paJoystickDevices = 0;
@@ -524,12 +526,15 @@ int CExoRawInputInternal::GetMouseBuffer(CExoDeviceBuffer& buffer)
         buffer.m_pEntries = 0;
     }
     buffer.m_nCount = 0;
-    CExoInputKeyEvent* pEntries = static_cast<CExoInputKeyEvent*>(operator new[](kDeviceBufferEntries * DIDEVICEOBJECTDATA_SIZE));
-    __builtin_memset(pEntries, 0, kDeviceBufferEntries);  // idiom-exempt: orig-engine partial clear (0x100 BYTES of the 0x1800-byte CExoInputKeyEvent[0x100] buffer -- the DI buffer element-count constant reused as a byte count, so no sizeof honestly names it; size pinned by byte-match)
-    buffer.m_pEntries = pEntries;
+    buffer.m_pEntries = static_cast<CExoInputKeyEvent*>(operator new[](kDeviceBufferEntries * DIDEVICEOBJECTDATA_SIZE));
+    memset(buffer.m_pEntries, 0, kDeviceBufferEntries);  // idiom-exempt: orig-engine partial clear (0x100 BYTES of the CExoInputKeyEvent[0x100] buffer -- the DI buffer element-count constant reused as a byte count, so no sizeof honestly names it; size pinned by byte-match)
     unsigned int count = kDeviceBufferEntries;
-    int64_t result = m_pMouseDevice->GetDeviceData(DIDEVICEOBJECTDATA_SIZE, pEntries, &count, 0);
+    int64_t result = m_pMouseDevice->GetDeviceData(DIDEVICEOBJECTDATA_SIZE, buffer.m_pEntries, &count, 0);
     switch (result) {
+    case DIERR_INPUTLOST: {
+        int64_t r = m_pMouseDevice->Acquire();
+        return r == DI_OK;
+    }
     case DI_OK:
         buffer.m_nCount = count;
         return 1;
@@ -538,13 +543,11 @@ int CExoRawInputInternal::GetMouseBuffer(CExoDeviceBuffer& buffer)
     case DIERR_NOTACQUIRED:
         m_pMouseDevice->Acquire();
         return 1;
-    case DIERR_INPUTLOST: {
-        int64_t r = m_pMouseDevice->Acquire();
-        return r == DI_OK;
-    }
+    // The known failures keep their own arm rather than sharing default's: the image still tests each.
     case DIERR_NOTBUFFERED:
     case DIERR_NOTINITIALIZED:
     case DIERR_INVALIDPARAM:
+        return 0;
     default:
         return 0;
     }
@@ -566,9 +569,7 @@ int CExoRawInputInternal::GetKeyboardBuffer(CExoDeviceBuffer& buffer)
         if (nKeys > 0 && m_bActive != 0) {
             static int s_nSequence;
             buffer.m_nCount = nKeys;
-            if (buffer.m_pEntries != 0) {
-                operator delete[](buffer.m_pEntries);
-            }
+            delete[] buffer.m_pEntries;
             CExoInputKeyEvent* pKeys = new CExoInputKeyEvent[kDeviceBufferEntries];
             buffer.m_pEntries = pKeys;
             for (int i = 0; i < nKeys; i++) {
@@ -591,9 +592,7 @@ int CExoRawInputInternal::GetKeyboardBuffer(CExoDeviceBuffer& buffer)
     }
     Ios_escPress = 0;
     buffer.m_nCount = 1;
-    if (buffer.m_pEntries != 0) {
-        operator delete[](buffer.m_pEntries);
-    }
+    delete[] buffer.m_pEntries;
     CExoInputKeyEvent* pEntries = new CExoInputKeyEvent[kDeviceBufferEntries];
     buffer.m_pEntries = pEntries;
     pEntries->m_nAppData = 0;
@@ -607,10 +606,8 @@ int CExoRawInputInternal::GetKeyboardBuffer(CExoDeviceBuffer& buffer)
     if (Ios_escPress || Ios_spacePress || Ios_forfeitPress) {
         CExoInputKeyEvent* pOld = buffer.m_pEntries;
         buffer.m_nCount = 1;
-        if (pOld != 0) {
-            operator delete[](pOld);
-        }
-        CExoInputKeyEvent* pEntries = static_cast<CExoInputKeyEvent*>(operator new[](kDeviceBufferEntries * DIDEVICEOBJECTDATA_SIZE));
+        delete[] pOld;
+        CExoInputKeyEvent* pEntries = new CExoInputKeyEvent[kDeviceBufferEntries];
         buffer.m_pEntries = pEntries;
         if (Ios_escPress) {
             pEntries->m_nKeyCode = DIK_ESCAPE;
@@ -624,7 +621,8 @@ int CExoRawInputInternal::GetKeyboardBuffer(CExoDeviceBuffer& buffer)
         }
         pEntries->m_nAppData = 0;
         pEntries->m_nSequence = kInjectedKeySequence;
-        *reinterpret_cast<unsigned long long*>(&pEntries->m_nValue) = INPUTKEY_DOWN;  // raw-offset: value and m_nTimeStamp written as one 8-byte store, as the original
+        pEntries->m_nValue = INPUTKEY_DOWN;
+        pEntries->m_nTimeStamp = 0;
         return 1;
     }
 
@@ -642,12 +640,15 @@ int CExoRawInputInternal::GetKeyboardBuffer(CExoDeviceBuffer& buffer)
     if (m_nKeyboardMode != 0) {
         return 1;
     }
-    CExoInputKeyEvent* pEntries = static_cast<CExoInputKeyEvent*>(operator new[](kDeviceBufferEntries * DIDEVICEOBJECTDATA_SIZE));
-    __builtin_memset(pEntries, 0, kDeviceBufferEntries);  // idiom-exempt: orig-engine partial clear (0x100 BYTES of the 0x1800-byte CExoInputKeyEvent[0x100] buffer -- the DI buffer element-count constant reused as a byte count, so no sizeof honestly names it; size pinned by byte-match)
-    buffer.m_pEntries = pEntries;
+    buffer.m_pEntries = static_cast<CExoInputKeyEvent*>(operator new[](kDeviceBufferEntries * DIDEVICEOBJECTDATA_SIZE));
+    memset(buffer.m_pEntries, 0, kDeviceBufferEntries);  // idiom-exempt: orig-engine partial clear (0x100 BYTES of the CExoInputKeyEvent[0x100] buffer -- the DI buffer element-count constant reused as a byte count, so no sizeof honestly names it; size pinned by byte-match)
     unsigned int count = kDeviceBufferEntries;
-    int64_t result = m_pKeyboardDevice->GetDeviceData(DIDEVICEOBJECTDATA_SIZE, pEntries, &count, 0);
+    int64_t result = m_pKeyboardDevice->GetDeviceData(DIDEVICEOBJECTDATA_SIZE, buffer.m_pEntries, &count, 0);
     switch (result) {
+    case DIERR_INPUTLOST: {
+        int64_t r = m_pKeyboardDevice->Acquire();
+        return r == DI_OK;
+    }
     case DI_OK:
         buffer.m_nCount = count;
         return 1;
@@ -656,13 +657,11 @@ int CExoRawInputInternal::GetKeyboardBuffer(CExoDeviceBuffer& buffer)
     case DIERR_NOTACQUIRED:
         m_pKeyboardDevice->Acquire();
         return 1;
-    case DIERR_INPUTLOST: {
-        int64_t r = m_pKeyboardDevice->Acquire();
-        return r == DI_OK;
-    }
+    // The known failures keep their own arm rather than sharing default's: the image still tests each.
     case DIERR_NOTBUFFERED:
     case DIERR_NOTINITIALIZED:
     case DIERR_INVALIDPARAM:
+        return 0;
     default:
         return 0;
     }
@@ -673,11 +672,16 @@ int CExoRawInputInternal::GetKeyboardBuffer(CExoDeviceBuffer& buffer)
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
 
-struct CExoJoystickDeviceInfo {
-    unsigned int  dwSize;
-    unsigned char m_aReserved1[0x140-0x004];
-    signed char   tszProductName[MAX_PATH];
-    unsigned char m_aReserved2[0x268-0x244];
+struct DIDEVICEINSTANCEA {
+    unsigned int   dwSize;
+    GUID           guidInstance;
+    GUID           guidProduct;
+    unsigned int   dwDevType;
+    char           tszInstanceName[MAX_PATH];
+    signed char    tszProductName[MAX_PATH];
+    GUID           guidFFDriver;
+    unsigned short wUsagePage;
+    unsigned short wUsage;
 };
 
     // Acquires or releases every live device, then marks the port active. Coming out of keyboard
@@ -769,7 +773,7 @@ retry:
 void CExoRawInputInternal::CheckControllerType(int deviceIndex)
 {
 
-    CExoJoystickDeviceInfo info;
+    DIDEVICEINSTANCEA info;
     info.dwSize = sizeof(info);
     m_nControllerTypeLo = 0;
     m_bIsDualShockLike = 0;
@@ -790,15 +794,18 @@ void CExoRawInputInternal::CheckControllerType(int deviceIndex)
 }
 #endif
 
-struct DIDEVICEINSTANCEA {
-    unsigned char m_aReserved1[8];
-    unsigned char guidInstance[16];
-};
-
 struct DIDevCapsLocal {
     unsigned int dwSize;
     unsigned int dwFlags;
-    unsigned int m_aReserved1[(0x2c - 8) / 4];
+    unsigned int dwDevType;
+    unsigned int dwAxes;
+    unsigned int dwButtons;
+    unsigned int dwPOVs;
+    unsigned int dwFFSamplePeriod;
+    unsigned int dwFFMinTimeResolution;
+    unsigned int dwFirmwareRevision;
+    unsigned int dwHardwareRevision;
+    unsigned int dwFFDriverVersion;
 };
 
 #if !KOTOR1
@@ -834,7 +841,7 @@ void CExoRawInputInternal::InitJoysticks(const DIDEVICEINSTANCEA* pInstance)
 
     IDirectInputDeviceA* pTempDevice;
     DIDevCapsLocal caps;
-    int64_t result = m_pDirectInput->CreateDevice(pInstance->guidInstance, &pTempDevice, 0);
+    int64_t result = m_pDirectInput->CreateDevice(&pInstance->guidInstance, &pTempDevice, 0);
     if (result != DI_OK) {
         return;
     }
@@ -908,8 +915,7 @@ CExoString CExoRawInputInternal::GetDisplayCharacterDirectInputValue(unsigned in
     if (result < 0) {
         pResult = "N/A";
     } else {
-        for (int i = 0; i < kKeyNameChars; i++)
-            buf[i] = 0;
+        memset(buf, 0, sizeof(buf));
         g_pExoBase->WcsToMbs(buf, reinterpret_cast<const K2WChar*>(prop.wsz), kKeyNameChars - 1);  // raw-offset: the DIPROPSTRING wide-string bytes
         pResult = buf;
     }
@@ -940,12 +946,8 @@ void CExoRawInputInternal::ReinitJoysticks()
             m_paJoystickDevices[i] = 0;
         }
     }
-    if (m_pJoystickState != 0) {
-        operator delete[](m_pJoystickState);
-    }
-    if (m_pLastJoystickState != 0) {
-        operator delete[](m_pLastJoystickState);
-    }
+    delete[] m_pJoystickState;
+    delete[] m_pLastJoystickState;
     if (m_nNumJoysticks != 0) {
         int n = m_nNumJoysticks;
         m_pJoystickState = new CExoJoystickState[n];
@@ -955,10 +957,6 @@ void CExoRawInputInternal::ReinitJoysticks()
     g_nNumJoysticksFound = 0;
     m_pDirectInput->EnumDevices(DI8DEVCLASS_GAMECTRL, reinterpret_cast<void*>(InitJoysticksExt), this, DIEDFL_ATTACHEDONLY);
     m_nNumJoysticks = g_nNumJoysticksFound;
-
-    if (m_nNumJoysticks < 1) {
-        return;
-    }
 
     for (int i = 0; i < m_nNumJoysticks; i++) {
         IDirectInputDeviceA* pDevice = m_paJoystickDevices[i];
@@ -977,8 +975,8 @@ void CExoRawInputInternal::ReinitJoysticks()
         if (m_paJoystickDevices[i] == 0) {
             continue;
         }
-        __builtin_memset(&m_pJoystickState[i], 0, offsetof(CExoJoystickState, m_nLastUpdateMs));
-        __builtin_memset(&m_pLastJoystickState[i], 0, offsetof(CExoJoystickState, m_nLastUpdateMs));
+        memset(&m_pJoystickState[i], 0, offsetof(CExoJoystickState, m_nLastUpdateMs));
+        memset(&m_pLastJoystickState[i], 0, offsetof(CExoJoystickState, m_nLastUpdateMs));
         m_pJoystickState[i].m_nLastUpdateMs = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
         m_pLastJoystickState[i].m_nLastUpdateMs = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
         m_pJoystickState[i].m_axisBoundLo = -32768;
@@ -1109,8 +1107,8 @@ CExoRawInputInternal::CExoRawInputInternal(HINSTANCE__* hInst, HWND__* hWnd)
             if (m_paJoystickDevices[i] == 0) {
                 continue;
             }
-            __builtin_memset(&m_pJoystickState[i], 0, offsetof(CExoJoystickState, m_nLastUpdateMs));
-            __builtin_memset(&m_pLastJoystickState[i], 0, offsetof(CExoJoystickState, m_nLastUpdateMs));
+            memset(&m_pJoystickState[i], 0, offsetof(CExoJoystickState, m_nLastUpdateMs));
+            memset(&m_pLastJoystickState[i], 0, offsetof(CExoJoystickState, m_nLastUpdateMs));
             m_pJoystickState[i].m_nLastUpdateMs = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
             m_pLastJoystickState[i].m_nLastUpdateMs = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
             m_pJoystickState[i].m_axisBoundLo = -32768;
@@ -1157,28 +1155,36 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
         buffer.m_pEntries = 0;
     }
     buffer.m_nCount = 0;
-    unsigned char* pEntries = static_cast<unsigned char*>(operator new[](kDeviceBufferEntries * DIDEVICEOBJECTDATA_SIZE));
-    __builtin_memset(pEntries, 0, kDeviceBufferEntries);  // idiom-exempt: orig-engine partial clear (0x100 BYTES of the 0x1800-byte CExoInputKeyEvent[0x100] buffer -- the DI buffer element-count constant reused as a byte count, so no sizeof honestly names it; size pinned by byte-match)
-    buffer.m_pEntries = reinterpret_cast<CExoInputKeyEvent*>(pEntries);
+    buffer.m_pEntries = static_cast<CExoInputKeyEvent*>(operator new[](kDeviceBufferEntries * DIDEVICEOBJECTDATA_SIZE));
+    memset(buffer.m_pEntries, 0, kDeviceBufferEntries);  // idiom-exempt: orig-engine partial clear (0x100 BYTES of the CExoInputKeyEvent[0x100] buffer -- the DI buffer element-count constant reused as a byte count, so no sizeof honestly names it; size pinned by byte-match)
 
     int ok = 0;
     if (m_paJoystickDevices != 0) {
-        IDirectInputDeviceA* pDevice = m_paJoystickDevices[deviceIndex];
-        if (pDevice != 0 && m_pJoystickState != 0 && m_pLastJoystickState != 0) {
-            pDevice->Poll();
+        if (m_paJoystickDevices[deviceIndex] != 0 && m_pJoystickState != 0 && m_pLastJoystickState != 0) {
+            m_paJoystickDevices[deviceIndex]->Poll();
 
             unsigned char newState[DIJOYSTATE2_SIZE];
-            int64_t result = pDevice->GetDeviceState(DIJOYSTATE2_SIZE, newState);
+            int64_t result = m_paJoystickDevices[deviceIndex]->GetDeviceState(DIJOYSTATE2_SIZE, newState);
             if (result != DI_OK) {
                 s_isDeviceValid[deviceIndex] = 0;
-                if (result < DIERR_NOTINITIALIZED) {
-                    if (result != E_PENDING && result == DIERR_NOTACQUIRED) {
-                        pDevice->Acquire();
-                    }
-                } else if (result != DIERR_NOTINITIALIZED && result != DIERR_INVALIDPARAM &&
-                           result == DIERR_INPUTLOST) {
-                    int64_t r = pDevice->Acquire();
+                switch (result) {
+                case DIERR_INPUTLOST: {
+                    int64_t r = m_paJoystickDevices[deviceIndex]->Acquire();
                     if (r == DI_OK) goto success;
+                    break;
+                }
+                case DIERR_NOTACQUIRED:
+                    m_paJoystickDevices[deviceIndex]->Acquire();
+                    break;
+                // The three known failures keep their own arm rather than sharing default's: both
+                // images still test each of them.
+                case E_PENDING:
+                case DIERR_NOTINITIALIZED:
+                case DIERR_INVALIDPARAM:
+                    m_nNumJoysticks = 0;
+                    goto done;
+                default:
+                    break;
                 }
                 m_nNumJoysticks = 0;
                 goto done;
@@ -1189,39 +1195,39 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
             {
                 unsigned char* pCur = reinterpret_cast<unsigned char*>(m_pJoystickState + deviceIndex);
 
-                uint64_ll_t timer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+                unsigned int nNowMs = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
 
                 for (int off = DIJOFS_BUTTON0; off != DIJOFS_BUTTON_END; off++) {
                     unsigned char oldB = pCur[off];  // raw-offset: DirectInput state offsets are its DIJOFS event codes
                     unsigned char newB = newState[off];
                     if (static_cast<signed char>(oldB ^ newB) < 0) {
                         unsigned int idx = buffer.m_nCount;
-                        CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                            pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                        entry->m_code = off;
-                        entry->m_value = newB >> 7;
-                        entry->m_nTimeStampAndSequence = 0;
+                        CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                        entry->m_nKeyCode = off;
+                        entry->m_nValue = newState[off] >> 7;
+                        entry->m_nTimeStamp = 0;
+                        entry->m_nSequence = 0;
                         buffer.m_nCount = idx + 1;
                     }
                 }
 
                 for (int i = 0; i < 4; i++) {
                     unsigned int off = DIJOFS_POV0 + i * 4;
-                    unsigned int newVal = *reinterpret_cast<unsigned int*>(newState + off);
                     unsigned int oldVal = *reinterpret_cast<unsigned int*>(pCur + off);  // raw-offset: DirectInput state offsets are its DIJOFS event codes
-                    if (newVal != oldVal) {
+                    if (*reinterpret_cast<unsigned int*>(newState + off) != oldVal) {
+                        unsigned int idx = buffer.m_nCount;
+                        CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                        entry->m_nKeyCode = DIJOFS_POV0 + i;
+                        unsigned int newVal = *reinterpret_cast<unsigned int*>(newState + off);
                         unsigned int v;
                         if (((newVal ^ 0xffffffffu) & 0xffffu) == 0) {
                             v = 0xffffffffu;
                         } else {
                             v = newVal / 100u;
                         }
-                        unsigned int idx = buffer.m_nCount;
-                        CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                            pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                        entry->m_code = DIJOFS_POV0 + i;
-                        entry->m_value = v;
-                        entry->m_nTimeStampAndSequence = 0;
+                        entry->m_nValue = v;
+                        entry->m_nTimeStamp = 0;
+                        entry->m_nSequence = 0;
                         buffer.m_nCount = idx + 1;
                     }
                 }
@@ -1278,44 +1284,44 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
                     unsigned int a0 = bit0 & newDirBits;
                     if (a0 != (bit0 & oldDirBits)) {
                         unsigned int idx = buffer.m_nCount;
-                        CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                            pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                        entry->m_code = code - (POVCODE_LEFT - POVCODE_UP);
-                        entry->m_value = (a0 != 0);
-                        entry->m_nTimeStampAndSequence = 0;
+                        CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                        entry->m_nKeyCode = code - (POVCODE_LEFT - POVCODE_UP);
+                        entry->m_nValue = (a0 != 0);
+                        entry->m_nTimeStamp = 0;
+                        entry->m_nSequence = 0;
                         buffer.m_nCount = idx + 1;
                     }
                     unsigned int bit1 = 1u << ((off3 - 31u) & 31u);
                     unsigned int a1 = bit1 & newDirBits;
                     if (a1 != (bit1 & oldDirBits)) {
                         unsigned int idx = buffer.m_nCount;
-                        CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                            pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                        entry->m_code = code - (POVCODE_LEFT - POVCODE_DOWN);
-                        entry->m_value = (a1 != 0);
-                        entry->m_nTimeStampAndSequence = 0;
+                        CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                        entry->m_nKeyCode = code - (POVCODE_LEFT - POVCODE_DOWN);
+                        entry->m_nValue = (a1 != 0);
+                        entry->m_nTimeStamp = 0;
+                        entry->m_nSequence = 0;
                         buffer.m_nCount = idx + 1;
                     }
                     unsigned int bit2 = 1u << ((off3 - 30u) & 31u);
                     unsigned int a2 = bit2 & newDirBits;
                     if (a2 != (bit2 & oldDirBits)) {
                         unsigned int idx = buffer.m_nCount;
-                        CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                            pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                        entry->m_code = code - (POVCODE_LEFT - POVCODE_RIGHT);
-                        entry->m_value = (a2 != 0);
-                        entry->m_nTimeStampAndSequence = 0;
+                        CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                        entry->m_nKeyCode = code - (POVCODE_LEFT - POVCODE_RIGHT);
+                        entry->m_nValue = (a2 != 0);
+                        entry->m_nTimeStamp = 0;
+                        entry->m_nSequence = 0;
                         buffer.m_nCount = idx + 1;
                     }
                     unsigned int bit3 = 1u << ((off3 - 29u) & 31u);
                     unsigned int a3 = bit3 & newDirBits;
                     if (a3 != (bit3 & oldDirBits)) {
                         unsigned int idx = buffer.m_nCount;
-                        CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                            pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                        entry->m_code = code;
-                        entry->m_value = (a3 != 0);
-                        entry->m_nTimeStampAndSequence = 0;
+                        CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                        entry->m_nKeyCode = code;
+                        entry->m_nValue = (a3 != 0);
+                        entry->m_nTimeStamp = 0;
+                        entry->m_nSequence = 0;
                         buffer.m_nCount = idx + 1;
                     }
                 }
@@ -1327,11 +1333,11 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
                 if (static_cast<float>(*pLX) < hiBound && loBound < static_cast<float>(*pLX)) *pLX = 0;
                 {
                     unsigned int idx = buffer.m_nCount;
-                    CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                        pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                    entry->m_code = DIJOFS_X;
-                    entry->m_value = *pLX;
-                    entry->m_nTimeStampAndSequence = 0;
+                    CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                    entry->m_nKeyCode = DIJOFS_X;
+                    entry->m_nValue = *pLX;
+                    entry->m_nTimeStamp = 0;
+                    entry->m_nSequence = 0;
                     buffer.m_nCount = idx + 1;
                 }
 
@@ -1339,11 +1345,11 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
                 if (static_cast<float>(*pLY) < hiBound && loBound < static_cast<float>(*pLY)) *pLY = 0;
                 {
                     unsigned int idx = buffer.m_nCount;
-                    CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                        pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                    entry->m_code = DIJOFS_Y;
-                    entry->m_value = *pLY;
-                    entry->m_nTimeStampAndSequence = 0;
+                    CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                    entry->m_nKeyCode = DIJOFS_Y;
+                    entry->m_nValue = *pLY;
+                    entry->m_nTimeStamp = 0;
+                    entry->m_nSequence = 0;
                     buffer.m_nCount = idx + 1;
                 }
 
@@ -1351,11 +1357,11 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
                 if (static_cast<float>(*pRX) < hiBound && loBound < static_cast<float>(*pRX)) *pRX = 0;
                 {
                     unsigned int idx = buffer.m_nCount;
-                    CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                        pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                    entry->m_code = DIJOFS_RX;
-                    entry->m_value = *pRX;
-                    entry->m_nTimeStampAndSequence = 0;
+                    CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                    entry->m_nKeyCode = DIJOFS_RX;
+                    entry->m_nValue = *pRX;
+                    entry->m_nTimeStamp = 0;
+                    entry->m_nSequence = 0;
                     buffer.m_nCount = idx + 1;
                 }
 
@@ -1363,11 +1369,11 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
                 if (static_cast<float>(*pRY) < hiBound && loBound < static_cast<float>(*pRY)) *pRY = 0;
                 {
                     unsigned int idx = buffer.m_nCount;
-                    CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                        pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                    entry->m_code = DIJOFS_RY;
-                    entry->m_value = *pRY;
-                    entry->m_nTimeStampAndSequence = 0;
+                    CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                    entry->m_nKeyCode = DIJOFS_RY;
+                    entry->m_nValue = *pRY;
+                    entry->m_nTimeStamp = 0;
+                    entry->m_nSequence = 0;
                     buffer.m_nCount = idx + 1;
                 }
 
@@ -1382,11 +1388,11 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
                     g_nLeftTriggerHeld = 0;
                 } else if (g_nLeftTriggerHeld == 0) {
                     unsigned int idx = buffer.m_nCount;
-                    CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                        pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                    entry->m_code = DIJOFS_Z;
-                    entry->m_value = *pLZ;
-                    entry->m_nTimeStampAndSequence = 0;
+                    CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                    entry->m_nKeyCode = DIJOFS_Z;
+                    entry->m_nValue = *pLZ;
+                    entry->m_nTimeStamp = 0;
+                    entry->m_nSequence = 0;
                     buffer.m_nCount = idx + 1;
                     g_nLeftTriggerHeld = *pLZ;
                 }
@@ -1397,18 +1403,18 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
                     g_nRightTriggerHeld = 0;
                 } else if (g_nRightTriggerHeld == 0) {
                     unsigned int idx = buffer.m_nCount;
-                    CJoystickInputEvent* entry = reinterpret_cast<CJoystickInputEvent*>(
-                        pEntries + static_cast<uint64_t>(idx) * sizeof(CJoystickInputEvent));
-                    entry->m_code = DIJOFS_RZ;
-                    entry->m_value = *pRZ;
-                    entry->m_nTimeStampAndSequence = 0;
+                    CExoInputKeyEvent* entry = &buffer.m_pEntries[idx];
+                    entry->m_nKeyCode = DIJOFS_RZ;
+                    entry->m_nValue = *pRZ;
+                    entry->m_nTimeStamp = 0;
+                    entry->m_nSequence = 0;
                     buffer.m_nCount = idx + 1;
                     g_nRightTriggerHeld = *pRZ;
                 }
 
                 memcpy(m_pLastJoystickState + deviceIndex, m_pJoystickState + deviceIndex, offsetof(CExoJoystickState, m_nLastUpdateMs));
                 memcpy(m_pJoystickState + deviceIndex, newState, offsetof(CExoJoystickState, m_nLastUpdateMs));
-                (m_pJoystickState + deviceIndex)->m_nLastUpdateMs = static_cast<unsigned int>(timer / 1000);
+                (m_pJoystickState + deviceIndex)->m_nLastUpdateMs = nNowMs;
             }
         success:
             ok = 1;
@@ -1421,7 +1427,9 @@ done:
 
 CExoDeviceBuffer::CExoDeviceBuffer()
 {
-    __builtin_memset(static_cast<void*>(this), 0, sizeof(*this));
+    m_pEntries = 0;
+    m_nCount = 0;
+    __builtin_memset(m_aReserved1, 0, sizeof(m_aReserved1));
 }
 
 CExoDeviceBuffer::~CExoDeviceBuffer()

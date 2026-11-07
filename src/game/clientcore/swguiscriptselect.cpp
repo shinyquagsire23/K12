@@ -61,7 +61,7 @@ CSWGuiScriptSelect::CSWGuiScriptSelect(CSWGuiManager* pGuiManager)
     CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem);
     m_lblColour.Initialize(pProto->m_extent, pProto, 1.0f);
 
-    CExoArrayList<CSWGuiButtonToggle*> buttons;
+    CExoArrayList<CSWGuiControl*> buttons;
     CSWGuiButtonToggle* pTemplate = static_cast<CSWGuiButtonToggle*>(m_listBox.m_pProtoItem);
     int nSize;
 
@@ -69,16 +69,7 @@ CSWGuiScriptSelect::CSWGuiScriptSelect(CSWGuiManager* pGuiManager)
     p2DA->Load2DArray();
 
     nSize = p2DA->m_nRows;
-#if KOTOR1
     buttons.SetSize(nSize);
-#else
-    if (nSize != 0)
-    {
-        buttons.m_capacity = nSize;
-        buttons.m_pArray = new CSWGuiButtonToggle*[nSize];
-    }
-    buttons.m_count = nSize;
-#endif
     m_aScripts.SetSize(nSize);
 
     int64_t i;
@@ -99,7 +90,7 @@ CSWGuiScriptSelect::CSWGuiScriptSelect(CSWGuiManager* pGuiManager)
 
     delete p2DA;
 
-    m_listBox.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(buttons), 1, 0, 0);
+    m_listBox.AddControls(buttons, 1, 0, 0);
 
     m_btnBack.m_tail.bFocusOnHover = 0;
     m_btnBack.AddEvent(INPUTEVENT_GUI_A, this,
@@ -166,18 +157,7 @@ void CSWGuiScriptSelect::OnScriptSelected(CSWGuiControl* pControl)
     }
 
     m_pGuiManager->PopModalPanel();
-    {
-#if KOTOR1  // K1: the panel state bits sit one higher (bit 3 inserted)
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-        m_stateFlags = nFlags;
-    }
+    SetToBeRemoved(0);
 }
 
 // Accept and the Y button commit the selection, then fall through into the dismiss pair. The
@@ -207,18 +187,7 @@ void CSWGuiScriptSelect::HandleInputEvent(int nType, int nArg)
         case INPUTEVENT_GUI_BACK:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
-            {
-#if KOTOR1  // K1: the panel state bits sit one higher (bit 3 inserted)
-                unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                    nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-                unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                    nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-                m_stateFlags = nFlags;
-            }
+            SetToBeRemoved(0);
             break;
         default:
             break;

@@ -11,8 +11,8 @@ class CSWLevelStats {
 public:
     // The first three are what the level granted (the gained lists) and what it replaced (the lost
     // spell list, re-added by LevelDown).
-    CExoArrayList<unsigned int>   m_spellsGained;
-    CExoArrayList<unsigned int>   m_spellsLost;
+    CExoArrayList<uint32_l_t>   m_spellsGained;
+    CExoArrayList<uint32_l_t>   m_spellsLost;
     CExoArrayList<unsigned short> m_featsGained;
     // The per-skill rank-delta array, heap-allocated by the ctor and sized by the rules' skill
     // count (skills.2da rows); GetSkillRankChange indexes it.
@@ -28,8 +28,8 @@ public:
     void AddFeat(unsigned short nFeat);
 
     // nClass indexes the per-class known-spell lists, of which a level has exactly one.
-    void AddAddedKnownSpell(unsigned char nClass, unsigned int nSpell) { (&m_spellsGained)[nClass].Add(nSpell); }
-    void AddRemovedKnownSpell(unsigned char nClass, unsigned int nSpell) { (&m_spellsLost)[nClass].Add(nSpell); }
+    void AddAddedKnownSpell(unsigned char nClass, uint32_l_t nSpell) { (&m_spellsGained)[nClass].Add(nSpell); }
+    void AddRemovedKnownSpell(unsigned char nClass, uint32_l_t nSpell) { (&m_spellsLost)[nClass].Add(nSpell); }
 
     // The level's per-skill rank delta; both LevelUp and LevelDown call it twice per skill, once
     // as the gate and once for the delta itself.

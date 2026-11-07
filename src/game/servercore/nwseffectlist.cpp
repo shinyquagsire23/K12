@@ -2875,34 +2875,32 @@ int CSWSEffectListHandler::OnApplyDispelAllMagic(CSWSObject* pObject, CGameEffec
     CSWCCMessageData* pData = new CSWCCMessageData();
     pData->SetObjectID(0, pObject->m_objectId);
     int nCount = 0;
-    if (pObject->m_effects.m_count >= 1) {
-        for (int64_t i = 0; i < pObject->m_effects.m_count; i++) {
-            CGameEffect* pEf = pObject->m_effects.m_pArray[i];
-            if ((pEf->m_durationTypeBits & CGameEffect::SUBTYPE_MASK) != SUBTYPE_MAGICAL ||
-                ((pEf->m_durationTypeBits & 7) != CGameEffect::DURATION_TYPE_TEMPORARY &&
-                 (pEf->m_durationTypeBits & 7) != CGameEffect::DURATION_TYPE_PERMANENT))
-                continue;
-            uint64_ll_t nEffectId = pEf->m_effectId;
-            int nSpellId = pEf->m_spellId;
-            if (l_removed.Contains(nEffectId) != 0)
-                continue;
-            int nEfLevel = 0;
-            CGameObject* pEfCasterObject;
-            unsigned short nRoll;
-            if (pObjectArray->GetGameObject(
-                    pEf->m_creatorId, &pEfCasterObject) == CGameObjectArray::SUCCESS &&
-                pEfCasterObject->AsSWSCreature() != 0)
-                nEfLevel = pEfCasterObject->AsSWSCreature()->m_pStats->GetLevel(0);
-            nRoll = g_pRules->RollDice(1, 20);
-            if (nCasterLevel + nRoll > nEfLevel + 11) {
-                g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
-                    0, 0, pEffect->m_creatorId, pObject->m_objectId,
-                    CServerAIMaster::EVENT_REMOVE_EFFECT, pEf);
-                if (pEf->m_spellId != -1)
-                    pData->SetInteger(++nCount, nSpellId);
-            }
-            l_removed.AddUnique(nEffectId);
+    for (int64_t i = 0; i < pObject->m_effects.m_count; i++) {
+        CGameEffect* pEf = pObject->m_effects.m_pArray[i];
+        if ((pEf->m_durationTypeBits & CGameEffect::SUBTYPE_MASK) != SUBTYPE_MAGICAL ||
+            ((pEf->m_durationTypeBits & 7) != CGameEffect::DURATION_TYPE_TEMPORARY &&
+             (pEf->m_durationTypeBits & 7) != CGameEffect::DURATION_TYPE_PERMANENT))
+            continue;
+        uint64_ll_t nEffectId = pEf->m_effectId;
+        int nSpellId = pEf->m_spellId;
+        if (l_removed.Contains(nEffectId) != 0)
+            continue;
+        int nEfLevel = 0;
+        CGameObject* pEfCasterObject;
+        unsigned short nRoll;
+        if (pObjectArray->GetGameObject(
+                pEf->m_creatorId, &pEfCasterObject) == CGameObjectArray::SUCCESS &&
+            pEfCasterObject->AsSWSCreature() != 0)
+            nEfLevel = pEfCasterObject->AsSWSCreature()->m_pStats->GetLevel(0);
+        nRoll = g_pRules->RollDice(1, 20);
+        if (nCasterLevel + nRoll > nEfLevel + 11) {
+            g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                0, 0, pEffect->m_creatorId, pObject->m_objectId,
+                CServerAIMaster::EVENT_REMOVE_EFFECT, pEf);
+            if (pEf->m_spellId != -1)
+                pData->SetInteger(++nCount, nSpellId);
         }
+        l_removed.AddUnique(nEffectId);
     }
     pData->SetInteger(0, nCount);
     if (nCount >= 1) {
@@ -3662,22 +3660,20 @@ int CSWSEffectListHandler::OnRemoveSanctuary(CSWSObject* pObject, CGameEffect* p
         CSWSArea* pArea = static_cast<CSWSArea*>(pCreature->GetArea());
         if (pArea != 0) {
             CExoArrayList<unsigned long long> seenIds;
-            if (pArea->m_aObjectsByX.m_count >= 1) {
-                for (int64_t i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
-                    CSWSCreature* pCur;
-                    CSWVisibilityNode* pNode;
-                    pCur = g_pAppManager->m_pServerExoApp
-                        ->GetCreatureByGameObjectID(pArea->m_aObjectsByX.m_pArray[i]);
-                    if (pCur == 0)
-                        continue;
-                    pNode = pCur->GetVisibleListElement(pCreature->m_objectId);
-                    if (pNode == 0)
-                        continue;
-                    if ((pNode->m_flags >> 2 & 3) == 1) {
-                        seenIds.Add(pCur->m_objectId);
-                    } else if ((pNode->m_flags >> 2 & 3) == 2) {
-                        pNode->m_flags &= ~VISIBILITY_PACIFY_STATE_MASK;
-                    }
+            for (int64_t i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
+                CSWSCreature* pCur;
+                CSWVisibilityNode* pNode;
+                pCur = g_pAppManager->m_pServerExoApp
+                    ->GetCreatureByGameObjectID(pArea->m_aObjectsByX.m_pArray[i]);
+                if (pCur == 0)
+                    continue;
+                pNode = pCur->GetVisibleListElement(pCreature->m_objectId);
+                if (pNode == 0)
+                    continue;
+                if ((pNode->m_flags >> 2 & 3) == 1) {
+                    seenIds.Add(pCur->m_objectId);
+                } else if ((pNode->m_flags >> 2 & 3) == 2) {
+                    pNode->m_flags &= ~VISIBILITY_PACIFY_STATE_MASK;
                 }
             }
             int bAnyOther = 0;
@@ -4811,6 +4807,19 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
     CExoString sDebug;
     int anDamage[15];
     int nDeadGate;
+#if !KOTOR1
+    CSWSCreature* pCre;
+#endif
+    int64_t i;
+    int nPause;
+    int nFlags;
+    int nGate13;
+    int nGate14;
+    unsigned long long oidAttacker;
+    CSWSCreature* pCr;
+    CSWSCreature* pAttCr;
+    int nFinal;
+    int nRedArg;
 
     nDeadGate = 0;
 #if KOTOR1  // the dying gate is GetDeadTemp()
@@ -4818,7 +4827,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
         nDeadGate = pObject->AsSWSCreature()->GetDeadTemp();
 #else
     if (pObject != 0 && pObject->AsSWSCreature() != 0) {
-        CSWSCreature* pCre = pObject->AsSWSCreature();
+        pCre = pObject->AsSWSCreature();
         nDeadGate = pCre->GetDeadTemp() != 0;
     }
 #endif
@@ -4826,7 +4835,6 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
     if (nDeadGate | pObject->GetDead())
         return 1;
 
-    int64_t i;
     for (i = 0; i < 15; i++) {
         int nDmg = pEffect->GetInteger(static_cast<int>(i));
         if ((pObject->m_bPlot | g_bDisableDamage) != 0 && nDmg >= 0)
@@ -4837,11 +4845,11 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
         return 1;
 
     pEffect->GetInteger(15);
-    int nPause = pEffect->GetInteger(16);
-    int nFlags = pEffect->GetInteger(17);
+    nPause = pEffect->GetInteger(16);
+    nFlags = pEffect->GetInteger(17);
     pEffect->GetInteger(18);
-    int nGate13 = pEffect->GetInteger(19);
-    int nGate14 = pEffect->GetInteger(20);
+    nGate13 = pEffect->GetInteger(19);
+    nGate14 = pEffect->GetInteger(20);
     int nNoBroadcast;
     if (pEffect->m_numIntegers >= 22)
         nNoBroadcast = pEffect->GetInteger(21);
@@ -4852,18 +4860,18 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
         CExoString sTemp = pEffect->GetString(0);
         sDebug = sTemp;
     }
-    unsigned long long oidAttacker = pEffect->m_creatorId;
+    oidAttacker = pEffect->m_creatorId;
 
     if (pObject->AsSWSCreature() != 0) {
-        CSWSCreature* pCr = pObject->AsSWSCreature();
+        pCr = pObject->AsSWSCreature();
         CGameObject* pAttGO = g_pAppManager->m_pServerExoApp->GetGameObject(oidAttacker);
-        CSWSCreature* pAttCr = pAttGO != 0 ? pAttGO->AsSWSCreature() : 0;
+        pAttCr = pAttGO != 0 ? pAttGO->AsSWSCreature() : 0;
+        int nFinal = anDamage[14];
 #if KOTOR1  // a PC that starts dying here signals the module
         int bWasDying = pCr->GetIsPCDying();
 #endif
-        int nFinal = anDamage[14];
         if (nGate13 == 0) {
-            int nRedArg = (nFlags & DAMAGE_TYPES_PHYSICAL) == 0 ? 6 : 0;
+            nRedArg = (nFlags & DAMAGE_TYPES_PHYSICAL) == 0 ? 6 : 0;
             nFinal = pCr->DoDamageImmunity(pAttCr, anDamage[14], static_cast<unsigned short>(nFlags), 0, 0);
             nFinal = pCr->DoDamageResistance(pAttCr, nFinal, static_cast<unsigned short>(nFlags), 0, 0, 0);
             if ((nFlags & DAMAGE_TYPES_PHYSICAL) != 0)
@@ -4874,7 +4882,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
         }
         pCr->m_lastDamagerId = oidAttacker;
         int nFound = 0;
-        if (pCr->m_bPoisoned != 0 && pCr->m_effects.m_count >= 1) {
+        if (pCr->m_bPoisoned != 0) {
             int64_t n;
             for (n = 0; n < pCr->m_effects.m_count; n++) {
                 CGameEffect* pEf = pCr->m_effects.m_pArray[n];
@@ -4894,6 +4902,8 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
 #if !KOTOR1  // K1 has no mind-trick effects to break
             pCr->RemoveMindTrickEffects();
 #endif
+            int nAnim;
+            CSWSCombatRound* pRound;
             CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
             if (pClient->GetPlayerCreatureId() == pClient->ServerToClientObjectId(oidAttacker)) {
                 pClient->AddFloatyText(pClient->ServerToClientObjectId(pCr->m_objectId),
@@ -4902,14 +4912,17 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
             } else {
                 pCr->DoDamage(nFinal, 0);
             }
-            int nAnim = pCr->m_nAnimation;
+            nAnim = pCr->m_nAnimation;
             if (static_cast<unsigned>(nAnim - SERVER_ANIMATION_CONJURE_1) < 2
                 || nAnim == SERVER_ANIMATION_CONJURE_3) {
-                CSWSpell* pSpell = g_pRules->GetSpell(pCr->m_castSpellId);
+                CSWSpell* pSpell;
+                unsigned int nRoll;
+                int nLevel;
+                int nMax;
+                pSpell = g_pRules->GetSpell(pCr->m_castSpellId);
                 if (pSpell != 0 && pSpell->m_bUseConcentration == 1) {
-                    unsigned int nRoll = g_pRules->RollDice(1, 20);
+                    nRoll = g_pRules->RollDice(1, 20);
                     pCr->GetNearestEnemy(4.0f, OBJECT_INVALID, OBJECT_INVALID);
-                    int nLevel;
                     if (pCr->m_nCastClassIndex == CSWSObject::CAST_CLASS_NONE)
                         nLevel = pSpell->m_nSpellLevelOther;
                     else
@@ -4921,7 +4934,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
                                 ? CLASS_TYPE_INVALID
                                 : pCr->m_pStats->m_classInfo[pCr->m_nCastClassIndex].m_class);
 #endif
-                    int nMax = nFinal + nLevel + 10;
+                    nMax = nFinal + nLevel + 10;
                     nMax = nMax > 0 ? nMax : 1;
                     if (nMax > static_cast<int>(nRoll & 0xffff)) {
                         pCr->DeleteCurrentAIAction();
@@ -4941,7 +4954,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
                 if (pCr->IsDebilitated(1) == 0) {
                     if (anDamage[7] > 0 || anDamage[9] >= 1) {
                         if ((pCr->m_nAnimation & ~1) == SERVER_ANIMATION_PAUSE) {
-                            CSWSCombatRound* pRound = pCr->m_pCombatRound;
+                            pRound = pCr->m_pCombatRound;
                             if (pRound->m_bRoundPaused == 0) {
                                 pRound->SetRoundPaused(1, oidAttacker);
                                 pRound->SetPauseTimer(nPause, 0);
@@ -4955,7 +4968,8 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
                 }
             }
         }
-        g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(pCr->m_objectId);
+        CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(pCr->m_objectId);
+        (void)pPlayer;
         if (pCr->m_bPlayerCharacter == 0 && pCr->GetDead() == 0 && pCr->GetDeadTemp() == 0 &&
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsLeader(pCr->m_objectId) == 0)
             g_pVirtualMachine->RunScript(&pCr->m_scripts[CSWSCreature::CREATURE_SCRIPT_DAMAGED],
@@ -4965,8 +4979,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
                 CSWCCMessageData* pData = new CSWCCMessageData();
                 pData->SetObjectID(0, oidAttacker);
                 pData->SetObjectID(1, pCr->m_objectId);
-                int64_t n;
-                for (n = 0; n < 15; n++)
+                for (int64_t n = 0; n < 15; n++)
                     pData->SetInteger(static_cast<int>(n), anDamage[n]);
                 if (g_bEnableCombatDebugging != 0)
                     pData->SetString(0, sDebug);
@@ -4977,8 +4990,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
             } else {
                 CSWCCMessageData* pData = new CSWCCMessageData();
                 pData->SetObjectID(0, pCr->m_objectId);
-                int64_t n;
-                for (n = 0; n < 15; n++)
+                for (int64_t n = 0; n < 15; n++)
                     pData->SetInteger(static_cast<int>(n), anDamage[n]);
                 pCr->BroadcastDamageDataToParty(pData, 1);
                 delete pData;
@@ -4986,9 +4998,9 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
         }
 #if KOTOR1  // the dying PC drops to a random injured idle; "down" is GetDeadTemp()
         if (bWasDying == 0 && pCr->GetIsPCDying() != 0) {
-            unsigned char nState = pCr->m_ambientAnimationState;
-            if (nState != EFFECT_STATE_DROID_STUN && nState != EFFECT_STATE_STUNNED
-                && nState != EFFECT_STATE_KNOCKDOWN) {
+            if (pCr->m_ambientAnimationState != EFFECT_STATE_DROID_STUN
+                && pCr->m_ambientAnimationState != EFFECT_STATE_STUNNED
+                && pCr->m_ambientAnimationState != EFFECT_STATE_KNOCKDOWN) {
                 if (rand_wincompatible() & 1)
                     pCr->SetAmbientAnimationState(3);
                 else
@@ -5010,14 +5022,15 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
         if (pCr->GetDead() == 0 && pCr->GetDeadTemp() == 0)
             return 1;
 #endif
+        CSWSCombatRound* pAttRound;
         CGameEffect* pDeath = new CGameEffect(1);
         pDeath->m_subType = GAME_EFFECT_DEATH;
         pDeath->m_durationTypeBits =
             CGameEffect::DURATION_TYPE_INSTANTANEOUS | (pDeath->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK);
         pDeath->SetCreator(oidAttacker);
         if (pAttCr != 0) {
-            CSWSCombatRound* pRound = pAttCr->m_pCombatRound;
-            if (pRound->GetAttack(pRound->m_currentAttack)->m_bRangedAttack == 0)
+            pAttRound = pAttCr->m_pCombatRound;
+            if (pAttRound->GetAttack(pAttRound->m_currentAttack)->m_bRangedAttack == 0)
                 pDeath->SetInteger(0, 1);
         }
         pDeath->SetInteger(1, 1);
@@ -5027,10 +5040,10 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
 
     if (pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE ||
         pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
-        CSWSCreature* pAttCr = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidAttacker);
-        int nFinal = anDamage[14];
+        pAttCr = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidAttacker);
+        nFinal = anDamage[14];
         if (nGate13 == 0) {
-            int nRedArg = (nFlags & DAMAGE_TYPES_PHYSICAL) == 0 ? 6 : 0;
+            nRedArg = (nFlags & DAMAGE_TYPES_PHYSICAL) == 0 ? 6 : 0;
             nFinal = pObject->DoDamageImmunity(pAttCr, anDamage[14], static_cast<unsigned short>(nFlags), 0, 0);
             nFinal = pObject->DoDamageResistance(pAttCr, nFinal, static_cast<unsigned short>(nFlags), 0, 0, 0);
             if ((nFlags & DAMAGE_TYPES_PHYSICAL) != 0)
@@ -5056,8 +5069,7 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
         CSWCCMessageData* pData = new CSWCCMessageData();
         pData->SetObjectID(0, oidAttacker);
         pData->SetObjectID(1, pObject->m_objectId);
-        int64_t n;
-        for (n = 0; n < 15; n++)
+        for (int64_t n = 0; n < 15; n++)
             pData->SetInteger(static_cast<int>(n), anDamage[n]);
         if (g_bEnableCombatDebugging != 0)
             pData->SetString(0, sDebug);
@@ -5087,8 +5099,8 @@ int CSWSEffectListHandler::OnApplyDamage(CSWSObject* pObject, CGameEffect* pEffe
 #else
                     CGameObject* pPlayerGO = g_pAppManager->m_pServerExoApp->GetGameObject(*pCell);
                     if (pPlayerGO != 0) {
-                        Vector vDist = static_cast<CSWSObject *>(pObject)->m_position - static_cast<CSWSObject *>(pPlayerGO)->m_position;
-                        if (magnitude(vDist) < 3.0f) {
+                        float fDist = magnitude(static_cast<CSWSObject *>(pObject)->m_position - static_cast<CSWSObject *>(pPlayerGO)->m_position);
+                        if (fDist < 3.0f) {
                             g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
                                 0, 0, *pCell, pObject->m_objectId,
                                 CServerAIMaster::EVENT_PLAY_ANIMATION, reinterpret_cast<void*>(PLACEABLE_ANIM_OPEN));
@@ -5387,22 +5399,20 @@ int CSWSEffectListHandler::OnApplyHeal(CSWSObject* pObject, CGameEffect* pEffect
                 }
 
                 int nCount = pCreature->m_effects.m_count;
-                if (nCount > 0) {
-                    int i = 0;
-                    while (i < nCount) {
-                        CGameEffect* pSub = pCreature->m_effects.m_pArray[i];
-                        if (pSub->m_subType > GAME_EFFECT_WOUNDING)  // the wounding band ends here
-                            break;
-                        if (pSub->m_subType != GAME_EFFECT_WOUNDING ||
-                            (pSub->m_durationTypeBits & 7) !=
-                                CGameEffect::DURATION_TYPE_TEMPORARY) {
-                            i++;
-                            continue;
-                        }
-                        pCreature->RemoveEffectById(pSub->m_effectId);
-                        nCount = pCreature->m_effects.m_count;
-                        i = 0;
+                int i = 0;
+                while (i < nCount) {
+                    CGameEffect* pSub = pCreature->m_effects.m_pArray[i];
+                    if (pSub->m_subType > GAME_EFFECT_WOUNDING)  // the wounding band ends here
+                        break;
+                    if (pSub->m_subType != GAME_EFFECT_WOUNDING ||
+                        (pSub->m_durationTypeBits & 7) !=
+                            CGameEffect::DURATION_TYPE_TEMPORARY) {
+                        i++;
+                        continue;
                     }
+                    pCreature->RemoveEffectById(pSub->m_effectId);
+                    nCount = pCreature->m_effects.m_count;
+                    i = 0;
                 }
 #if KOTOR1
                 if (bWasDying == 1 && pCreature->GetIsPCDying() == 0) {
@@ -5474,11 +5484,13 @@ int CSWSEffectListHandler::OnApplyDeath(CSWSObject* pObject, CGameEffect* pEffec
                                          pCreature->m_objectId, 1);
             unsigned char nAmbient = pCreature->m_ambientAnimationState;
             if (nAmbient > 14 || ((1 << nAmbient) & AMBIENT_STATES_DEAD) == 0) {
-                int nAmbientNew = 4;
-                if ((rand_wincompatible() & 1) != 0)
-                    nAmbientNew = 3;
-                pCreature->SetAmbientAnimationState(static_cast<unsigned char>(nAmbientNew));
-                pCreature->SetAnimation(SERVER_ANIMATION_PAUSE);
+                if ((rand_wincompatible() & 1) != 0) {
+                    pCreature->SetAmbientAnimationState(3);
+                    pCreature->SetAnimation(SERVER_ANIMATION_PAUSE);
+                } else {
+                    pCreature->SetAmbientAnimationState(4);
+                    pCreature->SetAnimation(SERVER_ANIMATION_PAUSE);
+                }
             }
             pCreature->m_bListening = 0;
             pCreature->m_nAIState = 0;
@@ -6100,7 +6112,7 @@ int CSWSEffectListHandler::OnApplyDispelBestMagic(CSWSObject* pObject, CGameEffe
     if (pObject->m_effects.m_count >= 1) {
         do {
             int bFound = 0;
-            for (int64_t i = 0; i < pObject->m_effects.m_count; i++) {
+            for (int64_t i = 0; !bFound && i < pObject->m_effects.m_count; i++) {
                 CGameEffect* pEf = pObject->m_effects.m_pArray[i];
                 if ((pEf->m_durationTypeBits & CGameEffect::SUBTYPE_MASK) != SUBTYPE_MAGICAL ||
                     ((pEf->m_durationTypeBits & 7) != CGameEffect::DURATION_TYPE_TEMPORARY &&
@@ -6112,7 +6124,6 @@ int CSWSEffectListHandler::OnApplyDispelBestMagic(CSWSObject* pObject, CGameEffe
                 if (pEfCaster == 0 || (pEfCaster->m_pStats->GetLevel(0) & 0xff) != 0) {
                     nBest = static_cast<int>(i);
                     bFound = 1;
-                    break;
                 }
             }
             if (!bFound)
@@ -6161,27 +6172,29 @@ int CSWSEffectListHandler::OnApplyEffectIcon(CSWSObject* pObject, CGameEffect* p
             int nRet = 1;
             int nGood;
             int nPriority K2_UNSET;
+            int64_t i;
 #if KOTOR1  // icon and priority are required; no name strref
             if (g_pRules->m_p2DArrays->m_pEffectIcon->GetCExoStringEntry(
-                    nIcon, CExoString("IconResRef"), &sResRef) != 0 &&
-                g_pRules->m_p2DArrays->m_pEffectIcon->GetINTEntry(
-                    nIcon, CExoString("Priority"), &nPriority) != 0) {
-                pIcon->m_nGood = g_pRules->m_p2DArrays->m_pEffectIcon->GetINTEntry(
-                    nIcon, CExoString("Good"), &nGood);
-                pIcon->m_nIconId = nIcon;
-                pIcon->m_resIcon = sResRef;
-                pIcon->m_bGood = nGood != 0;
-                pIcon->m_nPriority = static_cast<unsigned short>(nPriority);
-                int64_t i = 0;
-                for (; i < pCreature->m_effectIcons.m_count; i++)
-                    if (nPriority < pCreature->m_effectIcons.m_pArray[i]->m_nPriority)
-                        break;
-                pCreature->m_effectIcons.Insert(pIcon, static_cast<int>(i));
-                nRet = 0;
+                    nIcon, CExoString("IconResRef"), &sResRef)
+                != 0) {
+                if (g_pRules->m_p2DArrays->m_pEffectIcon->GetINTEntry(
+                        nIcon, CExoString("Priority"), &nPriority)
+                    != 0) {
+                    pIcon->m_nGood = g_pRules->m_p2DArrays->m_pEffectIcon->GetINTEntry(
+                        nIcon, CExoString("Good"), &nGood);
+                    pIcon->m_nIconId = nIcon;
+                    pIcon->m_resIcon = sResRef;
+                    pIcon->m_bGood = nGood != 0;
+                    pIcon->m_nPriority = static_cast<unsigned short>(nPriority);
+                    for (i = 0; i < pCreature->m_effectIcons.m_count; i++)
+                        if (nPriority < pCreature->m_effectIcons.m_pArray[i]->m_nPriority)
+                            break;
+                    pCreature->m_effectIcons.Insert(pIcon, static_cast<int>(i));
+                    nRet = 0;
+                }
             }
 #else
             int nStrRef;
-            int64_t i;
             if (g_pRules->m_p2DArrays->m_pEffectIcon->GetCExoStringEntry(
                     nIcon, CExoString("IconResRef"), &sResRef)
                 != 0) {

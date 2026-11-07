@@ -3,15 +3,6 @@
 
 #include "exostring.h"
 
-// One alias table entry. The list is doubly linked: Add/Delete splice through both links, while the
-// destructor and Clear only follow m_pNext.
-struct CExoAliasListEntry {
-    CExoString          m_sAlias;
-    CExoString          m_sPath;
-    CExoAliasListEntry* m_pNext;
-    CExoAliasListEntry* m_pPrev;
-};
-
 // The alias-path resolver behind CExoAliasList. Both special members are declared so they stay
 // out of line.
 class CExoAliasListInternal {
@@ -27,8 +18,17 @@ public:
     CExoString ResolveFileName(const CExoString& path, unsigned short resType) const;
 
 private:
-    CExoString          m_sNotFound;  // the miss value
-    CExoAliasListEntry* m_pList;   // the chain head
+    // One alias table entry. The list is doubly linked: Add/Delete splice through both links, while
+    // the destructor and Clear only follow m_pNext.
+    struct CExoAlias {
+        CExoString m_sAlias;
+        CExoString m_sPath;
+        CExoAlias* m_pNext;
+        CExoAlias* m_pPrev;
+    };
+
+    CExoString m_sNotFound;  // the miss value
+    CExoAlias* m_pList;      // the chain head
 };
 
 #include "exocritsect.h"
@@ -100,6 +100,14 @@ public:
     bool         Flush();
 #else
     unsigned int Write(const char* str);
+    // K2: header inlines (weak in the armv7 image, which keeps them out of line behind CExoFile).
+    int          Eof();
+    bool         Flush();
+    int          Seek(int offset, int whence);
+    bool         SeekBeginning();
+    bool         SeekEnd();
+    unsigned int Write(const void* pBuffer, unsigned int elemSize, unsigned int count);
+    unsigned int Write(const CExoString& str);
 #endif
 
     void ReadAsync(void* pBuffer, unsigned int elemSize, unsigned int count);
@@ -118,6 +126,66 @@ public:
 };
 #if KOTOR1
 K2_LAYOUT_ASSERT(sizeof(CExoFileInternal) == 0x30, "K1 CExoFile's operator new(0x30)");
+#endif
+
+#if !KOTOR1
+extern "C" {
+    int  ASL_feof(FILE* f);
+}
+
+inline int CExoFileInternal::Eof()
+{
+    if (m_pFile)
+        return ASL_feof(m_pFile);
+    return 0;
+}
+
+inline bool CExoFileInternal::Flush()
+{
+    bool bResult = false;
+    if (m_pFile)
+        bResult = fflush(m_pFile) == 0;
+    return bResult;
+}
+
+inline int CExoFileInternal::Seek(int offset, int whence)
+{
+    int nResult = 0;
+    if (m_pFile)
+        nResult = fseek(m_pFile, offset, whence) == 0;
+    return nResult;
+}
+
+inline bool CExoFileInternal::SeekBeginning()
+{
+    bool bResult = false;
+    if (m_pFile)
+        bResult = fseek(m_pFile, 0, 0) == 0;
+    return bResult;
+}
+
+inline bool CExoFileInternal::SeekEnd()
+{
+    bool bResult = false;
+    if (m_pFile)
+        bResult = fseek(m_pFile, 0, 2) == 0;
+    return bResult;
+}
+
+inline unsigned int CExoFileInternal::Write(const void* pBuffer, unsigned int elemSize, unsigned int count)
+{
+    unsigned int nWritten = 0;
+    if (m_pFile)
+        nWritten = static_cast<unsigned int>(fwrite(pBuffer, elemSize, count, m_pFile)) * elemSize;
+    return nWritten;
+}
+
+inline unsigned int CExoFileInternal::Write(const CExoString& str)
+{
+    if (!m_pFile)
+        return 0;
+    return static_cast<unsigned int>(fwrite(str.CStr(), 1, static_cast<unsigned int>(str.GetLength()), m_pFile));
+}
 #endif
 
 #include "port/win32api.h"

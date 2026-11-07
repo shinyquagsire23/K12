@@ -155,9 +155,10 @@ int    __vsprintf_chk(char* pszDst, int nFlag, size_t nDstSize, const char* pszF
                       __builtin_va_list ap);
 }
 
-#if !defined(K2_HOST_BUILD) && !defined(_FORTIFY_SOURCE)
-// A build without _FORTIFY_SOURCE (K1's armv7 libKOTOR.so imports no *_chk function) makes the plain
-// call wherever the fortified build calls a checked entry point; the engine spells those by name.
+#if !defined(K2_HOST_BUILD) && (!defined(_FORTIFY_SOURCE) || (defined(__ANDROID_API__) && __ANDROID_API__ < 17))
+// A build with no checked entry points makes the plain call wherever the fortified build calls one; the
+// engine spells those by name. That is a build without _FORTIFY_SOURCE, or a fortified one below API 17,
+// where bionic compiles every *_chk arm out (K1's armv7 libKOTOR.so, API 16, imports no *_chk function).
 #define K2_NO_FORTIFY 1
 #include "port/libcstring.h"
 extern "C" int sprintf(char* pszDst, const char* pszFormat, ...);

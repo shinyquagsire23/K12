@@ -209,10 +209,10 @@ void CSWVirtualMachineCommands::InitializeSWMGCommands() {
 int CSWVirtualMachineCommands::ExecuteCommandAurPostString(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sText;
     int nX;
     int nY;
     float fLifetime;
+    CExoString sText;
     if (!g_pVirtualMachine->StackPopString(&sText))
         return -2001;
     if (!g_pVirtualMachine->StackPopInteger(&nX))
@@ -278,12 +278,12 @@ int CSWVirtualMachineCommands::ExecuteCommandSWMG_GetObjectByName(int nCommand, 
 int CSWVirtualMachineCommands::ExecuteCommandSWMG_PlayAnimation(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sAnimation;
     unsigned long long oidObject;
     int bLooping;
     int bOverlay;
     int bQueue;
     CSWMiniGameObject* pObject;
+    CExoString sAnimation;
     if (!g_pVirtualMachine->StackPopObject(&oidObject))
         return -2001;
     if (!g_pVirtualMachine->StackPopString(&sAnimation))
@@ -444,9 +444,9 @@ int CSWVirtualMachineCommands::ExecuteCommandSWMG_GetLastObjectHit(int nCommand,
 int CSWVirtualMachineCommands::ExecuteCommandSWMG_GetObjectName(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sName;
     unsigned long long oidObject;
     CSWMiniGameObject* pObject;
+    CExoString sName;
     if (!g_pVirtualMachine->StackPopObject(&oidObject))
         return -2001;
     pObject = g_pAppManager->m_pClientExoApp->GetMGOArray()->GetMiniGameObject(static_cast<unsigned int>(oidObject), 0);
@@ -511,8 +511,8 @@ int CSWVirtualMachineCommands::ExecuteCommandSWMG_GetLastHPChange(int nCommand, 
 int CSWVirtualMachineCommands::ExecuteCommandSWMG_RemoveAnimation(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sAnimation;
     unsigned long long oidObject;
+    CExoString sAnimation;
     if (!g_pVirtualMachine->StackPopObject(&oidObject))
         return -2001;
     if (!g_pVirtualMachine->StackPopString(&sAnimation))
@@ -546,9 +546,9 @@ int CSWVirtualMachineCommands::ExecuteCommandSWMG_GetCameraClipping(int nCommand
 int CSWVirtualMachineCommands::ExecuteCommandSWMG_SetCameraClipping(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CSWMiniGame* pMiniGame = g_pAppManager->m_pClientExoApp->GetMiniGame();
     float fNear;
     float fFar;
+    CSWMiniGame* pMiniGame = g_pAppManager->m_pClientExoApp->GetMiniGame();
     if (!g_pVirtualMachine->StackPopFloat(&fNear))
         return -2001;
     if (!g_pVirtualMachine->StackPopFloat(&fFar))
@@ -742,8 +742,8 @@ int CSWVirtualMachineCommands::ExecuteCommandSWMG_GetFollowerPosition(int nComma
 int CSWVirtualMachineCommands::ExecuteCommandSWMG_GetGunBankStringInfo(int nCommand, int nArgCount)
 {
     K2_UNUSED(nArgCount);
-    CExoString sValue;
     unsigned long long oidObject;
+    CExoString sValue;
     int nBank;
     CSWMiniGameObject* pObject;
     CSWMGGunBank* pGunBank;

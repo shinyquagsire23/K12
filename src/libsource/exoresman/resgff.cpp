@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "resgff.h"
 #include <stddef.h>
 #include <stdio.h>
@@ -142,9 +143,7 @@ CResGFF::~CResGFF()
         }
         m_paStructs = 0;
 #endif
-        if (m_pFileHeader != 0) {
-            operator delete(m_pFileHeader);
-        }
+        delete m_pFileHeader;
         m_pFileHeader = 0;
     } else {
         ReleaseResource();
@@ -237,12 +236,12 @@ int CResGFF::OnResourceServiced()
     }
     m_pFileHeader = static_cast<GFFHeader*>(m_pFileData);
 
-    unsigned int tmp = ByteSwap(*reinterpret_cast<unsigned int*>(m_pFileHeader->sFileType));  // raw-offset: GFF file bytes
+    unsigned int tmp = ByteSwap(m_pFileHeader->nFileType);
     if (tmp != *reinterpret_cast<unsigned int*>(m_sFileType)) {  // raw-offset: GFF file bytes
         m_pFileHeader = 0;
         return 0;
     }
-    tmp = ByteSwap(*reinterpret_cast<unsigned int*>(m_pFileHeader->sFileVersion));  // raw-offset: GFF file bytes
+    tmp = ByteSwap(m_pFileHeader->nFileVersion);
     if (tmp != *reinterpret_cast<const unsigned int*>(VERSION)) {
         m_pFileHeader = 0;
         return 0;
@@ -966,8 +965,8 @@ void* CResGFF::GetFieldStringID(CResStruct* pStruct, unsigned int nIndex)
 void CResGFF::GetGFFFileInfo(CExoString* pFileType, CExoString* pFileVersion)
 {
     if (m_pFileHeader != 0 && pFileType != 0 && pFileVersion != 0) {
-        pFileType->Format(const_cast<char*>("%.4s"), m_pFileHeader->sFileType);
-        pFileVersion->Format(const_cast<char*>("%.4s"), m_pFileHeader->sFileVersion);
+        pFileType->Format(const_cast<char*>("%.4s"), reinterpret_cast<char*>(&m_pFileHeader->nFileType));
+        pFileVersion->Format(const_cast<char*>("%.4s"), reinterpret_cast<char*>(&m_pFileHeader->nFileVersion));
     }
 }
 
@@ -1011,7 +1010,7 @@ int CResGFF::GetFileData(char* sPath)
             if (nRead == 1) {
                 fclose(f);
                 m_pFileHeader = reinterpret_cast<GFFHeader*>(pBuf);
-                unsigned int tmp = ByteSwap(*reinterpret_cast<unsigned int*>(m_pFileHeader->sFileVersion));  // raw-offset: GFF file bytes
+                unsigned int tmp = ByteSwap(m_pFileHeader->nFileVersion);
                 if (tmp == *reinterpret_cast<const unsigned int*>(VERSION)) {
                     if (m_pFileHeader->nStructCount != 0) {
                         tmp = ByteSwap(m_pFileHeader->nStructOffset);
@@ -1563,15 +1562,30 @@ Vector CResGFF::ReadFieldVector(CResStruct* pStruct, char* sLabel, int& bSuccess
     return defValue;
 }
 
+// EFFECTIVE (K2): the loop's remaining-size update reassociates ((n - len) - 8, the image (n - 8) - len); armv7 also
+// allocates the registers and the frame differently.
 CExoLocString CResGFF::ReadFieldCExoLocString(CResStruct* pStruct, char* sLabel, int& bSuccess, const CExoLocString& defValue)
 {
     CExoLocString tmpLoc;
     unsigned int tmp K2_UNSET;
+    unsigned int nField;
+#if !KOTOR1
+    CResGFFField* pField;
+#endif
+    unsigned int nSize;
+    unsigned char* pData;
+    ExoLocStringHeader* pHdr;
+    unsigned int nTotal;
+    unsigned int nStrRef;
+    unsigned int nCount;
+    unsigned char* p;
+    int nRemaining;
+    unsigned int i;
     if (pStruct == 0 || sLabel == 0) {
         bSuccess = 0;
         return defValue;
     }
-    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
     // K1: a missing field and a wrong type share one failure exit.
     CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
@@ -1586,44 +1600,56 @@ CExoLocString CResGFF::ReadFieldCExoLocString(CResStruct* pStruct, char* sLabel,
         return defValue;
     }
 #else
-    CResGFFField* pField = GetField(pStruct, nField);
-    if (pField == 0) {
-        bSuccess = 0;
-        return defValue;
-    }
-    tmp = ByteSwap(pField->nType);
-    if (tmp != FIELD_CEXOLOCSTRING) {
+    pField = GetField(pStruct, nField);
+    if (pField == 0 || ByteSwap(pField->nType) != FIELD_CEXOLOCSTRING) {
         bSuccess = 0;
         return defValue;
     }
 #endif
-    unsigned int nSize;
-    unsigned char* pData = static_cast<unsigned char*>(GetDataField(pField, nSize));
+    pData = static_cast<unsigned char*>(GetDataField(pField, nSize));
     if (pData == 0 || nSize < 4) {
         bSuccess = 0;
         return defValue;
     }
-    ExoLocStringHeader* pHdr = reinterpret_cast<ExoLocStringHeader*>(pData);
+    pHdr = reinterpret_cast<ExoLocStringHeader*>(pData);
+#if KOTOR1  // K1 reads each header word through its own aligned copy of the record
+    tmp = ByteSwap(CResGFFAlignedPtr<ExoLocStringHeader>(pHdr).Get().nTotalSize);
+#else
     tmp = ByteSwap(pHdr->nTotalSize);
-    unsigned int nTotal = tmp;
+#endif
+    nTotal = tmp;
     if (nSize < static_cast<uint64_t>(nTotal) + 4) {
         bSuccess = 0;
         return defValue;
     }
+#if KOTOR1
+    tmp = ByteSwap(CResGFFAlignedPtr<ExoLocStringHeader>(pHdr).Get().nStringRef);
+    nStrRef = tmp;
+    tmp = ByteSwap(CResGFFAlignedPtr<ExoLocStringHeader>(pHdr).Get().nStringCount);
+#else
     tmp = ByteSwap(pHdr->nStringRef);
-    unsigned int nStrRef = tmp;
+    nStrRef = tmp;
     tmp = ByteSwap(pHdr->nStringCount);
-    unsigned int nCount = tmp;
+#endif
+    nCount = tmp;
     tmpLoc.m_nStrRef = nStrRef;
-    unsigned char* p = pData + 12;
-    int nRemaining = static_cast<int>(nTotal) - 8;
-    unsigned int i;
+    p = pData + 12;
+    nRemaining = static_cast<int>(nTotal) - 8;
     for (i = 0; i < nCount; i++) {
-        ExoLocSubString* pSub = reinterpret_cast<ExoLocSubString*>(p);
+        ExoLocSubString* pSub;
+        int nLang;
+        int nStrLen;
+        pSub = reinterpret_cast<ExoLocSubString*>(p);
+#if KOTOR1
+        tmp = ByteSwap(CResGFFAlignedPtr<ExoLocSubString>(pSub).Get().nLanguageID);
+        nLang = static_cast<int>(tmp);
+        tmp = ByteSwap(CResGFFAlignedPtr<ExoLocSubString>(pSub).Get().nStringLength);
+#else
         tmp = ByteSwap(pSub->nLanguageID);
-        int nLang = static_cast<int>(tmp);
+        nLang = static_cast<int>(tmp);
         tmp = ByteSwap(pSub->nStringLength);
-        int nStrLen = static_cast<int>(tmp);
+#endif
+        nStrLen = static_cast<int>(tmp);
         CExoString str(reinterpret_cast<const char*>(p + 8), nStrLen);
         tmpLoc.AddString(nLang / 2, str, nLang % 2);
         p = p + 8 + nStrLen;
@@ -1696,8 +1722,8 @@ void CResGFF::InitializeForWriting()
     unsigned int tmp;
     GFFHeader* pOldHeader = m_pFileHeader;
     if (pOldHeader == 0) {
-        *reinterpret_cast<unsigned int*>(pNewHeader->sFileType) = 0;  // raw-offset: GFF file bytes
-        *reinterpret_cast<unsigned int*>(pNewHeader->sFileVersion) = 0;  // raw-offset: GFF file bytes
+        pNewHeader->nFileType = 0;
+        pNewHeader->nFileVersion = 0;
         pNewHeader->nStructCount = 0;
         m_nStructCapacity = STRUCT_STARTSIZE;
         pNewHeader->nFieldCount = 0;
@@ -1711,8 +1737,8 @@ void CResGFF::InitializeForWriting()
         pNewHeader->m_nDataLayoutListCount = 0;
         m_nListIndicesCapacity = DATALAYOUTLIST_STARTSIZE;
     } else {
-        *reinterpret_cast<unsigned int*>(pNewHeader->sFileType) = *reinterpret_cast<unsigned int*>(pOldHeader->sFileType);  // raw-offset: GFF file bytes
-        *reinterpret_cast<unsigned int*>(pNewHeader->sFileVersion) = *reinterpret_cast<unsigned int*>(pOldHeader->sFileVersion);  // raw-offset: GFF file bytes
+        pNewHeader->nFileType = pOldHeader->nFileType;
+        pNewHeader->nFileVersion = pOldHeader->nFileVersion;
         pNewHeader->nStructCount = pOldHeader->nStructCount;
         tmp = ByteSwap(pOldHeader->nStructCount);
         m_nStructCapacity = m_nStructGrow + tmp;
@@ -1744,14 +1770,14 @@ void CResGFF::InitializeForWriting()
     CResGFFStruct* pOldStructs = m_paStructs;
     if (pOldStructs != 0) {
         tmp = ByteSwap(m_pFileHeader->nStructCount);
-        memcpy(pNewStructs, pOldStructs, static_cast<uint64_t>(tmp) * sizeof(CResGFFStruct));
+        memcpy(pNewStructs, reinterpret_cast<const char*>(pOldStructs), static_cast<uint64_t>(tmp) * sizeof(CResGFFStruct));
     }
 
     CResGFFField* pNewFields = new CResGFFField[m_nFieldCapacity];
     CResGFFField* pOldFields = m_paFields;
     if (pOldFields != 0) {
         tmp = ByteSwap(m_pFileHeader->nFieldCount);
-        memcpy(pNewFields, pOldFields, static_cast<uint64_t>(tmp) * sizeof(CResGFFField));
+        memcpy(pNewFields, reinterpret_cast<const char*>(pOldFields), static_cast<uint64_t>(tmp) * sizeof(CResGFFField));
     }
 
     GFFLabel* pNewLabels = new GFFLabel[m_nLabelCapacity];
@@ -1844,9 +1870,7 @@ void CResGFF::InitializeForWriting()
             delete[] m_paStructs;
         }
 #endif
-        if (m_pFileHeader != 0) {
-            operator delete(m_pFileHeader);
-        }
+        delete m_pFileHeader;
     } else {
         ReleaseResource();
     }
@@ -1873,7 +1897,7 @@ unsigned int CResGFF::AddStruct(unsigned int nType)
         m_nStructCapacity = nNewCap;
         m_nStructGrow *= 2;
         CResGFFStruct* pNew = new CResGFFStruct[nNewCap];
-        memcpy(pNew, m_paStructs.m_p, static_cast<uint64_t>(nIndex) * sizeof(CResGFFStruct));
+        memcpy(pNew, reinterpret_cast<const char*>(m_paStructs.m_p), static_cast<uint64_t>(nIndex) * sizeof(CResGFFStruct));
         m_paStructs.Delete();
         m_paStructs = pNew;
     }
@@ -2000,16 +2024,14 @@ unsigned int CResGFF::AddLabel(char* sLabel)
         }
     }
 #else
-    if (n != 0) {
-        const unsigned int* pWant = reinterpret_cast<const unsigned int*>(&newLabel);
-        unsigned int i = n;
-        do {
-            i--;
-            const unsigned int* p = reinterpret_cast<const unsigned int*>(&m_paLabels[i]);
-            if (pWant[0] == p[0] && pWant[1] == p[1] && pWant[2] == p[2] && pWant[3] == p[3]) {  // raw-offset: GFF file bytes
-                return i;
-            }
-        } while (i != 0);
+    const unsigned int* pWant = reinterpret_cast<const unsigned int*>(&newLabel);
+    unsigned int i = n;
+    while (i != 0) {
+        i--;
+        const unsigned int* p = reinterpret_cast<const unsigned int*>(&m_paLabels[i]);
+        if (pWant[0] == p[0] && pWant[1] == p[1] && pWant[2] == p[2] && pWant[3] == p[3]) {  // raw-offset: GFF file bytes
+            return i;
+        }
     }
 #endif
     if (n >= m_nLabelCapacity) {
@@ -2079,7 +2101,7 @@ CResGFFAlignedPtr<CResGFFField> CResGFF::AddField(CResStruct* pStruct, char* sLa
         m_nFieldCapacity = m_nFieldGrow + nFieldIndex;
         m_nFieldGrow *= 2;
         CResGFFField* pNew = new CResGFFField[m_nFieldCapacity];
-        memcpy(pNew, m_paFields.m_p, static_cast<uint64_t>(nFieldIndex) * sizeof(CResGFFField));
+        memcpy(pNew, reinterpret_cast<const char*>(m_paFields.m_p), static_cast<uint64_t>(nFieldIndex) * sizeof(CResGFFField));
         m_paFields.Delete();
         m_paFields = pNew;
     }
@@ -2865,7 +2887,7 @@ int CResGFF::WriteFieldQuaternion(CResStruct* pStruct, const Quaternion& value, 
 #if KOTOR1
                 pFieldRef.Set(field);
 #endif
-                *pData = tmp;
+                __builtin_memcpy(static_cast<void*>(pData), &tmp, sizeof(Quaternion));
                 return 1;
             }
         }
@@ -3097,13 +3119,13 @@ int CResGFF::CreateGFFFile(CResStruct* pStruct, const CExoString& sType, const C
     tag = static_cast<unsigned char>(sType[0]) | (static_cast<unsigned char>(sType[1]) << 8) |
                         (static_cast<unsigned char>(sType[2]) << 16) | (static_cast<unsigned int>(static_cast<unsigned char>(sType[3])) << 24);
     tag = ByteSwap(tag);
-    *reinterpret_cast<unsigned int*>(m_pFileHeader->sFileType) = tag;  // raw-offset: GFF file bytes
+    m_pFileHeader->nFileType = tag;
 
     tag = static_cast<unsigned char>(sExpectedVersion[0]) | (static_cast<unsigned char>(sExpectedVersion[1]) << 8) |
           (static_cast<unsigned char>(sExpectedVersion[2]) << 16) |
           (static_cast<unsigned int>(static_cast<unsigned char>(sExpectedVersion[3])) << 24);
     tag = ByteSwap(tag);
-    *reinterpret_cast<unsigned int*>(m_pFileHeader->sFileVersion) = tag;  // raw-offset: GFF file bytes
+    m_pFileHeader->nFileVersion = tag;
 
     idx = AddStruct(TOP_LEVEL_STRUCT_TYPE);
     pStruct->nStructIndex = idx;
@@ -3129,10 +3151,10 @@ void CResGFF::Pack(unsigned char bWhat, unsigned int n)
                     tmp = ByteSwap(m_pFileHeader->m_nDataLayoutFieldCount);
                     unsigned char* pNewFieldIndices = new unsigned char[tmp - m_nDataLayoutFieldWasted];
 
-                    tmp = ByteSwap(m_pFileHeader->nStructCount);
                     unsigned int nNewFieldOffset = 0;
-                    if (tmp != 0) {
 #if KOTOR1
+                    tmp = ByteSwap(m_pFileHeader->nStructCount);
+                    if (tmp != 0) {
                         // K1: each struct record is copied out, edited and written back whole.
                         unsigned int i = 0;
                         for (;;) {
@@ -3168,40 +3190,6 @@ void CResGFF::Pack(unsigned char bWhat, unsigned int n)
                                 rec.nFieldCount = 0;
                                 (m_paStructs + i).Set(rec);
                             }
-#else
-                        unsigned int i = 0;
-                        for (;;) {
-                            tmp = ByteSwap(m_paStructs[i].nFieldCount);
-                            if (tmp >= 2) {
-                                tmp = ByteSwap(m_paStructs[i].nDataOrDataOffset);
-                                unsigned int nOldOffset = tmp;
-                                tmp = ByteSwap(m_pFileHeader->m_nDataLayoutFieldCount);
-                                if (nOldOffset < tmp) {
-                                    tmp = ByteSwap(m_pFileHeader->m_nDataLayoutFieldCount);
-                                    unsigned int nFieldIndicesCount = tmp;
-                                    tmp = ByteSwap(m_paStructs[i].nDataOrDataOffset);
-                                    nOldOffset = tmp;
-                                    unsigned int nRemaining = nFieldIndicesCount - nOldOffset;
-                                    tmp = ByteSwap(m_paStructs[i].nFieldCount);
-                                    if (static_cast<uint64_t>(nRemaining) >= static_cast<uint64_t>(tmp) * 4) {
-                                        unsigned char* pSrc = m_pFieldIndices;
-                                        unsigned char* pDst = pNewFieldIndices + nNewFieldOffset;
-                                        tmp = ByteSwap(m_paStructs[i].nDataOrDataOffset);
-                                        pSrc = pSrc + tmp;
-                                        tmp = ByteSwap(m_paStructs[i].nFieldCount);
-                                        memcpy(pDst, pSrc, static_cast<uint64_t>(tmp) * 4);  // idiom-exempt: runtime length (file/buffer-derived, no compile-time size)
-                                        tmp = ByteSwap(nNewFieldOffset);
-                                        unsigned int nNewOffset = tmp;
-                                        m_paStructs[i].nDataOrDataOffset = nNewOffset;
-                                        tmp = ByteSwap(m_paStructs[i].nFieldCount);
-                                        nNewFieldOffset += tmp * 4;
-                                        goto next_struct;
-                                    }
-                                }
-                                m_paStructs[i].nDataOrDataOffset = INVALID_INDEX;
-                                m_paStructs[i].nFieldCount = 0;
-                            }
-#endif
                             next_struct:
                             i++;
                             tmp = ByteSwap(m_pFileHeader->nStructCount);
@@ -3210,6 +3198,26 @@ void CResGFF::Pack(unsigned char bWhat, unsigned int n)
                             }
                         }
                     }
+#else
+                    for (unsigned int i = 0; i < ByteSwap(m_pFileHeader->nStructCount); i++) {
+                        if (ByteSwap(m_paStructs[i].nFieldCount) >= 2) {
+                            if (ByteSwap(m_paStructs[i].nDataOrDataOffset) < ByteSwap(m_pFileHeader->m_nDataLayoutFieldCount) &&
+                                static_cast<uint64_t>(ByteSwap(m_pFileHeader->m_nDataLayoutFieldCount) -
+                                                      ByteSwap(m_paStructs[i].nDataOrDataOffset)) >=
+                                    static_cast<uint64_t>(ByteSwap(m_paStructs[i].nFieldCount)) * 4) {
+                                unsigned char* pSrc = m_pFieldIndices;
+                                unsigned char* pDst = pNewFieldIndices + nNewFieldOffset;
+                                pSrc += ByteSwap(m_paStructs[i].nDataOrDataOffset);
+                                memcpy(pDst, pSrc, static_cast<uint64_t>(ByteSwap(m_paStructs[i].nFieldCount)) * 4);  // idiom-exempt: runtime length (file/buffer-derived, no compile-time size)
+                                m_paStructs[i].nDataOrDataOffset = ByteSwap(nNewFieldOffset);
+                                nNewFieldOffset += ByteSwap(m_paStructs[i].nFieldCount) * 4;
+                            } else {
+                                m_paStructs[i].nDataOrDataOffset = INVALID_INDEX;
+                                m_paStructs[i].nFieldCount = 0;
+                            }
+                        }
+                    }
+#endif
                     delete[] m_pFieldIndices;
                     m_pFieldIndices = pNewFieldIndices;
                     tmp = ByteSwap(nNewFieldOffset);
@@ -3226,10 +3234,10 @@ void CResGFF::Pack(unsigned char bWhat, unsigned int n)
                     tmp = ByteSwap(m_pFileHeader->m_nDataLayoutListCount);
                     unsigned char* pNewListIndices = new unsigned char[tmp - m_nDataLayoutListWasted];
 
-                    tmp = ByteSwap(m_pFileHeader->nFieldCount);
                     unsigned int nNewListOffset = 0;
-                    if (tmp != 0) {
 #if KOTOR1
+                    tmp = ByteSwap(m_pFileHeader->nFieldCount);
+                    if (tmp != 0) {
                         unsigned int i = 0;
                         for (;;) {
                             CResGFFField field = (m_paFields + i).Get();
@@ -3274,49 +3282,6 @@ void CResGFF::Pack(unsigned char bWhat, unsigned int n)
                                 field.nDataOrDataOffset = INVALID_INDEX;
                                 (m_paFields + i).Set(field);
                             }
-#else
-                        unsigned int i = 0;
-                        for (;;) {
-                            tmp = ByteSwap(m_paFields[i].nType);
-                            if (tmp == FIELD_LIST) {
-                                tmp = ByteSwap(m_paFields[i].nDataOrDataOffset);
-                                unsigned int nOldOffset = tmp;
-                                tmp = ByteSwap(m_pFileHeader->m_nDataLayoutListCount);
-                                if (nOldOffset < tmp) {
-                                    tmp = ByteSwap(m_pFileHeader->m_nDataLayoutListCount);
-                                    unsigned int nListIndicesCount = tmp;
-                                    tmp = ByteSwap(m_paFields[i].nDataOrDataOffset);
-                                    nOldOffset = tmp;
-                                    unsigned int nRemaining = nListIndicesCount - nOldOffset;
-                                    if (nRemaining >= 4) {
-                                        unsigned char* pCountBase = m_pListIndices;
-                                        tmp = ByteSwap(m_paFields[i].nDataOrDataOffset);
-                                        nOldOffset = tmp;
-                                        tmp = ByteSwap(*reinterpret_cast<unsigned int*>(pCountBase + nOldOffset));
-                                        unsigned int nCount4 = tmp * 4;
-                                        uint64_t nElemBytes = nCount4;
-                                        tmp = ByteSwap(m_pFileHeader->m_nDataLayoutListCount);
-                                        nListIndicesCount = tmp;
-                                        tmp = ByteSwap(m_paFields[i].nDataOrDataOffset);
-                                        nOldOffset = tmp;
-                                        nElemBytes += 4;
-                                        nRemaining = nListIndicesCount - nOldOffset;
-                                        if (nElemBytes <= nRemaining) {
-                                            unsigned char* pSrc = m_pListIndices;
-                                            unsigned char* pDst = pNewListIndices + nNewListOffset;
-                                            tmp = ByteSwap(m_paFields[i].nDataOrDataOffset);
-                                            pSrc = pSrc + tmp;
-                                            memcpy(pDst, pSrc, nElemBytes);  // idiom-exempt: runtime length (file/buffer-derived, no compile-time size)
-                                            tmp = ByteSwap(nNewListOffset);
-                                            m_paFields[i].nDataOrDataOffset = tmp;
-                                            nNewListOffset += static_cast<unsigned int>(nElemBytes);
-                                            goto next_field;
-                                        }
-                                    }
-                                }
-                                m_paFields[i].nDataOrDataOffset = INVALID_INDEX;
-                            }
-#endif
                             next_field:
                             i++;
                             tmp = ByteSwap(m_pFileHeader->nFieldCount);
@@ -3325,6 +3290,30 @@ void CResGFF::Pack(unsigned char bWhat, unsigned int n)
                             }
                         }
                     }
+#else
+                    for (unsigned int i = 0; i < ByteSwap(m_pFileHeader->nFieldCount); i++) {
+                        if (ByteSwap(m_paFields[i].nType) == FIELD_LIST) {
+                            if (ByteSwap(m_paFields[i].nDataOrDataOffset) < ByteSwap(m_pFileHeader->m_nDataLayoutListCount) &&
+                                ByteSwap(m_pFileHeader->m_nDataLayoutListCount) - ByteSwap(m_paFields[i].nDataOrDataOffset) >= 4) {
+                                unsigned char* pCountBase = m_pListIndices;
+                                unsigned int nCount = ByteSwap(*reinterpret_cast<unsigned int*>(pCountBase + ByteSwap(m_paFields[i].nDataOrDataOffset)));
+                                uint64_t nElemBytes = nCount * 4;
+                                unsigned int nRemaining = ByteSwap(m_pFileHeader->m_nDataLayoutListCount) - ByteSwap(m_paFields[i].nDataOrDataOffset);
+                                nElemBytes += 4;
+                                if (nRemaining >= nElemBytes) {
+                                    unsigned char* pSrc = m_pListIndices;
+                                    unsigned char* pDst = pNewListIndices + nNewListOffset;
+                                    pSrc += ByteSwap(m_paFields[i].nDataOrDataOffset);
+                                    memcpy(pDst, pSrc, nElemBytes);  // idiom-exempt: runtime length (file/buffer-derived, no compile-time size)
+                                    m_paFields[i].nDataOrDataOffset = ByteSwap(nNewListOffset);
+                                    nNewListOffset += static_cast<unsigned int>(nElemBytes);
+                                    continue;
+                                }
+                            }
+                            m_paFields[i].nDataOrDataOffset = INVALID_INDEX;
+                        }
+                    }
+#endif
                     delete[] m_pListIndices;
                     m_pListIndices = pNewListIndices;
                     tmp = ByteSwap(nNewListOffset);

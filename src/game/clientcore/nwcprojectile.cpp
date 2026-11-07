@@ -565,77 +565,65 @@ void CSWCProjectile::SetBehaviorListTripleBallistic(int nCount)
         vAim = m_desiredPosition;
 
     CProjectileBehavior* pBehavior;
+    unsigned int nTimer;
+    int nId1;
+    int nId2;
+    int nId3;
+    int nId4;
+    Vector vPoint1;
+    Vector vPoint2;
+    Vector vPoint3;
 
     if (pScene != 0)
     {
-        Vector vStart = m_position;
-        unsigned int nTimer = m_desiredPosTimer2;
-        Vector vDelta(vAim.x - vStart.x, vAim.y - vStart.y, 0.0f);
+        Vector vStart;
+        Vector vDelta;
+        Vector vLayer1;
+        bool b1;
+        float fZ1;
+        Vector vLayer2;
+        bool b2;
+        float fZ2;
+        Vector vLayer3;
+        bool b3;
+        float fZ3;
+        bool b4;
 
-        Vector vLayer1(vStart.x + vDelta.x * 0.8f, vStart.y + vDelta.y * 0.8f, 0.0f);
+        vStart = m_position;
+        nTimer = m_desiredPosTimer2;
+        vDelta = Vector(vAim.x - vStart.x, vAim.y - vStart.y, 0.0f);
+
+        vLayer1 = Vector(vStart.x + vDelta.x * 0.8f, vStart.y + vDelta.y * 0.8f, 0.0f);
         hitInfo.m_bSkipObjects = 1;
-        bool b1 = pScene->HitCheck(Vector(vLayer1.x, vLayer1.y, 1000.0f),
-                                   Vector(vLayer1.x, vLayer1.y, -1000.0f), &vHit, &hitInfo);
-        float fZ1 = b1 ? vHit.z : 0.0f;
-        int nId1 = b1 ? hitInfo.m_nHitMaterialBit : -1;
+        b1 = pScene->HitCheck(Vector(vLayer1.x, vLayer1.y, 1000.0f),
+                              Vector(vLayer1.x, vLayer1.y, -1000.0f), &vHit, &hitInfo);
+        fZ1 = b1 ? vHit.z : 0.0f;
+        nId1 = b1 ? hitInfo.m_nHitMaterialBit : -1;
 
-        Vector vLayer2(vStart.x + vDelta.x * 0.9f, vStart.y + vDelta.y * 0.9f, 0.0f);
-        bool b2 = pScene->HitCheck(Vector(vLayer2.x, vLayer2.y, 1000.0f),
-                                   Vector(vLayer2.x, vLayer2.y, -1000.0f), &vHit, &hitInfo);
-        float fZ2 = b2 ? vHit.z : 0.0f;
-        int nId2 = b2 ? hitInfo.m_nHitMaterialBit : -1;
+        vLayer2 = Vector(vStart.x + vDelta.x * 0.9f, vStart.y + vDelta.y * 0.9f, 0.0f);
+        b2 = pScene->HitCheck(Vector(vLayer2.x, vLayer2.y, 1000.0f),
+                              Vector(vLayer2.x, vLayer2.y, -1000.0f), &vHit, &hitInfo);
+        fZ2 = b2 ? vHit.z : 0.0f;
+        nId2 = b2 ? hitInfo.m_nHitMaterialBit : -1;
 
-        Vector vLayer3(vStart.x + vDelta.x * 0.95f, vStart.y + vDelta.y * 0.95f, 0.0f);
-        bool b3 = pScene->HitCheck(Vector(vLayer3.x, vLayer3.y, 1000.0f),
-                                   Vector(vLayer3.x, vLayer3.y, -1000.0f), &vHit, &hitInfo);
-        float fZ3 = b3 ? vHit.z : 0.0f;
-        int nId3 = b3 ? hitInfo.m_nHitMaterialBit : -1;
+        vLayer3 = Vector(vStart.x + vDelta.x * 0.95f, vStart.y + vDelta.y * 0.95f, 0.0f);
+        b3 = pScene->HitCheck(Vector(vLayer3.x, vLayer3.y, 1000.0f),
+                              Vector(vLayer3.x, vLayer3.y, -1000.0f), &vHit, &hitInfo);
+        fZ3 = b3 ? vHit.z : 0.0f;
+        nId3 = b3 ? hitInfo.m_nHitMaterialBit : -1;
 
-        bool b4 = pScene->HitCheck(Vector(vAim.x, vAim.y, 1000.0f),
-                                   Vector(vAim.x, vAim.y, -1000.0f), &vHit, &hitInfo);
+        b4 = pScene->HitCheck(Vector(vAim.x, vAim.y, 1000.0f),
+                              Vector(vAim.x, vAim.y, -1000.0f), &vHit, &hitInfo);
 
         if (b1 && b2 && b3 && b4)
         {
             vAim.z = vHit.z;
-            int nId4 = hitInfo.m_nHitMaterialBit;
+            nId4 = hitInfo.m_nHitMaterialBit;
 
-            Vector vPoint1(vLayer1.x, vLayer1.y, fZ1);
-            Vector vPoint2(vLayer2.x, vLayer2.y, fZ2);
-            Vector vPoint3(vLayer3.x, vLayer3.y, fZ3);
-
-            pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vPoint1, vPoint1,
-                m_oidTarget, static_cast<int>(0.6f * static_cast<float>(nTimer)), 0, -1.0f, 0);
-            pBehavior->m_nSubProjectileType = 0;
-            pBehavior->m_nGrenadeSoundRow = nId1;
-            m_behaviorList.AddTail(pBehavior);
-
-            magnitude(m_position - m_desiredPosition);
-            magnitude(vPoint1 - vPoint2);
-
-            pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vPoint2, vPoint2,
-                OBJECT_INVALID, static_cast<int>(0.2f * static_cast<float>(nTimer)), 0, -1.0f, 0);
-            pBehavior->m_nSubProjectileType = 0;
-            pBehavior->m_nGrenadeSoundRow = nId2;
-            m_behaviorList.AddTail(pBehavior);
-
-            magnitude(m_position - m_desiredPosition);
-            magnitude(vPoint2 - vPoint3);
-
-            pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vPoint3, vPoint3,
-                OBJECT_INVALID, static_cast<int>(0.1f * static_cast<float>(nTimer)), 0, -1.0f, 0);
-            pBehavior->m_nSubProjectileType = 0;
-            pBehavior->m_nGrenadeSoundRow = nId3;
-            m_behaviorList.AddTail(pBehavior);
-
-            magnitude(m_position - m_desiredPosition);
-            magnitude(vPoint2 - vPoint3);
-
-            pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vAim, vAim,
-                OBJECT_INVALID, static_cast<int>(0.1f * static_cast<float>(nTimer)), 0, -1.0f, 0);
-            pBehavior->m_nSubProjectileType = 0;
-            pBehavior->m_nGrenadeSoundRow = nId4;
-            m_behaviorList.AddTail(pBehavior);
-            return;
+            vPoint1 = Vector(vLayer1.x, vLayer1.y, fZ1);
+            vPoint2 = Vector(vLayer2.x, vLayer2.y, fZ2);
+            vPoint3 = Vector(vLayer3.x, vLayer3.y, fZ3);
+            goto triple;
         }
     }
 
@@ -645,6 +633,41 @@ void CSWCProjectile::SetBehaviorListTripleBallistic(int nCount)
     pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vAim, vAim,
         OBJECT_INVALID, m_desiredPosTimer2, 0, -1.0f, 0);
     pBehavior->m_nSubProjectileType = 0;
+    m_behaviorList.AddTail(pBehavior);
+    return;
+
+triple:
+    pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vPoint1, vPoint1,
+        m_oidTarget, static_cast<int>(0.6f * static_cast<float>(nTimer)), 0, -1.0f, 0);
+    pBehavior->m_nSubProjectileType = 0;
+    pBehavior->m_nGrenadeSoundRow = nId1;
+    m_behaviorList.AddTail(pBehavior);
+
+    magnitude(m_position - m_desiredPosition);
+    magnitude(vPoint1 - vPoint2);
+
+    pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vPoint2, vPoint2,
+        OBJECT_INVALID, static_cast<int>(0.2f * static_cast<float>(nTimer)), 0, -1.0f, 0);
+    pBehavior->m_nSubProjectileType = 0;
+    pBehavior->m_nGrenadeSoundRow = nId2;
+    m_behaviorList.AddTail(pBehavior);
+
+    magnitude(m_position - m_desiredPosition);
+    magnitude(vPoint2 - vPoint3);
+
+    pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vPoint3, vPoint3,
+        OBJECT_INVALID, static_cast<int>(0.1f * static_cast<float>(nTimer)), 0, -1.0f, 0);
+    pBehavior->m_nSubProjectileType = 0;
+    pBehavior->m_nGrenadeSoundRow = nId3;
+    m_behaviorList.AddTail(pBehavior);
+
+    magnitude(m_position - m_desiredPosition);
+    magnitude(vPoint2 - vPoint3);
+
+    pBehavior = new CProjectileBehavior(CProjectileBehavior::KIND_BALLISTIC, vAim, vAim,
+        OBJECT_INVALID, static_cast<int>(0.1f * static_cast<float>(nTimer)), 0, -1.0f, 0);
+    pBehavior->m_nSubProjectileType = 0;
+    pBehavior->m_nGrenadeSoundRow = nId4;
     m_behaviorList.AddTail(pBehavior);
 }
 
@@ -1367,29 +1390,27 @@ int CSWCProjectile::UpdateCurrentBehavior()
             SetAnimation(CSWCAnimBaseProjectile::PROJECTILE_ANIMATION_TRAVEL);
         }
 
-        if (m_pCurrentBehavior->m_nSpawnCount != 0) {
-            for (unsigned char i = 0; i < m_pCurrentBehavior->m_nSpawnCount; i++) {
-                CSWSpell* pSpell = g_pRules->GetSpell(m_nProjectileSpellId);
-                if (pSpell == 0)
-                    break;
+        for (unsigned char i = 0; i < m_pCurrentBehavior->m_nSpawnCount; i++) {
+            CSWSpell* pSpell = g_pRules->GetSpell(m_nProjectileSpellId);
+            if (pSpell == 0)
+                break;
 
-                CSWCProjectile* pNew = new CSWCProjectile();
-                pNew->SetProjectileSpellId(m_nProjectileSpellId);
-                pNew->LoadModel(pSpell->m_projectileResRef, ANIM_MODEL_BODY, 0);
+            CSWCProjectile* pNew = new CSWCProjectile();
+            pNew->SetProjectileSpellId(m_nProjectileSpellId);
+            pNew->LoadModel(pSpell->m_projectileResRef, ANIM_MODEL_BODY, 0);
 
-                CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
-                if (pModule != 0 && pModule->m_pArea != 0)
-                    pNew->AttachToScene(pModule->m_pArea->m_pScene);
+            CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
+            if (pModule != 0 && pModule->m_pArea != 0)
+                pNew->AttachToScene(pModule->m_pArea->m_pScene);
 
-                pNew->SetPosition(m_position);
-                pNew->SetOrientation(m_orientation);
-                pNew->m_desiredPosTimer = m_pCurrentBehavior->m_nTimer;
-                pNew->m_desiredPosTimer2 = m_pCurrentBehavior->m_nTimer;
-                pNew->SetAnimation(GetCurrentAnimation());
-                pNew->m_desiredPosition = m_pCurrentBehavior->m_vStart;
-                pNew->SetDesiredTargetObject(m_oidTarget, CExoString(""));
-                pNew->SetProjectileType(m_pCurrentBehavior->m_nSubProjectileType);
-            }
+            pNew->SetPosition(m_position);
+            pNew->SetOrientation(m_orientation);
+            pNew->m_desiredPosTimer = m_pCurrentBehavior->m_nTimer;
+            pNew->m_desiredPosTimer2 = m_pCurrentBehavior->m_nTimer;
+            pNew->SetAnimation(GetCurrentAnimation());
+            pNew->m_desiredPosition = m_pCurrentBehavior->m_vStart;
+            pNew->SetDesiredTargetObject(m_oidTarget, CExoString(""));
+            pNew->SetProjectileType(m_pCurrentBehavior->m_nSubProjectileType);
         }
 
         m_desiredPosTimer = m_pCurrentBehavior->m_nTimer;

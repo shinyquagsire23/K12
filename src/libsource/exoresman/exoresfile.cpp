@@ -873,6 +873,7 @@ fail:
 #include "port/libcbase.h"
 #include "port/libcstring.h"
 #include "port/libcstdlib.h"
+#include "exostringinline.h"
 
 int CExoResourceImageFile::OpenFile()
 {
@@ -1017,22 +1018,19 @@ CExoKeyTable::~CExoKeyTable()
 {
     void** paFiles = m_paDependentFiles;
     if (paFiles != NULL) {
-        if (m_nDependentFileCount != 0) {
-            for (unsigned int i = 0; i < m_nDependentFileCount; i++) {
-                CExoPackedFile* pFile = static_cast<CExoPackedFile*>(paFiles[i]);
+        for (unsigned int i = 0; i < m_nDependentFileCount; i++) {
+            CExoPackedFile* pFile = static_cast<CExoPackedFile*>(paFiles[i]);
+            if (pFile != NULL) {
+                pFile->UnloadHeader();
+                paFiles = m_paDependentFiles;
+                pFile = static_cast<CExoPackedFile*>(paFiles[i]);
                 if (pFile != NULL) {
-                    pFile->UnloadHeader();
+                    delete pFile;
                     paFiles = m_paDependentFiles;
-                    pFile = static_cast<CExoPackedFile*>(paFiles[i]);
-                    if (pFile != NULL) {
-                        delete pFile;
-                        paFiles = m_paDependentFiles;
-                    }
                 }
             }
         }
-        if (paFiles != NULL)
-            operator delete[](paFiles);
+        delete[] paFiles;
     }
 
     delete[] m_paEntries;
@@ -1066,11 +1064,11 @@ CKeyTableEntry* CExoKeyTable::FindKey(const CResRef& resRef, unsigned short resT
 {
     CKeyTableEntry* pResult = NULL;
     if (!(resRef == const_cast<char*>("")) && m_nTableSize != 0) {
-        int bStop = 0;
-        int bWrapped = 0;
         unsigned int startIndex = Hash(resRef, resType);
         unsigned int index = startIndex;
-        do {
+        int bStop = 0;
+        int bWrapped = 0;
+        while (!(bStop | bWrapped)) {
             if (m_paEntries[index].m_resRef == resRef && m_paEntries[index].m_resType == resType) {
                 pResult = &m_paEntries[index];
                 bStop = 1;
@@ -1084,7 +1082,7 @@ CKeyTableEntry* CExoKeyTable::FindKey(const CResRef& resRef, unsigned short resT
                 if (index == startIndex)
                     bWrapped = 1;
             }
-        } while (!(bStop | bWrapped));
+        }
     }
     return pResult;
 }
@@ -1175,9 +1173,107 @@ CExoStringList* CExoKeyTable::GetKeysOfType(unsigned short resType)
     }
     if (pList->GetCount() > 0)
         return pList;
-    pList->~CExoStringList();
-    operator delete(pList);
+    delete pList;
     return NULL;
+}
+
+int CExoKeyTable::AddDirectoryContents(int a)
+{
+#if KOTOR1  // K1: no override subdirectories; two listings of the directory into one list
+    CExoString curFile;
+    CExoArrayList<CExoString> files;
+    CResRef resRef;
+    int nFiles;
+    unsigned short resType;
+    m_sFileName.CStr();
+    g_pExoBase->GetDirectoryList(&files, m_sFileName, RESTYPE_INVALID, 0, 0, 0);
+    g_pExoBase->GetDirectoryList(&files, m_sFileName, RESTYPE_INVALID, 0, 0, 1);
+    nFiles = files.m_count;
+    m_nTableSize = (nFiles * 2) | 1;
+    m_paEntries = AllocateTable(m_nTableSize);
+    if (m_paEntries == NULL)
+        return 0;
+    for (int i = 0; i < nFiles; i++) {
+        curFile = files.m_pArray[i];
+        resType = g_pExoResMan->GetResTypeFromFile(curFile);
+        if (resType == RESTYPE_INVALID)
+            continue;
+        g_pExoResMan->GetResRefFromFile(resRef, curFile);
+        if (resRef != const_cast<char*>("")) {
+            AddKey(resRef, resType, (m_nRoutingTag << RESID_FILE_SHIFT) | RESID_DIRECTORY, a);
+            curFile.CStr();
+            resRef.GetResRefStr();
+        }
+    }
+#else
+    CExoString curFile;
+    CExoArrayList<CExoString> topLevelFiles;
+    CExoArrayList<CExoString> subdirNames;
+    CExoArrayList<CExoArrayList<CExoString>> subdirFileLists;
+    CResRef resRef;
+    int nTopLevel;
+    unsigned int newTableSize;
+    unsigned short resType;
+    unsigned int resID;
+
+    CExoString overrideLit("OVERRIDE");
+    int numSubdirs;
+    if (m_sFileName.ComparePrefixNoCase(overrideLit, overrideLit.GetLength()) == 0) {
+        numSubdirs = 0;
+    } else {
+        g_pExoBase->GetDirectoryList(&subdirNames, m_sFileName, RESTYPE_INVALID, 1, 0);
+        numSubdirs = subdirNames.m_count;
+    }
+
+    CExoString scratch;
+    int totalSubFiles = 0;
+    for (int i = 0; i < numSubdirs; i++) {
+        scratch = CExoString("OVERRIDE:") + subdirNames.m_pArray[i];
+
+        CExoArrayList<CExoString> filesInSubdir;
+        g_pExoBase->GetDirectoryList(&filesInSubdir, scratch, RESTYPE_INVALID, 0, 0);
+        subdirFileLists.Add(filesInSubdir);
+
+        totalSubFiles += subdirFileLists.m_pArray[i].m_count;
+    }
+
+    g_pExoBase->GetDirectoryList(&topLevelFiles, m_sFileName, RESTYPE_INVALID, 0, 0);
+    nTopLevel = topLevelFiles.m_count;
+    newTableSize = ((nTopLevel + static_cast<unsigned int>(totalSubFiles)) * 2) | 1;
+    m_nTableSize = newTableSize;
+    m_paEntries = AllocateTable(newTableSize);
+    if (m_paEntries == NULL)
+        return 0;
+
+    for (int i = 0; i < nTopLevel; i++) {
+        curFile = topLevelFiles.m_pArray[i];
+        resType = g_pExoResMan->GetResTypeFromFile(curFile);
+        if (resType != RESTYPE_INVALID) {
+            g_pExoResMan->GetResRefFromFile(resRef, curFile);
+            if (resRef != const_cast<char*>("")) {
+                resID = (m_nRoutingTag << RESID_FILE_SHIFT) | RESID_DIRECTORY;
+                AddKey(resRef, resType, resID, a, CExoString(""));
+            }
+        }
+    }
+
+    for (int i = 0; i < numSubdirs; i++) {
+        scratch = subdirNames.m_pArray[i];
+        for (int j = 0; j < subdirFileLists.m_pArray[i].m_count; j++) {
+            curFile = subdirFileLists.m_pArray[i].m_pArray[j];
+            resType = g_pExoResMan->GetResTypeFromFile(curFile);
+            if (resType != RESTYPE_INVALID) {
+                g_pExoResMan->GetResRefFromFile(resRef, curFile);
+                if (resRef != const_cast<char*>("")) {
+                    resID = (m_nRoutingTag << RESID_FILE_SHIFT) | RESID_DIRECTORY;
+                    AddKey(resRef, resType, resID, a, CExoString(scratch));
+                }
+            }
+        }
+    }
+
+#endif
+    return 1;
 }
 
 #if KOTOR1  // K1 keeps no source file name per entry
@@ -1264,13 +1360,12 @@ int CExoKeyTable::AddResourceImageContents(int)
     CResRef resRef;
 
     m_nDependentFileCount = 1;
-    m_paDependentFiles = static_cast<void**>(operator new[](8));
+    m_paDependentFiles = static_cast<void**>(operator new[](sizeof(void*)));
 
     m_paDependentFiles[0] = new CExoResourceImageFile();
 
     if (m_paDependentFiles[0] == NULL) {
-        if (m_paDependentFiles != NULL)
-            operator delete[](m_paDependentFiles);
+        delete[] m_paDependentFiles;
         m_paDependentFiles = NULL;
         return 0;
     }
@@ -1289,29 +1384,24 @@ int CExoKeyTable::AddResourceImageContents(int)
     if (pHeader->m_nEntryCount != 0) {
         m_nTableSize = static_cast<unsigned int>(pHeader->m_nEntryCount * 1.2);
         m_paEntries = AllocateTable(m_nTableSize);
-        if (pHeader->m_nEntryCount != 0) {
-            unsigned int i = 0;
-            do {
-                entryBuf = static_cast<CExoResourceImageFile*>(m_paDependentFiles[0])->GetKeyListEntry(i);
-                resRef = reinterpret_cast<unsigned char*>(&entryBuf);  // the raw 16 on-disk bytes, no NUL scan
-                entryBuf.m_resIDRaw = (entryBuf.m_resIDRaw & RESID_LOCAL_MASK)
-                                      | ((m_nRoutingTag & RESID_FILE_MASK) << RESID_FILE_SHIFT)
-                                      | RESID_IMAGE;
+        for (unsigned int i = 0; i < pHeader->m_nEntryCount; i++) {
+            entryBuf = static_cast<CExoResourceImageFile*>(m_paDependentFiles[0])->GetKeyListEntry(i);
+            resRef = reinterpret_cast<unsigned char*>(&entryBuf);  // the raw 16 on-disk bytes, no NUL scan
+            entryBuf.m_resIDRaw = (entryBuf.m_resIDRaw & RESID_LOCAL_MASK)
+                                  | ((m_nRoutingTag & RESID_FILE_MASK) << RESID_FILE_SHIFT)
+                                  | RESID_IMAGE;
 #if KOTOR1
-                AddKey(resRef, entryBuf.m_resType, entryBuf.m_resIDRaw, 0);
+            AddKey(resRef, entryBuf.m_resType, entryBuf.m_resIDRaw, 0);
 #else
-                AddKey(resRef, entryBuf.m_resType, entryBuf.m_resIDRaw, 0, CExoString(""));
+            AddKey(resRef, entryBuf.m_resType, entryBuf.m_resIDRaw, 0, CExoString(""));
 #endif
-                i++;
-            } while (i < pHeader->m_nEntryCount);
         }
         return 1;
     }
 
     m_bValid = 0;
     delete static_cast<CExoPackedFile*>(m_paDependentFiles[0]);
-    if (m_paDependentFiles != NULL)
-        operator delete[](m_paDependentFiles);
+    delete[] m_paDependentFiles;
     m_paDependentFiles = NULL;
     return 0;
 }
@@ -1377,9 +1467,9 @@ int CExoKeyTable::AddEncapsulatedContents(int)
 
     if (formatTag == ENCAPSULATED_FORMAT_ERF) {
         if (header.m_fileType != FOURCC_ERF) goto fail;
-    } else if (formatTag == ENCAPSULATED_FORMAT_HAK) {
-        if (header.m_fileType != FOURCC_HAK) goto fail;
-    } else if (header.m_fileType != FOURCC_MOD) {
+    } else if (formatTag != ENCAPSULATED_FORMAT_HAK) {
+        if (header.m_fileType != FOURCC_MOD) goto fail;
+    } else if (header.m_fileType != FOURCC_HAK) {
         goto fail;
     }
 
@@ -1389,30 +1479,26 @@ int CExoKeyTable::AddEncapsulatedContents(int)
     m_nTableSize = static_cast<unsigned int>(header.m_nEntries * 1.2);
     m_paEntries = AllocateTable(m_nTableSize);
     pFile->Seek(header.m_nOffsetToKeyList, 0);
-    if (header.m_nEntries != 0) {
-        unsigned int i = 0;
-        do {
-            pFile->Read(&entry, sizeof(entry), 1);
+    for (unsigned int i = 0; i < header.m_nEntries; i++) {
+        pFile->Read(&entry, sizeof(entry), 1);
 #if KOTOR1
-            ByteSwap(&entry.m_resIDRaw);
-            ByteSwap(&entry.m_resType);
+        ByteSwap(&entry.m_resIDRaw);
+        ByteSwap(&entry.m_resType);
 #endif
 #if KOTOR1  // K1 names the raw bytes in a loop-body local
-            unsigned char* pRaw = reinterpret_cast<unsigned char*>(&entry);
-            resRef = pRaw;  // the raw 16 on-disk bytes, no NUL scan
+        unsigned char* pRaw = reinterpret_cast<unsigned char*>(&entry);
+        resRef = pRaw;  // the raw 16 on-disk bytes, no NUL scan
 #else
-            resRef = reinterpret_cast<unsigned char*>(&entry);  // the raw 16 on-disk bytes, no NUL scan
+        resRef = reinterpret_cast<unsigned char*>(&entry);  // the raw 16 on-disk bytes, no NUL scan
 #endif
-            entry.m_resIDRaw = (entry.m_resIDRaw & RESID_LOCAL_MASK)
-                               | ((m_nRoutingTag & RESID_FILE_MASK) << RESID_FILE_SHIFT)
-                               | RESID_ENCAPSULATED;
+        entry.m_resIDRaw = (entry.m_resIDRaw & RESID_LOCAL_MASK)
+                           | ((m_nRoutingTag & RESID_FILE_MASK) << RESID_FILE_SHIFT)
+                           | RESID_ENCAPSULATED;
 #if KOTOR1
-            AddKey(resRef, entry.m_resType, entry.m_resIDRaw, 0);
+        AddKey(resRef, entry.m_resType, entry.m_resIDRaw, 0);
 #else
-            AddKey(resRef, entry.m_resType, entry.m_resIDRaw, 0, CExoString(""));
+        AddKey(resRef, entry.m_resType, entry.m_resIDRaw, 0, CExoString(""));
 #endif
-            i++;
-        } while (i < header.m_nEntries);
     }
     pFile->~CExoFile();
     operator delete(pFile);
@@ -1519,88 +1605,84 @@ int CExoKeyTable::AddKeyTableContents(int)
         m_nDependentFileCount = header.m_nBifCount;
         m_paDependentFiles = new void*[header.m_nBifCount];
 
-        if (header.m_nBifCount != 0) {
-            pBifEntry = static_cast<BifTableEntry*>(pTableBuf);
-            for (i = 0; i < header.m_nBifCount; i++, pBifEntry++) {
+        pBifEntry = static_cast<BifTableEntry*>(pTableBuf);
+        for (i = 0; i < header.m_nBifCount; i++, pBifEntry++) {
 #if KOTOR1
-                ByteSwap(&pBifEntry->m_nFileSize);
-                ByteSwap(&pBifEntry->m_nFilenameOffset);
-                ByteSwap(&pBifEntry->m_nFilenameSize);
-                ByteSwap(&pBifEntry->m_nDrives);
+            ByteSwap(&pBifEntry->m_nFileSize);
+            ByteSwap(&pBifEntry->m_nFilenameOffset);
+            ByteSwap(&pBifEntry->m_nFilenameSize);
+            ByteSwap(&pBifEntry->m_nDrives);
 #endif
-                m_paDependentFiles[i] = new CExoResFile();
+            m_paDependentFiles[i] = new CExoResFile();
 
-                if (m_paDependentFiles[i] == NULL) {
-                    delete[] m_paDependentFiles;
-                    m_paDependentFiles = NULL;
-                    delete[] m_paEntries;
-                    m_paEntries = NULL;
+            if (m_paDependentFiles[i] == NULL) {
+                delete[] m_paDependentFiles;
+                m_paDependentFiles = NULL;
+                delete[] m_paEntries;
+                m_paEntries = NULL;
 #if KOTOR1
-                    ExoFree(pTableBuf);
+                ExoFree(pTableBuf);
 #else
-                    EXOFREE(pTableBuf,
-                        "C:/Users/Vu/Documents/AndroidStudioProjects/KOTOR1-2/KOTOR2_Android/app/"
-                        "src/main/cpp/kotor2/CODE/libsource/exoresman/exoresfile.cpp", 1081);
+                EXOFREE(pTableBuf,
+                    "C:/Users/Vu/Documents/AndroidStudioProjects/KOTOR1-2/KOTOR2_Android/app/"
+                    "src/main/cpp/kotor2/CODE/libsource/exoresman/exoresfile.cpp", 1081);
 #endif
-                    goto fail;
-                }
-
-                static_cast<CExoResFile*>(m_paDependentFiles[i])->m_nDrives = pBifEntry->m_nDrives;
-                static_cast<CExoResFile*>(m_paDependentFiles[i])->m_nFileSize = pBifEntry->m_nFileSize;
-                pBifEntry->m_nFilenameOffset -= header.m_nOffsetToFileTable;
-                bifNameStr = static_cast<const char*>(pTableBuf) + pBifEntry->m_nFilenameOffset;
-#if KOTOR1
-                bifNameStr.CStr();  // K1: a stripped debug print's argument
-#endif
-
-                dotPos = bifNameStr.Find('.', 0);
-                if (dotPos < 0) {
-                    delete[] m_paDependentFiles;
-                    m_paDependentFiles = NULL;
-                    delete[] m_paEntries;
-                    m_paEntries = NULL;
-#if KOTOR1
-                    ExoFree(pTableBuf);
-#else
-                    EXOFREE(pTableBuf,
-                        "C:/Users/Vu/Documents/AndroidStudioProjects/KOTOR1-2/KOTOR2_Android/app/"
-                        "src/main/cpp/kotor2/CODE/libsource/exoresman/exoresfile.cpp", 1119);
-#endif
-                    goto fail;
-                }
-
-                static_cast<CExoResFile*>(m_paDependentFiles[i])->m_sFileName =
-                    driveStr + CExoString(":") + bifNameStr.SubString(0, dotPos);
-
-                if (static_cast<CExoResFile*>(m_paDependentFiles[i])->m_nDrives != 1
-                    && !LocateBifFile(static_cast<CExoResFile*>(m_paDependentFiles[i])->m_sFileName)) {
-                    fallbackDrive = "CD0:";
-                    static_cast<CExoResFile*>(m_paDependentFiles[i])->m_sFileName =
-                        fallbackDrive + bifNameStr.SubString(0, dotPos);
-                }
-
-                static_cast<CExoPackedFile*>(m_paDependentFiles[i])->LoadHeader(0);
+                goto fail;
             }
+
+            static_cast<CExoResFile*>(m_paDependentFiles[i])->m_nDrives = pBifEntry->m_nDrives;
+            static_cast<CExoResFile*>(m_paDependentFiles[i])->m_nFileSize = pBifEntry->m_nFileSize;
+            pBifEntry->m_nFilenameOffset -= header.m_nOffsetToFileTable;
+            bifNameStr = static_cast<const char*>(pTableBuf) + pBifEntry->m_nFilenameOffset;
+#if KOTOR1
+            bifNameStr.CStr();  // K1: a stripped debug print's argument
+#endif
+
+            dotPos = bifNameStr.Find('.', 0);
+            if (dotPos < 0) {
+                delete[] m_paDependentFiles;
+                m_paDependentFiles = NULL;
+                delete[] m_paEntries;
+                m_paEntries = NULL;
+#if KOTOR1
+                ExoFree(pTableBuf);
+#else
+                EXOFREE(pTableBuf,
+                    "C:/Users/Vu/Documents/AndroidStudioProjects/KOTOR1-2/KOTOR2_Android/app/"
+                    "src/main/cpp/kotor2/CODE/libsource/exoresman/exoresfile.cpp", 1119);
+#endif
+                goto fail;
+            }
+
+            static_cast<CExoResFile*>(m_paDependentFiles[i])->m_sFileName =
+                driveStr + CExoString(":") + bifNameStr.SubString(0, dotPos);
+
+            if (static_cast<CExoResFile*>(m_paDependentFiles[i])->m_nDrives != 1
+                && !LocateBifFile(static_cast<CExoResFile*>(m_paDependentFiles[i])->m_sFileName)) {
+                fallbackDrive = "CD0:";
+                static_cast<CExoResFile*>(m_paDependentFiles[i])->m_sFileName =
+                    fallbackDrive + bifNameStr.SubString(0, dotPos);
+            }
+
+            static_cast<CExoPackedFile*>(m_paDependentFiles[i])->LoadHeader(0);
         }
 
         pFile->Seek(header.m_nOffsetToKeyTable, 0);
-        if (header.m_nKeyCount != 0) {
-            for (i = 0; i < header.m_nKeyCount; i++) {
-                pFile->Read(entry.m_resRef, sizeof(entry.m_resRef), 1);
-                pFile->Read(&entry.m_resType, 2, 1);
-                pFile->Read(&entry.m_resID, 4, 1);
+        for (i = 0; i < header.m_nKeyCount; i++) {
+            pFile->Read(entry.m_resRef, sizeof(entry.m_resRef), 1);
+            pFile->Read(&entry.m_resType, 2, 1);
+            pFile->Read(&entry.m_resID, 4, 1);
 #if KOTOR1
-                ByteSwap(&entry.m_resType);
-                ByteSwap(&entry.m_resID);
+            ByteSwap(&entry.m_resType);
+            ByteSwap(&entry.m_resID);
 #endif
-                keyResRef = entry.m_resRef;
-                entry.m_resID &= ~RESID_SOURCE_BITS;
+            keyResRef = entry.m_resRef;
+            entry.m_resID &= ~RESID_SOURCE_BITS;
 #if KOTOR1
-                AddKey(keyResRef, entry.m_resType, entry.m_resID, 0);
+            AddKey(keyResRef, entry.m_resType, entry.m_resID, 0);
 #else
-                AddKey(keyResRef, entry.m_resType, entry.m_resID, 0, CExoString(""));
+            AddKey(keyResRef, entry.m_resType, entry.m_resID, 0, CExoString(""));
 #endif
-            }
         }
 
         pFile->~CExoFile();
@@ -1731,75 +1813,71 @@ void CExoKeyTable::RebuildTable()
 
     m_bLookupDisabled = 1;
 
-    if (oldTableSize != 0) {
-        for (unsigned int i = 0; i < oldTableSize; i++) {
-            CKeyTableEntry* pOld = &oldEntries[i];
-            if (pOld->m_pRes == NULL) {
-                continue;
-            }
-
-            unsigned int nIndex;
-            if (GetTableIndex(nIndex, pOld->m_resRef, pOld->m_resType)) {
-                CKeyTableEntry* pNew = &m_paEntries[nIndex];
-                pNew->m_pRes = pOld->m_pRes;
-                pNew->m_pRes->m_dwResID = pNew->m_dwResID;
-                pOld->m_pRes = NULL;
-                pNew->m_pRes->m_pKeyEntry = pNew;
-                continue;
-            }
-
-            g_pExoResMan->GetKeyEntry(pOld->m_resRef, pOld->m_resType, &pFoundTable, &pFoundEntry);
-            if (pFoundEntry != NULL) {
-                pFoundEntry->m_pRes = pOld->m_pRes;
-                pFoundEntry->m_pRes->m_dwResID = pFoundEntry->m_dwResID;
-                pOld->m_pRes = NULL;
-                pFoundEntry->m_pRes->m_pKeyEntry = pFoundEntry;
-                if (pFoundEntry->m_pRes->m_nDemandCount != 0) {
-                    pFoundEntry->m_pRes->m_dwFlags |= CRes::RESFLAG_FREE_PENDING;
-                } else {
-                    pFoundEntry->m_pRes->Dump(0);
-                }
-                continue;
-            }
-
-            if (pOld->m_pRes->m_nDemandCount != 0) {
-                pOld->m_pRes->m_dwFlags |= CRes::RESFLAG_ORPHANED;
-            } else {
-                pOld->m_pRes->Dump(0);
-                // The orphan is detached from the old entry, which is deleted below.
-                pOld->m_pRes->m_pKeyEntry = NULL;
-                pOld->m_pRes->m_dwResID = RESID_INVALID;
-            }
+    for (unsigned int i = 0; i < oldTableSize; i++) {
+        CKeyTableEntry* pOld = &oldEntries[i];
+        if (pOld->m_pRes == NULL) {
+            continue;
         }
-    }
 
-    delete[] oldEntries;
+        unsigned int nIndex;
+        if (GetTableIndex(nIndex, pOld->m_resRef, pOld->m_resType)) {
+            CKeyTableEntry* pNew = &m_paEntries[nIndex];
+            pNew->m_pRes = pOld->m_pRes;
+            pNew->m_pRes->m_dwResID = pNew->m_dwResID;
+            pOld->m_pRes = NULL;
+            pNew->m_pRes->m_pKeyEntry = pNew;
+            continue;
+        }
 
-    if (m_nTableSize != 0) {
-        for (unsigned int j = 0; j < m_nTableSize; j++) {
-            if (m_paEntries[j].m_pRes != NULL) {
-                continue;
-            }
-
-            g_pExoResMan->GetKeyEntry(m_paEntries[j].m_resRef, m_paEntries[j].m_resType,
-                                      &pFoundTable, &pFoundEntry);
-            if (pFoundEntry == NULL || pFoundEntry->m_pRes == NULL) {
-                continue;
-            }
-            if (pFoundTable->m_nRoutingTag >= m_nRoutingTag) {
-                continue;
-            }
-
+        g_pExoResMan->GetKeyEntry(pOld->m_resRef, pOld->m_resType, &pFoundTable, &pFoundEntry);
+        if (pFoundEntry != NULL) {
+            pFoundEntry->m_pRes = pOld->m_pRes;
+            pFoundEntry->m_pRes->m_dwResID = pFoundEntry->m_dwResID;
+            pOld->m_pRes = NULL;
+            pFoundEntry->m_pRes->m_pKeyEntry = pFoundEntry;
             if (pFoundEntry->m_pRes->m_nDemandCount != 0) {
                 pFoundEntry->m_pRes->m_dwFlags |= CRes::RESFLAG_FREE_PENDING;
             } else {
                 pFoundEntry->m_pRes->Dump(0);
             }
-            m_paEntries[j].m_pRes = pFoundEntry->m_pRes;
-            m_paEntries[j].m_pRes->m_dwResID = m_paEntries[j].m_dwResID;
-            pFoundEntry->m_pRes = NULL;
-            m_paEntries[j].m_pRes->m_pKeyEntry = &m_paEntries[j];
+            continue;
         }
+
+        if (pOld->m_pRes->m_nDemandCount != 0) {
+            pOld->m_pRes->m_dwFlags |= CRes::RESFLAG_ORPHANED;
+        } else {
+            pOld->m_pRes->Dump(0);
+            // The orphan is detached from the old entry, which is deleted below.
+            pOld->m_pRes->m_pKeyEntry = NULL;
+            pOld->m_pRes->m_dwResID = RESID_INVALID;
+        }
+    }
+
+    delete[] oldEntries;
+
+    for (unsigned int j = 0; j < m_nTableSize; j++) {
+        if (m_paEntries[j].m_pRes != NULL) {
+            continue;
+        }
+
+        g_pExoResMan->GetKeyEntry(m_paEntries[j].m_resRef, m_paEntries[j].m_resType,
+                                  &pFoundTable, &pFoundEntry);
+        if (pFoundEntry == NULL || pFoundEntry->m_pRes == NULL) {
+            continue;
+        }
+        if (pFoundTable->m_nRoutingTag >= m_nRoutingTag) {
+            continue;
+        }
+
+        if (pFoundEntry->m_pRes->m_nDemandCount != 0) {
+            pFoundEntry->m_pRes->m_dwFlags |= CRes::RESFLAG_FREE_PENDING;
+        } else {
+            pFoundEntry->m_pRes->Dump(0);
+        }
+        m_paEntries[j].m_pRes = pFoundEntry->m_pRes;
+        m_paEntries[j].m_pRes->m_dwResID = m_paEntries[j].m_dwResID;
+        pFoundEntry->m_pRes = NULL;
+        m_paEntries[j].m_pRes->m_pKeyEntry = &m_paEntries[j];
     }
 
     m_bLookupDisabled = 0;

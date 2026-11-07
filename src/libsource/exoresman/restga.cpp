@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "restga.h"
 #include "exofile.h"
 

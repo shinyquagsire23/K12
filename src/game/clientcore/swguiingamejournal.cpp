@@ -207,12 +207,7 @@ void CSWGuiInGameJournal::OnPanelRemoved()
     // Puts the chained messages panel back into a non-drawn state.
 #if !KOTOR1  // K1 has no messages sub-panel to put away
     if (m_pGuiManager->PanelExists(m_pMessages))
-    {
-        unsigned short nFlags = m_pMessages->m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_pMessages->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-        m_pMessages->m_stateFlags = nFlags;
-    }
+        m_pMessages->SetToBeRemoved(0);
 #endif
     MarkNewQuestsObserved();
 }

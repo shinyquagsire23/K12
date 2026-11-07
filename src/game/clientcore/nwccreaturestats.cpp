@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "nwccreaturestats.h"
 #include "nwsrules.h"
 #include "nwskill.h"
@@ -188,11 +189,7 @@ CSWCCreatureStats::~CSWCCreatureStats()
     // m_classes[2] is left to its own destructor.
 }
 
-#if KOTOR1
 short CSWCCreatureStats::GetMaxHitPoints()
-#else
-unsigned short CSWCCreatureStats::GetMaxHitPoints()
-#endif
 {
     return m_nMaxHitPoints;
 }
@@ -301,7 +298,7 @@ int CSWCCreatureStats::GetCasterLevel(unsigned char nClassPos)
 {
     if (nClassPos > 1)
         return 0;
-    if (g_pRules->m_paClasses[GetClass(nClassPos)].m_bSpellCaster == 0)
+    if (g_pRules->GetClass(GetClass(nClassPos))->m_bSpellCaster == 0)
         return 0;
     return GetClassLevel(nClassPos);
 }
@@ -515,7 +512,7 @@ CExoString CSWCCreatureStats::GetClassesString(char cSeparator)
     char szSeparator[2] = { 0, 0 };
 
     for (unsigned char i = 0; i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
+        CSWClass* pClass = g_pRules->GetClass(GetClass(i));
         if (pClass) {
             strReturn = strReturn + szSeparator + pClass->GetNameText() + " (" + CExoString(GetClassLevel(i)) + ")";
             szSeparator[0] = cSeparator;
@@ -691,7 +688,7 @@ unsigned char CSWCCreatureStats::GetBaseAttackBonus()
         return m_nBaseAttackBonus;
     int nBonus = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
+        CSWClass* pClass = g_pRules->GetClass(GetClass(i));
         if (pClass)
             nBonus += pClass->GetAttackBonus(GetClassLevel(i));
     }
@@ -711,7 +708,7 @@ int CSWCCreatureStats::CalculateNumAttacks()
 {
     int nBonus = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++)
-        nBonus += g_pRules->m_paClasses[GetClass(i)].GetAttackBonus(GetClassLevel(i));
+        nBonus += g_pRules->GetClass(GetClass(i))->GetAttackBonus(GetClassLevel(i));
     int nAttacks = (nBonus + 4) / 5;
     if (nAttacks < 1)
         nAttacks = 1;
@@ -860,9 +857,7 @@ int CSWCCreatureStats_ClassInfo::GetKnownSpell(unsigned char nLevel, unsigned ch
 int CSWCCreatureStats_ClassInfo::HasSpell(unsigned char nLevel, unsigned int nSpellId)
 {
     unsigned short nCount = static_cast<unsigned short>(m_spellLevels[nLevel].m_count);
-    if (nCount == 0)
-        return 0;
-    for (int64_t i = 0; i < nCount; i++)
+    for (int i = 0; i < nCount; i++)
         if (m_spellLevels[nLevel].m_pArray[i] == nSpellId)
             return 1;
     return 0;
@@ -879,7 +874,7 @@ void CSWCCreatureStats_ClassInfo::RemoveKnownSpell(unsigned char nLevel, unsigne
 {
     if (nLevel != 0)
         return;
-    CExoArrayList<unsigned int>& lvl = m_spellLevels[0];
+    CExoArrayList<uint32_l_t>& lvl = m_spellLevels[0];
     if (lvl.IndexOf(nSpellId) < 0)
         return;
     lvl.Remove(nSpellId);
@@ -889,7 +884,7 @@ void CSWCCreatureStats_ClassInfo::AddKnownSpell(unsigned char nLevel, unsigned i
 {
     if (nLevel != 0)
         return;
-    CExoArrayList<unsigned int>& lvl = m_spellLevels[0];
+    CExoArrayList<uint32_l_t>& lvl = m_spellLevels[0];
     if (lvl.IndexOf(nSpellId) != -1)
         return;
     lvl.Add(nSpellId);
@@ -940,21 +935,19 @@ CExoString CSWCCreatureStats::GetGeneralAttackBonusString(CSWCCreature* pCreatur
     int nCombatModeMod = GetCombatModeAttackModifier(pCreature);
 
     int nFeatSum = 0;
-    if (pInfo->m_attackBonusMods.m_count >= 1) {
-        for (int i = 0; i < pInfo->m_attackBonusMods.m_count; i++) {
-            CCombatInformationNode* pMod = pInfo->m_attackBonusMods.m_pArray[i];
-            unsigned char nType = pMod->m_nType;
-            if (nType > COMBAT_INFO_UNARMED || ((1 << nType) & COMBAT_INFO_LISTED) == 0)
-                continue;
-            if (pMod->m_nClassReq != g_pRules->m_nNumRaces)
-                continue;
-            if (pMod->m_nFlag != 0)
-                continue;
-            if (nHand == 0 ? nType == COMBAT_INFO_OFFHAND : nType == COMBAT_INFO_ONHAND)
-                continue;
-            if (pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON) == OBJECT_INVALID || nType != 7)
-                nFeatSum += pMod->m_cValue;
-        }
+    for (int i = 0; i < pInfo->m_attackBonusMods.m_count; i++) {
+        CCombatInformationNode* pMod = pInfo->m_attackBonusMods.m_pArray[i];
+        unsigned char nType = pMod->m_nType;
+        if (nType > COMBAT_INFO_UNARMED || ((1 << nType) & COMBAT_INFO_LISTED) == 0)
+            continue;
+        if (pMod->m_nClassReq != g_pRules->m_nNumRaces)
+            continue;
+        if (pMod->m_nFlag != 0)
+            continue;
+        if (nHand == 0 ? nType == COMBAT_INFO_OFFHAND : nType == COMBAT_INFO_ONHAND)
+            continue;
+        if (pCreature->GetEquippedItemID(MSG_SLOT_RIGHT_WEAPON) == OBJECT_INVALID || nType != 7)
+            nFeatSum += pMod->m_cValue;
     }
 
     if (nNumAttacks != 0) {
@@ -1293,9 +1286,6 @@ void CSWCCreatureStats::ClearKnownSpells(unsigned char nClassPos)
         m_classes[nClassPos].ClearKnownSpells();
 }
 
-#if KOTOR1  // K1 keeps this out of line
-__attribute__((noinline))
-#endif
 signed char CSWCCreatureStats::GetSkillModifier(unsigned short nSkill)
 {
     int nAbility = g_pRules->m_paSkills[nSkill].m_nKeyAbility;
@@ -1466,7 +1456,7 @@ void CSWCLevelUpStats::SetReflexSavingThrow()
 {
     char nBonus = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
+        CSWClass* pClass = g_pRules->GetClass(GetClass(i));
         if (pClass)
             nBonus += pClass->GetRefSaveBonus(GetClassLevel(i));
     }
@@ -1477,7 +1467,7 @@ void CSWCLevelUpStats::SetFortSavingThrow()
 {
     char nBonus = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
+        CSWClass* pClass = g_pRules->GetClass(GetClass(i));
         if (pClass)
             nBonus += pClass->GetFortSaveBonus(GetClassLevel(i));
     }
@@ -1488,7 +1478,7 @@ void CSWCLevelUpStats::SetWillSavingThrow()
 {
     char nBonus = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
+        CSWClass* pClass = g_pRules->GetClass(GetClass(i));
         if (pClass)
             nBonus += pClass->GetWillSaveBonus(GetClassLevel(i));
     }
@@ -1501,7 +1491,7 @@ int CSWCLevelUpStats::FeatRequirementsMet(unsigned short nFeat, CExoArrayList<un
     if (!pFeat)
         return 0;
 
-    CSWClass* pHighestClass = &g_pRules->m_paClasses[GetClassLeveledUpIn()];
+    CSWClass* pHighestClass = g_pRules->GetClass(GetClassLeveledUpIn());
     unsigned char nGrantLevel = pHighestClass->GetLevelFeatGranted(nFeat);
     if (nGrantLevel != CSWClass::LEVEL_NONE && nGrantLevel > GetLevel())
         return 0;
@@ -1550,7 +1540,7 @@ char CSWCLevelUpStats::GetBaseAttackBonus()
 {
     unsigned char nBonus = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++)
-        nBonus += g_pRules->m_paClasses[GetClass(i)].GetAttackBonus(GetClassLevel(i));
+        nBonus += g_pRules->GetClass(GetClass(i))->GetAttackBonus(GetClassLevel(i));
     return nBonus;
 }
 
@@ -1564,16 +1554,14 @@ int CSWCLevelUpStats::HasFeatPrereq(CSWFeat* pFeat, CExoArrayList<unsigned short
     if (nPrereq2 != 0xffff && !FeatAcquired(nPrereq2, pFeats))
         return 0;
 
-    bool bAnyOrReq = false;
-    bool bMatched = false;
-    for (int slot = 0; slot < 5; slot++) {
+    int bAnyOrReq = 0;
+    int bMatched = 0;
+    for (int slot = 0; !bMatched && slot < 5; slot++) {
         unsigned short nOrReq = pFeat->m_anOrReqFeat[slot];
-        if (nOrReq == 0xffff)
-            continue;
-        bAnyOrReq = true;
-        if (FeatAcquired(nOrReq, pFeats)) {
-            bMatched = true;
-            break;
+        if (nOrReq != 0xffff) {
+            bAnyOrReq = 1;
+            if (FeatAcquired(nOrReq, pFeats))
+                bMatched = 1;
         }
     }
     return !bAnyOrReq || bMatched;
@@ -1611,7 +1599,7 @@ void CSWCLevelUpStats::SetSkillRankBase(unsigned short nSkill, char cRank)
 
 void CSWCLevelUpStats::AddSkillPointsPerLevel()
 {
-    CSWClass* pClass = &g_pRules->m_paClasses[GetClassLeveledUpIn()];
+    CSWClass* pClass = g_pRules->GetClass(GetClassLeveledUpIn());
 #if KOTOR1
     // K1: level 1 pays (SkillPointBase/2 + INT mod) x4, later levels (SkillPointBase + INT mod)/2,
     // each at least 1.
@@ -1681,26 +1669,24 @@ int CSWCLevelUpStats::CanChooseFeat(unsigned short nFeat, unsigned char nNormalL
     lstConsumed.SetSize(pChosen->m_count);
     int* paConsumed = lstConsumed.m_pArray;
     int nChosenCount = pChosen->m_count;
-    if (nChosenCount != 0) {
-        for (int i = 0; i < nChosenCount; i++)
-            paConsumed[i] = 0;
+    for (int i = 0; i < nChosenCount; i++)
+        paConsumed[i] = 0;
 
-        for (unsigned short i = 0; i < pChosen->m_count; i++) {
-            int bOtherNormal, bOtherBonus;
-            SetNormalBonusFlags(pChosen->m_pArray[i], bOtherNormal, bOtherBonus);
-            if (bOtherBonus) {
-                if (nBonusLeft == 0 || bOtherNormal)
-                    continue;
-                paConsumed[i] = 1;
-                nBonusLeft--;
-            } else {
-                if (!bOtherNormal)
-                    continue;
-                if (nNormalLeft == 0)
-                    return false;
-                paConsumed[i] = 1;
-                nNormalLeft--;
-            }
+    for (unsigned short i = 0; i < pChosen->m_count; i++) {
+        int bOtherNormal, bOtherBonus;
+        SetNormalBonusFlags(pChosen->m_pArray[i], bOtherNormal, bOtherBonus);
+        if (bOtherBonus) {
+            if (nBonusLeft == 0 || bOtherNormal)
+                continue;
+            paConsumed[i] = 1;
+            nBonusLeft--;
+        } else {
+            if (!bOtherNormal)
+                continue;
+            if (nNormalLeft == 0)
+                return false;
+            paConsumed[i] = 1;
+            nNormalLeft--;
         }
     }
 
@@ -1773,7 +1759,7 @@ CSWCLevelUpStats::~CSWCLevelUpStats()
 {
 }
 
-unsigned int CSWCLevelUpStats::ComputeNumberKnownSpellsLeft()
+unsigned char CSWCLevelUpStats::ComputeNumberKnownSpellsLeft()
 {
     unsigned char nClassPos = static_cast<unsigned char>(m_nNumClasses - 1);
     unsigned char nClassId = GetClass(nClassPos);
@@ -1792,13 +1778,13 @@ unsigned int CSWCLevelUpStats::ComputeNumberKnownSpellsLeft()
          nClassId == CSWClass::CCLASS_SITHMARAUDER ||
          nClassId == CSWClass::CCLASS_SITHLORD)) {
 #endif
-        unsigned int nGain = pClass->GetSpellGain(GetClassLevel(nClassPos), 0);
-        return (static_cast<unsigned char>(nGain) == CSWClass::LEVEL_NONE) ? 0 : nGain;
+        unsigned char nGain = pClass->GetSpellGain(GetClassLevel(nClassPos), 0);
+        return (nGain == CSWClass::LEVEL_NONE) ? 0 : nGain;
     }
     return 0;
 }
 
-int CSWCLevelUpStats::CanChooseSpell(unsigned int nSpell, unsigned char nLeft, CExoArrayList<unsigned int>* pChosen)
+int CSWCLevelUpStats::CanChooseSpell(unsigned int nSpell, unsigned char nLeft, CExoArrayList<uint32_l_t>* pChosen)
 {
 #if KOTOR1
     // K1: no per-class spell-level gate, and only the last class slot's known list is scanned;
@@ -1812,7 +1798,7 @@ int CSWCLevelUpStats::CanChooseSpell(unsigned int nSpell, unsigned char nLeft, C
     if (nLeft == 0)
         return false;
     if (nLastPos < 2) {
-        CExoArrayList<unsigned int>& known = m_classes[nLastPos].m_spellLevels[0];
+        CExoArrayList<uint32_l_t>& known = m_classes[nLastPos].m_spellLevels[0];
         for (unsigned short i = 0; i < static_cast<unsigned short>(known.m_count); i++) {
             unsigned char j = static_cast<unsigned char>(i);
             int nKnown = j < known.m_count ? known.m_pArray[j] : -1;
@@ -1850,7 +1836,7 @@ int CSWCLevelUpStats::CanChooseSpell(unsigned int nSpell, unsigned char nLeft, C
 #endif
 }
 
-int CSWCLevelUpStats::HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned int>* pChosen)
+int CSWCLevelUpStats::HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<uint32_l_t>* pChosen)
 {
     for (int k = 0; pSpell->m_anPrereq2[k] != -1; k++) {
         int nId = pSpell->m_anPrereq2[k];
@@ -1930,7 +1916,7 @@ int CSWCLevelUpStats::GetSkillPointCostForSkillRank(unsigned short nSkill, int b
     bool bIsClassSkill = false;
     int bCanBuy = (pSkill->m_flags >> 3) & 1;
     for (unsigned char i = 0; !bIsClassSkill && i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
+        CSWClass* pClass = g_pRules->GetClass(GetClass(i));
         if (pClass && pClass->IsSkillUseable(nSkill)) {
             bCanBuy = 1;
             if (pClass->IsSkillClassSkill(nSkill)) {
@@ -1962,7 +1948,7 @@ int CSWCLevelUpStats::IncreaseSkillRank(unsigned short nSkill)
     bool bIsClassSkill = false;
     int bCanBuy = (pSkill->m_flags >> 3) & 1;
     for (unsigned char i = 0; !bIsClassSkill && i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
+        CSWClass* pClass = g_pRules->GetClass(GetClass(i));
         if (pClass && pClass->IsSkillUseable(nSkill)) {
             bCanBuy = 1;
             if (pClass->IsSkillClassSkill(nSkill)) {
@@ -2024,7 +2010,7 @@ void CSWCLevelUpStats::DecreaseSkillRank(unsigned short nSkill, unsigned char nR
     bool bIsClassSkill = false;
     int bCanBuy = (pSkill->m_flags >> 3) & 1;
     for (unsigned char i = 0; !bIsClassSkill && i < m_nNumClasses; i++) {
-        CSWClass* pClass = &g_pRules->m_paClasses[GetClass(i)];
+        CSWClass* pClass = g_pRules->GetClass(GetClass(i));
         if (pClass && pClass->IsSkillUseable(nSkill)) {
             bCanBuy = 1;
             if (pClass->IsSkillClassSkill(nSkill)) {
@@ -2117,11 +2103,11 @@ unsigned char CSWCLevelUpStats::AddDefaultPackageFeats(int nClassId, CExoArrayLi
     return nTotal;
 }
 
-unsigned int CSWCLevelUpStats::AddDefaultPackageSpells(CExoArrayList<unsigned int>* pSpells)
+unsigned char CSWCLevelUpStats::AddDefaultPackageSpells(CExoArrayList<uint32_l_t>* pSpells)
 {
 #if KOTOR1
     // K1: the class-count helper is expanded in place.
-    unsigned int nLeft = 0;
+    unsigned char nLeft = 0;
     {
         unsigned char nClassPos = static_cast<unsigned char>(m_nNumClasses - 1);
         unsigned char nClassId = GetClass(nClassPos);
@@ -2130,32 +2116,32 @@ unsigned int CSWCLevelUpStats::AddDefaultPackageSpells(CExoArrayList<unsigned in
             (nClassId == CSWClass::CCLASS_JEDICONSULAR ||
              nClassId == CSWClass::CCLASS_JEDIGUARDIAN ||
              nClassId == CSWClass::CCLASS_JEDISENTINEL)) {
-            unsigned int nGain = pClass->GetSpellGain(GetClassLevel(nClassPos), 0);
-            nLeft = (static_cast<unsigned char>(nGain) == CSWClass::LEVEL_NONE) ? 0 : nGain;
+            unsigned char nGain = pClass->GetSpellGain(GetClassLevel(nClassPos), 0);
+            nLeft = (nGain == CSWClass::LEVEL_NONE) ? 0 : nGain;
         }
     }
 #else
-    unsigned int nLeft = ComputeNumberKnownSpellsLeft();
+    unsigned char nLeft = ComputeNumberKnownSpellsLeft();
 #endif
-    CSWClass* pClass = &g_pRules->m_paClasses[GetClassLeveledUpIn()];
+    CSWClass* pClass = g_pRules->GetClass(GetClassLeveledUpIn());
     if (pClass->m_bSpellCaster == 0)
         return nLeft;
     int bGoodAligned = m_alignmentGoodEvil > 40;
     int nNumSpells = g_pRules->m_pSpellArray->m_nCount;
-    if (nNumSpells <= 0 || static_cast<unsigned char>(nLeft) == 0)
+    if (nNumSpells <= 0 || nLeft == 0)
         return nLeft;
     int nAdded = 0;
     int nOrder = 1;
     for (;;) {
         unsigned int nSpellId = pClass->GetRecommendedSpell(bGoodAligned, nOrder);
-        if (CanChooseSpell(nSpellId & 0xffff, static_cast<unsigned char>(nLeft), pSpells)) {
+        if (CanChooseSpell(nSpellId & 0xffff, nLeft, pSpells)) {
             pSpells->Add(nSpellId & 0xffff);
             nAdded++;
         }
         if (nOrder >= nNumSpells)
             break;
         nOrder++;
-        if (nAdded >= static_cast<int>(static_cast<unsigned char>(nLeft)))
+        if (nAdded >= nLeft)
             break;
     }
     return nLeft;
@@ -2179,7 +2165,7 @@ void CSWCLevelUpStats::CalcNumberFeats(unsigned char& nNormal, unsigned char& nB
     } else {
         CSWCCreatureStats_ClassInfo* pInfo = &m_classes[nClassPos];
         nLevel = pInfo->m_nLevel;
-        if (nLevel < static_cast<int>(sizeof(CSWClass::m_normalFeats.m_aByLevel))) {
+        if (nLevel <= static_cast<int>(sizeof(CSWClass::m_aNormalFeatGain))) {
             pClass = &pRules->m_paClasses[pInfo->m_nClass];
         } else {
             nNormal = 0;
@@ -2187,8 +2173,8 @@ void CSWCLevelUpStats::CalcNumberFeats(unsigned char& nNormal, unsigned char& nB
             return;
         }
     }
-    nNormal = pClass->m_normalFeats.m_aByLevel[nLevel];
-    nBonus = pClass->m_bonusFeats.m_aByLevel[nLevel];
+    nNormal = *(pClass->m_aNormalFeatGain + nLevel - 1);
+    nBonus = *(pClass->m_aBonusFeatGain + nLevel - 1);
 }
 
 // Walks every feat.2da row and grants the feats this creature qualifies for at its current level:
@@ -2203,7 +2189,7 @@ void CSWCLevelUpStats::CalcNumberFeats(unsigned char& nNormal, unsigned char& nB
     } while (0)
 
 #if KOTOR1
-void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<unsigned int>* pFeats)
+void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<uint32_l_t>* pFeats)
 {
     CSWRace* pRace = &g_pRules->m_paRaces[m_nRace];
     for (unsigned short nFeatIdx = 0; nFeatIdx < g_pRules->m_nFeats; nFeatIdx++) {
@@ -2231,7 +2217,7 @@ void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<unsigned int>* pFeats)
     }
 }
 #else
-void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<unsigned int>* pFeats, bool bIsPC)
+void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<uint32_l_t>* pFeats, bool bIsPC)
 {
     unsigned char nTotalLevel = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++)
@@ -2244,13 +2230,14 @@ void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<unsigned int>* pFeats, bool
             nTotalJediLevel += (i < 2) ? m_classes[i].m_nLevel : 0;
     }
 
+    CSWRace* pRace = &g_pRules->m_paRaces[m_nRace];
     for (unsigned short nFeatIdx = 0; nFeatIdx < g_pRules->m_nFeats; nFeatIdx++) {
         CSWFeat* pFeat = g_pRules->GetFeat(nFeatIdx);
         if (!pFeat)
             continue;
 
         if (GetLevel() == 1 && m_nExperience == 0 &&
-            g_pRules->m_paRaces[m_nRace].IsFirstLevelGrantedFeat(nFeatIdx)) {
+            pRace->IsFirstLevelGrantedFeat(nFeatIdx)) {
             KOTOR2_GRANT_FEAT(nFeatIdx, true);
             continue;
         }
@@ -2322,7 +2309,7 @@ void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<unsigned int>* pFeats, bool
 // index a per-class table, and 12/15 gate on (highest level - 1) being a multiple of 4 in
 // [0,20).
 #if !KOTOR1
-void CSWCLevelUpStats::AddGrantedPowers(CExoArrayList<unsigned int>* pPowers)
+void CSWCLevelUpStats::AddGrantedPowers(CExoArrayList<uint32_l_t>* pPowers)
 {
     if (m_nNumClasses == 0)
         return;
@@ -2435,6 +2422,7 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
     CResList classList;
     CResList skillList;
     CResList featList;
+    unsigned char nCount;
 
     {
         CExoLocString emptyLoc;
@@ -2469,32 +2457,30 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
 
     if (pGFF->GetList(&classList, pStruct, const_cast<char*>("ClassList")) &&
         static_cast<unsigned char>(pGFF->GetListCount(&classList)) != 0) {
-        unsigned char nCount = static_cast<unsigned char>(pGFF->GetListCount(&classList));
+        nCount = static_cast<unsigned char>(pGFF->GetListCount(&classList));
         m_nNumClasses = (nCount > 2) ? 2 : nCount;
-        if (m_nNumClasses != 0) {
-            for (unsigned char i = 0; i < m_nNumClasses; i++) {
-                CResStruct classElem;
-                if (pGFF->GetListElement(&classElem, &classList, i)) {
-                    unsigned char defaultClass = (i < 2) ? m_classes[i].m_nClass : CLASS_TYPE_INVALID;
-                    unsigned int nClass = pGFF->ReadFieldINT(&classElem, const_cast<char*>("Class"), success, defaultClass);
-                    if (nClass == 0xffffffff || success != 1) {
-                        if (i < 2)
-                            nClass = m_classes[i].m_nClass;
-                    } else if (i < 2) {
-                        m_classes[i].m_nClass = static_cast<unsigned char>(nClass);
-                    }
-                    if (i < 2 && static_cast<unsigned char>(nClass) != CLASS_TYPE_INVALID) {
-                        unsigned short nLevel = pGFF->ReadFieldSHORT(&classElem, const_cast<char*>("ClassLevel"), success, m_classes[i].m_nLevel);
-                        if (static_cast<unsigned char>(nLevel) != 0)
-                            m_classes[i].m_nLevel = static_cast<unsigned char>(nLevel);
-                    }
+        for (unsigned char i = 0; i < m_nNumClasses; i++) {
+            CResStruct classElem;
+            if (pGFF->GetListElement(&classElem, &classList, i)) {
+                unsigned char defaultClass = (i < 2) ? m_classes[i].m_nClass : CLASS_TYPE_INVALID;
+                unsigned int nClass = pGFF->ReadFieldINT(&classElem, const_cast<char*>("Class"), success, defaultClass);
+                if (nClass == 0xffffffff || success != 1) {
+                    if (i < 2)
+                        nClass = m_classes[i].m_nClass;
+                } else if (i < 2) {
+                    m_classes[i].m_nClass = static_cast<unsigned char>(nClass);
+                }
+                if (i < 2 && static_cast<unsigned char>(nClass) != CLASS_TYPE_INVALID) {
+                    unsigned short nLevel = pGFF->ReadFieldSHORT(&classElem, const_cast<char*>("ClassLevel"), success, m_classes[i].m_nLevel);
+                    if (static_cast<unsigned char>(nLevel) != 0)
+                        m_classes[i].m_nLevel = static_cast<unsigned char>(nLevel);
                 }
             }
-            if (m_nNumClasses >= 3)
-                m_nNumClasses = 2;
-            if (m_nNumClasses == 2 && m_classes[1].m_nClass == CLASS_TYPE_INVALID)
-                m_nNumClasses = 1;
         }
+        if (m_nNumClasses >= 3)
+            m_nNumClasses = 2;
+        if (m_nNumClasses == 2 && m_classes[1].m_nClass == CLASS_TYPE_INVALID)
+            m_nNumClasses = 1;
     }
 
     CSWRace* pRace = &g_pRules->m_paRaces[m_nRace];
@@ -2511,12 +2497,14 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
     m_abScores[2] = static_cast<unsigned char>(m_abScoresBase[2] + pRace->m_anAbilityAdjust[5]);
     m_abScores[5] = static_cast<unsigned char>(pRace->m_anAbilityAdjust[3] + m_abScoresBase[5]);
 
+    unsigned short nPortraitId;
+    unsigned short nGoodEvil;
     m_nHitPointsBase = pGFF->ReadFieldSHORT(pStruct, const_cast<char*>("HitPoints"), success, m_nHitPointsBase);
     m_nMaxHitPoints = pGFF->ReadFieldSHORT(pStruct, const_cast<char*>("MaxHitPoints"), success, m_nMaxHitPoints);
     m_nCurrentHitPoints = pGFF->ReadFieldSHORT(pStruct, const_cast<char*>("PregameCurrent"), success, 0);
     m_nExperience = pGFF->ReadFieldDWORD(pStruct, const_cast<char*>("Experience"), success, m_nExperience);
 
-    unsigned short nPortraitId = pGFF->ReadFieldWORD(pStruct, const_cast<char*>("PortraitId"), success, CSWPortrait::PORTRAIT_ID_NONE);
+    nPortraitId = pGFF->ReadFieldWORD(pStruct, const_cast<char*>("PortraitId"), success, CSWPortrait::PORTRAIT_ID_NONE);
     SetPortraitId(nPortraitId);
     if (nPortraitId > CSWPortrait::PORTRAIT_ID_LAST) {
         CResRef newResRef = pGFF->ReadFieldCResRef(pStruct, const_cast<char*>("Portrait"), success, GetPortrait(0));
@@ -2524,16 +2512,17 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
         m_portrait.SetPortrait(newResRef);
     }
 
-    unsigned short nGoodEvil = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("GoodEvil"), success, static_cast<unsigned char>(m_alignmentGoodEvil));
+    nGoodEvil = pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("GoodEvil"), success, static_cast<unsigned char>(m_alignmentGoodEvil));
     if (nGoodEvil > 99)
         nGoodEvil = 100;
     m_alignmentGoodEvil = nGoodEvil;
 
 #if !KOTOR1
+    int nClampedAlignment;
     char nBaseCNPCAlignment = pGFF->ReadFieldCHAR(pStruct, const_cast<char*>("BaseCNPCAlignment"), success, -1);
     if (static_cast<unsigned char>(nBaseCNPCAlignment) == 0xff)
         nBaseCNPCAlignment = static_cast<char>(m_alignmentGoodEvil);
-    int nClampedAlignment = nBaseCNPCAlignment;
+    nClampedAlignment = nBaseCNPCAlignment;
     if (nClampedAlignment < 0)
         nClampedAlignment = -1;
     if (nClampedAlignment > 99)
@@ -2547,15 +2536,15 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
 
     if (pGFF->GetList(&skillList, pStruct, const_cast<char*>("SkillList"))) {
         unsigned short nSkillCount = static_cast<unsigned short>(pGFF->GetListCount(&skillList));
-        if (nSkillCount != 0) {
-            for (unsigned short i = 0; i < nSkillCount; i++) {
-                CResStruct skillElem;
-                if (pGFF->GetListElement(&skillElem, &skillList, i)) {
-                    unsigned char defaultRank = (i < g_pRules->m_nNumSkills) ? m_pSkillRanksBase[i] : 0;
-                    unsigned char nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success, defaultRank);
-                    if (i < g_pRules->m_nNumSkills)
-                        m_pSkillRanksBase[i] = nRank;
-                }
+        for (unsigned short i = 0; i < nSkillCount; i++) {
+            CResStruct skillElem;
+            unsigned char defaultRank;
+            unsigned char nRank;
+            if (pGFF->GetListElement(&skillElem, &skillList, i)) {
+                defaultRank = (i < g_pRules->m_nNumSkills) ? m_pSkillRanksBase[i] : 0;
+                nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success, defaultRank);
+                if (i < g_pRules->m_nNumSkills)
+                    m_pSkillRanksBase[i] = nRank;
             }
         }
     }
@@ -2563,38 +2552,34 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
 
     if (pGFF->GetList(&featList, pStruct, const_cast<char*>("FeatList"))) {
         unsigned short nFeatCount = static_cast<unsigned short>(pGFF->GetListCount(&featList));
-        if (nFeatCount != 0) {
-            for (unsigned short i = 0; i < nFeatCount; i++) {
-                CResStruct featElem;
-                if (pGFF->GetListElement(&featElem, &featList, i)) {
-                    unsigned short nFeat = pGFF->ReadFieldWORD(&featElem, const_cast<char*>("Feat"), success, 0);
-                    if (success != 0) {
-                        m_lstFeats.AddUnique(nFeat);
-                    }
+        for (unsigned short i = 0; i < nFeatCount; i++) {
+            CResStruct featElem;
+            if (pGFF->GetListElement(&featElem, &featList, i)) {
+                unsigned short nFeat = pGFF->ReadFieldWORD(&featElem, const_cast<char*>("Feat"), success, 0);
+                if (success != 0) {
+                    m_lstFeats.AddUnique(nFeat);
                 }
             }
         }
     }
 
-    if (m_nNumClasses != 0) {
-        for (unsigned char i = 0; i < m_nNumClasses; i++) {
-            CResStruct classElem;
-            if (pGFF->GetListElement(&classElem, &classList, i)) {
-                CExoString label;
-                label.Format(const_cast<char*>("%s%d"), const_cast<char*>("KnownList"), 0);
-                CResList spellList;
-                if (pGFF->GetList(&spellList, &classElem, static_cast<char*>(label.CStr()))) {
-                    unsigned short j = 0;
-                    while (true) {
-                        if (pGFF->GetListCount(&spellList) <= j)
-                            break;
-                        CResStruct spellElem;
-                        if (pGFF->GetListElement(&spellElem, &spellList, j)) {
-                            unsigned short nSpell = pGFF->ReadFieldWORD(&spellElem, const_cast<char*>("Spell"), success, 0xffff);
-                            AddKnownSpell(i, nSpell);
-                        }
-                        j++;
+    for (unsigned char i = 0; i < m_nNumClasses; i++) {
+        CResStruct classElem;
+        if (pGFF->GetListElement(&classElem, &classList, i)) {
+            CExoString label;
+            CResList spellList;
+            label.Format(const_cast<char*>("%s%d"), const_cast<char*>("KnownList"), 0);
+            if (pGFF->GetList(&spellList, &classElem, static_cast<char*>(label.CStr()))) {
+                unsigned short j = 0;
+                while (true) {
+                    if (pGFF->GetListCount(&spellList) <= j)
+                        break;
+                    CResStruct spellElem;
+                    if (pGFF->GetListElement(&spellElem, &spellList, j)) {
+                        unsigned short nSpell = pGFF->ReadFieldWORD(&spellElem, const_cast<char*>("Spell"), success, 0xffff);
+                        AddKnownSpell(i, nSpell);
                     }
+                    j++;
                 }
             }
         }
@@ -2636,7 +2621,7 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
         return;
 
     // Phase 1: concatenate every class's known level-0 spell/power ids.
-    CExoArrayList<unsigned int> spellIds;
+    CExoArrayList<uint32_l_t> spellIds;
     int nSpellCount = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++) {
         int nThisCount = m_classes[i].m_spellLevels[0].m_count;
@@ -2646,13 +2631,14 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
         nSpellCount = spellIds.m_count;
     }
 
+    CExoArrayList<CSWSpell*>    candSpells;
+    CExoArrayList<short>        candRank;
+    CExoArrayList<short>        candSubgroup;
+    CExoArrayList<uint32_l_t> candIds;
+
     if (nSpellCount > 0) {
         // Phase 2: filter and decode into candidate (subgroup, rank, spell, id) records, deduped
         // per subgroup so only the highest-rank power in each menu slot survives.
-        CExoArrayList<CSWSpell*>    candSpells;
-        CExoArrayList<short>        candRank;
-        CExoArrayList<short>        candSubgroup;
-        CExoArrayList<unsigned int> candIds;
         int nAlignment = m_alignmentGoodEvil;
 
         for (int i = 0; i < nSpellCount; i++) {
@@ -2673,21 +2659,23 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
 
             // One shared alignment test for all four arms below.
             bool bGateA;
+            char bConfActive;
+            CSWGlobalVariableTable* pTable;
             if (nSpellId == FORCE_POWER_CONFUSION) {
-                char bConfActive = 0;
-                CSWGlobalVariableTable* pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
+                bConfActive = 0;
+                pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
                 CExoString name("000_Human_Conf_Active");
                 pTable->GetValueNumber(name, bConfActive);
                 bGateA = (bConfActive > 0) ? false : bExcludeMaskOk;
             } else if (nSpellId == FORCE_POWER_DROID_CONFUSION) {
-                char bConfActive = 0;
-                CSWGlobalVariableTable* pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
+                bConfActive = 0;
+                pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
                 CExoString name("000_Droid_Conf_Active");
                 pTable->GetValueNumber(name, bConfActive);
                 bGateA = (bConfActive > 0) ? false : bExcludeMaskOk;
             } else if (nSpellId == FORCE_POWER_BEAST_CONFUSION) {
-                char bConfActive = 0;
-                CSWGlobalVariableTable* pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
+                bConfActive = 0;
+                pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
                 CExoString name("000_Beast_Conf_Active");
                 pTable->GetValueNumber(name, bConfActive);
                 bGateA = (bConfActive > 0) ? false : bExcludeMaskOk;
@@ -2712,13 +2700,18 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
 
             if (bGate && pSpell->m_nSubRadialCount != 0) {
                 for (unsigned char s = 0; s < pSpell->m_nSubRadialCount; s++) {
-                    short nRank = static_cast<short>(pSpell->GetPriority(s));
-                    short nSubgroup = static_cast<short>(pSpell->GetSlot(s));
+                    short nRank;
+                    short nSubgroup;
+                    bool bDone;
+                    int64_t idx;
+                    short nExisting;
+                    nRank = static_cast<short>(pSpell->GetPriority(s));
+                    nSubgroup = static_cast<short>(pSpell->GetSlot(s));
                     if (pSpell->GetMenu(s) == static_cast<int>(nMenuType)) {
 
-                        bool bDone = false;
-                        for (int64_t idx = 0; idx < candSpells.m_count; idx++) {
-                            short nExisting = candSubgroup.m_pArray[idx];
+                        bDone = false;
+                        for (idx = 0; idx < candSpells.m_count; idx++) {
+                            nExisting = candSubgroup.m_pArray[idx];
                             if (nSubgroup == 17 && nExisting == 16) {
                                 candRank.m_pArray[idx] = nRank;
                                 candSpells.m_pArray[idx] = pSpell;
@@ -2771,53 +2764,57 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
 
             for (int i = 0; i < candSpells.m_count; i++) {
                 CSWSpell* pSpell = candSpells.m_pArray[i];
+                int nCost;
+                float fRange;
+                CSWGuiInterfaceAction* pEntry;
+                bool bAffordable;
+                unsigned char bBit0;
                 menuList.SetSize(nBase + i + 1);
 
-                CSWGuiInterfaceAction& entry = menuList.m_pArray[nBase + i];
-                entry.m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
-                entry.m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
-                entry.m_resRef = pSpell->m_iconResRef;
-                entry.m_nFlags = entry.m_nFlags & ~ACTION_FLAG_REASON_MASK;
+                pEntry = &menuList.m_pArray[nBase + i];
+                pEntry->m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
+                pEntry->m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
+                pEntry->m_resRef = pSpell->m_iconResRef;
+                pEntry->m_nFlags = pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK;
 
-                bool bAffordable;
                 if (nDiscountTier == -1) {
-                    int nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1, nRoomForceRating, nStanceId, cCHAMod);
+                    nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1, nRoomForceRating, nStanceId, cCHAMod);
                     if (nForcePoints < static_cast<unsigned int>(nCost)) {
-                        entry.m_nFlags =
-                            (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
+                        pEntry->m_nFlags =
+                            (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
                         bAffordable = false;
                     } else {
                         bAffordable = true;
                     }
                 } else {
-                    int nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1, nRoomForceRating, nStanceId, cCHAMod);
-                    int nDiscount = (nDiscountPct * nCost) / 100;
+                    int nDiscount;
+                    nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1, nRoomForceRating, nStanceId, cCHAMod);
+                    nDiscount = (nDiscountPct * nCost) / 100;
                     if (nForcePoints < static_cast<unsigned int>(nCost - nDiscount)) {
-                        entry.m_nFlags =
-                            (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
+                        pEntry->m_nFlags =
+                            (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
                         bAffordable = false;
                     } else if (nDiscount < nCurrentHitPoints) {
                         bAffordable = true;
                     } else {
-                        entry.m_nFlags =
-                            (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_NOT_ENOUGH_HEALTH;
+                        pEntry->m_nFlags =
+                            (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_NOT_ENOUGH_HEALTH;
                         bAffordable = false;
                     }
                 }
 
-                float fRange = GetMinSpellRange(pSpell->m_sRangeCode);
+                fRange = GetMinSpellRange(pSpell->m_sRangeCode);
                 if (fRangeSq <= fRange * fRange) {
-                    entry.m_nFlags =
-                        (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_TARGET_TOO_CLOSE;
+                    pEntry->m_nFlags =
+                        (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_TARGET_TOO_CLOSE;
                     bAffordable = false;
                 }
 
-                unsigned char bBit0;
                 if ((pSpell->m_nForbidItemMask & nForceItemMask) == 0) {
                     if (bAffordable) {
                         if ((pSpell->m_nRequireItemMask & ~nForceItemMask) != 0) {
-                            entry.m_nFlags =
-                                (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_MISSING_ITEM;
+                            pEntry->m_nFlags =
+                                (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_MISSING_ITEM;
                             bBit0 = 0;
                         } else {
                             bBit0 = 1;
@@ -2826,11 +2823,11 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
                         bBit0 = 0;
                     }
                 } else {
-                    entry.m_nFlags =
-                        (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_RESTRICTED_BY_ARMOR;
+                    pEntry->m_nFlags =
+                        (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_RESTRICTED_BY_ARMOR;
                     bBit0 = 0;
                 }
-                entry.m_nFlags = (entry.m_nFlags & ~ACTION_FLAG_ENABLED) | bBit0;
+                pEntry->m_nFlags = (pEntry->m_nFlags & ~ACTION_FLAG_ENABLED) | bBit0;
             }
         }
     }
@@ -2843,6 +2840,11 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
                                                unsigned int nAlignment, int nExcludeMask,
                                                unsigned int nForceItemMask, float fRangeSq)
 {
+    CExoArrayList<CSWSpell*>    candSpells;
+    CExoArrayList<short>        candRank;
+    CExoArrayList<short>        candSubgroup;
+    CExoArrayList<uint32_l_t> candIds;
+
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
     if (pModule->GetArea()->m_nPlayerRestrictMode != 0)
         return;
@@ -2851,11 +2853,6 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
     if (nSpellCount < 1)
         return;
 
-    CExoArrayList<CSWSpell*>    candSpells;
-    CExoArrayList<short>        candRank;
-    CExoArrayList<short>        candSubgroup;
-    CExoArrayList<unsigned int> candIds;
-
     for (int i = 0; i < nSpellCount; i++) {
         int nSpellId = m_spellLevels[0].m_pArray[i];
         CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
@@ -2863,11 +2860,14 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
             continue;
 
         for (unsigned char s = 0; s < pSpell->m_nSubRadialCount; s++) {
-            short nRank = static_cast<short>(pSpell->GetPriority(s));
-            short nSubgroup = static_cast<short>(pSpell->GetSlot(s));
+            short nRank;
+            short nSubgroup;
+            bool bDone;
+            nRank = static_cast<short>(pSpell->GetPriority(s));
+            nSubgroup = static_cast<short>(pSpell->GetSlot(s));
             if (pSpell->GetMenu(s) == static_cast<int>(nMenuType)) {
 
-                bool bDone = false;
+                bDone = false;
                 for (int64_t idx = 0; idx < candSpells.m_count; idx++) {
                     short nExisting = candSubgroup.m_pArray[idx];
                     if (nExisting == nSubgroup) {
@@ -2898,54 +2898,56 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
         }
     }
 
-    if (candSpells.m_count > 0) {
-        int nBase = menuList.m_count;
+    int nBase = menuList.m_count;
 
-        for (int i = 0; i < candSpells.m_count; i++) {
-            CSWSpell* pSpell = candSpells.m_pArray[i];
-            menuList.SetSize(nBase + i + 1);
+    for (int i = 0; i < candSpells.m_count; i++) {
+        CSWSpell* pSpell = candSpells.m_pArray[i];
+        bool bAffordable;
+        int nCost;
+        float fRange;
+        unsigned char bBit0;
+        CSWGuiInterfaceAction* pEntry;
+        menuList.SetSize(nBase + i + 1);
 
-            CSWGuiInterfaceAction& entry = menuList.m_pArray[nBase + i];
-            entry.m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
-            entry.m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
-            entry.m_resRef = pSpell->m_iconResRef;
-            entry.m_nFlags = entry.m_nFlags & ~ACTION_FLAG_REASON_MASK;
+        pEntry = &menuList.m_pArray[nBase + i];
+        pEntry->m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
+        pEntry->m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
+        pEntry->m_resRef = pSpell->m_iconResRef;
+        pEntry->m_nFlags = pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK;
 
-            bool bAffordable = true;
-            int nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1);
-            if (nForcePoints < static_cast<unsigned int>(nCost)) {
-                entry.m_nFlags =
-                    (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
-                bAffordable = false;
-            }
+        bAffordable = true;
+        nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1);
+        if (nForcePoints < static_cast<unsigned int>(nCost)) {
+            pEntry->m_nFlags =
+                (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
+            bAffordable = false;
+        }
 
-            float fRange = GetMinSpellRange(pSpell->m_sRangeCode);
-            if (fRangeSq <= fRange * fRange) {
-                entry.m_nFlags =
-                    (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_TARGET_TOO_CLOSE;
-                bAffordable = false;
-            }
+        fRange = GetMinSpellRange(pSpell->m_sRangeCode);
+        if (fRangeSq <= fRange * fRange) {
+            pEntry->m_nFlags =
+                (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_TARGET_TOO_CLOSE;
+            bAffordable = false;
+        }
 
-            unsigned char bBit0;
-            if ((pSpell->m_nForbidItemMask & nForceItemMask) == 0) {
-                if (bAffordable) {
-                    if ((pSpell->m_nRequireItemMask & ~nForceItemMask) != 0) {
-                        entry.m_nFlags =
-                            (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_MISSING_ITEM;
-                        bBit0 = 0;
-                    } else {
-                        bBit0 = 1;
-                    }
-                } else {
+        if ((pSpell->m_nForbidItemMask & nForceItemMask) == 0) {
+            if (bAffordable) {
+                if ((pSpell->m_nRequireItemMask & ~nForceItemMask) != 0) {
+                    pEntry->m_nFlags =
+                        (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_MISSING_ITEM;
                     bBit0 = 0;
+                } else {
+                    bBit0 = 1;
                 }
             } else {
-                entry.m_nFlags =
-                    (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_RESTRICTED_BY_ARMOR;
                 bBit0 = 0;
             }
-            entry.m_nFlags = (entry.m_nFlags & ~ACTION_FLAG_ENABLED) | bBit0;
+        } else {
+            pEntry->m_nFlags =
+                (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_RESTRICTED_BY_ARMOR;
+            bBit0 = 0;
         }
+        pEntry->m_nFlags = (pEntry->m_nFlags & ~ACTION_FLAG_ENABLED) | bBit0;
     }
 }
 #else
@@ -2957,6 +2959,11 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
                                                int nCurrentHitPoints, int nStanceOnly, int nStanceId,
                                                int bTargetIsDroid, char cCHAMod)
 {
+    CExoArrayList<CSWSpell*>    candSpells;
+    CExoArrayList<short>        candRank;
+    CExoArrayList<short>        candSubgroup;
+    CExoArrayList<uint32_l_t> candIds;
+
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
     if (pModule->GetArea()->m_nPlayerRestrictMode != 0)
         return;
@@ -2966,11 +2973,6 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
     int nSpellCount = m_spellLevels[0].m_count;
     if (nSpellCount < 1)
         return;
-
-    CExoArrayList<CSWSpell*>    candSpells;
-    CExoArrayList<short>        candRank;
-    CExoArrayList<short>        candSubgroup;
-    CExoArrayList<unsigned int> candIds;
 
     for (int i = 0; i < nSpellCount; i++) {
         int nSpellId = m_spellLevels[0].m_pArray[i];
@@ -2990,21 +2992,23 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
 
         // One shared alignment test for all four arms below.
         bool bGateA;
+        char bConfActive;
+        CSWGlobalVariableTable* pTable;
         if (nSpellId == FORCE_POWER_CONFUSION) {
-            char bConfActive = 0;
-            CSWGlobalVariableTable* pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
+            bConfActive = 0;
+            pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
             CExoString name("000_Human_Conf_Active");
             pTable->GetValueNumber(name, bConfActive);
             bGateA = (bConfActive > 0) ? false : bExcludeMaskOk;
         } else if (nSpellId == FORCE_POWER_DROID_CONFUSION) {
-            char bConfActive = 0;
-            CSWGlobalVariableTable* pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
+            bConfActive = 0;
+            pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
             CExoString name("000_Droid_Conf_Active");
             pTable->GetValueNumber(name, bConfActive);
             bGateA = (bConfActive > 0) ? false : bExcludeMaskOk;
         } else if (nSpellId == FORCE_POWER_BEAST_CONFUSION) {
-            char bConfActive = 0;
-            CSWGlobalVariableTable* pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
+            bConfActive = 0;
+            pTable = g_pAppManager->m_pServerExoApp->GetGlobalVariableTable();
             CExoString name("000_Beast_Conf_Active");
             pTable->GetValueNumber(name, bConfActive);
             bGateA = (bConfActive > 0) ? false : bExcludeMaskOk;
@@ -3027,16 +3031,21 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
         if (nStanceOnly != 0)
             bGate = bStanceGate;
 
-        if (bGate && pSpell->m_nSubRadialCount != 0) {
+        if (bGate) {
             for (unsigned char s = 0; s < pSpell->m_nSubRadialCount; s++) {
+                short nRank;
+                short nSubgroup;
+                bool bDone;
+                int64_t idx;
+                short nExisting;
                 // All three decoders run before the menu test, as in the class-record twin above.
-                short nRank = static_cast<short>(pSpell->GetPriority(s));
-                short nSubgroup = static_cast<short>(pSpell->GetSlot(s));
+                nRank = static_cast<short>(pSpell->GetPriority(s));
+                nSubgroup = static_cast<short>(pSpell->GetSlot(s));
                 if (pSpell->GetMenu(s) == static_cast<int>(nMenuType)) {
 
-                    bool bDone = false;
-                    for (int64_t idx = 0; idx < candSpells.m_count; idx++) {
-                        short nExisting = candSubgroup.m_pArray[idx];
+                    bDone = false;
+                    for (idx = 0; !bDone && idx < candSpells.m_count; idx++) {
+                        nExisting = candSubgroup.m_pArray[idx];
                         if (nExisting == nSubgroup) {
                             if (candRank.m_pArray[idx] < nRank) {
                                 candRank.m_pArray[idx] = nRank;
@@ -3052,7 +3061,6 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
                             candSpells.Insert(pSpell, static_cast<int>(idx));
                             candIds.Insert(static_cast<unsigned int>(nSpellId), static_cast<int>(idx));
                             bDone = true;
-                            break;
                         }
                     }
                     if (!bDone) {
@@ -3067,73 +3075,75 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
     }
 
     // Phase 3: emit one CSWGuiInterfaceAction per surviving candidate.
-    if (candSpells.m_count > 0) {
-        int nBase = menuList.m_count;
-        int nDiscountPct = (2 < static_cast<unsigned int>(nDiscountTier)) ? 0 : (nDiscountTier * -10 + 50);
+    int nBase = menuList.m_count;
+    int nDiscountPct = (2 < static_cast<unsigned int>(nDiscountTier)) ? 0 : (nDiscountTier * -10 + 50);
 
-        for (int i = 0; i < candSpells.m_count; i++) {
-            CSWSpell* pSpell = candSpells.m_pArray[i];
-            menuList.SetSize(nBase + i + 1);
+    for (int i = 0; i < candSpells.m_count; i++) {
+        CSWSpell* pSpell = candSpells.m_pArray[i];
+        int nCost;
+        float fRange;
+        CSWGuiInterfaceAction* pEntry;
+        bool bAffordable;
+        unsigned char bBit0;
+        menuList.SetSize(nBase + i + 1);
 
-            CSWGuiInterfaceAction& entry = menuList.m_pArray[nBase + i];
-            entry.m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
-            entry.m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
-            entry.m_resRef = pSpell->m_iconResRef;
-            entry.m_nFlags = entry.m_nFlags & ~ACTION_FLAG_REASON_MASK;
+        pEntry = &menuList.m_pArray[nBase + i];
+        pEntry->m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(pSpell->m_nNameStrRef);
+        pEntry->m_nActionId = candIds.m_pArray[i] | CSWGuiInterfaceAction::ACTION_ID_SPELL;
+        pEntry->m_resRef = pSpell->m_iconResRef;
+        pEntry->m_nFlags = pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK;
 
-            bool bAffordable;
-            if (nDiscountTier == -1) {
-                int nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1, nRoomForceRating, nStanceId, cCHAMod);
-                if (nForcePoints < static_cast<unsigned int>(nCost)) {
-                    entry.m_nFlags =
-                        (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
-                    bAffordable = false;
-                } else {
-                    bAffordable = true;
-                }
+        if (nDiscountTier == -1) {
+            nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1, nRoomForceRating, nStanceId, cCHAMod);
+            if (nForcePoints < static_cast<unsigned int>(nCost)) {
+                pEntry->m_nFlags =
+                    (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
+                bAffordable = false;
             } else {
-                int nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1, nRoomForceRating, nStanceId, cCHAMod);
-                int nDiscount = (nDiscountPct * nCost) / 100;
-                if (nForcePoints < static_cast<unsigned int>(nCost - nDiscount)) {
-                    entry.m_nFlags =
-                        (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
-                    bAffordable = false;
-                } else if (nDiscount < nCurrentHitPoints) {
-                    bAffordable = true;
-                } else {
-                    entry.m_nFlags =
-                        (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_NOT_ENOUGH_HEALTH;
-                    bAffordable = false;
-                }
+                bAffordable = true;
             }
-
-            float fRange = GetMinSpellRange(pSpell->m_sRangeCode);
-            if (fRangeSq <= fRange * fRange) {
-                entry.m_nFlags =
-                    (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_TARGET_TOO_CLOSE;
+        } else {
+            int nDiscount;
+            nCost = pSpell->GetAdjustedForcePoints(nAlignment, 1, nRoomForceRating, nStanceId, cCHAMod);
+            nDiscount = (nDiscountPct * nCost) / 100;
+            if (nForcePoints < static_cast<unsigned int>(nCost - nDiscount)) {
+                pEntry->m_nFlags =
+                    (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_FORCE_DEPLETED;
+                bAffordable = false;
+            } else if (nDiscount < nCurrentHitPoints) {
+                bAffordable = true;
+            } else {
+                pEntry->m_nFlags =
+                    (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_NOT_ENOUGH_HEALTH;
                 bAffordable = false;
             }
+        }
 
-            unsigned char bBit0;
-            if ((pSpell->m_nForbidItemMask & nForceItemMask) == 0) {
-                if (bAffordable) {
-                    if ((pSpell->m_nRequireItemMask & ~nForceItemMask) != 0) {
-                        entry.m_nFlags =
-                            (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_MISSING_ITEM;
-                        bBit0 = 0;
-                    } else {
-                        bBit0 = 1;
-                    }
-                } else {
+        fRange = GetMinSpellRange(pSpell->m_sRangeCode);
+        if (fRangeSq <= fRange * fRange) {
+            pEntry->m_nFlags =
+                (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_TARGET_TOO_CLOSE;
+            bAffordable = false;
+        }
+
+        if ((pSpell->m_nForbidItemMask & nForceItemMask) == 0) {
+            if (bAffordable) {
+                if ((pSpell->m_nRequireItemMask & ~nForceItemMask) != 0) {
+                    pEntry->m_nFlags =
+                        (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_MISSING_ITEM;
                     bBit0 = 0;
+                } else {
+                    bBit0 = 1;
                 }
             } else {
-                entry.m_nFlags =
-                    (entry.m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_RESTRICTED_BY_ARMOR;
                 bBit0 = 0;
             }
-            entry.m_nFlags = (entry.m_nFlags & ~ACTION_FLAG_ENABLED) | bBit0;
+        } else {
+            pEntry->m_nFlags =
+                (pEntry->m_nFlags & ~ACTION_FLAG_REASON_MASK) | ACTION_FLAG_REASON_RESTRICTED_BY_ARMOR;
+            bBit0 = 0;
         }
+        pEntry->m_nFlags = (pEntry->m_nFlags & ~ACTION_FLAG_ENABLED) | bBit0;
     }
 }
 #endif // KOTOR1

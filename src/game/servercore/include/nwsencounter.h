@@ -54,23 +54,6 @@ extern CVirtualMachine* g_pVirtualMachine;
 #include "serverexoapp.h"
 #include "appmanager.h"
 
-// Spawn point in the encounter's spawn-point array.
-struct CEncounterSpawnPoint : public CEncounterListEntry {
-    // Copies the persistent fields but resets the runtime slots.
-    CEncounterSpawnPoint& operator=(const CEncounterSpawnPoint& o) {
-        m_fCR = o.m_fCR;
-        resRef = o.resRef;
-        m_fPoints = o.m_fPoints;
-        m_bAlreadyUsed = 0;
-        m_bAlreadyChecked = 0;
-        m_bSingleSpawn = o.m_bSingleSpawn;
-#if !KOTOR1
-        m_nGuaranteedCount = o.m_nGuaranteedCount;
-#endif
-        return *this;
-    }
-};
-
 // Loaded spawn-point position from the template.
 struct CEncounterSpawnPointPos {
     Vector m_vPos;
@@ -170,31 +153,18 @@ public:
     float         m_fBBoxMaxX;
     float         m_fBBoxMinY;
     float         m_fBBoxMaxY;
-    CEncounterSpawnPoint* m_paSpawnPoints;
+    CEncounterListEntry* m_paSpawnPoints;
     int           m_nSpawnPointCount;
     CEncounterSpawnPointPos* m_paSpawnPointPositions;
     int           m_nSpawnPointPositionCount;
     int           m_nEncounterLevel;              // zeroed by the ctor, no other reader yet
     int           m_nMaxRespawns;
     int           m_nCurrentRespawns;
-    union {
-        int       m_nReserved1;
-        float     m_fReserved1;
-    };
-    union {
-        int       m_nMinSpawnPointsBits;
-        float     m_fMinSpawnPoints;
-    };
+    float         m_fReserved1;
+    float         m_fMinSpawnPoints;
     float         m_fAreaPoints;
-    union {
-        unsigned int m_nSpawnPoolBits;
-        float        m_fSpawnPool;
-    };
-    // Written as an int, read as a float.
-    union {
-        unsigned int m_nSpawnPoolActiveBits;
-        float        m_fSpawnPoolActive;
-    };
+    float         m_fSpawnPool;
+    float         m_fSpawnPoolActive;
     unsigned long long m_enteredObjectId;
     unsigned long long m_exitObjectId;
     CExoString    m_scripts[5];            // indexed by EncounterScript

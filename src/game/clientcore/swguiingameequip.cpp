@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "strref.h"
 #include "swguiingameequip.h"
 
@@ -66,18 +67,18 @@ const CSWGuiInGameEquip::SlotInfo CSWGuiInGameEquip::SLOT_INFO[9] = {
 #else
 const CSWGuiInGameEquip::SlotInfo CSWGuiInGameEquip::SLOT_INFO[11] = {
 #endif
-    { CSWInventory::SLOT_LEFTWEAPON,     "INV_WEAP_L",  "weap_l",    STRREF_SLOT_LEFT_WEAPON, {}, STRREF_SLOT_LEFT_WEAPON },
-    { CSWInventory::SLOT_RIGHTWEAPON,    "INV_WEAP_R",  "weap_r",    STRREF_SLOT_RIGHT_WEAPON, {}, STRREF_SLOT_RIGHT_WEAPON },
-    { CSWInventory::SLOT_HEAD,           "INV_HEAD",    "head",      STRREF_SLOT_HEAD, {}, STRREF_SLOT_DROID_SENSOR },
-    { CSWInventory::SLOT_LEFTARM,        "INV_ARM_L",   "forearm_l", STRREF_SLOT_LEFT_ARM, {}, STRREF_SLOT_DROID_SPECIAL_WEAPON },
-    { CSWInventory::SLOT_RIGHTARM,       "INV_ARM_R",   "forearm_r", STRREF_SLOT_RIGHT_ARM, {}, STRREF_SLOT_DROID_SPECIAL_WEAPON },
-    { CSWInventory::SLOT_BODY,           "INV_BODY",    "armor",     STRREF_SLOT_BODY, {}, STRREF_SLOT_DROID_PLATING },
-    { CSWInventory::SLOT_HANDS,          "INV_HANDS",   "hands",     STRREF_SLOT_HANDS, {}, STRREF_SLOT_DROID_UTILITY },
-    { CSWInventory::SLOT_IMPLANT,        "INV_IMPLANT", "implant",   STRREF_SLOT_IMPLANT, {}, STRREF_SLOT_DROID_UTILITY },
-    { CSWInventory::SLOT_BELT,           "INV_BELT",    "belt",      STRREF_SLOT_BELT, {}, STRREF_SLOT_DROID_SHIELD },
+    { CSWInventory::SLOT_LEFTWEAPON,     "INV_WEAP_L",  "weap_l",    STRREF_SLOT_LEFT_WEAPON, STRREF_SLOT_LEFT_WEAPON },
+    { CSWInventory::SLOT_RIGHTWEAPON,    "INV_WEAP_R",  "weap_r",    STRREF_SLOT_RIGHT_WEAPON, STRREF_SLOT_RIGHT_WEAPON },
+    { CSWInventory::SLOT_HEAD,           "INV_HEAD",    "head",      STRREF_SLOT_HEAD, STRREF_SLOT_DROID_SENSOR },
+    { CSWInventory::SLOT_LEFTARM,        "INV_ARM_L",   "forearm_l", STRREF_SLOT_LEFT_ARM, STRREF_SLOT_DROID_SPECIAL_WEAPON },
+    { CSWInventory::SLOT_RIGHTARM,       "INV_ARM_R",   "forearm_r", STRREF_SLOT_RIGHT_ARM, STRREF_SLOT_DROID_SPECIAL_WEAPON },
+    { CSWInventory::SLOT_BODY,           "INV_BODY",    "armor",     STRREF_SLOT_BODY, STRREF_SLOT_DROID_PLATING },
+    { CSWInventory::SLOT_HANDS,          "INV_HANDS",   "hands",     STRREF_SLOT_HANDS, STRREF_SLOT_DROID_UTILITY },
+    { CSWInventory::SLOT_IMPLANT,        "INV_IMPLANT", "implant",   STRREF_SLOT_IMPLANT, STRREF_SLOT_DROID_UTILITY },
+    { CSWInventory::SLOT_BELT,           "INV_BELT",    "belt",      STRREF_SLOT_BELT, STRREF_SLOT_DROID_SHIELD },
 #if !KOTOR1
-    { CSWInventory::SLOT_LEFTWEAPON2,    "INV_WEAP_L2", "weap_l",    STRREF_SLOT_LEFT_WEAPON, {}, STRREF_SLOT_LEFT_WEAPON },
-    { CSWInventory::SLOT_RIGHTWEAPON2,   "INV_WEAP_R2", "weap_r",    STRREF_SLOT_RIGHT_WEAPON, {}, STRREF_SLOT_RIGHT_WEAPON },
+    { CSWInventory::SLOT_LEFTWEAPON2,    "INV_WEAP_L2", "weap_l",    STRREF_SLOT_LEFT_WEAPON, STRREF_SLOT_LEFT_WEAPON },
+    { CSWInventory::SLOT_RIGHTWEAPON2,   "INV_WEAP_R2", "weap_r",    STRREF_SLOT_RIGHT_WEAPON, STRREF_SLOT_RIGHT_WEAPON },
 #endif
 };
 
@@ -315,7 +316,7 @@ CSWGuiInGameEquip::~CSWGuiInGameEquip() {
     m_lbItems.ClearItems();
 
     for (int i = 0; i < m_lstItemEntries.m_count; i++) {
-        CSWGuiControl* pControl = static_cast<CSWGuiControl*>(m_lstItemEntries.m_pArray[i]);
+        CSWGuiControl* pControl = m_lstItemEntries.m_pArray[i];
         if (pControl != 0)
             delete pControl;
         m_lstItemEntries.m_pArray[i] = 0;
@@ -388,18 +389,20 @@ void CSWGuiInGameEquip::OnSwitchLeft(CSWGuiControl* pControl) {
     m_btnChange2.m_borderHilight.m_params.SetFillImage(m_btnChange1.m_borderHilight.m_params.m_fillImage);
     m_btnChange2.m_tail.m_nUserData = m_btnChange1.m_tail.m_nUserData;
 
-    CSWCCreature* pCreature;
-    int i;
-    for (i = nCur - 1; i >= 0; i--) {
+    for (int i = nCur - 1; i >= 0; i--) {
         if (i == m_slot.m_nShownNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
+        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pCreature != 0)
-            goto found;
+        if (pCreature != 0) {
+            m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_tail.m_nUserData = i;
+            return;
+        }
     }
     if (m_slot.m_nShownNPC != -1 && static_cast<signed char>(m_btnChange2.m_tail.m_nUserData) != -1) {
         m_btnChange1.m_border.m_params.SetFillImage(
@@ -409,23 +412,21 @@ void CSWGuiInGameEquip::OnSwitchLeft(CSWGuiControl* pControl) {
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
-    for (i = 8; i > nCur; i--) {
+    for (int i = 8; i > nCur; i--) {
         if (i == m_slot.m_nShownNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
+        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pCreature != 0)
-            goto found;
+        if (pCreature != 0) {
+            m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_tail.m_nUserData = i;
+            return;
+        }
     }
-    return;
-
-found:
-    m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
-    m_btnChange1.m_tail.m_nUserData = i;
 }
 
 void CSWGuiInGameEquip::OnSwitchRight(CSWGuiControl* pControl) {
@@ -439,18 +440,20 @@ void CSWGuiInGameEquip::OnSwitchRight(CSWGuiControl* pControl) {
     m_btnChange1.m_borderHilight.m_params.SetFillImage(m_btnChange2.m_borderHilight.m_params.m_fillImage);
     m_btnChange1.m_tail.m_nUserData = m_btnChange2.m_tail.m_nUserData;
 
-    CSWCCreature* pCreature;
-    int i;
-    for (i = nCur + 1; i < 9; i++) {
+    for (int i = nCur + 1; i < 9; i++) {
         if (i == m_slot.m_nShownNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
+        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pCreature != 0)
-            goto found;
+        if (pCreature != 0) {
+            m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_tail.m_nUserData = i;
+            return;
+        }
     }
     if (m_slot.m_nShownNPC != -1) {
         m_btnChange2.m_border.m_params.SetFillImage(
@@ -460,23 +463,21 @@ void CSWGuiInGameEquip::OnSwitchRight(CSWGuiControl* pControl) {
         m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
-    for (i = 0; i < nCur; i++) {
+    for (int i = 0; i < nCur; i++) {
         if (i == m_slot.m_nShownNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
+        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pCreature != 0)
-            goto found;
+        if (pCreature != 0) {
+            m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_tail.m_nUserData = i;
+            return;
+        }
     }
-    return;
-
-found:
-    m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
-    m_btnChange2.m_tail.m_nUserData = i;
 }
 #else
 void CSWGuiInGameEquip::OnChangeCharacter(CSWGuiControl* pControl) { K2_UNUSED(pControl); }
@@ -804,7 +805,7 @@ void CSWGuiInGameEquip::OnEnterSlot(CSWGuiControl* pControl) {
         m_slot.m_nSlotFlag = CSWInventory::SLOT_LEFTWEAPON2 | CSWInventory::SLOT_LEFTWEAPON;
 #endif
 
-    if (bScanItems != 0 && pRepo->ItemListGetCount() != 0) {
+    if (bScanItems != 0) {
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
             pItem = pRepo->ItemListGetItem(i);
             if (pItem == 0)
@@ -1569,9 +1570,11 @@ void CSWGuiInGameEquip::UpdateInventory() {
                     sDamage.Format(const_cast<char*>("%d-%d"), nMin, nMax);
                 int nMin2 = 0;
                 int nMax2 = 0;
+                int bBetter;
+                int nAttack;
                 pServerCreature->m_pStats->GetTotalDamageRange(pServerCreature, pServerItem,
                                                                nMin2, nMax2, bOffHand, 0);
-                int bBetter = nMin > nMin2 || nMax > nMax2;
+                bBetter = nMin > nMin2 || nMax > nMax2;
 
                 if (nSlot == 1) {
                     if (pServerItem->GetBaseItem()->m_nWeaponSize == CSWBaseItem::WEAPON_SIZE_LARGE
@@ -1587,7 +1590,6 @@ void CSWGuiInGameEquip::UpdateInventory() {
                 else
                     pDamageLabel->m_text.m_params.SetColor(CGuiInGame::COLOR_BLUE);
 
-                int nAttack;
                 if (pServerItem->GetBaseItem()->m_bRangedWeapon)
                     nAttack = pServerCreature->m_pStats->GetRangedAttackBonus(bOffHand, 1, 0);
                 else
@@ -1659,13 +1661,14 @@ void CSWGuiInGameEquip::UpdateInventory() {
             OnEnterSlot(m_pActiveControl);
     }
 
-    m_lblDef.m_text.m_params.SetText(CExoString(m_pCreature->GetServerCreature()->GetArmorClass()));
+    CExoString sAC(m_pCreature->GetServerCreature()->GetArmorClass());
+    m_lblDef.m_text.m_params.SetText(sAC);
 
     CExoString sHP;
     sHP.Format(const_cast<char*>("%d/%d"), m_pCreature->GetServerCreature()->GetCurrentHitPoints(0),
                m_pCreature->GetServerCreature()->GetMaxHitPoints(1));
     m_lblVitality.m_text.m_params.SetText(sHP);
-    if (m_lblVitality.m_text.GetIdealHeight() > m_lblVitality.m_text.GetFontHeight()) {
+    if (static_cast<CSWGuiText*>(&m_lblVitality.m_text)->GetIdealHeight() > m_lblVitality.m_text.GetFontHeight()) {
         sHP.Format(const_cast<char*>("%d/ %d"), m_pCreature->m_pStats->m_nCurrentHitPoints,
                    static_cast<short>(m_pCreature->m_pStats->GetMaxHitPoints()));
         m_lblVitality.m_text.m_params.SetText(sHP);
@@ -1676,9 +1679,11 @@ void CSWGuiInGameEquip::UpdateInventory() {
         if (m_pCreature->GetEquippedItemID(m_slot.m_nPendingSlot) == static_cast<uint64_t>(m_slot.m_oidPendingItem)) {
             bStale = 0;
         } else {
-            CSWSItem* pOld = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
+            CSWSItem* pOld;
+            CSWSItem* pNew;
+            pOld = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
                 g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_slot.m_oidPendingItem));
-            CSWSItem* pNew = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
+            pNew = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
                 g_pAppManager->m_pServerExoApp->ClientToServerObjectId(
                     m_pCreature->GetEquippedItemID(m_slot.m_nPendingSlot)));
             bStale = pOld != 0 && (pNew == 0 || pNew->CompareItem(pOld) == 0);
@@ -1815,6 +1820,7 @@ void CSWGuiInGameEquip::UpdateInventory() {
                     sDamage.Format(const_cast<char*>("%d-%d"), nMin, nMax);
                 int nMin2 = 0;
                 int nMax2 = 0;
+                int nAttack;
                 pServerCreature->m_pStats->GetTotalDamageRange(pServerCreature, pServerItem,
                                                                nMin2, nMax2, bOffHand, 0);
 
@@ -1835,7 +1841,6 @@ void CSWGuiInGameEquip::UpdateInventory() {
                 pDamageLabel->m_text.m_params.SetText(sDamage);
                 pDamageLabel->m_text.m_params.SetColor(colorNewText);
 
-                int nAttack;
                 if (pServerItem->GetBaseItem()->m_bRangedWeapon)
                     nAttack = pServerCreature->m_pStats->GetRangedAttackBonus(bOffHand, 1, 0);
                 else
@@ -1948,9 +1953,10 @@ void CSWGuiInGameEquip::UpdateInventory() {
         if (m_pCreature->GetEquippedItemID(m_slot.m_nPendingSlot) == static_cast<uint64_t>(m_slot.m_oidPendingItem)) {
             bStale = 0;
         } else {
+            CSWSItem* pNew;
             CSWSItem* pOld = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
                 g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_slot.m_oidPendingItem));
-            CSWSItem* pNew = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
+            pNew = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(
                 g_pAppManager->m_pServerExoApp->ClientToServerObjectId(
                     m_pCreature->GetEquippedItemID(m_slot.m_nPendingSlot)));
             bStale = pOld != 0 && (pNew == 0 || pNew->CompareItem(pOld) == 0);
@@ -2004,7 +2010,7 @@ CSWGuiInGameItemEntry* CSWGuiInGameEquip::AddItemEntryToList(int nIndex) {
             static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameEquip::OnOKPressed));
 #endif
     } else {
-        pEntry = static_cast<CSWGuiInGameItemEntry*>(m_lstItemEntries.m_pArray[nIndex]);
+        pEntry = m_lstItemEntries.m_pArray[nIndex];
     }
 
     pEntry->m_border.m_params.m_fAlpha = 0.0f;
@@ -2176,7 +2182,7 @@ void CSWGuiInGameEquip::OnPanelRemoved() {
     m_lbItems.ClearItems();
 
     for (int i = 0; i < m_lstItemEntries.m_count; i++) {
-        CSWGuiControl* pControl = static_cast<CSWGuiControl*>(m_lstItemEntries.m_pArray[i]);
+        CSWGuiControl* pControl = m_lstItemEntries.m_pArray[i];
         if (pControl != 0)
             delete pControl;
         m_lstItemEntries.m_pArray[i] = 0;
@@ -2384,7 +2390,7 @@ void CSWGuiInGameEquip::HandleInputEvent(int type, int val)
                     int nSlot = MapGlobalSlotToGuiSlot(m_slot.m_nSlotFlag);
 
                     // The slot already holds the shown item, so there is nothing to swap.
-                    if (m_slot.m_aoidEquipped[nSlot] != static_cast<unsigned long long>(m_slot.m_oidSavedItem))
+                    if (static_cast<unsigned long long>(m_slot.m_oidSavedItem) != m_slot.m_aoidEquipped[nSlot])
                     {
                         if (m_slot.m_oidSavedItem != OBJECT_INVALID)
                         {
@@ -2471,10 +2477,13 @@ void CSWGuiInGameEquip::HandleInputEvent(int type, int val)
                         g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter());
 
                     // Arms the new character's slot and tells the in-game GUI to repaint its
-                    // character-change buttons. Both run even when the flag maps to no GUI slot.
-                    int nSlot = MapGlobalSlotToGuiSlot(m_slot.m_nSlotFlag);
-                    if (nSlot != 12)
-                        SetActiveControl(&m_abtnSlot[nSlot], 0);
+                    // character-change buttons. Both run even when the flag matches no GUI slot.
+                    for (int i = 0; i < 11; i++) {
+                        if (SLOT_INFO[i].m_nSlotFlag == m_slot.m_nSlotFlag) {
+                            SetActiveControl(&m_abtnSlot[i], 0);
+                            break;
+                        }
+                    }
                     OnEnterSlot(m_pActiveControl);
                     UpdatePortraits(1);
                 }
@@ -2651,10 +2660,10 @@ void CSWGuiInGameEquip::UnequipItem(unsigned int nItemId, int nFlag) {
 
 CSWGuiInGameItemEntry::CSWGuiInGameItemEntry() {
     m_oidItem = OBJECT_INVALID;
-    m_nCanUse = CAN_USE_YES;
     bSelected = 0;
     bEquipped = 0;
     bNewItem = 0;
+    m_nCanUse = CAN_USE_YES;
 #if KOTOR1 && !defined(K2_UI_TOUCH)
     m_nBoxUnits = 0;
 #endif
@@ -3200,31 +3209,29 @@ void CSWGuiContainer::SetupGiveMode(int bSelect)
     CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
     CItemRepository* pRepo = g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems();
 
-    if (pRepo->ItemListGetCount() != 0) {
-        int nWidth = m_lstItems.m_innerExtent.w - m_lstItems.m_nPadding * 2;
-        int nRow = 0;
-        for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
-            unsigned long long oid;
-            CSWSItem* pItem;
-            oid = pClient->ServerToClientObjectId(pRepo->ItemListGetItemObjectID(i));
-            pItem = pRepo->ItemListGetItem(i);
-            if (pItem == 0)
-                continue;
-            if (pItem->m_bPlot != 0)
-                continue;
+    int nWidth = m_lstItems.m_innerExtent.w - m_lstItems.m_nPadding * 2;
+    int nRow = 0;
+    for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
+        unsigned long long oid;
+        CSWSItem* pItem;
+        oid = pClient->ServerToClientObjectId(pRepo->ItemListGetItemObjectID(i));
+        pItem = pRepo->ItemListGetItem(i);
+        if (pItem == 0)
+            continue;
+        if (pItem->m_bPlot != 0)
+            continue;
 
-            // nRow counts the rows actually added, so the `continue`s make it lag the repository index.
-            aControls.Add(new CSWGuiInGameItemEntry());
-            static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[nRow])
-                ->Initialize(pProto->m_text, pProto->m_border, pProto->m_hilightBorder,
-                             nWidth, 1);
-            static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[nRow])->SetItem(oid, 0, 0);
-            static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[nRow])->AddEvent(INPUTEVENT_GUI_A, this,
-                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiContainer::GiveItem));
-            static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[nRow])->AddEvent(INPUTEVENT_GUI_START, this,
-                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiContainer::GiveItem));
-            nRow++;
-        }
+        // nRow counts the rows actually added, so the `continue`s make it lag the repository index.
+        aControls.Add(new CSWGuiInGameItemEntry());
+        static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[nRow])
+            ->Initialize(pProto->m_text, pProto->m_border, pProto->m_hilightBorder,
+                         nWidth, 1);
+        static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[nRow])->SetItem(oid, 0, 0);
+        static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[nRow])->AddEvent(INPUTEVENT_GUI_A, this,
+            static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiContainer::GiveItem));
+        static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[nRow])->AddEvent(INPUTEVENT_GUI_START, this,
+            static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiContainer::GiveItem));
+        nRow++;
     }
 
     CAppManager* pApp = g_pAppManager;
@@ -3276,16 +3283,14 @@ void CSWGuiContainer::SetContainer(unsigned long long objId, int flag)
 
     aControls.SetSize(pRepo->ItemListGetCount());
     int nWidth = m_lstItems.m_innerExtent.w - m_lstItems.m_nPadding * 2;
-    if (pRepo->ItemListGetCount() != 0) {
-        for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
-            unsigned long long oid =
-                pClient->ServerToClientObjectId(pRepo->ItemListGetItemObjectID(i));
+    for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
+        unsigned long long oid =
+            pClient->ServerToClientObjectId(pRepo->ItemListGetItemObjectID(i));
 
-            aControls.m_pArray[i] = new CSWGuiInGameItemEntry();
-            static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[i])
-                ->Initialize(pProto->m_text, pProto->m_border, pProto->m_hilightBorder, nWidth, 0);
-            static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[i])->SetItem(oid, 0, 0);
-        }
+        aControls.m_pArray[i] = new CSWGuiInGameItemEntry();
+        static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[i])
+            ->Initialize(pProto->m_text, pProto->m_border, pProto->m_hilightBorder, nWidth, 0);
+        static_cast<CSWGuiInGameItemEntry*>(aControls.m_pArray[i])->SetItem(oid, 0, 0);
     }
 
     m_lstItems.AddControls(aControls, 1, 0, 0);

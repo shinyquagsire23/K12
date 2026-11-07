@@ -14,10 +14,8 @@
 
 const unsigned int CSWCJournal::STRREF_CSWCJOURNAL_QUESTENTRYADDED = STRREF_JOURNAL_UPDATED;
 
-// The two pages are cleared as one block; the pending list clears itself.
 CSWCJournal::CSWCJournal()
 {
-    __builtin_memset(static_cast<void*>(&m_done), 0, sizeof(m_done) + sizeof(m_active));
     m_bSortEnabled = 1;
 }
 
@@ -160,21 +158,19 @@ void CSWCJournal::Add(SJournalEntry entry, unsigned short nFlags)
 
     int bFound = 0;
     if (bEnd) {
-        for (int i = 0; i < nActive; i++) {
+        for (int i = 0; !bFound && i < nActive; i++) {
             if (m_active.m_entries.m_pArray[i].m_sPlotId == entry.m_sPlotId) {
                 merged = m_active.m_entries.m_pArray[i];
                 Remove(entry.m_sPlotId);
                 bFound = 1;
-                break;
             }
         }
     } else {
-        for (int i = 0; i < nDone; i++) {
+        for (int i = 0; !bFound && i < nDone; i++) {
             if (m_done.m_entries.m_pArray[i].m_sPlotId == entry.m_sPlotId) {
                 merged = m_done.m_entries.m_pArray[i];
                 Remove(entry.m_sPlotId);
                 bFound = 1;
-                break;
             }
         }
     }
@@ -268,8 +264,8 @@ void CSWCJournal::Remove(const CExoString& sPlotId)
 
 // One journal page, holding the entries plus a sort-order index list.
 CSWCSortedJournalArrayList::CSWCSortedJournalArrayList()
+    : m_nSortBy(0), m_bHasChanged(0)
 {
-    __builtin_memset(static_cast<void*>(this), 0, sizeof(*this));
 }
 
 SJournalEntry* CSWCSortedJournalArrayList::GetEntryAt(int i)

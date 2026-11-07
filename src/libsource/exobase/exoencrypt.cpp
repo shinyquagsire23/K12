@@ -18,8 +18,12 @@ static unsigned char s_pPadding[64] = {
 };
 
 // File-local hex formatter.
+#if defined(K2_NO_FORTIFY)
+#define Hexify(pDest, ...) sprintf(pDest, __VA_ARGS__)
+#else
 static void Hexify(char* const __attribute__((pass_object_size(0))) pDest, const char* pFmt,
                    ...);
+#endif
 
 CExoString CExoEncrypt::EncryptString(const CExoString& sInput)
 {
@@ -53,36 +57,36 @@ void CExoEncrypt::MD5Init()
     m_nState[1] = MD5_INIT_B;
     m_nState[2] = MD5_INIT_C;
     m_nState[3] = MD5_INIT_D;
-    __builtin_memset(m_pBuffer, 0, sizeof(m_pBuffer));
-    __builtin_memset(m_pDigest, 0, sizeof(m_pDigest));
+    __builtin_memset(static_cast<void*>(m_pBuffer), 0, sizeof(m_pBuffer));
+    __builtin_memset(static_cast<void*>(m_pDigest), 0, sizeof(m_pDigest));
 }
 
 void CExoEncrypt::MD5Update(unsigned char* pInput, unsigned int nInputLen)
 {
-    unsigned int i;
+    unsigned int x[16];
     int index;
+    unsigned int i, ii;
 
     /* Compute number of bytes mod 64 */
-    index = static_cast<int>((m_nCount[0] >> 3) & 63);
+    index = static_cast<int>((m_nCount[0] >> 3) & 0x3F);
 
     /* Update number of bits */
-    unsigned int nBits = static_cast<unsigned int>(nInputLen) << 3;
-    if (m_nCount[0] + nBits < m_nCount[0])
+    if ((m_nCount[0] + (nInputLen << 3)) < m_nCount[0])
         m_nCount[1]++;
-    m_nCount[0] += nBits;
-    m_nCount[1] += (static_cast<unsigned int>(nInputLen) >> 29);
+    m_nCount[0] += (nInputLen << 3);
+    m_nCount[1] += (nInputLen >> 29);
 
-    while (nInputLen) {
+    while (nInputLen--) {
+        /* Add the new character to the buffer */
         m_pBuffer[index++] = *pInput++;
-        nInputLen--;
-        if (index == 64) {
-            unsigned int x[16];
 
-            for (i = 0; i < 16; i++)
-                x[i] = (static_cast<unsigned int>(m_pBuffer[i * 4])) |
-                       ((static_cast<unsigned int>(m_pBuffer[i * 4 + 1])) << 8) |
-                       ((static_cast<unsigned int>(m_pBuffer[i * 4 + 2])) << 16) |
-                       ((static_cast<unsigned int>(m_pBuffer[i * 4 + 3])) << 24);
+        /* Transform a full block */
+        if (index == 0x40) {
+            for (i = 0, ii = 0; i < 16; i++, ii += 4)
+                x[i] = (static_cast<unsigned int>(m_pBuffer[ii + 3]) << 24) |
+                       (static_cast<unsigned int>(m_pBuffer[ii + 2]) << 16) |
+                       (static_cast<unsigned int>(m_pBuffer[ii + 1]) << 8) |
+                       static_cast<unsigned int>(m_pBuffer[ii]);
             Transform(m_nState, x);
             index = 0;
         }
@@ -91,32 +95,38 @@ void CExoEncrypt::MD5Update(unsigned char* pInput, unsigned int nInputLen)
 
 void CExoEncrypt::MD5Final()
 {
-    unsigned int i, index, padLen;
     unsigned int x[16];
+    int index;
+    unsigned int i, ii;
+    unsigned int padLen;
 
-    /* Append the length in bits to the last block. */
+    /* Save the number of bits */
     x[14] = m_nCount[0];
     x[15] = m_nCount[1];
 
-    /* Pad out to 56 mod 64. */
-    index = static_cast<unsigned int>((m_nCount[0] >> 3) & 63);
+    /* Pad out to 56 mod 64 */
+    index = static_cast<int>((m_nCount[0] >> 3) & 0x3F);
     padLen = (index < 56) ? (56 - index) : (120 - index);
     MD5Update(s_pPadding, padLen);
 
-    /* Copy the (now 56-byte) buffer in front of the length. Kept rolled and scalar on purpose. */
-#pragma clang loop unroll(disable)
-#pragma clang loop vectorize(disable)
-    for (i = 0; i < 14; i++)
-        x[i] = reinterpret_cast<unsigned int*>(m_pBuffer)[i];  // raw-offset: MD5 byte buffers read as words
+    /* Append the length in bits and transform */
+    for (i = 0, ii = 0; i < 14; i++, ii += 4)
+        x[i] = (static_cast<unsigned int>(m_pBuffer[ii + 3]) << 24) |
+               (static_cast<unsigned int>(m_pBuffer[ii + 2]) << 16) |
+               (static_cast<unsigned int>(m_pBuffer[ii + 1]) << 8) |
+               static_cast<unsigned int>(m_pBuffer[ii]);
     Transform(m_nState, x);
 
-    /* Store the state in the digest. */
-    reinterpret_cast<unsigned int*>(m_pDigest)[0] = m_nState[0];  // raw-offset: MD5 byte buffers read as words
-    reinterpret_cast<unsigned int*>(m_pDigest)[1] = m_nState[1];  // idiom-exempt: the MD5 digest is a byte buffer  // raw-offset: MD5 byte buffers read as words
-    reinterpret_cast<unsigned int*>(m_pDigest)[2] = m_nState[2];  // idiom-exempt: the MD5 digest is a byte buffer  // raw-offset: MD5 byte buffers read as words
-    reinterpret_cast<unsigned int*>(m_pDigest)[3] = m_nState[3];  // idiom-exempt: the MD5 digest is a byte buffer  // raw-offset: MD5 byte buffers read as words
+    /* Store the state in the digest */
+    for (i = 0, ii = 0; i < 4; i++, ii += 4) {
+        m_pDigest[ii] = static_cast<unsigned char>(m_nState[i] & 0xFF);
+        m_pDigest[ii + 1] = static_cast<unsigned char>((m_nState[i] >> 8) & 0xFF);
+        m_pDigest[ii + 2] = static_cast<unsigned char>((m_nState[i] >> 16) & 0xFF);
+        m_pDigest[ii + 3] = static_cast<unsigned char>((m_nState[i] >> 24) & 0xFF);
+    }
 }
 
+#if !defined(K2_NO_FORTIFY)
 static void Hexify(char* const __attribute__((pass_object_size(0))) pDest, const char* pFmt,
                    ...)
 {
@@ -125,6 +135,7 @@ static void Hexify(char* const __attribute__((pass_object_size(0))) pDest, const
     __vsprintf_chk(pDest, 0, __builtin_object_size(pDest, 0), pFmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 
 CExoString CExoEncrypt::GenerateChallenge(unsigned short nLength)
 {

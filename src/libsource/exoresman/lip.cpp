@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "lip.h"
 
 #include "port/libcstring.h"

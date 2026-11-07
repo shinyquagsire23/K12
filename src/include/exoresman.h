@@ -426,7 +426,7 @@ public:
     // The reference and literal comparisons take a `char*` rather than a `const char*`, matching the
     // declarations, so literal call sites spell the cast to `char*`.
     int  operator==(char* s) const;
-    bool operator==(const CExoString& s) const;
+    int operator==(const CExoString& s) const;
     int  operator==(const CResRef& other) const;
     int  operator!=(char* s) const;
     int  operator!=(const CExoString& s) const;

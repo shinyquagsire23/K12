@@ -178,19 +178,23 @@ int CSWSCreature::CheckItemRaceRestrictions(CSWSItem* pItem, int bSilent) {
     }
 
     CSWBaseItem* pBaseItem = pItem->GetBaseItem();
-    if (bRestrictionActive != 0 && pBaseItem->m_nRaceRestriction != 0) {
-        if (pBaseItem->m_nRaceRestriction == 2) {
-            if (m_pStats->m_nRace != CSWRace::CRACE_DROID)
-                return bSilent == 0;
-        } else if (pBaseItem->m_nRaceRestriction == 1) {
+    if (pBaseItem->m_nRaceRestriction != 0 && bRestrictionActive != 0) {
+        switch (pBaseItem->m_nRaceRestriction) {
+        case 1:
             if (m_pStats->m_nRace != CSWRace::CRACE_HUMAN)
                 return bSilent == 0;
-        } else {
+            break;
+        case 2:
+            if (m_pStats->m_nRace != CSWRace::CRACE_DROID)
+                return bSilent == 0;
+            break;
+        default:
             return 0;
         }
     }
 
-    if ((pItem->GetBaseItem()->m_nDenySubrace & (1 << m_pStats->m_nSubraceIndex)) != 0)
+    int nSubraceBit = 1 << m_pStats->m_nSubraceIndex;
+    if ((pItem->GetBaseItem()->m_nDenySubrace & nSubraceBit) != 0)
         return 0;
 
     if (pItem->GetPropertyByTypeExists(ITEM_PROPERTY_USE_LIMITATION_RACIAL_TYPE, 0) == 0 &&
@@ -436,12 +440,11 @@ extern int quaternionidentityoptimization;
 
 float DegToRad(float degrees);
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
     Vector p = v;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -619,15 +622,10 @@ void CSWSCreature::UpdateVisibleList(unsigned char nMode)
 CSWVisibilityNode* CSWSCreature::GetVisibleListElement(unsigned long long id)
 {
     int nCount = m_visibilityList.m_count;
-    if (nCount > 0) {
-        uint64_t n = static_cast<unsigned int>(nCount);
-        CSWVisibilityNode** ppNode = m_visibilityList.m_pArray;
-        do {
-            CSWVisibilityNode* pNode = *ppNode;
-            if (pNode->m_objectId == id)
-                return pNode;
-            ppNode++;
-        } while (--n != 0);
+    for (int i = 0; i < nCount; i++) {
+        CSWVisibilityNode* pNode = m_visibilityList.m_pArray[i];
+        if (pNode->m_objectId == id)
+            return pNode;
     }
     return 0;
 }
@@ -673,9 +671,9 @@ int CSWSCreature::RemoveItem(CSWSItem* pItem, int a, int b, CSWSItem** ppOut)
     return 1;
 }
 
-// Switches the creature's combat mode. Parry and the two power attacks are refused when the
-// equipped weapon is ranged, rapid shot needs a ranged weapon and flurry needs an empty weapon
-// slot. bForce == 1 skips the mid-round deferral and the no-op check.
+// Switches the creature's combat mode. Rapid shot needs a ranged weapon and flurry needs an empty
+// weapon slot; only a forced switch (bForce == 1) also refuses parry and the two power attacks
+// with a ranged weapon, and it skips the mid-round deferral and the no-op check.
 void CSWSCreature::SetCombatMode(unsigned char nMode, int bForce)
 {
     unsigned char nOldMode;
@@ -714,16 +712,7 @@ void CSWSCreature::SetCombatMode(unsigned char nMode, int bForce)
             m_pendingCombatMode = nMode;
             return;
         }
-        if (nMode == CREATURE_COMBAT_MODE_PARRY || nMode == CREATURE_COMBAT_MODE_POWER_ATTACK ||
-            nMode == CREATURE_COMBAT_MODE_IMPROVED_POWER_ATTACK) {
-            CSWSItem* pItem =
-                    static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
-            if (pItem != 0
-                    && g_pRules->GetBaseItem(pItem->m_baseItem)->m_bRangedWeapon != 0) {
-                SendFeedbackMessage(FEEDBACK_COMBAT_MODE_WRONG_WEAPON, 0);
-                return;
-            }
-        } else if (nMode == CREATURE_COMBAT_MODE_RAPID_SHOT) {
+        if (nMode == CREATURE_COMBAT_MODE_RAPID_SHOT) {
             CSWSItem* pItem =
                     static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
             if (pItem == 0
@@ -1096,14 +1085,9 @@ int CSWSCreature::AIActionChangeFacingPoint(CSWSObjectActionNode* pNode)
 int CSWSCreature::CheckVisibleList(unsigned long long id)
 {
     int nCount = m_visibilityList.m_count;
-    if (nCount > 0) {
-        uint64_t n = static_cast<unsigned int>(nCount);
-        CSWVisibilityNode** ppNode = m_visibilityList.m_pArray;
-        do {
-            if ((*ppNode)->m_objectId == id)
-                return 1;
-            ppNode++;
-        } while (--n != 0);
+    for (int i = 0; i < nCount; i++) {
+        if (m_visibilityList.m_pArray[i]->m_objectId == id)
+            return 1;
     }
     return 0;
 }
@@ -1119,22 +1103,20 @@ int CSWSCreature::CheckItemPCRestrictions(CSWSItem* pItem)
     unsigned short nRow;
     int bOk;
     if (pItem->GetPropertyByTypeExists(ITEM_PROPERTY_LIMIT_USE_BY_PC, 0) != 0) {
-        if (pItem->m_nPassiveProperties >= 1) {
-            for (int i = 0; i < pItem->m_nPassiveProperties; i++) {
-                nSlot = pItem->GetPassiveProperty(i)->m_nUpgradeType;
-                if (nSlot == CSWItemProperty::UPGRADE_TYPE_NONE || (pItem->m_nUpgrades & (1 << nSlot)) != 0) {
-                    if (pItem->GetPassiveProperty(i)->m_type == ITEM_PROPERTY_LIMIT_USE_BY_PC) {
-                        nRow = pItem->GetPassiveProperty(i)->m_subType;
-                        nMatching++;
-                        if (nRow == 0) {
-                            bOk = m_bPlayerMadeCharacter != 0;
-                        } else {
-                            g_pRules->m_p2DArrays->m_pIPRPPC->GetCExoStringEntry(
-                                nRow, CExoString("ExpectedTag"), &sExpectedTag);
-                            bOk = _stricmp(sExpectedTag.CStr(), m_sTag.CStr()) == 0;
-                        }
-                        bTagOk |= bOk;
+        for (int i = 0; i < pItem->m_nPassiveProperties; i++) {
+            nSlot = pItem->GetPassiveProperty(i)->m_nUpgradeType;
+            if (nSlot == CSWItemProperty::UPGRADE_TYPE_NONE || (pItem->m_nUpgrades & (1 << nSlot)) != 0) {
+                if (pItem->GetPassiveProperty(i)->m_type == ITEM_PROPERTY_LIMIT_USE_BY_PC) {
+                    nRow = pItem->GetPassiveProperty(i)->m_subType;
+                    nMatching++;
+                    if (nRow == 0) {
+                        bOk = m_bPlayerMadeCharacter != 0;
+                    } else {
+                        g_pRules->m_p2DArrays->m_pIPRPPC->GetCExoStringEntry(
+                            nRow, CExoString("ExpectedTag"), &sExpectedTag);
+                        bOk = _stricmp(sExpectedTag.CStr(), m_sTag.CStr()) == 0;
                     }
+                    bTagOk |= bOk;
                 }
             }
         }
@@ -3445,7 +3427,7 @@ unsigned char CSWSCreature::CanEquipItem(CSWSItem* pItem, unsigned int* pnSlot, 
             return CAN_EQUIP_NO;
         }
     }
-    if ((pItem->m_nFlagsLow & CSWSItem::FLAG_NON_EQUIPPABLE) != 0)
+    if ((pItem->m_flags & CSWSItem::FLAG_NON_EQUIPPABLE) != 0)
         return CAN_EQUIP_NO;
     if (CheckProficiencies(pItem, 0) == 0)  // the slot argument is unused in the callee
         return CAN_EQUIP_NO;
@@ -3546,13 +3528,12 @@ static inline Vector crossProduct(const Vector& a, const Vector& b)
     return r;
 }
 
-static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
         return v;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
 
-    float x = q.x, y = q.y, z = q.z;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = x * w, wy = y * w, wz = z * w;
@@ -4060,8 +4041,9 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
     CExoArrayList<unsigned long long> aCrossed;
 
     int nSavedCursor = m_pPathfindInfo->m_nWayPointCursor;
+    float fClimb;
     int nResult = WalkUpdateLocationDistance(fStep, &vNew, &vFacing, &aCrossed);
-    float fClimb = vNew.z - m_position.z;
+    fClimb = vNew.z - m_position.z;
     if (fClimb <= -0.001f || fClimb >= 0.001f) {
         Vector vSlope;
         vSlope.x = fStep;
@@ -4078,23 +4060,25 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
         unsigned long long oidClient =
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(m_objectId);
         int nIndex = g_pAppManager->m_pClientExoApp->GetSWParty()->GetIndex(oidClient);
-        if (nIndex != -1)
-            g_pAppManager->m_pClientExoApp->GetSWParty()->m_members[nIndex].m_safePosition = vNew;
+        if (nIndex != -1) {
+            CSWPartyMemberData* pMember = &g_pAppManager->m_pClientExoApp->GetSWParty()->m_members[nIndex];
+            pMember->m_safePosition = vNew;
+        }
     }
     vFacing.z = 0.0f;
     vFacing.Normalize();
     SetOrientation(vFacing);
     // The party leader feeds its own footsteps to the follow-point solver the followers read.
-    if (m_bInParty != 0 &&
-        g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) != 0 &&
-        m_objectId == g_pAppManager->m_pServerExoApp->ClientToServerObjectId(
-                          g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0)
-                              ->m_objectId)) {
-        g_pAppManager->m_pClientExoApp->GetSWParty()->m_followData.ProcessPoint(
-            vNew, Yaw(vFacing), 0.5f);
-        CSWCCreature* pClientCreature = GetClientCreature();
-        if (pClientCreature != 0)
-            pClientCreature->ResetCameraToFollow();
+    if (m_bInParty != 0 && g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0) != 0) {
+        unsigned long long oidLeader = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(
+            g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0)->m_objectId);
+        if (m_objectId == oidLeader) {
+            g_pAppManager->m_pClientExoApp->GetSWParty()->m_followData.ProcessPoint(
+                vNew, Yaw(vFacing), 0.5f);
+            CSWCCreature* pClientCreature = GetClientCreature();
+            if (pClientCreature != 0)
+                pClientCreature->ResetCameraToFollow();
+        }
     }
 
     if (m_bInParty != 0) {
@@ -4103,9 +4087,9 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
         int nIndex = g_pAppManager->m_pClientExoApp->GetSWParty()->GetIndex(oidClient);
         if (nIndex != -1) {
             CSWParty* pParty2 = g_pAppManager->m_pClientExoApp->GetSWParty();
-            CSWSCreature* pLeader = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                g_pAppManager->m_pServerExoApp->ClientToServerObjectId(
-                    pParty2->m_members[0].id));
+            unsigned long long oidLeader = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(
+                pParty2->m_members[0].id);
+            CSWSCreature* pLeader = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidLeader);
             // The leader has pulled 7 units away from where this member was last given a path:
             // re-solve the follow point and re-aim at the member's formation slot around it.
             if (pLeader != 0) {
@@ -4203,7 +4187,18 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
     unsigned long long oidTarget = m_pPathfindInfo->m_oidGoalObject;
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget);
     if (pObject != 0) {
-        if (pObject->m_objectType == GAME_OBJECT_TYPE_CREATURE) {
+        if (pObject->m_objectType == GAME_OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (pTrigger->m_bTrap == 0 && GetIsInUseRange(oidTarget, 0.0f, 0, 0) != 0) {
+                CScriptEvent* pEvent = new CScriptEvent;
+                pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_CLICKED;
+                pEvent->SetObjectID(0, m_objectId);
+                g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                    0, 0, m_objectId, oidTarget, CServerAIMaster::EVENT_SIGNAL_EVENT, pEvent);
+                SetAnimation(SERVER_ANIMATION_PAUSE);
+                return ACTION_COMPLETE;
+            }
+        } else if (pObject->m_objectType == GAME_OBJECT_TYPE_CREATURE) {
             // The creature this path is chasing has moved more than 2 units since the point was
             // stamped: re-aim at where it is now and let the next tick re-plot.
             CSWSCreature* pTarget = pObject->AsSWSCreature();
@@ -4238,17 +4233,6 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
                 SetAnimation(SERVER_ANIMATION_PAUSE);
                 return ACTION_IN_PROGRESS;
             }
-        } else if (pObject->m_objectType == GAME_OBJECT_TYPE_TRIGGER) {
-            if (pObject->AsSWSTrigger()->m_bTrap == 0 &&
-                GetIsInUseRange(oidTarget, 0.0f, 0, 0) != 0) {
-                CScriptEvent* pEvent = new CScriptEvent;
-                pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_CLICKED;
-                pEvent->SetObjectID(0, m_objectId);
-                g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
-                    0, 0, m_objectId, oidTarget, CServerAIMaster::EVENT_SIGNAL_EVENT, pEvent);
-                SetAnimation(SERVER_ANIMATION_PAUSE);
-                return ACTION_COMPLETE;
-            }
         }
     }
 
@@ -4258,9 +4242,9 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk(int bRestartTimer)
     #if !KOTOR1
     m_nReserved15 = 0;
 #endif
+        CSWSObjectActionNode* pNode;
         if (m_actionList.m_pInternal->m_pHead != 0) {
-            CSWSObjectActionNode* pNode =
-                static_cast<CSWSObjectActionNode*>(m_actionList.RemoveHead());
+            pNode = static_cast<CSWSObjectActionNode*>(m_actionList.RemoveHead());
             if (pNode->m_nActionId == AIACTION_MOVE_TO_POINT) {
                 m_pCurrentActionNode = 0;
                 delete pNode;
@@ -4351,7 +4335,19 @@ int CSWSCreature::WalkUpdateLocation()
     unsigned long long oidTarget = m_pPathfindInfo->m_oidGoalObject;
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oidTarget);
     if (pObject != 0) {
-        if (pObject->m_objectType == GAME_OBJECT_TYPE_DOOR) {
+        if (pObject->m_objectType == GAME_OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (pTrigger->m_bTrap == 0 &&
+                GetIsInUseRange(oidTarget, 0.0f, 0, 0) != 0) {
+                CScriptEvent* pEvent = new CScriptEvent;
+                pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_CLICKED;
+                pEvent->SetObjectID(0, m_objectId);
+                g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                    0, 0, m_objectId, oidTarget, CServerAIMaster::EVENT_SIGNAL_EVENT, pEvent);
+                SetAnimation(SERVER_ANIMATION_PAUSE);
+                return ACTION_COMPLETE;
+            }
+        } else if (pObject->m_objectType == GAME_OBJECT_TYPE_DOOR) {
             CSWSDoor* pDoor = pObject->AsSWSDoor();
             if (pDoor->GetIsLinked() != 0 && GetIsInUseRange(oidTarget, 0.0f, 0, 0) != 0) {
                 if (pDoor->m_curOpenState != 0) {
@@ -4370,17 +4366,6 @@ int CSWSCreature::WalkUpdateLocation()
                 g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
                     0, 0, oidTarget, m_objectId, CServerAIMaster::EVENT_SIGNAL_EVENT, pEvent);
                 return ACTION_IN_PROGRESS;
-            }
-        } else if (pObject->m_objectType == GAME_OBJECT_TYPE_TRIGGER) {
-            if (pObject->AsSWSTrigger()->m_bTrap == 0 &&
-                GetIsInUseRange(oidTarget, 0.0f, 0, 0) != 0) {
-                CScriptEvent* pEvent = new CScriptEvent;
-                pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_CLICKED;
-                pEvent->SetObjectID(0, m_objectId);
-                g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
-                    0, 0, m_objectId, oidTarget, CServerAIMaster::EVENT_SIGNAL_EVENT, pEvent);
-                SetAnimation(SERVER_ANIMATION_PAUSE);
-                return ACTION_COMPLETE;
             }
         }
     }
@@ -4411,9 +4396,7 @@ int CSWSCreature::UpdateSubareasOnMoveTo(const Vector& from, const Vector& to, i
             return 0;
         if (HandleSubAreaStateChanges(&listNew, pCrossed, nFlag, 1) != 1)
             return 0;
-        m_currentSubareaIds.m_count = 0;
-        for (int64_t i = 0; i < listNew.m_count; i++)
-            m_currentSubareaIds.Add(listNew.m_pArray[i]);
+        m_currentSubareaIds = listNew;
         return 1;
     }
 
@@ -4423,9 +4406,7 @@ int CSWSCreature::UpdateSubareasOnMoveTo(const Vector& from, const Vector& to, i
         return 0;
     if (HandleSubAreaStateChanges(&listNew, &listCrossed, nFlag, 1) != 1)
         return 0;
-    m_currentSubareaIds.m_count = 0;
-    for (int64_t i = 0; i < listNew.m_count; i++)
-        m_currentSubareaIds.Add(listNew.m_pArray[i]);
+    m_currentSubareaIds = listNew;
     return 1;
 }
 
@@ -4469,9 +4450,7 @@ int CSWSCreature::UpdateSubareasOnJumpPosition(const Vector& vPos, unsigned long
     bHadSubareas |= (bInSubAreas != 0);
     if (bHadSubareas) {
         if (HandleSubAreaStateChanges(&listNew, 0, 0, nRunScripts) == 1) {
-            m_currentSubareaIds.m_count = 0;
-            for (i = 0; i < listNew.m_count; i++)
-                m_currentSubareaIds.Add(listNew.m_pArray[i]);
+            m_currentSubareaIds = listNew;
             return 1;
         }
     }
@@ -4674,8 +4653,7 @@ void CSWSCreature::ClearVisibleList()
         CSWVisibilityNode* pNode = m_visibilityList.m_pArray[i];
         if (pNode->m_objectId != m_objectId) {
             m_visibilityList.DelIndex(i);
-            if (pNode != 0)
-                operator delete(pNode);
+            delete pNode;
         }
     }
 }
@@ -4686,8 +4664,7 @@ void CSWSCreature::RemoveFromVisibleList(unsigned long long id)
         CSWVisibilityNode* pNode = m_visibilityList.m_pArray[i];
         if (pNode->m_objectId == id) {
             m_visibilityList.DelIndex(i);
-            if (pNode != 0)
-                operator delete(pNode);
+            delete pNode;
         }
     }
 }
@@ -4777,15 +4754,11 @@ int CSWSCreature::CheckProficiencies(CSWSItem* pItem, unsigned int nSlot)
         return 0;
     if (m_pStats->HasFeat(FEAT_PROFICIENCY_ALL) != 0)
         return 1;
-    if (g_pRules->GetBaseItem(pItem->m_baseItem)->m_nRequiredFeats == 0)
-        return 1;
-    int i = 0;
-    do {
-        CSWBaseItem* pBaseItem = g_pRules->GetBaseItem(pItem->m_baseItem);
-        unsigned short nFeat = pBaseItem->GetRequiredFeat(static_cast<unsigned char>(i++));
+    for (int i = 0; i < g_pRules->GetBaseItem(pItem->m_baseItem)->m_nRequiredFeats; i++) {
+        unsigned short nFeat = g_pRules->GetBaseItem(pItem->m_baseItem)->GetRequiredFeat(static_cast<unsigned char>(i));
         if (m_pStats->HasFeat(nFeat) == 0)
             return 0;
-    } while (i < g_pRules->GetBaseItem(pItem->m_baseItem)->m_nRequiredFeats);
+    }
     return 1;
 }
 
@@ -7502,19 +7475,19 @@ int CSWSCreature::AIActionCheckMoveAwayFromObject(CSWSObjectActionNode* pNode)
     vTarget = static_cast<CSWSObject*>(pObject)->m_position;
     CSWSArea* pArea = static_cast<CSWSArea*>(static_cast<CSWSObject*>(pObject)->GetArea());
 
-    {
-        CExoLinkedListNode* pPos;
-        CSWSObjectActionNode* pQueued;
-    restart:
-        pQueued = m_actionList.GetHead();
-        pPos = m_actionList.GetHeadPos();
-        while (pQueued != 0) {
+    int bFound = 1;
+    while (bFound == 1) {
+        CSWSObjectActionNode* pQueued = m_actionList.GetHead();
+        CExoLinkedListNode* pPos = m_actionList.GetHeadPos();
+        bFound = 0;
+        while (bFound == 0 && pQueued != 0) {
             if (pQueued->m_nActionId == AIACTION_CHECK_MOVE_AWAY_FROM_OBJECT
                 && pQueued->m_args.m_moveAwayObjectId == oidTarget) {
                 CancelAction(0, pQueued->m_nGroupId);
-                goto restart;
+                bFound = 1;
+            } else {
+                pQueued = m_actionList.GetNext(pPos);
             }
-            pQueued = m_actionList.GetNext(pPos);
         }
     }
 
@@ -8687,6 +8660,9 @@ const char* Draw_Line(char* pszArgs) {
 
 char sRet[255] = "                                                  ";
 
+#if defined(K2_NO_FORTIFY)
+#define SRetPrintf(nUnused1, nUnused2, ...) sprintf(sRet, __VA_ARGS__)
+#else
 static int SRetPrintf(int nUnused1, int nUnused2, const char* pszFmt, ...) {
     K2_UNUSED(nUnused1); K2_UNUSED(nUnused2);
     __builtin_va_list ap;
@@ -8695,6 +8671,7 @@ static int SRetPrintf(int nUnused1, int nUnused2, const char* pszFmt, ...) {
     __builtin_va_end(ap);
     return nRet;
 }
+#endif
 
 // Debug console handler ("TestLocationIsSafe X Y ObjectId"): height-snaps the point, then asks
 // the area whether the creature's pathfind info likes it. Answers "Good"/"Invalid Location".
@@ -8748,8 +8725,8 @@ char* LocateNearestPathPoint(char* pszArgs) {
     if (g_pAppManager->m_pServerExoApp->GetModule()->GetArea()->ClosestPathPoint(v, nPoint)) {
         SRetPrintf(0, 0, "Good %d", nPoint);
         CSWSArea* pArea = g_pAppManager->m_pServerExoApp->GetModule()->GetArea();
-        Vector vPoint = pArea->m_paPathPoints[static_cast<int>(nPoint)].m_point;
-        vPoint.z = 0.0f;
+        Vector vPoint(pArea->m_paPathPoints[static_cast<int>(nPoint)].m_x,
+                      pArea->m_paPathPoints[static_cast<int>(nPoint)].m_y, 0.0f);
         CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
         pServer->ComputeHeight(pServer->GetModule()->GetArea()->m_resRef, vPoint, 1);
     } else {

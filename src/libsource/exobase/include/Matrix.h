@@ -25,18 +25,12 @@ public:
     }
 
     Vector* Rows() { return reinterpret_cast<Vector*>(m_f); }  // raw-offset: the nine floats as three Vector rows
+    const Vector* Rows() const { return reinterpret_cast<const Vector*>(m_f); }  // raw-offset: as above
 
     Quaternion getquaternion() const;
 };
 
 Vector operator*(Matrix const& m, Vector const& v);
-
-inline Matrix operator+(const Matrix& a, const Matrix& b) {
-    Matrix r;
-    for (int i = 0; i < 9; i++)
-        r.m_f[i] = a.m_f[i] + b.m_f[i];
-    return r;
-}
 
 Matrix Transpose(const Matrix& m);
 

@@ -148,7 +148,7 @@ int CSWSFaction::GetAverageReputation(unsigned long long oidTarget)
     int nTotal = 0;
     CSWSCreature* pTarget =
         g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidTarget);
-    if (pTarget != 0 && m_members.m_count >= 1) {
+    if (pTarget != 0) {
         for (int64_t i = 0; i < m_members.m_count; i++)
             nTotal += pTarget->GetReputation(m_members.m_pArray[i], 0);
     }
@@ -374,8 +374,8 @@ static const unsigned long long kOidInvalid = OBJECT_INVALID;
 unsigned long long CSWSFaction::GetWeakestMember(unsigned long long oidCreature, int bMustBeVisible)
 {
     int64_t i;
-    unsigned long long oidResult = kOidInvalid;
     int nBest = 999;
+    unsigned long long oidResult = kOidInvalid;
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
@@ -514,8 +514,8 @@ unsigned long long CSWSFaction::GetWorstAC(unsigned long long oidCreature, int b
 unsigned long long CSWSFaction::GetLeastDamagedMember(unsigned long long oidCreature, int bMustBeVisible)
 {
     int64_t i;
-    unsigned long long oidResult = kOidInvalid;
     int nBest = 999;
+    unsigned long long oidResult = kOidInvalid;
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
@@ -551,8 +551,8 @@ unsigned long long CSWSFaction::GetLeastDamagedMember(unsigned long long oidCrea
 unsigned long long CSWSFaction::GetMostDamagedMember(unsigned long long oidCreature, int bMustBeVisible)
 {
     int64_t i;
-    unsigned long long oidResult = kOidInvalid;
     int nBest = -1;
+    unsigned long long oidResult = kOidInvalid;
     for (i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);

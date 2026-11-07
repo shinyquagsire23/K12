@@ -85,13 +85,12 @@ float DegToRad(float degrees);
 extern int quaternionidentityoptimization;
 
 // Rotate v by q, skipping the matrix build when the rotation is a pure sign flip.
-static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
         return v;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
 
-    float x = q.x, y = q.y, z = q.z;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = x * w, wy = y * w, wz = z * w;
@@ -881,12 +880,11 @@ int CSWSObject::AIActionDialogObject(CSWSObjectActionNode* pNode)
     // the party at all passes trivially; one that is has to still have hit points.
     int nCharacters = g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount;
     if (nCharacters > 0) {
-        for (int i = 0; i < nCharacters; i++) {
-            CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-            CSWCCreature* pMember = pParty->GetCharacter(i);
+        int i;
+        for (i = 0; i < nCharacters; i++) {
+            CSWCCreature* pMember = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
             if (pMember != 0 && pMember->GetServerCreature() != 0) {
-                CSWSCreature* pServer = pMember->GetServerCreature();
-                if (pServer->GetDeadTemp() == 0)
+                if (pMember->GetServerCreature()->GetDeadTemp() == 0)
                     goto partyReady;
             }
         }
@@ -898,13 +896,14 @@ partyReady:
 
     if (oidSpeaker == OBJECT_INVALID) {
         CGameObject* pTargetGO;
+        CSWSObject* pTarget;
         if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(oidTarget, &pTargetGO)
                 != CGameObjectArray::SUCCESS) {
             SetLockOrientationToObject(CGameObjectArray::INVALIDOBJID);
             g_pAppManager->m_pClientExoApp->GetInGameGui()->SetGlobalDialogState(0);
             return ACTION_FAILED;
         }
-        CSWSObject* pTarget = pTargetGO->AsSWSObject();
+        pTarget = pTargetGO->AsSWSObject();
         if (pTarget->m_bCommandable == 0 || pTarget->GetDead() == 1) {
             SetLockOrientationToObject(CGameObjectArray::INVALIDOBJID);
             g_pAppManager->m_pClientExoApp->GetInGameGui()->SetGlobalDialogState(0);
@@ -915,12 +914,14 @@ partyReady:
         CSWSCreature* pPlayer = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
         if (pPlayer == 0)
             return ACTION_IN_PROGRESS;
-        CGameObject* pPlayerClient = g_pAppManager->m_pClientExoApp->GetGameObject(
-            g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_objectId));
+        {
+        unsigned long long oidPlayerClient = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_objectId);
+        CGameObject* pPlayerClient = g_pAppManager->m_pClientExoApp->GetGameObject(oidPlayerClient);
         if (pPlayerClient == 0)
             return ACTION_IN_PROGRESS;
         if (pPlayerClient->AsSWCObject() == 0)
             return ACTION_IN_PROGRESS;
+        }
 
 #ifdef K2_HOST_BUILD
         {
@@ -1008,7 +1009,6 @@ partyReady:
 
         // In range (or told not to care), so work out whether the player should be holding this
         // conversation, and if not, hand it over.
-        CSWSCreature* pOwner = 0;
         pTarget->AsSWSCreature();
         CSWSPlayer* pPlayerClientObj = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(
             g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
@@ -1016,20 +1016,83 @@ partyReady:
             && GetClientObject()->AsSWCCreature() != 0
             && static_cast<CSWCCreature*>(GetClientObject()->AsSWCCreature())->m_bInParty != 0
             && m_objectId != pPlayerClientObj->m_gameObjectId) {
-            unsigned long long oidPlayer = pPlayerClientObj->m_gameObjectId;
             if (pTarget->m_bPartyInteract == 0 && pTarget->GetDialogResref().IsValid()
-                && pTarget->m_objectId != oidPlayer) {
+                && pTarget->m_objectId != pPlayerClientObj->m_gameObjectId) {
                 // Someone other than the player owns this conversation.
-                pOwner = g_pAppManager->m_pServerExoApp->GetGameObject(oidPlayer)->AsSWSCreature();
+                CGameObject* pOwnerGO = g_pAppManager->m_pServerExoApp->GetGameObject(pPlayerClientObj->m_gameObjectId);
+                CSWSCreature* pOwner = pOwnerGO->AsSWSCreature();
                 if (pOwner != 0 && pOwner->m_bInParty != 0) {
                     if (pOwner->m_bCombatState != 0 && pOwner->m_nCombatType == 1) {
                         // Mid-combat, refuse rather than yank the party around.
                         g_pAppManager->m_pClientExoApp->GetInGameGui()->SetGlobalDialogState(0);
                         return ACTION_FAILED;
                     }
-                    goto handOver;
+                    // Re-seat the whole party around the leader, fade, and re-queue this action on the
+                    // creature that owns the conversation.
+                    CSWCCreature* pLeader = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
+                    unsigned long long oidLeaderServer = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pLeader->m_objectId);
+                    Vector vLeaderPos;
+                    CSWSCreature* pLeaderServer =
+                        g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidLeaderServer);
+                    vLeaderPos = pLeaderServer->m_position;
+                    static_cast<CSWCObject*>(pLeader)->ClearAllActions();
+                    pLeaderServer->ClearAllActions(1);
+                    for (int i = 1; i < 3; i++) {
+                        CSWCCreature* pMember =
+                            g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
+                        if (pMember == 0)
+                            continue;
+                        unsigned long long oidMemberServer = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pMember->m_objectId);
+                        CGameObject* pMemberGO = g_pAppManager->m_pServerExoApp->GetGameObject(oidMemberServer);
+#ifdef K2_FIX_ENGINE_BUGS
+                        if (pMemberGO == 0)
+                            continue;
+#endif
+                        if (pMemberGO != 0 && pMemberGO->AsSWSCreature() != 0) {
+                            pMemberGO->AsSWSCreature()->ClearAllActions(1);
+                            static_cast<CSWCObject*>(pMember)->ClearAllActions();
+                        }
+                        float fDx = vLeaderPos.x - pMember->m_position.x;
+                        float fDy = vLeaderPos.y - pMember->m_position.y;
+                        float fDz = vLeaderPos.z - pMember->m_position.z;
+                        if (!(fDx * fDx + fDy * fDy + fDz * fDz >= 900.0f))
+                            continue;
+                        CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
+                        Vector vOffset = pParty->m_members[i].m_formationOffset;
+                        Vector vFollow = pParty->m_members[i].m_followPoint;
+                        int nSample = pParty->m_members[i].m_bFollowPointValid;
+                        CSWPartyFollowData* pPathData = pParty->m_followData.GetPathData(nSample);
+                        Quaternion q(Vector{0.0f, 0.0f, 1.0f}, DegToRad(pPathData->m_fLeaderYaw));
+                        vOffset = RotateByQuaternion(vOffset, q);
+                        Vector vDest = vFollow + vOffset;
+                        g_pAppManager->m_pServerExoApp->ComputeSafeLocation(vDest, 10.0f,
+                                                                           pMemberGO->m_objectId, 0,
+                                                                           &vDest);
+                        pMember->SetPosition(vDest);
+                    }
+                    g_pAppManager->m_pClientExoApp->GetInGameGui()->StartGlobalFade(
+                        0, 0.0f, 0.75f, Vector{0.0f, 0.0f, 0.0f});
+                    g_pExoInput->SetActive(0);
+                    g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bHoldFadeInForDialog = 1;
+                    oidSpeaker = pLeaderServer->m_objectId;
+                    if (pOwner->GetDeadTemp() != 0) {
+                        CGameEffect* pEffect = new CGameEffect(1);
+                        pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_RESURRECTION);
+                        pEffect->m_durationTypeBits = (pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK)
+                                                      | CGameEffect::DURATION_TYPE_INSTANTANEOUS;
+                        pOwner->ApplyEffect(pEffect, 0, 0);
+                        pOwner->m_bRaiseable = 1;
+                    }
+                    pOwner->AddActionToFront(AIACTION_DIALOG_OBJECT, pNode->m_nGroupId,
+                                             ACTION_PARAM_OBJECT, &oidTarget, ACTION_PARAM_STRING, &sDialog,
+                                             ACTION_PARAM_INT, &nPrivate,
+                                             ACTION_PARAM_INT, &nApproachPending,
+                                             ACTION_PARAM_INT, &nIgnoreRange,
+                                             ACTION_PARAM_OBJECT, &oidSpeaker, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                             0, 0, 0, 0);
+                    return ACTION_FAILED;
                 }
-            } else if (pTarget->m_objectId == oidPlayer) {
+            } else if (pTarget->m_objectId == pPlayerClientObj->m_gameObjectId) {
                 if (pTarget->GetClientObject() != 0
                     && pTarget->GetClientObject()->AsSWCCreature() != 0
                     && static_cast<CSWCCreature*>(pTarget->GetClientObject()->AsSWCCreature())->m_bInParty != 0)
@@ -1048,73 +1111,6 @@ partyReady:
         }
 #endif
         goto signalEvent;
-
-    handOver:
-        {
-            // Re-seat the whole party around the leader, fade, and re-queue this action on the
-            // creature that owns the conversation.
-            CSWCCreature* pLeader = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
-            CSWSCreature* pLeaderServer =
-                g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(
-                    g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pLeader->m_objectId));
-            Vector vLeaderPos = pLeaderServer->m_position;
-            static_cast<CSWCObject*>(pLeader)->ClearAllActions();
-            pLeaderServer->ClearAllActions(1);
-            for (int i = 1; i < 3; i++) {
-                CSWCCreature* pMember =
-                    g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
-                if (pMember == 0)
-                    continue;
-                CGameObject* pMemberGO = g_pAppManager->m_pServerExoApp->GetGameObject(
-                    g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pMember->m_objectId));
-#ifdef K2_FIX_ENGINE_BUGS
-                if (pMemberGO == 0)
-                    continue;
-#endif
-                if (pMemberGO != 0 && pMemberGO->AsSWSCreature() != 0) {
-                    pMemberGO->AsSWSCreature()->ClearAllActions(1);
-                    static_cast<CSWCObject*>(pMember)->ClearAllActions();
-                }
-                float fDx = vLeaderPos.x - pMember->m_position.x;
-                float fDy = vLeaderPos.y - pMember->m_position.y;
-                float fDz = vLeaderPos.z - pMember->m_position.z;
-                if (!(fDx * fDx + fDy * fDy + fDz * fDz >= 900.0f))
-                    continue;
-                CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-                Vector vOffset = pParty->m_members[i].m_formationOffset;
-                Vector vFollow = pParty->m_members[i].m_followPoint;
-                int nSample = pParty->m_members[i].m_bFollowPointValid;
-                CSWPartyFollowData* pPathData = pParty->m_followData.GetPathData(nSample);
-                Quaternion q(Vector{0.0f, 0.0f, 1.0f}, DegToRad(pPathData->m_fLeaderYaw));
-                vOffset = RotateByQuaternion(vOffset, q);
-                Vector vDest = vFollow + vOffset;
-                g_pAppManager->m_pServerExoApp->ComputeSafeLocation(vDest, 10.0f,
-                                                                   pMemberGO->m_objectId, 0,
-                                                                   &vDest);
-                pMember->SetPosition(vDest);
-            }
-            g_pAppManager->m_pClientExoApp->GetInGameGui()->StartGlobalFade(
-                0, 0.0f, 0.75f, Vector{0.0f, 0.0f, 0.0f});
-            g_pExoInput->SetActive(0);
-            g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bHoldFadeInForDialog = 1;
-            oidSpeaker = pLeaderServer->m_objectId;
-            if (pOwner->GetDeadTemp() != 0) {
-                CGameEffect* pEffect = new CGameEffect(1);
-                pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_RESURRECTION);
-                pEffect->m_durationTypeBits = (pEffect->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK)
-                                              | CGameEffect::DURATION_TYPE_INSTANTANEOUS;
-                pOwner->ApplyEffect(pEffect, 0, 0);
-                pOwner->m_bRaiseable = 1;
-            }
-            pOwner->AddActionToFront(AIACTION_DIALOG_OBJECT, pNode->m_nGroupId,
-                                     ACTION_PARAM_OBJECT, &oidTarget, ACTION_PARAM_STRING, &sDialog,
-                                     ACTION_PARAM_INT, &nPrivate,
-                                     ACTION_PARAM_INT, &nApproachPending,
-                                     ACTION_PARAM_INT, &nIgnoreRange,
-                                     ACTION_PARAM_OBJECT, &oidSpeaker, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                     0, 0, 0, 0);
-            return ACTION_FAILED;
-        }
     }
 
     // An explicit speaker was queued. Wait for any fade to settle first.
@@ -1156,14 +1152,15 @@ partyReady:
             static_cast<CSWCCreature*>(GetClientObject()->AsSWCCreature())->SetPosition(vSpeakerPos);
             static_cast<CSWCCreature*>(GetClientObject()->AsSWCCreature())->SetOrientation(vSpeakerFacing);
         }
-        g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
-            g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
-                pSpeakerGO->AsSWSCreature()->m_objectId));
+        unsigned long long oidSpeakerClient = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
+            pSpeakerGO->AsSWSCreature()->m_objectId);
+        CSWCCreature* pSpeakerClient = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(oidSpeakerClient);
+        (void)pSpeakerClient;
         if (pSpeakerGO->AsSWSCreature() != 0
             && pSpeakerGO->AsSWSCreature()->GetClientCreature() != 0)
             pSpeakerGO->AsSWSCreature()->GetClientCreature()->SetPosition(vMyPos);
-        g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(
-            g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+        unsigned long long oidPlayerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
+        g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(oidPlayerId);
         g_pAppManager->m_pClientExoApp->ChangeCharacter(-3, 0);
         g_pAppManager->m_pClientExoApp->GetInGameGui()->m_oidPostDialogCharacterSwitch = oidSpeaker;
         g_pExoInput->SetActive(1);
@@ -2520,10 +2517,13 @@ int CSWSObject::AIActionDoorSaber(CSWSObjectActionNode* pNode) {
                 AsSWSCreature()->GetIsInUseRange(oidTarget, 0.0f, 0, 1) == 0)
                 goto complete;
             if (pDoor != 0 && pDoor->m_bLocked == 0) {
-                pCreature = AsSWSCreature();
-                if (pCreature != 0)
+                if (AsSWSCreature() != 0) {
                     AsSWSCreature()->SendFeedbackMessage(FEEDBACK_OBJECT_NOT_LOCKED, 0);
-                goto failed;
+                    AsSWSCreature()->StopGuiTimingBar();
+                    AsSWSCreature()->m_bDoorSaberStarted = 0;
+                    AsSWSCreature()->m_bActionApproachDone = 0;
+                }
+                return ACTION_FAILED;
             }
             // This else arm is only reached with AsSWSCreature() == 0, so the repeated test is dead.
             if (AsSWSCreature() != 0) {

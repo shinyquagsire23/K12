@@ -1891,38 +1891,36 @@ int CScriptCompilerInternal::AddUserDefinedIdentifier(CScriptParseTreeNode* pNod
     }
 
     int nDuplicate = 0;
-    if (m_nIdentifierCount > 0) {
-        for (int i = 0; i < m_nIdentifierCount; i++) {
-            if (m_pIdentifierList[i].m_nNameLength != m_pIdentifierList[m_nIdentifierCount].m_nNameLength)
-                continue;
-            if (!(m_pIdentifierList[i].m_sName == m_pIdentifierList[m_nIdentifierCount].m_sName))
-                continue;
-            if (m_pIdentifierList[i].m_nParameterCount == m_pIdentifierList[m_nIdentifierCount].m_nParameterCount) {
-                if (m_pIdentifierList[i].m_nParameterCount >= 1) {
-                    int nMismatch = 0;
-                    for (int k = 0; k < m_pIdentifierList[i].m_nParameterCount; k++) {
-                        unsigned char cOld = m_pIdentifierList[i].m_pParameterTypes[k];
-                        if (cOld != m_pIdentifierList[m_nIdentifierCount].m_pParameterTypes[k] ||
-                            (cOld == TOKEN_STRUCTURE_IDENTIFIER &&
-                             m_pIdentifierList[i].m_pParameterStructureNames[k] !=
-                                 m_pIdentifierList[m_nIdentifierCount].m_pParameterStructureNames[k]))
-                            nMismatch = 1;
-                    }
-                    if (nMismatch) {
-                        if (nDuplicate)
-                            continue;
-                        return -SCRIPT_ERROR_FUNCTION_IMPLEMENTATION_AND_DEFINITION_DIFFER;
-                    }
+    for (int i = 0; i < m_nIdentifierCount; i++) {
+        if (m_pIdentifierList[i].m_nNameLength != m_pIdentifierList[m_nIdentifierCount].m_nNameLength)
+            continue;
+        if (!(m_pIdentifierList[i].m_sName == m_pIdentifierList[m_nIdentifierCount].m_sName))
+            continue;
+        if (m_pIdentifierList[i].m_nParameterCount == m_pIdentifierList[m_nIdentifierCount].m_nParameterCount) {
+            if (m_pIdentifierList[i].m_nParameterCount >= 1) {
+                int nMismatch = 0;
+                for (int k = 0; k < m_pIdentifierList[i].m_nParameterCount; k++) {
+                    unsigned char cOld = m_pIdentifierList[i].m_pParameterTypes[k];
+                    if (cOld != m_pIdentifierList[m_nIdentifierCount].m_pParameterTypes[k] ||
+                        (cOld == TOKEN_STRUCTURE_IDENTIFIER &&
+                         m_pIdentifierList[i].m_pParameterStructureNames[k] !=
+                             m_pIdentifierList[m_nIdentifierCount].m_pParameterStructureNames[k]))
+                        nMismatch = 1;
                 }
-            } else {
-                if (nDuplicate)
-                    continue;
-                return -SCRIPT_ERROR_FUNCTION_IMPLEMENTATION_AND_DEFINITION_DIFFER;
+                if (nMismatch) {
+                    if (nDuplicate)
+                        continue;
+                    return -SCRIPT_ERROR_FUNCTION_IMPLEMENTATION_AND_DEFINITION_DIFFER;
+                }
             }
-            if (nFlags == 1 && m_pIdentifierList[i].m_bImplementationInPlace == 1)
-                return -SCRIPT_ERROR_DUPLICATE_FUNCTION_IMPLEMENTATION;
-            nDuplicate = 1;
+        } else {
+            if (nDuplicate)
+                continue;
+            return -SCRIPT_ERROR_FUNCTION_IMPLEMENTATION_AND_DEFINITION_DIFFER;
         }
+        if (nFlags == 1 && m_pIdentifierList[i].m_bImplementationInPlace == 1)
+            return -SCRIPT_ERROR_DUPLICATE_FUNCTION_IMPLEMENTATION;
+        nDuplicate = 1;
     }
 
     if (!nDuplicate) {

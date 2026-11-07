@@ -47,10 +47,15 @@ float parttriggeralpha;
 MdlNodeTrigger global_nodetrigger(const_cast<char*>("trigger"));
 
 PartTrigger::PartTrigger(MdlNode* pNode)
-    : Part(pNode), m_bHidden(0), m_cHighlightGroup(0), m_color{1.0f, 1.0f, 1.0f, 0.5f},
-      m_bPulse(0), m_fPulseRate(1.0f), m_bAdditive(0)
+    : Part(pNode), m_bHidden(0), m_cHighlightGroup(0)
 {
-    __builtin_memset(&m_vBBoxMin, 0, sizeof(Vector) * 2);
+    m_color[0] = 1.0f;
+    m_color[1] = 1.0f;
+    m_color[2] = 1.0f;
+    m_color[3] = 0.5f;
+    m_bPulse = 0;
+    m_fPulseRate = 1.0f;
+    m_bAdditive = 0;
 }
 
 // Builds the trigger: one PartTrigger and a hit block, the outline ring (each vertex optionally
@@ -110,7 +115,11 @@ PartTrigger* AurPartTriggerCreate(CAurScene* pScene, Vector* paVertices, int nVe
 // Copies the trigger's four colour components as one block.
 void AurPartTriggerSetColor(PartTrigger* pPartTrigger, float* pfColor)
 {
+#if KOTOR1  // K2 copies the colour through void* (byte-aligned vld1.8/vst1.8); K1 keeps the float alignment
     __builtin_memcpy(pPartTrigger->m_afColor, pfColor, sizeof(float) * 4);
+#else
+    __builtin_memcpy(static_cast<void*>(pPartTrigger->m_afColor), static_cast<const void*>(pfColor), sizeof(float) * 4);
+#endif
 }
 
 // Removes a trigger's render part from the scene and optionally frees it. A scene with a BSP tree
@@ -237,12 +246,10 @@ void PartTrigger::SetHighlighted(bool bFlag, float fHeight, bool bGroup)
         m_listCageSides.Add(Vector(v.x, v.y, fTop - (m_fHeight + m_fHeight)));
     }
 
-    int nCount = m_listOutline.m_count;
-    if (nCount != 0) {
-        for (int i = nCount; i != 0; i--) {
-            Vector v = m_listOutline.m_pData[i - 1];
-            m_listCageBottom.Add(Vector(v.x + 0.0f, v.y + 0.0f, v.z - m_fHeight));
-        }
+    int i = m_listOutline.m_count;
+    while (i--) {
+        Vector v = m_listOutline.m_pData[i];
+        m_listCageBottom.Add(Vector(v.x + 0.0f, v.y + 0.0f, v.z - m_fHeight));
     }
 
     m_listCageSides.Add(m_listCageSides.m_pData[0]);
@@ -363,22 +370,23 @@ void PartTrigger::Decompose(List<int> listIndices)
         // Accept the ear by removing its vertex, or split the ring at the inside vertex.
         int iFirst = iPrev;
         int nRecurse = -1;
+        int vSplit;
         if (nInside < 0)
         {
             listIndices.DelIndex(nBest);
         }
         else
         {
-            int v = listIndices.m_pData[nInside];
-            iFirst = v;
+            vSplit = listIndices.m_pData[nInside];
+            iFirst = vSplit;
             if (nBest + 1 >= listIndices.m_count)
             {
-                listIndices.Add(v);
+                listIndices.Add(vSplit);
             }
             else
             {
-                listIndices.Insert(v, nBest + 1);
-                nRecurse = v;
+                listIndices.Insert(vSplit, nBest + 1);
+                nRecurse = vSplit;
             }
         }
 

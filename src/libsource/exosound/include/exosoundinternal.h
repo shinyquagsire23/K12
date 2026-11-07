@@ -1,5 +1,6 @@
 #pragma once
 #include "k2stdint.h"
+#include <string.h>
 
 #include "Vector.h"
 #include "exobase.h"
@@ -24,6 +25,7 @@ typedef int ExoSoundChannel;
 #endif
 static const ExoSoundChannel EXOSOUND_NO_CHANNEL = static_cast<ExoSoundChannel>(-1);
 
+// A voice slot; both kinds zero themselves byte-wise (the void* cast leaves the memset unaligned).
 struct C2DVoice {
     CExoSoundSourceInternal* m_pSource;
 #if KOTOR1  // K1: the FMOD channel handle is 64-bit
@@ -35,6 +37,7 @@ struct C2DVoice {
     int  m_bInUse;
     int  m_nReserved1;
 #endif
+    C2DVoice() { memset(static_cast<void*>(this), 0, sizeof(*this)); }
 };
 struct C3DVoice {
     CExoSoundSourceInternal* m_pSource;
@@ -47,6 +50,7 @@ struct C3DVoice {
     int  m_bInUse;
     int  m_nReserved1;
 #endif
+    C3DVoice() { memset(static_cast<void*>(this), 0, sizeof(*this)); }
 };
 
 
@@ -118,7 +122,7 @@ public:
     int  Play3DOneShotSound(const CResRef& r, Vector vPos, unsigned char a, unsigned int b,
                             unsigned char c, float d, float e);
     void StopAllOneShots();
-    int  GetSpeakerType();
+    unsigned char GetSpeakerType();
     void SetEnvironmentEffectLevel(float f);
     int  RemoveAllSounds();
     void ResumeAllStreamingMusicForMovie();

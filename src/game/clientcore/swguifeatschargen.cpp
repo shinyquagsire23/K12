@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "swguifeatschargen.h"
 #include "swgui.h"
 #include "swguicontrol.h"
@@ -262,7 +263,7 @@ void CSWGuiFeatsCharGen::InitiateFeats()
     // The granted pool. Bit 1 (bonus mode) skips the whole info-box block.
     if (((m_bFlags >> 1) & 1) == 0)
     {
-        CExoArrayList<unsigned int> aGranted;
+        CExoArrayList<uint32_l_t> aGranted;
 #if KOTOR1
         pStats->AddGrantedFeats(&aGranted);
 #else
@@ -360,7 +361,7 @@ void CSWGuiFeatsCharGen::BuildButtons()
 
     if (m_nSelectedFeat == 0xffff)
     {
-        m_listBoxFeats.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_featChart.m_aFlows), 0, 1, 0);
+        m_listBoxFeats.AddControls(m_featChart.m_aFlows, 0, 1, 0);
         m_nSelectedFeat = static_cast<unsigned short>(m_featChart.SetTopLeft());
     }
 
@@ -649,7 +650,7 @@ void CSWGuiFeatsCharGen::OnEnterFeat(unsigned short nFeat)
 void CSWGuiFeatsCharGen::OnRecommendButton()
 {
     CExoArrayList<unsigned short> aGranted;
-    CExoArrayList<unsigned int> aGrantedIds;
+    CExoArrayList<uint32_l_t> aGrantedIds;
     CSWCCreatureStats* pStats = m_pCreature->m_pStats;
 
     unsigned int nClass = pStats->GetClass(static_cast<unsigned char>(pStats->m_nNumClasses - 1));

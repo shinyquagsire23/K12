@@ -5,8 +5,8 @@
 CSWCMapPin::CSWCMapPin()
     : CSWCObject(CGameObject::OBJECT_TYPE_WAYPOINT)
 {
-    m_bActive = 0;
     m_currentAnimation = SERVER_ANIMATION_READY;
+    m_bActive = 0;
     m_nPinType = 0;
 }
 

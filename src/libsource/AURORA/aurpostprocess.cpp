@@ -41,11 +41,10 @@ CAurTexture* AurTextureGetReference(char* sName, char* sExtension);
 extern int quaternionidentityoptimization;
 
 // Rotates a vector by a quaternion, shared with the other engine TUs.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -70,32 +69,9 @@ static inline Vector RotateVector(const Vector& v, const Quaternion& q)
 
 #if !KOTOR1
 // Inverse rotation: brings a world-frame vector back into the mesh's local frame.
-static inline Vector RotateByTranspose(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByTranspose(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != -1.0f && w != 1.0f)) {
-        float nw = -w;
-        float x = q.x, y = q.y, z = q.z;
-        float xx = x * x, yy = y * y, zz = z * z;
-        float xy = x * y, xz = x * z, wx = nw * x;
-        float yz = y * z, wy = nw * y;
-        float wz = nw * z;
-        Vector r;
-        float m00 = 1.0f - ((yy + zz) + (yy + zz));
-        float m01 = (xy - wz) + (xy - wz);
-        float m02 = (xz + wy) + (xz + wy);
-        float m10 = (xy + wz) + (xy + wz);
-        float m11 = 1.0f - ((xx + zz) + (xx + zz));
-        float m12 = (yz - wx) + (yz - wx);
-        float m20 = (xz - wy) + (xz - wy);
-        float m21 = (yz + wx) + (yz + wx);
-        float m22 = 1.0f - ((xx + yy) + (xx + yy));
-        r.x = v.x * m00 + v.y * m01 + v.z * m02;
-        r.y = v.x * m10 + v.y * m11 + v.z * m12;
-        r.z = v.x * m20 + v.y * m21 + v.z * m22;
-        return r;
-    }
-    return v;
+    return RotateVector(v, Quaternion(-q.w, q.x, q.y, q.z));
 }
 #endif
 
@@ -120,9 +96,6 @@ int GetMaxID(MdlNode* pNode, int nMax)
 void SynchronizeNodes(MdlNode* pNode, MdlNode* pOther, int& nIndex)
 {
     pNode->m_nNodeID = pOther->m_nNodeID;
-
-    if (pNode->m_listChildren.m_count < 1)
-        return;
 
     for (int64_t i = 0; i < pNode->m_listChildren.m_count; i++) {
         MdlNode* pChild = pNode->m_listChildren.m_pData[i];
@@ -544,8 +517,10 @@ void MdlNode::ProcessSkinSeams()
     if (CreateSkinNodeList(meshes) == 0)
         return;
 
+    List<RenderVertexN*> matchVerts;
     List<Vector> positions;
     List<Quaternion> orientations;
+    List<int> matchMeshes;
     for (int64_t i = 0; i < meshes.m_count; i++) {
         Vector v(0.0f, 0.0f, 0.0f);
         Quaternion q;
@@ -566,9 +541,6 @@ void MdlNode::ProcessSkinSeams()
         pPool = GLRender::LockPool(meshes.m_pData[0]->m_pTree->AsModel()->m_nPool,
                                    0, 0, 16);
 
-    List<RenderVertexN*> matchVerts;
-    List<int> matchMeshes;
-
     for (int64_t i = 0; i < meshes.m_count - 1; i++) {
         MdlNodeTriMesh* pMesh = meshes.m_pData[i];
 
@@ -588,7 +560,8 @@ void MdlNode::ProcessSkinSeams()
             matchVerts.Add(reinterpret_cast<RenderVertexN*>(pVertex + pMesh->m_nNormalOfs));
             matchMeshes.Add(static_cast<int>(i));
 
-            for (int64_t j = 0; j < meshes.m_count; j++) {
+            int64_t j;
+            for (j = 0; j < meshes.m_count; j++) {
                 if (j == i)
                     continue;
 
@@ -946,7 +919,7 @@ void MdlNodeTriMesh::BuildVertexIndices()
         List<List<int> > stripList;
         for (int i = 0; i < m_faces.m_count; i++) {
             for (int j = 0; j < 3; j++)
-                faceIndices.Add(m_faces.m_pData[i].m_nVIndex[j]);
+                faceIndices.Add(static_cast<short>(m_faces.m_pData[i].m_anVertIndices[j]));
         }
         AurStripify(faceIndices, stripList);
         for (int i = 0; i < stripList.m_count - 1; i++) {
@@ -979,7 +952,7 @@ void MdlNodeTriMesh::BuildVertexIndices()
         unsigned int* paStrip = new unsigned int[m_faces.m_count * 3];
         for (int i = 0; i < m_faces.m_count; i++) {
             for (int j = 0; j < 3; j++)
-                paStrip[i * 3 + j] = m_faces.m_pData[i].m_nVIndex[j];
+                paStrip[i * 3 + j] = static_cast<short>(m_faces.m_pData[i].m_anVertIndices[j]);
         }
         m_lVertexIndices.Add(paStrip);
         m_lVertexIndicesCount.Add(m_faces.m_count * 3);
@@ -987,7 +960,7 @@ void MdlNodeTriMesh::BuildVertexIndices()
     }
     if (enabletristrips) {
         for (int i = 0; i < m_lVertexIndices.m_count; i++) {
-            unsigned int nPool;
+            uint32_l_t nPool;
             GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(1),
                                   m_lVertexIndicesCount.m_pData[i] * 2, 2, 0, &nPool);
             m_lIndexPools.Add(nPool);
@@ -1008,7 +981,7 @@ void MdlNodeTriMesh::BuildVertexIndices()
         m_lLeftOverFaces.SetSize(0);
     } else {
         for (int i = 0; i < m_lVertexIndices.m_count; i++) {
-            unsigned int nPool;
+            uint32_l_t nPool;
             GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(1),
                                   m_lVertexIndicesCount.m_pData[i] * 2, 2, 0, &nPool);
             m_lIndexPools.Add(nPool);
@@ -1034,9 +1007,9 @@ void MdlNodeTriMesh::CalculateTangentSpaceBasis()
     Matrix* paMatrices = new Matrix[m_faces.m_count];
 
     for (int64_t i = 0; i < m_faces.m_count; i++) {
-        NodeVertex* pV0 = PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[0]];
-        NodeVertex* pV1 = PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[1]];
-        NodeVertex* pV2 = PostProcess()->m_vertices.m_pData[m_faces.m_pData[i].m_nVIndex[2]];
+        NodeVertex* pV0 = PostProcess()->m_vertices.m_pData[static_cast<short>(m_faces.m_pData[i].m_anVertIndices[0])];
+        NodeVertex* pV1 = PostProcess()->m_vertices.m_pData[static_cast<short>(m_faces.m_pData[i].m_anVertIndices[1])];
+        NodeVertex* pV2 = PostProcess()->m_vertices.m_pData[static_cast<short>(m_faces.m_pData[i].m_anVertIndices[2])];
         Vector vE1 = pV1->m_vPos - pV0->m_vPos;
         Vector vE2 = pV2->m_vPos - pV0->m_vPos;
         float fDU1 = pV1->m_vTex0.x - pV0->m_vTex0.x;
@@ -1065,7 +1038,7 @@ void MdlNodeTriMesh::CalculateTangentSpaceBasis()
 
     for (int64_t i = 0; i < m_faces.m_count; i++) {
         for (int j = 0; j < 3; j++) {
-            int nIndex = m_faces.m_pData[i].m_nVIndex[j];
+            int nIndex = static_cast<short>(m_faces.m_pData[i].m_anVertIndices[j]);
             NodeVertex* pVertex = PostProcess()->m_vertices.m_pData[nIndex];
             Vector vRef = pVertex->m_vPos;
             int nFlags = PostProcess()->m_faces.m_pData[i].m_nSmoothGroup;
@@ -1077,7 +1050,7 @@ void MdlNodeTriMesh::CalculateTangentSpaceBasis()
                     continue;
                 for (int m = 0; m < 3; m++) {
                     NodeVertex* pTest = PostProcess()->m_vertices.m_pData[
-                        m_faces.m_pData[k].m_nVIndex[m]];
+                        static_cast<short>(m_faces.m_pData[k].m_anVertIndices[m])];
                     Vector vTest = pTest->m_vPos;
                     if (equal(vRef, vTest) && (nFlags & PostProcess()->m_faces.m_pData[k].m_nSmoothGroup))
                         faces.Add(k);
@@ -1085,10 +1058,27 @@ void MdlNodeTriMesh::CalculateTangentSpaceBasis()
             }
 
             Matrix mtx;
-            for (int z = 0; z < 9; z++)
-                mtx.m_f[z] = 0.0f;
-            for (int64_t l = 0; l < faces.m_count; l++)
-                mtx = mtx + paMatrices[faces.m_pData[l]];
+            mtx.m_f[0] = 0.0f;
+            mtx.m_f[1] = 0.0f;
+            mtx.m_f[2] = 0.0f;
+            mtx.m_f[3] = 0.0f;
+            mtx.m_f[4] = 0.0f;
+            mtx.m_f[5] = 0.0f;
+            mtx.m_f[6] = 0.0f;
+            mtx.m_f[7] = 0.0f;
+            mtx.m_f[8] = 0.0f;
+            for (int64_t l = 0; l < faces.m_count; l++) {
+                const Matrix& mFace = paMatrices[faces.m_pData[l]];
+                mtx.m_f[0] += mFace.m_f[0];
+                mtx.m_f[1] += mFace.m_f[1];
+                mtx.m_f[2] += mFace.m_f[2];
+                mtx.m_f[3] += mFace.m_f[3];
+                mtx.m_f[4] += mFace.m_f[4];
+                mtx.m_f[5] += mFace.m_f[5];
+                mtx.m_f[6] += mFace.m_f[6];
+                mtx.m_f[7] += mFace.m_f[7];
+                mtx.m_f[8] += mFace.m_f[8];
+            }
             Vector* pRows = mtx.Rows();
             pRows[0].Normalize();
             pRows[1].Normalize();
@@ -1237,7 +1227,7 @@ void MdlNodeTriMesh::InternalPostProcess()
             CalculateTangentSpaceBasis();
     }
 
-    ComputeLocalSurfaceArea(m_faces, *reinterpret_cast<float*>(&m_fSurfaceArea));
+    ComputeLocalSurfaceArea(m_faces, m_fSurfaceArea);
     (*m_pfnRemoveTemporaryArrays)(this);
 }
 
@@ -1246,18 +1236,16 @@ void MdlNodeTriMesh::ComputeLocalSurfaceArea(List<MaxFace>& faces, float& fArea)
 {
     fArea = 0.0f;
     unsigned char* pLock = static_cast<unsigned char*>(GLRender::LockPool(m_pTree->AsModel()->m_nPool, 0, 0, 8));
-    if (faces.m_count >= 1) {
-        unsigned int nGeom = m_nGeomBase;
-        for (int64_t i = 0; i < faces.m_count; i++) {
-            MaxFace& face = faces.m_pData[i];
-            Vector* pa = reinterpret_cast<Vector*>(pLock + nGeom + static_cast<short>(face.m_anVertIndices[0]) * m_nVertexStride);
-            Vector* pb = reinterpret_cast<Vector*>(pLock + nGeom + static_cast<short>(face.m_anVertIndices[1]) * m_nVertexStride);
-            Vector* pc = reinterpret_cast<Vector*>(pLock + nGeom + static_cast<short>(face.m_anVertIndices[2]) * m_nVertexStride);
-            Vector dV2 = *pb - *pa;   // edge P0 -> P1
-            Vector dV1 = *pc - *pa;   // edge P0 -> P2
-            Vector v = cross(dV1, dV2);
-            fArea += magnitude(v) * 0.5f;
-        }
+    unsigned int nGeom = m_nGeomBase;
+    for (int64_t i = 0; i < faces.m_count; i++) {
+        MaxFace& face = faces.m_pData[i];
+        Vector* pa = reinterpret_cast<Vector*>(pLock + nGeom + static_cast<short>(face.m_anVertIndices[0]) * m_nVertexStride);
+        Vector* pb = reinterpret_cast<Vector*>(pLock + nGeom + static_cast<short>(face.m_anVertIndices[1]) * m_nVertexStride);
+        Vector* pc = reinterpret_cast<Vector*>(pLock + nGeom + static_cast<short>(face.m_anVertIndices[2]) * m_nVertexStride);
+        Vector dV2 = *pb - *pa;   // edge P0 -> P1
+        Vector dV1 = *pc - *pa;   // edge P0 -> P2
+        Vector v = cross(dV1, dV2);
+        fArea += magnitude(v) * 0.5f;
     }
     GLRender::UnlockPool(m_pTree->AsModel()->m_nPool);
 }
@@ -1308,7 +1296,7 @@ void MdlNodeDanglyMesh::InternalPostProcess()
 
         m_nVertexStride = 0;
         m_nVertexOfs = 0;
-        m_pVertexSource = static_cast<void*>(new Vector3[static_cast<short>(m_nVertexCount)]);
+        m_pVertexSource = new Vector3[static_cast<short>(m_nVertexCount)];
         m_nNormalOfs = 12;
         m_uVertexFlags |= MDX_VERTICES | MDX_VERTEX_NORMALS;
         int nOfs = 24;
@@ -1351,13 +1339,11 @@ void MdlNodeDanglyMesh::InternalPostProcess()
         m_pTree->AsModel()->m_nPoolSize += (static_cast<short>(m_nVertexCount) + 1) * m_nVertexStride + nLow4;
 
         char* pPool = static_cast<char*>(GLRender::LockPool(m_pTree->AsModel()->m_nPool, 0, 0, 1));
-        // Cached once: the pool sizing, the loop bound and the memset row all read the gate.
-        int nVertsCount = static_cast<short>(m_nVertexCount);
-        m_paVertices = reinterpret_cast<float*>(new Vector3[nVertsCount + 1]);
+        m_paVertices = reinterpret_cast<float*>(new Vector3[static_cast<short>(m_nVertexCount) + 1]);
 
         int nStride = m_nVertexStride;
         unsigned int nGeom = m_nGeomBase;
-        for (int64_t i = 0; i < nVertsCount; i++) {
+        for (int64_t i = 0; i < static_cast<short>(m_nVertexCount); i++) {
             NodeVertex* pVertex = PostProcess()->m_vertices.m_pData[i];
             if (pFirst->m_nTexCoordFlags & kNodeVertexTex0) {
                 *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex0Ofs]) = pVertex->m_vTex0.x;
@@ -1382,15 +1368,14 @@ void MdlNodeDanglyMesh::InternalPostProcess()
             *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nVertexOfs + 4]) = pVertex->m_vPos.y;
             *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nVertexOfs + 8]) = pVertex->m_vPos.z;
             reinterpret_cast<Vector*>(m_paVertices)[i] = pVertex->m_vPos;
-            Vector3* pSrc = &static_cast<Vector3*>(m_pVertexSource)[i];
+            Vector3* pSrc = &m_pVertexSource[i];
             pSrc->x = pVertex->m_vPos.x;
             pSrc->y = pVertex->m_vPos.y;
             pSrc->z = pVertex->m_vPos.z;
         }
 
-        memset(pPool + m_nGeomBase + nVertsCount * m_nVertexStride + m_nVertexOfs,
-               0, m_nVertexStride);
-        Vector* pCap = reinterpret_cast<Vector*>(pPool + m_nGeomBase + static_cast<short>(m_nVertexCount) * m_nVertexStride
+        memset(pPool + nGeom + static_cast<short>(m_nVertexCount) * nStride + m_nVertexOfs, 0, nStride);
+        Vector* pCap = reinterpret_cast<Vector*>(pPool + nGeom + static_cast<short>(m_nVertexCount) * nStride
                                  + m_nVertexOfs);
         pCap->x = 1.0e7f;
         pCap->y = 1.0e7f;
@@ -1445,8 +1430,7 @@ void MdlNodeDanglyMesh::InternalGenVertices()
     }
 
     m_lConstraints.SetSize(0);
-    for (int64_t i = 0; i < static_cast<int64_t>(lConstraints.m_count); i++)
-        m_lConstraints.Add(lConstraints.m_pData[i]);
+    m_lConstraints = lConstraints;
 }
 
 // Frees the scratchpad's vertex array, then the base's temporary arrays.

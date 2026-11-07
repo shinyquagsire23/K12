@@ -61,7 +61,7 @@ public:
     void* GetImageData();
     void  GetImageDimensions(int& rWidth, int& rHeight);
     int   GetPixelColor(int x, int y, tagRGBQUAD& rQuad);
-    int   GetPixelValue(int x, int y);
+    unsigned char GetPixelValue(int x, int y);
     int   IsLoaded();
 
     int   m_nColorCount;         // biClrUsed for 4/8-bit images, -1 for 24-bit

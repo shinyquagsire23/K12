@@ -42,7 +42,7 @@ enum : unsigned int
 };
 
 // A texture-coordinate pair (u, v) stored as one 64-bit word: kUvPairUV.
-enum : uint64_t
+enum : uint64_ll_t
 {
     kUvPair00 = 0x0000000000000000ul,
     kUvPair10 = 0x000000003f800000ul,
@@ -335,17 +335,11 @@ void CAurGUIStringInternal::SetFontTexture(char* pszFont) {
     AurTextureRelease(pOldD2);
     AurTextureRelease(pOldD3);
 
-    pOldTexture = m_spTexturesPS[0].m_pObject;
-    m_spTexturesPS[0] = 0;
-    AurTextureRelease(pOldTexture);
-
-    pOldTexture = m_spTexturesPS[1].m_pObject;
-    m_spTexturesPS[1] = 0;
-    AurTextureRelease(pOldTexture);
-
-    pOldTexture = m_spTexturesPS[2].m_pObject;
-    m_spTexturesPS[2] = 0;
-    AurTextureRelease(pOldTexture);
+    for (int i = 0; i < 3; i++) {
+        pOldTexture = m_spTexturesPS[i].m_pObject;
+        m_spTexturesPS[i] = 0;
+        AurTextureRelease(pOldTexture);
+    }
 
     if (pszFont != 0) {
         m_spFontTexture = AurTextureGetReference(pszFont, 0);
@@ -895,11 +889,7 @@ void CAurGUIStringInternal::WrapStrings(int nWidth)
             else
             {
                 char* pszLast = pszScan - 1;
-#if KOTOR1
                 if (pszLast == m_pText)
-#else
-                if (pszLast == pszText)
-#endif
                 {
                     m_lineOffsets.m_count = 0;
                     m_lines.m_count = 0;
@@ -1366,16 +1356,12 @@ void CAurGUIStringInternal::Draw(float fAlpha)
                  static_cast<float>(CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport].nHeight);
     }
 
-    CAurTexture* pBase0 = m_spFontTexture.m_pObject;
-    CAurTexture* pBase1 = m_spFontTextureD2.m_pObject;
-    CAurTexture* pBase2 = m_spFontTextureD3.m_pObject;
-    CAurTexture* apTextures[3];
-    apTextures[0] =
-        m_spTexturesPS[0].m_pObject ? m_spTexturesPS[0].m_pObject : pBase0;
-    apTextures[1] =
-        m_spTexturesPS[1].m_pObject ? m_spTexturesPS[1].m_pObject : pBase1;
-    apTextures[2] =
-        m_spTexturesPS[2].m_pObject ? m_spTexturesPS[2].m_pObject : pBase2;
+    CAurTexture* apTextures[3] = { m_spFontTexture.m_pObject, m_spFontTextureD2.m_pObject,
+                                   m_spFontTextureD3.m_pObject };
+    for (int i = 0; i < 3; i++) {
+        if (m_spTexturesPS[i].m_pObject != 0)
+            apTextures[i] = m_spTexturesPS[i].m_pObject;
+    }
 
     float fScale = GetResolutionTextScalar();
 #ifdef K2_QOL_IMPROVEMENTS
@@ -1593,7 +1579,7 @@ void CAurGUIStringInternal::SetCursorIndex(short index) {
     m_cursorIndex = index;
 }
 
-unsigned short CAurGUIStringInternal::GetCursorIndex() {
+short CAurGUIStringInternal::GetCursorIndex() {
     return m_cursorIndex;
 }
 
@@ -1685,8 +1671,6 @@ CAurGUIStringInternal* NewCAurGUIString(char* szText, char* szFontTexture, const
     return new CAurGUIStringInternal(szText, szFontTexture, color, fAlpha);
 }
 
-template class SafePointer<CAurTexture>;
-
 extern bool g_bTextureRefsGotRefreshed;
 
 // Both CAurGUIDraw bodies are defined here so the derived constructors and destructors below see
@@ -1700,9 +1684,6 @@ CAurGUIDraw::~CAurGUIDraw() {
 // All three constructors share the same shape: the vptr store, then a new Material() into
 // m_pMaterial. The two overloads differ only in what they then tell the material to do, so the
 // default one is the other two's prefix.
-//
-// SafePointer's assignment operator stays out of line, forced by the explicit
-// `template class SafePointer<CAurTexture>;` above.
 
 CAurGUIImageInternal::CAurGUIImageInternal() {
     m_pMaterial = new Material();
@@ -2084,25 +2065,25 @@ void CAurGUIImageInternal::DrawBuffered(float x, float y, float w, float h, unsi
         CAurGUIImage::cm_fGUIBuffer[nUsed + 2] = 0.0f;
         *reinterpret_cast<unsigned int*>(&CAurGUIImage::cm_fGUIBuffer[nUsed + 3]) = nColor;
         int64_t nUV0 = anUV[0] * 6 + nUsed;
-        *reinterpret_cast<uint64_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV0 + 4]) = kUvPair01;
+        *reinterpret_cast<uint64_ll_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV0 + 4]) = kUvPair01;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 6] = x;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 7] = fTop;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 8] = 0.0f;
         *reinterpret_cast<unsigned int*>(&CAurGUIImage::cm_fGUIBuffer[nUsed + 9]) = nColor;
         int64_t nUV1 = anUV[1] * 6 + nUsed;
-        *reinterpret_cast<uint64_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV1 + 4]) = kUvPair00;
+        *reinterpret_cast<uint64_ll_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV1 + 4]) = kUvPair00;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 12] = fRight;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 13] = fTop;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 14] = 0.0f;
         *reinterpret_cast<unsigned int*>(&CAurGUIImage::cm_fGUIBuffer[nUsed + 15]) = nColor;
         int64_t nUV2 = anUV[2] * 6 + nUsed;
-        *reinterpret_cast<uint64_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV2 + 4]) = kUvPair10;
+        *reinterpret_cast<uint64_ll_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV2 + 4]) = kUvPair10;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 18] = fRight;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 19] = fBottom;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 20] = 0.0f;
         *reinterpret_cast<unsigned int*>(&CAurGUIImage::cm_fGUIBuffer[nUsed + 21]) = nColor;
         int64_t nUV3 = anUV[3] * 6 + nUsed;
-        *reinterpret_cast<uint64_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV3 + 4]) = kUvPair11;
+        *reinterpret_cast<uint64_ll_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV3 + 4]) = kUvPair11;
         CAurGUIImage::cm_nGUIBufferSizeUsed = nUsed + 24;
     } else {
         int nUsed = CAurGUIImage::cm_nGUIBufferSizeUsed;
@@ -2110,22 +2091,22 @@ void CAurGUIImageInternal::DrawBuffered(float x, float y, float w, float h, unsi
         CAurGUIImage::cm_fGUIBuffer[nUsed + 1] = fBottom;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 2] = 0.0f;
         int64_t nUV0 = anUV[0] * 5 + nUsed;
-        *reinterpret_cast<uint64_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV0 + 3]) = kUvPair01;
+        *reinterpret_cast<uint64_ll_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV0 + 3]) = kUvPair01;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 5] = x;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 6] = fTop;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 7] = 0.0f;
         int64_t nUV1 = anUV[1] * 5 + nUsed;
-        *reinterpret_cast<uint64_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV1 + 3]) = kUvPair00;
+        *reinterpret_cast<uint64_ll_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV1 + 3]) = kUvPair00;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 10] = fRight;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 11] = fTop;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 12] = 0.0f;
         int64_t nUV2 = anUV[2] * 5 + nUsed;
-        *reinterpret_cast<uint64_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV2 + 3]) = kUvPair10;
+        *reinterpret_cast<uint64_ll_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV2 + 3]) = kUvPair10;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 15] = fRight;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 16] = fBottom;
         CAurGUIImage::cm_fGUIBuffer[nUsed + 17] = 0.0f;
         int64_t nUV3 = anUV[3] * 5 + nUsed;
-        *reinterpret_cast<uint64_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV3 + 3]) = kUvPair11;
+        *reinterpret_cast<uint64_ll_t*>(&CAurGUIImage::cm_fGUIBuffer[nUV3 + 3]) = kUvPair11;
         CAurGUIImage::cm_nGUIBufferSizeUsed = nUsed + 20;
     }
 }

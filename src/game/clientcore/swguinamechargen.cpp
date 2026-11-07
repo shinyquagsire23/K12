@@ -4,6 +4,7 @@
 #include "swguinamechargen.h"
 #include "swgui.h"
 #include "swguicontrol.h"
+#include "CExoArrayListImpl.h"
 #include "exoresman.h"
 #include "appmanager.h"
 #include "clientexoapp.h"

@@ -833,7 +833,7 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
     int nCount = 0;
     bool bChangedLeft = false;
     bool bChangedRight = false;
-    CExoArrayList<unsigned int> aSlots;
+    CExoArrayList<uint32_l_t> aSlots;
     CSWSItem* pItem;
     if (pApp->m_itemId[0].m_a != pSnap->m_itemId[0].m_a)
         nCount = (pApp->m_itemId[0].m_a == OBJECT_INVALID) ? 1 : 2;
@@ -982,6 +982,59 @@ void CSWSMessage::WriteGameObjUpdate_UpdateAppearance(CSWSObject* pObject, CLast
 // combat-round switch, the looping-visual-effect diff, the trap/trigger/door/placeable state),
 // and the creature type gate opens the long relative tail. nUpdateFlags is forwarded to
 // WriteGameObjUpdate_UpdateAppearance.
+//
+// One entry of the looping-visual-effect diff: the effect and its change letter ('A' added, 'D'
+// removed). Entries are unique on both.
+#if defined(__arm__)  // the 32-bit source packs the pair into one 64-bit word, the effect in the low half
+typedef uint64_ll_t VisualEffectChange;
+static VisualEffectChange MakeVisualEffectChange(CLoopingVisualEffect* pVis, unsigned char nChangeType)
+{
+    return reinterpret_cast<uintptr_t>(pVis) | (static_cast<uint64_ll_t>(nChangeType) << 32);
+}
+static CLoopingVisualEffect* GetChangeVisualEffect(VisualEffectChange change)
+{
+    return reinterpret_cast<CLoopingVisualEffect*>(static_cast<uintptr_t>(change));
+}
+static unsigned char GetChangeType(VisualEffectChange change)
+{
+    return static_cast<unsigned char>(change >> 32);
+}
+static void SetVisualEffectChange(VisualEffectChange& change, CLoopingVisualEffect* pVis, unsigned char nChangeType)
+{
+    change = MakeVisualEffectChange(pVis, nChangeType);
+}
+#else
+struct VisualEffectChange
+{
+    CLoopingVisualEffect* pVisualEffect;
+    unsigned char nChangeType;
+    bool operator==(const VisualEffectChange& o) const
+    {
+        return pVisualEffect == o.pVisualEffect && nChangeType == o.nChangeType;
+    }
+};
+static VisualEffectChange MakeVisualEffectChange(CLoopingVisualEffect* pVis, unsigned char nChangeType)
+{
+    VisualEffectChange change;
+    change.pVisualEffect = pVis;
+    change.nChangeType = nChangeType;
+    return change;
+}
+static CLoopingVisualEffect* GetChangeVisualEffect(const VisualEffectChange& change)
+{
+    return change.pVisualEffect;
+}
+static unsigned char GetChangeType(const VisualEffectChange& change)
+{
+    return change.nChangeType;
+}
+static void SetVisualEffectChange(VisualEffectChange& change, CLoopingVisualEffect* pVis, unsigned char nChangeType)
+{
+    change.pVisualEffect = pVis;
+    change.nChangeType = nChangeType;
+}
+#endif
+
 void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObject* pObject,
                                                   CLastUpdateObject* pLast, unsigned int nMask,
                                                   unsigned int nUpdateFlags)
@@ -990,9 +1043,10 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
     if (pPlayerObject == 0)
         return;
 
-    if (pObject->m_objectType == CGameObject::OBJECT_TYPE_CREATURE && pLast != 0 && nUpdateFlags != 0)
+    if (pObject->m_objectType == CGameObject::OBJECT_TYPE_CREATURE)
     {
-        WriteGameObjUpdate_UpdateAppearance(pObject, pLast, nUpdateFlags);
+        if (pLast != 0 && nUpdateFlags != 0)
+            WriteGameObjUpdate_UpdateAppearance(pObject, pLast, nUpdateFlags);
     }
 
     WriteCHAR('U', 8);
@@ -1073,7 +1127,10 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                     WriteBOOL(pCreature->m_pCombatRound->GetAttack(i)->m_bKillingBlow);
                     WriteBYTE(pCreature->m_pCombatRound->GetAttack(i)->m_nWeaponAttackType, 4);
                 }
-                if (!((nAnim >= SERVER_ANIMATION_CONJURE_1 && nAnim <= SERVER_ANIMATION_CAST_4) || nAnim == SERVER_ANIMATION_THROW_SABER_LOOP || nAnim == SERVER_ANIMATION_POWER_ATTACK ||
+                if (!(nAnim == SERVER_ANIMATION_CONJURE_1 || nAnim == SERVER_ANIMATION_CONJURE_2 ||
+                      nAnim == SERVER_ANIMATION_CAST_1 || nAnim == SERVER_ANIMATION_CAST_2 ||
+                      nAnim == SERVER_ANIMATION_CAST_3 || nAnim == SERVER_ANIMATION_CAST_4 ||
+                      nAnim == SERVER_ANIMATION_THROW_SABER_LOOP || nAnim == SERVER_ANIMATION_POWER_ATTACK ||
                       nAnim == SERVER_ANIMATION_CONJURE_3))
                     break;
             }
@@ -1087,8 +1144,9 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
             case SERVER_ANIMATION_POWER_ATTACK:
             case SERVER_ANIMATION_CONJURE_3:
             {
-                WriteDWORD(pCreature->m_castSpellId, 32);
-                if (pCreature->m_castSpellId == FORCE_POWER_LIGHT_SABER_THROW)
+                unsigned int nSpellId = pCreature->m_castSpellId;
+                WriteDWORD(nSpellId, 32);
+                if (nSpellId == FORCE_POWER_LIGHT_SABER_THROW)
                 {
                     CSWItem* pCastItem = pCreature->m_pInventory->GetItemInSlot(16);
                     WriteOBJECTIDServer(pCastItem != 0 ? static_cast<CSWSItem*>(pCastItem)->m_objectId
@@ -1099,7 +1157,9 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                     WriteOBJECTIDServer(pCreature->m_lastSpellItemId);
                 }
 
-                if ((nAnim >= SERVER_ANIMATION_CAST_1 && nAnim <= SERVER_ANIMATION_CAST_4) || nAnim == SERVER_ANIMATION_THROW_SABER_LOOP || nAnim == SERVER_ANIMATION_POWER_ATTACK)
+                if (nAnim == SERVER_ANIMATION_CAST_1 || nAnim == SERVER_ANIMATION_CAST_2 ||
+                    nAnim == SERVER_ANIMATION_CAST_3 || nAnim == SERVER_ANIMATION_CAST_4 ||
+                    nAnim == SERVER_ANIMATION_THROW_SABER_LOOP || nAnim == SERVER_ANIMATION_POWER_ATTACK)
                 {
                     if (pCreature->m_castTargetId == OBJECT_INVALID)
                     {
@@ -1125,20 +1185,12 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
 
     if (nMask & MSG_OBJECT_UPDATE_VISUAL_EFFECTS)
     {
-        struct Change
-        {
-            CLoopingVisualEffect* pVisualEffect;
-            unsigned char nChangeType;
-            char _pad[7];
-            bool operator==(const Change& o) const
-            {
-                return pVisualEffect == o.pVisualEffect && nChangeType == o.nChangeType;
-            }
-        };
-        CExoArrayList<Change> changes;
+        CExoArrayList<VisualEffectChange> changes;
         CExoArrayList<unsigned short> ids;
+        VisualEffectChange change;
 
         int nObjectFxCount = pObject->m_visualEffects.m_count;
+        int nLastFxCount = pLast->m_visualEffects.m_count;
 
         for (int i = 0; i < nObjectFxCount; i++)
         {
@@ -1150,7 +1202,8 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
             {
                 for (int j = 0; j < static_cast<int>(changes.m_count); j++)
                 {
-                    CLoopingVisualEffect* pExisting = changes.m_pArray[j].pVisualEffect;
+                    change = changes.m_pArray[j];
+                    CLoopingVisualEffect* pExisting = GetChangeVisualEffect(change);
                     if (pExisting->m_nVisualEffectId == nVisId && pExisting->m_nBodyPart == pVis->m_nBodyPart &&
                         pExisting->m_targetId == pVis->m_targetId)
                     {
@@ -1168,7 +1221,7 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
             if (bDuplicate == 0)
             {
                 int bFoundInSnapshot = 0;
-                for (int j = 0; j < static_cast<int>(pLast->m_visualEffects.m_count); j++)
+                for (int j = 0; j < nLastFxCount; j++)
                 {
                     CLoopingVisualEffect* pLastVis = pLast->m_visualEffects.m_pArray[j];
                     if (pVis->GetIsBeam())
@@ -1188,16 +1241,14 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                 }
                 if (bFoundInSnapshot == 0)
                 {
-                    Change addChg;
-                    addChg.pVisualEffect = pVis;
-                    addChg.nChangeType = 'A';
-                    changes.AddUnique(addChg);
+                    SetVisualEffectChange(change, pVis, 'A');
+                    changes.AddUnique(change);
                     ids.Add(nVisId);
                 }
             }
         }
 
-        for (int i = 0; i < static_cast<int>(pLast->m_visualEffects.m_count); i++)
+        for (int i = 0; i < nLastFxCount; i++)
         {
             CLoopingVisualEffect* pLastVis = pLast->m_visualEffects.m_pArray[i];
             int bStillActive = 0;
@@ -1221,18 +1272,16 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
             }
             if (bStillActive == 0)
             {
-                Change delChg;
-                delChg.pVisualEffect = pLastVis;
-                delChg.nChangeType = 'D';
-                changes.AddUnique(delChg);
+                SetVisualEffectChange(change, pLastVis, 'D');
+                changes.AddUnique(change);
             }
         }
 
         WriteWORD(static_cast<unsigned short>(changes.m_count), 16);
         for (int i = 0; i < static_cast<int>(changes.m_count); i++)
         {
-            CLoopingVisualEffect* pVis = changes.m_pArray[i].pVisualEffect;
-            WriteBYTE(changes.m_pArray[i].nChangeType, 8);
+            CLoopingVisualEffect* pVis = GetChangeVisualEffect(changes.m_pArray[i]);
+            WriteBYTE(GetChangeType(changes.m_pArray[i]), 8);
             WriteWORD(pVis->m_nVisualEffectId, 16);
             if (pVis->GetIsBeam())
             {
@@ -1374,10 +1423,11 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                 if (static_cast<unsigned short>(nPathSegCount) != 0 &&
                     nPathSegOffset < static_cast<unsigned short>(nPathSegCount))
                 {
+                    float* pWayPoints = pPathfindInfo->m_paWayPoints;
                     for (int i = nPathSegOffset; i < static_cast<unsigned short>(nPathSegCount); i++)
                     {
-                        WriteFLOAT(pPathfindInfo->m_paWayPoints[i * 2], 1.0f, 32);
-                        WriteFLOAT(pPathfindInfo->m_paWayPoints[i * 2 + 1], 1.0f, 32);
+                        WriteFLOAT(pWayPoints[i * 2], 1.0f, 32);
+                        WriteFLOAT(pWayPoints[i * 2 + 1], 1.0f, 32);
                         WriteFLOAT(0.0f, 1.0f, 32);
                     }
                 }
@@ -1477,11 +1527,11 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
             CSWSCreature* pViewer = pPlayer->GetGameObject()->AsSWSCreature();
             if (pViewer != 0)
             {
-                int nMembers = 0;
                 if (pObject->m_objectId == pViewer->m_objectId)
                 {
                     WriteBOOL(1);
                     WriteBOOL(1);
+                    int nMembers = 0;
                     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
                     if (pModule != 0)
                         nMembers = pModule->m_playerList.Contains(pObject->m_objectId);
@@ -1495,15 +1545,14 @@ void CSWSMessage::WriteGameObjUpdate_UpdateObject(CSWSPlayer* pPlayer, CSWSObjec
                     {
                         WriteBOOL((pFound->m_flags >> 1) & 1);
                         WriteBOOL(pFound->m_flags & 1);
-                        nMembers = (pFound->m_flags >> 4) & 1;
+                        WriteBOOL((pFound->m_flags >> 4) & 1);
                     }
                     else
                     {
                         WriteBOOL(0);
                         WriteBOOL(0);
-                        nMembers = 0;
+                        WriteBOOL(0);
                     }
-                    WriteBOOL(nMembers);
                 }
             }
         }
@@ -1707,8 +1756,8 @@ int CSWSMessage::ComputeLastUpdate_GuiKnownSpells(CSWSCreature* pCreature,
     for (unsigned char nClass = 0; nClass < 2; nClass++)
     {
         unsigned char nLive = 0;
-        CExoArrayList<unsigned int>* pDeleteList = &pLast->m_spellDeleteList[nClass][0];
-        CExoArrayList<unsigned int>* pAddList = &pLast->m_spellAddList[nClass][0];
+        CExoArrayList<uint32_l_t>* pDeleteList = &pLast->m_spellDeleteList[nClass][0];
+        CExoArrayList<uint32_l_t>* pAddList = &pLast->m_spellAddList[nClass][0];
 
         for (unsigned char i = 0; i < pLast->GetNumberKnownSpells(nClass, 0); i++)
         {
@@ -1763,9 +1812,9 @@ void CSWSMessage::ComputeLastUpdate_StoreUpdateSpellLikeAbility(CSWSCreature* pC
 
 // Packs the party-state byte: the detect mode, the stealth latch and one bit per reported
 // combat mode.
-char CSWSMessage::ComputeLastUpdate_AssociateState(CSWSCreature* pCreature)
+unsigned char CSWSMessage::ComputeLastUpdate_AssociateState(CSWSCreature* pCreature)
 {
-    char nState = 0;
+    unsigned char nState = 0;
 
     if (pCreature->GetDetectMode() == 1)
         nState |= MSG_ASSOCIATE_STATE_DETECT;
@@ -3932,7 +3981,7 @@ int CSWSMessage::SendServerToPlayerExamineGui_MineData(CSWSPlayer* pPlayer,
 
     g_pAppManager->m_pServerExoApp->GetNetLayer()->GetPlayerInfo(nPlayerId);
 
-    CreateWriteMessage(14, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 6, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDServer(objectId);
     WriteBOOL(bDetected);
 
@@ -4119,21 +4168,19 @@ int CSWSMessage::SendServerToAllPlayersCreatureUpdate_StripEquippedItems(unsigne
 {
     CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-    if (pNode != 0) {
-        do {
-            CSWSPlayer* pOther = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-            if (pOther->GetLastUpdateObject(objectId) != 0) {
-                CreateWriteMessage(8, MSG_PLAYERID_ALL_CLIENTS, 1);
-                WriteOBJECTIDServer(objectId);
+    while (pNode != 0) {
+        CSWSPlayer* pOther = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
+        if (pOther->GetLastUpdateObject(objectId) != 0) {
+            CreateWriteMessage(OBJECTID_SIZE, MSG_PLAYERID_ALL_CLIENTS, 1);
+            WriteOBJECTIDServer(objectId);
 
-                unsigned char* pMsg;
-                unsigned int nSize;
-                if (GetWriteMessage(&pMsg, &nSize) != 0)
-                    SendServerToPlayerMessage(pOther->m_nPlayerId, MSG_MAJOR_GAME_OBJECT_UPDATE,
-                                              MSG_GAME_OBJECT_UPDATE_STRIP_EQUIPPED_ITEMS, pMsg, nSize);
-            }
-            pList->GetNext(pNode);
-        } while (pNode != 0);
+            unsigned char* pMsg;
+            unsigned int nSize;
+            if (GetWriteMessage(&pMsg, &nSize) != 0)
+                SendServerToPlayerMessage(pOther->m_nPlayerId, MSG_MAJOR_GAME_OBJECT_UPDATE,
+                                          MSG_GAME_OBJECT_UPDATE_STRIP_EQUIPPED_ITEMS, pMsg, nSize);
+        }
+        pList->GetNext(pNode);
     }
 
     return 1;
@@ -4188,7 +4235,7 @@ int CSWSMessage::SendServerToPlayerDebugInfo_Placeable(CSWSPlayer* pPlayer,
     if (pFaction == 0)
         return 0;
 
-    CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+    CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
     WriteOBJECTIDServer(objectId);
     WriteCExoLocStringServer(pPlaceable->GetFirstName(), 0);
     WriteCExoString(pPlaceable->m_sTag, 32);
@@ -5044,9 +5091,9 @@ int CSWSMessage::SendServerToPlayerPopUpGUIPanel(unsigned long long objectId, in
                                                  int bB, int nC, const CExoString& sText)
 {
     unsigned char* pMsg;
+    CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(objectId);
     unsigned int nSize;
 
-    CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(objectId);
     if (pPlayer == 0)
         return 1;
 
@@ -5269,7 +5316,11 @@ int CSWSMessage::SendServerToPlayerUpdateCharResponse(CSWSPlayer* pPlayer, unsig
 
         g_pExoResMan->RemoveResourceDirectory(CExoString("TEMP:"));
         g_pExoResMan->RemoveFile(sTempFile, kResTypeBic);
+#if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 frees the new[] buffer with scalar delete
+        delete pFileBytes;
+#else
         delete [] pFileBytes;
+#endif
     }
 
     delete pOutStruct;
@@ -5320,9 +5371,9 @@ int CSWSMessage::SendServerToPlayerCharacterDownloadReply(CSWSPlayer* pPlayer)
 
 int CSWSMessage::SendServerToPlayerCharacterDownloadFail(CSWSPlayer* pPlayer)
 {
+    CExoString sResRef;
     unsigned char* pMsg;
     unsigned int nSize;
-    CExoString sResRef;
 
     if (pPlayer->SaveServerCharacter() == 0)
         return 0;
@@ -5362,7 +5413,8 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
 
     CreateWriteMessage(nSize, MSG_PLAYERID_ALL_CLIENTS, 1);
 
-    g_pAppManager->m_pServerExoApp->GetNetLayer()->GetPlayerInfo(pPlayer->m_nPlayerId);
+    CNetLayerPlayerInfo* pInfo = g_pAppManager->m_pServerExoApp->GetNetLayer()->GetPlayerInfo(pPlayer->m_nPlayerId);
+    (void)pInfo;
 
     sPlayerName = pPlayer->GetPlayerName();
 #if KOTOR1  // K1: GetDirectoryList takes a sixth flag
@@ -5391,13 +5443,15 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
                 sCharName = sCharName.SubString(
                     0, sCharName.GetLength() - 4);
 
+                NWPlayerCharacterList_st* pEntry;
+                unsigned int nClasses;
                 CResGFF* pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "),
                                             CResRef(sCharName));
                 if (pGff->m_nValid != 0)
                 {
                     pGff->GetTopLevelStruct(&topStruct);
 
-                    NWPlayerCharacterList_st* pEntry = new NWPlayerCharacterList_st;
+                    pEntry = new NWPlayerCharacterList_st;
                     pEntry->m_firstName = pGff->ReadFieldCExoLocString(
                         &topStruct, const_cast<char*>("FirstName"), bSuccess, CExoLocString());
                     pEntry->m_lastName = pGff->ReadFieldCExoLocString(
@@ -5411,14 +5465,14 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
 
                     if (pGff->GetList(&classList, &topStruct, const_cast<char*>("ClassList")))
                     {
-                        unsigned int nClasses = pGff->GetListCount(&classList);
+                        nClasses = pGff->GetListCount(&classList);
                         if (nClasses != 0)
                         {
                             for (unsigned int j = 0; j < nClasses; j++)
                             {
+                                NWPlayerCharacterListClass_st cls;
                                 if (pGff->GetListElement(&classStruct, &classList, j))
                                 {
-                                    NWPlayerCharacterListClass_st cls;
                                     cls.m_nClass = pGff->ReadFieldINT(&classStruct, const_cast<char*>("Class"),
                                                                       bSuccess, -1);
                                     cls.m_nLevel = static_cast<unsigned char>(pGff->ReadFieldSHORT(
@@ -5453,12 +5507,14 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
         sCharName = sCharName.SubString(
             0, sCharName.GetLength() - 4);
 
+        NWPlayerCharacterList_st* pEntry;
+        unsigned int nClasses;
         CResGFF* pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "), CResRef(sCharName));
         if (pGff->m_nValid != 0)
         {
             pGff->GetTopLevelStruct(&topStruct);
 
-            NWPlayerCharacterList_st* pEntry = new NWPlayerCharacterList_st;
+            pEntry = new NWPlayerCharacterList_st;
             pEntry->m_firstName = pGff->ReadFieldCExoLocString(&topStruct, const_cast<char*>("FirstName"),
                                                               bSuccess, CExoLocString());
             pEntry->m_lastName = pGff->ReadFieldCExoLocString(&topStruct, const_cast<char*>("LastName"),
@@ -5472,14 +5528,14 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
 
             if (pGff->GetList(&classList, &topStruct, const_cast<char*>("ClassList")))
             {
-                unsigned int nClasses = pGff->GetListCount(&classList);
+                nClasses = pGff->GetListCount(&classList);
                 if (nClasses != 0)
                 {
                     for (unsigned int j = 0; j < nClasses; j++)
                     {
+                        NWPlayerCharacterListClass_st cls;
                         if (pGff->GetListElement(&classStruct, &classList, j))
                         {
-                            NWPlayerCharacterListClass_st cls;
                             cls.m_nClass =
                                 pGff->ReadFieldINT(&classStruct, const_cast<char*>("Class"), bSuccess, -1);
                             cls.m_nLevel = static_cast<unsigned char>(pGff->ReadFieldSHORT(&classStruct, const_cast<char*>("ClassLevel"),
@@ -5509,6 +5565,7 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
     for (int64_t i = 0; i < charList.m_count; i++)
     {
         NWPlayerCharacterList_st* pEntry = charList.m_pArray[i];
+        unsigned int nClasses;
 
         WriteCExoLocStringServer(pEntry->m_firstName, 0);
         WriteCExoLocStringServer(pEntry->m_lastName, 0);
@@ -5517,7 +5574,7 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
         WriteWORD(pEntry->m_nPortraitId, 16);
         WriteCResRef(pEntry->m_portrait, 16);
 
-        unsigned int nClasses = pEntry->m_classList.m_count;
+        nClasses = pEntry->m_classList.m_count;
         WriteBYTE(static_cast<unsigned char>(nClasses), 8);
         for (unsigned int j = 0; j < nClasses; j++)
         {
@@ -5771,14 +5828,14 @@ CLastUpdateObject* CSWSMessage::CreateNewLastUpdateObject(CSWSPlayer* pPlayer, C
         CSWSCreature* pCreature = static_cast<CSWSCreature*>(pObject);
         pCreature->UpdateAppearanceForEquippedItems();
         pLast->m_appearance.m_headId = pCreature->m_appearance.m_headId;
-        pLast->m_appearance.m_nPhenotype = pCreature->m_appearance.m_nPhenotype;
         pLast->m_appearance.m_nGender = pCreature->m_appearance.m_nGender;
-        pLast->m_appearance.m_nColorSkin = pCreature->m_appearance.m_nColorSkin;
         pLast->m_appearance.m_nColorHair = pCreature->m_appearance.m_nColorHair;
+        pLast->m_appearance.m_nAppearanceHead = pCreature->m_appearance.m_nAppearanceHead;
+        pLast->m_appearance.m_nPhenotype = pCreature->m_appearance.m_nPhenotype;
+        pLast->m_appearance.m_nColorSkin = pCreature->m_appearance.m_nColorSkin;
+        pLast->m_appearance.m_nTail = pCreature->m_appearance.m_nTail;
         pLast->m_appearance.m_nColorTattoo1 = pCreature->m_appearance.m_nColorTattoo1;
         pLast->m_appearance.m_nColorTattoo2 = pCreature->m_appearance.m_nColorTattoo2;
-        pLast->m_appearance.m_nAppearanceHead = pCreature->m_appearance.m_nAppearanceHead;
-        pLast->m_appearance.m_nTail = pCreature->m_appearance.m_nTail;
         pLast->m_appearance.m_nWings = pCreature->m_appearance.m_nWings;
         pLast->m_appearance.m_itemId[1] = pCreature->m_appearance.m_itemId[1];
         pLast->m_appearance.m_itemId[0] = pCreature->m_appearance.m_itemId[0];
@@ -5797,7 +5854,7 @@ CLastUpdateObject* CSWSMessage::CreateNewLastUpdateObject(CSWSPlayer* pPlayer, C
     }
     else
     {
-        pLast->m_appearance = CSWSCreatureAppearanceInfo();
+        __builtin_memset(static_cast<void*>(&pLast->m_appearance), 0, sizeof(pLast->m_appearance));
     }
 
     unsigned char nType = pObject->m_objectType;
@@ -8000,7 +8057,7 @@ void CSWSMessage::StoreValuesInLastPlayerUpdateObject(CSWSPlayer* pPlayer,
 // uninitialized when the open container is neither an item nor a placeable.
 void CSWSMessage::WriteGameObjUpdate_MajorGUIPanels(CSWSPlayer* pPlayer)
 {
-    CExoArrayList<unsigned int> aChangedSlots;
+    CExoArrayList<uint32_l_t> aChangedSlots;
 
     CSWSObject* pObject;
 #if KOTOR1  // K1: always the player's own creature
@@ -8469,7 +8526,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
     switch (nType)
     {
     case 1:
-        CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteDWORD(pData->GetInteger(0), 32);
         if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -8479,7 +8536,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_DAMAGE:
-        CreateWriteMessage(10, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(OBJECTID_SIZE + 2, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         for (int i = 0; i < 15; i++)
         {
@@ -8500,7 +8557,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_DAMAGE_FROM_ATTACKER:
-        CreateWriteMessage(18, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(2 * OBJECTID_SIZE + 2, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(1));
         for (int i = 0; i < 15; i++)
@@ -8525,7 +8582,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_DEATH:
-        CreateWriteMessage(20, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(2 * OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(1));
         WriteINT(pData->GetInteger(0), 32);
@@ -8540,7 +8597,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
         return SendServerToPlayerMessage(nPlayerId, MSG_MAJOR_CLIENT_SIDE_MESSAGE, nType, 0, 0);
 
     case CC_MESSAGE_SAVING_THROW:
-        CreateWriteMessage(14, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(OBJECTID_SIZE + 6, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteBYTE(static_cast<unsigned char>(pData->GetInteger(0)), 8);
         WriteBYTE(static_cast<unsigned char>(pData->GetInteger(1)), 8);
         WriteBYTE(static_cast<unsigned char>(pData->GetInteger(2)), 5);
@@ -8556,9 +8613,9 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
 
     case CC_MESSAGE_SPELL:
 #if KOTOR1  // K1: three trailing INTs, not five
-        CreateWriteMessage(40, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(3 * OBJECTID_SIZE + 16, MSG_PLAYERID_ALL_CLIENTS, 1);
 #else
-        CreateWriteMessage(48, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(3 * OBJECTID_SIZE + 24, MSG_PLAYERID_ALL_CLIENTS, 1);
 #endif
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(2));
@@ -8589,7 +8646,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_SKILL:
-        CreateWriteMessage(44, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(3 * OBJECTID_SIZE + 20, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(1));
         WriteDWORD(pData->GetInteger(0), 32);
@@ -8606,7 +8663,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_FORCE_RESIST:
-        CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteBYTE(static_cast<unsigned char>(pData->GetInteger(0)), 8);
         if (GetWriteMessage(&pMsg, &nSize) == 0)
@@ -8736,7 +8793,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_FORCE_POINT_USAGE:
-        CreateWriteMessage(22, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(sizeof(CExoString) + 6, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteCExoString(pData->GetString(0), 32);
         WriteINT(pData->GetInteger(0), 32);
         WriteINT(pData->GetInteger(1), 32);
@@ -8748,7 +8805,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_ATTACK_ROLL:
-        CreateWriteMessage(20, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(2 * OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(1));
         WriteCHAR(static_cast<char>(pData->GetInteger(0)), 8);
@@ -8771,7 +8828,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case 14:
-        CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteBYTE(static_cast<unsigned char>(pData->GetInteger(0)), 5);
         WriteCHAR(static_cast<char>(pData->GetInteger(1)), 8);
@@ -8782,7 +8839,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_DISPEL:
-        CreateWriteMessage(pData->GetInteger(0) * 2 + 9, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(pData->GetInteger(0) * 2 + OBJECTID_SIZE + 1, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteBYTE(static_cast<unsigned char>(pData->GetInteger(0)), 8);
         for (unsigned char i = 0; i < static_cast<unsigned char>(pData->GetInteger(0)); i++)
@@ -8794,7 +8851,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_STEALTH_DETECTION:
-        CreateWriteMessage(40, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(2 * OBJECTID_SIZE + 24, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(1));
         WriteBOOL(pData->GetInteger(0));
@@ -8817,7 +8874,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
     case CC_MESSAGE_FORCE_RESISTANCE_ROLL:
         if (pData->GetInteger(2) == 0)
             return 1;
-        CreateWriteMessage(28, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(2 * OBJECTID_SIZE + 12, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(1));
         WriteBYTE(static_cast<unsigned char>(pData->GetInteger(0)), 8);
@@ -8830,7 +8887,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_ATTACK_SUMMARY:
-        CreateWriteMessage(50, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(2 * OBJECTID_SIZE + 34, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(1));
         WriteINT(pData->GetInteger(0), 32);
@@ -8852,7 +8909,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
                                          nSize);
 
     case CC_MESSAGE_MINE_DETECTION:
-        CreateWriteMessage(20, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(2 * OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteOBJECTIDServer(pData->GetObjectID(1));
         WriteSHORT(static_cast<short>(pData->GetInteger(0)), 16);
@@ -8988,7 +9045,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
 #if KOTOR1  // K1: 26 is the same record as 25
     case CC_MESSAGE_DEFLECT_BREAKDOWN:
 #endif
-        CreateWriteMessage(44, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(OBJECTID_SIZE + 36, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteINT(pData->GetInteger(0), 32);
         WriteINT(pData->GetInteger(1), 32);
@@ -9003,7 +9060,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
 
 #if !KOTOR1
     case CC_MESSAGE_DEFLECT_BREAKDOWN:
-        CreateWriteMessage(76, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(OBJECTID_SIZE + 68, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteINT(pData->GetInteger(0), 32);
         WriteINT(pData->GetInteger(1), 32);
@@ -9026,7 +9083,7 @@ int CSWSMessage::SendServerToPlayerCCMessage(unsigned int nPlayerId, unsigned ch
 #endif
 
     case CC_MESSAGE_POISONED:
-        CreateWriteMessage(12, MSG_PLAYERID_ALL_CLIENTS, 1);
+        CreateWriteMessage(OBJECTID_SIZE + 4, MSG_PLAYERID_ALL_CLIENTS, 1);
         WriteOBJECTIDServer(pData->GetObjectID(0));
         WriteINT(pData->GetInteger(0), 32);
         break;

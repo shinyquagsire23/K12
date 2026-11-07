@@ -4,9 +4,7 @@
 
 #include "port/libcbase.h"
 #include "port/libcstring.h"
-extern "C" {
-    int  ASL_feof(FILE* f);
-}
+#include "exostringinline.h"
 
 CExoFile::CExoFile(const CExoString& path, unsigned short resType, const CExoString& mode)
 {
@@ -36,23 +34,13 @@ int CExoFile::Eof()
     if (!p->m_pFile) return 0;
     return SDL_RWtell(p->m_pFile) == SDL_RWsize(p->m_pFile);
 #else
-    FILE* f = m_pInternal->m_pFile;
-    if (f) return ASL_feof(f);
-    return static_cast<int>(reinterpret_cast<intptr_t>(f));
+    return m_pInternal->Eof();
 #endif
 }
 
 bool CExoFile::Flush()
 {
-#if KOTOR1
     return m_pInternal->Flush();
-#else
-    bool bResult = false;
-    if (m_pInternal->m_pFile) {
-        bResult = fflush(m_pInternal->m_pFile) == 0;
-    }
-    return bResult;
-#endif
 }
 
 int CExoFile::Seek(int offset, int whence)
@@ -62,11 +50,7 @@ int CExoFile::Seek(int offset, int whence)
     if (!f) return 0;
     return SDL_RWseek(f, offset, whence) != -1;
 #else
-    int nResult = 0;
-    if (m_pInternal->m_pFile) {
-        nResult = fseek(m_pInternal->m_pFile, offset, whence) == 0;
-    }
-    return nResult;
+    return m_pInternal->Seek(offset, whence);
 #endif
 }
 
@@ -77,11 +61,7 @@ bool CExoFile::SeekEnd()
     if (!f) return 0;
     return SDL_RWseek(f, 0, RW_SEEK_END) != -1;
 #else
-    bool bResult = false;
-    if (m_pInternal->m_pFile) {
-        bResult = fseek(m_pInternal->m_pFile, 0, 2) == 0;
-    }
-    return bResult;
+    return m_pInternal->SeekEnd();
 #endif
 }
 
@@ -92,26 +72,13 @@ bool CExoFile::SeekBeginning()
     if (!f) return 0;
     return SDL_RWseek(f, 0, RW_SEEK_SET) != -1;
 #else
-    bool bResult = false;
-    if (m_pInternal->m_pFile) {
-        bResult = fseek(m_pInternal->m_pFile, 0, 0) == 0;
-    }
-    return bResult;
+    return m_pInternal->SeekBeginning();
 #endif
 }
 
 unsigned int CExoFile::Write(const void* pBuffer, unsigned int elemSize, unsigned int count)
 {
-#if KOTOR1
     return m_pInternal->Write(pBuffer, elemSize, count);
-#else
-    unsigned int nWritten = 0;
-    if (m_pInternal->m_pFile) {
-        nWritten = static_cast<unsigned int>(fwrite(pBuffer, elemSize, count, m_pInternal->m_pFile));
-        nWritten = nWritten * elemSize;
-    }
-    return nWritten;
-#endif
 }
 
 unsigned int CExoFile::Write(const CExoString& str)
@@ -119,20 +86,7 @@ unsigned int CExoFile::Write(const CExoString& str)
 #if KOTOR1
     return m_pInternal->Write(str.CStr(), 1, str.GetLength());
 #else
-    unsigned int nWritten = 0;
-    CExoFileInternal* p = m_pInternal;
-    if (p->m_pFile) {
-        const char* pStr = str.CStr();
-        uint64_t len;
-        if (str.m_sString == 0) {
-            len = 0;
-        } else {
-            len = strlen(str.m_sString);
-            len = static_cast<unsigned int>(len);
-        }
-        nWritten = static_cast<unsigned int>(fwrite(pStr, 1, len, p->m_pFile));
-    }
-    return nWritten;
+    return m_pInternal->Write(str);
 #endif
 }
 

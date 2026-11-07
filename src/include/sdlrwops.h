@@ -6,8 +6,8 @@
 
 #if KOTOR1
 typedef struct SDL_RWops {
-    int64_t (*size)(struct SDL_RWops* context);
-    int64_t (*seek)(struct SDL_RWops* context, int64_t offset, int whence);
+    int64_ll_t (*size)(struct SDL_RWops* context);
+    int64_ll_t (*seek)(struct SDL_RWops* context, int64_ll_t offset, int whence);
     uint64_t (*read)(struct SDL_RWops* context, void* ptr, uint64_t size,
                           uint64_t maxnum);
     uint64_t (*write)(struct SDL_RWops* context, const void* ptr, uint64_t size,

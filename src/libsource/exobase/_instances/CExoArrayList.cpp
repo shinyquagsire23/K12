@@ -16,7 +16,9 @@
 
 // DerefContains compares pointees: no by-value element type has one.
 template <> int CExoArrayList<unsigned long long>::DerefContains(unsigned long long) const = delete;
-template <> int CExoArrayList<unsigned int>::DerefContains(unsigned int) const = delete;
+#if K2_ULL_DISTINCT
+template <> int CExoArrayList<uint32_l_t>::DerefContains(uint32_l_t) const = delete;
+#endif
 template <> int CExoArrayList<int>::DerefContains(int) const = delete;
 template <> int CExoArrayList<float>::DerefContains(float) const = delete;
 template <> int CExoArrayList<unsigned short>::DerefContains(unsigned short) const = delete;
@@ -27,7 +29,9 @@ template <> int CExoArrayList<CExoLocString>::DerefContains(CExoLocString) const
 // Every element type the rest of the engine instantiates.
 template class CExoArrayList<unsigned long long>;
 
-template class CExoArrayList<unsigned int>;
+#if K2_ULL_DISTINCT
+template class CExoArrayList<uint32_l_t>;
+#endif
 
 template class CExoArrayList<int>;
 

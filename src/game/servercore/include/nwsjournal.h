@@ -94,8 +94,8 @@ class CSWSPlayerJournalState {
 public:
     CSWSPlayerJournalState()
     {
-        m_bQuestScreenOpen = 0;
         m_bFullUpdateNeeded = 1;
+        m_bQuestScreenOpen = 0;
     }
 
     int m_bQuestScreenOpen;

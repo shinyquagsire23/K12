@@ -21,14 +21,14 @@ const int CSWCSoundObject::MAX_VOLUME = 127;
 
 // Exactly one of the two sources is non-null by construction, so neither is null-checked; the
 // streaming arm is gated on m_bStreamingSound for the same reason.
-int CSWCSoundObject::GetIsPlaying()
+__attribute__((always_inline)) inline int CSWCSoundObject::GetIsPlaying()
 {
-    if (!m_bStreamingSound && m_pSoundSource->IsHardwarePlayingSoundPleaseDontUseThis())
-        return 1;
+    if (!m_bStreamingSound && !m_pSoundSource->IsHardwarePlayingSoundPleaseDontUseThis())
+        return 0;
     // Gated on the flag: a non-streaming sound's null streaming source must not be dereferenced.
-    else if (m_bStreamingSound && m_pStreamingSoundSource->IsPlaying())
-        return 1;
-    return 0;
+    if (m_bStreamingSound && !m_pStreamingSoundSource->IsPlaying())
+        return 0;
+    return 1;
 }
 
 
@@ -36,9 +36,9 @@ CSWCSoundObject::CSWCSoundObject()
     : CSWCObject(CGameObject::OBJECT_TYPE_SOUND)
 {
     m_bStreamingSound = 0;
-    m_nNextSoundInterval = 0;
     m_pSoundSource = 0;
     m_pStreamingSoundSource = 0;
+    m_nNextSoundInterval = 0;
     m_bActive = 1;
     m_nVolume = MAX_VOLUME;
     m_nVolumeVariation = 0;

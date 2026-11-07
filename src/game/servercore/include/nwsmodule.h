@@ -38,9 +38,11 @@ struct NWPlayerCharacterList_st {
         m_nPortraitId = PORTRAIT_ID_NONE;
     }
 
-    int operator==(const NWPlayerCharacterList_st& other) const
+    int operator==(NWPlayerCharacterList_st& other)
     {
-        return m_firstName == other.m_firstName && m_lastName == other.m_lastName;
+        if (m_firstName == other.m_firstName && m_lastName == other.m_lastName)
+            return 1;
+        return 0;
     }
 };
 

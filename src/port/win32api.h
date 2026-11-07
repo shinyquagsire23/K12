@@ -311,8 +311,8 @@ void GetLocalTime(_SYSTEMTIME* pSystemTime);
 int SystemTimeToFileTime(const _SYSTEMTIME* pSystemTime, uint64_ll_t* pFileTime);
 int CompareFileTime(const _FILETIME* pFileTime1, const _FILETIME* pFileTime2);
 
-int GetDiskFreeSpaceExA(const char* pPath, unsigned long long* pFreeBytesAvailable,
-                        unsigned long long* pTotalBytes, unsigned long long* pTotalFreeBytes);
+int GetDiskFreeSpaceExA(const char* pPath, uint64_ll_t* pFreeBytesAvailable,
+                        uint64_ll_t* pTotalBytes, uint64_ll_t* pTotalFreeBytes);
 int CreateDirectoryA(const char* pPath, void* pSecAttr);
 int RemoveDirectoryA(const char* pPath);
 uint64_t GetCurrentDirectoryA(uint64_t nSize, char* pszBuf);
@@ -383,7 +383,7 @@ int SetWindowTextA(HWND__* hWnd, const char* pszString);
 int AdjustWindowRect(RECT* pRect, unsigned int dwStyle, int bMenu);
 int GetClientRect(HWND__* hWnd, RECT* pRect);
 int GetWindowInfo(HWND__* hWnd, WINDOWINFO* pInfo);
-int64_t GetWindowLongA(HWND__* hWnd, int nIndex) throw();
+int64_t GetWindowLongA(HWND__* hWnd, int nIndex);
 int SetWindowLongA(HWND__* hWnd, int nIndex, unsigned int dwNewLong);
 int MessageBoxA(HWND__* hWnd, const char* pszText, const char* pszCaption, unsigned int uType);
 void* BeginPaint(HWND__* hWnd, void* pPaint);
@@ -396,7 +396,7 @@ int ScreenToClient(HWND__* hWnd, POINT* pPoint);
 int PtInRect_Win32(const RECT* pRect, POINT pt);   // the point goes by value
 int ReleaseCapture();
 short GetAsyncKeyState(int nVirtKey) throw();
-int GetKeyState(int nVirtKey);   // the engine tests bit 15 of an int
+short GetKeyState(int nVirtKey);
 
 int ReleaseDC(HWND__* hWnd, void* hDC);
 int ChoosePixelFormat(void* hDC, const PIXELFORMATDESCRIPTOR* pPFD);

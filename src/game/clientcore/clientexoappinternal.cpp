@@ -4,8 +4,10 @@
 #include "AndroidJNI.h"
 #include "serveranimation.h"
 #include "restype.h"
+#include "netlayer.h"
 
 int g_bUseJoystick = 1;
+int g_nConnectType = CNetLayer::CONNECTTYPE_PLAYER;
 int g_bLoggedIn;
 #if !KOTOR1
 __attribute__((visibility("hidden"))) float s_iosCtrlAxisScale = 115.0f;
@@ -124,7 +126,6 @@ void AspyrSetupSDKs(unsigned char bConsent);
 #include "soundset.h"
 #include "swguimainmenu.h"
 #include "swguiloadscreen.h"
-#include "netlayer.h"
 #include "clientaimaster.h"
 #include "swmgtrackfollower.h"
 #include "nwscriptconst.h"
@@ -279,7 +280,7 @@ void CClientExoAppInternal::RestoreMousePositionTo(int x, int y)
     m_restoreMouseY = y;
 }
 
-int CClientExoAppInternal::GetActivePauseState()
+unsigned char CClientExoAppInternal::GetActivePauseState()
 {
     return (m_pauseFlags & 2) ? 2 : (m_pauseFlags & 1);
 }
@@ -819,8 +820,9 @@ void CClientExoAppInternal::UpdateSoundEngine()
     {
         Vector vListener;
         Vector vFwd;
+        Quaternion q;
         vListener = pCamera->GetPosition();
-        Quaternion q = pCamera->GetOrientation();
+        q = pCamera->GetOrientation();
 
         CSWCameraOnAStick* pOnAStick = static_cast<CSWCameraOnAStick*>(pCamera->GetBehavior(BEHAVIOR_CAMERA_ON_A_STICK));
         if (pOnAStick != 0) {
@@ -849,7 +851,7 @@ void CClientExoAppInternal::UpdateSoundEngine()
                     pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
                     if (pGui->m_lastShotValid != 0) {
                         pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
-                        vListener = vListener - q.zdir() * pGui->m_lastShotD;
+                        vListener = vListener - pGui->m_lastShotD * q.zdir();
                     }
                 }
             }
@@ -857,9 +859,9 @@ void CClientExoAppInternal::UpdateSoundEngine()
 
         g_pExoSound->SetListenerPosition(vListener);
 
-        vFwd = -q.zdir();
-        Vector vUp = q.ydir();
-        g_pExoSound->SetListenerOrientation(vFwd, vUp);
+        vFwd = q.zdir();
+        vFwd = -vFwd;
+        g_pExoSound->SetListenerOrientation(vFwd, q.ydir());
     }
 
 lblRender:
@@ -917,9 +919,9 @@ void CClientExoAppInternal::SetAutoPaused(int nAutoPaused, unsigned char nLevel)
             return;
 
         if (m_fEnemyAutoPauseDelay > 0.0f) {
-            m_nPendingAutoPauseReason = nLevel;
-            m_fEnemyAutoPauseDelay = 0.0f;
             m_fEnemyAutoPauseTimer = 1.0f;
+            m_fEnemyAutoPauseDelay = 0.0f;
+            m_nPendingAutoPauseReason = nLevel;
             return;
         }
 
@@ -1285,13 +1287,10 @@ void CClientExoAppInternal::FadeAndStopStreamingSoundSource(
 {
     uint64_ll_t t0ms = g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000;
     pSource->FadeAndStop(nFadeMs);
-    if (nFadeMs != 0) {
-        do {
-            g_pExoSound->Render();
-            uint64_ll_t tNowMs = g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000;
-            if (static_cast<unsigned int>(tNowMs - t0ms) >= nFadeMs)
-                break;
-        } while (1);
+    uint64_ll_t tNowMs = t0ms;
+    while (static_cast<unsigned int>(tNowMs - t0ms) < nFadeMs) {
+        g_pExoSound->Render();
+        tNowMs = g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000;
     }
 }
 
@@ -1324,9 +1323,11 @@ void CClientExoAppInternal::BusyWaitMuteSound()
 {
     unsigned int nStart = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
     g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_MUTE, 0);
-    do {
+    unsigned int nNow = nStart;
+    while (nNow - nStart < 500) {
         g_pExoSound->Render();
-    } while (static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000) - nStart < 500);
+        nNow = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
+    }
 }
 
 void CClientExoAppInternal::BusyWaitMenuMusic()
@@ -1334,9 +1335,11 @@ void CClientExoAppInternal::BusyWaitMenuMusic()
     unsigned int nStart = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
     if (m_pMenuMusic)
         m_pMenuMusic->FadeAndStop(2500);
-    do {
+    unsigned int nNow = nStart;
+    while (nNow - nStart < 750) {
         g_pExoSound->Render();
-    } while (static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000) - nStart < 750);
+        nNow = static_cast<unsigned int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
+    }
     if (m_pMenuMusic)
         m_pMenuMusic->Stop(0);
 }
@@ -1375,18 +1378,15 @@ void CClientExoAppInternal::CleanUpModuleServices()
 
 CWorldTimer* CClientExoAppInternal::GetActiveTimer(unsigned long long oid)
 {
-    if (oid == OBJECT_INVALID)
-        return m_pWorldTimer;
-    int state = (m_pauseFlags & 2) ? 2 : (m_pauseFlags & 1);
-    if (state == 2) {
-        if (IsOnExclusionList(oid))
-            return m_pPauseTimer;
-        return m_pWorldTimer;
-    }
-    if (state) {
-        if (IsOnExclusionList(oid))
-            return m_pExclusionTimer;
-        return m_pWorldTimer;
+    if (oid != OBJECT_INVALID) {
+        unsigned char state = GetActivePauseState();
+        if (state == 2) {
+            if (IsOnExclusionList(oid) == 1)
+                return m_pPauseTimer;
+        } else if (state != 0) {
+            if (IsOnExclusionList(oid) == 1)
+                return m_pExclusionTimer;
+        }
     }
     return m_pWorldTimer;
 }
@@ -1397,15 +1397,12 @@ int CClientExoAppInternal::IsOnExclusionList(unsigned long long oid)
         return 1;
     unsigned long long id = oid;
     CExoLinkedListNode* pNode = m_pauseExclusionList->m_pInternal->m_pHead;
-    if (pNode == 0)
-        return 0;
-    do {
+    while (pNode != 0) {
         if (reinterpret_cast<unsigned long long>(m_pauseExclusionList->GetAtPos(pNode)) == id)
             return 1;
         m_pauseExclusionList->GetNext(pNode);
-        if (pNode == 0)
-            return 0;
-    } while (1);
+    }
+    return 0;
 }
 
 void CClientExoAppInternal::AddToPauseExclusionList(unsigned long long oid)
@@ -1543,13 +1540,7 @@ void CClientExoAppInternal::DisplayMainMenu(int n)
     if (m_pMainMenuPanel)
     {
         CSWGuiPanel* pMenu = static_cast<CSWGuiPanel*>(m_pMainMenuPanel);
-        {
-            unsigned short nFlags = static_cast<unsigned short>(pMenu->m_stateFlags & ~PANEL_REMOVE_DEFERRED);
-            if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                nFlags = static_cast<unsigned short>(
-                    (pMenu->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE);
-            pMenu->m_stateFlags = nFlags;
-        }
+        pMenu->SetToBeRemoved(0);
 
         CSWGuiPanel* pChain = *reinterpret_cast<CSWGuiPanel* volatile*>(&m_pMainMenuPanel);
         pChain->SetToBeDeleted(0);
@@ -1999,19 +1990,21 @@ CExoString CClientExoAppInternal::GetGUIString(uint64_t nStrRef)
     int nLow = 0;
     int nHigh = m_stringStructs.m_count - 1;
     int nPos = 0;
+    bool bNotFound = true;
     CExoString strReturn;
 
-    while (nLow < nHigh) {
+    while (nLow < nHigh && bNotFound) {
         nPos = nLow + (nHigh - nLow) / 2;
         if (m_stringStructs.m_pArray[nPos].m_strRef == nStrRef) {
             strReturn = m_stringStructs.m_pArray[nPos].m_sText;
-            goto Found;
+            bNotFound = false;
+        } else {
+            nLow = m_stringStructs.m_pArray[nPos].m_strRef < nStrRef ? nLow : nPos + 1;
+            nHigh = m_stringStructs.m_pArray[nPos].m_strRef < nStrRef ? nPos : nHigh;
         }
-        nLow = m_stringStructs.m_pArray[nPos].m_strRef < nStrRef ? nLow : nPos + 1;
-        nHigh = m_stringStructs.m_pArray[nPos].m_strRef < nStrRef ? nPos : nHigh;
     }
 
-    {
+    if (bNotFound) {
         CGuiStringStruct newEntry;
         {
             CExoString strSimple = g_pTlkTable->GetSimpleString(nStrRef);
@@ -2025,7 +2018,6 @@ CExoString CClientExoAppInternal::GetGUIString(uint64_t nStrRef)
         m_stringStructs.Insert(newEntry, nPos);
     }
 
-Found:
     CTlkTable* pTlk = g_pTlkTable;
     pTlk->ParseStr(strReturn);
     return strReturn;
@@ -2641,7 +2633,6 @@ int CClientExoAppInternal::AddMovieToExoArrayList(const CExoString& sMovie,
         }
         if (pFile)
             delete pFile;
-        return 0;
     }
     return 0;
 }
@@ -3007,9 +2998,9 @@ int CClientExoAppInternal::DontUseThisSetPlayerCreature(unsigned long long oid)
     CSWCCreature* pCreature = GetCreatureByGameObjectID(ServerToClientObjectId(oid));
     if (pCreature == 0)
         return 0;
-    m_pCreatureCache = pCreature;
     m_oidCreatureCache = oid;
     m_playerCreatureId = oid;
+    m_pCreatureCache = pCreature;
     return 1;
 }
 #endif
@@ -3080,8 +3071,8 @@ int CClientExoAppInternal::ChangeCharacterToNextLivingPartyMember(int bOverride,
         return 1;
     if (g_pAppManager->m_pServerExoApp == 0)
         return 0;
-    CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(
-        g_pAppManager->m_pServerExoApp->GetPlayerCreatureId());
+    unsigned long long playerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
+    CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
     if (pPlayer == 0)
         return 0;
 #if KOTOR1  // needs a party with a player character
@@ -3104,8 +3095,8 @@ int CClientExoAppInternal::ChangeCharacterToNextLivingPartyMember(int bOverride,
 
     unsigned char nFound = 0;
     CSWCCreature* pNew = 0;
-    int nTries;
-    for (nTries = nRounds * 3;;) {
+    int nTries = nRounds * 3;
+    do {
         this->ChangeCharacter(-2, 0);
         pNew = m_pParty->GetPlayerCharacter();
         if (pNew) {
@@ -3119,15 +3110,9 @@ int CClientExoAppInternal::ChangeCharacterToNextLivingPartyMember(int bOverride,
                 nFound++;
             }
         }
-        if (nFound == nRounds)
-            break;
-        if (nTries <= 0)
-            break;
-    }
+    } while (nTries > 0 && nFound != nRounds);
 
-    if (nFound != nRounds)
-        goto fallback;
-    if (nTries < 1)
+    if (nFound != nRounds || nTries <= 0)
         goto fallback;
     if (m_pParty->GetPlayerCharacter()->m_objectId == origOid)
         return 0;
@@ -3135,9 +3120,17 @@ int CClientExoAppInternal::ChangeCharacterToNextLivingPartyMember(int bOverride,
         return 1;
     } else {
 #if KOTOR1
-        int nPick = rand() % 3;
-        int nSound = nPick == 0 ? 7 : (nPick == 1 ? 8 : 9);
-        pNew->PlaySoundSetSound(static_cast<unsigned short>(nSound), 1);
+        switch (rand() % 3) {
+        case 0:
+            pNew->PlaySoundSetSound(7, 1);
+            break;
+        case 1:
+            pNew->PlaySoundSetSound(8, 1);
+            break;
+        default:
+            pNew->PlaySoundSetSound(9, 1);
+            break;
+        }
 #else
         PlayCharacterSelectSound(pNew);
 #endif
@@ -3306,10 +3299,10 @@ void CClientExoAppInternal::SetLoadBarProgress(int nProgress, int b)
 void CClientExoAppInternal::EndPazaakGame(int bWin, int nWager, int nRestart,
                                           unsigned long long nObj)
 {
-    m_pazaakResultB = nWager;
-    m_pazaakResultA = bWin;
+    m_pazaak.m_nWager = nWager;
+    m_pazaak.m_bWon = bWin;
     SetInputClass(INPUTCLASS_GAME, 1);
-    m_bPazaakIsRunning = 0;
+    m_pazaak.m_bIsRunning = 0;
 
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
     CSWCCreature* pPlayer = pParty->GetPlayerCharacter();
@@ -3336,13 +3329,13 @@ void CClientExoAppInternal::EndPazaakGame(int bWin, int nWager, int nRestart,
     }
 
     if (nRestart != 0) {
-        StartPazaakGame(m_nPazaakOpponentDeck, m_sPazaakEndScript, 0, 1, nObj);
+        StartPazaakGame(m_pazaak.m_nOpponentDeck, m_pazaak.m_sEndScript, 0, 1, nObj);
         return;
     }
 
     if (g_pVirtualMachine != 0) {
-        if (m_sPazaakEndScript[0] != 0)
-            g_pVirtualMachine->RunScript(&m_sPazaakEndScript, OBJECT_INVALID, 0);
+        if (m_pazaak.m_sEndScript[0] != 0)
+            g_pVirtualMachine->RunScript(&m_pazaak.m_sEndScript, OBJECT_INVALID, 0);
     }
     m_pSWGuiManager->PlayGuiSound(GUISOUND_FULLSCREEN_PANEL_REMOVED);
     g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_GENERIC, 0);
@@ -3351,9 +3344,9 @@ void CClientExoAppInternal::EndPazaakGame(int bWin, int nWager, int nRestart,
 void CClientExoAppInternal::StartPazaakGame(int nPlayerIndex, CExoString const& sName, int nWager,
                                             int nArg3, unsigned long long nArg4)
 {
-    if (m_bPazaakIsRunning)
+    if (m_pazaak.m_bIsRunning)
         return;
-    m_bPazaakIsRunning = 1;
+    m_pazaak.m_bIsRunning = 1;
 
     CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
     CSWCCreature* pPlayer = pParty->GetPlayerCharacter();
@@ -3366,10 +3359,10 @@ void CClientExoAppInternal::StartPazaakGame(int nPlayerIndex, CExoString const& 
         nWager = (nGold > nWager) ? nWager : nGold;
     }
 
-    m_pazaakResultB = nWager;
-    m_pazaakResultA = 0;
-    m_sPazaakEndScript = sName;
-    m_nPazaakOpponentDeck = nPlayerIndex;
+    m_pazaak.m_nWager = nWager;
+    m_pazaak.m_bWon = 0;
+    m_pazaak.m_sEndScript = sName;
+    m_pazaak.m_nOpponentDeck = nPlayerIndex;
 
     g_pExoSound->SetSoundMode(CExoSound::CEXOSOUND_MODE_PAUSE_ALL_BUT_MUSIC, 0);
 
@@ -3746,8 +3739,11 @@ void CClientExoAppInternal::SetEventDescriptions()
         if (i == INPUTEVENT_FREELOOK || bDisabled)
             continue;
 
+        int nKey;
+        int nRep, nWait, nRate K2_UNSET;
+        int nScale;
+        float fMag, fExp K2_UNSET;
         if (g_pExoInput->EventExists(i)) {
-            int nKey;
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
             if (pkm->GetINTEntry(row, CExoString("ICPC"), &nKey) && nKey)
                 g_pExoInput->AddEvent(i, INPUTCLASS_GAME);
@@ -3767,17 +3763,12 @@ void CClientExoAppInternal::SetEventDescriptions()
             if (pkm->GetINTEntry(row, CExoString("ICMovie"), &nKey) && nKey)
                 g_pExoInput->AddEvent(i, INPUTCLASS_MOVIE);
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
-            {
-                int nRep, nWait, nRate K2_UNSET;
-                if (pkm->GetINTEntry(row, CExoString("Repeatable"), &nRep) && nRep) {
-                    if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatWait"), &nWait)
-                        && g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatRate"), &nRate))
-                        g_pExoInput->SetEventRepeatable(i, nWait, nRate);
-                }
+            if (pkm->GetINTEntry(row, CExoString("Repeatable"), &nRep) && nRep) {
+                if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatWait"), &nWait)
+                    && g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatRate"), &nRate))
+                    g_pExoInput->SetEventRepeatable(i, nWait, nRate);
             }
 
-            int nScale;
-            float fMag, fExp K2_UNSET;
             if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("Scale"), &nScale) && nScale) {
                 if (g_pRules->m_p2DArrays->m_pKeymap->GetFLOATEntry(row, CExoString("ScaleMag"), &fMag)
                     && g_pRules->m_p2DArrays->m_pKeymap->GetFLOATEntry(row, CExoString("ScaleExp"), &fExp))
@@ -3797,8 +3788,11 @@ void CClientExoAppInternal::SetEventDescriptions()
                 continue;
         }
 
+        int nKey;
+        int nRep, nWait, nRate K2_UNSET;
+        int nScale;
+        float fMag, fExp K2_UNSET;
         if (g_pExoInput->EventExists(i)) {
-            int nKey;
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
             if (pkm->GetINTEntry(row, CExoString("ICPC"), &nKey) && nKey)
                 g_pExoInput->AddEvent(i, INPUTCLASS_GAME);
@@ -3818,17 +3812,12 @@ void CClientExoAppInternal::SetEventDescriptions()
             if (pkm->GetINTEntry(row, CExoString("ICMovie"), &nKey) && nKey)
                 g_pExoInput->AddEvent(i, INPUTCLASS_MOVIE);
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
-            {
-                int nRep, nWait, nRate K2_UNSET;
-                if (pkm->GetINTEntry(row, CExoString("Repeatable"), &nRep) && nRep) {
-                    if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatWait"), &nWait)
-                        && g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatRate"), &nRate))
-                        g_pExoInput->SetEventRepeatable(i, nWait, nRate);
-                }
+            if (pkm->GetINTEntry(row, CExoString("Repeatable"), &nRep) && nRep) {
+                if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatWait"), &nWait)
+                    && g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatRate"), &nRate))
+                    g_pExoInput->SetEventRepeatable(i, nWait, nRate);
             }
 
-            int nScale;
-            float fMag, fExp K2_UNSET;
             if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("Scale"), &nScale) && nScale) {
                 if (g_pRules->m_p2DArrays->m_pKeymap->GetFLOATEntry(row, CExoString("ScaleMag"), &fMag)
                     && g_pRules->m_p2DArrays->m_pKeymap->GetFLOATEntry(row, CExoString("ScaleExp"), &fExp))
@@ -4169,6 +4158,10 @@ void CClientExoAppInternal::SetEventDescriptions()
         row = CExoString("Action") + CExoString(i);
 
         C2DA* pkm = g_pRules->m_p2DArrays->m_pKeymap;
+        int nKey;
+        int nRep, nWait, nRate K2_UNSET;
+        int nScale;
+        float fMag, fExp K2_UNSET;
         {
             CExoString colDisabled("Disabled");
             int nDisabled;
@@ -4177,7 +4170,6 @@ void CClientExoAppInternal::SetEventDescriptions()
         }
 
         if (g_pExoInput->EventExists(i)) {
-            int nKey;
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
             if (pkm->GetINTEntry(row, CExoString("ICPC"), &nKey) && nKey)
                 g_pExoInput->AddEvent(i, INPUTCLASS_GAME);
@@ -4198,7 +4190,6 @@ void CClientExoAppInternal::SetEventDescriptions()
                 g_pExoInput->AddEvent(i, INPUTCLASS_MOVIE);
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
             {
-                int nRep, nWait, nRate K2_UNSET;
                 if (pkm->GetINTEntry(row, CExoString("Repeatable"), &nRep) && nRep) {
                     if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatWait"), &nWait)
                         && g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatRate"), &nRate))
@@ -4206,8 +4197,6 @@ void CClientExoAppInternal::SetEventDescriptions()
                 }
             }
 
-            int nScale;
-            float fMag, fExp K2_UNSET;
             if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("Scale"), &nScale) && nScale) {
                 if (g_pRules->m_p2DArrays->m_pKeymap->GetFLOATEntry(row, CExoString("ScaleMag"), &fMag)
                     && g_pRules->m_p2DArrays->m_pKeymap->GetFLOATEntry(row, CExoString("ScaleExp"), &fExp))
@@ -4220,6 +4209,10 @@ void CClientExoAppInternal::SetEventDescriptions()
         row = (CExoString("Action") + CExoString(i)) + CExoString("A");
 
         C2DA* pkm = g_pRules->m_p2DArrays->m_pKeymap;
+        int nKey;
+        int nRep, nWait, nRate K2_UNSET;
+        int nScale;
+        float fMag, fExp K2_UNSET;
         {
             CExoString colDisabled("Disabled");
             int nDisabled;
@@ -4228,7 +4221,6 @@ void CClientExoAppInternal::SetEventDescriptions()
         }
 
         if (g_pExoInput->EventExists(i)) {
-            int nKey;
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
             if (pkm->GetINTEntry(row, CExoString("ICPC"), &nKey) && nKey)
                 g_pExoInput->AddEvent(i, INPUTCLASS_GAME);
@@ -4249,7 +4241,6 @@ void CClientExoAppInternal::SetEventDescriptions()
                 g_pExoInput->AddEvent(i, INPUTCLASS_MOVIE);
             pkm = g_pRules->m_p2DArrays->m_pKeymap;
             {
-                int nRep, nWait, nRate K2_UNSET;
                 if (pkm->GetINTEntry(row, CExoString("Repeatable"), &nRep) && nRep) {
                     if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatWait"), &nWait)
                         && g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("RepeatRate"), &nRate))
@@ -4257,8 +4248,6 @@ void CClientExoAppInternal::SetEventDescriptions()
                 }
             }
 
-            int nScale;
-            float fMag, fExp K2_UNSET;
             if (g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(row, CExoString("Scale"), &nScale) && nScale) {
                 if (g_pRules->m_p2DArrays->m_pKeymap->GetFLOATEntry(row, CExoString("ScaleMag"), &fMag)
                     && g_pRules->m_p2DArrays->m_pKeymap->GetFLOATEntry(row, CExoString("ScaleExp"), &fExp))
@@ -4981,11 +4970,8 @@ int CClientExoAppInternal::SetVideoMode(unsigned int nMode, unsigned char bFulls
             m_pInGameGui->ResetInterfaceForSize();
     }
 
-    messagepump();
-    messagepump();
-    messagepump();
-    messagepump();
-    messagepump();
+    for (int i = 0; i < 5; i++)
+        messagepump();
 
     return 1;
 }
@@ -5087,11 +5073,11 @@ void CClientExoAppInternal::InitializeSoundOptions()
     ini.WriteIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Sound Options"),
                       CExoString("2D3D Bias"));
 
-    sValue.Format(const_cast<char *>("%d"), static_cast<unsigned char>(g_pExoSound->GetNumber2DVoices()));
+    sValue.Format(const_cast<char *>("%d"), g_pExoSound->GetNumber2DVoices());
     ini.WriteIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Sound Options"),
                       CExoString("Number 2D Voices"));
 
-    sValue.Format(const_cast<char *>("%d"), static_cast<unsigned char>(g_pExoSound->GetNumber3DVoices()));
+    sValue.Format(const_cast<char *>("%d"), g_pExoSound->GetNumber3DVoices());
     ini.WriteIniEntry(sValue, CExoString("swkotor.ini"), CExoString("Sound Options"),
                       CExoString("Number 3D Voices"));
 
@@ -5172,11 +5158,11 @@ void CClientExoAppInternal::InitializeSoundOptions()
     ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                       CExoString("2D3D Bias"));
 
-    sValue.Format(const_cast<char *>("%d"), static_cast<unsigned char>(g_pExoSound->GetNumber2DVoices()));
+    sValue.Format(const_cast<char *>("%d"), g_pExoSound->GetNumber2DVoices());
     ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                       CExoString("Number 2D Voices"));
 
-    sValue.Format(const_cast<char *>("%d"), static_cast<unsigned char>(g_pExoSound->GetNumber3DVoices()));
+    sValue.Format(const_cast<char *>("%d"), g_pExoSound->GetNumber3DVoices());
     ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Sound Options"),
                       CExoString("Number 3D Voices"));
 
@@ -5352,8 +5338,7 @@ void CSWCPlayer::SetPrimaryPCPortraitId(unsigned short nPortraitId) {
 }
 
 CClientExoAppInternal::CClientExoAppInternal()
-    : m_bPazaakIsRunning(0), m_pazaakResultB(0), m_pazaakResultA(0), m_nPazaakOpponentDeck(0),
-      m_aReserved1()
+    : m_aReserved1()
 {
     m_bStartMenuMusicOnMovieEnd = 1;
     m_viewTriggers = 1;
@@ -5766,27 +5751,13 @@ void CClientExoAppInternal::UpdateLoadingScreenHint()
         if (m_loadScreenHintUpdateTimer >> 4 < 625)
             return;
         m_loadScreenHintUpdateTimer = 0;
-        if (g_pAppManager->m_pServerExoApp == 0)
-            goto lblDefault;
-        {
-            CExoString sModule = g_pAppManager->m_pServerExoApp->GetModuleName();
-            if (sModule.GetLength() < 1)
-                goto lblDefault;
+        if (g_pAppManager->m_pServerExoApp != 0 &&
+            g_pAppManager->m_pServerExoApp->GetModuleName().GetLength() > 0) {
+            SetLoadScreenHint(
+                GetNextLoadScreenHintSTRREF(g_pAppManager->m_pServerExoApp->GetModuleName(), 2));
+        } else {
+            SetLoadScreenHint(GetNextLoadScreenHintSTRREF(CExoString(""), 1));
         }
-        {
-            CExoString sStep = g_pAppManager->m_pServerExoApp->GetModuleName();
-            uint64_t nHint = GetNextLoadScreenHintSTRREF(sStep, 2);
-            SetLoadScreenHint(nHint);
-            goto lblDone;
-        }
-    lblDefault:
-        {
-            CExoString sDefault("");
-            uint64_t nHint = GetNextLoadScreenHintSTRREF(sDefault, 1);
-            SetLoadScreenHint(nHint);
-            goto lblDone;
-        }
-    lblDone: ;
     }
 #endif
 }
@@ -5901,26 +5872,15 @@ uint64_t CClientExoAppInternal::GetNextLoadScreenHintSTRREF(const CExoString& sM
     if (nModuleType == 1)
         goto l_t1;
     if (nModuleType == 2)
-    {
-        pTable = static_cast<C2DA*>(::operator new(sizeof(C2DA)));
         goto l_story;
-    }
     else
     {
         CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
-        if (pServer && pServer->m_pInternal)
-        {
-            int nVisited = pServer->GetModulePreviouslyVisited(sModuleName);
-            pTable = static_cast<C2DA*>(::operator new(sizeof(C2DA)));
-            if (nVisited)
-                goto l_story;
-            goto l_screen;
-        }
+        if (pServer && pServer->m_pInternal && pServer->GetModulePreviouslyVisited(sModuleName))
+            goto l_story;
     }
 l_t1:
-    pTable = static_cast<C2DA*>(::operator new(sizeof(C2DA)));
-l_screen:
-    new (pTable) C2DA(CResRef("loadscreenhints"), 0);
+    pTable = new C2DA(CResRef("loadscreenhints"), 0);
     if (pTable->Load2DArray() == 0)
         goto l_fail;
     {
@@ -5955,7 +5915,7 @@ l_gpDestroy:
     return static_cast<uint64_t>(nRet);
 
 l_story:
-    new (pTable) C2DA(CResRef("loadstoryhints"), 0);
+    pTable = new C2DA(CResRef("loadstoryhints"), 0);
     if (pTable->Load2DArray() == 0)
         goto l_fail;
     {
@@ -6340,12 +6300,6 @@ int CClientExoAppInternal::ShowTutorialWindow(unsigned char reason, unsigned lon
     return 1;
 }
 
-__attribute__((noinline)) std::string& SetLangCode(std::string& sLang, const char* pCode,
-                                                         size_t nLen)
-{
-    return sLang.assign(pCode, nLen);
-}
-
 #if KOTOR1
 void CClientExoAppInternal::BeginIntro()
 {
@@ -6403,13 +6357,13 @@ void CClientExoAppInternal::BeginIntro()
         std::string sLang("eng");
         const char* pszFolder = GetLocalizationFolderName();
         if (strstr(pszFolder, "rench") != NULL)
-            SetLangCode(sLang, "fre", 3);
+            sLang = "fre";
         else if (strstr(pszFolder, "talian") != NULL)
-            SetLangCode(sLang, "ita", 3);
+            sLang = "ita";
         else if (strstr(pszFolder, "erman") != NULL)
-            SetLangCode(sLang, "deu", 3);
+            sLang = "deu";
         else if (strstr(pszFolder, "panish") != NULL)
-            SetLangCode(sLang, "esp", 3);
+            sLang = "esp";
         std::string sCopyright = "copyright_" + sLang;
 #ifndef K2_UI_TOUCH
         // The port's own copyright art; the PC data has its own legal screen.
@@ -6444,13 +6398,13 @@ void CClientExoAppInternal::BeginIntro()
         std::string sLang("eng");
         const char* pszFolder = GetLocalizationFolderName();
         if (strstr(pszFolder, "rench") != NULL)
-            SetLangCode(sLang, "fre", 3);
+            sLang = "fre";
         else if (strstr(pszFolder, "talian") != NULL)
-            SetLangCode(sLang, "ita", 3);
+            sLang = "ita";
         else if (strstr(pszFolder, "erman") != NULL)
-            SetLangCode(sLang, "deu", 3);
+            sLang = "deu";
         else if (strstr(pszFolder, "panish") != NULL)
-            SetLangCode(sLang, "esp", 3);
+            sLang = "esp";
         std::string sCopyright = "copyright_" + sLang;
 #ifndef K2_UI_TOUCH
         // The port's own copyright art; the PC data has its own legal screen.
@@ -6615,14 +6569,15 @@ void CClientExoAppInternal::RestartMoviesIfNecessary()
 
 void CClientExoAppInternal::TurnOffKeyboardModal()
 {
-    if (m_keyboardModalFlags[0] || m_keyboardModalFlags[1] || m_keyboardModalFlags[2] ||
-        m_keyboardModalFlags[3] || m_keyboardModalFlags[4] || m_keyboardModalFlags[5] ||
-        m_keyboardModalFlags[6]) {
-        for (int i = 0; i < 7; ++i)
-            m_keyboardModalFlags[i] = 0;
-        m_bForceDriveUpdate = 1;
-        m_nDriveKeyPressTime = 0;
-        m_pSWCMessage->SendPlayerToServerInput_AbortDriveControl();
+    for (int i = 0; i < 7; ++i) {
+        if (m_keyboardModalFlags[i]) {
+            for (int j = 0; j < 7; ++j)
+                m_keyboardModalFlags[j] = 0;
+            m_bForceDriveUpdate = 1;
+            m_nDriveKeyPressTime = 0;
+            m_pSWCMessage->SendPlayerToServerInput_AbortDriveControl();
+            break;
+        }
     }
     if (m_pModule != 0 && m_pModule->m_pArea != 0)
         m_pModule->m_pArea->HiliteAreaObjects(0);
@@ -6803,9 +6758,10 @@ int CClientExoAppInternal::GetControlledCharacterDead()
 class CExoImeUI {
 public:
 #if !KOTOR1  // K1's is an empty object
-    char                _pad00[0x208];
+    void*               m_apReserved1[65];  // pointer-width
     unsigned long long  m_nReserved1;
     int                 m_nReserved2;
+    int                 m_nReserved3;
     CExoString m_sReserved1;
     CExoString m_sReserved2;
     CExoString m_sReserved3;
@@ -7118,23 +7074,22 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
     }
 
     char pDlgBuf[200];
-    {
-        int bOpened = 0;
-        for (int i = 0; ; ++i) {
-            const char* pDlg = GetOverridePath(i, 1);
-            if (pDlg == 0)
-                break;
-            sprintf_s(pDlgBuf, sizeof(pDlgBuf), "%s\\dialog", pDlg);
-            sDialogFile = g_pExoResMan->CacheResource(CExoString(pDlgBuf), RESTYPE_TLK);
-            int nRet = g_pTlkTable->OpenFile(sDialogFile);
-            bOpened |= (nRet == 1);
-            if (nRet == 1)
-                break;
-        }
-        if (!bOpened) {
-            sDialogFile = g_pExoResMan->CacheResource(CExoString("HD0:DIALOG"), RESTYPE_TLK);
-            g_pTlkTable->OpenFile(sDialogFile);
-        }
+    int bOpened = 0;
+    for (int i = 0; ; ++i) {
+        int nRet;
+        const char* pDlg = GetOverridePath(i, 1);
+        if (pDlg == 0)
+            break;
+        sprintf_s(pDlgBuf, sizeof(pDlgBuf), "%s\\dialog", pDlg);
+        sDialogFile = g_pExoResMan->CacheResource(CExoString(pDlgBuf), RESTYPE_TLK);
+        nRet = g_pTlkTable->OpenFile(sDialogFile);
+        bOpened |= (nRet == 1);
+        if (nRet == 1)
+            break;
+    }
+    if (!bOpened) {
+        sDialogFile = g_pExoResMan->CacheResource(CExoString("HD0:DIALOG"), RESTYPE_TLK);
+        g_pTlkTable->OpenFile(sDialogFile);
     }
 
     AddDownloadedResources();
@@ -7142,9 +7097,10 @@ int CClientExoAppInternal::StartServices(int a, const CExoString& b, const CExoS
     srand_wincompatible(GetTickCount());
     m_pModule = new CSWCModule;
 
+    int nPack;
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Graphics Options"),
                          CExoString("Texture Quality"))) {
-        int nPack = sValue.AsINT();
+        nPack = sValue.AsINT();
         if (nPack <= 3) {
             SetTexturePack(static_cast<unsigned char>(nPack), 0);
             goto tex_done;
@@ -7181,20 +7137,21 @@ tex_done:;
 
     if (ini.ReadIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Display Options"),
                          CExoString("Disable Intro Movies"))) {
-        m_bDisableIntroMovies = sValue.AsINT();
-        if (m_bDisableIntroMovies != 0)
-            goto intro_done;
-        sValue.Format(const_cast<char*>("%d"), 1);
-        ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Display Options"),
-                          CExoString("Disable Intro Movies"));
+        int bDisableIntro = sValue.AsINT();
+        m_bDisableIntroMovies = bDisableIntro;
+        if (bDisableIntro == 0) {
+            sValue.Format(const_cast<char*>("%d"), 1);
+            ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Display Options"),
+                              CExoString("Disable Intro Movies"));
+        }
     } else {
         m_bDisableIntroMovies = 0;
         sValue.Format(const_cast<char*>("%d"), 1);
         ini.WriteIniEntry(sValue, CExoString(".\\swkotor2.ini"), CExoString("Display Options"),
                           CExoString("Disable Intro Movies"));
     }
-intro_done:;
 
+    int nLang;
     m_pClientOptions->SetDefaultOptions();
 #if KOTOR1
     LoadOptions();
@@ -7204,7 +7161,7 @@ intro_done:;
     ReadAndSetVideoMode(static_cast<int>(a), 0);
 
     m_clientName = g_pTlkTable->GetSimpleString(0);
-    int nLang = g_pTlkTable->GetLanguageVersion();
+    nLang = g_pTlkTable->GetLanguageVersion();
     m_clientLanguage = nLang;
     if (nLang == 5) {
 #ifndef _WIN32   // category 0 is LC_ALL in the Windows CRT, which knows the name: decimal commas
@@ -7433,11 +7390,8 @@ void CClientExoAppInternal::StopServices()
         m_pSysAdminMessenger = 0;
     }
 
-    if (m_pPlayerControl) {
-        // Torn down as the base, whose destructor is not virtual.
-        m_pPlayerControl->CSWPlayerControl::~CSWPlayerControl();
-        operator delete(m_pPlayerControl);
-    }
+    // Torn down as the base, whose destructor is not virtual.
+    delete m_pPlayerControl;
 
     DestroyQuestJournal();
 
@@ -7452,6 +7406,9 @@ int g_bEnableScreenCapture = 1;
 float g_AIUpdateTime;
 float g_GuiUpdateTime;
 float g_SndUpdateTime;
+#if !KOTOR1
+CExoString g_CritFailFilename;
+#endif
 void AurPostString(char* pszMessage, int a, int b, float f);
 #if KOTOR1
 void AurSnapshot(char* pBuffer, bool bGui);  // K1: whether the GUI is captured too
@@ -8832,6 +8789,8 @@ void CClientExoAppInternal::AddFeedbackMessage(unsigned short nMsg, CSWCCMessage
         else
             sKind = GetGUIString(STRREF_DARK_SIDE_OF_THE_FORCE);
         g_pTlkTable->SetCustomToken(1, sKind);
+        // EFFECTIVE (K1): both images fold this temporary's landing pad into the effect-list arm's identical
+        // three-string chain; ours tail-merges it into sKind's pad instead (one more `~CExoString`).
         sMessage = g_pSWTlkTable->Fetch(STRREF_ALIGNMENT_MOVED, 0, 0, 0);
         break;
     }
@@ -9710,7 +9669,7 @@ hilited:;
                 }
             }
             // For the per-state walkmesh variants, the two header anchor vectors are transformed to
-            // world.
+            // world (and a placeable's facing read three times); every result is discarded.
             CSWSPlaceable* pPlaceable = pServer->AsSWSPlaceable();
             if (pPlaceable) {
                 CSWPlaceableSurfaceMesh* pWm = &pPlaceable->m_walkMesh;
@@ -9718,6 +9677,9 @@ hilited:;
                 pWm->LocalToWorld(pWm->m_headerVec[0]);
                 pWm->LocalToWorld(pWm->m_headerVec[1]);
                 pWm->LocalToWorld(pWm->m_headerVec[1]);
+                pWm->m_rotation.ydir();
+                pWm->m_rotation.ydir();
+                pWm->m_rotation.ydir();
             }
             CSWSDoor* pDoor = pServer->AsSWSDoor();
             if (pDoor) {
@@ -9773,14 +9735,16 @@ hilited:;
                         if (g_pRules->GetFeat(static_cast<unsigned short>(i)))
                             g_pRules->GetFeat(static_cast<unsigned short>(i))->GetNameText().CStr();
                 }
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(0, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(1, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(2, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(3, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(4, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(5, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(6, 0, 0);
-                pServer->AsSWSCreature()->m_pStats->GetSkillRank(7, 0, 0);
+                // The ranks feed the dump's (compiled-out) print through one local.
+                char nRank = pServer->AsSWSCreature()->m_pStats->GetSkillRank(0, 0, 0);
+                nRank = pServer->AsSWSCreature()->m_pStats->GetSkillRank(1, 0, 0);
+                nRank = pServer->AsSWSCreature()->m_pStats->GetSkillRank(2, 0, 0);
+                nRank = pServer->AsSWSCreature()->m_pStats->GetSkillRank(3, 0, 0);
+                nRank = pServer->AsSWSCreature()->m_pStats->GetSkillRank(4, 0, 0);
+                nRank = pServer->AsSWSCreature()->m_pStats->GetSkillRank(5, 0, 0);
+                nRank = pServer->AsSWSCreature()->m_pStats->GetSkillRank(6, 0, 0);
+                nRank = pServer->AsSWSCreature()->m_pStats->GetSkillRank(7, 0, 0);
+                (void)nRank;
             }
             if (pServer->AsSWSDoor())
                 pServer->AsSWSDoor();

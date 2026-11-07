@@ -57,7 +57,7 @@ struct TLKStringEntry {
     char         m_szSoundResRef[16];// written straight into STR_RES::soundResRef
     unsigned int m_nVolumeVariance;           // byte-swapped but never read
     unsigned int m_nPitchVariance;           // byte-swapped but never read
-    unsigned int m_nStringOffset;    // relative to CTlkFile::m_nStringTableOffset
+    unsigned int m_nStringOffset;    // relative to CTlkFile::m_header.m_nStringTableOffset
     unsigned int m_nStringSize;      // byte count of the text that follows
     float        m_fSoundLength;     // only present in the 0x28 record
 };
@@ -80,48 +80,37 @@ void AspyrFormatString(char* pDst, int, int, const char* pFmt, ...)
 const char* CTlkFile::TLK_FILE_VERSION = "V3.0";
 
 CTlkFile::CTlkFile(const CExoString& resRef)
-    : CExoFile(resRef, RESTYPE_TLK, CExoString("rb")),
-      m_nFileType(0),
-      m_nVersion(0),
-      m_nLanguageID(0),
-      m_nStringCount(0),
-      m_nStringTableOffset(0)
+    : CExoFile(resRef, RESTYPE_TLK, CExoString("rb"))
 {
+    __builtin_memset(static_cast<void*>(&m_header), 0, sizeof(m_header));
 }
 
 int CTlkFile::ReadHeader()
 {
     SeekBeginning();
-    if (Read(&m_nFileType, 1, TLK_HEADER_SIZE) != TLK_HEADER_SIZE)
+    if (Read(&m_header, 1, TLK_HEADER_SIZE) != TLK_HEADER_SIZE)
         return 0;
 
-    ByteSwap(&m_nFileType);
-    ByteSwap(&m_nVersion);
-    ByteSwap(&m_nLanguageID);
-    ByteSwap(&m_nStringCount);
-    ByteSwap(&m_nStringTableOffset);
+    ByteSwap(&m_header.m_nFileType);
+    ByteSwap(&m_header.m_nVersion);
+    ByteSwap(&m_header.m_nLanguageID);
+    ByteSwap(&m_header.m_nStringCount);
+    ByteSwap(&m_header.m_nStringTableOffset);
 
-    return m_nFileType == TLK_FILE_TYPE;
+    return m_header.m_nFileType == TLK_FILE_TYPE;
 }
 
 CTlkTable::CTlkTable()
-    : m_pStringTokens(0),
-      m_nStringTokenCount(0),
-      m_pCustomTokens(0),
-      m_nCustomTokenCount(0),
-      m_bShowStringRefs(0)
 {
-    // One fill per block, since a per-member memset would merge into scalar pairs rather than wide
-    // stores.
-#if KOTOR1  // K1: no override tables, only the file grid is zeroed
-    __builtin_memset(m_pTlkFiles, 0, sizeof(m_pTlkFiles));  // idiom-exempt: measured codegen, see above
-#else
-    // The override tables and the file grid, cleared as one block.
-    __builtin_memset(reinterpret_cast<char*>(this) + K2_OFFSETOF(CTlkTable, m_overrideStrRefs), 0,
-                     K2_OFFSETOF(CTlkTable, m_pTlkFiles) + sizeof(m_pTlkFiles)
-                     - K2_OFFSETOF(CTlkTable, m_overrideStrRefs));  // idiom-exempt: measured codegen, see above
-#endif
     m_gender = 0;
+    for (int i = 0; i < 7; i++)
+        for (int j = 0; j < 2; j++)
+            m_pTlkFiles[i][j] = 0;
+    m_pStringTokens = 0;
+    m_nStringTokenCount = 0;
+    m_pCustomTokens = 0;
+    m_nCustomTokenCount = 0;
+    m_bShowStringRefs = 0;
 }
 
 CTlkTable::~CTlkTable()
@@ -151,6 +140,9 @@ int CTlkTable::FetchInternal(unsigned int strRef, STR_RES& res, int bParse)
 {
     CExoString sText;
     CExoString sError;
+    CTlkFile* pFile;
+    TLKStringEntry strResHeader;
+    unsigned int nEntrySize;
 
     sError.Format(const_cast<char*>("Invalid STRREF %d passed to Fetch"), strRef);
 
@@ -163,22 +155,21 @@ int CTlkTable::FetchInternal(unsigned int strRef, STR_RES& res, int bParse)
 
     for (int i = 0; i < 7; i++)
     {
-        CTlkFile* pFile = m_pTlkFiles[i][m_gender];
+        pFile = m_pTlkFiles[i][m_gender];
         if (pFile == 0)
             continue;
 
-        unsigned int nEntrySize =
-            (pFile->m_nVersion == *reinterpret_cast<const unsigned int*>(CTlkFile::TLK_FILE_VERSION)) ? TLK_ENTRY_SIZE_V3_0 : TLK_ENTRY_SIZE_OLD;
+        nEntrySize =
+            (pFile->m_header.m_nVersion == *reinterpret_cast<const unsigned int*>(CTlkFile::TLK_FILE_VERSION)) ? TLK_ENTRY_SIZE_V3_0 : TLK_ENTRY_SIZE_OLD;
 
         strRef &= STRREF_INDEX_MASK;
-        if (strRef >= pFile->m_nStringCount)
+        if (strRef >= pFile->m_header.m_nStringCount)
             continue;
         if (nEntrySize * strRef + TLK_HEADER_SIZE > static_cast<unsigned int>(pFile->GetSize()))
             continue;
         if (!pFile->Seek(nEntrySize * strRef + TLK_HEADER_SIZE, 0))
             continue;
 
-        TLKStringEntry strResHeader;
         strResHeader.m_fSoundLength = 0.0f;
         if (pFile->Read(&strResHeader, 1, nEntrySize) != nEntrySize)
             continue;
@@ -192,59 +183,7 @@ int CTlkTable::FetchInternal(unsigned int strRef, STR_RES& res, int bParse)
 
         if (strResHeader.m_nFlags & STRING_NOT_IN_PROJECT)
             continue;
-
-        if (strResHeader.m_nFlags & SNDLENGTH_PRESENT)
-            res.fSoundLength = strResHeader.m_fSoundLength;
-        else
-            res.fSoundLength = 0.0f;
-
-        if (strResHeader.m_nFlags & SND_PRESENT)
-            res.soundResRef = reinterpret_cast<unsigned char*>(strResHeader.m_szSoundResRef);
-        else
-            res.soundResRef = const_cast<char*>("");
-
-        if (strResHeader.m_nFlags & TEXT_PRESENT)
-        {
-            if (pFile->m_nStringTableOffset + strResHeader.m_nStringOffset > static_cast<unsigned int>(pFile->GetSize()))
-            {
-                res.text = strRef;
-                res.soundResRef = const_cast<char*>("");
-                return 0;
-            }
-
-            if (!pFile->Seek(pFile->m_nStringTableOffset + strResHeader.m_nStringOffset, 0))
-            {
-                res.text = "";
-                res.soundResRef = const_cast<char*>("");
-                return 0;
-            }
-
-            char* pBuffer = new char[strResHeader.m_nStringSize];
-            pFile->Read(pBuffer, 1, strResHeader.m_nStringSize);
-            sText = CExoString(pBuffer, strResHeader.m_nStringSize);
-            operator delete[](pBuffer);
-
-            if (bParse)
-                ParseStr(sText);
-
-            res.text = sText;
-        }
-
-#if !KOTOR1  // K1 has no override tables
-        // In the Aspyr override table for the current input mode, a strref match replaces the text.
-        int nSet = IsJoystickConnected() & 1;
-        if (m_overrideStrRefs[nSet].m_count >= 1)
-        {
-            int j = 0;
-            do
-            {
-                if (m_overrideStrRefs[nSet].m_pArray[j] == static_cast<int>(strRef))
-                    res.text = m_overrideStrings[nSet].m_pArray[j];
-                j++;
-            } while (j < m_overrideStrRefs[nSet].m_count);
-        }
-#endif
-        return 1;
+        goto found;
     }
 
     if (m_gender == 1)
@@ -256,6 +195,62 @@ int CTlkTable::FetchInternal(unsigned int strRef, STR_RES& res, int bParse)
     res.text = "";
     res.soundResRef = const_cast<char*>("");
     return 0;
+
+found:
+    if (strResHeader.m_nFlags & SNDLENGTH_PRESENT)
+        res.fSoundLength = strResHeader.m_fSoundLength;
+    else
+        res.fSoundLength = 0.0f;
+
+    if (strResHeader.m_nFlags & SND_PRESENT)
+        res.soundResRef = reinterpret_cast<unsigned char*>(strResHeader.m_szSoundResRef);
+    else
+        res.soundResRef = const_cast<char*>("");
+
+    if (strResHeader.m_nFlags & TEXT_PRESENT)
+    {
+        if (pFile->m_header.m_nStringTableOffset + strResHeader.m_nStringOffset > static_cast<unsigned int>(pFile->GetSize()))
+        {
+            res.text = strRef;
+            res.soundResRef = const_cast<char*>("");
+            return 0;
+        }
+
+        if (!pFile->Seek(pFile->m_header.m_nStringTableOffset + strResHeader.m_nStringOffset, 0))
+        {
+            res.text = "";
+            res.soundResRef = const_cast<char*>("");
+            return 0;
+        }
+
+        char* pBuffer;
+        pBuffer = new char[strResHeader.m_nStringSize];
+        pFile->Read(pBuffer, 1, strResHeader.m_nStringSize);
+        sText = CExoString(pBuffer, strResHeader.m_nStringSize);
+        operator delete[](pBuffer);
+
+        if (bParse)
+            ParseStr(sText);
+
+        res.text = sText;
+    }
+
+#if !KOTOR1  // K1 has no override tables
+    // In the Aspyr override table for the current input mode, a strref match replaces the text.
+    int nSet;
+    nSet = IsJoystickConnected() & 1;
+    if (m_overrideStrRefs[nSet].m_count >= 1)
+    {
+        int j = 0;
+        do
+        {
+            if (m_overrideStrRefs[nSet].m_pArray[j] == static_cast<int>(strRef))
+                res.text = m_overrideStrings[nSet].m_pArray[j];
+            j++;
+        } while (j < m_overrideStrRefs[nSet].m_count);
+    }
+#endif
+    return 1;
 }
 
 // Substitutes token tags and strips {...} runs. m_bSuppressText, set by a re-entrant GetTokenValue,
@@ -267,12 +262,27 @@ void CTlkTable::ParseStr(CExoString& sText)
 
     m_bSuppressText = 0;
 
+    int nStart;
+    int i;
+    int nEnd;
+    unsigned int nNameLen;
+    unsigned int nCustom;
+    int nDigit;
+    bool bDigits;
+    int k;
+    unsigned int nLow;
+    unsigned int nHigh;
+    unsigned int nMid;
+    unsigned int nId;
+    unsigned int nHash;
+    unsigned int nMidHash;
+    unsigned int nNameSize;
     char* pStr = static_cast<char*>(sText.CStr());
     if (pStr[0] == '\0')
         return;
 
-    int nStart = 0;
-    int i = 0;
+    nStart = 0;
+    i = 0;
     do
     {
 #if !KOTOR1  // K1 has no {}-run discard: only <> tokens are parsed
@@ -321,20 +331,20 @@ void CTlkTable::ParseStr(CExoString& sText)
             sToken = "<UNRECOGNIZED TOKEN>";
 
             // Find the closing bracket.
-            int nEnd = j;
+            nEnd = j;
             while (pStr[nEnd] != '\0' && pStr[nEnd] != '>')
                 nEnd++;
 
-            unsigned int nNameLen = static_cast<unsigned int>(nEnd - j);
+            nNameLen = static_cast<unsigned int>(nEnd - j);
             if (nEnd > j)
             {
                 if (nNameLen >= 7 && memcmp(&pStr[j], "CUSTOM", 6) == 0)
                 {
                     // <CUSTOMnnn>: parse the digits backwards from the closing bracket.
-                    unsigned int nCustom = 0;
-                    int nDigit = 1;
-                    bool bDigits = true;
-                    int k = nEnd - 1;
+                    nCustom = 0;
+                    nDigit = 1;
+                    bDigits = true;
+                    k = nEnd - 1;
                     while (k > i + 6)
                     {
                         int d = pStr[k] - '0';
@@ -351,12 +361,12 @@ void CTlkTable::ParseStr(CExoString& sText)
                     if (bDigits && nCustom != static_cast<unsigned int>(-1))
                     {
                         // Sorted binary search over the custom-token table by id.
-                        unsigned int nLow = 0;
-                        unsigned int nHigh = m_nCustomTokenCount;
+                        nLow = 0;
+                        nHigh = m_nCustomTokenCount;
                         while (nHigh > nLow)
                         {
-                            unsigned int nMid = (nLow + nHigh) >> 1;
-                            unsigned int nId = static_cast<unsigned int>(m_pCustomTokens[nMid].m_nId);
+                            nMid = (nLow + nHigh) >> 1;
+                            nId = static_cast<unsigned int>(m_pCustomTokens[nMid].m_nId);
                             if (nId > nCustom)
                                 nHigh = nMid;
                             else if (nId < nCustom)
@@ -372,20 +382,20 @@ void CTlkTable::ParseStr(CExoString& sText)
                 else
                 {
                     // Hashed lookup in the sorted StringTokens table.
-                    unsigned int nHash = CResGFFFieldIDHash::Hash(&pStr[j], nNameLen);
-                    unsigned int nLow = 0;
-                    unsigned int nHigh = m_nStringTokenCount;
+                    nHash = CResGFFFieldIDHash::Hash(&pStr[j], nNameLen);
+                    nLow = 0;
+                    nHigh = m_nStringTokenCount;
                     while (nHigh > nLow)
                     {
-                        unsigned int nMid = (nLow + nHigh) >> 1;
-                        unsigned int nMidHash = m_pStringTokens[nMid].m_nNameHash;
+                        nMid = (nLow + nHigh) >> 1;
+                        nMidHash = m_pStringTokens[nMid].m_nNameHash;
                         if (nMidHash > nHash)
                             nHigh = nMid;
                         else if (nMidHash < nHash)
                             nLow = nMid + 1;
                         else
                         {
-                            unsigned int nNameSize = m_pStringTokens[nMid].m_sName.GetLength();
+                            nNameSize = m_pStringTokens[nMid].m_sName.GetLength();
                             if (nNameSize != nNameLen ||
                                 strncmp(m_pStringTokens[nMid].m_sName.CStr(), &pStr[j], nNameLen) != 0)
                                 break;
@@ -482,12 +492,14 @@ int CTlkTable::OpenFile(const CExoString& sPath)
 
                 if (nStrRef != 0)
                 {
+                    const char* p;
+                    char c;
+                    int n;
                     char* pszText = new char[strlen(pszLine)];
                     pszText[0] = '\0';
 
                     // Skip past the first comma, then strip one leading and one trailing '"'.
-                    const char* p = pszLine;
-                    char c;
+                    p = pszLine;
                     do
                         c = *p++;
                     while (c != ',' && c != '\0');
@@ -495,7 +507,7 @@ int CTlkTable::OpenFile(const CExoString& sPath)
                         p--;
                     if (*p == '"')
                         p++;
-                    int n = 0;
+                    n = 0;
                     while (p[n] != '\0' && p[n] != '"')
                     {
                         pszText[n] = p[n];
@@ -518,8 +530,7 @@ int CTlkTable::OpenFile(const CExoString& sPath)
 
     CTlkTableToken tmp;
 
-    CResRef refTokens("StringTokens");
-    C2DA tokens(refTokens, 0);
+    C2DA tokens(CResRef("StringTokens"), 0);
     if (!tokens.Load2DArray())
         return 0;
 
@@ -703,7 +714,7 @@ void CTlkTable::ClearCustomTokens()
 int CTlkTable::GetLanguageVersion()
 {
     if (m_pTlkFiles[0][0] != 0)
-        return m_pTlkFiles[0][0]->m_nLanguageID;
+        return m_pTlkFiles[0][0]->m_header.m_nLanguageID;
     return 0;
 }
 

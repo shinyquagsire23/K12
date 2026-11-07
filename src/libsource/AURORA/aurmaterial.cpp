@@ -94,9 +94,7 @@ void Material::PurgeBadTexture(SafePointer<CAurTexture>& spr) {
 // Looks a texture up by name; an empty name and the NULL_NAME sentinel both give the sentinel.
 CAurTexture* LoadTexture(char* pszName)
 {
-    if (pszName == 0 || pszName[0] == 0)
-        return AurTextureGetNULL();
-    if (strcmp(NULL_NAME, pszName) == 0)
+    if (pszName == 0 || pszName[0] == 0 || strcmp(NULL_NAME, pszName) == 0)
         return AurTextureGetNULL();
     return AurTextureGetReference(pszName, 0);
 }
@@ -354,7 +352,7 @@ void Material::SetGUIBlendingMode() {
 void Material::SetMaterialColor(Vector vColor, float fAlpha) {
     if (m_spr0.m_pObject->IsUsingGlobalAlpha()) {
         float fScale = g_fGlobalAlpha * fAlpha;
-        const float* paColor = Homogenize(vColor, fScale);
+        float* paColor = Homogenize(vColor, fScale);
 #if KOTOR1  // K1 passes GL_FRONT_AND_BACK literally, with no facing table
         ASLgl::glMaterialfv(GL_FRONT_AND_BACK, materialTranslationTable[2], paColor);
 #else
@@ -365,8 +363,14 @@ void Material::SetMaterialColor(Vector vColor, float fAlpha) {
 
 // The blend lists are sized and seeded before the registry entry goes in.
 Material::Material()
-    : m_apszMapNames {}, m_lstSrcBlend {}, m_lstDstBlend {}, m_bDecal(), m_nRenderBMLMType(), m_fWaterAlpha()
+    : m_apszMapNames {}, m_lstSrcBlend {}, m_lstDstBlend {}
 {
+    m_spr0 = 0;
+    m_spr1 = 0;
+    m_spr2 = 0;
+    m_spr3 = 0;
+    m_spr4 = 0;
+    m_spr6 = 0;
     m_lstSrcBlend.allocate(2);
     m_lstDstBlend.allocate(2);
     m_lstSrcBlend.Add(Aurora::kBlendSrcAlpha);

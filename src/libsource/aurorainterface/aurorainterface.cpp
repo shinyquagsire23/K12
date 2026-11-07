@@ -14,6 +14,7 @@
 #include "aurprocessedtexture.h"
 #include "aurtxi.h"
 #include "aurvisibility.h"
+#include "aurglcore.h"
 #include "CExoArrayListImpl.h"
 #include "aurfonttexture.h"
 #include "exostringinline.h"
@@ -189,6 +190,9 @@ unsigned short CAuroraInterface::GetHighestPriorityTextureFormat(CResRef resRef,
 
 // Formats the resource tag the entry points dispatch on: a three-character extension plus its
 // terminator, written into a 256-byte buffer.
+#if defined(K2_NO_FORTIFY)
+#define AurMakeResTag(pOut, pType, pnSize, ...) sprintf(pOut, "%s", __VA_ARGS__)
+#else
 static void AurMakeResTag(char* pOut, const char* pType, int* pnSize, ...)
 {
     K2_UNUSED(pType);
@@ -197,6 +201,7 @@ static void AurMakeResTag(char* pOut, const char* pType, int* pnSize, ...)
     __builtin___vsprintf_chk(pOut, 0, 256, "%s", ap);
     __builtin_va_end(ap);
 }
+#endif
 
 unsigned char* CAuroraInterface::GetResource(char* sName, char* sType, int* pnSize)
 {
@@ -502,9 +507,6 @@ int CAuroraInterface::ReadProcessedRasterHeader(char* sName, int* pnWidth, int* 
 // The rest of the facade follows: the font raster pair, the texture-pack slots, the resolution
 // predicates, IsResident and the video-mode wrappers.
 
-class Model;
-Model* BinaryFindModel(char* sName);   // aurmodelparse.cpp
-
 #include "port/crtapi.h"
 
 unsigned char* CAuroraInterface::GetFontRaster(char* sName, void** ppData, int* pnWidth,
@@ -638,13 +640,7 @@ int CAuroraInterface::IsValidResolution(unsigned int nWidth, unsigned int nHeigh
 
 int CAuroraInterface::IsResident(char* s)
 {
-    if (s == 0)
-        return 0;
-
-    if (_stricmp(s, "NULL") == 0)
-        return 0;
-
-    return BinaryFindModel(s) != 0;
+    return RenderInterface::IsResident(s);
 }
 
 
@@ -693,7 +689,7 @@ int CAuroraInterface::IsWithinDesktopResolution(unsigned int nWidth, unsigned in
 
 // The enumerated video modes. `nMode` is an index into the OS's mode list, or -1.
 int CAuroraInterface::GetVideoModes(CExoArrayList<CExoString>& lst,
-                                    CExoArrayList<unsigned int>& lst2, unsigned char n)
+                                    CExoArrayList<uint32_l_t>& lst2, unsigned char n)
 {
     CExoString sName;
     int nMode = 0;
@@ -823,14 +819,10 @@ int CAuroraInterface::GetExactVideoMode(unsigned int nWidth, unsigned int nHeigh
                                         unsigned char nBPP, unsigned int nRefreshRate)
 {
     int nMode = 0;
-    for (;;)
+    PortDevMode devMode = PortDevMode();
+    devMode.m_size = sizeof(devMode);
+    while (EnumDisplaySettingsA(0, nMode, &devMode) != 0)
     {
-        PortDevMode devMode = PortDevMode();
-        devMode.m_size = sizeof(devMode);
-
-        if (EnumDisplaySettingsA(0, nMode, &devMode) == 0)
-            return -1;
-
         // The refresh rate is the one field with a wildcard: a mode reporting no rate at all
         // counts as a match.
         if (devMode.m_pelsWidth == nWidth && devMode.m_pelsHeight == nHeight &&
@@ -838,6 +830,9 @@ int CAuroraInterface::GetExactVideoMode(unsigned int nWidth, unsigned int nHeigh
             (devMode.m_displayFrequency == nRefreshRate || devMode.m_displayFrequency < 2))
             return nMode;
 
+        devMode = PortDevMode();
+        devMode.m_size = sizeof(devMode);
         nMode++;
     }
+    return -1;
 }

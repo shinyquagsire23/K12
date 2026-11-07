@@ -314,16 +314,7 @@ void CSWGuiInGameCredits::HandleInputEvent(int nType, int nArg)
         case INPUTEVENT_GUI_START:
         case INPUTEVENT_GUI_BACK:
         {
-#if KOTOR1
-            m_stateFlags = (m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-#else
-            CSWGuiPanel* pChain = this;
-            do
-            {
-                pChain->m_stateFlags = (pChain->m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE_AND_DELETE;
-                pChain = pChain->m_pNextInChain;
-            } while (pChain != 0);
-#endif
+            SetToBeDeleted(0);
             break;
         }
     }

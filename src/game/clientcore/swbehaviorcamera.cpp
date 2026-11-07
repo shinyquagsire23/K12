@@ -21,8 +21,6 @@
 #include "serverexoappinternal.h"
 #include "ClientExoAppInternal.h"
 
-extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObject>*);
-
 char* firstword(char* pszLine);
 void  Parse(char* pszLine, float& fValue);
 
@@ -65,11 +63,10 @@ extern Vector zaxis;
 float CameraInterpDistAmt = 0.5f;
 
 // Rotates v by q, skipping the matrix multiply for an identity rotation.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -276,9 +273,7 @@ void CSWCameraOnAStick::Message(char* pszParam)
 
 void CSWCameraOnAStick::SetCameraForScreenShot()
 {
-    Vector vTarget = m_pTargetObject.m_pObject->GetPosition();
-    Vector vOwner = m_pOwner->GetPosition();
-    Vector vDir(vTarget.x - vOwner.x, vTarget.y - vOwner.y, vTarget.z - vOwner.z);
+    Vector vDir = m_pTargetObject.m_pObject->GetPosition() - m_pOwner->GetPosition();
 
     Pitch(vDir);
     vDir.z = 0.0f;
@@ -690,8 +685,8 @@ void CSWCameraOnAStick::SaveCameraSettings(CCameraSettings& settings)
     settings.m_nCameraType = CCameraSettings::CAMERA_ON_STICK;
     settings.m_pCameraObject = m_pCameraObject;
     settings.m_pTarget = m_pTargetObject;
-    settings.m_nStyle = m_nStyle;
     settings.m_nFollowingBody = m_nFollowingBody;
+    settings.m_nStyle = m_nStyle;
     settings.m_fTargetHeight = m_fCameraOffset;
     settings.m_nVideoEffect = -1;
 #if !KOTOR1
@@ -751,8 +746,6 @@ void CSWCameraOnAStick::ClearLookAtTarget()
 }
 
 int CSWCameraOnAStick::GetType() { return BEHAVIOR_CAMERA_ON_A_STICK; }
-
-extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObject>*);
 
 CSWCameraFreeLook::CSWCameraFreeLook(CAurObject* pCameraObject, CAurObject* pFollowPart,
                                      int nVideoEffect)
@@ -912,8 +905,6 @@ int CSWCameraFreeLook::GetType() { return BEHAVIOR_CAMERA_FREE_LOOK; }
 char* firstword(char* pszLine);
 void  Parse(char* pszLine, float& fValue);
 
-
-extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObject>*);
 
 CSWCameraDeath::CSWCameraDeath(CAurObject* pOwner, CAurObject* pTarget)
     : CSWBehaviorCamera(pOwner)
@@ -1402,8 +1393,6 @@ Vector CSWCameraOnAStick::Control_HitCheckCamera(Vector vNewPosition)
     return vPos;
 }
 
-extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObject>*);
-
 char* firstword(char* pszLine);
 void  Parse(char* pszLine, float& fValue);
 void  Parse(char* pszLine, Vector& vValue);
@@ -1440,9 +1429,7 @@ void CSWCameraStaticTracker::PointToTarget(float fParam)
     float fPitch = Pitch(vDelta) + 90.0f;
     if (fPitch < m_fMinPitch)
         fPitch = m_fMinPitch;
-    Vector vNorm = normalize(vDelta);
-    Quaternion q = YawPitchRoll(Yaw(vNorm), fPitch, 0.0f);
-    m_orientation = q;
+    m_orientation = YawPitchRoll(Yaw(normalize(vDelta)), fPitch, 0.0f);
     // fParam == 0 means snap: the freshly built aim is used as-is. Otherwise it is exponentially
     // smoothed against the camera's current orientation, 1 - 2^(-speed*fParam).
     if (fParam != 0.0f) {
@@ -1496,8 +1483,6 @@ int CSWCameraStaticTracker::Control(float fParam)
         PointToTarget(fParam);
     return 1;
 }
-
-extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObject>*);
 
 char* firstword(char* pszLine);
 void  Parse(char* pszLine, float& fValue);

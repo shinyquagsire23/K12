@@ -7,13 +7,6 @@
 
 #include "port/libcmath.h"
 
-// The split plane's normal. planelineintersection and dot take a `Vector const&` while the node
-// stores a whole `Plane`, so the normal is read out of the plane's first three floats.
-static inline const Vector& BSPPlaneNormal(const Plane& plane)
-{
-    return reinterpret_cast<const Vector&>(plane);
-}
-
 BSPNode::BSPNode(Vector vNormal, float fDist)
     : m_plane(vNormal.x, vNormal.y, vNormal.z, fDist),
       m_pBack(0),
@@ -34,7 +27,7 @@ int RFaceSplitTest(List<Vector>& verts, const Plane& plane)
     int nMask = 0;
     for (int64_t i = 1; i <= verts.m_count; i++)
     {
-        float fDist = dot(BSPPlaneNormal(plane), verts.m_pData[i - 1]) + plane.d;
+        float fDist = dot(plane.normal, verts.m_pData[i - 1]) + plane.d;
         nMask |= fDist < 0.0f ? 1 : 2;
         if (nMask == 3)
             break;
@@ -51,15 +44,15 @@ int HitCheck(BSPNode* pNode, int nSide, Vector vStart, Vector vEnd, Vector* pvHi
         return nSide;
     }
 
-    float fStart = dot(BSPPlaneNormal(pNode->m_plane), vStart) + pNode->m_plane.d;
-    float fEnd = dot(BSPPlaneNormal(pNode->m_plane), vEnd) + pNode->m_plane.d;
+    float fStart = dot(pNode->m_plane.normal, vStart) + pNode->m_plane.d;
+    float fEnd = dot(pNode->m_plane.normal, vEnd) + pNode->m_plane.d;
 
     // Either endpoint in front; the straddling case means the plane is crossed.
     if (fStart > 0.0f || fEnd > 0.0f)
     {
         if (!(fStart > 0.0f && fEnd > 0.0f))
         {
-            Vector vMid = planelineintersection(BSPPlaneNormal(pNode->m_plane), pNode->m_plane.d, vStart, vEnd);
+            Vector vMid = planelineintersection(pNode->m_plane.normal, pNode->m_plane.d, vStart, vEnd);
             if (fStart > 0.0f)
             {
                 if (HitCheck(pNode->m_pFront, 0, vStart, vMid, pvHit))
@@ -104,15 +97,15 @@ int BSPHitCheck(BSPNode* pNode, Vector vStart, Vector vEnd, Vector* pvHit,
         return 1;
     }
 
-    float fStart = dot(BSPPlaneNormal(pNode->m_plane), vStart) + pNode->m_plane.d;
-    float fEnd = dot(BSPPlaneNormal(pNode->m_plane), vEnd) + pNode->m_plane.d;
+    float fStart = dot(pNode->m_plane.normal, vStart) + pNode->m_plane.d;
+    float fEnd = dot(pNode->m_plane.normal, vEnd) + pNode->m_plane.d;
 
     // Same straddle handling as HitCheck, but every descent is ORed with this node's own hit.
     if (fStart > 0.0f || fEnd > 0.0f)
     {
         if (!(fStart > 0.0f && fEnd > 0.0f))
         {
-            Vector vMid = planelineintersection(BSPPlaneNormal(pNode->m_plane), pNode->m_plane.d, vStart, vEnd);
+            Vector vMid = planelineintersection(pNode->m_plane.normal, pNode->m_plane.d, vStart, vEnd);
             if (fStart > 0.0f)
             {
                 if (BSPHitCheck(pNode->m_pFront, vStart, vMid, pvHit, pfnTest))
@@ -147,7 +140,7 @@ void BSPTraverse(BSPNode* pNode, Vector v,
     List<Plane> planes;
     pfnCallback(pNode, pData, planes);
 
-    float fDist = dot(BSPPlaneNormal(pNode->m_plane), v) + pNode->m_plane.d;
+    float fDist = dot(pNode->m_plane.normal, v) + pNode->m_plane.d;
     // The far side is walked first.
     BSPNode* pNear = fDist > 0.0f ? pNode->m_pFront : pNode->m_pBack;
     BSPNode* pFar = fDist > 0.0f ? pNode->m_pBack : pNode->m_pFront;
@@ -163,19 +156,13 @@ void BSPTraverse(BSPNode* pNode, const Vector& v, float fRadius,
         return;
 
     float fRoot = sqrtf(fRadius);
+    pfnCallback(pNode, v, fRadius);
 
-    do
-    {
-        pfnCallback(pNode, v, fRadius);
-
-        float fDist = dot(v, BSPPlaneNormal(pNode->m_plane)) + pNode->m_plane.d;
-        if (fDist > -fRoot)
-            BSPTraverse(pNode->m_pFront, v, fRadius, pfnCallback);
-        if (fDist < fRoot)
-            pNode = pNode->m_pBack;
-        else
-            break;
-    } while (pNode);
+    float fDist = dot(v, pNode->m_plane.normal) + pNode->m_plane.d;
+    if (fDist > -fRoot)
+        BSPTraverse(pNode->m_pFront, v, fRadius, pfnCallback);
+    if (fDist < fRoot)
+        BSPTraverse(pNode->m_pBack, v, fRadius, pfnCallback);
 }
 
 // Collapses `planes` (the ancestor candidates that still bound this subtree) onto each node's own
@@ -214,7 +201,7 @@ void BSPTraverseVolumeApprox(BSPNode* pNode, const Vector& v, List<Plane>& plane
             pNode->m_lBackPlanes.Add(planes.m_pData[i]);
         }
 
-        float fDot = dot(BSPPlaneNormal(planes.m_pData[i]), BSPPlaneNormal(pNode->m_plane));
+        float fDot = dot(planes.m_pData[i].normal, pNode->m_plane.normal);
 
         if (nMask == 2)
         {
@@ -248,7 +235,7 @@ void BSPTraverseVolumeApprox(BSPNode* pNode, const Vector& v, List<Plane>& plane
             return;
     }
 
-    float fDist = dot(v, BSPPlaneNormal(pNode->m_plane)) + pNode->m_plane.d;
+    float fDist = dot(v, pNode->m_plane.normal) + pNode->m_plane.d;
 
     // The first side is the one `v` is on and gets the first recursion; the loop side is walked by
     // continuing this function.
@@ -285,7 +272,7 @@ BSPNode* BSPFitSphere(BSPNode* pNode, const Vector& v, float fRadius)
 {
     while (pNode->m_nType == 0)
     {
-        float fDist = dot(BSPPlaneNormal(pNode->m_plane), v) + pNode->m_plane.d;
+        float fDist = dot(pNode->m_plane.normal, v) + pNode->m_plane.d;
         if (fDist <= -fRadius)
         {
             pNode = pNode->m_pBack;
@@ -309,7 +296,7 @@ BSPNode* BSPFitBox(BSPNode* pNode, const Vector& vMin, const Vector& vMax)
 
     // The box is tested against the negated plane first, because the most-negative plane value is
     // the farthest corner along the inverted normal.
-    Plane planeNeg(-pNode->m_plane.a, -pNode->m_plane.b, -pNode->m_plane.c, -pNode->m_plane.d);
+    Plane planeNeg(-pNode->m_plane.normal.x, -pNode->m_plane.normal.y, -pNode->m_plane.normal.z, -pNode->m_plane.d);
     if (BoxAbovePlane(vMin, vMax, planeNeg) >= -0.02f)
         return BSPFitBox(pNode->m_pBack, vMin, vMax);
     if (BoxAbovePlane(vMin, vMax, pNode->m_plane) >= -0.02f)
@@ -325,7 +312,7 @@ void BSPSphereCheck(BSPNode* pNode, const Vector& v, float fRadius, List<BSPNode
         return;
     }
 
-    float fDist = dot(BSPPlaneNormal(pNode->m_plane), v) + pNode->m_plane.d;
+    float fDist = dot(pNode->m_plane.normal, v) + pNode->m_plane.d;
     if (fDist <= -fRadius)
     {
         BSPSphereCheck(pNode->m_pBack, v, fRadius, out);
@@ -350,7 +337,7 @@ BSPNode* BSPSearch(BSPNode* pNode, Vector vPoint, int (*pfnTest)(BSPNode*, void*
         if (pNode->m_nType != 0)
             return 0;
 
-        float fDist = dot(BSPPlaneNormal(pNode->m_plane), vPoint) + pNode->m_plane.d;
+        float fDist = dot(pNode->m_plane.normal, vPoint) + pNode->m_plane.d;
         BSPNode* pNear = fDist < 0.0f ? pNode->m_pBack : pNode->m_pFront;
         pNode = fDist < 0.0f ? pNode->m_pFront : pNode->m_pBack;
 

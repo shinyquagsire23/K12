@@ -2,6 +2,7 @@
 // the source-script handle they load through, and error output.
 
 #include "k2stdint.h"
+#include <string.h>
 #include "nwscriptinternal.h"
 
 #include "exolocstringinternal.h"
@@ -105,9 +106,8 @@ int CScriptCompilerIdListEntry::ExpandParameterSpace()
         paNew98[i] = OBJECT_INVALID;
     }
 
-    if (m_nParameterSpace * 3 < nNewCapacity * 3)
-        __builtin_memset(&paNewa0[m_nParameterSpace * 3], 0,
-                         static_cast<unsigned int>(nNewCapacity * 3 - 1 - m_nParameterSpace * 3) * sizeof(int) + sizeof(int));
+    for (int i = m_nParameterSpace * 3; i < nNewCapacity * 3; i++)
+        paNewa0[i] = 0;
 
     m_nParameterSpace = nNewCapacity;
     delete[] m_pParameterTypes;
@@ -188,9 +188,9 @@ void CScriptCompilerInternal::Initialize()
     PushSRStack(GRAMMAR_PROGRAM, 0, 0, 0);
 
     if (m_pStructureList == 0)
-        m_pStructureList = new CScriptCompilerTable720Entry[256];
+        m_pStructureList = new CScriptCompilerStructureEntry[256];
     if (m_pStructureFieldList == 0)
-        m_pStructureFieldList = new CScriptCompilerTable728Entry[4096];
+        m_pStructureFieldList = new CScriptCompilerStructureFieldEntry[4096];
 
     m_nSwitchLabelCapacity = SWITCH_LABEL_COUNT;
     m_nStructureDefinition = 0;
@@ -205,30 +205,15 @@ void CScriptCompilerInternal::Initialize()
     m_nSwitchLevel = 0;
     m_nSwitchIdentifier = 0;
     m_nSwitchStackDepth = 0;
-    m_nStructureCount = 1;
+    m_nStructureCount = 0;
     m_nFieldCount = 0;
-
-    m_pStructureList[0].m_nSize = 12;
-    m_pStructureList[0].m_nFirstField = 0;
-    m_pStructureList[0].m_nLastField = 2;
-    m_pStructureList[0].m_sName = "vector";
-    m_nFieldCount = 3;
-
-    m_pStructureFieldList[0].m_sName = "x";
-    m_pStructureFieldList[0].m_nOffset = 0;
-    m_pStructureFieldList[0].m_nType = KEYWORD_FLOAT;
-    m_pStructureFieldList[1].m_sName = "y";
-    m_pStructureFieldList[1].m_nOffset = 4;
-    m_pStructureFieldList[1].m_nType = KEYWORD_FLOAT;
-    m_pStructureFieldList[2].m_sName = "z";
-    m_pStructureFieldList[2].m_nOffset = 8;
-    m_pStructureFieldList[2].m_nType = KEYWORD_FLOAT;
+    InitializePreDefinedStructures();
 
     m_nCompileMode = COMPILE_MODE_PARSE_TREE;
     m_bCompileIdentifierConstants = 0;
 
     if (m_pVarStackList == 0)
-        m_pVarStackList = new CScriptCompilerTable700Entry[1024];
+        m_pVarStackList = new CScriptCompilerVarStackEntry[1024];
 
     m_nStackCurrentDepth = 0;
     m_nBinaryCodeOffset = 0;
@@ -305,7 +290,7 @@ void CScriptCompilerInternal::InitializeIncludeFile(int nIndex)
 {
     if (nIndex < 1)
         return;
-    CScriptCompilerIncludeFile& slot = m_includeFiles[nIndex - 1];
+    CScriptCompilerIncludeFileStackEntry& slot = m_includeFiles[nIndex - 1];
     slot.m_nLine = m_nLine;
     slot.m_nColumn = m_nColumn;
     slot.m_nTokenType = m_nTokenType;
@@ -321,7 +306,7 @@ void CScriptCompilerInternal::ShutdownIncludeFile(int nIndex)
 {
     if (nIndex < 1)
         return;
-    CScriptCompilerIncludeFile& slot = m_includeFiles[nIndex - 1];
+    CScriptCompilerIncludeFileStackEntry& slot = m_includeFiles[nIndex - 1];
     m_nLine = slot.m_nLine;
     m_nColumn = slot.m_nColumn;
     m_nTokenType = slot.m_nTokenType;
@@ -407,18 +392,21 @@ int CScriptCompilerInternal::CompileFile(const CExoString& sFile)
     if (m_nIncludeFileDepth > INCLUDE_FILE_COUNT - 1)
         return -SCRIPT_ERROR_INCLUDE_TOO_MANY_LEVELS;
 
-    for (int nIndex = 0; nIndex < m_nIncludeFileDepth; nIndex++)
+    if (m_nIncludeFileDepth >= 1)
     {
-        if (m_includeFiles[nIndex].m_sFileName == sFile)
+        for (int nIndex = 0; nIndex < m_nIncludeFileDepth; nIndex++)
         {
-            const char* pszFile = sFile.CStr();
-            (void)pszFile;
-            for (int nScan = m_nIncludeFileDepth - 1; nScan >= 0; nScan--)
+            if (m_includeFiles[nIndex].m_sFileName == sFile)
             {
-                const char* pszOpen = m_includeFiles[nScan].m_sFileName.CStr();
-                (void)pszOpen;
+                const char* pszFile = sFile.CStr();
+                (void)pszFile;
+                for (int nScan = m_nIncludeFileDepth - 1; nScan >= 0; nScan--)
+                {
+                    const char* pszOpen = m_includeFiles[nScan].m_sFileName.CStr();
+                    (void)pszOpen;
+                }
+                return -SCRIPT_ERROR_INCLUDE_RECURSIVE;
             }
-            return -SCRIPT_ERROR_INCLUDE_RECURSIVE;
         }
     }
 
@@ -431,46 +419,32 @@ int CScriptCompilerInternal::CompileFile(const CExoString& sFile)
 
     char* pSourceText;
     unsigned int nSize;
-    CSourceScript& script = m_includeFiles[m_nIncludeFileDepth].m_script;
-    CResRef resRef(sFile);
-    script.SetResRef(resRef, 0);
-    if (script.m_pRes->Demand() == 0)
+    int nResult = m_includeFiles[m_nIncludeFileDepth].m_script.LoadScript(sFile, &pSourceText, &nSize);
+    if (nResult < 0)
     {
         if (m_nIncludeFileDepth >= 1)
-        {
-            CScriptCompilerIncludeFile& slot = m_includeFiles[m_nIncludeFileDepth - 1];
-            m_nLine = slot.m_nLine;
-            m_nColumn = slot.m_nColumn;
-            m_nTokenType = slot.m_nTokenType;
-            m_nTokenLength = slot.m_nTokenLength;
-        }
-        return -SCRIPT_ERROR_FILE_NOT_FOUND;
+            ShutdownIncludeFile(m_nIncludeFileDepth);
+        return nResult;
     }
-    pSourceText = static_cast<char*>(script.m_pRes->GetNSSDataPtr());
-    nSize = script.m_pRes->GetNSSSize();
 
     m_nIncludeFileDepth++;
-    int nResult = ParseSource(pSourceText, nSize);
+    nResult = ParseSource(pSourceText, nSize);
     if (nResult < 0)
     {
 #ifdef K2_FIX_ENGINE_BUGS
-        m_includeFiles[m_nIncludeFileDepth - 1].m_script.m_pRes->Release();
+        m_includeFiles[m_nIncludeFileDepth - 1].m_script.UnloadScript();
 #else
-        m_includeFiles[m_nIncludeFileDepth].m_script.m_pRes->Release();
+        m_includeFiles[m_nIncludeFileDepth].m_script.UnloadScript();
 #endif
         return nResult;
     }
 
-    m_includeFiles[m_nIncludeFileDepth - 1].m_script.m_pRes->Release();
+    m_includeFiles[m_nIncludeFileDepth - 1].m_script.UnloadScript();
 
     m_nIncludeFileDepth--;
     if (m_nIncludeFileDepth >= 1)
     {
-        CScriptCompilerIncludeFile& slot = m_includeFiles[m_nIncludeFileDepth - 1];
-        m_nLine = slot.m_nLine;
-        m_nColumn = slot.m_nColumn;
-        m_nTokenType = slot.m_nTokenType;
-        m_nTokenLength = slot.m_nTokenLength;
+        ShutdownIncludeFile(m_nIncludeFileDepth);
         return 0;
     }
 

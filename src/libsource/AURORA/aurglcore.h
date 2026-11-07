@@ -6,6 +6,7 @@
 #define GLRENDER_H
 #include "k2stdint.h"
 #include "port/aslglapi.h"
+#include "port/crtapi.h"
 #include "Vector.h"
 #include "aurblendmodes.h"
 #include "List.h"
@@ -241,8 +242,20 @@ extern unsigned char g_useDistortionOutput;
 
 // The depth-mask wrapper. While distortion output is on, the GL backend owns the mask; K1 has no
 // distortion output.
+class Model;
+Model* BinaryFindModel(char* sName);   // aurmodelparse.cpp
+
 class RenderInterface {
 public:
+    // A model is resident once the binary model list holds it; "NULL" names none.
+    static bool IsResident(char* s)
+    {
+        if (s == 0)
+            return false;
+        if (_stricmp(s, "NULL") == 0)
+            return false;
+        return BinaryFindModel(s) != 0;
+    }
     static void SetDepthMask(unsigned char bMask)
     {
 #if !KOTOR1
@@ -356,13 +369,13 @@ public:
     {
         ASLgl::glFogfv(enableTranslationTable[eParam], &vValue.x);
     }
-    static void SetLightModel(const float* pfAmbient) { ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, pfAmbient); }
+    static void SetLightModel(float* pfAmbient) { ASLgl::glLightModelfv(GL_LIGHT_MODEL_AMBIENT, pfAmbient); }
     static void SetColorMaterial(Aurora::AuroraFacingModes eFacing, Aurora::AuroraColorTrackingModes eMode)
     {
         ASLgl::glColorMaterial(facingTranslationTable[eFacing], colorTrackingTranslationTable[eMode]);
     }
     static void SetMaterialv(Aurora::AuroraFacingModes eFacing, Aurora::AuroraMaterialProperties eProperty,
-                             const float* pfValue)
+                             float* pfValue)
     {
         ASLgl::glMaterialfv(facingTranslationTable[eFacing], materialTranslationTable[eProperty], pfValue);
     }
@@ -510,7 +523,7 @@ public:
     // Vertex-pool family. RequestPool's fifth argument is an out-pointer written with the pool
     // handle; LockPool returns the locked base pointer.
     static unsigned int RequestPool(Aurora::AuroraBufferRequestType eType, unsigned int a,
-                                    unsigned int b, unsigned int c, unsigned int* pnOut);
+                                    unsigned int b, unsigned int c, uint32_l_t* pnOut);
     static void* LockPool(unsigned int nPool, unsigned int a, unsigned int b, unsigned int c);
     static void UnlockPool(unsigned int nPool);
 #ifndef K2_MOBILE_OPT
@@ -813,7 +826,7 @@ public:
     static short m_FuryLevel;
     static CAurTexture* m_pFuryTexture;
 
-    static List<unsigned int> cm_listSquaresToRender;
+    static List<uint32_l_t> cm_listSquaresToRender;
     static void AddSquareToRender(unsigned int nHandle);
     static void RenderSquares(unsigned int nHandle);
     static void RenderDrawableSquares();

@@ -13,6 +13,7 @@ public:
     CExoLinkedListNode* GetHeadPos() const { return m_pInternal->m_pHead; }
     CExoLinkedListNode* GetTailPos() const { return m_pInternal->m_pTail; }
     T* GetHead() const { return m_pInternal->m_pHead ? static_cast<T*>(m_pInternal->m_pHead->m_pData) : 0; }
+    T* GetTail() const { return m_pInternal->m_pTail ? static_cast<T*>(m_pInternal->m_pTail->m_pData) : 0; }
     T* GetAtPos(CExoLinkedListNode* pos) const { return static_cast<T*>(m_pInternal->GetAtPos(pos)); }
     T* GetNext(CExoLinkedListNode*& pos) const { return static_cast<T*>(m_pInternal->GetNext(pos)); }
     T* GetPrev(CExoLinkedListNode*& pos) const { return static_cast<T*>(m_pInternal->GetPrev(pos)); }

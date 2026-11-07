@@ -552,8 +552,8 @@ int CSWCPlaceable::LoadModel(const CResRef& r, unsigned char a, unsigned char b)
     }
     r.CopyToString(m_sModelName);
     m_sModelName = m_sModelName.SubString(4, -1);
-    Vector vPartPosition(0.0f, 0.0f, 0.0f);
     Quaternion qPartOrientation;
+    Vector vPartPosition(0.0f, 0.0f, 0.0f);
     CExoString sPartName;
     sPartName = m_sModelName + "_head_hit";
     if (pGob->GetPartLocalPosition(static_cast<char*>(sPartName.CStr()), &vPartPosition, &qPartOrientation) != 0)
@@ -656,10 +656,12 @@ void CSWCPlaceable::AnimationUpdate()
                     nAppearance, "SoundAppType", &nSoundRow);
                 CSWSPlaceable* pServerPlaceable = GetServerPlaceable();
                 if (pServerPlaceable != 0 && pServerPlaceable->m_bIsBodyBag != 0 && m_pArea != 0 &&
-                    pServerPlaceable->m_bIsBodyBagVisible == 0 &&
-                    m_pArea->ParentCorpseExists(m_objectId) != 0) {
-                    nSoundRow = PLACEABLE_SOUND_CORPSE;
-                    bFound = 1;
+                    pServerPlaceable->m_bIsBodyBagVisible == 0) {
+                    int bCorpse = m_pArea->ParentCorpseExists(m_objectId);
+                    if (bCorpse != 0) {
+                        nSoundRow = PLACEABLE_SOUND_CORPSE;
+                        bFound = 1;
+                    }
                 }
                 if (bFound != 0) {
 #else
@@ -762,8 +764,7 @@ char CSWCPlaceable::GetReticlePoint(Vector& v)
     // The camera's view axis.
     Vector vDir = -pCamera->GetOrientation().zdir();
     float fPointSide = dot(v, vDir);
-    Vector vCamera = pCamera->GetPosition();
-    float fCameraSide = dot(vDir, vCamera);
+    float fCameraSide = dot(vDir, pCamera->GetPosition());
     char nSide = (fPointSide > fCameraSide) ? 1 : 2;
     v = pCamera->MapToScreen(v, true);
     v.x *= static_cast<float>(g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth);

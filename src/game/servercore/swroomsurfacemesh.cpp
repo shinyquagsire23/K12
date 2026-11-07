@@ -542,11 +542,10 @@ int CSWRoomSurfaceMesh::ClippedLineSegmentWalkable(const Vector& segStart, const
     if (tri < 0)
         return 0;
 
-    int v0, v1, v2;
-    GetTriangleVertices(0, tri, &v0, &v1, &v2);
-    GetVertex(v0, &triVerts[0]);
-    GetVertex(v1, &triVerts[1]);
-    GetVertex(v2, &triVerts[2]);
+    int v[3];
+    GetTriangleVertices(0, tri, &v[0], &v[1], &v[2]);
+    for (int i = 0; i < 3; i++)
+        GetVertex(v[i], &triVerts[i]);
 
     Vector segA = {segStartLocal.x, segStartLocal.y, 1000.0f};
     Vector segB = {segStartLocal.x, segStartLocal.y, -1000.0f};
@@ -558,15 +557,13 @@ int CSWRoomSurfaceMesh::ClippedLineSegmentWalkable(const Vector& segStart, const
     int iterCount = 0;
     do {
         int adj[3];
-        GetTriangleVertices(0, tri, &v0, &v1, &v2);
+        GetTriangleVertices(0, tri, &v[0], &v[1], &v[2]);
         GetTriangleAdjacency(0, tri, &adj[0], &adj[1], &adj[2]);
         float vx[3], vy[3], vz[3];
-        GetVertex(v0, &vx[0], &vy[0], &vz[0]);
-        GetVertex(v0, &triVerts[0]);
-        GetVertex(v1, &vx[1], &vy[1], &vz[1]);
-        GetVertex(v1, &triVerts[1]);
-        GetVertex(v2, &vx[2], &vy[2], &vz[2]);
-        GetVertex(v2, &triVerts[2]);
+        for (int i = 0; i < 3; i++) {
+            GetVertex(v[i], &vx[i], &vy[i], &vz[i]);
+            GetVertex(v[i], &triVerts[i]);
+        }
 
         if (iterCount == 0) {
             tEnd = segStartLocal.z;
@@ -796,8 +793,7 @@ CSWRoomSurfaceMesh::~CSWRoomSurfaceMesh()
 #if KOTOR1  // K1: scalar delete; the aligned flag is left as it was
         m_paTriAdjacency.Delete();
 #else
-        if (m_paTriAdjacency)
-            operator delete[](m_paTriAdjacency);
+        delete[] m_paTriAdjacency;
         m_paTriAdjacency = 0;
 #endif
 
@@ -1095,7 +1091,7 @@ int CSWRoomSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
         // The box-tree section is a depth-first-serialized binary tree of box nodes.
         CExoArrayList<CSWRoomSurfaceMeshAABBNode*> stack;
         CExoArrayList<int> stackIndices;
-        CExoArrayList<CSWRoomSurfaceMeshAABBNode*> allNodes;
+        CExoStaticArrayList<CSWRoomSurfaceMeshAABBNode*> allNodes(0);
         int nNodes = 0;
         int idx = 0;
         do {
@@ -1296,6 +1292,7 @@ void CSWRoomSurfaceMesh::ComputeRoomBorder()
         }
 
         for (int i = 0; i < border.m_count; i++) {
+#if KOTOR1 || !defined(__arm__)  // K2 armv7 calls Add out of line; the other three builds inline it
             if (m_aEdgeAdjacency.m_bStatic == 0) {
                 CSWRoomSurfaceExternalEdge value = *border.m_pArray[i];
                 CExoArrayList<CSWRoomSurfaceExternalEdge>& edges =
@@ -1317,6 +1314,9 @@ void CSWRoomSurfaceMesh::ComputeRoomBorder()
                 K2_ASSUME(eidx < edges.m_capacity);   // the list grows when the count reaches the capacity
                 edges.m_pArray[eidx] = value;
             }
+#else
+            m_aEdgeAdjacency.Add(*border.m_pArray[i]);
+#endif
             if (border.m_pArray[i] != 0)
                 delete border.m_pArray[i];
         }

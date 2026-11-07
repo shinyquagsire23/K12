@@ -34,22 +34,17 @@ struct CObjectLookupBlockHeader {
 
 K2_LAYOUT_ASSERT(sizeof(CObjectLookupTable) == 0x18, "CObjectLookupTable size drift");
 
-// One aggregate so the constructor can value-initialise the whole array as a unit.
-struct CObjectTableSlots {
-    // The player slots, one CObjectLookupTable each.
-    enum {
-        MAX_PLAYERS = 96,
-    };
-
-    CObjectLookupTable* m_pSlots[MAX_PLAYERS];
-};
-
 // The server's game-object-id table, with one CObjectLookupTable per player, indexed by object id.
 class CObjectTableManager {
 public:
     // AddID's *pIndex when the id was not added.
     enum : unsigned int {
         INDEX_NONE = 0xffffffffu,
+    };
+
+    // The player slots, one CObjectLookupTable each.
+    enum {
+        MAX_PLAYERS = 96,
     };
 
     CObjectTableManager();
@@ -65,6 +60,6 @@ public:
     int  GetIndexFromID(unsigned long long nID, unsigned int playerId);
 
 private:
-    CObjectTableSlots m_slots;
-    unsigned int      m_nCount;
+    CObjectLookupTable* m_pSlots[MAX_PLAYERS];
+    unsigned int        m_nCount;
 };

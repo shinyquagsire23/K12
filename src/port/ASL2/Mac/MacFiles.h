@@ -29,7 +29,7 @@ public:
     int m_nFD;
     FILE* m_pFile;
     unsigned int m_nAccess;
-    unsigned long long m_nFileCursor;
+    uint64_ll_t m_nFileCursor;
     // The mapping code reads byte 3 of this word, so the byte view has to be a real member.
     union {
         unsigned int m_nFlags;

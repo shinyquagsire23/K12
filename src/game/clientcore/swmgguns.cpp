@@ -37,6 +37,9 @@ CAurObject* NewCAurObject(char* pszResRef, char* pszParam2, FILE* pParam3, FILE*
 #endif
 
 // printf-style formatter through the fortified __vsprintf_chk, sized by the caller's buffer.
+#if defined(K2_NO_FORTIFY)
+#define GunBankMessage(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void GunBankMessage(char* szBuf, int nSize, const char* szFormat, ...)
 {
     __builtin_va_list ap;
@@ -44,15 +47,15 @@ static void GunBankMessage(char* szBuf, int nSize, const char* szFormat, ...)
     __vsprintf_chk(szBuf, 0, nSize, szFormat, ap);
     __builtin_va_end(ap);
 }
+#endif
 
 // Rotates a vector by a quaternion, skipping the work when the rotation is the identity.
-static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
         return v;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
 
-    float x = q.x, y = q.y, z = q.z;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = x * w, wy = y * w, wz = z * w;
@@ -64,14 +67,13 @@ static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 }
 
 #if !KOTOR1
-static inline Vector RotateByQuaternionInverse(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternionInverse(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == -1.0f || w == 1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == -1.0f || q.w == 1.0f))
         return v;
-
-    float x = q.x, y = q.y, z = q.z;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
     float nw = -w;
+
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = x * nw, wy = y * nw, wz = z * nw;
@@ -83,7 +85,7 @@ static inline Vector RotateByQuaternionInverse(const Vector& v, const Quaternion
 }
 #else
 // K1's spelling of the inverse rotate: the forward rotate by `-q`, quaternion operand first.
-static inline Vector RotateByQuaternionK1(const Quaternion& q, const Vector& v)
+static inline __attribute__((always_inline)) Vector RotateByQuaternionK1(const Quaternion& q, const Vector& v)
 {
     return RotateByQuaternion(v, q);
 }

@@ -313,6 +313,11 @@ public:
     // cover, distinct from the animated bar SetTop, SetMiddle and SetBottom drive.
     void  SetExtentSpecial(CSWGuiExtent extent);
     void  Reset();
+    void  Close()
+    {
+        m_bScrollDone = 0;
+        ResetFade();
+    }
 
     // The bar's animation, where it is sliding to and where it started from. Each
     // GetLetterboxChange* accessor is exactly (target - start) on one axis.

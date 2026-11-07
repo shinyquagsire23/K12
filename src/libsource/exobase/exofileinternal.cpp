@@ -21,9 +21,9 @@ CExoAliasListInternal::CExoAliasListInternal()
 
 CExoAliasListInternal::~CExoAliasListInternal()
 {
-    for (CExoAliasListEntry* p = m_pList; p != 0; )
+    for (CExoAlias* p = m_pList; p != 0; )
     {
-        CExoAliasListEntry* pNext = p->m_pNext;
+        CExoAlias* pNext = p->m_pNext;
         delete p;
         p = pNext;
     }
@@ -48,8 +48,8 @@ void CExoAliasListInternal::Add(const CExoString& alias, const CExoString& path)
 #endif
         sPath = sPath + "\\";
 
-    CExoAliasListEntry* pPrev = 0;
-    CExoAliasListEntry* pCur = m_pList;
+    CExoAlias* pPrev = 0;
+    CExoAlias* pCur = m_pList;
     for (; pCur != 0; pCur = pCur->m_pNext)
     {
         if (pCur->m_sAlias > sAlias)
@@ -57,7 +57,7 @@ void CExoAliasListInternal::Add(const CExoString& alias, const CExoString& path)
         pPrev = pCur;
     }
 
-    CExoAliasListEntry* pNew = new CExoAliasListEntry;
+    CExoAlias* pNew = new CExoAlias;
     pNew->m_sAlias = sAlias;
     pNew->m_sPath = sPath;
 
@@ -89,7 +89,7 @@ void CExoAliasListInternal::ChangePath(const CExoString& alias, const CExoString
 #endif
         sPath = sPath + "\\";
 
-    CExoAliasListEntry* pCur;
+    CExoAlias* pCur;
     for (pCur = m_pList; pCur != 0; pCur = pCur->m_pNext)
     {
         if (pCur->m_sAlias == sAlias)
@@ -103,45 +103,51 @@ void CExoAliasListInternal::ChangePath(const CExoString& alias, const CExoString
 
 void CExoAliasListInternal::Clear()
 {
-    CExoAliasListEntry* pEntry = m_pList;
-    if (pEntry == 0)
-        return;
-
-    do
+    CExoAlias* pEntry = m_pList;
+    while (pEntry != 0)
     {
-        CExoAliasListEntry* pNext = pEntry->m_pNext;
+        CExoAlias* pNext = pEntry->m_pNext;
         delete pEntry;
         pEntry = pNext;
         m_pList = 0;
-    } while (pEntry != 0);
+    }
 }
 
-// CompareNoCase returns non-zero when the strings match.
+// CompareNoCase returns non-zero when the strings match. The walk reads each entry's next link before
+// its null test, so a missing alias reads through null (nothing in the tree calls Delete).
 void CExoAliasListInternal::Delete(const CExoString& alias)
 {
     CExoString sAlias(alias);
     if (sAlias == "")
         return;
 
-    CExoAliasListEntry* pPrev = 0;
-    CExoAliasListEntry* pCur = m_pList;
-    while (pCur != 0)
+    int bFound = 0;
+    CExoAlias* pCur = m_pList;
+    CExoAlias* pPrev = 0;
+    CExoAlias* pNext = pCur->m_pNext;
+    while (!bFound && pCur != 0)
     {
-        CExoAliasListEntry* pNext = pCur->m_pNext;
         if (pCur->m_sAlias.CompareNoCase(sAlias) != 0)
         {
-            if (m_pList == pCur)
-                m_pList = pCur->m_pNext;
-            if (pPrev != 0)
-                pPrev->m_pNext = pNext;
-            if (pNext != 0)
-                pNext->m_pPrev = pPrev;
-            break;
+            bFound = 1;
         }
-        pPrev = pCur;
-        pCur = pCur->m_pNext;
+        else
+        {
+            pPrev = pCur;
+            pCur = pCur->m_pNext;
+            pNext = pCur->m_pNext;
+        }
     }
-    delete pCur;
+    if (bFound)
+    {
+        if (m_pList == pCur)
+            m_pList = pCur->m_pNext;
+        if (pPrev != 0)
+            pPrev->m_pNext = pNext;
+        if (pNext != 0)
+            pNext->m_pPrev = pPrev;
+        delete pCur;
+    }
 }
 
 // flag is a prefix length; 0 means the whole alias. The empty alias never matches, and the empty
@@ -154,7 +160,7 @@ const CExoString& CExoAliasListInternal::GetAliasPath(const CExoString& alias, i
     if (flag == 0)
         flag = alias.GetLength();
 
-    for (CExoAliasListEntry* pCur = m_pList; pCur != 0; pCur = pCur->m_pNext)
+    for (CExoAlias* pCur = m_pList; pCur != 0; pCur = pCur->m_pNext)
     {
         if (pCur->m_sAlias.ComparePrefixNoCase(alias, flag) == 1)
             return pCur->m_sPath;
@@ -549,10 +555,10 @@ void CExoFileThread::AsyncRead()
 #endif
     }
     m_bComplete = 1;
-    m_pBuffer = 0;
-    m_pFile = 0;
-    m_elemSize = 0;
     m_count = 0;
+    m_elemSize = 0;
+    m_pFile = 0;
+    m_pBuffer = 0;
     m_lock.LeaveCriticalSection();
 }
 

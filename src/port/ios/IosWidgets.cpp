@@ -136,12 +136,7 @@ void IosControl::DrawTextWithBackground(CAurGUIImage* pImage, char const* pszTex
         static_cast<CAurGUIImageInternal*>(pImage)->Draw(n4, n5, n6, n7, 0, 0.0f, vTint, 1.0f);
     }
 
-    const CAurGUIDraw::Viewport& viewport =
-        CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport];
-    int nHeight = viewport.nHeight;
-    int nWidth = viewport.nWidth;
-    ::DrawTextWrapped(pszText, false, n1, nWidth, nHeight,
-                      n2 + n4, n3 + n5, n6 - 2 * n2, n7 - 2 * n3, n8, bCenter);
+    DrawTextWrapped(pszText, n1, n2 + n4, n3 + n5, n6 - 2 * n2, n7 - 2 * n3, n8, bCenter);
 }
 #endif
 

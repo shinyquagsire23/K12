@@ -1,6 +1,7 @@
 // CSWGuiInGameGameplay, the "Gameplay" options page.
 
 #include "k2stdint.h"
+#include <string.h>
 #include "port/sdlapi.h"
 #include "swguiingamegameplay.h"
 
@@ -68,8 +69,8 @@ CSWGuiInGameGameplay::CSWGuiInGameGameplay(CSWGuiManager* pGuiManager)
     StopLoadFromLayout();
     ScaleExtentForResolution();
 
-    m_labelDesc.Initialize(m_listBoxDesc.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem);
+    m_labelDesc.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_btnDifficulty.AddEvent(INPUTEVENT_GUI_DPAD_LEFT, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameGameplay::OnDifficultyLeft));
     m_btnDifficulty.AddEvent(INPUTEVENT_GUI_KEY_LEFT, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameGameplay::OnDifficultyLeft));

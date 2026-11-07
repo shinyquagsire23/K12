@@ -1358,22 +1358,12 @@ char* LightManager::SetupVertexProgramLights(char* pszBuffer, int nLights, int n
         vCamera = CurrentCamera->m_vPosition;
     }
 
-    // inlined GLRender::SetVertexShaderConstant(int, float, float, float, float)
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 92, matCamera.m_f[0], matCamera.m_f[3],
-                                          matCamera.m_f[6], vCamera.x);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 91, matCamera.m_f[1], matCamera.m_f[4],
-                                          matCamera.m_f[7], vCamera.y);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 90, matCamera.m_f[2], matCamera.m_f[5],
-                                          matCamera.m_f[8], vCamera.z);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 89, 0.0f, 0.0f, 0.0f, 1.0f);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 15, 1.0f, 1.0f, 1.0f, 1.0f);
-    if (usearbvertexprograms)
-        ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 88, vCamera.x, vCamera.y, vCamera.z, 0.0f);
+    GLRender::SetVertexShaderConstant(92, matCamera.m_f[0], matCamera.m_f[3], matCamera.m_f[6], vCamera.x);
+    GLRender::SetVertexShaderConstant(91, matCamera.m_f[1], matCamera.m_f[4], matCamera.m_f[7], vCamera.y);
+    GLRender::SetVertexShaderConstant(90, matCamera.m_f[2], matCamera.m_f[5], matCamera.m_f[8], vCamera.z);
+    GLRender::SetVertexShaderConstant(89, 0.0f, 0.0f, 0.0f, 1.0f);
+    GLRender::SetVertexShaderConstant(15, 1.0f, 1.0f, 1.0f, 1.0f);
+    GLRender::SetVertexShaderConstant(88, vCamera.x, vCamera.y, vCamera.z, 0.0f);
 
     if (usearbvertexprograms)
         sprintf(temp, "MOV vFinalColour, program.env[89].xxxw;\n"
@@ -1390,19 +1380,16 @@ char* LightManager::SetupVertexProgramLights(char* pszBuffer, int nLights, int n
         sprintf(temp, "MOV R9.xyzw, c[89].xxxw;DP4 R0.x, R10, c[92];DP4 R0.y, R10, c[91];DP4 R0.z, R10, c[90];DP4 R0.w, R10, c[89];MOV R10, R0;DP3 R0.x, R11, c[92];DP3 R0.y, R11, c[91];DP3 R0.z, R11, c[90];MOV R11, R0;");
     strcat(pszBuffer, temp);
 
+    // The counters step before the appends: the -Oz image shares one strcat call between the
+    // preamble's append and each pass's last. EFFECTIVE: the camera floats' registers differ.
     int nEnv = 87;
-    for (int i = 0; i < nLights; i++) {
-        // inlined GLRender::SetVertexShaderConstant(int, float, float, float, float)
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv, 0.0f, 0.0f, 0.0f, 0.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 1, 0.0f, 0.0f, 0.0f, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 2, 0.0f, 0.0f, 0.0f, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 3, 0.0f, 0.0f, 0.0f, 1.0f);
-        if (usearbvertexprograms)
-            ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, nEnv - 4, 1.0f, 1.0f, 1.0f, 1.0f);
+    int i = 0;
+    while (i < nLights) {
+        GLRender::SetVertexShaderConstant(nEnv, 0.0f, 0.0f, 0.0f, 0.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 1, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 2, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 3, 0.0f, 0.0f, 0.0f, 1.0f);
+        GLRender::SetVertexShaderConstant(nEnv - 4, 1.0f, 1.0f, 1.0f, 1.0f);
 
         if (usearbvertexprograms) {
             sprintf(temp, "ADD vReg0, -vReg10, program.env[%d];\n"
@@ -1425,11 +1412,11 @@ char* LightManager::SetupVertexProgramLights(char* pszBuffer, int nLights, int n
             sprintf(temp3, "MUL R1, R0.y, c[%d];MAD R9.xyzw, R1, c[94], R9;", nEnv - 2);
         }
 
+        nEnv -= 5;
+        i++;
         strcat(pszBuffer, temp);
         strcat(pszBuffer, temp2);
         strcat(pszBuffer, temp3);
-
-        nEnv -= 5;
     }
 
     const char* pszAmbient;

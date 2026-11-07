@@ -159,13 +159,12 @@ float Pitch(const Vector& orientation);
 float Yaw(const Vector& orientation);
 
 // Rotates a vector by a quaternion, and by its inverse.
-static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
         return v;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
 
-    float x = q.x, y = q.y, z = q.z;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = x * w, wy = y * w, wz = z * w;
@@ -177,14 +176,13 @@ static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 }
 
 #if !KOTOR1
-static inline Vector RotateByQuaternionInverse(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternionInverse(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == -1.0f || w == 1.0f))
+    float nw = -q.w;
+    if (quaternionidentityoptimization != 0 && (nw == 1.0f || nw == -1.0f))
         return v;
-
     float x = q.x, y = q.y, z = q.z;
-    float nw = -w;
+
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = x * nw, wy = y * nw, wz = z * nw;
@@ -197,7 +195,7 @@ static inline Vector RotateByQuaternionInverse(const Vector& v, const Quaternion
 #endif
 
 #if KOTOR1  // K1: the inverse is the forward rotate by -q, quaternion first
-static inline Vector RotateByQuaternionK1(const Quaternion& q, const Vector& v)
+static inline __attribute__((always_inline)) Vector RotateByQuaternionK1(const Quaternion& q, const Vector& v)
 {
     return RotateByQuaternion(v, q);
 }

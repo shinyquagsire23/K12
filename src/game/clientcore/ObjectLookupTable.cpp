@@ -59,9 +59,10 @@ int CObjectLookupTable::GetIndexFromID(unsigned long long nID)
 }
 
 CObjectTableManager::CObjectTableManager()
-    : m_slots()
-    , m_nCount(0)
+    : m_nCount(0)
 {
+    for (int i = 0; i < MAX_PLAYERS; i++)
+        m_pSlots[i] = 0;
 }
 
 CObjectTableManager::~CObjectTableManager()
@@ -73,38 +74,38 @@ void CObjectTableManager::ClearAll()
 {
     for (uint64_t i = 0; i < m_nCount; i++)
     {
-        CObjectLookupTable* pTable = m_slots.m_pSlots[i];
+        CObjectLookupTable* pTable = m_pSlots[i];
         if (pTable)
         {
             delete pTable;
-            m_slots.m_pSlots[i] = 0;
+            m_pSlots[i] = 0;
         }
     }
 }
 
 bool CObjectTableManager::RemovePlayer(unsigned int playerId)
 {
-    if (playerId > CObjectTableSlots::MAX_PLAYERS - 1)
+    if (playerId > MAX_PLAYERS - 1)
         return false;
 
-    CObjectLookupTable* pTable = m_slots.m_pSlots[playerId];
+    CObjectLookupTable* pTable = m_pSlots[playerId];
     if (pTable == 0)
         return false;
 
     delete pTable;
-    m_slots.m_pSlots[playerId] = 0;
+    m_pSlots[playerId] = 0;
     return true;
 }
 
 int CObjectTableManager::CreateNewPlayer(unsigned int playerId)
 {
-    if (playerId > CObjectTableSlots::MAX_PLAYERS - 1)
+    if (playerId > MAX_PLAYERS - 1)
         return 0;
-    if (m_slots.m_pSlots[playerId] != 0)
+    if (m_pSlots[playerId] != 0)
         return 0;
 
     CObjectLookupTable* pTable = new CObjectLookupTable;
-    m_slots.m_pSlots[playerId] = pTable;
+    m_pSlots[playerId] = pTable;
 
     if (m_nCount <= playerId)
         m_nCount = playerId + 1;
@@ -113,10 +114,10 @@ int CObjectTableManager::CreateNewPlayer(unsigned int playerId)
 
 bool CObjectTableManager::Touch(unsigned int nIndex, unsigned int playerId)
 {
-    if (playerId > CObjectTableSlots::MAX_PLAYERS - 1)
+    if (playerId > MAX_PLAYERS - 1)
         return false;
 
-    CObjectLookupTable* pTable = m_slots.m_pSlots[playerId];
+    CObjectLookupTable* pTable = m_pSlots[playerId];
     if (pTable == 0)
         return false;
 
@@ -129,14 +130,14 @@ bool CObjectTableManager::AddID(unsigned long long nID, unsigned int* pIndex, un
 {
     *pIndex = INDEX_NONE;
 
-    if (playerId > CObjectTableSlots::MAX_PLAYERS - 1)
+    if (playerId > MAX_PLAYERS - 1)
         return false;
 
-    CObjectLookupTable* pTable = m_slots.m_pSlots[playerId];
+    CObjectLookupTable* pTable = m_pSlots[playerId];
     if (pTable == 0) {
         if (!CreateNewPlayer(playerId))
             return false;
-        pTable = m_slots.m_pSlots[playerId];
+        pTable = m_pSlots[playerId];
     }
 
     *pIndex = pTable->AddID(nID);
@@ -151,12 +152,12 @@ unsigned long long CObjectTableManager::GetIDFromIndex(unsigned int nIndex, unsi
 #if KOTOR1
     // K1 calls CreateNewPlayer unconditionally (its own null check decides).
     CreateNewPlayer(playerId);
-    return m_slots.m_pSlots[playerId]->GetIDFromIndex(nIndex);
+    return m_pSlots[playerId]->GetIDFromIndex(nIndex);
 #else
-    CObjectLookupTable* pTable = m_slots.m_pSlots[playerId];
+    CObjectLookupTable* pTable = m_pSlots[playerId];
     if (pTable == 0) {
         CreateNewPlayer(playerId);
-        pTable = m_slots.m_pSlots[playerId];
+        pTable = m_pSlots[playerId];
     }
     return pTable->GetIDFromIndex(nIndex);
 #endif
@@ -170,12 +171,12 @@ int CObjectTableManager::GetIndexFromID(unsigned long long nID, unsigned int pla
 #if KOTOR1
     // K1 calls CreateNewPlayer unconditionally (its own null check decides).
     CreateNewPlayer(playerId);
-    return m_slots.m_pSlots[playerId]->GetIndexFromID(nID);
+    return m_pSlots[playerId]->GetIndexFromID(nID);
 #else
-    CObjectLookupTable* pTable = m_slots.m_pSlots[playerId];
+    CObjectLookupTable* pTable = m_pSlots[playerId];
     if (pTable == 0) {
         CreateNewPlayer(playerId);
-        pTable = m_slots.m_pSlots[playerId];
+        pTable = m_pSlots[playerId];
     }
     return pTable->GetIndexFromID(nID);
 #endif

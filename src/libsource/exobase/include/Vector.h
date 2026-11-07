@@ -21,7 +21,12 @@ struct Vector {
     Vector(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
 
     void Normalize();
-    int IsZero() const { return x == 0.0f && y == 0.0f && z == 0.0f; }
+    int IsZero() const
+    {
+        if (x == 0.0f && y == 0.0f && z == 0.0f)
+            return 1;
+        return 0;
+    }
 };
 
 // Returns the input vector normalized to unit length.
@@ -63,11 +68,12 @@ inline Vector operator*(float f, const Vector& v) {
 
 // Divides by f through its reciprocal; a zero divisor returns the vector unchanged.
 inline Vector operator/(const Vector& v, float f) {
-    if (f == 0.0f)
-        return v;
-    float fInv = 1.0f / f;
-    Vector r = { fInv * v.x, fInv * v.y, fInv * v.z };
-    return r;
+    if (f != 0.0f) {
+        float fInv = 1.0f / f;
+        Vector r = { fInv * v.x, fInv * v.y, fInv * v.z };
+        return r;
+    }
+    return v;
 }
 
 inline int operator!=(const Vector& a, const Vector& b) { return !equal(a, b); }
@@ -86,7 +92,7 @@ inline float dot(const Vector& a, const Vector& b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-inline Vector cross(const Vector& a, const Vector& b) {
+inline __attribute__((always_inline)) Vector cross(const Vector& a, const Vector& b) {
     Vector r = { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
     return r;
 }

@@ -314,7 +314,7 @@ ConsoleFunc::~ConsoleFunc() {
     delete m_pHolder;
 }
 
-// Unregister one command by name and destroy it, without going through ~ConsoleFunc.
+// Unregister one command by name and destroy it.
 void DeleteFunc(char* pszName) {
     ConsoleFunc* pFunc = 0;
     for (int i = 0; i < ConsoleFuncs_num; i++) {
@@ -324,9 +324,7 @@ void DeleteFunc(char* pszName) {
         }
     }
     if (!pFunc) return;
-    ConsoleFuncs_Remove(pFunc);
-    delete pFunc->m_pHolder;
-    operator delete(pFunc);
+    delete pFunc;
 }
 
 // Unregister and destroy every command whose name starts with the prefix; returns the count.
@@ -343,11 +341,7 @@ int DeleteFuncWithPrefix(char* pszPrefix) {
         if (strncmp(reinterpret_cast<char*>(ConsoleFuncs[i]), pszPrefix, strlen(pszPrefix)) == 0) {
             ConsoleFunc* pFunc = ConsoleFuncs[i];
 #endif
-            if (pFunc) {
-                ConsoleFuncs_Remove(pFunc);
-                delete pFunc->m_pHolder;
-                operator delete(pFunc);
-            }
+            delete pFunc;
             nDeleted++;     // a null entry still counts
         }
     }
@@ -424,12 +418,7 @@ void AurResFree(void* pRes, int nSize) {
         p->m_pHandle = 0;
     }
     if (Resources.Contains(p)) Resources.Remove(p);
-#if KOTOR1  // K1 deletes the object; its destructor closes the already-cleared slot
     delete p;
-#else
-    if (p->m_pData) operator delete[](p->m_pData);
-    operator delete(p);
-#endif
 }
 
 void AurResFree() {

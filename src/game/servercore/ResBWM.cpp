@@ -21,15 +21,10 @@ CResBWM::~CResBWM()
 
 int CResBWM::OnResourceFreed()
 {
-#if KOTOR1
-    m_pParsed = 0;
-#endif
     m_bLoaded = 0;
     m_nBWMSize = 0;
     m_pBWMData = 0;
-#if !KOTOR1
     m_pParsed = 0;
-#endif
     return 1;
 }
 

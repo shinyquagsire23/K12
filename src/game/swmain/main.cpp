@@ -544,9 +544,12 @@ extern int  g_bExitProgram;
 uint64_ll_t s_focusLostTime;
 uint64_ll_t g_nCurrentSessionStartFILETIME;
 extern CExoSound* g_pExoSound;
-// The build and version strings. Only the build number has a literal; the rest are filled in at
-// startup.
+// The build and version strings, filled in at startup; K2's build number also has a literal.
+#if KOTOR1
+CExoString g_sBuildNumber;
+#else
 CExoString g_sBuildNumber("427");
+#endif
 CExoString g_sInstallBuildNumber;
 CExoString g_sVersionNumber;
 CExoString g_sGameName;
@@ -848,17 +851,14 @@ void messagepump()
         return;
 
     MSG msg;
-    if (PeekMessageA(&msg, 0, 0, 0, 0) == 0)
-        return;
-
-    do {
+    while (PeekMessageA(&msg, 0, 0, 0, 0) != 0) {
         if (GetMessageA(&msg, 0, 0, 0) != 0) {
             TranslateMessage(&msg);
             DispatchMessageA(&msg);
         } else {
             g_bExitProgram = 1;
         }
-    } while (PeekMessageA(&msg, 0, 0, 0, 0) != 0);
+    }
 #endif
 }
 
@@ -931,8 +931,9 @@ char* FuncPreInterp(char* pszCommand);
 static int s_nConsoleScroll;
 
 #if KOTOR1
-// K1's console clamps go through a min function: each argument is evaluated once, left first.
-template <class T> static inline T K1Min(T a, T b) { return a < b ? a : b; }
+// K1's console clamps go through a min function: each argument is evaluated once, left first, and
+// bound by reference (each call's temporaries are a scope of their own).
+template <class T> static inline const T& K1Min(const T& a, const T& b) { return a < b ? a : b; }
 #endif
 
 // The console line editor. Backspace deletes the character before the cursor and shifts the tail
@@ -2290,6 +2291,9 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
 
     bool bFirstFrame = true;
     while (g_bExitProgram == 0) {
+        unsigned int nNow;
+        unsigned int nElapsed;
+        HDC__* hDC;
         g_pExoSound->m_pInternal->m_audioSystem.UpdateSystem();
 
         memoryused = static_cast<int>(262144.0f - memoryfree);
@@ -2340,8 +2344,8 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
                              * 0.001f;
 
         g_starttime = g_pExoBase->m_pTimers->GetHighResolutionTimer();
-        if (g_pAppManager->m_pServerExoApp != 0)
-            g_bExitProgram |= g_pAppManager->m_pServerExoApp->MainLoop();
+        if (CServerExoApp* pServer = g_pAppManager->m_pServerExoApp)
+            g_bExitProgram |= pServer->MainLoop();
         g_ServerUpdateTime = static_cast<float>(g_pExoBase->m_pTimers->GetHighResolutionTimer() - g_starttime)
                              * 0.001f;
 
@@ -2352,7 +2356,8 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
             AurPostString(g_console.m_szLine, 2, 0, 5.0f);
         }
         if (g_console.m_bEnterPending != 0) {
-            AurPostString(FuncInterp(g_console.m_szLine), 0, 1, 5.0f);
+            char* szResult = FuncInterp(g_console.m_szLine);
+            AurPostString(szResult, 0, 1, 5.0f);
             g_console.m_szLine[0] = 0;
             g_console.m_nCursor = 0;
             g_console.m_bEnterPending = 0;
@@ -2366,9 +2371,9 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
 
         if (mac_showFPS != 0 && g_bInScreenshotMode == 0) {
             ++s_framesSinceUpdate;
-            unsigned int nNow = timeGetTime();
+            nNow = timeGetTime();
             mac_endtime = nNow;
-            unsigned int nElapsed = nNow - mac_starttime;
+            nElapsed = nNow - mac_starttime;
             if (nElapsed >= 201) {
                 s_displayFps = 1.0 / static_cast<double>(nElapsed) * 1000.0 * static_cast<double>(s_framesSinceUpdate);
                 mac_starttime = timeGetTime();
@@ -2386,7 +2391,7 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
 
         if (!g_pAppManager->m_pClientExoApp->IsMoviePlaying() && g_nReInitializing == 0) {
             g_bSwappingBuffers = 1;
-            HDC__* hDC = GetDC(g_hRenderWnd);
+            hDC = GetDC(g_hRenderWnd);
             GLRender::SwapBuffers(hDC);
             ReleaseDC(g_hRenderWnd, hDC);
             g_bSwappingBuffers = 0;
@@ -2396,9 +2401,9 @@ extern "C" int WinMain(HINSTANCE__* hInstance, HINSTANCE__* hPrevInstance, char*
 
         if (displayFPS > 0.0f) {
             float fFrameTime = 1000.0f / displayFPS;
-            while (static_cast<float>(g_pExoBase->m_pTimers->GetHighResolutionTimer() - s_fpsWaitStamp)
-                       * 0.001f < fFrameTime) {
-            }
+            uint64_ll_t nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+            while (static_cast<float>(nNow - s_fpsWaitStamp) * 0.001f < fFrameTime)
+                nNow = g_pExoBase->m_pTimers->GetHighResolutionTimer();
             s_fpsWaitStamp = g_pExoBase->m_pTimers->GetHighResolutionTimer();
         }
 

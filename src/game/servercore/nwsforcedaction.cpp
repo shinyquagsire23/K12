@@ -4,10 +4,10 @@
 
 CSWSForcedAction::CSWSForcedAction()
 {
+    m_nTargetArea = OBJECT_INVALID;
     m_vPoint.z = 0.0f;
     m_nActionId = 0;
     m_nGroupId = 0;
-    m_nTargetArea = OBJECT_INVALID;
     m_vPoint.x = 0.0f;
     m_vPoint.y = 0.0f;
     m_nTargetObject = OBJECT_INVALID;

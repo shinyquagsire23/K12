@@ -10,14 +10,6 @@
 
 int usevertexprograms = 1;
 
-#ifndef _MSC_VER  // MSVC: aurmodel.cpp's definition only (an inline copy beside it is LNK2005)
-inline MdlNodeTriMesh* MdlNode::AsMdlNodeTriMesh()
-{
-    if ((m_nFlags & NODE_TRIMESH) != NODE_TRIMESH)
-        return 0;
-    return static_cast<MdlNodeTriMesh*>(this);
-}
-#endif
 #include "aurmaterial.h"
 #include "aurglcore.h"
 #include "Vector.h"
@@ -125,7 +117,7 @@ VertexPrimitiveFlat::VertexPrimitiveFlat(PartTriMesh* part)
     if (node->m_nAnimateUV) {
         GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0),
                               static_cast<short>(node->m_nVertexCount) * 8, 2, 0,
-                              reinterpret_cast<unsigned int*>(&part->m_nUVPool));
+                              reinterpret_cast<uint32_l_t*>(&part->m_nUVPool));
         m_nArrayCount += 2;
     }
 
@@ -261,10 +253,10 @@ unsigned char* VertexPrimitiveFlat::ReconnectArraysVAR(unsigned char* paData)
         ASLgl::glTexCoordPointer(2, GL_FLOAT, node->m_nVertexStride, paData + node->m_nTex0Ofs);
     }
 
-    if (static_cast<short>(static_cast<MdlNodeTriMesh*>(m_pNode)->m_nTexCoordSets) > 0)
-        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
-    else
+    if (static_cast<short>(static_cast<MdlNodeTriMesh*>(m_pNode)->m_nTexCoordSets) <= 0)
         GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+    else
+        GLRender::EnableClientState(Aurora::kClientStateTexCoord);
 
     ASLgl::glNormalPointer(GL_FLOAT, node->m_nVertexStride, paData + node->m_nNormalOfs);
     ASLgl::glVertexPointer(3, GL_FLOAT, node->m_nVertexStride, paData + node->m_nVertexOfs);
@@ -272,15 +264,9 @@ unsigned char* VertexPrimitiveFlat::ReconnectArraysVAR(unsigned char* paData)
     if (pTriMesh->m_pMaterial->HasBumpMap() &&
         static_cast<MdlNodeTriMesh*>(m_pNode)->HasTangentBases() &&
         AurBumpMapAvailable()) {
-        if (usearbvertexprograms)
-            ASLgl::glVertexAttribPointerARB(12, 3, GL_FLOAT, 0, node->m_nVertexStride,
-                                            paData + node->m_nTangentOfs);
-        if (usearbvertexprograms)
-            ASLgl::glVertexAttribPointerARB(13, 3, GL_FLOAT, 0, node->m_nVertexStride,
-                                            paData + node->m_nTangentOfs + 12);
-        if (usearbvertexprograms)
-            ASLgl::glVertexAttribPointerARB(14, 3, GL_FLOAT, 0, node->m_nVertexStride,
-                                            paData + node->m_nTangentOfs + 24);
+        GLRender::SetVertexProgramAttrib(12, 3, GL_FLOAT, node->m_nVertexStride, paData + node->m_nTangentOfs);
+        GLRender::SetVertexProgramAttrib(13, 3, GL_FLOAT, node->m_nVertexStride, paData + node->m_nTangentOfs + 12);
+        GLRender::SetVertexProgramAttrib(14, 3, GL_FLOAT, node->m_nVertexStride, paData + node->m_nTangentOfs + 24);
         GLRender::ActivateTextureStage(0);
     }
 
@@ -297,10 +283,10 @@ VertexPrimitiveAnim::VertexPrimitiveAnim(PartTriMesh* part)
 {
     GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0),
                           static_cast<short>(static_cast<MdlNodeTriMesh*>(m_pNode)->m_nVertexCount) * 3 * 4, 2, 0,
-                          reinterpret_cast<unsigned int*>(&m_nVertexPool));
+                          reinterpret_cast<uint32_l_t*>(&m_nVertexPool));
     GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0),
                           static_cast<short>(static_cast<MdlNodeTriMesh*>(m_pNode)->m_nVertexCount) * 8, 2, 0,
-                          reinterpret_cast<unsigned int*>(&m_nTexCoordPool));
+                          reinterpret_cast<uint32_l_t*>(&m_nTexCoordPool));
     BuildVertexArrays();
     m_bStaticArrays = 0;
 }

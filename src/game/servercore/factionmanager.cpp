@@ -160,21 +160,14 @@ int CFactionManager::GetFactionIdByName(const CExoString& sName)
         // falls through to the table scan.
         return 6;
 
-    CExoArrayList<CSWSFaction*>* p = m_paFactions;
-    if (p == 0 || p->m_count < 1)
+    if (m_paFactions == 0)
         return 0;
-    int i = 0;
-    do
+    for (int i = 0; i < m_paFactions->m_count; i++)
     {
-        CSWSFaction* pF = p->m_pArray[i];
-        if (pF != 0)
-        {
-            if (pF->m_sName == sName)
-                return i;
-            p = m_paFactions;
-        }
-        i++;
-    } while (i < p->m_count);
+        CSWSFaction* pF = m_paFactions->m_pArray[i];
+        if (pF != 0 && pF->m_sName == sName)
+            return i;
+    }
     return 0;
 }
 
@@ -197,11 +190,7 @@ int CFactionManager::LoadReputationsFromSaveGame(CResGFF* pGFF, CResList* pList)
     LoadReputations();
     int bSuccess = 1;
     int count = pGFF->GetListCount(pList);
-    if (count < 0)
-        return 1;
-    int i = 0;
-    int result;
-    do
+    for (int i = 0; i <= count && bSuccess; i++)
     {
         CResStruct s;
         pGFF->GetListElement(&s, pList, i);
@@ -209,9 +198,8 @@ int CFactionManager::LoadReputationsFromSaveGame(CResGFF* pGFF, CResList* pList)
         int id2 = pGFF->ReadFieldDWORD(&s, const_cast<char*>("FactionID2"), bSuccess, 0);
         int rep = pGFF->ReadFieldDWORD(&s, const_cast<char*>("FactionRep"), bSuccess, 0);
         SetNPCFactionReputation(id1, id2, rep);
-        result = bSuccess;
-    } while (i++ < count && bSuccess);
-    return result;
+    }
+    return bSuccess;
 }
 
 int CFactionManager::SaveReputations(CResGFF* pGFF, CResList* pList)
@@ -288,18 +276,14 @@ int CFactionManager::LoadFactions(int bLoadSpecial)
     int i = 0;
     if (bLoadSpecial != 0)
         i = m_paFactions->m_count;
-    if (i < rowCount)
+    for (; i < rowCount; i++)
     {
-        do
-        {
-            pTable->GetCExoStringEntry(i, "LABEL", &sName);
-            CSWSFaction* pFaction = new CSWSFaction();
-            pFaction->m_sName = sName;
-            pFaction->m_nGlobal = 1;
-            pFaction->m_nParentFactionID = -1;
-            ResolveFactionName(sName, pFaction);
-            i++;
-        } while (rowCount != i);
+        pTable->GetCExoStringEntry(i, "LABEL", &sName);
+        CSWSFaction* pFaction = new CSWSFaction();
+        pFaction->m_sName = sName;
+        pFaction->m_nGlobal = 1;
+        pFaction->m_nParentFactionID = -1;
+        ResolveFactionName(sName, pFaction);
     }
     return 1;
 }

@@ -165,7 +165,7 @@ CAurCamera* CClientExoApp::GetModuleCamera()
     return m_pInternal->GetModuleCamera();
 }
 
-int CClientExoApp::GetActivePauseState()
+unsigned char CClientExoApp::GetActivePauseState()
 {
     return m_pInternal->GetActivePauseState();
 }
@@ -212,7 +212,7 @@ CServerInfo* CClientExoApp::GetServerInfo()
     return m_pInternal->m_pServerInfo;
 }
 
-unsigned short CClientExoApp::GetServerMode()
+short CClientExoApp::GetServerMode()
 {
     return m_pInternal->m_serverModeChange;
 }
@@ -1031,7 +1031,7 @@ void CClientExoApp::ResetModuleResourcesLoaded()
 
 int CClientExoApp::GetPazaakIsRunning()
 {
-    return m_pInternal->m_bPazaakIsRunning;
+    return m_pInternal->m_pazaak.m_bIsRunning;
 }
 
 int CClientExoApp::GetCharacterChangeInProgress()
@@ -1185,8 +1185,8 @@ int CClientExoApp::GetTargetChanging()
 
 void CClientExoApp::GetPazaakResults(int* a, int* b)
 {
-    *a = m_pInternal->m_pazaakResultA;
-    *b = m_pInternal->m_pazaakResultB;
+    *a = m_pInternal->m_pazaak.m_bWon;
+    *b = m_pInternal->m_pazaak.m_nWager;
 }
 
 int CClientExoApp::GetControlledCharacterDead()

@@ -43,16 +43,16 @@ public:
     virtual void BackUpPoolManager();
     virtual void RestorePoolManager();
 
-    List<unsigned int> m_anLockFlags;
+    List<uint32_l_t> m_anLockFlags;
     List<unsigned int> m_anBufferID;
     List<char*>        m_apBackupData;
-    List<unsigned int> m_anBackupSize;
+    List<uint32_l_t> m_anBackupSize;
     List<unsigned int> m_anBufferTarget;
-    List<unsigned int> m_anBufferSize;
+    List<uint32_l_t> m_anBufferSize;
     List<void*>        m_apBufferData;
 #if !KOTOR1  // K1 has no lock window and no dirty flag; UnlockPool uploads the whole buffer
-    List<unsigned int> m_anPoolOffset;
-    List<unsigned int> m_anPoolLength;
+    List<uint32_l_t> m_anPoolOffset;
+    List<uint32_l_t> m_anPoolLength;
     List<bool>         m_abBufferDirty;
 #endif
 };
@@ -99,7 +99,7 @@ struct Imposter
 
     unsigned char m_bUsed;
     int           m_nTexture;
-    unsigned char _pad08[0x18];
+    uintptr_t     _pad08[3];   // three pointer-width words: 0x18 bytes on arm64, 0xc on armv7
     float*        m_pOffsets;
     int           m_nOffsetCount;
 };
@@ -145,9 +145,9 @@ struct PBUFFERARB_IOS
 
 PBUFFERARB_IOS* CreatePBufferIos(int nWidth, int nHeight, bool bNoDepth);
 #endif
-int  _aglRestoreContext();
-int  _aglSetCurrentPBuffer(PBUFFERARB_IOS* pPBuffer);
-int  _aglDestroyPBuffer(PBUFFERARB_IOS* pPBuffer);
+bool _aglRestoreContext();
+bool _aglSetCurrentPBuffer(PBUFFERARB_IOS* pPBuffer);
+bool _aglDestroyPBuffer(PBUFFERARB_IOS* pPBuffer);
 int  GetPbufferWidth(PBUFFERARB_IOS* pPBuffer);
 int  GetPbufferHeight(PBUFFERARB_IOS* pPBuffer);
 int  GetPbufferTex(PBUFFERARB_IOS* pPBuffer);

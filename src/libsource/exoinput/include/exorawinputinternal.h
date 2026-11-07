@@ -248,14 +248,6 @@ enum JoystickPovDirectionCode {
 int CountJoysticksExt(const DIDEVICEINSTANCEA* pInstance, void* pContext);
 int InitJoysticksExt(const DIDEVICEINSTANCEA* pInstance, void* pContext);
 
-// One record in the joystick event buffer: device code, new value, then two cleared words.
-struct CJoystickInputEvent {
-    int                m_code;
-    int                m_value;
-    unsigned long long m_nTimeStampAndSequence;
-    unsigned long long m_nAppData;
-};
-
 // Per-joystick axis and button snapshot, beginning with a raw joystick-state copy.
 struct CExoJoystickState {
     int           m_lX;

@@ -266,10 +266,10 @@ void SetUpGrass()
 #if !KOTOR1
     info.m_vEmissive = Vector(s_grass.afEmissive[0], s_grass.afEmissive[1], s_grass.afEmissive[2]);
 #endif
-    info.m_fProbLL = s_grass.afProbability[0];
-    info.m_fProbLR = s_grass.afProbability[1];
-    info.m_fProbUL = s_grass.afProbability[2];
-    info.m_fProbUR = s_grass.afProbability[3];
+    info.m_fProb[0] = s_grass.afProbability[0];
+    info.m_fProb[1] = s_grass.afProbability[1];
+    info.m_fProb[2] = s_grass.afProbability[2];
+    info.m_fProb[3] = s_grass.afProbability[3];
     C2DA surfaceMaterials(CResRef("surfacemat"), 0);
     if (!surfaceMaterials.Load2DArray())
         return;

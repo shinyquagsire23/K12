@@ -49,12 +49,16 @@ float DegToRad(float fDegrees);
 // A local variadic formatter that prints " %f  %f " into the buffer it is handed. Nothing reads
 // the result; it exists so Control's call to it stays direct.
 #include <stdarg.h>
+#if defined(K2_NO_FORTIFY)
+#define FormatDebugFloats(pszBuffer, ...) sprintf(pszBuffer, " %f  %f ", __VA_ARGS__)
+#else
 static void FormatDebugFloats(char* pszBuffer, ...) {
     va_list args;
     va_start(args, pszBuffer);
     vsprintf(pszBuffer, " %f  %f ", args);
     va_end(args);
 }
+#endif
 
 // All five of the CAurBehavior base's own leaf bodies are stubs.
 void CAurBehavior::SetScene() {
@@ -115,9 +119,8 @@ CAurBehaviorAttachTranslate::CAurBehaviorAttachTranslate(CAurObject* pObj, CAurO
 }
 
 void CAurBehaviorAttachTranslate::Message(char* pszParam) {
-    // Handles the same two commands as the base's Message.
-    if (_stricmp("diewithoutparent", firstword(pszParam)) == 0)
-        Parse(pszParam + strlen("diewithoutparent"), m_nDieWithoutParent);
+    // The base takes "diewithoutparent"; this class adds its own translation keyword.
+    CAurBehaviorAttach::Message(pszParam);
     if (_stricmp("m_vTranslation", firstword(pszParam)) == 0)
         Parse(pszParam + strlen("m_vTranslation"), m_vTranslation);
 }
@@ -125,11 +128,10 @@ void CAurBehaviorAttachTranslate::Message(char* pszParam) {
 // Rotates a vector by a quaternion.
 extern int quaternionidentityoptimization;   // the rotation identity fast-out
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -185,10 +187,8 @@ int CAurBehaviorAttachNoOrientation::Control(float fParam) {
 }
 
 void CAurBehaviorAttachRotate::Message(char* pszParam) {
-    // Identical to Translate's, except the second keyword is "m_vRotation" and it lands in this
-    // class's own Vector.
-    if (_stricmp("diewithoutparent", firstword(pszParam)) == 0)
-        Parse(pszParam + strlen("diewithoutparent"), m_nDieWithoutParent);
+    // Translate's shape, with "m_vRotation" landing in this class's own Vector.
+    CAurBehaviorAttach::Message(pszParam);
     if (_stricmp("m_vRotation", firstword(pszParam)) == 0)
         Parse(pszParam + strlen("m_vRotation"), m_vRotation);
 }
@@ -313,7 +313,8 @@ int CAurBehaviorAttach::Control(float fParam) {
             if (m_pOwner != 0)
                 delete m_pOwner;
         } else {
-            pGobOwner->SetBehavior(0);
+            Gob* pGob = static_cast<Gob*>(pOwner);
+            pGob->SetBehavior(0);
         }
         return 1;
     }
@@ -561,7 +562,7 @@ CAurBehaviorCameraOnAStick::CAurBehaviorCameraOnAStick(CAurObject* pCamera, CAur
     m_fMaxDist = 0x42C80000;
 
     q = YawPitchRoll(0.0f, 70.0f, 0.0f);
-    m_fYaw = 0;
+    m_fYaw = 0.0f;
     m_pOwner->SetOrientation(q);
 
     // The camera parks m_fDist behind the target along the orientation's local +Z. The rotated Z
@@ -927,14 +928,14 @@ int CAurBehaviorCameraLooseFollow::Control(float fParam) {
         // floats), so the lanes are (a,b,c,d) in the quaternion's (w,x,y,z) memory order.
         Plane qPlane3 = m_pCamera->GetViewVolume(3);
         Vector vTarget3 = m_pTarget.m_pObject->GetPosition();
-        if (qPlane3.a * vTarget3.x + qPlane3.b * vTarget3.y +
-            qPlane3.c * vTarget3.z + qPlane3.d + m_fViewPlaneMargin > 0.0f)
+        if (qPlane3.normal.x * vTarget3.x + qPlane3.normal.y * vTarget3.y +
+            qPlane3.normal.z * vTarget3.z + qPlane3.d + m_fViewPlaneMargin > 0.0f)
             m_fYawVel = -30.0f;
 
         Plane qPlane2 = m_pCamera->GetViewVolume(2);
         Vector vTarget2 = m_pTarget.m_pObject->GetPosition();
-        if (qPlane2.a * vTarget2.x + qPlane2.b * vTarget2.y +
-            qPlane2.c * vTarget2.z + qPlane2.d + m_fViewPlaneMargin > 0.0f)
+        if (qPlane2.normal.x * vTarget2.x + qPlane2.normal.y * vTarget2.y +
+            qPlane2.normal.z * vTarget2.z + qPlane2.d + m_fViewPlaneMargin > 0.0f)
             m_fYawVel = 30.0f;
     }
 

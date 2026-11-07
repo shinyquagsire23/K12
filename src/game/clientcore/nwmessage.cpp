@@ -542,6 +542,7 @@ int CSWMessage::MessageMoreDataToRead()
     return m_nReadMessagePos < m_nReadMessageSize;
 }
 
+// EFFECTIVE (K2 armv7): same stores and tail call; the image tail-calls conditionally with no frame, ours keeps one.
 void CSWMessage::CreateWriteMessage(unsigned int nSize, unsigned int a2, int a3)
 {
     m_bWriteMessageOpen = 1;
@@ -549,18 +550,8 @@ void CSWMessage::CreateWriteMessage(unsigned int nSize, unsigned int a2, int a3)
     m_bGuaranteed = a3;
     m_nWriteMessageSize = 3;
 
-    if (m_nWriteMessageSize + nSize > m_nWriteMessageBufferSize) {
-        int nNewSize = m_nWriteMessageSize + nSize + DEFAULT_WRITE_BUFFER_SIZE;
-        unsigned char* pNew = new unsigned char[nNewSize];
-
-        unsigned char* pOld = m_pWriteMessage;
-        K2_ASSUME(static_cast<unsigned int>(nNewSize) >= m_nWriteMessageSize);   // nSize is a message length, never near 2^31
-        memcpy(pNew, pOld, m_nWriteMessageSize);  // idiom-exempt: raw byte-count copy of a network buffer, there is no element type to take sizeof of
-        operator delete[](pOld);  // idiom-exempt: an explicit deallocation call, a `delete[]` expression would emit an extra null check
-
-        m_pWriteMessage = pNew;
-        m_nWriteMessageBufferSize = nNewSize;
-    }
+    if (m_nWriteMessageSize + nSize > m_nWriteMessageBufferSize)
+        ExtendWriteBuffer(m_nWriteMessageSize + nSize - m_nWriteMessageBufferSize);
 }
 
 void CSWMessage::WriteBOOL(int nValue)

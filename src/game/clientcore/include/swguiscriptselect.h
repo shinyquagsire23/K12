@@ -18,7 +18,6 @@ public:
     struct SCRIPT_INFO {
         uint64_t m_nDescriptionStrRef;
         unsigned int  m_nAIState;
-        unsigned int  _pad0c;
     };
 
     CSWGuiScriptSelect(CSWGuiManager* pGuiManager);

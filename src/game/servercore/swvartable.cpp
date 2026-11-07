@@ -18,7 +18,10 @@
 
 CSWVarTable::CSWVarTable()
 {
-    __builtin_memset(this, 0, sizeof(*this));
+    for (unsigned int i = 0; i < sizeof(m_localBooleans) / sizeof(m_localBooleans[0]); i++)
+        m_localBooleans[i] = 0;
+    for (unsigned int i = 0; i < sizeof(m_localNumbers); i++)
+        m_localNumbers[i] = 0;
 }
 
 int CSWVarTable::GetLocalBoolean(int nIndex)

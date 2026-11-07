@@ -21,13 +21,7 @@ extern "C" int s_nScrollPulsesShown = 0;
 #include "appmanager.h"
 
 #include "exoinput.h"
-
-// The record CExoInput::GetEvent returns; only the key code is read here.
-struct CGuiInputEventRecord {
-    unsigned char _pad00[0x20];
-    int             m_keyCode;  // scan code; the "BindableKeys" row is this minus
-                                // CExoInput::KEYBOARD_START
-};
+#include "exoinputinternal.h"
 
 extern CTlkTable* g_pTlkTable;
 
@@ -35,8 +29,9 @@ extern CTlkTable* g_pTlkTable;
 #include "port/k2qolapi.h"
 
 CSWGuiNavigable::CSWGuiNavigable()
-    : m_moveToControls()
 {
+    for (int i = 0; i < 4; i++)
+        m_moveToControls[i] = 0;
     m_tail.bFocusOnHover = 1;
 }
 
@@ -167,14 +162,10 @@ void CSWGuiNavigable::HandleMouseOver(int bMouseIsOver)
             g_pGuiMan->PlayGuiSound(GUISOUND_ENTERED_DEFAULT);
 #endif
         }
-        g_pGuiMan->ResetToolTipTimer();
     } else {
         HandleInputEvent(SWGUIEVENT_UNFOCUS, 1);
-        if (m_tail.bToolTipShown) {
-            g_pGuiMan->RemoveToolTip();
-            m_tail.bToolTipShown = 0;
-        }
     }
+    CSWGuiControl::HandleMouseOver(bMouseIsOver);
 }
 
 
@@ -184,10 +175,8 @@ void CSWGuiControl::HandleMouseOver(int bMouseIsOver)
         g_pGuiMan->ResetToolTipTimer();
         return;
     }
-    if (m_tail.bToolTipShown) {
-        g_pGuiMan->RemoveToolTip();
-        m_tail.bToolTipShown = 0;
-    }
+    if (m_tail.bToolTipShown)
+        HideToolTip();
 }
 
 int CSWGuiControl::GetIsSelectable()
@@ -321,6 +310,9 @@ void CSWGuiNavigable::HandleInputEvent(int type, int val)
                 break;
             CSWGuiNavigable* pNav = pCur->AsNavigable();
             switch (type) {
+            case INPUTEVENT_GUI_DPAD_DOWN: case INPUTEVENT_GUI_KEY_DOWN:
+                pCur = pNav->m_moveToControls[2];
+                break;
             case INPUTEVENT_GUI_DPAD_LEFT: case INPUTEVENT_GUI_KEY_LEFT:
                 pCur = pNav->m_moveToControls[1];
                 break;
@@ -329,9 +321,6 @@ void CSWGuiNavigable::HandleInputEvent(int type, int val)
                 break;
             case INPUTEVENT_GUI_DPAD_UP: case INPUTEVENT_GUI_KEY_UP:
                 pCur = pNav->m_moveToControls[0];
-                break;
-            case INPUTEVENT_GUI_DPAD_DOWN: case INPUTEVENT_GUI_KEY_DOWN:
-                pCur = pNav->m_moveToControls[2];
                 break;
             }
             if (!pCur)
@@ -498,15 +487,15 @@ int CSWGuiControl::DisplayToolTip()
 
     CExoString sText;
     void* pEvent;
+    int nKeyNameStrRef;
     sText = (m_nToolTipStrRef != 0) ? g_pTlkTable->GetSimpleString(m_nToolTipStrRef) : m_sToolTipText;
 
     if (m_nBoundInputEventId != 0) {
         pEvent = g_pExoInput->GetEvent(m_nBoundInputEventId, g_pAppManager->m_pClientExoApp->GetInputClass());
         if (pEvent) {
-            int nKeyNameStrRef;
             // Gate on the lookup's return value, since on a miss nKeyNameStrRef is left unset.
             if (g_pRules->m_p2DArrays->m_pBindableKey->GetINTEntry(
-                    static_cast<CGuiInputEventRecord*>(pEvent)->m_keyCode - CExoInput::KEYBOARD_START, CExoString("KeyNameStrRef"), &nKeyNameStrRef)) {
+                    static_cast<CExoInputEventDesc*>(pEvent)->m_nKeyCode - CExoInput::KEYBOARD_START, CExoString("KeyNameStrRef"), &nKeyNameStrRef)) {
                 sText = sText + CExoString(" : ") + g_pTlkTable->GetSimpleString(nKeyNameStrRef);
             }
         }
@@ -733,8 +722,10 @@ void CSWGuiButton::Initialize(const CSWGuiExtent& extent, const CSWGuiTextParams
 #endif
     m_border.Initialize(m_extent, borderParams);
     m_borderHilight.Initialize(m_extent, borderParamsHilight);
-    m_border.GetInnerExtent();
-    m_borderHilight.GetInnerExtent();
+    CSWGuiExtent borderInner = m_border.GetInnerExtent();
+    CSWGuiExtent hilightInner = m_borderHilight.GetInnerExtent();
+    K2_UNUSED(borderInner);
+    K2_UNUSED(hilightInner);
     CSWGuiExtent inner = CSWGuiExtent::Intersection(m_border.GetInnerExtent(),
                                                    m_borderHilight.GetInnerExtent());
 #ifdef K2_QOL_IMPROVEMENTS
@@ -873,14 +864,7 @@ void CSWGuiButtonToggle::Load(CResGFF* pGFF, CResStruct& resStruct)
 
 void CSWGuiRadioButton::HandleMouseOver(int bMouseIsOver)
 {
-    if (bMouseIsOver) {
-        g_pGuiMan->ResetToolTipTimer();
-        return;
-    }
-    if (m_tail.bToolTipShown) {
-        g_pGuiMan->RemoveToolTip();
-        m_tail.bToolTipShown = 0;
-    }
+    CSWGuiControl::HandleMouseOver(bMouseIsOver);
 }
 
 void CSWGuiRadioButton::HandleLMouseDown()
@@ -2684,23 +2668,7 @@ void CSWGuiListBox::InitializeScrollBar(CSWGuiExtent& extent, const CSWGuiBorder
     extent.y = m_extent.y;
     extent.h = m_extent.h;
     extent.x = bScrollBarOnLeft ? m_extent.x : m_extent.x + m_extent.w - extent.w;
-#if KOTOR1  // K1: the base setter is out of line
-    m_scrollBar.CSWGuiObject::SetExtent(extent);
-#else
-    m_scrollBar.m_extent = extent;
-#endif
-    m_scrollBar.m_border.Initialize(m_scrollBar.m_extent, borderParams);
-
-    CResRef resRefNone;
-    CSWGuiImageParams paramsImage(resRefNone, 0, 0, 0.0f, 18, 1.0f, Vector(1.0f, 1.0f, 1.0f));
-    paramsImage.SetImage(resRefDir);
-    m_scrollBar.m_imageDir.Initialize(m_scrollBar.m_extent, paramsImage);
-    paramsImage.SetImage(resRefThumb);
-    m_scrollBar.m_imageThumb.Initialize(m_scrollBar.m_extent, paramsImage);
-    // Through a pointer again, and this one is a real virtual dispatch, unlike the direct call the
-    // same member takes in SetScrollBarOnLeft. See the note on Initialize(extent, CSWGuiListBox*).
-    CSWGuiScrollBar* pScrollBar = &m_scrollBar;
-    pScrollBar->SetExtent(m_scrollBar.m_extent);
+    m_scrollBar.Initialize(extent, borderParams, resRefDir, resRefThumb);
 
     int nVisible = m_nVisibleRows > 1 ? m_nVisibleRows : 1;
     int nCount = m_aControls.m_count;
@@ -3191,7 +3159,11 @@ void CSWGuiListBox::OrganizeUnequal()
     m_nVisibleRows = m_nBottomRow - m_nTopRow + 1;
 
     nHidden = nCount - m_nVisibleRows;
+#if KOTOR1  // K1 clamps through std::max: its by-reference 0 is a temporary of the call's statement
     m_scrollBar.SetMaxValue(std::max(nHidden, 0) + 1, bNoSelection);
+#else
+    m_scrollBar.SetMaxValue((nHidden < 0 ? 0 : nHidden) + 1, bNoSelection);
+#endif
     m_scrollBar.SetVisibleValue(m_nBottomRow - m_nTopRow + 1);
     m_scrollBar.SetCurValue(m_nTopRow);
 }
@@ -3283,15 +3255,6 @@ void CSWGuiEditbox::HandleFocusChange(int bGaining)
         g_pExoInput->KeyboardModeOn();
         g_pGuiMan->m_pFocusedEditbox = this;
         m_editText.SetCaretVisible(1);
-
-        if (!m_pContainer)
-            return;
-        CSWGuiPanel* pPanel = m_pContainer->AsSWGuiPanel();
-        if (!pPanel)
-            return;
-        if (!m_tail.bActive)
-            g_pGuiMan->PlayGuiSound(GUISOUND_ENTERED_DEFAULT);
-        pPanel->SetActiveControl(this, 0);
     }
     else
     {
@@ -3303,6 +3266,7 @@ void CSWGuiEditbox::HandleFocusChange(int bGaining)
             SDL_StopTextInput();
 #endif
     }
+    CSWGuiControl::HandleFocusChange(bGaining);
 }
 
 void CSWGuiEditbox::Load(CResGFF* pGFF, CResStruct& resStruct)

@@ -18,8 +18,6 @@ enum {
     INI_LINE_SIZE = 512,
 };
 
-template class CExoLinkedList<CFileSection>;
-
 CExoIniInternal::CExoIniInternal()
 {
     m_sCachedFileName = "";
@@ -54,7 +52,7 @@ int CExoIniInternal::ReadIniEntry(CExoString& result, const CExoString& fileName
         return 1;
     }
     if (strcmp(key.CStr(), "FullScreen") == 0) {
-        result = CExoString(static_cast<int>(ASL::GetPrefAsBool("DisplayFullScreen", true)));
+        result = CExoString(static_cast<int>(ASL::Display::GetFullScreenPref()));
         return 1;
     }
 

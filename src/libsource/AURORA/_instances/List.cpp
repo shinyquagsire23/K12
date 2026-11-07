@@ -142,4 +142,7 @@ template class List<int>;
 template class List<List<int> >;
 template class List<unsigned int>;
 template class List<unsigned int*>;
+#if defined(__arm__)
+template class List<uint32_l_t>;
+#endif
 template class List<void*>;

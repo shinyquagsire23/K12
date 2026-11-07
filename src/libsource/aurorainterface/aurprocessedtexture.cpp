@@ -125,7 +125,7 @@ int CAuroraProcessedTexture::ReadProcessedTextureHeader(int* pWidth, int* pHeigh
 
     *pWidth = header.m_width;
     *pHeight = header.m_height;
-    *reinterpret_cast<unsigned int*>(pAlphaTest) = *reinterpret_cast<unsigned int*>(&header.m_fAlphaTest);
+    *pAlphaTest = header.m_fAlphaTest;
     unsigned char nMipCount = header.m_nMipCount;
     *pMipCount = static_cast<char>(nMipCount);
 

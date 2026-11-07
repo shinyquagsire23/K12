@@ -57,18 +57,13 @@ class CExoString;
 class CResGFF;
 struct CResStruct;
 
-// The four parameter families as one aggregate.
-struct CScriptEventParams {
+class CScriptEvent {
+public:
+    unsigned short m_eventType;
     CExoArrayList<int>                m_aIntegers;
     CExoArrayList<float>              m_aFloats;
     CExoArrayList<CExoString>         m_aStrings;
     CExoArrayList<unsigned long long> m_aObjects;
-};
-
-class CScriptEvent {
-public:
-    unsigned short m_eventType;
-    CScriptEventParams m_params;
 
     CScriptEvent();
     ~CScriptEvent();

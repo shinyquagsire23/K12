@@ -57,13 +57,7 @@ int CSWDoorSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
     int sawNode = 0;         // some node handler ran; if none did, install the default mesh
     int gotNode = 0;
 
-    if (size == 0) {
-        delete[] lineBuf;
-        LoadDefaultMesh();
-        return 1;
-    }
-
-    do {
+    while (remaining != 0) {
         if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) != 1)
             break;
 
@@ -158,16 +152,14 @@ int CSWDoorSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
                 char ch;
                 static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%d %c", &nVerts, &ch));
                 SetVertexCount(nVerts);
-                if (nVerts > 0) {
-                    for (int i = 0; i < nVerts; i++) {
-                        if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) == 0) {
-                            LoadDefaultMesh();
-                            delete[] lineBuf;
-                            return 1;
-                        }
-                        static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%f %f %f", &vert.x, &vert.y, &vert.z));
-                        m_paVertices[i] = vert;
+                for (int i = 0; i < nVerts; i++) {
+                    if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) == 0) {
+                        LoadDefaultMesh();
+                        delete[] lineBuf;
+                        return 1;
                     }
+                    static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%f %f %f", &vert.x, &vert.y, &vert.z));
+                    m_paVertices[i] = vert;
                 }
             } else if (strncmp(reinterpret_cast<char*>(p), "faces", 5) == 0) {
                 p += 5;
@@ -175,28 +167,26 @@ int CSWDoorSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
                 char ch;
                 static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%d %c", &nTris, &ch));
                 SetTriangleCount(nTris);
-                if (nTris > 0) {
-                    for (int i = 0; i < nTris; i++) {
-                        if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) == 0) {
-                            delete[] lineBuf;
-                            return 1;
-                        }
-                        // A face stores three vertex indices plus a trailing record whose last
-                        // field goes to m_paTriMaterials.
-                        int f0, f1, f2, f3, f4, f5, f6, f7;
-                        static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%d %d %d %d %d %d %d %d", &f0, &f1, &f2, &f3,
-                               &f4, &f5, &f6, &f7));
-                        m_paTriMaterials[i] = f7;
-                        m_paTriVertIndices[i * 3 + 0] = f0;
-                        m_paTriVertIndices[i * 3 + 1] = f1;
-                        m_paTriVertIndices[i * 3 + 2] = f2;
+                for (int i = 0; i < nTris; i++) {
+                    if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) == 0) {
+                        delete[] lineBuf;
+                        return 1;
                     }
+                    // A face stores three vertex indices plus a trailing record whose last
+                    // field goes to m_paTriMaterials.
+                    int f0, f1, f2, f3, f4, f5, f6, f7;
+                    static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%d %d %d %d %d %d %d %d", &f0, &f1, &f2, &f3,
+                           &f4, &f5, &f6, &f7));
+                    m_paTriMaterials[i] = f7;
+                    m_paTriVertIndices[i * 3 + 0] = f0;
+                    m_paTriVertIndices[i * 3 + 1] = f1;
+                    m_paTriVertIndices[i * 3 + 2] = f2;
                 }
             }
         }
 
         gotNode = 1;
-    } while (remaining != 0);
+    }
 
     delete[] lineBuf;
     // No recognised node block means the file carries no geometry of its own.

@@ -44,11 +44,10 @@ extern CExoSound* g_pExoSound;
 extern int quaternionidentityoptimization;
 
 // Rotates a vector by a quaternion, skipping the work for the identity.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -590,6 +589,9 @@ void CSWCDoor::GetTargetActions(CSWCCreature* pCreature, int nType,
     int nAreaMenuDisabled = m_pArea->GetServerArea()->m_nPlayerRestrictMode;
     int nOldCount = list.m_count;
     CExoString sName;
+#if !KOTOR1
+    int bAdded;
+#endif
 
 #if KOTOR1  // K1 has only the security and bash entries
     if (nType != 1) {
@@ -625,7 +627,7 @@ void CSWCDoor::GetTargetActions(CSWCCreature* pCreature, int nType,
             if (m_bStatic != 0)
                 return;
 
-            int bAdded = 0;
+            bAdded = 0;
             if (m_bLocked != 0 && m_bPlot == 0) {
                 CSWSCreature* pServerCreature = pCreature->GetServerCreature();
                 CSWItem* pItem = pServerCreature->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON);

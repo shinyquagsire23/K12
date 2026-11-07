@@ -46,11 +46,7 @@ void CSWGuiInGameSoloModeQuery::Draw(float f)
             && (pServerCreature->GetDead() != 0
                 || pServerCreature->GetDeadTemp() != 0)))
     {
-        // The second assignment overwrites the first in the guarded case; the pair stays unfolded.
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-        m_stateFlags = nFlags;
+        SetToBeRemoved(0);
     }
 
 #if KOTOR1 && defined(K1_UI_XBOX)

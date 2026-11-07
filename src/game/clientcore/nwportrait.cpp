@@ -39,7 +39,7 @@ CResRef CSWPortrait::GetPortrait(unsigned char nState)
 // manager will not downsample it.
 int CSWPortrait::ReplacePortraitTexture(CAurObject* pObject, const CResRef& resRef)
 {
-    char szResRef[20];
+    char szResRef[17];
     resRef.CopyToString(szResRef);
 
     pObject->ReplaceTexture(const_cast<char*>("gui_replace01"), szResRef);

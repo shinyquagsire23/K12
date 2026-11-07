@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "swguioptions.h"
 #include "swguicontrol.h"
 #include "appmanager.h"
@@ -1431,7 +1432,8 @@ CSWGuiOptionsGraphics::CSWGuiOptionsGraphics(CSWGuiManager* pGuiManager)
     AddControl(&m_cbFramerateLock);
     m_cbFramerateLock.m_text.m_params.SetStrRef(STRREF_FRAME_BUFFER_EFFECTS);
 
-    switch (ASLPlat_GetCurrentLanguage())
+    int nLanguage = ASLPlat_GetCurrentLanguage();
+    switch (nLanguage)
     {
     case ASL_LANGUAGE_FRENCH:
         m_cbForceSpeed.m_text.m_params.SetText(CExoString("Graphismes qualit\xe9 sup\xe9rieure"));
@@ -1551,7 +1553,8 @@ CSWGuiOptionsGraphics::CSWGuiOptionsGraphics(CSWGuiManager* pGuiManager, int bIn
 #ifndef K2_QOL_ADVANCED_ROWS  // Force Speed Effects and the framerate lock are Advanced rows
     InitControl(m_cbForceSpeed, CExoString("CB_FORCESPEED"), 1, 1, 0, 0, 0);
 
-    m_cbForceSpeed.m_text.m_params.SetText(CExoString(GetLocalizedCustomString(5)));
+    const char* szText = GetLocalizedCustomString(5);
+    m_cbForceSpeed.m_text.m_params.SetText(CExoString(szText));
     m_cbForceSpeed.m_tail.m_nUserData = SWGUI_STRREF_CUSTOM_FORCESPEED;
 #endif
 
@@ -1596,20 +1599,22 @@ CSWGuiOptionsGraphics::CSWGuiOptionsGraphics(CSWGuiManager* pGuiManager, int bIn
     m_cbFramerateLock.m_pParent = m_cbForceSpeed.m_pParent;
     m_cbFramerateLock.m_pContainer = this;
 
-    m_cbFramerateLock.SetExtent(CSWGuiExtent(nRowX, nRowY + 50, nRowW, nRowH));
+    CSWGuiExtent extent(nRowX, nRowY + 50, nRowW, nRowH);
+    m_cbFramerateLock.SetExtent(extent);
 
     InitControl(m_cbFramerateLock, 1, 1, CExoString(static_cast<char*>(0)), 0);
 #ifdef K2_QOL_IMPROVEMENTS
     K2QolMarkFitText(&m_cbFramerateLock.m_text);   // built by hand, so CSWGuiButton::Load never marked it
 #endif
-    m_cbFramerateLock.m_text.m_params.SetText(CExoString(GetLocalizedCustomString(7)));
+    szText = GetLocalizedCustomString(7);
+    m_cbFramerateLock.m_text.m_params.SetText(CExoString(szText));
     m_cbFramerateLock.m_tail.m_nUserData = SWGUI_STRREF_CUSTOM_FRAMERATELOCK;
 #endif
 
     ExpandButtonToFitText(m_btnDefault);
 
-    m_labelDesc.Initialize(m_listBoxDesc.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDesc.m_pProtoItem);
+    m_labelDesc.Initialize(pProto->m_extent, pProto, 1.0f);
 
     m_sliderGamma.SetCurValue(57);
     m_sliderGamma.AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsGraphics::OnEnterSlider));
@@ -3430,7 +3435,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
     m_listBox.bSelectOnLeftClick = 1;
     SetActiveControl(&m_listBox, 0);
 
-    List<CSWGuiButton*> buttons;
+    CExoArrayList<CSWGuiControl*> buttons;
     CExoString sCaption;
     PortDevMode devMode = PortDevMode();
     devMode.m_size = sizeof(PortDevMode);
@@ -3496,7 +3501,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
             nMode++;
         }
 
-        m_listBox.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(buttons), 0, 1, 0);
+        m_listBox.AddControls(buttons, 0, 1, 0);
         if (pSelected != 0)
             m_listBox.SetSelectedControl(pSelected, 0);
     }
@@ -3517,7 +3522,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
     m_listBox.bSelectOnLeftClick = 1;
     SetActiveControl(&m_listBox, 0);
 
-    List<CSWGuiButton*> buttons;
+    CExoArrayList<CSWGuiControl*> buttons;
     CExoString sCaption;
     int nDesktopWidth = 0;
     int nDesktopHeight = 0;
@@ -3549,7 +3554,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
                     pButton->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsResolution::OnResolutionChosen));
 
                     for (int64_t i = 0; i < buttons.m_count; i++) {
-                        if (strcmp(buttons.m_pData[i]->m_text.m_params.m_sText.CStr(), sCaption.CStr()) == 0) {
+                        if (strcmp(static_cast<CSWGuiButton*>(buttons.m_pArray[i])->m_text.m_params.m_sText.CStr(), sCaption.CStr()) == 0) {
                             delete pButton;
                             goto nextMode;
                         }
@@ -3579,7 +3584,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
                         pButton->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsResolution::OnResolutionChosen));
 
                         for (int64_t i = 0; i < buttons.m_count; i++) {
-                            if (strcmp(buttons.m_pData[i]->m_text.m_params.m_sText.CStr(), sCaption.CStr()) == 0) {
+                            if (strcmp(static_cast<CSWGuiButton*>(buttons.m_pArray[i])->m_text.m_params.m_sText.CStr(), sCaption.CStr()) == 0) {
                                 delete pButton;
                                 goto nextMode;
                             }
@@ -3597,7 +3602,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
             nMode++;
         }
 
-        m_listBox.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(buttons), 0, 1, 0);
+        m_listBox.AddControls(buttons, 0, 1, 0);
         if (pSelected != 0)
             m_listBox.SetSelectedControl(pSelected, 0);
     }
@@ -3703,7 +3708,7 @@ void CSWGuiOptionsResolution::OnResolutionChosen(CSWGuiControl* pControl)
             }
         }
         m_pGuiManager->PopModalPanel();
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+        SetToBeDeleted(0);
 #elif KOTOR1
         // K1: three keys into "swkotor.ini" (no Stretched), then one PopModalPanel and a
         // single stamp of state 4 on this panel; no rebuild of the options stack.
@@ -3726,7 +3731,7 @@ void CSWGuiOptionsResolution::OnResolutionChosen(CSWGuiControl* pControl)
 
         m_pGuiManager->PopModalPanel();
         m_bResolutionChanged = 1;
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+        SetToBeDeleted(0);
         g_pGuiMan->ReloadToolTipPanel();
 #else
         if (g_pAppManager->m_pClientExoApp->SetVideoMode(nMode) != 0) {
@@ -3866,7 +3871,7 @@ static void K1QolApplyDisplay(CSWGuiManager* pGuiManager, int nPanels, int bFocu
     K1QolResizeSceneBuffers();
     for (int nPanel = 0; nPanel < nPanels; nPanel++) {   // K1 panels have no border chain
         if (CSWGuiPanel* pPanel = pGuiManager->PopModalPanel())
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+            pPanel->SetToBeDeleted(0);
     }
     CSWGuiOptionsMain* pMain = new CSWGuiOptionsMain(pGuiManager);
     pGuiManager->AddPanel(pMain, 3, 1);
@@ -3947,11 +3952,8 @@ void CSWGuiOptionsGraphics::OnFullscreen(CSWGuiControl* pControl)
     }
 
     for (int nPanel = 0; nPanel < 2; nPanel++) {   // this page, then Options
-        CSWGuiPanel* pPanel = m_pGuiManager->PopModalPanel();
-        while (pPanel) {
-            pPanel->m_stateFlags = (pPanel->m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
-            pPanel = pPanel->m_pNextInChain;
-        }
+        if (CSWGuiPanel* pPanel = m_pGuiManager->PopModalPanel())
+            pPanel->SetToBeDeleted(0);
     }
     CSWGuiOptionsMain* pMain = new CSWGuiOptionsMain(m_pGuiManager);
     pMain->AddExtraBorderPanel(m_pGuiManager, CExoString("bg_replacement"));

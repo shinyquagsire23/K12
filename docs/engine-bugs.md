@@ -4149,3 +4149,13 @@ code-identical) unless it says otherwise.
 - **Impact:** one `CResGFF` (and the GFF buffers it still owns) per party join. Small and bounded by the number of
   joins in a playthrough.
 - **Fixed under `K2_FIX_ENGINE_BUGS`:** the K2 `delete pGff`.
+
+## `CSWSScriptVarTable::SetFloat` — the float is stored through an 8-byte load of its 4-byte stack slot
+
+- **Where:** `CSWSScriptVarTable::SetFloat` (K2 arm64 0x5fa954, K1 0x504b48). The float argument is spilled
+  with `str s0, [sp, #0x8]` and copied into the variable's 8-byte union arm with `ldr x8, [sp, #0x8]` /
+  `str x8, [x0, #0x18]`, i.e. `*(unsigned long long*)&fValue`: the high word is whatever the frame held.
+- **Impact:** none in the shipped game (`GetFloat` reads only the low 4 bytes and `MatchIndex` filters by
+  type), but it is a 4-byte out-of-bounds stack read that ASan stops on in a host build. A union local does not
+  express it: clang drops the undefined half and stores 4 bytes.
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** the arm is cleared and the float stored through `m_fFloat`.

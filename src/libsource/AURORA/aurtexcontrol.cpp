@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "aurres.h"
 #if KOTOR1
 // K1's own library; List.h's List grows from 8.
@@ -195,10 +196,10 @@ ArturoTextureController::ArturoTextureController(CAurTexture* pTexture)
     m_nArturoWidth = 15;
     m_nArturoHeight = 15;
     m_nLastFrame = -1;
+    m_pImage = 0;
     m_pfNextHeights = 0;
     m_pfHeights = 0;
     m_pfPrevHeights = 0;
-    m_pImage = 0;
 }
 
 CycleTIDTextureController::CycleTIDTextureController(CAurTexture* pTexture)
@@ -235,39 +236,31 @@ unsigned char* TextureController::Distort(unsigned char* pImage)
     int nHeight = m_pTexture->GetHeight();
 
     if (m_nDistortAngle != 0) {
-        if (nHeight >= 1) {
-            for (int y = 0; y < nHeight; y++) {
-                if (nWidth >= 1) {
-                    for (int x = 0; x < nWidth; x++) {
-                        float fAngle = static_cast<float>(pImage[x]) * 0.024543693f;
-                        int nOffX = static_cast<int>(m_fDistortionAmplitude * cosineLUT(fAngle) - 0.5f);
-                        int nOffY = static_cast<int>(m_fDistortionAmplitude * sineLUT(fAngle) - 0.5f);
-                        int nRow = (nHeight + y + nOffX) & (nHeight - 1);
-                        int nCol = (nWidth + x + nOffY) & (nWidth - 1);
-                        memcpy(&newimage[(y * nWidth + x) * nBPP],
-                               &m_pSourceImage[(nRow * nWidth + nCol) * nBPP],
-                               nBPP);  // idiom-exempt: runtime length
-                    }
-                }
-                pImage += nWidth;
+        for (int y = 0; y < nHeight; y++) {
+            for (int x = 0; x < nWidth; x++) {
+                float fAngle = static_cast<float>(pImage[x]) * 0.024543693f;
+                int nOffX = static_cast<int>(m_fDistortionAmplitude * cosineLUT(fAngle) - 0.5f);
+                int nOffY = static_cast<int>(m_fDistortionAmplitude * sineLUT(fAngle) - 0.5f);
+                int nRow = (nHeight + y + nOffX) & (nHeight - 1);
+                int nCol = (nWidth + x + nOffY) & (nWidth - 1);
+                memcpy(&newimage[(y * nWidth + x) * nBPP],
+                       &m_pSourceImage[(nRow * nWidth + nCol) * nBPP],
+                       nBPP);  // idiom-exempt: runtime length
             }
+            pImage += nWidth;
         }
     } else {
-        if (nHeight >= 1) {
-            for (int y = 0; y < nHeight; y++) {
-                if (nWidth >= 1) {
-                    for (int x = 0; x < nWidth; x++) {
-                        int nOff = static_cast<int>(m_fDistortionAmplitude
-                                       * (static_cast<float>(pImage[x] - 127) * 0.0078125f) - 0.5f);
-                        int nRow = (y + nOff) & (nHeight - 1);
-                        int nCol = (x + nOff) & (nWidth - 1);
-                        memcpy(&newimage[(y * nWidth + x) * nBPP],
-                               &m_pSourceImage[(nRow * nWidth + nCol) * nBPP],
-                               nBPP);  // idiom-exempt: runtime length
-                    }
-                }
-                pImage += nWidth;
+        for (int y = 0; y < nHeight; y++) {
+            for (int x = 0; x < nWidth; x++) {
+                int nOff = static_cast<int>(m_fDistortionAmplitude
+                               * (static_cast<float>(pImage[x] - 127) * 0.0078125f) - 0.5f);
+                int nRow = (y + nOff) & (nHeight - 1);
+                int nCol = (x + nOff) & (nWidth - 1);
+                memcpy(&newimage[(y * nWidth + x) * nBPP],
+                       &m_pSourceImage[(nRow * nWidth + nCol) * nBPP],
+                       nBPP);  // idiom-exempt: runtime length
             }
+            pImage += nWidth;
         }
     }
     return newimage;
@@ -457,13 +450,11 @@ void WaterTextureController::Init()
     m_pfVelocities = new float[nSize];
     m_pfHeights = new float[nSize];
     m_pfNextHeights = new float[nSize];
-    if (nHeight >= 1) {
-        for (int y = 0; y < nHeight; y++) {
-            for (int x = 0; x < nWidth; x++) {
-                K2_ASSUME(nWidth * y + x < nSize);   // y < nHeight, x < nWidth
-                m_pfVelocities[nWidth * y + x] = 0.0f;
-                m_pfHeights[nWidth * y + x] = 127.0f;
-            }
+    for (int y = 0; y < nHeight; y++) {
+        for (int x = 0; x < nWidth; x++) {
+            K2_ASSUME(nWidth * y + x < nSize);   // y < nHeight, x < nWidth
+            m_pfVelocities[nWidth * y + x] = 0.0f;
+            m_pfHeights[nWidth * y + x] = 127.0f;
         }
     }
     int nTexWidth = m_pTexture->GetWidth();
@@ -485,15 +476,13 @@ void WaveTextureController::Init()
     m_pfHeights = new float[nSize];
     m_pfPrevHeights = new float[nSize];
     unsigned char* pImage = static_cast<unsigned char*>(m_pTexture->GetImage());
-    if (nHeight >= 1) {
-        for (int y = 0; y < nHeight; y++) {
-            for (int x = 0; x < nWidth; x++) {
-                int n = nWidth * y + x;
-                K2_ASSUME(n < nSize);   // y < nHeight, x < nWidth
-                m_pfPrevHeights[n] = 127.0f;
-                m_pfHeights[n] = pImage ? static_cast<float>(pImage[m_pTexture->GetBPP() * n]) : 127.0f;
-                m_pfHeights[n] = static_cast<float>(rand_wincompatible() % 256);
-            }
+    for (int y = 0; y < nHeight; y++) {
+        for (int x = 0; x < nWidth; x++) {
+            int n = nWidth * y + x;
+            K2_ASSUME(n < nSize);   // y < nHeight, x < nWidth
+            m_pfPrevHeights[n] = 127.0f;
+            m_pfHeights[n] = pImage ? static_cast<float>(pImage[m_pTexture->GetBPP() * n]) : 127.0f;
+            m_pfHeights[n] = static_cast<float>(rand_wincompatible() % 256);
         }
     }
 }
@@ -524,19 +513,17 @@ void WaveTextureController::Control()
             0.0f, fDeltaSq, 0.0f,
         };
         for (int y = 0; y < nHeight; y++) {
-            if (nWidth >= 1) {
-                for (int x = 0; x < nWidth; x++) {
-                    int nIndex = nWidth * y + x;
-                    float fSum = 0.0f;
-                    for (int nY = 0; nY < 3; nY++) {
-                        for (int nX = 0; nX < 3; nX++) {
-                            int nNeighbor = ((y + nY + nWidth - 1) % nHeight) * nWidth
-                                          + ((x + nX + nHeight - 1) % nWidth);
-                            fSum = fSum + m_pfHeights[nNeighbor] * afKernel[nY * 3 + nX];
-                        }
+            for (int x = 0; x < nWidth; x++) {
+                int nIndex = nWidth * y + x;
+                float fSum = 0.0f;
+                for (int nY = 0; nY < 3; nY++) {
+                    for (int nX = 0; nX < 3; nX++) {
+                        int nNeighbor = ((y + nY + nWidth - 1) % nHeight) * nWidth
+                                      + ((x + nX + nHeight - 1) % nWidth);
+                        fSum = fSum + m_pfHeights[nNeighbor] * afKernel[nY * 3 + nX];
                     }
-                    m_pfPrevHeights[nIndex] = fSum - m_pfPrevHeights[nIndex];
                 }
+                m_pfPrevHeights[nIndex] = fSum - m_pfPrevHeights[nIndex];
             }
         }
     }
@@ -552,25 +539,21 @@ void WaveTextureController::Control()
         m_pfPrevHeights[nRow * nWidth + nCol] += static_cast<float>(rand_wincompatible() % 32);
     }
 
-    if (nHeight >= 1) {
-        for (int y = 0; y < nHeight; y++) {
-            for (int x = 0; x < nWidth; x++) {
-                float fValue = m_pfHeights[nWidth * y + x];
-                if (fValue < 40.0f)
-                    fValue = 40.0f;
-                if (fValue > 215.0f)
-                    fValue = 215.0f;
-                m_pfHeights[nWidth * y + x] = fValue;
-            }
+    for (int y = 0; y < nHeight; y++) {
+        for (int x = 0; x < nWidth; x++) {
+            float fValue = m_pfHeights[nWidth * y + x];
+            if (fValue < 40.0f)
+                fValue = 40.0f;
+            if (fValue > 215.0f)
+                fValue = 215.0f;
+            m_pfHeights[nWidth * y + x] = fValue;
         }
     }
 
     unsigned char* pImage = new unsigned char[nHeight * nWidth];
-    if (nHeight >= 1) {
-        for (int y = 0; y < nHeight; y++) {
-            for (int x = 0; x < nWidth; x++) {
-                pImage[nWidth * y + x] = static_cast<unsigned char>(m_pfHeights[nWidth * y + x]);
-            }
+    for (int y = 0; y < nHeight; y++) {
+        for (int x = 0; x < nWidth; x++) {
+            pImage[nWidth * y + x] = static_cast<unsigned char>(m_pfHeights[nWidth * y + x]);
         }
     }
 
@@ -720,12 +703,10 @@ void PerlinTextureController::BuildPerlinImage(unsigned char* pDst, int nDim)
         fScale *= 0.5f;
     }
 
-    if (nDim >= 1) {
-        for (int64_t nY = 0; nY < nDim; nY++) {
-            for (int64_t nX = 0; nX < nDim; nX++)
-                pDst[nX] = static_cast<unsigned char>(ImageGetPerlinPixel(ppImages, static_cast<int>(nY), static_cast<int>(nX), 4, static_cast<int>(nCount), nDim));
-            pDst += nDim;
-        }
+    for (int64_t nY = 0; nY < nDim; nY++) {
+        for (int64_t nX = 0; nX < nDim; nX++)
+            pDst[nX] = static_cast<unsigned char>(ImageGetPerlinPixel(ppImages, static_cast<int>(nY), static_cast<int>(nX), 4, static_cast<int>(nCount), nDim));
+        pDst += nDim;
     }
 
     unsigned char** pp = ppImages;
@@ -780,42 +761,38 @@ void DirtyTextureController::Init(int nColor, int nTextureSize, int nFormula, in
         MakePerlinTexture(pLayer2, nMaxChannel);
     }
     int nAlpha = nColor >> 24;
-    if (nHeight >= 1) {
-        int nDest = 0;
-        unsigned char* pLayer1Row = pLayer1;
-        for (int64_t nA = 0; nA < nHeight; nA++) {
-            if (nWidth >= 1) {
-                unsigned char* pLayer2Row = pLayer2;
-                for (int64_t nB = 0; nB < nWidth; nB++) {
-                    int64_t nLayer0Index = nA * nHeight + nB;
-                    unsigned char* p1 = pLayer1Row;
-                    unsigned char* p2 = pLayer2Row;
-                    int64_t nC = 0;
-                    do {
+    int nDest = 0;
+    unsigned char* pLayer1Row = pLayer1;
+    for (int64_t nA = 0; nA < nHeight; nA++) {
+        unsigned char* pLayer2Row = pLayer2;
+        for (int64_t nB = 0; nB < nWidth; nB++) {
+            int64_t nLayer0Index = nA * nHeight + nB;
+            unsigned char* p1 = pLayer1Row;
+            unsigned char* p2 = pLayer2Row;
+            int64_t nC = 0;
+            do {
 #ifdef K2_FIX_ENGINE_BUGS
-                        // the setters above made the texture nTextureSize on each side (or left
-                        // it 0 x 0), so the layers hold nTextureSize^2 bytes and the image
-                        // nTextureSize^3 texels of four bytes
-                        K2_ASSUME(nLayer0Index < nLayerSize);
-                        K2_ASSUME(nDest + nC * 4 + 3 < nLayerSize * nTextureSize * nTexelBytes);
+                // the setters above made the texture nTextureSize on each side (or left
+                // it 0 x 0), so the layers hold nTextureSize^2 bytes and the image
+                // nTextureSize^3 texels of four bytes
+                K2_ASSUME(nLayer0Index < nLayerSize);
+                K2_ASSUME(nDest + nC * 4 + 3 < nLayerSize * nTextureSize * nTexelBytes);
 #endif
-                        int nValue = nFunction == 1
-                            ? pLayer0[nLayer0Index] + *p1 + *p2
-                            : (rand_wincompatible() & 0xFF);
-                        m_pImage[nDest + nC * 4 + 3] = static_cast<unsigned char>(nAlpha != 0 ? (nValue % nAlpha) : 0);
-                        m_pImage[nDest + nC * 4] = static_cast<unsigned char>(nRed != 0 ? (nValue % nRed) : 0);
-                        m_pImage[nDest + nC * 4 + 1] = static_cast<unsigned char>(nGreen != 0 ? (nValue % nGreen) : 0);
-                        m_pImage[nDest + nC * 4 + 2] = static_cast<unsigned char>(nBlue != 0 ? (nValue % nBlue) : 0);
-                        p1++;
-                        p2++;
-                        nC++;
-                    } while (nC < nWidth);
-                    nDest += nWidth * 4;
-                    pLayer2Row += nWidth;
-                }
-            }
-            pLayer1Row += nHeight;
+                int nValue = nFunction == 1
+                    ? pLayer0[nLayer0Index] + *p1 + *p2
+                    : (rand_wincompatible() & 0xFF);
+                m_pImage[nDest + nC * 4 + 3] = static_cast<unsigned char>(nAlpha != 0 ? (nValue % nAlpha) : 0);
+                m_pImage[nDest + nC * 4] = static_cast<unsigned char>(nRed != 0 ? (nValue % nRed) : 0);
+                m_pImage[nDest + nC * 4 + 1] = static_cast<unsigned char>(nGreen != 0 ? (nValue % nGreen) : 0);
+                m_pImage[nDest + nC * 4 + 2] = static_cast<unsigned char>(nBlue != 0 ? (nValue % nBlue) : 0);
+                p1++;
+                p2++;
+                nC++;
+            } while (nC < nWidth);
+            nDest += nWidth * 4;
+            pLayer2Row += nWidth;
         }
+        pLayer1Row += nHeight;
     }
     delete[] pLayer0;
     delete[] pLayer1;
@@ -848,12 +825,10 @@ void DirtyTextureController::MakePerlinTexture(unsigned char* pImage, int nMaxCh
         fScale *= 0.5f;
     }
 
-    if (nHeight >= 1) {
-        for (int64_t nY = 0; nY < nHeight; nY++) {
-            for (int64_t nX = 0; nX < nHeight; nX++)
-                pImage[nX] = static_cast<unsigned char>(ImageGetPerlinPixel(ppImages, static_cast<int>(nY), static_cast<int>(nX), 4, static_cast<int>(nCount), nHeight));
-            pImage += nHeight;
-        }
+    for (int64_t nY = 0; nY < nHeight; nY++) {
+        for (int64_t nX = 0; nX < nHeight; nX++)
+            pImage[nX] = static_cast<unsigned char>(ImageGetPerlinPixel(ppImages, static_cast<int>(nY), static_cast<int>(nX), 4, static_cast<int>(nCount), nHeight));
+        pImage += nHeight;
     }
 
     unsigned char** pp = ppImages;
@@ -875,18 +850,16 @@ void LifeTextureController::Init()
     int nSize = nHeight * nWidth * nBPP;
     unsigned char* pImage = static_cast<unsigned char*>(m_pTexture->GetImage());
     m_pCells = new unsigned char[nSize];
-    if (nHeight >= 1) {
-        for (int y = 0; y < nHeight; y++) {
-            for (int x = 0; x < nWidth; x++) {
-                aColor[0] = 0;
-                aColor[1] = 0;
-                aColor[2] = 0;
-                aColor[3] = static_cast<char>(0xff);
-                if (rand_wincompatible() % 100 >= 61)
-                    aColor[0] = static_cast<char>(0xff);
-                memcpy(pImage + (y * nWidth + x) * nBPP, aColor, nBPP);  // idiom-exempt: runtime length
-                memcpy(m_pCells + (y * nWidth + x) * nBPP, aColor, nBPP);  // idiom-exempt: runtime length
-            }
+    for (int y = 0; y < nHeight; y++) {
+        for (int x = 0; x < nWidth; x++) {
+            aColor[0] = 0;
+            aColor[1] = 0;
+            aColor[2] = 0;
+            aColor[3] = static_cast<char>(0xff);
+            if (rand_wincompatible() % 100 >= 61)
+                aColor[0] = static_cast<char>(0xff);
+            memcpy(pImage + (y * nWidth + x) * nBPP, aColor, nBPP);  // idiom-exempt: runtime length
+            memcpy(m_pCells + (y * nWidth + x) * nBPP, aColor, nBPP);  // idiom-exempt: runtime length
         }
     }
 }
@@ -900,45 +873,43 @@ void RingDistortTextureController::Control()
         int nWidth = m_pTexture->GetWidth();
         int nHeight = m_pTexture->GetHeight();
         m_pTexture->GetBPP();
-        if (nHeight >= 1) {
-            float fInvWidth = 1.0f / static_cast<float>(nWidth);
-            int nOffset = 0;
-            for (int y = 0; y < nHeight; y++) {
-                float fY = (static_cast<float>(y) + 1.0f) * fInvWidth - 0.5f;
-                float fYSq = fY * fY;
-                for (int x = 0; x < nWidth; x++) {
-                    float fX = (static_cast<float>(x) + 1.0f) * fInvWidth - 0.5f;
-                    float fR = sqrtf(fX * fX + fYSq);
-                    float fRVal = amplitude * cosineLUT(fR * frequency1 + m_fPhase * frequency2) + 0.5f;
-                    float fGVal = amplitude * cosineLUT(fR * frequency1 + m_fPhase * frequency2) + 0.5f;
+        float fInvWidth = 1.0f / static_cast<float>(nWidth);
+        int nOffset = 0;
+        for (int y = 0; y < nHeight; y++) {
+            float fY = (static_cast<float>(y) + 1.0f) * fInvWidth - 0.5f;
+            float fYSq = fY * fY;
+            for (int x = 0; x < nWidth; x++) {
+                float fX = (static_cast<float>(x) + 1.0f) * fInvWidth - 0.5f;
+                float fR = sqrtf(fX * fX + fYSq);
+                float fRVal = amplitude * cosineLUT(fR * frequency1 + m_fPhase * frequency2) + 0.5f;
+                float fGVal = amplitude * cosineLUT(fR * frequency1 + m_fPhase * frequency2) + 0.5f;
 #if KOTOR1
-                    // K1 clamps with fminf/fmaxf and converts through FloatToIntSSE.
-                    float fR0 = fmaxf(fminf(fRVal * 255.0f, 255.0f), 0.0f);
-                    float fG0 = fmaxf(fminf(fGVal * 255.0f, 255.0f), 0.0f);
-                    unsigned char nR = static_cast<unsigned char>(FloatToIntSSE(fR0));
-                    unsigned char nG = static_cast<unsigned char>(FloatToIntSSE(fG0));
-                    m_pImage[nOffset + 2] = 0xFF;
-                    m_pImage[nOffset + 1] = nG;
-                    m_pImage[nOffset + 0] = nR;
-                    m_pImage[nOffset + 3] = 0xFF;
+                // K1 clamps with fminf/fmaxf and converts through FloatToIntSSE.
+                float fR0 = fmaxf(fminf(fRVal * 255.0f, 255.0f), 0.0f);
+                float fG0 = fmaxf(fminf(fGVal * 255.0f, 255.0f), 0.0f);
+                unsigned char nR = static_cast<unsigned char>(FloatToIntSSE(fR0));
+                unsigned char nG = static_cast<unsigned char>(FloatToIntSSE(fG0));
+                m_pImage[nOffset + 2] = 0xFF;
+                m_pImage[nOffset + 1] = nG;
+                m_pImage[nOffset + 0] = nR;
+                m_pImage[nOffset + 3] = 0xFF;
 #else
-                    float fR0 = fRVal * 255.0f;
-                    if (fR0 > 255.0f)
-                        fR0 = 255.0f;
-                    if (fR0 < 0.0f)
-                        fR0 = 0.0f;
-                    m_pImage[nOffset + 0] = static_cast<unsigned char>(static_cast<int>(fR0));
-                    float fG0 = fGVal * 255.0f;
-                    if (fG0 > 255.0f)
-                        fG0 = 255.0f;
-                    if (fG0 < 0.0f)
-                        fG0 = 0.0f;
-                    m_pImage[nOffset + 1] = static_cast<unsigned char>(static_cast<int>(fG0));
-                    m_pImage[nOffset + 2] = 0xFF;
-                    m_pImage[nOffset + 3] = 0xFF;
+                float fR0 = fRVal * 255.0f;
+                if (fR0 > 255.0f)
+                    fR0 = 255.0f;
+                if (fR0 < 0.0f)
+                    fR0 = 0.0f;
+                m_pImage[nOffset + 0] = static_cast<unsigned char>(static_cast<int>(fR0));
+                float fG0 = fGVal * 255.0f;
+                if (fG0 > 255.0f)
+                    fG0 = 255.0f;
+                if (fG0 < 0.0f)
+                    fG0 = 0.0f;
+                m_pImage[nOffset + 1] = static_cast<unsigned char>(static_cast<int>(fG0));
+                m_pImage[nOffset + 2] = 0xFF;
+                m_pImage[nOffset + 3] = 0xFF;
 #endif
-                    nOffset += 4;
-                }
+                nOffset += 4;
             }
         }
         m_pTexture->glImage(true, m_pImage);
@@ -962,27 +933,25 @@ void ArturoTextureController::BuildArturoImage()
         int nXStart = nRand0 % nWidth;
         int nYStart = nRand1 % nHeight;
         for (int y = 0; y < nHeight; y++) {
-            if (nWidth > 0) {
-                for (int x = 0; x < nWidth; x++) {
-                    float fSum = m_pfHeights[y * nWidth + (x - 1 + nWidth) % nWidth] + 0.0f
-                               + m_pfHeights[y * nWidth + (x + 1) % nWidth]
-                               + m_pfHeights[((y + nHeight - 1) % nHeight) * nWidth + x]
-                               + m_pfHeights[((y + 1) % nHeight) * nWidth + x];
-                    float fValue = fSum * 0.5f - m_pfPrevHeights[y * nWidth + x]
-                                 + m_pfHeights[y * nWidth + x] * 0.0f;
-                    if (x == nXStart && y == nYStart && enablerandomimpulses)
-                        fValue += static_cast<float>(rand_wincompatible() % 256 - 128);
-                    float fV = fValue + 127.0f;
+            for (int x = 0; x < nWidth; x++) {
+                float fSum = m_pfHeights[y * nWidth + (x - 1 + nWidth) % nWidth] + 0.0f
+                           + m_pfHeights[y * nWidth + (x + 1) % nWidth]
+                           + m_pfHeights[((y + nHeight - 1) % nHeight) * nWidth + x]
+                           + m_pfHeights[((y + 1) % nHeight) * nWidth + x];
+                float fValue = fSum * 0.5f - m_pfPrevHeights[y * nWidth + x]
+                             + m_pfHeights[y * nWidth + x] * 0.0f;
+                if (x == nXStart && y == nYStart && enablerandomimpulses)
+                    fValue += static_cast<float>(rand_wincompatible() % 256 - 128);
+                float fV = fValue + 127.0f;
 #if KOTOR1  // K1 clamps with the libm pair, so a NaN takes the bound
-                    fV = fmaxf(fminf(fV, 255.0f), 0.0f);
+                fV = fmaxf(fminf(fV, 255.0f), 0.0f);
 #else
-                    if (fV > 255.0f)
-                        fV = 255.0f;
-                    if (fV < 0.0f)
-                        fV = 0.0f;
+                if (fV > 255.0f)
+                    fV = 255.0f;
+                if (fV < 0.0f)
+                    fV = 0.0f;
 #endif
-                    m_pfNextHeights[y * nWidth + x] = fV - 127.0f;
-                }
+                m_pfNextHeights[y * nWidth + x] = fV - 127.0f;
             }
         }
     }
@@ -1009,63 +978,54 @@ void LifeTextureController::Control()
     unsigned char* pNew = new unsigned char[nSize];
     memcpy(pNew, m_pCells, nSize);  // idiom-exempt: runtime length
 
-    if (nHeight >= 1) {
-        for (int y = 0; y < nHeight; y++) {
-            if (nWidth >= 1) {
-                for (int x = 0; x < nWidth; x++) {
-                    int nCount = 0;
-                    unsigned char nCentre = 0;
-                    for (int nDY = -1; nDY <= 1; nDY++) {
-                        for (int nDX = -1; nDX <= 1; nDX++) {
-                            unsigned char nValue = pNew[(((y + nHeight + nDY) % nHeight) * nWidth
-                                                       + ((x + nWidth + nDX) % nWidth)) * nBPP];
-                            if (nDY == 0 && nDX == 0)
-                                nCentre = nValue;
-                            else if (nValue != 0)
-                                nCount++;
-                        }
-                    }
-
-                    int nIndex = (y * nWidth + x) * nBPP;
-                    if (nCentre != 0)
-                        nCount = nCount | 1;
-                    bool bAlive = (nCount == 3);
-
-                    if (bAlive) {
-                        aPixel[0] = 0xFF;
-                        int nHot = 0;
-                        if (nBPP >= 3) {
-                            nHot = m_pCells[nIndex + 2] + 4;
-                            if (nHot > 255)
-                                nHot = 255;
-                        }
-                        aPixel[1] = static_cast<unsigned char>(nHot);
-                        aPixel[2] = static_cast<unsigned char>(nHot);
-                    } else {
-                        aPixel[0] = 0;
-                        aPixel[1] = 0;
-                        if (m_pCells[nIndex] != 0) {
-                            aPixel[2] = 128;
-                        } else if (nBPP >= 3) {
-                            int nCold = m_pCells[nIndex + 2] - 4;
-                            if (nCold < 0)
-                                nCold = 0;
-                            aPixel[2] = static_cast<unsigned char>(nCold);
-                        }
-                    }
-                    memcpy(m_pCells + nIndex, aPixel, nBPP);  // idiom-exempt: runtime length
+    for (int y = 0; y < nHeight; y++) {
+        for (int x = 0; x < nWidth; x++) {
+            int nCount = 0;
+            unsigned char nCentre = 0;
+            for (int nDY = -1; nDY <= 1; nDY++) {
+                for (int nDX = -1; nDX <= 1; nDX++) {
+                    unsigned char nValue = pNew[(((y + nHeight + nDY) % nHeight) * nWidth
+                                               + ((x + nWidth + nDX) % nWidth)) * nBPP];
+                    if (nDY == 0 && nDX == 0)
+                        nCentre = nValue;
+                    else if (nValue != 0)
+                        nCount++;
                 }
             }
+
+            int nIndex = (y * nWidth + x) * nBPP;
+            if (nCentre != 0)
+                nCount = nCount | 1;
+            bool bAlive = (nCount == 3);
+
+            if (bAlive) {
+                aPixel[0] = 0xFF;
+                int nHot = 0;
+                if (nBPP >= 3) {
+                    nHot = m_pCells[nIndex + 2] + 4;
+                    if (nHot > 255)
+                        nHot = 255;
+                }
+                aPixel[1] = static_cast<unsigned char>(nHot);
+                aPixel[2] = static_cast<unsigned char>(nHot);
+            } else {
+                aPixel[0] = 0;
+                aPixel[1] = 0;
+                if (m_pCells[nIndex] != 0) {
+                    aPixel[2] = 128;
+                } else if (nBPP >= 3) {
+                    int nCold = m_pCells[nIndex + 2] - 4;
+                    if (nCold < 0)
+                        nCold = 0;
+                    aPixel[2] = static_cast<unsigned char>(nCold);
+                }
+            }
+            memcpy(m_pCells + nIndex, aPixel, nBPP);  // idiom-exempt: runtime length
         }
     }
 
     m_pTexture->GetImage();
-#if KOTOR1
-    // K1 leaks the copy too, through a plain operator call.
-    unsigned char* pTemp = static_cast<unsigned char*>(operator new[](nSize));
-#else
     unsigned char* pTemp = new unsigned char[nSize];  // idiom-exempt: deliberately leaked
-#endif
     memcpy(pTemp, m_pCells, nSize);                   // idiom-exempt: runtime length
     m_pTexture->glImage(true, 0);
     m_pTexture->FreeImage();
@@ -1163,30 +1123,28 @@ void WaterTextureController::Control()
         int nTexWidth = m_pTexture->GetWidth();
 
         // The wave kernel is a 3x3 stencil over the height field, damped by m_pfVelocities.
-        if (nWidth >= 1) {
-            for (int y = 0; y < nWidth; y++) {
-                for (int x = 0; x < nWidth; x++) {
-                    int nIndex = y * nWidth + x;
-                    float fLevel = m_pfVelocities[nIndex];
-                    float fCenter = m_pfHeights[nIndex] - 127.0f;
-                    float fSum = 0.0f;
-                    for (int nY = 0; nY < 3; nY++) {
-                        for (int nX = 0; nX < 3; nX++) {
-                            if (nY == 1 && nX == 1) {
-                                fSum = fSum - fCenter * afKernel[nY * 3 + nX];
-                            } else {
-                                int nNeighbor = ((y + nY + nWidth - 1) % nWidth) * nWidth
-                                              + ((x + nX + nWidth - 1) % nWidth);
-                                fSum = fSum + ((m_pfHeights[nNeighbor] - 127.0f) - fCenter)
-                                            * afKernel[nY * 3 + nX];
-                            }
+        for (int y = 0; y < nWidth; y++) {
+            for (int x = 0; x < nWidth; x++) {
+                int nIndex = y * nWidth + x;
+                float fLevel = m_pfVelocities[nIndex];
+                float fCenter = m_pfHeights[nIndex] - 127.0f;
+                float fSum = 0.0f;
+                for (int nY = 0; nY < 3; nY++) {
+                    for (int nX = 0; nX < 3; nX++) {
+                        if (nY == 1 && nX == 1) {
+                            fSum = fSum - fCenter * afKernel[nY * 3 + nX];
+                        } else {
+                            int nNeighbor = ((y + nY + nWidth - 1) % nWidth) * nWidth
+                                          + ((x + nX + nWidth - 1) % nWidth);
+                            fSum = fSum + ((m_pfHeights[nNeighbor] - 127.0f) - fCenter)
+                                        * afKernel[nY * 3 + nX];
                         }
                     }
-                    fSum = fSum + fLevel * -0.025f;
-                    m_pfVelocities[nIndex] = fLevel + fDelta * fSum;
-                    m_pfNextHeights[nIndex] = (fDelta * fLevel + fCenter)
-                                      + fSum * 0.5f * fDelta * fDelta;
                 }
+                fSum = fSum + fLevel * -0.025f;
+                m_pfVelocities[nIndex] = fLevel + fDelta * fSum;
+                m_pfNextHeights[nIndex] = (fDelta * fLevel + fCenter)
+                                  + fSum * 0.5f * fDelta * fDelta;
             }
         }
 
@@ -1198,20 +1156,18 @@ void WaterTextureController::Control()
         }
 
         // Centre the level on 127 and hold it inside [40, 215], zeroing m_pfVelocities wherever it clips.
-        if (nWidth >= 1) {
-            for (int y = 0; y < nWidth; y++) {
-                for (int x = 0; x < nWidth; x++) {
-                    int nIndex = y * nWidth + x;
-                    float fValue = m_pfNextHeights[nIndex] + 127.0f;
-                    if (fValue < 40.0f) {
-                        m_pfVelocities[nIndex] = 0;
-                        fValue = 40.0f;
-                    } else if (fValue > 215.0f) {
-                        m_pfVelocities[nIndex] = 0;
-                        fValue = 215.0f;
-                    }
-                    m_pfHeights[nIndex] = fValue;
+        for (int y = 0; y < nWidth; y++) {
+            for (int x = 0; x < nWidth; x++) {
+                int nIndex = y * nWidth + x;
+                float fValue = m_pfNextHeights[nIndex] + 127.0f;
+                if (fValue < 40.0f) {
+                    m_pfVelocities[nIndex] = 0;
+                    fValue = 40.0f;
+                } else if (fValue > 215.0f) {
+                    m_pfVelocities[nIndex] = 0;
+                    fValue = 215.0f;
                 }
+                m_pfHeights[nIndex] = fValue;
             }
         }
 
@@ -1222,13 +1178,11 @@ void WaterTextureController::Control()
             int nOffset = 0;
             for (int y = 0; y < m_pTexture->GetHeight(); y++) {
                 float fFY = fStepY * static_cast<float>(y);
-                if (nImageWidth >= 1) {
-                    for (int x = 0; x < nImageWidth; x++) {
-                        float fFX = fStepX * static_cast<float>(x);
-                        float fValue = FloatInterpolate(m_pfHeights, fFX, fFY, m_nWaterWidth, m_nWaterHeight);
-                        unsigned char* pDest = (lowqualityblur == 0) ? m_pImage : m_pBlurImage;
-                        pDest[nOffset + x] = static_cast<unsigned char>(fValue);
-                    }
+                for (int x = 0; x < nImageWidth; x++) {
+                    float fFX = fStepX * static_cast<float>(x);
+                    float fValue = FloatInterpolate(m_pfHeights, fFX, fFY, m_nWaterWidth, m_nWaterHeight);
+                    unsigned char* pDest = (lowqualityblur == 0) ? m_pImage : m_pBlurImage;
+                    pDest[nOffset + x] = static_cast<unsigned char>(fValue);
                 }
                 nOffset += nImageWidth;
             }
@@ -1310,15 +1264,13 @@ void ArturoTextureController::Control()
             int64_t nIndex = static_cast<int64_t>(nWidth) * nYStart;
             float fFY = fStepY * static_cast<float>(nYStart);
             for (int64_t nY = nYStart; nY < nYEnd; nY++) {
-                if (nWidth >= 1) {
-                    float fFX = 0.0f;
-                    for (int x = 0; x < nWidth; x++) {
-                        float f68 = FloatInterpolate(m_pfPrevHeights, fFX, fFY, m_nArturoWidth, m_nArturoHeight);
-                        float f60 = FloatInterpolate(m_pfHeights, fFX, fFY, m_nArturoWidth, m_nArturoHeight);
-                        m_pImage[nIndex + x] = static_cast<unsigned char>(static_cast<int>(
-                            (1.0f - m_fBlend) * f68 + m_fBlend * f60 + 127.0f));
-                        fFX += fStepX;
-                    }
+                float fFX = 0.0f;
+                for (int x = 0; x < nWidth; x++) {
+                    float f68 = FloatInterpolate(m_pfPrevHeights, fFX, fFY, m_nArturoWidth, m_nArturoHeight);
+                    float f60 = FloatInterpolate(m_pfHeights, fFX, fFY, m_nArturoWidth, m_nArturoHeight);
+                    m_pImage[nIndex + x] = static_cast<unsigned char>(static_cast<int>(
+                        (1.0f - m_fBlend) * f68 + m_fBlend * f60 + 127.0f));
+                    fFX += fStepX;
                 }
                 fFY += fStepY;
                 nIndex += nWidth;
@@ -1361,17 +1313,15 @@ void ArturoTextureController::Init()
     m_pImage = new unsigned char[nSize];
 
     int nDimY = m_nArturoHeight;
-    if (nDimY >= 1) {
-        for (int y = 0; y < nDimY; y++) {
-            float fY = static_cast<float>(y) / static_cast<float>(nDimY) * 2.0f - 1.0f;
-            float fYSq = fY * fY;
-            for (int x = 0; x < m_nArturoWidth; x++) {
-                float fX = static_cast<float>(x) / static_cast<float>(m_nArturoWidth) * 2.0f - 1.0f;
-                float fR = sqrtf(fYSq + fX * fX);
-                K2_ASSUME(y * m_nArturoWidth + x < nCount);   // y < m_nArturoHeight, x < m_nArturoWidth
-                m_pfPrevHeights[y * m_nArturoWidth + x] = 0.0f;
-                m_pfHeights[y * m_nArturoWidth + x] = sinf((1.0f - fR) * 3.14159274f) * 127.0f;
-            }
+    for (int y = 0; y < nDimY; y++) {
+        float fY = static_cast<float>(y) / static_cast<float>(nDimY) * 2.0f - 1.0f;
+        float fYSq = fY * fY;
+        for (int x = 0; x < m_nArturoWidth; x++) {
+            float fX = static_cast<float>(x) / static_cast<float>(m_nArturoWidth) * 2.0f - 1.0f;
+            float fR = sqrtf(fYSq + fX * fX);
+            K2_ASSUME(y * m_nArturoWidth + x < nCount);   // y < m_nArturoHeight, x < m_nArturoWidth
+            m_pfPrevHeights[y * m_nArturoWidth + x] = 0.0f;
+            m_pfHeights[y * m_nArturoWidth + x] = sinf((1.0f - fR) * 3.14159274f) * 127.0f;
         }
     }
     BuildArturoImage();

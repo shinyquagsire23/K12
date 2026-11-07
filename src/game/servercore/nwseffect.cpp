@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "nwseffect.h"
 #include "nwscriptconst.h"
 
@@ -142,7 +143,7 @@ void CGameEffect::SetNumIntegers(int nCount) {
     // does not cost a reload and a fresh shift.
     int nSize = m_numIntegers;
     m_pIntegers = new int[nSize];
-    memset(m_pIntegers, 0, sizeof(int) * nSize);
+    memset(static_cast<void*>(m_pIntegers), 0, sizeof(int) * nSize);
 }
 
 int CGameEffect::GetInteger(int nIndex) {
@@ -256,9 +257,9 @@ CGameEffect& CGameEffect::operator=(const CGameEffect& other)
     m_fDuration = other.m_fDuration;
     m_expireDay = other.m_expireDay;
     m_expireTime = other.m_expireTime;
+    m_bIsExposed = other.m_bIsExposed;
     m_creatorId = other.m_creatorId;
     m_spellId = other.m_spellId;
-    m_bIsExposed = other.m_bIsExposed;
 
     if (other.m_pLinkedEffect1)
     {
@@ -411,6 +412,7 @@ void CGameEffect::LoadGameEffect(CResGFF* pGff, CResStruct* pStruct)
     if (m_subType == CSWSEffectListHandler::EFFECT_DAMAGE && m_numIntegers <= 20)
 #endif
     {
+        int nNumIntegers = m_numIntegers;
         int nSrc = 0;
         unsigned int nDst = 0;
         if (pGff->GetList(&sList, pStruct, const_cast<char*>("IntList")) == 1)
@@ -418,7 +420,7 @@ void CGameEffect::LoadGameEffect(CResGFF* pGff, CResStruct* pStruct)
             while (nDst < 21)
             {
                 // The read block appears once per arm; only the store and increment tail is shared.
-                if (nDst < static_cast<unsigned int>(m_numIntegers - 6))
+                if (nDst < static_cast<unsigned int>(nNumIntegers - 6))
                 {
                     // No else, so a list shorter than m_numIntegers would spin forever. The loop only
                     // terminates because it consumes exactly m_numIntegers elements.

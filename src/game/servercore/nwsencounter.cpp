@@ -220,12 +220,12 @@ void CSWSEncounter::BuildInitialSpawnList(CEncounterListEntry* pList, int& nCoun
 #endif
             while (m_paSpawnPoints[nPick].m_fPoints <= fSlack + fPool
                    && nCount < m_nMaxCreatures - m_nActiveCreatureCount) {
-                CEncounterSpawnPoint* pPoint;
+                CEncounterListEntry* pPoint;
                 nPick = j + rand_wincompatible() % nGroup;
                 pPoint = &m_paSpawnPoints[nPick];
                 if (pPoint->m_bSingleSpawn == 0 || pPoint->m_bAlreadyUsed == 0) {
                     pList[nCount].resRef = pPoint->resRef;
-                    CEncounterSpawnPoint* pSrc = &m_paSpawnPoints[nPick];
+                    CEncounterListEntry* pSrc = &m_paSpawnPoints[nPick];
                     float fCR = pSrc->m_fCR;
                     float fPoints = pSrc->m_fPoints;
                     CEncounterListEntry* pOut = pList + nCount;
@@ -836,8 +836,8 @@ void CSWSEncounter::AIUpdate() {
                 m_lastSpawnDay = 0;
                 m_lastSpawnTime = 0;
                 SetActive(1);
-                m_nSpawnPoolBits = 0;
-                m_nSpawnPoolActiveBits = 0;
+                m_fSpawnPool = 0.0f;
+                m_fSpawnPoolActive = 0.0f;
             }
         }
     }
@@ -983,7 +983,7 @@ int CSWSEncounter::ReadEncounterFromGff(CResGFF* pGFF, CResStruct* pStruct, int 
         m_nSpawnPointCount = pGFF->GetListCount(&creatureList);
         if (m_paSpawnPoints != 0)
             delete[] m_paSpawnPoints;
-        m_paSpawnPoints = new CEncounterSpawnPoint[m_nSpawnPointCount];
+        m_paSpawnPoints = new CEncounterListEntry[m_nSpawnPointCount];
         for (int i = 0; i < m_nSpawnPointCount; i++) {
             if (pGFF->GetListElement(&creatureElem, &creatureList, i)) {
                 m_paSpawnPoints[i].resRef =
@@ -1007,7 +1007,7 @@ int CSWSEncounter::ReadEncounterFromGff(CResGFF* pGFF, CResStruct* pStruct, int 
         }
     }
 
-    CEncounterSpawnPoint swapTemp;
+    CEncounterListEntry swapTemp;
     for (int i = 0; i < m_nSpawnPointCount; i++) {
         for (int j = 0; j < m_nSpawnPointCount - 1; j++) {
             if (m_paSpawnPoints[j].m_fCR < m_paSpawnPoints[j + 1].m_fCR) {
@@ -1261,7 +1261,7 @@ void CSWSEncounter::AddCreaturesToSpawnList(CEncounterListEntry* pEntry, int& n,
             if (m_paSpawnPoints[k].m_bSingleSpawn != 0 && m_paSpawnPoints[k].m_bAlreadyUsed != 0)
                 break;
             pEntry[n].resRef = m_paSpawnPoints[k].resRef;
-            CEncounterSpawnPoint* pPoint = &m_paSpawnPoints[k];
+            CEncounterListEntry* pPoint = &m_paSpawnPoints[k];
             float fCR = pPoint->m_fCR;
             float fPointPoints = pPoint->m_fPoints;
             pEntry[n].m_fCR = fCR;
@@ -1329,14 +1329,14 @@ void CSWSEncounter::PadOutCreatureCount(CEncounterListEntry* pEntry, int& n) {
         int nPicked = 0;
         while (nMissing > 0) {
             int nPick = nFirst + rand_wincompatible() % nRange;
-            CEncounterSpawnPoint* pPoint = &m_paSpawnPoints[nPick];
+            CEncounterListEntry* pPoint = &m_paSpawnPoints[nPick];
             if (pPoint->m_bSingleSpawn == 0 || pPoint->m_bAlreadyUsed == 0) {
 #ifdef K2_FIX_ENGINE_BUGS
                 if (n >= m_nMaxCreatures)
                     return;
 #endif
                 pEntry[n].resRef = pPoint->resRef;
-                CEncounterSpawnPoint* pSrc = &m_paSpawnPoints[nPick];
+                CEncounterListEntry* pSrc = &m_paSpawnPoints[nPick];
                 float fCR = pSrc->m_fCR;
                 float fPointPoints = pSrc->m_fPoints;
                 CEncounterListEntry* pOut = pEntry + n;
@@ -1473,7 +1473,7 @@ int CSWSEncounter::LoadEncounter(CResGFF* pGFF, CResStruct* pStruct)
         return 0;
     ReadEncounterScriptsFromGff(pGFF, pStruct);
 
-    CEncounterSpawnPoint temp;
+    CEncounterListEntry temp;
 
     for (int i = 0; i < m_nSpawnPointCount; i++) {
         for (int j = 0; j < m_nSpawnPointCount - 1; j++) {

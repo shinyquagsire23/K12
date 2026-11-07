@@ -32,7 +32,7 @@ int CResTPC::GetTPCAttrib(int* pWidth, int* pHeight, char* pFormat, int* pnCompr
         return 0;
     *pWidth = h->m_width;
     *pHeight = h->m_height;
-    *reinterpret_cast<unsigned int*>(pAlphaTest) = *reinterpret_cast<unsigned int*>(&h->m_fAlphaTest);
+    *pAlphaTest = h->m_fAlphaTest;
     *pMipCount = static_cast<char>(h->m_nMipCount);
     *pnCompressedSize = m_nCompressedSize;
     *pnUncompressedSize = m_nUncompressedSize;

@@ -214,9 +214,7 @@ public:
     static CExoString FULLSCREEN_BGS[];
 
     static const Vector DISABLED_TEXT;
-#if KOTOR1
     static Vector COLOR_YELLOW;
-#endif
 
     CSWGuiManager();
     ~CSWGuiManager();
@@ -514,11 +512,9 @@ public:
     // bDeferred leaves the request to the draw and input sweeps.
     void SetToBeRemoved(int bDeferred)
     {
-        unsigned short nFlags = static_cast<unsigned short>((m_stateFlags & ~PANEL_REMOVE_DEFERRED)
-                                                            | (bDeferred & 1) * PANEL_REMOVE_DEFERRED);
+        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_DEFERRED) | (bDeferred & 1) * PANEL_REMOVE_DEFERRED;
         if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = static_cast<unsigned short>((nFlags & ~PANEL_REMOVE_MASK) + PANEL_REMOVE);
-        m_stateFlags = nFlags;
+            m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_MASK) + PANEL_REMOVE;
     }
 };
 

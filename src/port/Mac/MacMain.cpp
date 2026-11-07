@@ -140,7 +140,7 @@ int IosGetTemporaryDisableInteraction()
 }
 
 // The mean of every tracked touch, normalized to the screen; 0 when nothing is tracked.
-int IosGetRelativeTouch(float& fX, float& fY)
+bool IosGetRelativeTouch(float& fX, float& fY)
 {
     uint64_t nCount = s_mapTrackedTouches.size();
     float fSumX = 0.0f;
@@ -192,35 +192,10 @@ float GetIosControl(bool bUpDown, float fScale, float fDeadZone, bool bAnalog)
     return fOut;
 }
 
-// The same axis read without the analog gate.
+// The same axis read with the analog gate on.
 float GetIosControl(bool bUpDown, float fScale, float fDeadZone)
 {
-    float fValue = bUpDown ? s_fIosTouchLR : ios_left_right;
-    float fResult = fValue / fScale;
-    if (__builtin_fabsf(fResult) >= 1.0f) {
-        if (bUpDown) {
-            if (s_fIosMaxUD < fScale)
-                s_fIosMaxUD = fScale;
-        } else {
-            if (s_fIosMaxLR < fScale)
-                s_fIosMaxLR = fScale;
-        }
-    }
-    int nPlugged = ASLPlat_GetControllerPlugged();
-    float fPadY = (nPlugged == 2) ? ios_gamepad_analog0Y : 0.0f;
-    float fPadX = (nPlugged == 2) ? ios_gamepad_analog0X : ios_controller_left_right;
-    fResult += bUpDown ? fPadY : fPadX;
-    float fOut = 0.0f;
-    if (fResult > fDeadZone) {
-        fOut = fResult - fDeadZone;
-        if (fOut > 1.0f)
-            fOut = 1.0f;
-    } else if (fResult < -fDeadZone) {
-        fOut = fResult + fDeadZone;
-        if (fOut < -1.0f)
-            fOut = -1.0f;
-    }
-    return fOut;
+    return GetIosControl(bUpDown, fScale, fDeadZone, true);
 }
 
 // Zeroes whichever source GetIosControl reads for that axis.

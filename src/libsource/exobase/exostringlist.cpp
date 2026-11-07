@@ -311,7 +311,8 @@ void CExoStringList::AddSorted(CExoString* pString)
 
     if (m_nCount >= 1)
     {
-        nCmp = strcmp(pString->CStr(), m_paStrings[0]->CStr());
+        CExoString* pFirst = m_paStrings[0];
+        nCmp = strcmp(pString->CStr(), pFirst->CStr());
         if (nCmp < 0)
         {
             Introduce(pString, 0);
@@ -328,7 +329,8 @@ void CExoStringList::AddSorted(CExoString* pString)
         else if (m_nCount >= 1)
         {
             nHi = m_nCount - 1;
-            nCmp = strcmp(pString->CStr(), m_paStrings[nHi]->CStr());
+            CExoString* pLast = m_paStrings[nHi];
+            nCmp = strcmp(pString->CStr(), pLast->CStr());
             if (nCmp > 0)
             {
                 Introduce(pString, m_nCount);
@@ -350,9 +352,10 @@ void CExoStringList::AddSorted(CExoString* pString)
     int nLo = 0;
     int nMid = m_nCount / 2;
     int nStep = nMid;
-    while (nHi - nLo > 1 && !bDone)
+    while (!bDone && nHi - nLo > 1)
     {
-        nCmp = strcmp(pString->CStr(), m_paStrings[nMid]->CStr());
+        CExoString* pProbe = m_paStrings[nMid];
+        nCmp = strcmp(pString->CStr(), pProbe->CStr());
         if (nCmp < 0)
         {
             nStep = -1;

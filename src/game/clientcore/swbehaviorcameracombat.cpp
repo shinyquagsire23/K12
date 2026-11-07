@@ -68,9 +68,10 @@ Vector CSWBehaviorCameraCombat::CalculateDesiredLocation(CSWCCreature* pCreature
     CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
 
     Vector vDir;
+    Vector vRet;
 
     float fTurn = m_fMouseTurn;
-    Vector vCreaturePos(pCreature->m_position);
+    Vector vCreaturePos(pCreature->m_position.x, pCreature->m_position.y, 0.0f);
     if (m_fMouseTurn == 0.0f) {
         // The mouse is not driving, so the yaw rate is integrated through the acceleration state for
         // this frame.
@@ -92,7 +93,7 @@ Vector CSWBehaviorCameraCombat::CalculateDesiredLocation(CSWCCreature* pCreature
 
     // The horizontal lanes are pulled back along that axis by the style's distance, while z is the
     // creature's head height plus the style's height, where the axis plays no part.
-    Vector vRet = vCreaturePos + vDir * -m_fDistance;
+    vRet = vCreaturePos + vDir * -m_fDistance;
     vRet.z = pCreature->m_position.z + pCreature->m_pCreatureAppearance->GetHeadHeightOffset() + m_fHeight;
     return vRet;
 }

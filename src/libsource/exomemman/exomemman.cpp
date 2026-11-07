@@ -2,6 +2,7 @@
 // this file walks.
 
 #include "k2stdint.h"
+#include <string.h>
 #include "exomemman.h"
 #include "exomemheap.h"
 #include <stddef.h>
@@ -82,6 +83,8 @@ int SetLineFileComment(const char* pszFile, int nLine)
 CExoMemMan::CExoMemMan()
 {
     m_pReserved1 = NULL;
+    for (int i = 0; i < 1000; i++)
+        m_aFileNames[i] = NULL;
 
     Clear();
 
@@ -103,23 +106,22 @@ CExoMemMan::CExoMemMan()
     }
 }
 
-// The zero fill runs one byte past the array, so the last byte lands in m_aTypeStack[0].
 void CExoMemMan::Clear()
 {
-    memset(m_aFileNames, 0, sizeof(m_aFileNames));
+    for (int i = 0; i < 1000; i++)
+        m_aFileNames[i] = NULL;
 
     for (int i = 0; i < 40000; i++)
-    {
         m_aComments[i][0] = '\0';
-    }
 
     m_pLastFile = NULL;
     m_nLastLine = -1;
     m_szLastComment[0] = '\0';
 
-    memset(m_aReserved2, 0, sizeof(m_aReserved2));
-    m_aTypeStack[0] = 0;
+    for (int i = 0; i < 0x100; i++)
+        m_aReserved2[i] = 0;
 
+    m_aTypeStack[0] = 0;
     m_nTypeStackDepth = 1;
 }
 

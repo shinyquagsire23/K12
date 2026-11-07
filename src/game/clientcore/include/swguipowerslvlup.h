@@ -105,11 +105,11 @@ public:
     CExoString m_sPowerAvailableText;
     CExoString m_sPowerTakenText;
 
-    CExoArrayList<unsigned int> m_aOwnedPowers;
-    CExoArrayList<unsigned int> m_aAvailablePowers;
-    CExoArrayList<unsigned int> m_aChosenPowers;
+    CExoArrayList<uint32_l_t> m_aOwnedPowers;
+    CExoArrayList<uint32_l_t> m_aAvailablePowers;
+    CExoArrayList<uint32_l_t> m_aChosenPowers;
 #if !KOTOR1
-    CExoArrayList<unsigned int> m_aNewPowers;
+    CExoArrayList<uint32_l_t> m_aNewPowers;
 #endif
 
     CSWGuiSkillFlowChart m_powerChart;

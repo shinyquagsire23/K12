@@ -25,7 +25,9 @@ template <class T> class SafePointer;
 #include "swmgtrackfollower.h"
 
 // The trivially-destructible element types.
-template CExoArrayList<unsigned int>::~CExoArrayList();
+#if K2_ULL_DISTINCT
+template CExoArrayList<uint32_l_t>::~CExoArrayList();
+#endif
 template CExoArrayList<int>::~CExoArrayList();
 template CExoArrayList<float>::~CExoArrayList();
 template CExoArrayList<unsigned long long>::~CExoArrayList();

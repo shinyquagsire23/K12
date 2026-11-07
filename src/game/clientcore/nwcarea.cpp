@@ -187,10 +187,10 @@ void CSWCArea::UpdateShadowingLights()
 
 int CSWCArea::GetIsObjectCorpse(unsigned long long objectId)
 {
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 4; i++)
         if (m_aCorpseIds[i] == objectId)
             return 1;
-    return m_aCorpseIds[3] == objectId;
+    return 0;
 }
 
 void CSWCArea::ClearTilePathNodes()
@@ -497,50 +497,41 @@ void CSWCArea::StopWeather(unsigned char nWeatherType)
     m_weatherTransitionTime = 6000;
 }
 
+// EFFECTIVE (K2 armv7): one `ldr` from the stack is scheduled an instruction later than the orig's.
 int CSWCArea::SetWeather(unsigned char nWeather, float f)
 {
     CExoString sAnim;
+#if !KOTOR1  // K2 declares the lightning weather at function scope, K1 in the lightning block
+    unsigned char nLightningWeather;
+#endif
     if (f != 0.0f) {
         if (m_nCurrentWeather != nWeather) {
-            if (m_apWeatherGobs[0] != 0) { delete m_apWeatherGobs[0]; m_apWeatherGobs[0] = 0; }
-            if (m_apWeatherGobs[1] != 0) { delete m_apWeatherGobs[1]; m_apWeatherGobs[1] = 0; }
-            if (m_apWeatherGobs[2] != 0) { delete m_apWeatherGobs[2]; m_apWeatherGobs[2] = 0; }
-            if (m_apWeatherGobs[3] != 0) { delete m_apWeatherGobs[3]; m_apWeatherGobs[3] = 0; }
-            if (m_apWeatherGobs[4] != 0) { delete m_apWeatherGobs[4]; m_apWeatherGobs[4] = 0; }
-            if (m_apWeatherGobs[5] != 0) { delete m_apWeatherGobs[5]; m_apWeatherGobs[5] = 0; }
+            for (int i = 0; i < 6; i++) {
+                if (m_apWeatherGobs[i] != 0) { delete m_apWeatherGobs[i]; m_apWeatherGobs[i] = 0; }
+            }
             switch (nWeather) {
             case WEATHER_CLEAR:
                 break;
             case WEATHER_SNOW:
+#if KOTOR1  // K1 spells the six snow gobs out
                 m_apWeatherGobs[0] = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_snow"), const_cast<char*>("weather"), 0, 0));
                 if (m_apWeatherGobs[0] == 0) return 0;
-#if !KOTOR1
-                m_apWeatherGobs[0]->SetEmitterAsWeather(1);
-#endif
                 m_apWeatherGobs[1] = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_snow"), const_cast<char*>("weather"), 0, 0));
                 if (m_apWeatherGobs[1] == 0) return 0;
-#if !KOTOR1
-                m_apWeatherGobs[1]->SetEmitterAsWeather(1);
-#endif
                 m_apWeatherGobs[2] = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_snow"), const_cast<char*>("weather"), 0, 0));
                 if (m_apWeatherGobs[2] == 0) return 0;
-#if !KOTOR1
-                m_apWeatherGobs[2]->SetEmitterAsWeather(1);
-#endif
                 m_apWeatherGobs[3] = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_snow"), const_cast<char*>("weather"), 0, 0));
                 if (m_apWeatherGobs[3] == 0) return 0;
-#if !KOTOR1
-                m_apWeatherGobs[3]->SetEmitterAsWeather(1);
-#endif
                 m_apWeatherGobs[4] = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_snow"), const_cast<char*>("weather"), 0, 0));
                 if (m_apWeatherGobs[4] == 0) return 0;
-#if !KOTOR1
-                m_apWeatherGobs[4]->SetEmitterAsWeather(1);
-#endif
                 m_apWeatherGobs[5] = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_snow"), const_cast<char*>("weather"), 0, 0));
                 if (m_apWeatherGobs[5] == 0) return 0;
-#if !KOTOR1
-                m_apWeatherGobs[5]->SetEmitterAsWeather(1);
+#else
+                for (int i = 0; i < 6; i++) {
+                    m_apWeatherGobs[i] = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_snow"), const_cast<char*>("weather"), 0, 0));
+                    if (m_apWeatherGobs[i] == 0) return 0;
+                    m_apWeatherGobs[i]->SetEmitterAsWeather(1);
+                }
 #endif
                 break;
             case WEATHER_RAIN:
@@ -549,65 +540,31 @@ int CSWCArea::SetWeather(unsigned char nWeather, float f)
 #else
                 {
 #endif
-                    Gob* pWeatherGob;
-                    pWeatherGob = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_rain"), const_cast<char*>("weather"), 0, 0));
-                    m_apWeatherGobs[0] = pWeatherGob;
-                    if (m_apWeatherGobs[0] == 0) return 0;
+                    for (int i = 0; i < 6; i++) {
+                        Gob* pWeatherGob = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_rain"), const_cast<char*>("weather"), 0, 0));
+                        m_apWeatherGobs[i] = pWeatherGob;
+                        if (m_apWeatherGobs[i] == 0) return 0;
 #if !KOTOR1
-                    pWeatherGob->SetEmitterAsWeather(1);
+                        pWeatherGob->SetEmitterAsWeather(1);
 #endif
-                    pWeatherGob = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_rain"), const_cast<char*>("weather"), 0, 0));
-                    m_apWeatherGobs[1] = pWeatherGob;
-                    if (m_apWeatherGobs[1] == 0) return 0;
-#if !KOTOR1
-                    pWeatherGob->SetEmitterAsWeather(1);
-#endif
-                    pWeatherGob = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_rain"), const_cast<char*>("weather"), 0, 0));
-                    m_apWeatherGobs[2] = pWeatherGob;
-                    if (m_apWeatherGobs[2] == 0) return 0;
-#if !KOTOR1
-                    pWeatherGob->SetEmitterAsWeather(1);
-#endif
-                    pWeatherGob = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_rain"), const_cast<char*>("weather"), 0, 0));
-                    m_apWeatherGobs[3] = pWeatherGob;
-                    if (m_apWeatherGobs[3] == 0) return 0;
-#if !KOTOR1
-                    pWeatherGob->SetEmitterAsWeather(1);
-#endif
-                    pWeatherGob = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_rain"), const_cast<char*>("weather"), 0, 0));
-                    m_apWeatherGobs[4] = pWeatherGob;
-                    if (m_apWeatherGobs[4] == 0) return 0;
-#if !KOTOR1
-                    pWeatherGob->SetEmitterAsWeather(1);
-#endif
-                    pWeatherGob = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_rain"), const_cast<char*>("weather"), 0, 0));
-                    m_apWeatherGobs[5] = pWeatherGob;
-                    if (m_apWeatherGobs[5] == 0) return 0;
-#if !KOTOR1
-                    pWeatherGob->SetEmitterAsWeather(1);
-#endif
+                    }
                 }
                 break;
             default:
                 return 0;
             }
-#if KOTOR1
             for (int i = 0; i < 6; i++) {
                 if (m_apWeatherGobs[i] != 0)
                     m_apWeatherGobs[i]->AttachToScene(m_pScene);
             }
-#else
-            if (m_apWeatherGobs[0] != 0) m_apWeatherGobs[0]->AttachToScene(m_pScene);
-            if (m_apWeatherGobs[1] != 0) m_apWeatherGobs[1]->AttachToScene(m_pScene);
-            if (m_apWeatherGobs[2] != 0) m_apWeatherGobs[2]->AttachToScene(m_pScene);
-            if (m_apWeatherGobs[3] != 0) m_apWeatherGobs[3]->AttachToScene(m_pScene);
-            if (m_apWeatherGobs[4] != 0) m_apWeatherGobs[4]->AttachToScene(m_pScene);
-            if (m_apWeatherGobs[5] != 0) m_apWeatherGobs[5]->AttachToScene(m_pScene);
-#endif
             m_nCurrentWeather = nWeather;
         }
         if (m_chanceLightning != 0) {
+#if KOTOR1
             unsigned char nLightningWeather = nWeather;
+#else
+            nLightningWeather = nWeather;
+#endif
             if (m_pLightningGob != 0) {
                 delete m_pLightningGob;
                 nLightningWeather = m_nCurrentWeather;
@@ -629,12 +586,9 @@ int CSWCArea::SetWeather(unsigned char nWeather, float f)
             }
         }
     } else {
-        if (m_apWeatherGobs[0] != 0) { delete m_apWeatherGobs[0]; m_apWeatherGobs[0] = 0; }
-        if (m_apWeatherGobs[1] != 0) { delete m_apWeatherGobs[1]; m_apWeatherGobs[1] = 0; }
-        if (m_apWeatherGobs[2] != 0) { delete m_apWeatherGobs[2]; m_apWeatherGobs[2] = 0; }
-        if (m_apWeatherGobs[3] != 0) { delete m_apWeatherGobs[3]; m_apWeatherGobs[3] = 0; }
-        if (m_apWeatherGobs[4] != 0) { delete m_apWeatherGobs[4]; m_apWeatherGobs[4] = 0; }
-        if (m_apWeatherGobs[5] != 0) { delete m_apWeatherGobs[5]; m_apWeatherGobs[5] = 0; }
+        for (int i = 0; i < 6; i++) {
+            if (m_apWeatherGobs[i] != 0) { delete m_apWeatherGobs[i]; m_apWeatherGobs[i] = 0; }
+        }
         if (m_pLightningGob != 0) { delete m_pLightningGob; m_pLightningGob = 0; }
         m_nCurrentWeather = WEATHER_CLEAR;
     }
@@ -644,15 +598,10 @@ int CSWCArea::SetWeather(unsigned char nWeather, float f)
         sAnim = const_cast<char*>("snow");
     float fSpeed = f / 100.0f;
     for (int i = 0; i < 6; i++) {
-#if KOTOR1
         float fLen, fCur;
-#endif
         if (m_apWeatherGobs[i] != 0) {
             m_apWeatherGobs[i]->PlayAnimation(static_cast<char*>(sAnim.CStr()), 0.0f, AnimRun::kAnimRemove, 0.0f);
             m_apWeatherGobs[i]->PlayAnimation(static_cast<char*>(sAnim.CStr()), fSpeed, 0, 0.0f);
-#if !KOTOR1
-            float fLen, fCur;
-#endif
             m_apWeatherGobs[i]->GetAnimation(static_cast<char*>(sAnim.CStr()), &fLen, &fCur);
             static_cast<CAurObject*>(m_apWeatherGobs[i])->AnimateExternal(fCur);
             m_apWeatherGobs[i]->PlayAnimation(static_cast<char*>(sAnim.CStr()), 0.0f, 0, 0.0f);
@@ -672,12 +621,9 @@ void CSWCArea::UnloadArea()
     AurGrassClearInfo();
     ClearTilePathNodes();
     m_triggerIdList.SetSize(0);
-    if (m_apWeatherGobs[0] != 0) { delete m_apWeatherGobs[0]; m_apWeatherGobs[0] = 0; }
-    if (m_apWeatherGobs[1] != 0) { delete m_apWeatherGobs[1]; m_apWeatherGobs[1] = 0; }
-    if (m_apWeatherGobs[2] != 0) { delete m_apWeatherGobs[2]; m_apWeatherGobs[2] = 0; }
-    if (m_apWeatherGobs[3] != 0) { delete m_apWeatherGobs[3]; m_apWeatherGobs[3] = 0; }
-    if (m_apWeatherGobs[4] != 0) { delete m_apWeatherGobs[4]; m_apWeatherGobs[4] = 0; }
-    if (m_apWeatherGobs[5] != 0) { delete m_apWeatherGobs[5]; m_apWeatherGobs[5] = 0; }
+    for (int i = 0; i < 6; i++) {
+        if (m_apWeatherGobs[i] != 0) { delete m_apWeatherGobs[i]; m_apWeatherGobs[i] = 0; }
+    }
     CGameObjectArray* pArray = g_pAppManager->m_pClientExoApp->GetGameObjectArray();
     CClientAIMaster* pAIMaster = g_pAppManager->m_pClientExoApp->GetClientAIMaster();
     int nSounds = m_soundObjectIdList.m_count;
@@ -776,15 +722,11 @@ CSWCRoom* CSWCArea::GetRoom(int nRoom)
 
 CSWCMapPin* CSWCArea::GetMapPin(unsigned int nId, int nType)
 {
-    if (m_mapPins.m_count >= 1) {
-        uint64_t n = static_cast<unsigned int>(m_mapPins.m_count);
-        CSWCMapPin** pp = m_mapPins.m_pArray;
-        do {
-            CSWCMapPin* pPin = *pp;
-            if (pPin != 0 && pPin->m_nPinId == nId && pPin->m_nPinType == nType)
-                return pPin;
-            pp++;
-        } while (--n != 0);
+    int nCount = m_mapPins.m_count;
+    for (int i = 0; i < nCount; i++) {
+        CSWCMapPin* pPin = m_mapPins.m_pArray[i];
+        if (pPin != 0 && pPin->m_nPinId == nId && pPin->m_nPinType == nType)
+            return pPin;
     }
     return 0;
 }
@@ -1568,16 +1510,12 @@ void CSWCArea::AddCorpse(unsigned long long objectId)
 
 int CSWCArea::ParentCorpseExists(unsigned long long objectId)
 {
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
         CSWCCreature* pCorpse = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             m_aCorpseIds[i]);
         if (pCorpse != 0 && pCorpse->m_oidBodyBag == objectId)
             return 1;
     }
-    CSWCCreature* pCorpse = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
-        m_aCorpseIds[3]);
-    if (pCorpse != 0 && pCorpse->m_oidBodyBag == objectId)
-        return 1;
     return 0;
 }
 
@@ -1704,10 +1642,8 @@ int CSWCArea::LoadArea(CAurCamera* pCamera, CGuiAreaLoadscreen* pLoadscreen, int
 #if !KOTOR1
     m_grassEmissive = pMsg->ReadDWORD(32);
 #endif
-    m_grassProbLL = pMsg->ReadFLOAT(1.0f, 32);
-    m_grassProbLR = pMsg->ReadFLOAT(1.0f, 32);
-    m_grassProbUL = pMsg->ReadFLOAT(1.0f, 32);
-    m_grassProbUR = pMsg->ReadFLOAT(1.0f, 32);
+    for (int i = 0; i < 4; i++)
+        m_grassProb[i] = pMsg->ReadFLOAT(1.0f, 32);
     CAurGrassInfo grassInfo;
     m_grassTexName.CopyToString(grassInfo.m_sName);
     grassInfo.m_fDensity = m_grassDensity;
@@ -1723,10 +1659,8 @@ int CSWCArea::LoadArea(CAurCamera* pCamera, CGuiAreaLoadscreen* pLoadscreen, int
     grassInfo.m_vEmissive.y = static_cast<float>((m_grassEmissive >> 8) & 0xff) / 255.0f;
     grassInfo.m_vEmissive.z = static_cast<float>((m_grassEmissive >> 16) & 0xff) / 255.0f;
 #endif
-    grassInfo.m_fProbLL = m_grassProbLL;
-    grassInfo.m_fProbLR = m_grassProbLR;
-    grassInfo.m_fProbUL = m_grassProbUL;
-    grassInfo.m_fProbUR = m_grassProbUR;
+    for (int i = 0; i < 4; i++)
+        grassInfo.m_fProb[i] = m_grassProb[i];
     int nGrass;
     for (int row = 0; row < SURFACE_MATERIAL_ROWS; row++) {
         g_pRules->m_p2DArrays->m_pSurfaceMaterial->GetINTEntry(row, CExoString(const_cast<char*>("Grass")), &nGrass);
@@ -1806,67 +1740,63 @@ int CSWCArea::LoadArea(CAurCamera* pCamera, CGuiAreaLoadscreen* pLoadscreen, int
     RyanStartTextureSize = usedtexturememory;
     RyanStartParts = countpart;
 
-    if (m_nRooms > 0) {
-        int nWalkableIdx = 0;
-        for (int i = 0; i < m_nRooms; i++) {
-            if ((i % 5) == 0 || i == m_nRooms - 1) {
-                CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-                unsigned char w1 = pApp->GetLoadStep(2);
-                float fFrac = static_cast<float>(i + 1) / static_cast<float>(m_nRooms);
-                unsigned char w2 = pApp->GetLoadStep(3);
-                unsigned char w3 = pApp->GetLoadStep(1);
-                unsigned char w4 = pApp->GetLoadStep(0);
-                pApp->SetLoadBarProgress(
-                    static_cast<int>(fFrac * static_cast<float>(w1) + static_cast<float>(w2) + static_cast<float>(w3) + static_cast<float>(w4)), 1);
-                UpdateScreen(0.033333335f, 0, 0);
-            }
+    int nWalkableIdx = 0;
+    for (int i = 0; i < m_nRooms; i++) {
+        if ((i % 5) == 0 || i == m_nRooms - 1) {
+            CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
+            unsigned char w1 = pApp->GetLoadStep(2);
+            float fFrac = static_cast<float>(i + 1) / static_cast<float>(m_nRooms);
+            unsigned char w2 = g_pAppManager->m_pClientExoApp->GetLoadStep(3);
+            unsigned char w3 = g_pAppManager->m_pClientExoApp->GetLoadStep(1);
+            unsigned char w4 = g_pAppManager->m_pClientExoApp->GetLoadStep(0);
+            pApp->SetLoadBarProgress(
+                static_cast<int>(fFrac * static_cast<float>(w1) + static_cast<float>(w2) + static_cast<float>(w3) + static_cast<float>(w4)), 1);
+            UpdateScreen(0.033333335f, 0, 0);
+        }
 
-            m_paRooms[i].SetRoomInfo(pLayout->GetRoomName(i), pLayout->GetRoomPosition(i));
-            m_paRooms[i].SetRoomEnvAudioProps(nEnvAudio, aEnvNames, aEnvTypes, aEnvValues);
-            if (m_paRooms[i].m_bRoomNameIsWildcard == 0)
-                m_paRooms[i].m_nSceneRoomIndex = nWalkableIdx++;
-            else
-                m_paRooms[i].m_nSceneRoomIndex = -1;
+        m_paRooms[i].SetRoomInfo(pLayout->GetRoomName(i), pLayout->GetRoomPosition(i));
+        m_paRooms[i].SetRoomEnvAudioProps(nEnvAudio, aEnvNames, aEnvTypes, aEnvValues);
+        if (m_paRooms[i].m_bRoomNameIsWildcard == 0)
+            m_paRooms[i].m_nSceneRoomIndex = nWalkableIdx++;
+        else
+            m_paRooms[i].m_nSceneRoomIndex = -1;
 
-            Gob* pRoomModel = m_paRooms[i].SpawnRoom(m_pScene);
-            if (pRoomModel != 0) {
-                pRoomModel->PlayAnimation(const_cast<char*>("animloop1"), 1.0f, 8, 0.0f);
-                pRoomModel->PlayAnimation(const_cast<char*>("animloop2"), 1.0f, 8, 0.0f);
-                pRoomModel->PlayAnimation(const_cast<char*>("animloop3"), 1.0f, 8, 0.0f);
-            }
+        Gob* pRoomModel = m_paRooms[i].SpawnRoom(m_pScene);
+        if (pRoomModel != 0) {
+            pRoomModel->PlayAnimation(const_cast<char*>("animloop1"), 1.0f, 8, 0.0f);
+            pRoomModel->PlayAnimation(const_cast<char*>("animloop2"), 1.0f, 8, 0.0f);
+            pRoomModel->PlayAnimation(const_cast<char*>("animloop3"), 1.0f, 8, 0.0f);
+        }
 
-            // Attach this room's ambient sounds where its resref matches a table entry.
-            CExoString sCurRoomName(CResRef(m_paRooms[i].m_resRoom).GetResRefStr());
-            if (nRoomSounds > 0) {
-                for (int k = 0; k < nRoomSounds; k++) {
-                    if (aRoomNames[k] == sCurRoomName && pRoomModel != 0) {
-                        Gob* pDummy = static_cast<Gob*>(NewCAurObject(const_cast<char*>("MGB_null"), const_cast<char*>("sounddummy"), 0, 0));
-                        Part* pPart = pRoomModel->GetPart(static_cast<char*>(aPartNames[k].CStr()));
-                        if (pPart != 0) {
-                            CSWBehaviorAttachSound* pBehavior = new CSWBehaviorAttachSound(
-                                static_cast<CAurObject*>(pDummy), static_cast<CAurObject*>(pRoomModel), pPart,
-                                CResRef(aSoundResRefs[k].GetResRefStr()));
-                            pDummy->SetBehavior(pBehavior);
-                            pDummy->AttachToScene(m_pScene);
-                            pDummy->EnableAlwaysRender();
+        // Attach this room's ambient sounds where its resref matches a table entry.
+        CExoString sCurRoomName(CResRef(m_paRooms[i].m_resRoom).GetResRefStr());
+        for (int k = 0; k < nRoomSounds; k++) {
+            if (aRoomNames[k] == sCurRoomName && pRoomModel != 0) {
+                Gob* pDummy = static_cast<Gob*>(NewCAurObject(const_cast<char*>("MGB_null"), const_cast<char*>("sounddummy"), 0, 0));
+                Part* pPart = pRoomModel->GetPart(static_cast<char*>(aPartNames[k].CStr()));
+                if (pPart != 0) {
+                    CSWBehaviorAttachSound* pBehavior = new CSWBehaviorAttachSound(
+                        static_cast<CAurObject*>(pDummy), static_cast<CAurObject*>(pRoomModel), pPart,
+                        CResRef(aSoundResRefs[k].GetResRefStr()));
+                    pDummy->SetBehavior(pBehavior);
+                    pDummy->AttachToScene(m_pScene);
+                    pDummy->EnableAlwaysRender();
 #if KOTOR1  // K1: the out-of-line IsEmpty
-                            if (aEventNames[k].IsEmpty()) {
-                                pBehavior->PlaySound();
-                            } else {
-                                pRoomModel->RegisterCallBack(PlayRoomSoundEvent,
-                                    static_cast<char*>(aEventNames[k].CStr()), pBehavior, 9999.0f, false);
-                            }
-#else
-                            if (aEventNames[k].m_sString == 0 || *aEventNames[k].m_sString == 0) {
-                                pBehavior->PlaySoundA();
-                            } else {
-                                pRoomModel->RegisterCallBack(PlayRoomSoundEvent,
-                                    static_cast<char*>(aEventNames[k].CStr()), pBehavior, 9999.0f, false);
-                            }
-#endif
-                            m_behaviorAttachSounds.AddHead(pBehavior);
-                        }
+                    if (aEventNames[k].IsEmpty()) {
+                        pBehavior->PlaySound();
+                    } else {
+                        pRoomModel->RegisterCallBack(PlayRoomSoundEvent,
+                            static_cast<char*>(aEventNames[k].CStr()), pBehavior, 9999.0f, false);
                     }
+#else
+                    if (aEventNames[k].m_sString == 0 || *aEventNames[k].m_sString == 0) {
+                        pBehavior->PlaySoundA();
+                    } else {
+                        pRoomModel->RegisterCallBack(PlayRoomSoundEvent,
+                            static_cast<char*>(aEventNames[k].CStr()), pBehavior, 9999.0f, false);
+                    }
+#endif
+                    m_behaviorAttachSounds.AddHead(pBehavior);
                 }
             }
         }
@@ -2069,8 +1999,7 @@ int CSWCArea::LoadArea(CAurCamera* pCamera, CGuiAreaLoadscreen* pLoadscreen, int
             if (g_pAppManager->m_pClientExoApp->GetPlayerCreature() != 0)
                 g_pAppManager->m_pClientExoApp->GetPlayerCreature()->RefreshVisualEffects(0);
 
-            int nObjIds = m_objectIdList.m_count;
-            for (int i = 0; i < nObjIds; i++) {
+            for (int i = 0; i < m_objectIdList.m_count; i++) {
                 CSWCCreature* pCre = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
                     m_objectIdList.m_pArray[i]);
                 if (pCre != 0)

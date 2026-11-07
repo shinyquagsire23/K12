@@ -259,7 +259,6 @@ int CSWSStore::LoadStore(CResGFF* pGFF, CResStruct* pStruct, int flag) {
 // Returns 0 for a rejected item, the add result when the item is added, and 1 when it merely
 // stacked onto one already in the store.
 int CSWSStore::AcquireItem(CSWSItem* pItem, int flag) {
-    CSWSItem* local60 = pItem;
     if (pItem == 0 || pItem->m_bPlot != 0) {
         return 0;
     }
@@ -286,7 +285,7 @@ int CSWSStore::AcquireItem(CSWSItem* pItem, int flag) {
     CSWSItem* pExisting = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(tag);
     if (pExisting == 0 || !pExisting->CompareItem(pItem)) {
         pItem->SetPossessor(m_objectId, 1, 1, OBJECT_INVALID);
-        return AddItemToInventory(&local60, flag);
+        return AddItemToInventory(&pItem, flag);
     }
     if ((pExisting->m_flags & 4) == 0) {
         pExisting->m_stackCount = pExisting->m_stackCount + 1;
@@ -297,7 +296,6 @@ int CSWSStore::AcquireItem(CSWSItem* pItem, int flag) {
 
 #if KOTOR1
 int CSWSStore::AcquireItem(CSWSItem* pItem) {
-    CSWSItem* local60 = pItem;
     if (pItem == 0 || pItem->m_bPlot != 0) {
         return 0;
     }
@@ -324,7 +322,7 @@ int CSWSStore::AcquireItem(CSWSItem* pItem) {
     CSWSItem* pExisting = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(tag);
     if (pExisting == 0 || !pExisting->CompareItem(pItem)) {
         pItem->SetPossessor(m_objectId, 1, 1, OBJECT_INVALID);
-        return AddItemToInventory(&local60);
+        return AddItemToInventory(&pItem);
     }
     if ((pExisting->m_flags & 4) == 0) {
         pExisting->m_stackCount = pExisting->m_stackCount + 1;
@@ -348,18 +346,13 @@ int CSWSStore::SaveStore(CResGFF* pGFF, CResStruct* pStruct) {
     CResList itemList;
     pGFF->AddList(&itemList, pStruct, const_cast<char*>("ItemList"));
     CItemRepository* pRepo = m_pItemRepository;
-    if (pRepo->ItemListGetCount() != 0) {
-        unsigned int i = 0;
-        do {
-            CSWSItem* pItem = pRepo->ItemListGetItem(i);
-            CResStruct itemStruct;
-            pGFF->AddListElement(&itemStruct, &itemList, i);
-            pGFF->WriteFieldDWORD(&itemStruct, static_cast<unsigned int>(pItem->m_objectId), const_cast<char*>("ObjectId"));
-            pGFF->WriteFieldBYTE(&itemStruct, static_cast<unsigned char>(pItem->m_flags >> 2) & 1, const_cast<char*>("Infinite"));
-            pItem->SaveItem(pGFF, &itemStruct);
-            pRepo = m_pItemRepository;
-            i++;
-        } while (i < pRepo->ItemListGetCount());
+    for (unsigned int i = 0; i < m_pItemRepository->ItemListGetCount(); i++) {
+        CSWSItem* pItem = m_pItemRepository->ItemListGetItem(i);
+        CResStruct itemStruct;
+        pGFF->AddListElement(&itemStruct, &itemList, i);
+        pGFF->WriteFieldDWORD(&itemStruct, static_cast<unsigned int>(pItem->m_objectId), const_cast<char*>("ObjectId"));
+        pGFF->WriteFieldBYTE(&itemStruct, static_cast<unsigned char>(pItem->m_flags >> 2) & 1, const_cast<char*>("Infinite"));
+        pItem->SaveItem(pGFF, &itemStruct);
     }
     pGFF->WriteFieldFLOAT(pStruct, m_position.x, const_cast<char*>("XPosition"));
     pGFF->WriteFieldFLOAT(pStruct, m_position.y, const_cast<char*>("YPosition"));

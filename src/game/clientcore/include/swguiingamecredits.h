@@ -47,7 +47,7 @@ public:
     int           m_nFadePhase;
     unsigned char m_nTextCount;
     float         m_fLineStep;
-    char _reserved8a0[0x8a8 - 0x8a0];
+    void* m_pReserved1;  // pointer-width
 };
 
 #if !KOTOR1  // K1's GUI base classes are smaller (CSWGuiPanel is 0x80)

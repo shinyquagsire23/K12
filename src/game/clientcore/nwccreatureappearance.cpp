@@ -22,12 +22,16 @@
 #include "exostringinline.h"
 
 // The shared formatter every appearance-suffix path uses.
+#if defined(K2_NO_FORTIFY)
+#define FormatAppearanceSuffix(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void FormatAppearanceSuffix(char* pBuf, uint64_t nSize, const char* pFmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, pFmt);
     __vsprintf_chk(pBuf, 0, nSize, pFmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 
 CSWCCreatureAppearance::CSWCCreatureAppearance(CSWCCreature* pCreature)
 {
@@ -167,7 +171,7 @@ float CSWCCreatureAppearance::GetRunLooksAwfulRate()
 }
 
 // Animation family selected by the first model-name letter.
-int CSWCCreatureAppearance::GetAnimType(const CExoString& s)
+unsigned char CSWCCreatureAppearance::GetAnimType(const CExoString& s)
 {
     if (s.Find('S', 0) != -1)
         return CSWCAnimBase::ANIM_BASE_TYPE_TAIL_WINGS;
@@ -212,7 +216,7 @@ int CSWCCreatureAppearance::RequestBodyAppearance(CCAppearanceInfo* pInfo)
     CExoString sModelType;
     g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
         pInfo->core.m_nAppearanceId, CExoString("MODELTYPE"), &sModelType);
-    unsigned char nType = static_cast<unsigned char>(GetAnimType(sModelType));
+    unsigned char nType = GetAnimType(sModelType);
     switch (nType)
     {
     case CSWCAnimBase::ANIM_BASE_TYPE_WIELD:
@@ -235,7 +239,7 @@ int CSWCCreatureAppearance::RequestHeadAppearance(CCAppearanceInfo* pInfo)
     CExoString sModelType;
     g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
         pInfo->core.m_nAppearanceId, CExoString("MODELTYPE"), &sModelType);
-    unsigned char nType = static_cast<unsigned char>(GetAnimType(sModelType));
+    unsigned char nType = GetAnimType(sModelType);
     if (nType == 3 && pInfo->core.m_nHeadNumber != 0 &&
         pInfo->core.m_oidHeadItem == CGameObjectArray::INVALIDOBJID)
     {
@@ -246,17 +250,18 @@ int CSWCCreatureAppearance::RequestHeadAppearance(CCAppearanceInfo* pInfo)
         g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
             pInfo->core.m_nAppearanceId, CExoString("RACE"), &sModelType);
         sModelResRef = sModelResRef + sModelType;
+        int nAnimType;
+        char acSuffix[4];
         sTextureResRef = sModelResRef;
         sModelResRef = sModelResRef + CExoString(static_cast<unsigned int>(pInfo->core.m_nPhenotype));
         sModelResRef = sModelResRef + "_HEAD";
         sTextureResRef = sTextureResRef + "0_HEAD";
-        char acSuffix[4];
         FormatAppearanceSuffix(acSuffix, sizeof(acSuffix), "%03u", pInfo->core.m_nHeadNumber);
         sModelResRef = sModelResRef + acSuffix;
         sTextureResRef = sTextureResRef + acSuffix;
         g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
             pInfo->core.m_nAppearanceId, CExoString("MODELTYPE"), &sModelType);
-        int nAnimType = GetAnimType(sModelType);
+        nAnimType = GetAnimType(sModelType);
         m_pCreature->RequestModel(CResRef(sModelResRef), CResRef(sTextureResRef), static_cast<unsigned char>(nAnimType));
     }
     return 1;
@@ -373,7 +378,7 @@ int CSWCCreatureAppearance::CreateBodyAppearance(CCAppearanceInfo* pInfo)
 
     g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
         pInfo->core.m_nAppearanceId, CTwoDimArrays::COL2DA_APPEARANCETABLE_MODELTYPE, &sModelType);
-    nType = static_cast<unsigned char>(GetAnimType(sModelType));
+    nType = GetAnimType(sModelType);
     switch (nType)
     {
     case CSWCAnimBase::ANIM_BASE_TYPE_WIELD:
@@ -467,9 +472,11 @@ int CSWCCreatureAppearance::CreateBTypeBody(unsigned char a, CCAppearanceInfo* p
         if (pOldModel != nullptr)
             pOldModel->SetBehavior(nullptr);
 
+        int bLoaded;
+        Gob* pModel;
         int bHadCallback = m_pCreature->ClearQuededAnimationCallback();
         m_pCreature->UnloadModel(CSWCAnimBase::ANIM_MODEL_BODY);
-        int bLoaded = m_pCreature->LoadModel(sModelResRef, CSWCAnimBase::ANIM_MODEL_BODY, a);
+        bLoaded = m_pCreature->LoadModel(sModelResRef, CSWCAnimBase::ANIM_MODEL_BODY, a);
         if (bLoaded == 0)
         {
             char acErrorMsg[128];
@@ -493,7 +500,7 @@ int CSWCCreatureAppearance::CreateBTypeBody(unsigned char a, CCAppearanceInfo* p
         if (g_pAppManager->m_pServerExoApp == nullptr ||
             g_pAppManager->m_pClientExoApp->IsPlayerCreature(m_pCreature) != 0)
         {
-            Gob* pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+            pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
             pModel->SetCanDownSample(0);
         }
 
@@ -592,7 +599,7 @@ int CSWCCreatureAppearance::CreateSimple(unsigned char a, CCAppearanceInfo* pInf
         CExoString sModelType;
         g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
             pInfo->core.m_nAppearanceId, CExoString("MODELTYPE"), &sModelType);
-        unsigned char nType = static_cast<unsigned char>(GetAnimType(sModelType));
+        unsigned char nType = GetAnimType(sModelType);
         if ((nType & 0xfe) == 2 && sModelType.Find('L', 0) == -1)
         {
             if (m_pCreature->GetAnimationBase() != nullptr)
@@ -658,7 +665,7 @@ int CSWCCreatureAppearance::CreateHeadAppearance(CCAppearanceInfo* pInfo)
     CExoString sModelType;
     g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
         pInfo->core.m_nAppearanceId, CTwoDimArrays::COL2DA_APPEARANCETABLE_MODELTYPE, &sModelType);
-    if (static_cast<unsigned char>(GetAnimType(sModelType)) == 3)
+    if (GetAnimType(sModelType) == 3)
         return CreateHead(3, pInfo);
     m_nHeadNumber = pInfo->core.m_nHeadNumber;
     m_pCreature->UnloadModel(CSWCAnimBase::ANIM_MODEL_HEAD);
@@ -667,14 +674,14 @@ int CSWCCreatureAppearance::CreateHeadAppearance(CCAppearanceInfo* pInfo)
 
 int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
 {
-    char acSuffix[4];
-    int nHeadRow;
     CResRef sModelResRef;
     CResRef sTextureResRef;
     CResRef sEnvMapResRef;
     CExoString sHeadModel;
     CExoString sHeadTexture;
     CExoString sEnvMap;
+    bool bHasEnvMap;
+    bool bHasAltTexture;
 
     if (pInfo->core.m_nHeadNumber == 0 && pInfo->core.m_oidHeadItem == CGameObjectArray::INVALIDOBJID)
     {
@@ -688,7 +695,6 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
 
     g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
         pInfo->core.m_nAppearanceId, CTwoDimArrays::COL2DA_APPEARANCETABLE_ENVMAP, &sEnvMap);
-    bool bHasEnvMap;
     if (sEnvMap.GetLength() < 1)
     {
         bHasEnvMap = false;
@@ -699,9 +705,9 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
         bHasEnvMap = true;
     }
 
-    bool bHasAltTexture;
     if (a == 3)
     {
+        int nHeadRow;
         if (pInfo->core.m_race == 0xff)
         {
             if (pInfo->core.m_bUseBackupHead == 0)
@@ -750,6 +756,7 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
     else
     {
         sHeadModel = "P";
+        char acSuffix[4];
         g_pRules->m_p2DArrays->m_pGender->GetCExoStringEntry(
             pInfo->core.m_nGender == GENDER_FEMALE, CTwoDimArrays::COL2DA_GENDER_GENDER, &sEnvMap);
         sHeadModel = sHeadModel + sEnvMap;
@@ -802,16 +809,21 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
     m_bUseBackupHead = pInfo->core.m_bUseBackupHead;
     if (m_pCreature->LoadModel(sModelResRef, CSWCAnimBase::ANIM_MODEL_HEAD, a) == 0)
         return 0;
+    CSWCItem* pOldItem;
+    Gob* pOldGob;
+    CSWCItem* pNewItem;
+    Gob* pModel;
+    Gob* pNewGob;
 
     if (a == 1 || a == 3)
     {
         if (m_bRebuildHead != 0 || m_oidHeadItem != pInfo->core.m_oidHeadItem)
         {
-            CSWCItem* pOldItem =
+            pOldItem =
                 g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(m_oidHeadItem);
             if (pOldItem != nullptr)
             {
-                Gob* pOldGob = pOldItem->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+                pOldGob = pOldItem->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
                 if (pOldGob != nullptr)
                 {
                     pOldGob->AttachToObject(nullptr, nullptr, 0);
@@ -823,12 +835,12 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
             }
             if (pInfo->core.m_oidHeadItem != CGameObjectArray::INVALIDOBJID)
             {
-                CSWCItem* pNewItem =
+                pNewItem =
                     g_pAppManager->m_pClientExoApp->GetItemByGameObjectID(pInfo->core.m_oidHeadItem);
                 if (pNewItem == nullptr)
                     return 0;
-                Gob* pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD, 1);
-                Gob* pNewGob = pNewItem->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+                pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD, 1);
+                pNewGob = pNewItem->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
                 if (pNewGob != nullptr)
                 {
                     pNewGob->AttachToObject(static_cast<CAurObject*>(pModel), const_cast<char*>("GoggleHook"), 0);
@@ -850,7 +862,7 @@ int CSWCCreatureAppearance::CreateHead(unsigned char a, CCAppearanceInfo* pInfo)
 #endif
     if (g_pAppManager->m_pClientExoApp->GetPlayerCreature() == m_pCreature)
     {
-        Gob* pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD, 1);
+        pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_HEAD, 1);
         pModel->SetCanDownSample(0);
     }
     if (bHasEnvMap)
@@ -930,6 +942,8 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
 
     m_bAlignmentDirty = 0;
     unsigned int nRow;
+    int bHeadTexFound = 0;
+    int bFoundA = 0;
     if (m_race != 0xff)
     {
         nRow = m_race;
@@ -944,8 +958,6 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
         pAppearance->GetINTEntry(m_nAppearanceId, CTwoDimArrays::COL2DA_APPEARANCETABLE_BACKUPHEAD, reinterpret_cast<int*>(&nRow));
     }
 
-    int bHeadTexFound = 0;
-    int bFoundA = 0;
     if (a <= 10)
         bHeadTexFound = g_pRules->m_p2DArrays->m_pHeads->GetCExoStringEntry(nRow, CExoString("HEADTEXVVVE"), &sHeadTexCol);
     else if (a <= 20)
@@ -990,10 +1002,7 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
 
         if (g_pAppManager->m_pServerExoApp == nullptr ||
             g_pAppManager->m_pClientExoApp->IsPlayerCreature(m_pCreature) != 0)
-        {
-            Gob* pBodyModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
-            pBodyModel->SetCanDownSample(0);
-        }
+            m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1)->SetCanDownSample(0);
     }
 #else
     if (m_bAlignmentDirty == 0 && m_cachedAlignment == static_cast<unsigned short>(a))
@@ -1182,6 +1191,7 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
     }
     else
     {
+        Gob* pBodyModel;
         CResRef rTex;
         GetBTypeModelAndTextureResRef(reinterpret_cast<CCAppearanceInfo*>(this), nullptr, &rTex);  // idiom-exempt: not a base-class relationship — reusing this's own 0x00-0x3f cache fields as a CCAppearanceInfo (layout confirmed identical, see CreateSimple's note above)
         if (rTex != const_cast<char*>(""))
@@ -1190,7 +1200,7 @@ void CSWCCreatureAppearance::SetAppearanceAlignment(short a)
         if (g_pAppManager->m_pServerExoApp == nullptr ||
             g_pAppManager->m_pClientExoApp->IsPlayerCreature(m_pCreature) != 0)
         {
-            Gob* pBodyModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+            pBodyModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
             pBodyModel->SetCanDownSample(0);
         }
     }

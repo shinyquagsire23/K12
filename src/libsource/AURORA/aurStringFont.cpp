@@ -15,6 +15,7 @@ extern CAurTexture* AurTextureGetReference(char* sName, char* sExtension);
 void AurTextureRelease(CAurTexture* pTexture);
 
 List<CAurFont*> CAurFont::s_LoadedFontList;
+CStringColor g_cSavedCol;
 
 // One corner of a glyph quad in TextOutA's vertex pool: position, packed colour, texture coordinate.
 struct CAurFontVertex {
@@ -74,7 +75,7 @@ CAurFont::CAurFont(int nFont, char chChar)
 
     CAurFont* pFont = s_LoadedFontList.m_pData[nFont];
     m_pFontInfo = pFont->m_pFontInfo;
-    m_pTexture = pFont->m_pTexture.m_pObject;
+    m_pTexture = pFont->m_pTexture;
 
     // Writes through the shared CAurFontInfo just aliased, so the source font's glyphs are
     // remapped too. Only u and v are copied, not the whole Vector.
@@ -147,7 +148,7 @@ int CAurFont::TextOut(char* pszText, int nLength)
 int CAurFont::TextOutA(char* pszText, int nLength)
 #endif
 {
-    static unsigned int nPool = GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0),
+    static uint32_l_t nPool = GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0),
                                                       static_cast<unsigned int>(g_nFontPoolVerts * 24), 0x42, 0x1011, &nPool);
 
     if (g_nFontPoolVerts < nLength * 6) {
@@ -270,7 +271,7 @@ void CAurFont::CalculateVisibleStringLengthAndWidth(CStringItem* pItem, float fM
             nLastSpace = g_nParseIndex;
         else if (c == '<') {
             CAurFont* pFont;
-            CStringColor cColor = {1.0f, 1.0f, 1.0f, 1.0f};
+            CStringColor cColor;
             int nSkip = ProcessTextMarkup(p, &pFont, cColor);
             if (nSkip > 1) {
                 g_nParseIndex += nSkip;

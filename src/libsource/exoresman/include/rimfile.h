@@ -24,11 +24,7 @@ public:
     ~CRIMRes();
 
     int  Reset();
-#if KOTOR1  // K1 defines SetName in the class
     void SetName(CExoString& sName);
-#else
-    __attribute__((noinline)) void SetName(CExoString& sName);
-#endif
     int  Read(CExoFile& file);
     // bBlockAlign selects the payload's block alignment: 4 bytes, or a large block when non-zero.
     int  Write(CExoFile& file, unsigned int nEntryOffset, unsigned char bBlockAlign);
@@ -47,7 +43,11 @@ public:
     CRIMFile();
     ~CRIMFile();
 
+#if !KOTOR1 || !defined(__arm__)  // K1 armv7 inlines it into the destructor
     __attribute__((noinline)) int Reset();
+#else
+    int  Reset();
+#endif
     void SetVersion(char* pszVersion);
     int  Read(const CExoString& sFileName);
     // Returns the file-open status.

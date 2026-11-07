@@ -145,7 +145,7 @@ uint64_t AurAddDrawableSquare(float* paFloats, uint64_t nHandle, const char* psz
               pszName, nFlags, static_cast<double>(paFloats[3]), static_cast<double>(paFloats[4]), static_cast<double>(paFloats[5]));
 #endif
 
-    unsigned int nPoolId;
+    uint32_l_t nPoolId;
     nPoolId = GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0), 80, 0, 0x11, &nPoolId);
 
     unsigned int* pDst = static_cast<unsigned int*>(GLRender::LockPool(nPoolId, 0, 0, 1));
@@ -183,21 +183,9 @@ void AurRemoveAllDrawableSquares()
 // the square is created and its handle formatted back into the shared handle buffer.
 const char* addsquaretorender(char* pszArgs)
 {
-    char* pszCursor = pszArgs;
-
     float afFloats[12];
-    afFloats[0] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[1] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[2] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[3] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[4] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[5] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[6] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[7] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[8] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[9] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[10] = static_cast<float>(atof(GetToken(&pszCursor)));
-    afFloats[11] = static_cast<float>(atof(GetToken(&pszCursor)));
+    for (int i = 0; i < 12; i++)
+        afFloats[i] = static_cast<float>(atof(GetToken(&pszArgs)));
 
 #if KOTOR1
     uint64_t nHandle = AurAddDrawableSquare(afFloats, static_cast<uint64_t>(-1));
@@ -588,11 +576,10 @@ void AurSetPauseOverlayColor(float fRed, float fGreen, float fBlue, float fAlpha
 // Unlike AurSetPauseOverlayColor this parses doubles and scales them as doubles.
 const char* testsetpausecolor(char* pszArgs)
 {
-    char* pszCursor = pszArgs;
-    double fRed = atof(GetToken(&pszCursor));
-    double fGreen = atof(GetToken(&pszCursor));
-    double fBlue = atof(GetToken(&pszCursor));
-    double fAlpha = atof(GetToken(&pszCursor));
+    double fRed = atof(GetToken(&pszArgs));
+    double fGreen = atof(GetToken(&pszArgs));
+    double fBlue = atof(GetToken(&pszArgs));
+    double fAlpha = atof(GetToken(&pszArgs));
 
     g_rgbaPauseOverlayColor = static_cast<unsigned int>(fRed * 255.0)
                             | (static_cast<unsigned int>(fGreen * 255.0) << 8)
@@ -764,14 +751,12 @@ void AuroraSetTileFoggedByWar(Vector& vTile, bool bFogged)
 
 const char* setfogofwar(char* pszArgs)
 {
-    char* pszCursor = pszArgs;
-
     Vector vPosition;
-    vPosition.x = static_cast<float>(atof(GetToken(&pszCursor)));
-    vPosition.y = static_cast<float>(atof(GetToken(&pszCursor)));
-    vPosition.z = static_cast<float>(atof(GetToken(&pszCursor)));
+    vPosition.x = static_cast<float>(atof(GetToken(&pszArgs)));
+    vPosition.y = static_cast<float>(atof(GetToken(&pszArgs)));
+    vPosition.z = static_cast<float>(atof(GetToken(&pszArgs)));
 
-    AuroraSetTileFoggedByWar(vPosition, atoi(GetToken(&pszCursor)) == 1);
+    AuroraSetTileFoggedByWar(vPosition, atoi(GetToken(&pszArgs)) == 1);
     return "FOGGED";
 }
 

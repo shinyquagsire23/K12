@@ -262,7 +262,7 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
         // Copy down / copy to top move nCount/4 cells of the value stack.
         case NCS_OP_CPDOWNSP:
         case NCS_OP_CPDOWNBP: {
-            uint64_t* pBase;
+            CVirtualMachineStack::StackIndex* pBase;
             if (nOpcode == NCS_OP_CPDOWNSP)
                 pBase = &m_sStack.m_nStackPointer;
             else if (nOpcode == NCS_OP_CPDOWNBP)
@@ -294,7 +294,7 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
         // The same move with the two ends swapped.
         case NCS_OP_CPTOPSP:
         case NCS_OP_CPTOPBP: {
-            uint64_t* pBase;
+            CVirtualMachineStack::StackIndex* pBase;
             if (nOpcode == NCS_OP_CPTOPSP)
                 pBase = &m_sStack.m_nStackPointer;
             else if (nOpcode == NCS_OP_CPTOPBP)
@@ -578,7 +578,7 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                 case NCS_OP_GEQ: bTrue = (fValue2 >= fValue1); break;
                 case NCS_OP_GT: bTrue = (fValue2 >  fValue1); break;
                 case NCS_OP_LT: bTrue = (fValue2 <  fValue1); break;
-                default: bTrue = (fValue2 <= fValue1); break;
+                case NCS_OP_LEQ: bTrue = (fValue2 <= fValue1); break;
                 }
             } else {
                 if (nType != NCS_TYPE_INTEGER_INTEGER)
@@ -591,7 +591,7 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                 case NCS_OP_GEQ: bTrue = (nValue2 >= nValue1); break;
                 case NCS_OP_GT: bTrue = (nValue2 >  nValue1); break;
                 case NCS_OP_LT: bTrue = (nValue2 <  nValue1); break;
-                default: bTrue = (nValue2 <= nValue1); break;
+                case NCS_OP_LEQ: bTrue = (nValue2 <= nValue1); break;
                 }
             }
             StackPushInteger(bTrue);
@@ -659,8 +659,10 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                 break;
             }
 
-            int bFloat = (nType == NCS_TYPE_FLOAT_FLOAT || nType == NCS_TYPE_INTEGER_FLOAT || nType == NCS_TYPE_FLOAT_INTEGER);
-            if (bFloat) {
+            switch (nType) {
+            case NCS_TYPE_FLOAT_FLOAT:
+            case NCS_TYPE_INTEGER_FLOAT:
+            case NCS_TYPE_FLOAT_INTEGER:
                 if (nType == NCS_TYPE_FLOAT_INTEGER) {
                     if (!StackPopInteger(&nValue1))
                         return -SCRIPT_ERROR_STACK_UNDERFLOW;
@@ -689,11 +691,9 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                     StackPushFloat(fValue2 / fValue1);
                     break;
                 }
-                *pnOffset += 2;
                 break;
-            }
 
-            if (nType == NCS_TYPE_STRING_STRING) {
+            case NCS_TYPE_STRING_STRING: {
                 CExoString sTop;
                 if (!StackPopString(&sTop))
                     return -SCRIPT_ERROR_STACK_UNDERFLOW;
@@ -702,11 +702,10 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                     return -SCRIPT_ERROR_STACK_UNDERFLOW;
                 if (nOpcode == NCS_OP_ADD)
                     StackPushString(sNext + sTop);
-                *pnOffset += 2;
                 break;
             }
 
-            if (nType == NCS_TYPE_VECTOR_VECTOR) {
+            case NCS_TYPE_VECTOR_VECTOR: {
                 Vector vTop;
                 Vector vNext;
                 int bOk = StackPopVector(&vTop);
@@ -718,11 +717,11 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                     StackPushVector(Vector(vNext.x + vTop.x, vNext.y + vTop.y, vNext.z + vTop.z));
                 else if (nOpcode == NCS_OP_SUB)
                     StackPushVector(Vector(vNext.x - vTop.x, vNext.y - vTop.y, vNext.z - vTop.z));
-                *pnOffset += 2;
                 break;
             }
 
-            if (nType == NCS_TYPE_VECTOR_FLOAT || nType == NCS_TYPE_FLOAT_VECTOR) {
+            case NCS_TYPE_VECTOR_FLOAT:
+            case NCS_TYPE_FLOAT_VECTOR: {
                 float fScale K2_UNSET;
                 Vector vValue;
                 int bOk;
@@ -745,11 +744,14 @@ int CVirtualMachineInternal::ExecuteCode(int* pnOffset, char* pCode, int nSize)
                     float fInv = 1.0f / fScale;
                     StackPushVector(Vector(vValue.x * fInv, vValue.y * fInv, vValue.z * fInv));
                 }
-                *pnOffset += 2;
                 break;
             }
 
-            return -SCRIPT_ERROR_INVALID_AUX_CODE;
+            default:
+                return -SCRIPT_ERROR_INVALID_AUX_CODE;
+            }
+            *pnOffset += 2;
+            break;
         }
 
         // MOD.
@@ -971,7 +973,7 @@ int CVirtualMachineInternal::RunScriptFile(int nArg)
         CExoString sName(m_aScriptSituations[m_nSituationCount].m_sName.CStr());
         m_pCmdImplementer->ReportError(sName, -nResult);
         int nSavedSp = static_cast<int>(nSavedStackPointer);
-        if (m_sStack.m_nStackPointer > static_cast<unsigned long long>(nSavedSp))
+        if (m_sStack.m_nStackPointer > static_cast<CVirtualMachineStack::StackIndex>(nSavedSp))
             m_sStack.SetStackPointer(nSavedSp);
         else
             m_sStack.m_nStackPointer = nSavedSp;
@@ -1096,17 +1098,7 @@ CVirtualMachineStack::~CVirtualMachineStack()
 // EFFECTIVE: the value and type array pointers are reloaded at different points in the loop.
 void CVirtualMachineStack::ClearStack()
 {
-    if (m_pTypeData == 0) {
-        m_nStackPointer = 0;
-        m_nBasePointer = 0;
-        m_nCapacity = 0;
-        if (m_pValueData != 0) {
-            delete[] m_pValueData;
-            m_pValueData = 0;
-        }
-        return;
-    }
-    if (m_pValueData != 0) {
+    if (m_pTypeData != 0 && m_pValueData != 0) {
         for (int i = static_cast<int>(m_nStackPointer - 1); i >= 0; i--) {
             if (m_pTypeData[i] == NCS_TYPE_STRING) {
                 CExoString* pString = static_cast<CExoString*>(m_pValueData[i]);
@@ -1116,7 +1108,7 @@ void CVirtualMachineStack::ClearStack()
                 m_pOwner->m_pCmdImplementer->DestroyGameDefinedStructure(m_pTypeData[i] - NCS_TYPE_ENGINE_STRUCTURE0,
                                                                          m_pValueData[i]);
             }
-            m_pValueData[i] = 0;
+            *reinterpret_cast<int64_t*>(&m_pValueData[i]) = 0;
         }
     }
     m_nStackPointer = 0;
@@ -1172,7 +1164,7 @@ void CVirtualMachineStack::CopyFromStack(CVirtualMachineStack* pFrom, int nTopBo
         nBase = MAX_STACK_COPY_CELLS;
     if (nBase < 0)
         nBase = 0;
-    if (static_cast<uint64_t>(nBase) > pFrom->m_nBasePointer)
+    if (static_cast<StackIndex>(nBase) > pFrom->m_nBasePointer)
         nBase = static_cast<int>(pFrom->m_nBasePointer);
     if (nTop > MAX_STACK_COPY_CELLS)
         nTop = MAX_STACK_COPY_CELLS;
@@ -1182,7 +1174,7 @@ void CVirtualMachineStack::CopyFromStack(CVirtualMachineStack* pFrom, int nTopBo
     if (static_cast<uint64_t>(nTop) > pFrom->m_nStackPointer)
         nTop = static_cast<int>(pFrom->m_nStackPointer);
 #else
-    if (static_cast<uint64_t>(nBase) > pFrom->m_nBasePointer)
+    if (static_cast<StackIndex>(nBase) > pFrom->m_nBasePointer)
         nBase = static_cast<int>(pFrom->m_nBasePointer);
 #endif
 
@@ -1199,7 +1191,7 @@ void CVirtualMachineStack::CopyFromStack(CVirtualMachineStack* pFrom, int nTopBo
     memcpy(m_pTypeData, &pFrom->m_pTypeData[pFrom->m_nBasePointer - nBase], nBase);  // idiom-exempt: a runtime entry count, not a sizeof
 
     for (int i = 0; i < nBase; i++) {
-        long long nSrc = pFrom->m_nBasePointer - nBase + i;
+        int64_t nSrc = pFrom->m_nBasePointer - nBase + i;
         void* pValue;
         if (m_pTypeData[i] == NCS_TYPE_STRING) {
             CExoString* pSrc = static_cast<CExoString*>(pFrom->m_pValueData[nSrc]);
@@ -1236,9 +1228,16 @@ void CVirtualMachineStack::CopyFromStack(CVirtualMachineStack* pFrom, int nTopBo
 // through it.
 void CVirtualMachineStack::SetStackPointer(int nNew)
 {
+#if defined(__arm__)  // the 32-bit source compares the pointer as an int; the arm64 port's is 64-bit
+    int nSp = static_cast<int>(m_nStackPointer);
+    if (nSp <= nNew)
+        return;
+    for (int i = nSp - 1; i >= nNew; i--) {
+#else
     if (m_nStackPointer <= static_cast<uint64_t>(nNew))
         return;
     for (int i = static_cast<int>(m_nStackPointer - 1); i >= nNew; i--) {
+#endif
         if (m_pTypeData[i] == NCS_TYPE_STRING) {
             CExoString* pString = static_cast<CExoString*>(m_pValueData[i]);
             if (pString != 0)
@@ -1395,9 +1394,9 @@ void CVirtualMachineStack::ModifyIntegerAtLocation(int nLocation, int nValue)
 // stays where it was.
 void CVirtualMachineStack::AddToTopOfStack(int nType)
 {
-    if (m_nStackPointer == static_cast<unsigned long long>(m_nCapacity)) {
+    if (m_nStackPointer == static_cast<StackIndex>(m_nCapacity)) {
         unsigned long long nOldCount = m_nStackPointer;
-        long long nNewSize = m_nCapacity + 256;
+        int64_t nNewSize = m_nCapacity + 256;
         m_nCapacity = static_cast<int>(nNewSize);
         void** pNewValues = new void*[nNewSize];
         char* pNewTypes = new char[nNewSize];
@@ -1447,7 +1446,7 @@ void CVirtualMachineStack::AssignLocationToLocation(int nSrc, int nDst)
 #endif
     if (m_pOwner == 0)
         return;
-    if (m_nStackPointer == static_cast<unsigned long long>(nDst))
+    if (m_nStackPointer == static_cast<StackIndex>(nDst))
         AddToTopOfStack(m_pTypeData[nSrc]);
     char nType = m_pTypeData[nSrc];
     void* pValue;
@@ -1485,7 +1484,7 @@ int CVirtualMachineStack::SaveStack(CResGFF* pGff, CResStruct* pStruct)
         return 1;
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("Stack"));
-    for (unsigned long long i = 0, nOffset = 0; m_nStackPointer > i; i++, nOffset += 8) {
+    for (StackIndex i = 0, nOffset = 0; m_nStackPointer > i; i++, nOffset += sizeof(void*)) {
         CResStruct elem;
         pGff->AddListElement(&elem, &list, static_cast<unsigned int>(i));
         pGff->WriteFieldCHAR(&elem, m_pTypeData[i], const_cast<char*>("Type"));
@@ -1542,7 +1541,7 @@ int CVirtualMachineStack::LoadStack(CResGFF* pGff, CResStruct* pStruct)
     CResList list;
     pGff->GetList(&list, pStruct, const_cast<char*>("Stack"));
     unsigned long long nOffset = 0;
-    for (unsigned long long i = 0; m_nStackPointer > i; i++, nOffset += 8) {
+    for (StackIndex i = 0; m_nStackPointer > i; i++, nOffset += sizeof(void*)) {
         pGff->GetListElement(&elem, &list, static_cast<unsigned int>(i));
         K2_ASSUME(i < static_cast<uint64_t>(nCapacity));   // the stack pointer is clamped to the capacity above
         m_pTypeData[i] = pGff->ReadFieldCHAR(&elem, const_cast<char*>("Type"), nSuccess, 0);

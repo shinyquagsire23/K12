@@ -33,7 +33,7 @@ int CRes4PC::Get4PCAttrib(unsigned int* pnWidth, unsigned int* pnHeight, float* 
         return 0;
     *pnWidth = h->m_nWidth;
     *pnHeight = h->m_nHeight;
-    *reinterpret_cast<unsigned int*>(pfAlphaTest) = *reinterpret_cast<unsigned int*>(&h->m_fAlphaTest);
+    *pfAlphaTest = h->m_fAlphaTest;
     *pnFormat = static_cast<int>(h->m_nFormat);
     return 1;
 }

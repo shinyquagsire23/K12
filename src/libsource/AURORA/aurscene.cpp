@@ -19,6 +19,7 @@
 #include "aurgrass.h"
 #include "aurprimitive.h"
 #include "aurtrigger.h"
+#include "aurmodelrender.h"
 #include "aurtexman.h"
 #include "Quaternion.h"
 #include "Vector.h"
@@ -107,7 +108,7 @@ void Transform(const Vector& v, const Quaternion& q, int n);
 
 void MakeMatrix4x4(float* pMatrix, const Vector& v, const Quaternion& q);
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q);
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q);
 
 
 
@@ -161,8 +162,8 @@ void IosSetDistortBuffer(bool bEnable);
 void SetDistortBuffer(bool bEnable);
 #endif
 
-extern List<Part*> staticbeambucket;
-extern List<Part*> staticshadowbucket;
+extern List<PartBeam*> staticbeambucket;
+extern List<PartShadow*> staticshadowbucket;
 extern List<PartTrigger*> triggerbucket;
 extern List<Gob*>  gobbucket;
 extern List<Gob*>  blurbucket;
@@ -183,7 +184,7 @@ extern std::map<unsigned int, Bucket> capbuckets;
 List<int>* AurTextureGetOrdering();
 extern List<Gob*>  g_listHologramBucket;
 
-extern List<PartTriMesh*> g_listBackgroundBucket;
+extern Bucket g_listBackgroundBucket;
 
 // Per-texture-id bucket of meshes, the sibling of capbuckets.
 #if KOTOR1
@@ -275,6 +276,7 @@ void RenderPaths(Scene* pScene);
 
 
 Vector Scene::m_vLastCameraPosition;
+Quaternion Scene::m_qLastCameraOrientation;
 List<Scene*> Scenes;
 CHitInfo DefaultHitInfo(0, CHitInfo::kMaterialAllButTrigger, 0);
 Scene* FindScene(char* pszName);
@@ -291,8 +293,6 @@ int  GetMiniGamePlayingType();
 
 #include "aurvertexprog.h"
 
-
-extern template SafePointer<CAurTexture>& SafePointer<CAurTexture>::operator=(CAurTexture*);
 
 Scene::Scene(char* pszName)
     : m_focusGob(const_cast<char*>("c_FocusGob"))
@@ -488,7 +488,7 @@ void ProjectDynamicShadow(Gob* pGob, PartLight* pLight)
     else
     {
         const Plane* paVolumes = CurrentCamera->m_viewState.m_aViewVolumes.m_pData;
-        pPlane = new Plane(paVolumes[1].a, paVolumes[1].b, paVolumes[1].c, paVolumes[1].d + 0.05f);
+        pPlane = new Plane(paVolumes[1].normal.x, paVolumes[1].normal.y, paVolumes[1].normal.z, paVolumes[1].d + 0.05f);
     }
 
     pGob->PartVolumeProject(pGob->m_pPart,
@@ -554,8 +554,8 @@ void CHitInfo::Reset(int a, int b, int c)
 {
     m_bSkipObjects = a;
     m_nMaterialMask = b;
-    m_ignoreList.m_count = 0;
     m_bHitBoundingBoxes = c;
+    m_ignoreList.m_count = 0;
     m_bIgnoreStartInside = 0;
     m_bSkipCharactersAndItems = 0;
     m_bSkipFaded = 1;
@@ -664,18 +664,15 @@ void Scene::RenderShadows(int, int, int bStencilShadows, int bClearStencil)
             ASLgl::glColorMask(0, 0, 0, 0);
             GLRender::SetStencilFunc(Aurora::kCmpAlways, 0xf, 0xf);
 
-            unsigned int nNormalArray = clientStateTranslationTable[kArrayNormal];
-            ASLgl::glDisableClientState(nNormalArray);
-            unsigned int nTexCoordArray = clientStateTranslationTable[kArrayTexCoord];
-            ASLgl::glDisableClientState(nTexCoordArray);
-            unsigned int nColorArray = clientStateTranslationTable[kArrayColor];
-            ASLgl::glDisableClientState(nColorArray);
+            GLRender::DisableClientState(Aurora::kClientStateNormal);
+            GLRender::DisableClientState(Aurora::kClientStateTexCoord);
+            GLRender::DisableClientState(Aurora::kClientStateColor);
 
             DoGobShadowsForThisLight(*pLight);
 
-            ASLgl::glEnableClientState(nNormalArray);
-            ASLgl::glEnableClientState(nTexCoordArray);
-            ASLgl::glEnableClientState(nColorArray);
+            GLRender::EnableClientState(Aurora::kClientStateNormal);
+            GLRender::EnableClientState(Aurora::kClientStateTexCoord);
+            GLRender::EnableClientState(Aurora::kClientStateColor);
             ASLgl::glColorMask(1, 1, 1, 1);
             ASLgl::glStencilMask(0);
 
@@ -867,8 +864,8 @@ void Scene::RenderStencilShadowsForThisLight(PartLight& light, float fWeight, in
     for (int i = 0; i < 10; i++)
     {
         float fAngle = i * (40.0f * 3.14159265f / 180.0f);
-        pVertexArray[i + 1].pos[0] = pVertexArray[0].pos[0] + fRadius * static_cast<float>(__builtin_cos(fAngle));
-        pVertexArray[i + 1].pos[1] = pVertexArray[0].pos[1] + fRadius * static_cast<float>(__builtin_sin(fAngle));
+        pVertexArray[i + 1].pos[0] = pVertexArray[0].pos[0] + fRadius * cosf(fAngle);
+        pVertexArray[i + 1].pos[1] = pVertexArray[0].pos[1] + fRadius * sinf(fAngle);
         pVertexArray[i + 1].pos[2] = m_vSceneFocus.z;
         pVertexArray[i + 1].color = 0;
     }
@@ -896,8 +893,8 @@ void Scene::ListSpecialPartsR(Part* pPart)
         m_emitters.AddUnique(pEmitter);
     }
 
-    for (int64_t i = 0; i < pPart->m_nChildren; i++)
-        ListSpecialPartsR(pPart->m_paChildren[i]);
+    for (int64_t i = 0; i < pPart->m_aChildren.m_count; i++)
+        ListSpecialPartsR(pPart->m_aChildren.m_pData[i]);
 }
 
 Vector Scene::GetWindVector(Vector v, float f)
@@ -995,7 +992,7 @@ int Scene::GetIgnoreVisibilityGraph()
     return m_nIgnoreVisibilityGraph;
 }
 
-int Scene::IsGeomFadeEnabled()
+bool Scene::IsGeomFadeEnabled()
 {
     return geomFadeEnabled == 1;
 }
@@ -1075,7 +1072,7 @@ void Scene::DoDynamicMeshProjections()
 {
 // The far frustum plane, in world space, read once for the whole pass.
     const Plane& qFar = CurrentCamera->m_viewState.m_aViewVolumes[1];
-    Plane planeFar(qFar.a, qFar.b, qFar.c, qFar.d);
+    Plane planeFar(qFar.normal.x, qFar.normal.y, qFar.normal.z, qFar.d);
 
     List<PartLight*> shadowLights;
     shadowLights = m_pLightManager->GetShadowLights(0);
@@ -1499,14 +1496,14 @@ void Scene::RenderStaticGeometry()
     float vBlack[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 #if KOTOR1  // K1 sends the materials to GL_FRONT_AND_BACK
-    unsigned int nFace = GL_FRONT_AND_BACK;
+    ASLgl::glMaterialfv(GL_FRONT_AND_BACK, materialTranslationTable[kMaterialAmbient], vWhite);
+    ASLgl::glMaterialfv(GL_FRONT_AND_BACK, materialTranslationTable[kMaterialDiffuse], vWhite);
+    ASLgl::glMaterialfv(GL_FRONT_AND_BACK, materialTranslationTable[kMaterialEmission], vBlack);
 #else
-    unsigned int nFace = facingTranslationTable[kFaceFront];
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialAmbient, vWhite);
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialDiffuse, vWhite);
+    GLRender::SetMaterialv(Aurora::kFacingFront, Aurora::kMaterialEmission, vBlack);
 #endif
-
-    ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialAmbient], vWhite);
-    ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialDiffuse], vWhite);
-    ASLgl::glMaterialfv(nFace, materialTranslationTable[kMaterialEmission], vBlack);
 
     DoMeshBuckets();
     DoBinBucket();
@@ -1954,7 +1951,7 @@ void Scene::DoTriggerBucket()
 static Vector ViewVolumeNormal(int nIndex)
 {
     const Plane& q = CurrentCamera->m_viewState.m_aViewVolumes[nIndex];
-    Vector v = { q.a, q.b, q.c };
+    Vector v = { q.normal.x, q.normal.y, q.normal.z };
     return v;
 }
 
@@ -2079,7 +2076,7 @@ void Scene::RenderLensFlares()
 
     List<PartLight*> flareLights = m_pLightManager->GetLensFlareLights();
 
-    static unsigned int renderListToken = GLRender::RequestPool(
+    static uint32_l_t renderListToken = GLRender::RequestPool(
         static_cast<Aurora::AuroraBufferRequestType>(0), 4 * sizeof(RenderVertexVTC), 0x42, 0x1011,
         &renderListToken);
 
@@ -2197,7 +2194,7 @@ void Scene::RenderLensFlares()
             ASLgl::glTranslatef(pNode->FlarePositions()[j] * vDir.x,
                                 pNode->FlarePositions()[j] * vDir.y, 0.0f);
 
-            static unsigned int renderListToken = GLRender::RequestPool(
+            static uint32_l_t renderListToken = GLRender::RequestPool(
                 static_cast<Aurora::AuroraBufferRequestType>(0), 4 * sizeof(RenderVertexVTC), 0x42, 0x1011,
                 &renderListToken);
 
@@ -2419,8 +2416,8 @@ void Scene::UnlistSpecialParts(Part* pPart)
         SceneBSPRemovePart(this, pEmitter);
     }
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        UnlistSpecialParts(pPart->m_paChildren[i]);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        UnlistSpecialParts(pPart->m_aChildren.m_pData[i]);
 }
 
 void Scene::RenderGobLast(CAurObject* pObject)
@@ -2429,9 +2426,6 @@ void Scene::RenderGobLast(CAurObject* pObject)
     Objects().Add(static_cast<Gob*>(pObject));
 }
 
-#if KOTOR1
-extern template void List<Gob*>::Insert(Gob*, int);
-#endif
 void Scene::RenderGobFirst(CAurObject* pObject)
 {
     Objects().Remove(static_cast<Gob*>(pObject));
@@ -2535,9 +2529,6 @@ void Scene::ClearVisibility()
 
 int Scene::QueryVisibility(CAurRoom* pFrom, CAurRoom* pRoom)
 {
-    if (pFrom->m_visibleRooms.m_count <= 0)
-        return 0;
-
     return pFrom->m_visibleRooms.Contains(pRoom);
 }
 
@@ -2616,9 +2607,9 @@ void Scene::DoMeshBuckets()
     s_listLateAdditiveMeshes.m_count = 0;
 #endif
 
-    for (int i = 0; i < g_listBackgroundBucket.m_count; i++)
+    for (int i = 0; i < g_listBackgroundBucket.m_parts.m_count; i++)
     {
-        PartTriMesh* pPart = g_listBackgroundBucket.m_pData[i];
+        PartTriMesh* pPart = g_listBackgroundBucket.m_parts.m_pData[i];
         Material* pMaterial = pPart->m_pMaterial;
         pMaterial->BindTexture0();
         pMaterial->SetBlendingMode(0);
@@ -2631,16 +2622,16 @@ void Scene::DoMeshBuckets()
     for (int i = 0; i < caps.m_count; i++)
     {
         int nTextureId = caps.m_pData[i];
-        if (meshbuckets[nTextureId].m_nCount == 0)
+        if (meshbuckets[nTextureId].m_parts.m_count == 0)
             continue;
 
-        Material* pMaterial = meshbuckets[nTextureId].m_paParts[0]->m_pMaterial;
+        Material* pMaterial = meshbuckets[nTextureId].m_parts.m_pData[0]->m_pMaterial;
 #if defined(K2_QOL_IMPROVEMENTS) && !KOTOR1
         if (K2QolIsAdditiveMaterial(pMaterial))
         {
-            for (int j = 0; j < meshbuckets[nTextureId].m_nCount; j++)
+            for (int j = 0; j < meshbuckets[nTextureId].m_parts.m_count; j++)
             {
-                PartTriMesh* pPart = meshbuckets[nTextureId].m_paParts[j];
+                PartTriMesh* pPart = meshbuckets[nTextureId].m_parts.m_pData[j];
                 s_listLateAdditiveMeshes.Add(pPart);
                 TileData* pTile = pPart->m_pTileData;
                 if (pTile && !tileList.Contains(pTile))
@@ -2654,9 +2645,9 @@ void Scene::DoMeshBuckets()
 #endif
         pMaterial->SetBlendingMode(0);
 
-        for (int j = 0; j < meshbuckets[nTextureId].m_nCount; j++)
+        for (int j = 0; j < meshbuckets[nTextureId].m_parts.m_count; j++)
         {
-            PartTriMesh* pPart = meshbuckets[nTextureId].m_paParts[j];
+            PartTriMesh* pPart = meshbuckets[nTextureId].m_parts.m_pData[j];
 #if KOTOR1  // K1: debug skip ranges (two texture-id ranges, one part-index range)
             if ((nTextureId >= g_nMeshSkipTexMin && nTextureId <= g_nMeshSkipTexMax)
                 || (nTextureId >= g_nMeshSkipTexMin2 && nTextureId <= g_nMeshSkipTexMax2)
@@ -2671,9 +2662,9 @@ void Scene::DoMeshBuckets()
         }
     }
 
-    for (int i = 0; i < meshbuckets[0].m_nCount; i++)
+    for (int i = 0; i < meshbuckets[0].m_parts.m_count; i++)
     {
-        PartTriMesh* pPart = meshbuckets[0].m_paParts[i];
+        PartTriMesh* pPart = meshbuckets[0].m_parts.m_pData[i];
         if (i == 0)
             pPart->m_pMaterial->BindTexture0();
         pPart->Mat();
@@ -2703,24 +2694,24 @@ void Scene::DoCapBucket()
     for (int i = 0; i < caps.m_count; i++)
     {
         int nTextureId = caps.m_pData[i];
-        if (capbuckets[nTextureId].m_nCount == 0)
+        if (capbuckets[nTextureId].m_parts.m_count == 0)
             continue;
 
-        Material* pMaterial = capbuckets[nTextureId].m_paParts[0]->m_pMaterial;
+        Material* pMaterial = capbuckets[nTextureId].m_parts.m_pData[0]->m_pMaterial;
         pMaterial->BindTexture0();
         pMaterial->SetBlendingMode(0);
 
-        for (int j = 0; j < capbuckets[nTextureId].m_nCount; j++)
+        for (int j = 0; j < capbuckets[nTextureId].m_parts.m_count; j++)
         {
-            PartTriMesh* pPart = capbuckets[nTextureId].m_paParts[j];
+            PartTriMesh* pPart = capbuckets[nTextureId].m_parts.m_pData[j];
             pPart->Mat();
             pPart->Draw(false);
         }
     }
 
-    for (int i = 0; i < capbuckets[0].m_nCount; i++)
+    for (int i = 0; i < capbuckets[0].m_parts.m_count; i++)
     {
-        PartTriMesh* pPart = capbuckets[0].m_paParts[i];
+        PartTriMesh* pPart = capbuckets[0].m_parts.m_pData[i];
         if (i == 0)
             pPart->m_pMaterial->BindTexture0();
         pPart->Mat();
@@ -2806,16 +2797,16 @@ void Scene::DoFadeBuckets()
     for (int i = 0; i < caps.m_count; i++)
     {
         int nTextureId = caps.m_pData[i];
-        if (fadebuckets[nTextureId].m_nCount == 0)
+        if (fadebuckets[nTextureId].m_parts.m_count == 0)
             continue;
 
-        Material* pMaterial = fadebuckets[nTextureId].m_paParts[0]->m_pMaterial;
+        Material* pMaterial = fadebuckets[nTextureId].m_parts.m_pData[0]->m_pMaterial;
         pMaterial->BindTexture0();
         pMaterial->SetBlendingMode(0);
 
-        for (int j = 0; j < fadebuckets[nTextureId].m_nCount; j++)
+        for (int j = 0; j < fadebuckets[nTextureId].m_parts.m_count; j++)
         {
-            PartTriMesh* pPart = fadebuckets[nTextureId].m_paParts[j];
+            PartTriMesh* pPart = fadebuckets[nTextureId].m_parts.m_pData[j];
 
             float fSaved = pPart->m_fOpacity;
             pPart->m_fOpacity = fSaved * pPart->m_pTileData->m_fOpacity;
@@ -2859,9 +2850,9 @@ void Scene::DoFadeBuckets()
         }
     }
 
-    for (int i = 0; i < fadebuckets[0].m_nCount; i++)
+    for (int i = 0; i < fadebuckets[0].m_parts.m_count; i++)
     {
-        PartTriMesh* pPart = fadebuckets[0].m_paParts[i];
+        PartTriMesh* pPart = fadebuckets[0].m_parts.m_pData[i];
         float fSaved;
         if (i == 0)
             pPart->m_pMaterial->BindTexture0();
@@ -3208,8 +3199,8 @@ void SetShadows(Part* pPart, int nShadows)
             pLight->m_nCastsShadows = nShadows;
     }
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        SetShadows(pPart->m_paChildren[i], nShadows);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        SetShadows(pPart->m_aChildren.m_pData[i], nShadows);
 }
 
 void RenderPersonalSpace(Scene* pScene)
@@ -3260,39 +3251,16 @@ void InitGrassBins(Vector vMin, Vector vMax, List<List<CAurTriangleBin*> >& bins
     }
 }
 
-// View of MdlNodeTriMesh's layout, which is not included here; keep field order and padding in
-// step with that header.
-struct TriMeshView {
-    char     _pad00[0x08];
-    MaxTree* m_pTree;
-    char     _pad10[0x78 - 0x10];
-    short*   m_pIndices;
-    int      m_nFrameCount;
-    char     _pad84[0x18c - 0x84];
-    int      m_nVertexStride;
-    char     _pad190[0x194 - 0x190];
-    int      m_nVertexOfs;
-    char     _pad198[0x1c0 - 0x198];
-    unsigned short m_nVertexCount;
-#if KOTOR1  // K1's MdlNodeTriMesh has no dirt/hologram block
-    char     _pad1c2[0x1d4 - 0x1c2];
-#else
-    char     _pad1c2[0x1dc - 0x1c2];
-#endif
-    int      m_nGeomBase;
-};
-
 extern bool AurGrassMaterialInUse(int nMaterial);
 extern float Round(float fValue, float fIncrement);
 extern Vector VectorMin(Vector vA, Vector vB);
 extern Vector VectorMax(Vector vA, Vector vB);
 extern int quaternionidentityoptimization;
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -3315,7 +3283,7 @@ static inline Vector RotateVector(const Vector& v, const Quaternion& q)
     return v;
 }
 
-static inline Vector RotateVectorDirect(Vector v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVectorDirect(Vector v, const Quaternion& q)
 {
     float w = q.w;
     if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
@@ -3336,24 +3304,23 @@ static inline Vector RotateVectorDirect(Vector v, const Quaternion& q)
 void Scene::AddFacesToBins(PartAABB* pPartAABB, Vector const& vOrigin,
                            List<List<CAurTriangleBin*> >& bins)
 {
-    MdlNodeTriMesh* pTriMesh = pPartAABB->m_pNode->AsMdlNodeTriMesh();
-    TriMeshView* pT = reinterpret_cast<TriMeshView*>(pTriMesh);
+    MdlNodeTriMesh* pT = pPartAABB->m_pNode->AsMdlNodeTriMesh();
 
     Vector vLocal;
     Quaternion qLocal(1.0f, 0.0f, 0.0f, 0.0f);
     pPartAABB->GetWorld(vLocal, qLocal);
 
-    for (int64_t i = 0; i < pT->m_nFrameCount; i++) {
-        const MaxFace* pFace = &reinterpret_cast<const MaxFace*>(pT->m_pIndices)[i];
+    for (int64_t i = 0; i < pT->m_faces.m_count; i++) {
+        const MaxFace* pFace = &pT->m_faces.m_pData[i];
         if (!AurGrassMaterialInUse(pFace->m_nMaterial))
             continue;
 
         void* pool = GLRender::LockPool(pT->m_pTree->AsModel()->m_nPool, 0, 0, 8);
 
         int stride = pT->m_nVertexStride;
-        short i0 = pFace->m_nVIndex[0];
-        short i1 = pFace->m_nVIndex[1];
-        short i2 = pFace->m_nVIndex[2];
+        short i0 = static_cast<short>(pFace->m_anVertIndices[0]);
+        short i1 = static_cast<short>(pFace->m_anVertIndices[1]);
+        short i2 = static_cast<short>(pFace->m_anVertIndices[2]);
         float* v0 = reinterpret_cast<float*>(static_cast<char*>(pool) + stride * i0
                              + pT->m_nVertexOfs + static_cast<unsigned int>(pT->m_nGeomBase));
         float* v1 = reinterpret_cast<float*>(static_cast<char*>(pool) + stride * i1
@@ -3383,7 +3350,7 @@ void Scene::AddFacesToBins(PartAABB* pPartAABB, Vector const& vOrigin,
         if (bins.m_pData[cellx].m_pData[celly] == 0)
             bins.m_pData[cellx].m_pData[celly] = new CAurTriangleBin;
         GLRender::UnlockPool(pT->m_pTree->AsModel()->m_nPool);
-        bins.m_pData[cellx].m_pData[celly]->AddTriangle(*pFace, pPartAABB, pTriMesh);
+        bins.m_pData[cellx].m_pData[celly]->AddTriangle(*pFace, pPartAABB, pT);
         m_bHasBins = true;
     }
 }
@@ -4036,8 +4003,8 @@ char* bload(char* pszName);
 char* spawnbinarytile(char* pszArgs)
 {
     char szModel[128];
-    char szModelMdl[128];
     Vector vParsed;
+    char szModelMdl[128];
     szModel[0] = '\0';
     int nAngle = 0;
     int nUnused = 0;
@@ -4092,8 +4059,8 @@ const char* spawntile(char* pszArgs)
 
 const char* spawnbordertile(char* pszArgs)
 {
-    char szModel[128];
     Vector vParsed;
+    char szModel[128];
     szModel[0] = '\0';
     int nType = 0;
     static_cast<void>(sscanf(pszArgs, "%s %f%f%f %d", szModel, &vParsed.x, &vParsed.y, &vParsed.z, &nType));
@@ -4381,7 +4348,7 @@ Scene::~Scene()
 #else
 // K1: the static bucket array is emptied (counts only, nothing freed).
     for (int i = 0; i < 5000; i++)
-        meshbuckets[i].m_nCount = 0;
+        meshbuckets[i].m_parts.m_count = 0;
 #endif
 }
 
@@ -4413,8 +4380,8 @@ void SetPartTextureRotate(Part* pPart, int nAngle)
     if (pMesh != 0 && static_cast<MdlNodeTriMesh*>(pMesh->m_pNode)->m_bRotateTexture != 0)
         pMesh->RotateTexture(static_cast<float>(nAngle) * 90.0f);
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        SetPartTextureRotate(pPart->m_paChildren[i], nAngle);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        SetPartTextureRotate(pPart->m_aChildren.m_pData[i], nAngle);
 }
 
 void CAurScene::ComputeStaticLighting()
@@ -4481,13 +4448,13 @@ Gob* Scene::SpawnRoom(char* pszName, const Vector& vPos, const Quaternion& qOrie
     }
 
     List<Part*> parts;
+    List<PartAABB*> aabbs;
+    bool bHasAABB = false;
     CollapsePartTree(pGob, pPart, parts, vPos, qOrient, this, pRoom);
 
     pRoom->m_bboxMin = Vector(100000.0f, 100000.0f, 100000.0f);
     pRoom->m_bboxMax = Vector(-100000.0f, -100000.0f, -100000.0f);
 
-    List<PartAABB*> aabbs;
-    bool bHasAABB = false;
     for (int64_t i = 0; i < parts.m_count; i++)
     {
         PartTriMesh* pMesh    = parts.m_pData[i]->AsPartTriMesh();
@@ -4657,9 +4624,9 @@ void CollapsePartTree(Gob* pGob, Part* pPart, List<Part*>& parts, Vector vPos, Q
             }
         }
 
-        for (int64_t j = 0; j < pNode->m_nChildren; j++)
+        for (int64_t j = 0; j < pNode->m_aChildren.m_count; j++)
         {
-            Part* pChild = pNode->m_paChildren[j];
+            Part* pChild = pNode->m_aChildren.m_pData[j];
             if (pGob != 0 && _stricmp(pChild->m_pNode->TranslateNodeName(), szName) == 0)
             {
                 pFound = pChild;
@@ -4673,7 +4640,7 @@ void CollapsePartTree(Gob* pGob, Part* pPart, List<Part*>& parts, Vector vPos, Q
             }
         }
 
-        pNode->m_nChildren = 0;
+        pNode->m_aChildren.m_count = 0;
         pNode->m_pParent = 0;
         if (pNode->m_pGob != 0 && pNode->m_pGob->m_pPart == pNode)
             pNode->m_pGob->m_pPart = 0;
@@ -4683,7 +4650,7 @@ void CollapsePartTree(Gob* pGob, Part* pPart, List<Part*>& parts, Vector vPos, Q
     if (pGob != 0)
     {
         parts.Remove(pPart);
-        List<Part*>& rChildren = *reinterpret_cast<List<Part*>*>(&pPart->m_paChildren);  // raw-offset: Part's child array is a List<Part*> the destructor frees by hand
+        List<Part*>& rChildren = pPart->m_aChildren;
         rChildren.Add(pFound);
 #if KOTOR1  // K1: the collapsed root's sphere memo is stale
         pPart->GetMinimumSphere_cache_GetData()->bValid = false;
@@ -4752,7 +4719,7 @@ int Scene::SpawnRooms(char* pszName)
 
 void ComputePartBBox(PartTriMesh* pPart)
 {
-    TriMeshView* pT = reinterpret_cast<TriMeshView*>(pPart->m_pVertexPrimitive->m_pNode);
+    MdlNodeTriMesh* pT = static_cast<MdlNodeTriMesh*>(pPart->m_pVertexPrimitive->m_pNode);
 
     void* pool = GLRender::LockPool(pT->m_pTree->AsModel()->m_nPool, 0, 0, 8);
 
@@ -4913,7 +4880,7 @@ void ExpandReferenceParts(Part* pPart)
         MdlNodeReference* pRefNode = static_cast<MdlNodeReference*>(pRef->m_pNode);
         Model* pModel = FindModel(pRefNode->m_szRefModel);
 
-        List<Part*>& rChildren = *reinterpret_cast<List<Part*>*>(&pRef->m_paChildren);  // raw-offset: Part's child array is a List<Part*> the destructor frees by hand
+        List<Part*>& rChildren = pRef->m_aChildren;
         rChildren.Add(CreateInstanceTree(pModel->m_pMdlNode, 0));
 #if KOTOR1  // K1: the reference part's sphere memo is stale
         pRef->GetMinimumSphere_cache_GetData()->bValid = false;
@@ -4924,8 +4891,8 @@ void ExpandReferenceParts(Part* pPart)
         PartInitMaterial(0, pPart, szTag);
     }
 
-    for (int64_t i = 0; i < pPart->m_nChildren; i++)
-        ExpandReferenceParts(pPart->m_paChildren[i]);
+    for (int64_t i = 0; i < pPart->m_aChildren.m_count; i++)
+        ExpandReferenceParts(pPart->m_aChildren.m_pData[i]);
 }
 
 bool ProcessTilePart(TileData* pTileData, Part* pPart, char* pszName)

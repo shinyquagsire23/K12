@@ -967,13 +967,13 @@ short GetAsyncKeyState(int vk)
     SDL_Scancode s = ScancodeFromVk(vk);
     return (s != SDL_SCANCODE_UNKNOWN && k[s]) ? static_cast<short>(0x8000) : 0;
 }
-int GetKeyState(int vk)   // the engine declares int and tests bit 15
+short GetKeyState(int vk)
 {
     if (vk == 0x14) return (SDL_GetModState() & KMOD_CAPS) ? 1 : 0;   // VK_CAPITAL toggle
-    return GetAsyncKeyState(vk) ? 0x8000 : 0;
+    return GetAsyncKeyState(vk) ? static_cast<short>(0x8000) : 0;
 }
 
-int64_t GetWindowLongA(HWND__* hWnd, int nIndex) throw()
+int64_t GetWindowLongA(HWND__* hWnd, int nIndex)
 {
     K2Window* w = W(hWnd);
     if (!w) return 0;

@@ -1,6 +1,7 @@
 // ARB/NV vertex-program translation unit.
 
 #include "k2stdint.h"
+#include <string.h>
 #include "port/aslglapi.h"
 #if KOTOR1
 #define K1_AURORA_LIST  // K1 builds its own AURORA list; List.h grows from 8.

@@ -39,7 +39,7 @@ Vector Orth(const Vector& v);
 Vector Orth(const Vector& a, const Vector& b);
 
 // Population count of the low byte.
-unsigned char bitcount(unsigned char v);
+int bitcount(unsigned char v);
 
 // Answers how far the box reaches along the plane's normal, the plane equation evaluated at the
 // corner furthest along it. Positive means the box is above the plane.
@@ -130,8 +130,8 @@ bool BoxInside(const Vector& vPoint, const Vector& vMin, const Vector& vMax);
 
 // Segment c to d against the given plane, then an edge walk of the polygon testing each edge
 // against a small tolerance. Writes the plane hit to pOut and returns whether every edge passed.
-bool polyhit(const Vector* pa, int nCount, const Vector& b, const float& fRadius,
-              const Vector& c, const Vector& d, Vector* pOut);
+int polyhit(const Vector* pa, int nCount, const Vector& b, const float& fRadius,
+             const Vector& c, const Vector& d, Vector* pOut);
 
 // The same segment-versus-polygon test with the plane inferred from the polygon (a Newell fan),
 // writing the plane hit to pOut and the polygon normal to pNormal; each may be null. The return is

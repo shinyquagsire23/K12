@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "swguiingameautopause.h"
 
 #include "appmanager.h"
@@ -157,12 +158,8 @@ CSWGuiInGameAutoPause::CSWGuiInGameAutoPause(CSWGuiManager* pGuiManager)
     m_listBoxDetails.m_nScrollSound = GUISOUND_ENTERED_DEFAULT;
     InitControl(m_btnBack, CExoString("BTN_BACK"), 1);
 
-    m_aCheckbox[kCbEndRound].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbEnemySighted].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbMineSighted].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbPartyKilled].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbActionMenu].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
-    m_aCheckbox[kCbTriggers].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
+    for (int i = 0; i < 6; i++)
+        m_aCheckbox[i].AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnEnterSlot));
 
     m_aCheckbox[kCbEndRound].m_tail.m_nUserData = STRREF_DESC_PAUSE_END_OF_ROUND;
     m_aCheckbox[kCbEnemySighted].m_tail.m_nUserData = STRREF_DESC_PAUSE_ENEMY_SIGHTED;
@@ -173,8 +170,8 @@ CSWGuiInGameAutoPause::CSWGuiInGameAutoPause(CSWGuiManager* pGuiManager)
     StopLoadFromLayout();
     ScaleExtentForResolution();
 
-    m_labelDesc.Initialize(m_listBoxDetails.m_pProtoItem->m_extent,
-                           static_cast<CSWGuiLabel*>(m_listBoxDetails.m_pProtoItem), 1.0f);
+    CSWGuiLabel* pProto = static_cast<CSWGuiLabel*>(m_listBoxDetails.m_pProtoItem);
+    m_labelDesc.Initialize(pProto->m_extent, pProto, 1.0f);
     m_btnDefault.m_tail.bFocusOnHover = 0;
     m_btnDefault.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
 
@@ -188,12 +185,8 @@ CSWGuiInGameAutoPause::CSWGuiInGameAutoPause(CSWGuiManager* pGuiManager)
     m_aCheckbox[kCbPartyKilled].SetMoveToControl(0, &m_aCheckbox[kCbMineSighted]);
     m_aCheckbox[kCbMineSighted].SetMoveToControl(0, &m_aCheckbox[kCbEnemySighted]);
 
-    m_aCheckbox[kCbEndRound].AddEvent(INPUTEVENT_GUI_Y, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
-    m_aCheckbox[kCbEnemySighted].AddEvent(INPUTEVENT_GUI_Y, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
-    m_aCheckbox[kCbMineSighted].AddEvent(INPUTEVENT_GUI_Y, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
-    m_aCheckbox[kCbPartyKilled].AddEvent(INPUTEVENT_GUI_Y, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
-    m_aCheckbox[kCbActionMenu].AddEvent(INPUTEVENT_GUI_Y, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
-    m_aCheckbox[kCbTriggers].AddEvent(INPUTEVENT_GUI_Y, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
+    for (int i = 0; i < 6; i++)
+        m_aCheckbox[i].AddEvent(INPUTEVENT_GUI_Y, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiInGameAutoPause::OnDefault));
 
     IosAddButtonIcon(&m_btnDefault, 'y');
     IosAddButtonIcon(&m_btnBack, 'b');

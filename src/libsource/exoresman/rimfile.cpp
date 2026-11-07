@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "rimfile.h"
 
 #include "exobase.h"
@@ -30,7 +31,7 @@ CRIMRes::CRIMRes()
     m_nOffset = 0;
     m_nSize = 0;
     m_pData = 0;
-    __builtin_memset(m_szName, 0, sizeof(m_szName));
+    memset(static_cast<void*>(m_szName), 0, sizeof(m_szName));
     m_nType = RESTYPE_INVALID;
 }
 
@@ -51,13 +52,13 @@ int CRIMRes::Reset()
     m_nID = 0;
     m_nOffset = 0;
     m_nSize = 0;
-    __builtin_memset(m_szName, 0, sizeof(m_szName));
+    memset(static_cast<void*>(m_szName), 0, sizeof(m_szName));
     return 1;
 }
 
 void CRIMRes::SetName(CExoString& sName)
 {
-    __builtin_memset(m_szName, 0, sizeof(m_szName));
+    memset(static_cast<void*>(m_szName), 0, sizeof(m_szName));
     char* pszName = sName.CStr();
 #if KOTOR1  // K1: CExoString::GetLength is out of line, and the memcpy is fortified
     int nLength = sName.GetLength();
@@ -111,7 +112,7 @@ int CRIMRes::Write(CExoFile& file, unsigned int nEntryOffset, unsigned char bBlo
     int nAlign = (bBlockAlign != 0) ? RIM_BLOCK_ALIGN : 4;
     unsigned int nRemainder = nOffset & static_cast<unsigned int>(nAlign - 1);
     int nPad = nAlign - static_cast<int>(nRemainder);
-    if (static_cast<int>(nRemainder) > 0 && nPad > 0)
+    if (static_cast<int>(nRemainder) > 0)
     {
         for (int i = 0; i < nPad; i++)
             file.Write(&cZero, 1, 1);
@@ -138,7 +139,7 @@ int CRIMRes::Write(CExoFile& file, unsigned int nEntryOffset, unsigned char bBlo
 
 CRIMFile::CRIMFile()
 {
-    __builtin_memset(&m_header, 0, sizeof(m_header));
+    memset(static_cast<void*>(&m_header), 0, sizeof(m_header));
     m_pFile = 0;
     m_nRezCount = 0;
     m_nWriteIndex = 0;
@@ -151,33 +152,31 @@ CRIMFile::~CRIMFile()
 
 int CRIMFile::Reset()
 {
-    __builtin_memset(&m_header, 0, sizeof(m_header));
+    memset(static_cast<void*>(&m_header), 0, sizeof(m_header));
 
     // Drain the entry list, freeing each record's payload first. The name is left alone here,
     // unlike in CRIMRes::Reset, because the record is about to be deleted.
-    if (m_lResources.m_pInternal->m_pHead != 0)
+    while (m_lResources.m_pInternal->m_pHead != 0)
     {
         CRIMRes* pRes = m_lResources.RemoveHead();
-        while (true)
+        if (pRes != 0)
         {
-            if (pRes != 0)
+#if defined(__arm__)
+            delete pRes;
+#else
+            if (pRes->m_pData != 0)
             {
-                if (pRes->m_pData != 0)
-                {
-                    // Freed with scalar `operator delete`, matching the `new[]` in CRIMRes::Read.
-                    delete static_cast<unsigned char*>(pRes->m_pData);
-                    pRes->m_pData = 0;
-                }
-                pRes->m_nType = RESTYPE_INVALID;
-                pRes->m_nID = 0;
-                pRes->m_nOffset = 0;
-                pRes->m_nSize = 0;
-                // The record is released without running ~CRIMRes.
-                operator delete(pRes);
+                // Freed with scalar `operator delete`, matching the `new[]` in CRIMRes::Read.
+                delete static_cast<unsigned char*>(pRes->m_pData);
+                pRes->m_pData = 0;
             }
-            if (m_lResources.m_pInternal->m_pHead == 0)
-                break;
-            pRes = m_lResources.RemoveHead();
+            pRes->m_nType = RESTYPE_INVALID;
+            pRes->m_nID = 0;
+            pRes->m_nOffset = 0;
+            pRes->m_nSize = 0;
+            // The record is released without running ~CRIMRes.
+            operator delete(pRes);
+#endif
         }
     }
     return 1;

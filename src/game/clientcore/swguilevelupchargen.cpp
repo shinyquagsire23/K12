@@ -37,8 +37,9 @@ CSWGuiLevelUpCharGen::CSWGuiLevelUpCharGen(CSWGuiManager* pGuiManager, unsigned 
                                           CSWCCreature* pCreature)
     : CSWGuiPanel(pGuiManager)
 {
-    CSWCCreature* pOriginal = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(oidCreature);
-    m_pGuiManager = g_pAppManager->m_pClientExoApp->GetSWGuiManager();
+    CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
+    CSWCCreature* pOriginal = pApp->GetCreatureByGameObjectID(oidCreature);
+    m_pGuiManager = pApp->GetSWGuiManager();
     m_pCreature = new CSWCCreature();
     m_oid = oidCreature;
     CopyCreatureStats(pOriginal, m_pCreature);
@@ -531,13 +532,12 @@ void CSWGuiLevelUpCharGen::ClearPowers()
 #else
     pCreature->m_pStats->ClearKnownSpells();
 
-    for (unsigned char i = 0;
-         i < m_pCreature->m_pStats->GetNumberKnownSpells(0, 0); i++)
-        pCreature->m_pStats->AddKnownSpell(0, m_pCreature->m_pStats->GetKnownSpell(0, 0, i));
-
-    for (unsigned char i = 0;
-         i < m_pCreature->m_pStats->GetNumberKnownSpells(1, 0); i++)
-        pCreature->m_pStats->AddKnownSpell(1, m_pCreature->m_pStats->GetKnownSpell(1, 0, i));
+    for (int nClass = 0; nClass < 2; nClass++) {
+        for (unsigned char i = 0;
+             i < m_pCreature->m_pStats->GetNumberKnownSpells(static_cast<unsigned char>(nClass), 0); i++)
+            pCreature->m_pStats->AddKnownSpell(static_cast<unsigned char>(nClass),
+                m_pCreature->m_pStats->GetKnownSpell(static_cast<unsigned char>(nClass), 0, i));
+    }
 #endif
 }
 

@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "nwscombatround.h"
 #include "nwscreature.h"
 #include "nwscriptconst.h"
@@ -47,10 +48,10 @@ CSWSCombatRoundAction::CSWSCombatRoundAction()
 void CSWSCombatRoundAction::ClearData()
 {
     m_nActionTimer = 0;
-    m_nAnimation = 0;
     m_nAnimationTime = 0;
-    m_nNumAttacks = 0;
+    m_nAnimation = 0;
     m_nActionType = 0;
+    m_nNumAttacks = 0;
     m_oidTarget = OBJECT_INVALID;
     m_bRetargettable = 1;
     m_nInventorySlot = 0;
@@ -440,16 +441,16 @@ void CSWSCombatRound::AddReaction(int nDelay, int nAnimationTime, int nIndex) {
     if (m_bRoundStarted != 0) {
         CSWSCombatRoundAction* pAction = new CSWSCombatRoundAction();
         pAction->m_nActionType = CSWSCombatRoundAction::TYPE_REACTION;
-        pAction->m_nAnimationTime = nAnimationTime;
         pAction->m_nActionTimer = m_nTimer + nDelay;
+        pAction->m_nAnimationTime = nAnimationTime;
         AddAction(pAction, nIndex);
     }
 }
 
 void CSWSCombatRound::AddCombatStepAction(unsigned int nTimer, unsigned long long oidTarget) {
     CSWSCombatRoundAction* pAction = new CSWSCombatRoundAction();
-    pAction->m_nActionTimer = nTimer;
     pAction->m_nActionType = CSWSCombatRoundAction::TYPE_COMBAT_STEP;
+    pAction->m_nActionTimer = nTimer;
     pAction->m_nAnimationTime = 500;
     pAction->m_oidTarget = oidTarget;
     AddAction(pAction, -1);
@@ -563,12 +564,12 @@ void CSWSCombatRound::AddParryAttack(unsigned long long oid) {
 
     CSWSCombatRoundAction* pAction = new CSWSCombatRoundAction;
     pAction->m_nActionType = CSWSCombatRoundAction::TYPE_ATTACK;
-    pAction->m_nAnimation = SERVER_ANIMATION_ATTACK;
     pAction->m_nActionTimer = nTimer;
+    pAction->m_nAnimation = SERVER_ANIMATION_ATTACK;
     pAction->m_nAnimationTime = nAnimationTime;
     pAction->m_nNumAttacks = 1;
-    pAction->m_bRetargettable = 0;
     pAction->m_oidTarget = oid;
+    pAction->m_bRetargettable = 0;
 
     if (pNode != 0)
         m_pRoundActionList->AddBefore(pAction, pNode);
@@ -618,8 +619,8 @@ void CSWSCombatRound::AddAttackOfOpportunity(unsigned long long oid) {
         pAction->m_nAnimation = SERVER_ANIMATION_ATTACK;
         pAction->m_nAnimationTime = nAnimationTime;
         pAction->m_nNumAttacks = 1;
-        pAction->m_bRetargettable = 0;
         pAction->m_oidTarget = oid;
+        pAction->m_bRetargettable = 0;
 
         if (pNode != 0)
             m_pRoundActionList->AddBefore(pAction, pNode);
@@ -660,12 +661,12 @@ void CSWSCombatRound::AddUnequipAction(unsigned long long oidItem, unsigned long
     DecrementRoundLength(1500, 1);
 
     CSWSCombatRoundAction* pAction = new CSWSCombatRoundAction;
-    pAction->m_oidTargetRepository = a2;
-    pAction->m_nAnimationTime = 1500;
+    pAction->m_nActionType = CSWSCombatRoundAction::TYPE_UNEQUIP;
     pAction->m_bIsPC = 0;
     pAction->m_nActionTimer = 0;
+    pAction->m_nAnimationTime = 1500;
     pAction->m_oidTarget = oidItem;
-    pAction->m_nActionType = CSWSCombatRoundAction::TYPE_UNEQUIP;
+    pAction->m_oidTargetRepository = a2;
     pAction->m_nActionParam = nSlot;
 
     CExoLinkedListNode* pNode = m_pRoundActionList->m_pInternal->m_pHead;
@@ -678,13 +679,13 @@ void CSWSCombatRound::AddUnequipAction(unsigned long long oidItem, unsigned long
 void CSWSCombatRound::AddSWItemSpellAction(unsigned long long oidItem, int a2, int a3, Vector vTarget,
                                            unsigned long long oidTarget, int a6, int a7) {
     CSWSCombatRoundAction* pAction = new CSWSCombatRoundAction;
-    pAction->m_oidSpellTarget = oidTarget;
+    pAction->m_nActionType = CSWSCombatRoundAction::TYPE_ITEM_SPELL;
     pAction->m_bIsPC = a7;
     pAction->m_oidItem = oidItem;
     pAction->m_nActivePropertyIndex = a2;
     pAction->m_nSubPropertyIndex = a3;
     pAction->m_vTargetPosition = vTarget;
-    pAction->m_nActionType = CSWSCombatRoundAction::TYPE_ITEM_SPELL;
+    pAction->m_oidSpellTarget = oidTarget;
     pAction->m_bNoTarget = a6;
 
     if (m_pCreature->m_oidAttemptedSpellTarget == OBJECT_INVALID)
@@ -962,22 +963,15 @@ void CSWSCombatRound::AddAction(CSWSCombatRoundAction* pAction, int nIndex) {
             else
                 m_pRoundActionList->AddTail(pAction);
         }
-    } else if (pAction != 0) {
-        ::operator delete(pAction);
+    } else {
+        delete pAction;
     }
 }
 
 void CSWSCombatRound::RemoveAllActions() {
     if (m_pRoundActionList != 0) {
-        for (;;) {
-            if (m_pRoundActionList->m_pInternal->m_pHead == 0) {
-                return;
-            }
-            void* pAction = m_pRoundActionList->RemoveHead();
-            if (pAction != 0) {
-                ::operator delete(pAction);
-            }
-        }
+        while (m_pRoundActionList->GetHeadPos() != 0)
+            delete m_pRoundActionList->RemoveHead();
     }
 }
 
@@ -1038,7 +1032,10 @@ CSWSCombatRound::CSWSCombatRound(CSWSCreature* pOwner)
 }
 
 CSWSCombatRound::~CSWSCombatRound() {
-    RemoveAllActions();
+    if (m_pRoundActionList != 0) {
+        while (m_pRoundActionList->GetHeadPos() != 0)
+            delete m_pRoundActionList->RemoveHead();
+    }
     if (m_pRoundActionList) {
         delete m_pRoundActionList;
         m_pRoundActionList = 0;
@@ -1051,10 +1048,7 @@ CSWSCombatRound::~CSWSCombatRound() {
 
 int CSWSCombatRound::RemoveLastAction() {
     if (m_pRoundActionList != 0 && m_pRoundActionList->m_pInternal->m_pHead != 0) {
-        void* pAction = m_pRoundActionList->RemoveTail();
-        if (pAction != 0) {
-            ::operator delete(pAction);
-        }
+        delete m_pRoundActionList->RemoveTail();
         return 1;
     }
     return 0;
@@ -2017,8 +2011,8 @@ void CSWSCombatAttackData::AddRangedSubAttack(int nAttackIndex, unsigned char nA
     subAttack.m_nAttackResult = nAttackResult;
     subAttack.m_nReadyDelay = nDelay;
     subAttack.m_bProjectileHit = a;
-    subAttack.m_nReaxnDelay = nReaxnDelay;
     subAttack.m_vMissLocation = vMissLocation;
+    subAttack.m_nReaxnDelay = nReaxnDelay;
     subAttack.m_nDischargeHand = nProjectileType;
 
     m_subAttacks.Add(subAttack);
@@ -2028,7 +2022,7 @@ CSWSCombatSubAttack CSWSCombatAttackData::GetTopSubAttack()
 {
     CSWSCombatSubAttack subAttack;
     if (m_subAttacks.m_count > 0)
-        memcpy(static_cast<void*>(&subAttack), &m_subAttacks.m_pArray[0], sizeof(CSWSCombatSubAttack));
+        __builtin_memcpy(static_cast<void*>(&subAttack), &m_subAttacks.m_pArray[0], sizeof(CSWSCombatSubAttack));
     return subAttack;
 }
 
@@ -2041,7 +2035,7 @@ void CSWSCombatAttackData::RemoveTopSubAttack()
 void CSWSCombatAttackData::ClearSubAttacks()
 {
     while (m_subAttacks.m_count > 0)
-        RemoveTopSubAttack();
+        m_subAttacks.DelIndex(0);
 }
 
 void CSWSCombatAttackData::ResolveSubAttackToAttack(const CSWSCombatSubAttack& subAttack)

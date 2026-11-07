@@ -12,7 +12,7 @@ struct DDSHeader {
     unsigned int m_height;
     unsigned int m_nBytesPerPixel;
     unsigned int m_nDataSize;
-    unsigned int m_fAlphaTest;
+    float        m_fAlphaTest;
 };
 
 class CResDDS : public CRes {

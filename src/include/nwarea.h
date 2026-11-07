@@ -110,10 +110,7 @@ public:
 #endif
     float         m_grassDensity;
     float         m_grassQuadSize;
-    float         m_grassProbLL;
-    float         m_grassProbLR;
-    float         m_grassProbUL;
-    float         m_grassProbUR;
+    float         m_grassProb[4];  // LL, LR, UL, UR
     CResRef       m_grassTexName;
     float         m_alphaTest;
 };
@@ -121,7 +118,7 @@ public:
 K2_LAYOUT_ASSERT(sizeof(CSWArea) == 0x130, "CSWArea must be 0x130 (CSWCArea/CSWSArea base split)");
 #if KOTOR1  // K1 has no grass emissive colour, so every offset past it is 4 lower
 K2_LAYOUT_ASSERT(__builtin_offsetof(CSWArea, m_grassDensity) == 0x100, "K1 CSWArea layout");
-K2_LAYOUT_ASSERT(__builtin_offsetof(CSWArea, m_grassProbUR) == 0x114, "K1 CSWArea layout");
+K2_LAYOUT_ASSERT(__builtin_offsetof(CSWArea, m_grassProb[3]) == 0x114, "K1 CSWArea layout");
 K2_LAYOUT_ASSERT(__builtin_offsetof(CSWArea, m_grassTexName) == 0x118, "K1 CSWArea layout");
 K2_LAYOUT_ASSERT(__builtin_offsetof(CSWArea, m_alphaTest) == 0x128, "K1 CSWArea layout");
 #endif

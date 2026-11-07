@@ -46,50 +46,27 @@ void AurGrassAddInfo(int nMaterial, const CAurGrassInfo& info)
 
     CAurGrassInfo* pInfo = &g_GrassInfo.m_pData[nMaterial];
 
-#if KOTOR1
-    // K1: the two colour triples are Vector copies, ambient first.
+    // The colour triples are Vector copies, ambient first.
     pInfo->m_fDensity = info.m_fDensity;
     pInfo->m_fQuadSize = info.m_fQuadSize;
     pInfo->m_vAmbient = info.m_vAmbient;
     pInfo->m_vDiffuse = info.m_vDiffuse;
-#else
-    pInfo->m_fDensity = info.m_fDensity;
-    pInfo->m_fQuadSize = info.m_fQuadSize;
-    pInfo->m_vDiffuse.x = info.m_vDiffuse.x;
-    pInfo->m_vDiffuse.y = info.m_vDiffuse.y;
-    pInfo->m_vDiffuse.z = info.m_vDiffuse.z;
-    pInfo->m_vAmbient.x = info.m_vAmbient.x;
-    pInfo->m_vAmbient.y = info.m_vAmbient.y;
-    pInfo->m_vAmbient.z = info.m_vAmbient.z;
-    pInfo->m_vEmissive.x = info.m_vEmissive.x;
-    pInfo->m_vEmissive.y = info.m_vEmissive.y;
-    pInfo->m_vEmissive.z = info.m_vEmissive.z;
+#if !KOTOR1  // K1 has no emissive triple
+    pInfo->m_vEmissive = info.m_vEmissive;
 #endif
-
-    pInfo->m_fProbLL = info.m_fProbLL;
-    pInfo->m_fProbLR = info.m_fProbLR;
-    pInfo->m_fProbUL = info.m_fProbUL;
-    pInfo->m_fProbUR = info.m_fProbUR;
 
     float fSum = 0.0f;
-    fSum += pInfo->m_fProbLL;
-    fSum += pInfo->m_fProbLR;
-    fSum += pInfo->m_fProbUL;
-    fSum += pInfo->m_fProbUR;
+    for (int i = 0; i < 4; i++) {
+        pInfo->m_fProb[i] = info.m_fProb[i];
+        fSum += pInfo->m_fProb[i];
+    }
     if (fSum != 1.0f) {
-        pInfo->m_fProbLL /= fSum;
-        pInfo->m_fProbLR /= fSum;
-        pInfo->m_fProbUL /= fSum;
-        pInfo->m_fProbUR /= fSum;
+        for (int i = 0; i < 4; i++)
+            pInfo->m_fProb[i] /= fSum;
     }
 
-#if KOTOR1
     __strcpy_chk(g_GrassInfo.m_pData[nMaterial].m_sName, info.m_sName, sizeof(pInfo->m_sName));
     g_GrassInfo.m_pData[nMaterial].m_bInUse = 1;
-#else
-    __strcpy_chk(pInfo->m_sName, info.m_sName, sizeof(pInfo->m_sName));
-    pInfo->m_bInUse = 1;
-#endif
 }
 
 CAurGrassInfo::CAurGrassInfo()
@@ -101,7 +78,8 @@ CAurGrassInfo::CAurGrassInfo()
 #else
     __builtin_memset(&m_fDensity, 0, 11 * sizeof(float));
 #endif
-    m_fProbLL = m_fProbLR = m_fProbUL = m_fProbUR = 0.25f;
+    for (int i = 0; i < 4; i++)
+        m_fProb[i] = 0.25f;
 }
 
 void AurGrassReadData(char* pszName)
@@ -172,28 +150,28 @@ void AurGrassReadData(char* pszName)
 
 CAurTriangleBin::CAurTriangleBin()
 {
-    m_nFlags = 0;
-    __builtin_memset(&m_vMin, 0, sizeof(m_vMin) * 3 + 12 + sizeof(int));
-    __builtin_memset(&m_nX48, 0, sizeof(m_nX48) + sizeof(m_nVertexBytes));
-    __builtin_memset(static_cast<void*>(&m_elements), 0, sizeof(*this) - offsetof(CAurTriangleBin, m_elements));
-    m_nMaterial = -1;
     m_nTotalTriangles = 0;
+    m_nFlags = 0;
+    m_pTexture = 0;
+    m_pGrassVerts = 0;
+    m_pGrassCursor = 0;
+    m_nMaterial = -1;
+    m_nX48 = 0;
+    m_nVertexBytes = 0;
 }
 
 CAurTriangleBin::CAurTriangleBin(const Vector& vMin, const Vector& vMax)
 {
-    m_nFlags = 0;
     m_nTotalTriangles = 0;
-    __builtin_memset(&m_vMin, 0, sizeof(Vector) * 3 - sizeof(float));
-    __builtin_memset(&m_vCenter.z, 0, sizeof(float));
-    __builtin_memset(&m_pGrassVerts, 0, sizeof(void*) * 2);
-    m_nX48 = 0;
-    m_nVertexBytes = 0;
-    __builtin_memset(static_cast<void*>(&m_elements), 0, sizeof(*this) - offsetof(CAurTriangleBin, m_elements));
-    m_pTexture = 0;
+    m_nFlags = 0;
     m_vMin = vMin;
     m_vMax = vMax;
+    m_pGrassVerts = 0;
+    m_pGrassCursor = 0;
+    m_pTexture = 0;
     m_nMaterial = -1;
+    m_nX48 = 0;
+    m_nVertexBytes = 0;
 }
 
 void CAurTriangleBin::FinishGeometry()
@@ -257,11 +235,7 @@ void CAurTriangleBin::SortTriangles()
 {
     if (m_elements.m_count == 1) {
         m_texCounts.Add(m_elements.m_pData[0].m_nGrassCount);
-#if KOTOR1
         m_textureRefs.Add(SafePointer<CAurTexture>(m_elements.m_pData[0].m_pPartMesh->m_pMaterial->m_spr1));
-#else
-        m_textureRefs.Add(SafePointer<CAurTexture>(m_elements.m_pData[0].m_pPartMesh->m_pMaterial->m_spr1.m_pObject));
-#endif
         return;
     }
 
@@ -272,11 +246,7 @@ void CAurTriangleBin::SortTriangles()
     int nCount = 0;
     while (i + 1 < sortedElems.m_count) {
         if (sortedElems.m_pData[i].m_pPartMesh != sortedElems.m_pData[i + 1].m_pPartMesh) {
-#if KOTOR1
             m_textureRefs.Add(SafePointer<CAurTexture>(m_elements.m_pData[i].m_pPartMesh->m_pMaterial->m_spr1));
-#else
-            m_textureRefs.Add(SafePointer<CAurTexture>(m_elements.m_pData[i].m_pPartMesh->m_pMaterial->m_spr1.m_pObject));
-#endif
             m_texCounts.Add(nCount + sortedElems.m_pData[i].m_nGrassCount);
             nCount = 0;
         } else {
@@ -287,11 +257,7 @@ void CAurTriangleBin::SortTriangles()
 
     if (sortedElems.m_pData[i].m_pPartMesh != sortedElems.m_pData[i - 1].m_pPartMesh)
         nCount = 0;
-#if KOTOR1
     m_textureRefs.Add(SafePointer<CAurTexture>(m_elements.m_pData[i].m_pPartMesh->m_pMaterial->m_spr1));
-#else
-    m_textureRefs.Add(SafePointer<CAurTexture>(m_elements.m_pData[i].m_pPartMesh->m_pMaterial->m_spr1.m_pObject));
-#endif
     m_texCounts.Add(nCount + sortedElems.m_pData[i].m_nGrassCount);
 }
 
@@ -300,13 +266,11 @@ int GrassSortTris(const void* pA, const void* pB)
     CAurTriangleListElem* elemA = static_cast<CAurTriangleListElem*>(const_cast<void*>(pA));
     CAurTriangleListElem* elemB = static_cast<CAurTriangleListElem*>(const_cast<void*>(pB));
 
-    List<float> vA(elemA->m_vertexList);
-    PartTriMesh* pMeshA = elemA->m_pPartMesh;
-    List<float> vB(elemB->m_vertexList);
-    PartTriMesh* pMeshB = elemB->m_pPartMesh;
+    CAurTriangleListElem a(*elemA);
+    CAurTriangleListElem b(*elemB);
 
-    if (pMeshA < pMeshB) return -1;
-    if (pMeshA > pMeshB) return 1;
+    if (a.m_pPartMesh < b.m_pPartMesh) return -1;
+    if (a.m_pPartMesh > b.m_pPartMesh) return 1;
     return 0;
 }
 
@@ -697,54 +661,47 @@ void CAurTriangleBin::UpdateGrassForWind(WindManager* pWind)
     float fWindScale = magnitude(pWind->m_vWind);
     fWindScale = (fWindScale > 5.0f) ? 5.0f / fWindScale : 1.0f;
 
-    if (m_nTotalTriangles > 0)
+    float fSpring = fDelta * g_GrassInfo.m_pData[m_nMaterial].m_fQuadSize * grassstiffness;
+
+    int nPos = 0;
+    int64_t n = 0;
+    while (n < m_nTotalTriangles)
     {
-        float fSpring = fDelta * g_GrassInfo.m_pData[m_nMaterial].m_fQuadSize * grassstiffness;
+        Vector vA = reinterpret_cast<Vector*>(m_pGrassCursor)[nPos];
+        Vector vB = reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 1];
 
-        int nPos = 0;
-        int64_t n = 0;
-        while (n < m_nTotalTriangles)
+        vMiddle.x = (vA.x + vB.x) * 0.5f;
+        vMiddle.y = (vA.y + vB.y) * 0.5f;
+        vMiddle.z = vA.z;
+
+        vWind = pWind->GetGlobalWindNoPoint(vMiddle, 1.0f) * fWindScale;
+        vPoint = pWind->GetGlobalPointWind(vMiddle, fDelta);
+
+        Vector vC = reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3];
+
+        vSpringDist.x = vA.x - vC.x;
+        vSpringDist.y = vA.y - vC.y;
+        vSpringDist.z = 0.0f;
+
+        vForceDirection.x = vWind.x + vSpringDist.x + vPoint.x;
+        vForceDirection.y = vWind.y + vSpringDist.y + vPoint.y;
+        vForceDirection.z = vWind.z + vSpringDist.z + vPoint.z;
+
+        if (!vForceDirection.IsZero())
         {
-            Vector vA = reinterpret_cast<Vector*>(m_pGrassCursor)[nPos];
-            Vector vB = reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 1];
+            float fNewX = vC.x + fSpring * vForceDirection.x;
+            float fNewY = vC.y + fSpring * vForceDirection.y;
 
-            vMiddle.x = (vA.x + vB.x) * 0.5f;
-            vMiddle.y = (vA.y + vB.y) * 0.5f;
-            vMiddle.z = vA.z;
-
-            vWind = pWind->GetGlobalWindNoPoint(vMiddle, 1.0f) * fWindScale;
-            vPoint = pWind->GetGlobalPointWind(vMiddle, fDelta);
-
-            Vector vC = reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3];
-
-            vSpringDist.x = vA.x - vC.x;
-            vSpringDist.y = vA.y - vC.y;
-            vSpringDist.z = 0.0f;
-
-            vForceDirection.x = vWind.x + vSpringDist.x + vPoint.x;
-            vForceDirection.y = vWind.y + vSpringDist.y + vPoint.y;
-            vForceDirection.z = vWind.z + vSpringDist.z + vPoint.z;
-
-            if (!vForceDirection.IsZero())
-            {
-                float fNewX = vC.x + fSpring * vForceDirection.x;
-                float fNewY = vC.y + fSpring * vForceDirection.y;
-
-                reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3].x = fNewX;
-                reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3].y = fNewY;
-                reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 2].x = vB.x + (fNewX - vA.x);
-                reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 2].y = vB.y + (fNewY - vA.y);
-            }
-
-            nPos += 4;
-            n++;
+            reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3].x = fNewX;
+            reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3].y = fNewY;
+            reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 2].x = vB.x + (fNewX - vA.x);
+            reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 2].y = vB.y + (fNewY - vA.y);
         }
+
+        nPos += 4;
+        n++;
     }
 }
-
-// Explicit instantiation, so SafePointerList<CAurTexture>'s members are emitted in this unit.
-
-template class SafePointerList<CAurTexture>;
 
 
 extern int quaternionidentityoptimization;
@@ -756,11 +713,10 @@ extern Vector VectorMin(Vector a, Vector b);
 extern Vector VectorMax(Vector a, Vector b);
 
 // Rotate v into world space by q, with the identity-quaternion fast path.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -798,11 +754,11 @@ void CAurTriangleBin::AddTriangle(const MaxFace& face, PartTriMesh* pMesh, MdlNo
     }
 
     // Per-scalar staging: the three components are copied independently.
-    float* pf0 = &pv[face.m_nVIndex[0] * 3];
+    float* pf0 = &pv[static_cast<short>(face.m_anVertIndices[0]) * 3];
     v0.x = pf0[0]; v0.y = pf0[1]; v0.z = pf0[2];
-    float* pf1 = &pv[face.m_nVIndex[1] * 3];
+    float* pf1 = &pv[static_cast<short>(face.m_anVertIndices[1]) * 3];
     v1.x = pf1[0]; v1.y = pf1[1]; v1.z = pf1[2];
-    float* pf2 = &pv[face.m_nVIndex[2] * 3];
+    float* pf2 = &pv[static_cast<short>(face.m_anVertIndices[2]) * 3];
     v2.x = pf2[0]; v2.y = pf2[1]; v2.z = pf2[2];
 
     Vector vTranslation;
@@ -889,204 +845,203 @@ void CAurTriangleBin::CreateArrays()
         SortTriangles();
     m_nFlags |= kGrassArrays;
 
-    if (m_elements.m_count > 0) {
-        float* pF = reinterpret_cast<float*>(m_pGrassVerts);
-        int iAttr = nVerts * 3 - 1;   // the last float written by the previous attribute record
-        int nPos = 0;                  // in Vector units; 4 per blade
+    int nElements = m_elements.m_count;
+    float* pF = reinterpret_cast<float*>(m_pGrassVerts);
+    int iAttr = nVerts * 3 - 1;   // the last float written by the previous attribute record
+    int nPos = 0;                  // in Vector units; 4 per blade
 
-        for (int i = 0; i < m_elements.m_count; i++) {
-            static Vector v0, v1, v2;
-            CAurTriangleListElem& elem = m_elements.m_pData[i];
-            Vector* pTri = reinterpret_cast<Vector*>(elem.m_vertexList.m_pData);
-            v0 = pTri[0];
-            v1 = pTri[1];
-            v2 = pTri[2];
+    for (int i = 0; i < nElements; i++) {
+        static Vector v0, v1, v2;
+        CAurTriangleListElem& elem = m_elements.m_pData[i];
+        Vector* pTri = reinterpret_cast<Vector*>(elem.m_vertexList.m_pData);
+        v0 = pTri[0];
+        v1 = pTri[1];
+        v2 = pTri[2];
 
-            int nCount = elem.m_nGrassCount;
-            if (nCount == 0)
-                continue;
+        int nCount = elem.m_nGrassCount;
+        if (nCount == 0)
+            continue;
 
-            srand_wincompatible(static_cast<int>(v0.x + v1.y + v2.z));
-            float fWidth = g_GrassInfo.m_pData[m_nMaterial].m_fQuadSize;
-            MaxFace* pFace = elem.m_pMaxFace;
-            MdlNodeTriMesh* pTriMesh = elem.m_pPartMesh->m_pNode->AsMdlNodeTriMesh();
-            if (nCount <= 0)
-                continue;
+        srand_wincompatible(static_cast<int>(v0.x + v1.y + v2.z));
+        float fWidth = g_GrassInfo.m_pData[m_nMaterial].m_fQuadSize;
+        MaxFace* pFace = elem.m_pMaxFace;
+        MdlNodeTriMesh* pTriMesh = elem.m_pPartMesh->m_pNode->AsMdlNodeTriMesh();
+        if (nCount <= 0)
+            continue;
 
-            float fHalf = fWidth * 0.5f;
-            float fNegHalf = fWidth * -0.5f;
+        float fHalf = fWidth * 0.5f;
+        float fNegHalf = fWidth * -0.5f;
 
-            for (int j = 0; j < nCount; j++) {
-                // m_nTotalTriangles is the sum of the elements' grass counts; the stride is the
-                // record written below
-                K2_ASSUME((nPos + 4) * static_cast<int>(sizeof(Vector)) <= nBytes);
-                K2_ASSUME((iAttr + 1) * 4 + 4 * (m_nVertexStride - 12) <= nBytes);
-                float fR0 = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
-                float fR1 = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
-                float fR2 = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
-                float fSum = fR0 + fR1 + fR2;
-                if (fSum != 0.0f) {
-                    fSum = 1.0f / fSum;
-                    fR0 *= fSum;
-                    fR1 *= fSum;
-                    fR2 *= fSum;
-                }
+        for (int j = 0; j < nCount; j++) {
+            // m_nTotalTriangles is the sum of the elements' grass counts; the stride is the
+            // record written below
+            K2_ASSUME((nPos + 4) * static_cast<int>(sizeof(Vector)) <= nBytes);
+            K2_ASSUME((iAttr + 1) * 4 + 4 * (m_nVertexStride - 12) <= nBytes);
+            float fR0 = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
+            float fR1 = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
+            float fR2 = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
+            float fSum = fR0 + fR1 + fR2;
+            if (fSum != 0.0f) {
+                fSum = 1.0f / fSum;
+                fR0 *= fSum;
+                fR1 *= fSum;
+                fR2 *= fSum;
+            }
 
-                float fLmU = 0.0f;
-                float fLmV = 0.0f;
-                unsigned int nC0 = 0;
-                unsigned int nC1 = 0;
-                unsigned int nC2 = 0;
-                unsigned int nC3 = 0;
+            float fLmU = 0.0f;
+            float fLmV = 0.0f;
+            unsigned int nC0 = 0;
+            unsigned int nC1 = 0;
+            unsigned int nC2 = 0;
+            unsigned int nC3 = 0;
 
-                if (m_nFlags & kGrassLightmapped) {
-                    // Per-vertex lightmap uv pair, blended with the barycentric weights.
-                    Model* pModel = pTriMesh->m_pTree->AsModel();
-                    char* pPool = static_cast<char*>(GLRender::LockPool(pModel->m_nPool, 0, 0, 8))
-                                  + pTriMesh->m_nTex1Ofs + pTriMesh->m_nGeomBase;
-                    int nStride = pTriMesh->m_nVertexStride;
-                    float* pU0 = reinterpret_cast<float*>(pPool + nStride * pFace->m_nVIndex[0]);
-                    float* pU1 = reinterpret_cast<float*>(pPool + nStride * pFace->m_nVIndex[1]);
-                    float* pU2 = reinterpret_cast<float*>(pPool + nStride * pFace->m_nVIndex[2]);
-                    fLmU = pU0[0] * fR0 + pU1[0] * fR1 + pU2[0] * fR2;
-                    fLmV = pU0[1] * fR0 + pU1[1] * fR1 + pU2[1] * fR2;
-                    pModel = pTriMesh->m_pTree->AsModel();
-                    GLRender::UnlockPool(pModel->m_nPool);
-                } else if (m_nFlags & kGrassVertexColors) {
-                    // One packed colour dword per vertex, blended and clamped per channel.
-                    int nColorPool = elem.m_pPartMesh->m_nColorPool;
-                    unsigned int* pPool = static_cast<unsigned int*>(GLRender::LockPool(nColorPool, 0, 0, 8));
-                    unsigned int c0 = pPool[pFace->m_nVIndex[0]];
-                    unsigned int c1 = pPool[pFace->m_nVIndex[1]];
-                    unsigned int c2 = pPool[pFace->m_nVIndex[2]];
-                    float fC0 = fmaxf(fminf(static_cast<float>(c0 & 0xff) * fR0 +
-                                            static_cast<float>(c1 & 0xff) * fR1 +
-                                            static_cast<float>(c2 & 0xff) * fR2, 255.0f), 0.0f);
-                    float fC1 = fmaxf(fminf(static_cast<float>((c0 >> 8) & 0xff) * fR0 +
-                                            static_cast<float>((c1 >> 8) & 0xff) * fR1 +
-                                            static_cast<float>((c2 >> 8) & 0xff) * fR2, 255.0f), 0.0f);
-                    float fC2 = fmaxf(fminf(static_cast<float>((c0 >> 16) & 0xff) * fR0 +
-                                            static_cast<float>((c1 >> 16) & 0xff) * fR1 +
-                                            static_cast<float>((c2 >> 16) & 0xff) * fR2, 255.0f), 0.0f);
-                    float fC3 = fmaxf(fminf(static_cast<float>(c0 >> 24) * fR0 +
-                                            static_cast<float>(c1 >> 24) * fR1 +
-                                            static_cast<float>(c2 >> 24) * fR2, 255.0f), 0.0f);
-                    nC0 = static_cast<unsigned int>(fC0);
-                    nC1 = static_cast<unsigned int>(fC1);
-                    nC2 = static_cast<unsigned int>(fC2);
-                    nC3 = static_cast<unsigned int>(fC3);
-                    GLRender::UnlockPool(nColorPool);
-                }
+            if (m_nFlags & kGrassLightmapped) {
+                // Per-vertex lightmap uv pair, blended with the barycentric weights.
+                Model* pModel = pTriMesh->m_pTree->AsModel();
+                char* pPool = static_cast<char*>(GLRender::LockPool(pModel->m_nPool, 0, 0, 8))
+                              + pTriMesh->m_nTex1Ofs + pTriMesh->m_nGeomBase;
+                int nStride = pTriMesh->m_nVertexStride;
+                float* pU0 = reinterpret_cast<float*>(pPool + nStride * static_cast<short>(pFace->m_anVertIndices[0]));
+                float* pU1 = reinterpret_cast<float*>(pPool + nStride * static_cast<short>(pFace->m_anVertIndices[1]));
+                float* pU2 = reinterpret_cast<float*>(pPool + nStride * static_cast<short>(pFace->m_anVertIndices[2]));
+                fLmU = pU0[0] * fR0 + pU1[0] * fR1 + pU2[0] * fR2;
+                fLmV = pU0[1] * fR0 + pU1[1] * fR1 + pU2[1] * fR2;
+                pModel = pTriMesh->m_pTree->AsModel();
+                GLRender::UnlockPool(pModel->m_nPool);
+            } else if (m_nFlags & kGrassVertexColors) {
+                // One packed colour dword per vertex, blended and clamped per channel.
+                int nColorPool = elem.m_pPartMesh->m_nColorPool;
+                unsigned int* pPool = static_cast<unsigned int*>(GLRender::LockPool(nColorPool, 0, 0, 8));
+                unsigned int c0 = pPool[static_cast<short>(pFace->m_anVertIndices[0])];
+                unsigned int c1 = pPool[static_cast<short>(pFace->m_anVertIndices[1])];
+                unsigned int c2 = pPool[static_cast<short>(pFace->m_anVertIndices[2])];
+                float fC0 = fmaxf(fminf(static_cast<float>(c0 & 0xff) * fR0 +
+                                        static_cast<float>(c1 & 0xff) * fR1 +
+                                        static_cast<float>(c2 & 0xff) * fR2, 255.0f), 0.0f);
+                float fC1 = fmaxf(fminf(static_cast<float>((c0 >> 8) & 0xff) * fR0 +
+                                        static_cast<float>((c1 >> 8) & 0xff) * fR1 +
+                                        static_cast<float>((c2 >> 8) & 0xff) * fR2, 255.0f), 0.0f);
+                float fC2 = fmaxf(fminf(static_cast<float>((c0 >> 16) & 0xff) * fR0 +
+                                        static_cast<float>((c1 >> 16) & 0xff) * fR1 +
+                                        static_cast<float>((c2 >> 16) & 0xff) * fR2, 255.0f), 0.0f);
+                float fC3 = fmaxf(fminf(static_cast<float>(c0 >> 24) * fR0 +
+                                        static_cast<float>(c1 >> 24) * fR1 +
+                                        static_cast<float>(c2 >> 24) * fR2, 255.0f), 0.0f);
+                nC0 = static_cast<unsigned int>(fC0);
+                nC1 = static_cast<unsigned int>(fC1);
+                nC2 = static_cast<unsigned int>(fC2);
+                nC3 = static_cast<unsigned int>(fC3);
+                GLRender::UnlockPool(nColorPool);
+            }
 
-                Vector vBase = v0 * fR0 + v1 * fR1 + v2 * fR2;
-                Quaternion q(Vector(0.0f, 0.0f, 1.0f),
-                             static_cast<float>(rand_wincompatible() % 10000) / 10000.0f * 2.0f * 3.1415927f);
+            Vector vBase = v0 * fR0 + v1 * fR1 + v2 * fR2;
+            Quaternion q(Vector(0.0f, 0.0f, 1.0f),
+                         static_cast<float>(rand_wincompatible() % 10000) / 10000.0f * 2.0f * 3.1415927f);
 
-                // Four cumulative style thresholds pick one 0.5-step uv octant.
-                float fStyle = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
-                const CAurGrassInfo& gi = g_GrassInfo.m_pData[m_nMaterial];
-                int nStyle;
-                if (fStyle < gi.m_fProbLL) {
-                    nStyle = 0;
+            // Four cumulative style thresholds pick one 0.5-step uv octant.
+            float fStyle = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
+            const CAurGrassInfo& gi = g_GrassInfo.m_pData[m_nMaterial];
+            int nStyle;
+            if (fStyle < gi.m_fProb[0]) {
+                nStyle = 0;
+            } else {
+                fStyle -= gi.m_fProb[0];
+                if (fStyle < gi.m_fProb[1]) {
+                    nStyle = 1;
                 } else {
-                    fStyle -= gi.m_fProbLL;
-                    if (fStyle < gi.m_fProbLR) {
-                        nStyle = 1;
+                    fStyle -= gi.m_fProb[1];
+                    if (fStyle < gi.m_fProb[2]) {
+                        nStyle = 2;
                     } else {
-                        fStyle -= gi.m_fProbLR;
-                        if (fStyle < gi.m_fProbUL) {
-                            nStyle = 2;
-                        } else {
-                            fStyle -= gi.m_fProbUL;
-                            if (fStyle < gi.m_fProbUR)
-                                nStyle = 3;
-                            else
-                                nStyle = 0;
-                        }
+                        fStyle -= gi.m_fProb[2];
+                        if (fStyle < gi.m_fProb[3])
+                            nStyle = 3;
+                        else
+                            nStyle = 0;
                     }
                 }
-                fR0 = (nStyle & 1) ? 0.5f : 0.0f;
-                fR1 = (nStyle & 2) ? 0.5f : 0.0f;
-                float fScale = (static_cast<float>(rand_wincompatible() % 10000) / 10000.0f - 0.5f) * 0.4f + 1.0f;
-
-                // Corner 0: bottom-left.
-                reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 0] =
-                    vBase + RotateVector(Vector(fNegHalf, 0.0f, 0.0f), q);
-                *reinterpret_cast<int*>(&pF[iAttr + 1]) = pFace->m_nNormal[0];
-                *reinterpret_cast<int*>(&pF[iAttr + 2]) = pFace->m_nNormal[1];
-                *reinterpret_cast<int*>(&pF[iAttr + 3]) = pFace->m_nNormal[2];
-                pF[iAttr + 4] = fR0;
-                pF[iAttr + 5] = fR1;
-                iAttr += 5;
-                if (m_nFlags & kGrassLightmapped) {
-                    pF[iAttr + 1] = fLmU;
-                    pF[iAttr + 2] = fLmV;
-                    iAttr += 2;
-                } else if (m_nFlags & kGrassVertexColors) {
-                    pF[iAttr + 1] = static_cast<float>(static_cast<unsigned int>((nC0 & 0xff) | ((nC1 & 0xff) << 8) |
-                                                          ((nC2 & 0xff) << 16) | (nC3 << 24)));
-                    iAttr += 1;
-                }
-
-                // Corner 1: bottom-right.
-                reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 1] =
-                    vBase + RotateVector(Vector(fHalf, 0.0f, 0.0f), q);
-                *reinterpret_cast<int*>(&pF[iAttr + 1]) = pFace->m_nNormal[0];
-                *reinterpret_cast<int*>(&pF[iAttr + 2]) = pFace->m_nNormal[1];
-                *reinterpret_cast<int*>(&pF[iAttr + 3]) = pFace->m_nNormal[2];
-                pF[iAttr + 4] = fR0 + 0.5f;
-                pF[iAttr + 5] = fR1;
-                iAttr += 5;
-                if (m_nFlags & kGrassLightmapped) {
-                    pF[iAttr + 1] = fLmU;
-                    pF[iAttr + 2] = fLmV;
-                    iAttr += 2;
-                } else if (m_nFlags & kGrassVertexColors) {
-                    pF[iAttr + 1] = static_cast<float>(static_cast<unsigned int>((nC0 & 0xff) | ((nC1 & 0xff) << 8) |
-                                                          ((nC2 & 0xff) << 16) | (nC3 << 24)));
-                    iAttr += 1;
-                }
-
-                // Corner 2: top-right, scaled by the random blade height.
-                reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 2] =
-                    vBase + RotateVector(Vector(fHalf, 0.0f, fWidth), q) * fScale;
-                *reinterpret_cast<int*>(&pF[iAttr + 1]) = pFace->m_nNormal[0];
-                *reinterpret_cast<int*>(&pF[iAttr + 2]) = pFace->m_nNormal[1];
-                *reinterpret_cast<int*>(&pF[iAttr + 3]) = pFace->m_nNormal[2];
-                pF[iAttr + 4] = fR0 + 0.5f;
-                pF[iAttr + 5] = fR1 + 0.5f;
-                iAttr += 5;
-                if (m_nFlags & kGrassLightmapped) {
-                    pF[iAttr + 1] = fLmU;
-                    pF[iAttr + 2] = fLmV;
-                    iAttr += 2;
-                } else if (m_nFlags & kGrassVertexColors) {
-                    pF[iAttr + 1] = static_cast<float>(static_cast<unsigned int>((nC0 & 0xff) | ((nC1 & 0xff) << 8) |
-                                                          ((nC2 & 0xff) << 16) | (nC3 << 24)));
-                    iAttr += 1;
-                }
-
-                // Corner 3: top-left, scaled by the random blade height.
-                reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3] =
-                    vBase + RotateVector(Vector(fNegHalf, 0.0f, fWidth), q) * fScale;
-                *reinterpret_cast<int*>(&pF[iAttr + 1]) = pFace->m_nNormal[0];
-                *reinterpret_cast<int*>(&pF[iAttr + 2]) = pFace->m_nNormal[1];
-                *reinterpret_cast<int*>(&pF[iAttr + 3]) = pFace->m_nNormal[2];
-                pF[iAttr + 4] = fR0;
-                pF[iAttr + 5] = fR1 + 0.5f;
-                iAttr += 5;
-                if (m_nFlags & kGrassLightmapped) {
-                    pF[iAttr + 1] = fLmU;
-                    pF[iAttr + 2] = fLmV;
-                    iAttr += 2;
-                } else if (m_nFlags & kGrassVertexColors) {
-                    pF[iAttr + 1] = static_cast<float>(static_cast<unsigned int>((nC0 & 0xff) | ((nC1 & 0xff) << 8) |
-                                                          ((nC2 & 0xff) << 16) | (nC3 << 24)));
-                    iAttr += 1;
-                }
-
-                nPos += 4;
             }
+            fR0 = (nStyle & 1) ? 0.5f : 0.0f;
+            fR1 = (nStyle & 2) ? 0.5f : 0.0f;
+            float fScale = (static_cast<float>(rand_wincompatible() % 10000) / 10000.0f - 0.5f) * 0.4f + 1.0f;
+
+            // Corner 0: bottom-left.
+            reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 0] =
+                vBase + RotateVector(Vector(fNegHalf, 0.0f, 0.0f), q);
+            *reinterpret_cast<int*>(&pF[iAttr + 1]) = pFace->m_nNormal[0];
+            *reinterpret_cast<int*>(&pF[iAttr + 2]) = pFace->m_nNormal[1];
+            *reinterpret_cast<int*>(&pF[iAttr + 3]) = pFace->m_nNormal[2];
+            pF[iAttr + 4] = fR0;
+            pF[iAttr + 5] = fR1;
+            iAttr += 5;
+            if (m_nFlags & kGrassLightmapped) {
+                pF[iAttr + 1] = fLmU;
+                pF[iAttr + 2] = fLmV;
+                iAttr += 2;
+            } else if (m_nFlags & kGrassVertexColors) {
+                pF[iAttr + 1] = static_cast<float>(static_cast<unsigned int>((nC0 & 0xff) | ((nC1 & 0xff) << 8) |
+                                                      ((nC2 & 0xff) << 16) | (nC3 << 24)));
+                iAttr += 1;
+            }
+
+            // Corner 1: bottom-right.
+            reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 1] =
+                vBase + RotateVector(Vector(fHalf, 0.0f, 0.0f), q);
+            *reinterpret_cast<int*>(&pF[iAttr + 1]) = pFace->m_nNormal[0];
+            *reinterpret_cast<int*>(&pF[iAttr + 2]) = pFace->m_nNormal[1];
+            *reinterpret_cast<int*>(&pF[iAttr + 3]) = pFace->m_nNormal[2];
+            pF[iAttr + 4] = fR0 + 0.5f;
+            pF[iAttr + 5] = fR1;
+            iAttr += 5;
+            if (m_nFlags & kGrassLightmapped) {
+                pF[iAttr + 1] = fLmU;
+                pF[iAttr + 2] = fLmV;
+                iAttr += 2;
+            } else if (m_nFlags & kGrassVertexColors) {
+                pF[iAttr + 1] = static_cast<float>(static_cast<unsigned int>((nC0 & 0xff) | ((nC1 & 0xff) << 8) |
+                                                      ((nC2 & 0xff) << 16) | (nC3 << 24)));
+                iAttr += 1;
+            }
+
+            // Corner 2: top-right, scaled by the random blade height.
+            reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 2] =
+                vBase + RotateVector(Vector(fHalf, 0.0f, fWidth), q) * fScale;
+            *reinterpret_cast<int*>(&pF[iAttr + 1]) = pFace->m_nNormal[0];
+            *reinterpret_cast<int*>(&pF[iAttr + 2]) = pFace->m_nNormal[1];
+            *reinterpret_cast<int*>(&pF[iAttr + 3]) = pFace->m_nNormal[2];
+            pF[iAttr + 4] = fR0 + 0.5f;
+            pF[iAttr + 5] = fR1 + 0.5f;
+            iAttr += 5;
+            if (m_nFlags & kGrassLightmapped) {
+                pF[iAttr + 1] = fLmU;
+                pF[iAttr + 2] = fLmV;
+                iAttr += 2;
+            } else if (m_nFlags & kGrassVertexColors) {
+                pF[iAttr + 1] = static_cast<float>(static_cast<unsigned int>((nC0 & 0xff) | ((nC1 & 0xff) << 8) |
+                                                      ((nC2 & 0xff) << 16) | (nC3 << 24)));
+                iAttr += 1;
+            }
+
+            // Corner 3: top-left, scaled by the random blade height.
+            reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3] =
+                vBase + RotateVector(Vector(fNegHalf, 0.0f, fWidth), q) * fScale;
+            *reinterpret_cast<int*>(&pF[iAttr + 1]) = pFace->m_nNormal[0];
+            *reinterpret_cast<int*>(&pF[iAttr + 2]) = pFace->m_nNormal[1];
+            *reinterpret_cast<int*>(&pF[iAttr + 3]) = pFace->m_nNormal[2];
+            pF[iAttr + 4] = fR0;
+            pF[iAttr + 5] = fR1 + 0.5f;
+            iAttr += 5;
+            if (m_nFlags & kGrassLightmapped) {
+                pF[iAttr + 1] = fLmU;
+                pF[iAttr + 2] = fLmV;
+                iAttr += 2;
+            } else if (m_nFlags & kGrassVertexColors) {
+                pF[iAttr + 1] = static_cast<float>(static_cast<unsigned int>((nC0 & 0xff) | ((nC1 & 0xff) << 8) |
+                                                      ((nC2 & 0xff) << 16) | (nC3 << 24)));
+                iAttr += 1;
+            }
+
+            nPos += 4;
         }
     }
 
@@ -1137,9 +1092,9 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
         char* pPool = static_cast<char*>(GLRender::LockPool(pModel->m_nPool, 0, 0, 8))
                       + pTriMesh->m_nTex1Ofs + pTriMesh->m_nGeomBase;
         int nStride = pTriMesh->m_nVertexStride;
-        float* pU0 = reinterpret_cast<float*>(pPool + nStride * pFace->m_nVIndex[0]);
-        float* pU1 = reinterpret_cast<float*>(pPool + nStride * pFace->m_nVIndex[1]);
-        float* pU2 = reinterpret_cast<float*>(pPool + nStride * pFace->m_nVIndex[2]);
+        float* pU0 = reinterpret_cast<float*>(pPool + nStride * static_cast<short>(pFace->m_anVertIndices[0]));
+        float* pU1 = reinterpret_cast<float*>(pPool + nStride * static_cast<short>(pFace->m_anVertIndices[1]));
+        float* pU2 = reinterpret_cast<float*>(pPool + nStride * static_cast<short>(pFace->m_anVertIndices[2]));
         fLmU = pU0[0] * 0.0f + pU1[0] * 0.0f + pU2[0] * 0.0f;
         fLmV = pU0[1] * 0.0f + pU1[1] * 0.0f + pU2[1] * 0.0f;
         pModel = pTriMesh->m_pTree->AsModel();
@@ -1147,9 +1102,9 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
     } else if (m_nFlags & kGrassVertexColors) {
         int nColorPool = elem.m_pPartMesh->m_nColorPool;
         unsigned int* pPool = static_cast<unsigned int*>(GLRender::LockPool(nColorPool, 0, 0, 8));
-        unsigned int c0 = pPool[pFace->m_nVIndex[0]];
-        unsigned int c1 = pPool[pFace->m_nVIndex[1]];
-        unsigned int c2 = pPool[pFace->m_nVIndex[2]];
+        unsigned int c0 = pPool[static_cast<short>(pFace->m_anVertIndices[0])];
+        unsigned int c1 = pPool[static_cast<short>(pFace->m_anVertIndices[1])];
+        unsigned int c2 = pPool[static_cast<short>(pFace->m_anVertIndices[2])];
         float fC0 = fmaxf(fminf(static_cast<float>(c0 & 0xff) * 0.0f +
                                 static_cast<float>(c1 & 0xff) * 0.0f +
                                 static_cast<float>(c2 & 0xff) * 0.0f, 255.0f), 0.0f);
@@ -1197,19 +1152,19 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
         float fStyle = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
         const CAurGrassInfo& gi = g_GrassInfo.m_pData[m_nMaterial];
         int nStyle;
-        if (fStyle < gi.m_fProbLL) {
+        if (fStyle < gi.m_fProb[0]) {
             nStyle = 0;
         } else {
-            fStyle -= gi.m_fProbLL;
-            if (fStyle < gi.m_fProbLR) {
+            fStyle -= gi.m_fProb[0];
+            if (fStyle < gi.m_fProb[1]) {
                 nStyle = 1;
             } else {
-                fStyle -= gi.m_fProbLR;
-                if (fStyle < gi.m_fProbUL) {
+                fStyle -= gi.m_fProb[1];
+                if (fStyle < gi.m_fProb[2]) {
                     nStyle = 2;
                 } else {
-                    fStyle -= gi.m_fProbUL;
-                    if (fStyle < gi.m_fProbUR)
+                    fStyle -= gi.m_fProb[2];
+                    if (fStyle < gi.m_fProb[3])
                         nStyle = 3;
                     else
                         nStyle = 0;
@@ -1222,7 +1177,8 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
 
         // Corner 0: bottom-left.
         Vector vC = vBase + RotateVector(Vector(fNegHalf, 0.0f, 0.0f), q);
-        reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 0] = vC;
+        Vector* pCursor = reinterpret_cast<Vector*>(m_pGrassCursor);
+        pCursor[nPos + 0] = vC;
         RenderVertexVTN* pV = reinterpret_cast<RenderVertexVTN*>(&pAttr[iAttr]);
         pV->pos[0] = vC.x;
         pV->pos[1] = vC.y;
@@ -1233,18 +1189,19 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
         pV->u = fR0 + 0.0f;
         pV->v = fR1 + 0.0f;
         iAttr += 8;
-        if (m_nFlags & kGrassLightmapped) {
+        unsigned char nFlags = m_nFlags;
+        if (nFlags & kGrassLightmapped) {
             pAttr[iAttr] = fLmU;
             pAttr[iAttr + 1] = fLmV;
             iAttr += 2;
-        } else if (m_nFlags & kGrassVertexColors) {
+        } else if (nFlags & kGrassVertexColors) {
             pAttr[iAttr] = fColor;
             iAttr += 1;
         }
 
         // Corner 1: bottom-right.
         vC = vBase + RotateVector(Vector(fHalf, 0.0f, 0.0f), q);
-        reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 1] = vC;
+        pCursor[nPos + 1] = vC;
         pV = reinterpret_cast<RenderVertexVTN*>(&pAttr[iAttr]);
         pV->pos[0] = vC.x;
         pV->pos[1] = vC.y;
@@ -1255,18 +1212,18 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
         pV->u = fR0 + 0.5f;
         pV->v = fR1 + 0.0f;
         iAttr += 8;
-        if (m_nFlags & kGrassLightmapped) {
+        if (nFlags & kGrassLightmapped) {
             pAttr[iAttr] = fLmU;
             pAttr[iAttr + 1] = fLmV;
             iAttr += 2;
-        } else if (m_nFlags & kGrassVertexColors) {
+        } else if (nFlags & kGrassVertexColors) {
             pAttr[iAttr] = fColor;
             iAttr += 1;
         }
 
         // Corner 2: top-right, scaled by the random blade height.
         vC = vBase + RotateVector(Vector(fHalf, 0.0f, fWidth), q) * fScale;
-        reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 2] = vC;
+        pCursor[nPos + 2] = vC;
         pV = reinterpret_cast<RenderVertexVTN*>(&pAttr[iAttr]);
         pV->pos[0] = vC.x;
         pV->pos[1] = vC.y;
@@ -1277,18 +1234,18 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
         pV->u = fR0 + 0.5f;
         pV->v = fR1 + 0.5f;
         iAttr += 8;
-        if (m_nFlags & kGrassLightmapped) {
+        if (nFlags & kGrassLightmapped) {
             pAttr[iAttr] = fLmU;
             pAttr[iAttr + 1] = fLmV;
             iAttr += 2;
-        } else if (m_nFlags & kGrassVertexColors) {
+        } else if (nFlags & kGrassVertexColors) {
             pAttr[iAttr] = fColor;
             iAttr += 1;
         }
 
         // Corner 3: top-left, scaled by the random blade height.
         vC = vBase + RotateVector(Vector(fNegHalf, 0.0f, fWidth), q) * fScale;
-        reinterpret_cast<Vector*>(m_pGrassCursor)[nPos + 3] = vC;
+        pCursor[nPos + 3] = vC;
         pV = reinterpret_cast<RenderVertexVTN*>(&pAttr[iAttr]);
         pV->pos[0] = vC.x;
         pV->pos[1] = vC.y;
@@ -1299,11 +1256,11 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
         pV->u = fR0 + 0.0f;
         pV->v = fR1 + 0.5f;
         iAttr += 8;
-        if (m_nFlags & kGrassLightmapped) {
+        if (nFlags & kGrassLightmapped) {
             pAttr[iAttr] = fLmU;
             pAttr[iAttr + 1] = fLmV;
             iAttr += 2;
-        } else if (m_nFlags & kGrassVertexColors) {
+        } else if (nFlags & kGrassVertexColors) {
             pAttr[iAttr] = fColor;
             iAttr += 1;
         }
@@ -1315,8 +1272,8 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
 #include <stddef.h>
 
 CAurTriangleListElem::CAurTriangleListElem()
+    : m_pMaxFace(0), m_pPartMesh(0), m_nGrassCount(0)
 {
-    __builtin_memset(static_cast<void*>(this), 0, offsetof(CAurTriangleListElem, m_nGrassCount) + sizeof(m_nGrassCount));
 }
 
 
@@ -1335,7 +1292,9 @@ template void List<CAurTriangleListElem>::allocate(int);
 
 template List<CAurTriangleListElem>::List(List<CAurTriangleListElem>&);
 
+#if !KOTOR1  // K1 inlines it at every site and keeps no copy
 template void List<SafePointer<CAurTexture>>::Add(SafePointer<CAurTexture>);
+#endif
 
 // Legacy stub class, not referenced by the game.
 

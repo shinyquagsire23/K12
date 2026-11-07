@@ -263,10 +263,8 @@ void CSWGuiStore::InitializeStoreType()
 #if !KOTOR1  // K2-only: K1's store has no item filter
 void CSWGuiStore::UpdateFilters()
 {
-    m_aFilterButtons[0].m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_LIGHT_GOLD);
-    m_aFilterButtons[1].m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_LIGHT_GOLD);
-    m_aFilterButtons[2].m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_LIGHT_GOLD);
-    m_aFilterButtons[3].m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_LIGHT_GOLD);
+    for (unsigned int i = 0; i < sizeof(m_aFilterButtons) / sizeof(m_aFilterButtons[0]); i++)
+        m_aFilterButtons[i].m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_LIGHT_GOLD);
     m_aFilterButtons[m_nFilter].m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_NEW_HIGHLIGHT);
     PopulateInventoryItemListBox();
     PopulateStoreItemListBox();
@@ -337,36 +335,33 @@ void CSWGuiStore::PopulateInventoryItemListBox()
             nValid++;
     }
 
-    if (nValid != 0)
+    unsigned nDone = 0;
+    int nGroup = 0;
+    while (nDone < nValid)
     {
-        unsigned nDone = 0;
-        int nGroup = 0;
-        while (nDone < nValid)
+        int nNext = nGroup;
+        for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
         {
-            int nNext = nGroup;
-            for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
-            {
-                int nSize;
-                CSWSItem* pItem = pRepo->ItemListGetItem(i);
-                if (!pItem)
-                    continue;
-                if (pItem->m_bPlot)
-                    continue;
+            int nSize;
+            CSWSItem* pItem = pRepo->ItemListGetItem(i);
+            if (!pItem)
+                continue;
+            if (pItem->m_bPlot)
+                continue;
 
-                nSize = pItem->GetBaseItem()->m_nStorePanelSort;
-                if (nSize == nGroup)
-                {
-                    CreateItemEntry(nIndex, aControls, pItem->m_objectId, 1);
-                    nDone++;
-                }
-                else if (nSize > nGroup)
-                {
-                    if (nNext == nGroup || nSize < nNext)
-                        nNext = nSize;
-                }
+            nSize = pItem->GetBaseItem()->m_nStorePanelSort;
+            if (nSize == nGroup)
+            {
+                CreateItemEntry(nIndex, aControls, pItem->m_objectId, 1);
+                nDone++;
             }
-            nGroup = nNext;
+            else if (nSize > nGroup)
+            {
+                if (nNext == nGroup || nSize < nNext)
+                    nNext = nSize;
+            }
         }
+        nGroup = nNext;
     }
 
     m_lbInvItems.AddControls(aControls, 0, 1, 0);
@@ -435,37 +430,34 @@ void CSWGuiStore::PopulateInventoryItemListBox()
             nValid++;
     }
 
-    if (nValid != 0)
+    unsigned nDone = 0;
+    int nGroup = 0;
+    while (nDone < nValid)
     {
-        unsigned nDone = 0;
-        int nGroup = 0;
-        while (nDone < nValid)
+        int nNext = nGroup;
+        for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
         {
-            int nNext = nGroup;
-            for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
-            {
-                int nSize;
-                CSWSItem* pItem = pRepo->ItemListGetItem(i);
-                if (!pItem)
-                    continue;
-                if (pItem->m_bPlot)
-                    continue;
+            int nSize;
+            CSWSItem* pItem = pRepo->ItemListGetItem(i);
+            if (!pItem)
+                continue;
+            if (pItem->m_bPlot)
+                continue;
 
-                nSize = pItem->GetBaseItem()->m_nStorePanelSort;
-                if (nSize == nGroup)
-                {
-                    if (CheckFilter(pItem))
-                        CreateItemEntry(nIndex, aControls, pItem->m_objectId, 1, -1);
-                    nDone++;
-                }
-                else if (nSize > nGroup)
-                {
-                    if (nNext == nGroup || nSize < nNext)
-                        nNext = nSize;
-                }
+            nSize = pItem->GetBaseItem()->m_nStorePanelSort;
+            if (nSize == nGroup)
+            {
+                if (CheckFilter(pItem))
+                    CreateItemEntry(nIndex, aControls, pItem->m_objectId, 1, -1);
+                nDone++;
             }
-            nGroup = nNext;
+            else if (nSize > nGroup)
+            {
+                if (nNext == nGroup || nSize < nNext)
+                    nNext = nSize;
+            }
         }
+        nGroup = nNext;
     }
 
     m_lbInvItems.AddControls(aControls, 0, 1, 0);
@@ -697,37 +689,34 @@ void CSWGuiStore::PopulateStoreItemListBox()
             nValid--;
     }
 
-    if (nValid != 0)
+    unsigned nDone = 0;
+    int nGroup = 0;
+    while (nDone < nValid)
     {
-        unsigned nDone = 0;
-        int nGroup = 0;
-        while (nDone < nValid)
+        int nNext = nGroup;
+        for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
         {
-            int nNext = nGroup;
-            for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
-            {
-                int nSize;
-                CSWSItem* pItem = pRepo->ItemListGetItem(i);
-                if (!pItem)
-                    continue;
-                if (pItem->m_bPlot)
-                    continue;
+            int nSize;
+            CSWSItem* pItem = pRepo->ItemListGetItem(i);
+            if (!pItem)
+                continue;
+            if (pItem->m_bPlot)
+                continue;
 
-                nSize = pItem->GetBaseItem()->m_nStorePanelSort;
-                if (nSize == nGroup)
-                {
-                    if (CheckFilter(pItem))
-                        CreateItemEntry(nIndex, aControls, pItem->m_objectId, 0, -1);
-                    nDone++;
-                }
-                else if (nSize > nGroup)
-                {
-                    if (nNext == nGroup || nSize < nNext)
-                        nNext = nSize;
-                }
+            nSize = pItem->GetBaseItem()->m_nStorePanelSort;
+            if (nSize == nGroup)
+            {
+                if (CheckFilter(pItem))
+                    CreateItemEntry(nIndex, aControls, pItem->m_objectId, 0, -1);
+                nDone++;
             }
-            nGroup = nNext;
+            else if (nSize > nGroup)
+            {
+                if (nNext == nGroup || nSize < nNext)
+                    nNext = nSize;
+            }
         }
+        nGroup = nNext;
     }
 
     m_lbShopItems.AddControls(aControls, 0, 1, 0);
@@ -971,7 +960,7 @@ void CSWGuiStore::OnControlStoreAButton(CSWGuiControl* pControl)
 // Handles a hover by filling the cost, stock and on-hand readouts for the row under the cursor,
 // then previews the item's property description in the description box. With the inventory list
 // visible the panel is in sell mode and the readouts come off the store's mark-down, otherwise off
-// its mark-up. The 4 bit of m_nFlagsLow marks a readout that is a string reference rather than a
+// its mark-up. The 4 bit of m_flags marks a readout that is a string reference rather than a
 // number.
 void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
 {
@@ -992,7 +981,7 @@ void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
     else
         m_lblCostValue.m_text.m_params.SetText(CExoString(GetItemBuyValue(pItem)));
 
-    if ((pItem->m_nFlagsLow & 4) != 0)
+    if ((pItem->m_flags & 4) != 0)
         m_lblStockValue.m_text.m_params.SetStrRef(STRREF_INFINITE);
     else
         m_lblStockValue.m_text.m_params.SetText(CExoString(pItem->m_stackCount));
@@ -1033,7 +1022,7 @@ void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
         else
             m_lblStockValue.m_text.m_params.SetText(CExoString(nStock));
 
-        if ((pItem->m_nFlagsLow & 4) == 0)
+        if ((pItem->m_flags & 4) == 0)
         {
             int nEquipped = 0;
             for (int i = 0; i < 3; i++)
@@ -1056,7 +1045,7 @@ void CSWGuiStore::OnControlEntered(CSWGuiControl* pControl)
     {
         m_lblCostValue.m_text.m_params.SetText(CExoString(GetItemBuyValue(pItem)));
 
-        if ((pItem->m_nFlagsLow & 4) != 0)
+        if ((pItem->m_flags & 4) != 0)
             m_lblStockValue.m_text.m_params.SetStrRef(STRREF_INFINITE);
         else
             m_lblStockValue.m_text.m_params.SetText(CExoString(pItem->m_stackCount));

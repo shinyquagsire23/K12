@@ -603,7 +603,7 @@ static inline int K1PhoneEdgeInset() {
 }
 #endif
 
-inline void AndroidExtentShift(CSWGuiExtent& extent, int nX, int nY) {
+__attribute__((weak)) void AndroidExtentShift(CSWGuiExtent& extent, int nX, int nY) {
 #ifdef K1_UI_XBOX
     // xbox: one scale for everything (the screen height), each rectangle pinned to the screen half
     // its centre lies in. The anchor arguments are the touch HUD's and do not apply, except (0, -1),
@@ -894,12 +894,16 @@ static inline void IosAnchorLeftBottom(CSWGuiExtent& extent, int nW, int nH) {
 
 #endif
 
+#if defined(K2_NO_FORTIFY)
+#define FmtBuf(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void FmtBuf(char* pBuf, unsigned int nSize, const char* szFmt, ...) {
     __builtin_va_list va;
     __builtin_va_start(va, szFmt);
     __vsprintf_chk(pBuf, 0, nSize, szFmt, va);
     __builtin_va_end(va);
 }
+#endif
 
 #if KOTOR1
 static const char* const s_aHelpLanguage[4] = { "fr", "it", "de", "es" };
@@ -1167,20 +1171,17 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     for (int i = 0; i < 9; i++)
         m_statusIcons[i].Initialize(this, static_cast<unsigned char>(i));
     m_targetActionMenu.Initialize(this);
-    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 1);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblMoulding1, sName, 1);
-    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 2);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblMoulding2, sName, 1);
-    sName.Format(const_cast<char*>("LBL_MOULDING%d"), 3);  // idiom-exempt: char* literal, Format's parameter type
-    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 1);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblCombatBg1, sName, 1);
-    ShiftControlExtent(m_lblCombatBg1, 0, -1);
-    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 2);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblCombatBg2, sName, 1);
-    ShiftControlExtent(m_lblCombatBg2, 0, -1);
-    sName.Format(const_cast<char*>("LBL_COMBATBG%d"), 3);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_lblCombatBg3, sName, 1);
-    ShiftControlExtent(m_lblCombatBg3, 0, -1);
+    // The third moulding's name is formatted but the label is never bound.
+    for (int i = 0; i < 3; i++) {
+        sName.Format(const_cast<char*>("LBL_MOULDING%d"), i + 1);  // idiom-exempt: char* literal, Format's parameter type
+        if (i < 2)
+            InitControl(m_lblMoulding[i], sName, 1);
+    }
+    for (int i = 0; i < 3; i++) {
+        sName.Format(const_cast<char*>("LBL_COMBATBG%d"), i + 1);  // idiom-exempt: char* literal, Format's parameter type
+        InitControl(m_lblCombatBg[i], sName, 1);
+        ShiftControlExtent(m_lblCombatBg[i], 0, -1);
+    }
     InitControl(m_btnClearOne, CExoString("BTN_CLEARONE"), 1);
     InitControl(m_btnClearOne2, CExoString("BTN_CLEARONE2"), 1);
     InitControl(m_btnClearAll, CExoString("BTN_CLEARALL"), 1);
@@ -1206,9 +1207,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         OffsetControlX(m_actionQueueIcons[1], nDelta);
         OffsetControlX(m_actionQueueIcons[2], nDelta);
         OffsetControlX(m_actionQueueIcons[3], nDelta);
-        OffsetControlX(m_lblCombatBg1, nDelta);
-        OffsetControlX(m_lblCombatBg2, nDelta);
-        OffsetControlX(m_lblCombatBg3, nDelta);
+        OffsetControlX(m_lblCombatBg[0], nDelta);
+        OffsetControlX(m_lblCombatBg[1], nDelta);
+        OffsetControlX(m_lblCombatBg[2], nDelta);
         OffsetControlX(m_actionQueueHilight, nDelta);
         OffsetControlX(m_btnClearOne, nDelta);
         OffsetControlX(m_btnClearOne2, nDelta);
@@ -1224,12 +1225,10 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     InitControl(m_altMenuButton, CExoString("BTN_MINIMAP"), 1);
     InitControl(m_lblCombatModeMsg, CExoString("LBL_CMBTMODEMSG"), 1);
 #ifdef K2_UI_TOUCH
-    {
-        CSWGuiExtent extent = m_lblCombatModeMsg.m_extent;
-        extent.w -= 90;
-        AndroidExtentShift(extent, 1, 0);
-        m_lblCombatModeMsg.SetExtent(extent);
-    }
+    CSWGuiExtent extent = m_lblCombatModeMsg.m_extent;
+    extent.w -= 90;
+    AndroidExtentShift(extent, 1, 0);
+    m_lblCombatModeMsg.SetExtent(extent);
     m_miniMap.m_border.m_params.SetFillImage(CResRef("ios_lbl_minimap"));
     m_miniMap.m_border.m_params.m_flags.nFillStyle = 2;
 #else
@@ -1283,12 +1282,12 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     // blue curve where a PC moulding was, the combat queue's backdrop and the ring over the
     // executing action (which no PC/touch tag names), and the caption plate's bottom cap
     // (LBL_ACTIONDESCBG2, under the box row; the plate above it is clipped to meet it in Draw).
-    InitControl(m_lblMoulding1, CExoString("LBL_ACTIONDESCBG2"), 1);
-    ShiftControlExtent(m_lblMoulding1, 0, 0);
-    InitControl(m_lblMoulding2, CExoString("LBL_BG2"), 1);
-    ShiftControlExtent(m_lblMoulding2, 0, 0);
-    InitControl(m_lblCombatBg1, CExoString("LBL_BG1"), 1);
-    ShiftControlExtent(m_lblCombatBg1, 0, -1);
+    InitControl(m_lblMoulding[0], CExoString("LBL_ACTIONDESCBG2"), 1);
+    ShiftControlExtent(m_lblMoulding[0], 0, 0);
+    InitControl(m_lblMoulding[1], CExoString("LBL_BG2"), 1);
+    ShiftControlExtent(m_lblMoulding[1], 0, 0);
+    InitControl(m_lblCombatBg[0], CExoString("LBL_BG1"), 1);
+    ShiftControlExtent(m_lblCombatBg[0], 0, -1);
     InitControl(m_actionQueueHilight, CExoString("LBL_HIGHLIGHT"), 1);
     ShiftControlExtent(m_actionQueueHilight, 0, -1);
     K1ConsoleSaveCaption(m_actionDescLabel.m_extent, m_actionDescLabel2.m_extent);
@@ -1310,8 +1309,8 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     ShiftControlExtent(m_tbPause, 1, -1);
     ShiftControlExtent(m_tbSolo, 1, -1);
     ShiftControlExtent(m_tbStealth, 1, -1);
-    ShiftControlExtent(m_lblMoulding1, 1, -1);
-    ShiftControlExtent(m_lblMoulding2, 1, -1);
+    ShiftControlExtent(m_lblMoulding[0], 1, -1);
+    ShiftControlExtent(m_lblMoulding[1], 1, -1);
     ShiftControlExtent(m_lblArrowMargin, 0, 0);
     ShiftControlExtent(m_altMenuButton, 1, 1);
     // The reticle's margin spans the screen's width; the layout's is the 4:3 composition's, which
@@ -1341,8 +1340,13 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_pGuiManager->GetSafeMargin(nSafeMarginA, nSafeMarginB);
     m_interfaceOffset = 0;
     m_fCombatMessageTimer = -1.0f;
-    CSWGuiExtent sMap = m_miniMapImage.m_extent;
-    m_miniMapImage.SetExtent(sMap);
+    CSWGuiExtent sExtent = m_miniMapImage.m_extent;
+#ifdef K2_UI_TOUCH
+    int nW;
+    int nH;
+    CSWGuiControl* pMoulding;
+#endif
+    m_miniMapImage.SetExtent(sExtent);
     m_nMapWidth = m_miniMapImage.m_extent.w;
     m_nMapHeight = m_miniMapImage.m_extent.h;
 #ifdef K1_UI_XBOX
@@ -1354,20 +1358,20 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_mapViewExtent = sScratch.m_extent;
     AndroidExtentShift(m_mapViewExtent, 1, 1);
     sScratch.SetExtent(m_mapViewExtent);
-    CSWGuiExtent sArrow = m_lblArrow.m_extent;
-    sArrow.w = static_cast<int>(AndroidHudScaleFactor() * sArrow.w);
-    sArrow.h = static_cast<int>(AndroidHudScaleFactor() * sArrow.h);
-    sArrow.x = (m_mapViewExtent.w - sArrow.w) / 2;
-    sArrow.y = (m_mapViewExtent.h - sArrow.h) / 2;
-    m_lblArrow.SetExtent(sArrow);
-    CSWGuiExtent sMiniMap = m_miniMap.m_extent;
-    AndroidExtentShift(sMiniMap, 1, 1);
-    m_miniMap.SetExtent(sMiniMap);
+    sExtent = m_lblArrow.m_extent;
+    sExtent.w = static_cast<int>(AndroidHudScaleFactor() * sExtent.w);
+    sExtent.h = static_cast<int>(AndroidHudScaleFactor() * sExtent.h);
+    sExtent.x = (m_mapViewExtent.w - sExtent.w) / 2;
+    sExtent.y = (m_mapViewExtent.h - sExtent.h) / 2;
+    m_lblArrow.SetExtent(sExtent);
+    sExtent = m_miniMap.m_extent;
+    AndroidExtentShift(sExtent, 1, 1);
+    m_miniMap.SetExtent(sExtent);
 #ifdef K1_UI_XBOX
     // xbox: no BTN_MINIMAP in `maininterface` either; the minimap's frame becomes the button that
     // opens the Map page (OnMenuButtonPressed's m_altMenuButton arm), as the touch HUD's does.
     if (m_altMenuButton.m_extent.w <= 0 || m_altMenuButton.m_extent.h <= 0) {
-        m_altMenuButton.SetExtent(sMiniMap);
+        m_altMenuButton.SetExtent(sExtent);
         bool bListed = false;
         for (int i = 0; i < m_controls.m_count; i++)
             if (m_controls.m_pArray[i] == &m_altMenuButton)
@@ -1379,12 +1383,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_lblTargetIndicator.m_tail.bIgnoreMouse = 1;
     m_lblTargetIndicator.m_border.m_params.m_flags.nFillStyle = 2;
     AddControl(&m_lblTargetIndicator);
-    CSWGuiExtent sReticle;
-    sReticle.x = 0;
-    sReticle.y = 0;
-    sReticle.w = 16;
-    sReticle.h = 16;
-    m_reticleLabel.SetExtent(sReticle);
+    m_reticleLabel.SetExtent(CSWGuiExtent(0, 0, 16, 16));
     m_reticleLabel.m_tail.bVisible = 0;
     m_reticleLabel.m_tail.bIgnoreMouse = 1;
     m_reticleLabel.m_border.m_params.m_flags.nFillStyle = 2;
@@ -1435,14 +1434,14 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_tbSolo.m_tail.bFocusOnHover = 0;
     m_tbStealth.m_tail.bFocusOnHover = 0;
     m_pFogOfWarImage = NewCAurGUIImage(const_cast<char*>("blackdot"));
-    CSWGuiText* pDescText = &m_actionDescLabel.m_text;
     m_nFocusedAction = 0;
     m_lblCombatModeMsg.m_text.m_params.SetText(CExoString(""));
     m_nActionDescBottom = m_actionDescLabel.m_extent.y + m_actionDescLabel.m_extent.h;
     {
+        CSWGuiText* pDescText = &m_actionDescLabel.m_text;
         CExoString sCaption("");
         m_actionDescLabel.m_text.m_params.SetText(sCaption);
-        CSWGuiExtent sExtent = m_actionDescLabel.m_extent;
+        sExtent = m_actionDescLabel.m_extent;
         sExtent.h = pDescText->GetIdealHeight();
         sExtent.y = m_nActionDescBottom - sExtent.h;
         m_actionDescLabel.SetExtent(sExtent);
@@ -1470,13 +1469,11 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 
     // The top-right menu buttons and the bottom-left moulding are K1 skins, hand-placed.
 #ifdef K2_UI_TOUCH
-    int nW;
-    int nH;
     m_btnEquip.m_border.m_params.SetFillImage(CResRef("ios_lbl_miequ"));
     m_btnEquip.m_border.m_params.m_flags.nFillStyle = 2;
     m_btnEquip.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miequ2"));
     m_btnEquip.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    CSWGuiExtent sExtent = { 927, 0, 96, 96 };
+    sExtent = { 927, 0, 96, 96 };
     if (IosIsIphone(nW, nH))
         IosAnchorRightTop(sExtent, nW, nH);
     AndroidExtentShift(sExtent, -1, 1);
@@ -1485,24 +1482,23 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_btnInventory.m_border.m_params.m_flags.nFillStyle = 2;
     m_btnInventory.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miinv2"));
     m_btnInventory.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    CSWGuiExtent sHidden = { 0, 10, 0, 0 };
-    sExtent = sHidden;
+    sExtent = { 0, 10, 0, 0 };
     AndroidExtentShift(sExtent, 1, 1);
     m_btnInventory.SetExtent(sExtent);
     m_btnOptions.m_border.m_params.SetFillImage(CResRef("ios_lbl_miopt"));
     m_btnOptions.m_border.m_params.m_flags.nFillStyle = 2;
     m_btnOptions.m_borderHilight.m_params.SetFillImage(CResRef("ios_lbl_miopt2"));
     m_btnOptions.m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    sExtent = sHidden;
+    sExtent = { 0, 10, 0, 0 };
     AndroidExtentShift(sExtent, 1, 1);
     m_btnOptions.SetExtent(sExtent);
     sExtent = { 6, 512, 104, 148 };
     if (IosIsIphone(nW, nH))
         IosAnchorLeftBottom(sExtent, nW, nH);
     AndroidExtentShift(sExtent, 1, -1);
-    m_lblMoulding1.m_border.m_params.SetFillImage(CResRef("ios_lower_left"));
-    m_lblMoulding1.m_border.m_params.m_flags.nFillStyle = 2;
-    CSWGuiControl* pMoulding = &m_lblMoulding1;
+    m_lblMoulding[0].m_border.m_params.SetFillImage(CResRef("ios_lower_left"));
+    m_lblMoulding[0].m_border.m_params.m_flags.nFillStyle = 2;
+    pMoulding = &m_lblMoulding[0];
     pMoulding->SetExtent(sExtent);
 
     // The three toggles sit bottom-left, white in both states.
@@ -1539,11 +1535,11 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_tbStealth.m_borderHilight.m_params.m_color.r = CGuiInGame::COLOR_WHITE.x;
     m_tbStealth.m_borderHilight.m_params.m_color.g = CGuiInGame::COLOR_WHITE.y;
     m_tbStealth.m_borderHilight.m_params.m_color.b = CGuiInGame::COLOR_WHITE.z;
-#else
-    CSWGuiExtent sExtent;
 #endif
 
     // The pop-up action menu is full screen, two halves with a close button each, 32 slots.
+    int nScreenW;
+    int nScreenH;
     sExtent.x = 0;
     sExtent.y = 0;
     sExtent.w = g_SDL_mode.w;
@@ -1553,8 +1549,6 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_actionMenuIos.m_vColor.y = -2.0f;
     m_actionMenuIos.m_vColor.z = -2.0f;
     m_actionMenuIos.m_stateFlags |= 1;
-    int nScreenW;
-    int nScreenH;
     if (IosIsIphone(nScreenW, nScreenH)) {
         s_fIosActionMenuTop = s_fIosActionMenuIphoneTop;
         s_fIosActionMenuPitch = s_fIosActionMenuIphonePitch;
@@ -1563,8 +1557,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
             IOS_ACTION_MENU_GROW_X = 20.0f;
         }
     }
-    const CSWGuiExtent sCloseExtent = { 720, 700, 230, 47 };
     for (int i = 0; i < 2; i++) {
+        int nCloseW;
+        int nCloseH;
         sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 614.0f);
         sExtent.y = 0;
         sExtent.w = static_cast<int>(IOS_ACTION_MENU_GROW_X + 410.0f);
@@ -1580,9 +1575,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         m_actionMenuHalves[i].m_tail.bFocusOnHover = 0;
         m_actionMenuIos.AddControl(&m_actionMenuHalves[i]);
         SendControlToBack(&m_actionMenuHalves[i]);
-        sExtent = sCloseExtent;
-        int nCloseW;
-        int nCloseH;
+        sExtent = { 720, 700, 230, 47 };
         if (IosIsIphone(nCloseW, nCloseH))
             IosAnchorRightBottom(sExtent, nCloseW, nCloseH);
         AndroidExtentShift(sExtent, -1, -1);
@@ -1600,6 +1593,9 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     }
     for (int64_t i = 0; i < 32; i++) {
         CSWGuiButton& slot = m_actionSlots[i];
+        CSWGuiBorder* pBorder;
+        CSWGuiBorder* pHilight;
+        CSWGuiText* pText;
         sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 650.0f);
         sExtent.y = static_cast<int>(s_fIosActionMenuPitch * static_cast<float>(i) + s_fIosActionMenuTop);
         sExtent.w = 360;
@@ -1614,16 +1610,16 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         sExtent.w = 56;
         sExtent.h = 56;
         AndroidExtentShift(sExtent, -1, 1);
-        CSWGuiBorder* pBorder = &slot.m_border;
+        pBorder = &slot.m_border;
         pBorder->SetExtent(sExtent);
-        CSWGuiBorder* pHilight = &slot.m_borderHilight;
+        pHilight = &slot.m_borderHilight;
         pHilight->SetExtent(sExtent);
         sExtent.x = static_cast<int>(IOS_ACTION_MENU_SHIFT_X + 640.0f);
         sExtent.y = static_cast<int>(s_fIosActionMenuPitch * static_cast<float>(i) + s_fIosActionMenuTop);
         sExtent.w = 300;
         sExtent.h = 56;
         AndroidExtentShift(sExtent, -1, 1);
-        CSWGuiText* pText = &slot.m_text;
+        pText = &slot.m_text;
         pText->SetExtent(sExtent);
         m_actionMenuIos.AddControl(&slot);
         slot.AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(
@@ -1633,6 +1629,8 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 
     // The top-right corner plate.
 #ifdef K2_UI_TOUCH  // pc / xbox: no corner plate, help or quicksave button (keys and menus do that)
+    int nTopY;
+    int nTopH;
     bool bIphone = IosIsIphone(nScreenW, nScreenH);
     sExtent.x = bIphone ? 786 : 800;
     sExtent.y = 0;
@@ -1654,8 +1652,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 #endif
 
     // The gamepad menu covers the whole screen.
-    const CSWGuiExtent sFullScreen = { 0, 0, 1024, 768 };
-    sExtent = sFullScreen;
+    sExtent = { 0, 0, 1024, 768 };
     if (IosIsIphone(nScreenW, nScreenH) && nScreenW > 1024) {
         sExtent.x = 0;
         sExtent.y = 0;
@@ -1675,8 +1672,8 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 
     // Help and quicksave, under the corner plate.
 #ifdef K2_UI_TOUCH
-    int nTopY = bIphone ? 7 : 5;
-    int nTopH = bIphone ? 70 : 46;
+    nTopY = bIphone ? 7 : 5;
+    nTopH = bIphone ? 70 : 46;
     sExtent.x = bIphone ? 861 : 872;
     sExtent.y = nTopY;
     sExtent.w = bIphone ? 90 : 76;
@@ -1713,7 +1710,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
 
     // The help overlay puts the page image and five click-to-close buttons over the whole screen
     // (letterboxed on an iPhone, with the background stretched past the bars on a wide one).
-    sExtent = sFullScreen;
+    sExtent = { 0, 0, 1024, 768 };
     CSWGuiExtent sBackground = { 0, 0, 0, 0 };
     int bWide;
     int nHelpW;
@@ -1828,17 +1825,17 @@ void CSWGuiMainInterface::ShowActionQueue(int nParam) {
     int nGo;
     if (nParam == 0) nGo = m_lblActionQueue.m_tail.bVisible; else nGo = 1;
 #if KOTOR1
-    m_lblCombatBg1.m_tail.bVisible = nParam & 1;
-    m_lblCombatBg2.m_tail.bVisible = nParam & 1;
-    m_lblCombatBg3.m_tail.bVisible = nParam & 1;
+    m_lblCombatBg[0].m_tail.bVisible = nParam & 1;
+    m_lblCombatBg[1].m_tail.bVisible = nParam & 1;
+    m_lblCombatBg[2].m_tail.bVisible = nParam & 1;
     m_lblActionQueue.m_tail.bVisible = nParam & 1;
     m_btnClearOne.m_tail.bVisible = nParam & 1;
     m_btnClearOne2.m_tail.bVisible = nParam & 1;
     static bool s_bHasTouchScreen = HasTouchScreen();
     m_btnClearAll.m_tail.bVisible = nParam != 0 && s_bHasTouchScreen;
 #else
-    m_lblCombatBg2.m_tail.bVisible = nParam & 1;
-    m_lblCombatBg3.m_tail.bVisible = nParam & 1;
+    for (int i = 0; i < 2; i++)
+        m_lblCombatBg[i].m_tail.bVisible = nParam & 1;
     m_actionQueueHilight.m_tail.bVisible = nParam & 1;
     m_lblActionQueue.m_tail.bVisible = nParam & 1;
     m_btnClearOne.m_tail.bVisible = nParam & 1;
@@ -1849,29 +1846,17 @@ void CSWGuiMainInterface::ShowActionQueue(int nParam) {
         m_lblCombatModeMsg.m_tail.bVisible = nParam & 1;
         m_lblCombatMsgBg.m_tail.bVisible = nParam & 1;
     }
-    m_actionQueueIcons[0].m_tail.bVisible = nParam & 1;
-    m_actionQueueIcons[1].m_tail.bVisible = nParam & 1;
-    m_actionQueueIcons[2].m_tail.bVisible = nParam & 1;
-    m_actionQueueIcons[3].m_tail.bVisible = nParam & 1;
+    for (int i = 0; i < 4; i++)
+        m_actionQueueIcons[i].m_tail.bVisible = nParam & 1;
     int nShift = m_interfaceOffset;
     if (nParam == 0) {
         nShift = -nShift;
         m_fCombatMessageTimer = -1.0f;
     }
     if (nGo == 0) return;
-    CSWGuiExtent sTmp;
-    sTmp = m_miniMap.m_extent;
-    sTmp.y += nShift;
-    CSWGuiLabel* pMiniMap = &m_miniMap;
-    pMiniMap->SetExtent(sTmp);
-    sTmp = m_miniMapImage.m_extent;
-    sTmp.y += nShift;
-    CSWGuiLabel* pImage = &m_miniMapImage;
-    pImage->SetExtent(sTmp);
-    sTmp = m_altMenuButton.m_extent;
-    sTmp.y += nShift;
-    CSWGuiButton* pAlt = &m_altMenuButton;
-    pAlt->SetExtent(sTmp);
+    ShiftControl(m_miniMap, nShift);
+    ShiftControl(m_miniMapImage, nShift);
+    ShiftControl(m_altMenuButton, nShift);
     m_mapViewExtent.y += nShift;
 #if KOTOR1
     for (int i = 0; i < 9; i++) {
@@ -3133,10 +3118,11 @@ void CSWGuiTargetActionMenu::SelectPrevAction(int nIndex)
             if (nSelected != -1) {
                 for (int i = 0; i < pList->m_count; i++) {
                     if (static_cast<int>(pList->m_pArray[i].m_nActionId) == nSelected) {
-                        if (i > 0)
-                            pPrev = &pList->m_pArray[i - 1];
-                        else
+                        if (i == 0) {
                             pPrev = &pList->m_pArray[pList->m_count - 1];
+                            break;
+                        }
+                        pPrev = &pList->m_pArray[i] - 1;
                         break;
                     }
                 }
@@ -4555,18 +4541,12 @@ void CSWGuiMainInterface::CSWGamepadMenuIos::LayoutGamepadMenu(bool bInitImages)
         m_buttonBackground.m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_bg"));
         m_buttonBackground.m_borderHilight.m_params.m_flags.nFillStyle = 2;
         AddControl(&m_buttonBackground);
-        m_frameButtons[0].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"));
-        m_frameButtons[0].m_border.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[0].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"));
-        m_frameButtons[0].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[1].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"));
-        m_frameButtons[1].m_border.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[1].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"));
-        m_frameButtons[1].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[2].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"));
-        m_frameButtons[2].m_border.m_params.m_flags.nFillStyle = 2;
-        m_frameButtons[2].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"));
-        m_frameButtons[2].m_borderHilight.m_params.m_flags.nFillStyle = 2;
+        for (int j = 0; j < 3; j++) {
+            m_frameButtons[j].m_border.m_params.SetFillImage(CResRef("cus_gpad_gen"));
+            m_frameButtons[j].m_border.m_params.m_flags.nFillStyle = 2;
+            m_frameButtons[j].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_gen2"));
+            m_frameButtons[j].m_borderHilight.m_params.m_flags.nFillStyle = 2;
+        }
         m_menuButtons[GPAD_ENTRY_MAP].m_border.m_params.SetFillImage(CResRef("cus_gpad_map"));
         m_menuButtons[GPAD_ENTRY_MAP].m_borderHilight.m_params.SetFillImage(CResRef("cus_gpad_map2"));
         m_menuButtons[GPAD_ENTRY_SOLO].m_border.m_params.SetFillImage(CResRef("cus_gpad_solo"));
@@ -4807,7 +4787,7 @@ void CSWGuiMainInterface::UpdateAndDrawFogOfWar(const CSWGuiExtent& rExtent) {
                         do {
                             int nBit = nRowBase + nCol;
                             int nWord = nBit / 32;
-                            if (!(pExploredBits[nWord] & (1 << nBit))) {
+                            if (!(pExploredBits[nWord] & (1 << (nBit & 31)))) {
                                 Vector vColor(-1.0f, -1.0f, -1.0f);
                                 static_cast<CAurGUIImageInternal*>(m_pFogOfWarImage)->DrawBuffered(
                                     (fXCell - fHalfCellW) / static_cast<float>(m_mapViewExtent.w),
@@ -4957,13 +4937,13 @@ void CSWGuiMainInterface::SelectPrevPersonalAction(int nIndex) {
     int nActionId = m_personalActionIds[nIndex];
     int64_t nCount = m_personalActions[nIndex].m_count;
     if (nActionId != -1) {
-        CSWGuiInterfaceAction* pActions = m_personalActions[nIndex].m_pArray;
         for (int i = 0; i < nCount; i++) {
-            if (pActions[i].m_nActionId == static_cast<unsigned int>(nActionId)) {
-                if (i == 0)
-                    pPrev = &pActions[nCount - 1];
-                else
-                    pPrev = &pActions[i - 1];
+            if (m_personalActions[nIndex].m_pArray[i].m_nActionId == static_cast<unsigned int>(nActionId)) {
+                if (i == 0) {
+                    pPrev = &m_personalActions[nIndex].m_pArray[nCount - 1];
+                    break;
+                }
+                pPrev = &m_personalActions[nIndex].m_pArray[i] - 1;
                 break;
             }
         }
@@ -5597,7 +5577,7 @@ void CSWGuiMainInterface::RemoveActionMenu() {
 }
 #endif // !KOTOR1
 
-static CSWGuiInterfaceAction* FindActionById(const CExoArrayList<CSWGuiInterfaceAction>& list, int nActionId);
+static __attribute__((always_inline)) CSWGuiInterfaceAction* FindActionById(const CExoArrayList<CSWGuiInterfaceAction>& list, int nActionId);
 
 static const uint64_t s_actionHintValues[6] = {
     0x96d5, 0x96d6, 0x96d7, 0xa5b6, 0xa602, 0xbb40
@@ -6219,30 +6199,12 @@ void CSWGuiMainInterface::PopulateMenus() {
         return;
     }
 #endif
-    for (int i = 0; i < m_personalActions[0].m_count; i++)
-        m_personalActions[0].m_pArray[i].Clear();
-    m_personalActions[0].m_count = 0;
-    pPC->GetPersonalActions(0, m_personalActions[0]);
-    for (int i = 0; i < m_personalActions[1].m_count; i++)
-        m_personalActions[1].m_pArray[i].Clear();
-    m_personalActions[1].m_count = 0;
-    pPC->GetPersonalActions(1, m_personalActions[1]);
-    for (int i = 0; i < m_personalActions[2].m_count; i++)
-        m_personalActions[2].m_pArray[i].Clear();
-    m_personalActions[2].m_count = 0;
-    pPC->GetPersonalActions(2, m_personalActions[2]);
-    for (int i = 0; i < m_personalActions[3].m_count; i++)
-        m_personalActions[3].m_pArray[i].Clear();
-    m_personalActions[3].m_count = 0;
-    pPC->GetPersonalActions(3, m_personalActions[3]);
-    for (int i = 0; i < m_personalActions[4].m_count; i++)
-        m_personalActions[4].m_pArray[i].Clear();
-    m_personalActions[4].m_count = 0;
-    pPC->GetPersonalActions(4, m_personalActions[4]);
-    for (int i = 0; i < m_personalActions[5].m_count; i++)
-        m_personalActions[5].m_pArray[i].Clear();
-    m_personalActions[5].m_count = 0;
-    pPC->GetPersonalActions(5, m_personalActions[5]);
+    for (int n = 0; n < 6; n++) {
+        for (int i = 0; i < m_personalActions[n].m_count; i++)
+            m_personalActions[n].m_pArray[i].Clear();
+        m_personalActions[n].m_count = 0;
+        pPC->GetPersonalActions(n, m_personalActions[n]);
+    }
     m_targetActionMenu.PopulateMenus(pPC, bDimmed, pTarget);
     for (int i = 0; i < 4; i++) {
         int64_t nCount = m_personalActions[i].m_count;
@@ -6293,34 +6255,12 @@ void CSWGuiMainInterface::PopulateMenus(int nUnused) {
     if (pObject)
         pTarget = static_cast<CSWCObject*>(pObject->AsSWCObject());
 
-    for (int i = 0; i < m_personalActions[0].m_count; i++)
-        m_personalActions[0].m_pArray[i].Clear();
-    m_personalActions[0].m_count = 0;
-    pPC->GetPersonalActions(0, m_personalActions[0]);
-    for (int i = 0; i < m_personalActions[1].m_count; i++)
-        m_personalActions[1].m_pArray[i].Clear();
-    m_personalActions[1].m_count = 0;
-    pPC->GetPersonalActions(1, m_personalActions[1]);
-    for (int i = 0; i < m_personalActions[2].m_count; i++)
-        m_personalActions[2].m_pArray[i].Clear();
-    m_personalActions[2].m_count = 0;
-    pPC->GetPersonalActions(2, m_personalActions[2]);
-    for (int i = 0; i < m_personalActions[3].m_count; i++)
-        m_personalActions[3].m_pArray[i].Clear();
-    m_personalActions[3].m_count = 0;
-    pPC->GetPersonalActions(3, m_personalActions[3]);
-    for (int i = 0; i < m_personalActions[4].m_count; i++)
-        m_personalActions[4].m_pArray[i].Clear();
-    m_personalActions[4].m_count = 0;
-    pPC->GetPersonalActions(4, m_personalActions[4]);
-    for (int i = 0; i < m_personalActions[5].m_count; i++)
-        m_personalActions[5].m_pArray[i].Clear();
-    m_personalActions[5].m_count = 0;
-    pPC->GetPersonalActions(5, m_personalActions[5]);
-    for (int i = 0; i < m_personalActions[6].m_count; i++)
-        m_personalActions[6].m_pArray[i].Clear();
-    m_personalActions[6].m_count = 0;
-    pPC->GetPersonalActions(6, m_personalActions[6]);
+    for (int n = 0; n < 7; n++) {
+        for (int i = 0; i < m_personalActions[n].m_count; i++)
+            m_personalActions[n].m_pArray[i].Clear();
+        m_personalActions[n].m_count = 0;
+        pPC->GetPersonalActions(n, m_personalActions[n]);
+    }
 
     m_targetActionMenu.PopulateMenus(pPC, bDimmed, pTarget);
 
@@ -6413,18 +6353,14 @@ void CSWGuiMainInterface::HandleButtonActionX(CSWGuiControl* pControl) {
         g_pAppManager->m_pClientExoApp->SetPausedByCombat(0, 0, 0);
 }
 
-static CSWGuiInterfaceAction* FindActionById(
+static __attribute__((always_inline)) CSWGuiInterfaceAction* FindActionById(
         const CExoArrayList<CSWGuiInterfaceAction>& list, int nActionId) {
     CSWGuiInterfaceAction* pAction = 0;
     if (nActionId != -1) {
-        int64_t nCount = list.m_count;
-        if (nCount >= 1) {
-            CSWGuiInterfaceAction* pActions = list.m_pArray;
-            for (int64_t i = 0; i < nCount; i++) {
-                if (pActions[i].m_nActionId == static_cast<unsigned int>(nActionId)) {
-                    pAction = &pActions[i];
-                    break;
-                }
+        for (int64_t i = 0; i < list.m_count; i++) {
+            if (list.m_pArray[i].m_nActionId == static_cast<unsigned int>(nActionId)) {
+                pAction = &list.m_pArray[i];
+                break;
             }
         }
     }
@@ -6494,10 +6430,10 @@ void CSWGuiMainInterface::DoPersonalAction(int nIndex, int nTarget) {
 }
 
 CSWGuiMainInterfaceAction::CSWGuiMainInterfaceAction() {
+    m_bEmpty = 1;
     m_nPulseSteps = 0;
     m_nMode = 0;
     m_bSelected = 0;
-    m_bEmpty = 1;
 }
 
 #ifdef K2_UI_XBOX
@@ -7018,18 +6954,12 @@ static void ConsoleUsableItems(CSWGuiMainInterface* pInterface, CSWCCreature* pP
 void CSWGuiTargetActionMenu::PopulateMenus(CSWCCreature* pPC, int bDimmed, CSWCObject* pTarget) {
     m_actionRow = pPC->GetTargetInterfaceTargetType(pTarget);
 
-    for (int64_t i = 0; i < m_actions[0].m_count; i++)
-        m_actions[0].m_pArray[i].Clear();
-    m_actions[0].m_count = 0;
-    pPC->GetTargetActions(pTarget, 0, m_actions[0]);
-    for (int64_t i = 0; i < m_actions[1].m_count; i++)
-        m_actions[1].m_pArray[i].Clear();
-    m_actions[1].m_count = 0;
-    pPC->GetTargetActions(pTarget, 1, m_actions[1]);
-    for (int64_t i = 0; i < m_actions[2].m_count; i++)
-        m_actions[2].m_pArray[i].Clear();
-    m_actions[2].m_count = 0;
-    pPC->GetTargetActions(pTarget, 2, m_actions[2]);
+    for (int n = 0; n < 3; n++) {
+        for (int64_t i = 0; i < m_actions[n].m_count; i++)
+            m_actions[n].m_pArray[i].Clear();
+        m_actions[n].m_count = 0;
+        pPC->GetTargetActions(pTarget, n, m_actions[n]);
+    }
 #ifdef K2_UI_XBOX
     const int nTargetType = pPC->GetInterfaceTargetType(pTarget);
     ConsoleTargetSkillColumn(m_actions, nTargetType);
@@ -7836,14 +7766,10 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     g_scaleMipc = 4;
     m_charOffscreen.Initialize(this, 4, 1);
 
-    sName.Format(const_cast<char*>("LBL_QUEUE%d"), 0);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_actionQueueIcons[0], sName, 1, 1, 0, 0, 0);
-    sName.Format(const_cast<char*>("LBL_QUEUE%d"), 1);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_actionQueueIcons[1], sName, 1, 1, 0, 0, 0);
-    sName.Format(const_cast<char*>("LBL_QUEUE%d"), 2);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_actionQueueIcons[2], sName, 1, 1, 0, 0, 0);
-    sName.Format(const_cast<char*>("LBL_QUEUE%d"), 3);  // idiom-exempt: char* literal, Format's parameter type
-    InitControl(m_actionQueueIcons[3], sName, 1, 1, 0, 0, 0);
+    for (int i = 0; i < 4; i++) {
+        sName.Format(const_cast<char*>("LBL_QUEUE%d"), i);  // idiom-exempt: char* literal, Format's parameter type
+        InitControl(m_actionQueueIcons[i], sName, 1, 1, 0, 0, 0);
+    }
 #ifdef K2_UI_XBOX
     g_scaleMipc = 3;
 #else
@@ -7853,25 +7779,25 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         m_statusIcons[i].Initialize(this, static_cast<unsigned char>(i), 1);
     m_targetActionMenu.Initialize(this, 0);
 #ifdef K2_UI_XBOX
-    ConsoleRebind(this, m_lblMoulding1, "LBL_MOULDING1", "LBL_ACTIONDESCBG2", 1);
+    ConsoleRebind(this, m_lblMoulding[0], "LBL_MOULDING1", "LBL_ACTIONDESCBG2", 1);
 #else
-    InitControl(m_lblMoulding1, CExoString("LBL_MOULDING1"), 1, 1, 1, 0, 0);
+    InitControl(m_lblMoulding[0], CExoString("LBL_MOULDING1"), 1, 1, 1, 0, 0);
 #endif
-    InitControl(m_lblMoulding3, CExoString("LBL_MOULDING3"), 1, 1, 1, 0, 0);
+    InitControl(m_lblMoulding[1], CExoString("LBL_MOULDING3"), 1, 1, 1, 0, 0);
     g_scaleMipc = 4;
 #ifdef K2_UI_XBOX
-    ConsoleRebind(this, m_lblCombatBg2, "LBL_COMBATBG2", "LBL_BG1", 0);
-    ConsoleRebind(this, m_lblCombatBg3, "LBL_COMBATBG3", "LBL_BG2", 0);
+    ConsoleRebind(this, m_lblCombatBg[0], "LBL_COMBATBG2", "LBL_BG1", 0);
+    ConsoleRebind(this, m_lblCombatBg[1], "LBL_COMBATBG3", "LBL_BG2", 0);
     // LBL_BG2 badges the queue with the Xbox's Black button (uibut_black), which no modern pad has
     // and the Switch build does not draw: a zero extent keeps it hidden whatever its visible flag.
     {
         CSWGuiExtent kHidden(0, 0, 0, 0);
-        m_lblCombatBg3.SetExtent(kHidden);
+        m_lblCombatBg[1].SetExtent(kHidden);
     }
     InitControl(m_actionQueueHilight, CExoString("LBL_HIGHLIGHT"), 1, 1, 0, 0, 0);
 #else
-    InitControl(m_lblCombatBg2, CExoString("LBL_COMBATBG2"), 1, 1, 0, 0, 0);
-    InitControl(m_lblCombatBg3, CExoString("LBL_COMBATBG3"), 1, 1, 0, 0, 0);
+    InitControl(m_lblCombatBg[0], CExoString("LBL_COMBATBG2"), 1, 1, 0, 0, 0);
+    InitControl(m_lblCombatBg[1], CExoString("LBL_COMBATBG3"), 1, 1, 0, 0, 0);
 #endif
     InitControl(m_btnClearOne, CExoString("BTN_CLEARONE"), 1, 1, 0, 0, 0);
     InitControl(m_btnClearOne2, CExoString("BTN_CLEARONE2"), 1, 1, 0, 0, 0);
@@ -7887,24 +7813,24 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     // console HUD (K2_UI_XBOX): the plate's fill style 0 tiles uibit_brdr_main3 at its native size,
     // one copy at 640x480 but two side by side once the HUD is scaled up; stretch it once instead.
     m_actionDescLabel2.m_border.m_params.m_flags.nFillStyle = 2;
-    if (m_lblMoulding1.m_extent.w > 0 && m_actionDescLabel2.m_extent.w > 0) {
-        CSWGuiExtent sCap = m_lblMoulding1.m_extent;
+    if (m_lblMoulding[0].m_extent.w > 0 && m_actionDescLabel2.m_extent.w > 0) {
+        CSWGuiExtent sCap = m_lblMoulding[0].m_extent;
         const int nCapBottom = sCap.y + sCap.h;
         const int nPlateBottom = m_actionDescLabel2.m_extent.y + m_actionDescLabel2.m_extent.h;
         if (nPlateBottom != sCap.y && nPlateBottom < nCapBottom) {
             sCap.y = nPlateBottom;
             sCap.h = nCapBottom - nPlateBottom;
-            m_lblMoulding1.SetExtent(sCap);
+            m_lblMoulding[0].SetExtent(sCap);
         }
     }
-    if (m_lblCombatBg2.m_extent.w > 0 && m_actionDescLabel2.m_extent.w > 0) {
+    if (m_lblCombatBg[0].m_extent.w > 0 && m_actionDescLabel2.m_extent.w > 0) {
         const int nPlateRight = m_actionDescLabel2.m_extent.x + m_actionDescLabel2.m_extent.w;
-        const int nOverlap = (294 - 292) * m_lblCombatBg2.m_extent.w / 128;
-        const int nShift = (nPlateRight - nOverlap) - m_lblCombatBg2.m_extent.x;
+        const int nOverlap = (294 - 292) * m_lblCombatBg[0].m_extent.w / 128;
+        const int nShift = (nPlateRight - nOverlap) - m_lblCombatBg[0].m_extent.x;
         if (nShift != 0) {
             CSWGuiLabel* apQueue[5] = { &m_actionQueueIcons[0], &m_actionQueueIcons[1],
                                         &m_actionQueueIcons[2], &m_actionQueueIcons[3],
-                                        &m_lblCombatBg2 };
+                                        &m_lblCombatBg[0] };
             for (int i = 0; i < 5; i++) {
                 if (apQueue[i]->m_extent.w <= 0)
                     continue;
@@ -8072,14 +7998,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
     m_lblTargetIndicator.m_tail.bIgnoreMouse = 1;
     m_lblTargetIndicator.m_border.m_params.m_flags.nFillStyle = 2;
     AddControl(&m_lblTargetIndicator);
-    {
-        CSWGuiExtent sReticle;
-        sReticle.x = 0;
-        sReticle.y = 0;
-        sReticle.w = 16;
-        sReticle.h = 16;
-        m_reticleLabel.SetExtent(sReticle);
-    }
+    m_reticleLabel.SetExtent(CSWGuiExtent(0, 0, 16, 16));
     m_reticleLabel.m_tail.bIgnoreMouse = 1;
     m_reticleLabel.m_border.m_params.m_flags.nFillStyle = 2;
     AddControl(&m_reticleLabel);
@@ -8192,55 +8111,23 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         }
     }
     int nThirdW = nScreenW / 3;
-    {
-        CSWGuiExtent sExtentL;
-        CSWGuiExtent sExtentR;
-        sExtentR.x = nEdgeR;
-        sExtentR.y = 0;
-        sExtentR.w = nThirdW;
-        sExtentR.h = nScreenH;
-        sExtentL.x = nEdgeL;
-        sExtentL.y = 0;
-        sExtentL.w = nThirdW;
-        sExtentL.h = nScreenH;
-
+    CSWGuiExtent aExtents[2] = {
+        CSWGuiExtent(nEdgeR, 0, nThirdW, nScreenH),
+        CSWGuiExtent(nEdgeL + 2 * nThirdW, 0, nThirdW, nScreenH),
+    };
+    for (int i = 0; i < 2; i++) {
+        CResRef sBg(i == 0 ? "ios_action_bg" : "ios_action_bg2");
+        m_actionMenuHalves[i].m_border.m_params.SetFillImage(sBg);
+        m_actionMenuHalves[i].m_borderHilight.m_params.SetFillImage(sBg);
+        m_actionMenuHalves[i].m_borderHilight.m_params.m_flags.nFillStyle = 2;
+        m_actionMenuHalves[i].m_border.m_params.m_flags.nFillStyle = 2;
+        CSWGuiControl* pControl = &m_actionMenuHalves[i];
+        pControl->SetExtent(aExtents[i]);
+        m_actionMenuHalves[i].m_text.m_params.SetText(CExoString(""));
+        m_actionMenuHalves[i].m_tail.bFocusOnHover = 0;
+        m_actionMenuIos.AddControl(&m_actionMenuHalves[i]);
+        SendControlToBack(&m_actionMenuHalves[i]);
     }
-    const CResRef sHalfBg("ios_action_bg");
-    m_actionMenuHalves[0].m_border.m_params.SetFillImage(sHalfBg);
-    m_actionMenuHalves[0].m_borderHilight.m_params.SetFillImage(sHalfBg);
-    m_actionMenuHalves[0].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    m_actionMenuHalves[0].m_border.m_params.m_flags.nFillStyle = 2;
-    {
-        CSWGuiControl* pControl = &m_actionMenuHalves[0];
-        CSWGuiExtent sExtentL;
-        sExtentL.x = nEdgeR;
-        sExtentL.y = 0;
-        sExtentL.w = nThirdW;
-        sExtentL.h = nScreenH;
-        pControl->SetExtent(sExtentL);
-    }
-    m_actionMenuHalves[0].m_text.m_params.SetText(CExoString(""));
-    m_actionMenuHalves[0].m_tail.bFocusOnHover = 0;
-    m_actionMenuIos.AddControl(&m_actionMenuHalves[0]);
-    SendControlToBack(&m_actionMenuHalves[0]);
-    const CResRef sHalfBg2("ios_action_bg2");
-    m_actionMenuHalves[1].m_border.m_params.SetFillImage(sHalfBg2);
-    m_actionMenuHalves[1].m_borderHilight.m_params.SetFillImage(sHalfBg2);
-    m_actionMenuHalves[1].m_borderHilight.m_params.m_flags.nFillStyle = 2;
-    m_actionMenuHalves[1].m_border.m_params.m_flags.nFillStyle = 2;
-    {
-        CSWGuiControl* pControl = &m_actionMenuHalves[1];
-        CSWGuiExtent sExtentR;
-        sExtentR.x = nEdgeL;
-        sExtentR.y = 0;
-        sExtentR.w = nThirdW;
-        sExtentR.h = nScreenH;
-        pControl->SetExtent(sExtentR);
-    }
-    m_actionMenuHalves[1].m_text.m_params.SetText(CExoString(""));
-    m_actionMenuHalves[1].m_tail.bFocusOnHover = 0;
-    m_actionMenuIos.AddControl(&m_actionMenuHalves[1]);
-    SendControlToBack(&m_actionMenuHalves[1]);
     for (int i = 0; i < 32; i++) {
         m_actionSlots[i].m_text.m_params.SetText(CExoString(""));
         m_actionSlots[i].m_tail.m_nUserData = i;
@@ -8631,14 +8518,12 @@ void CSWGuiMainInterface::Draw(float fDelta) {
     if (m_fRotationTimer > 0.0f) {
         m_fRotationTimer -= fDelta;
         if (m_fRotationTimer > 0.0f) {
-            m_aCharacters[0].Adjust(m_fRotationTimer);
-            m_aCharacters[1].Adjust(m_fRotationTimer);
-            m_aCharacters[2].Adjust(m_fRotationTimer);
+            for (int i = 0; i < 3; i++)
+                m_aCharacters[i].Adjust(m_fRotationTimer);
             m_charOffscreen.Adjust(m_fRotationTimer);
         } else {
-            m_aCharacters[0].Adjust(0.25f);
-            m_aCharacters[1].Adjust(0.25f);
-            m_aCharacters[2].Adjust(0.25f);
+            for (int i = 0; i < 3; i++)
+                m_aCharacters[i].Adjust(0.25f);
             m_charOffscreen.Adjust(0.25f);
             m_charOffscreen.m_aLabels[5].m_tail.bVisible = 0;
             m_charOffscreen.m_aLabels[0].m_tail.bVisible = 0;
@@ -8662,25 +8547,8 @@ void CSWGuiMainInterface::Draw(float fDelta) {
 
     ShowActionQueue(g_pAppManager->m_pClientExoApp->GetCombatMode());
 
-    for (int nI = 0; nI < 6; nI++) {
-        CSWGuiMainInterfaceAction& rcAction = m_personalActionWidgets[nI];
-        if (rcAction.m_nPulseSteps != 0) {
-            rcAction.m_fPulseTimer -= fDelta;
-            if (rcAction.m_fPulseTimer <= 0.0f) {
-                rcAction.m_nPulseSteps -= 1;
-                rcAction.m_fPulseTimer = 0.1f;
-            }
-            float fA;
-            if (rcAction.m_nPulseSteps == 0) {
-                fA = 1.0f;
-            } else {
-                float fT = (0.1f - rcAction.m_fPulseTimer) / 0.1f;
-                fA = rcAction.m_nPulseSteps == 2 ? 1.0f - fT : fT;
-            }
-            rcAction.m_icon.m_border.m_params.m_fAlpha = fA;
-            rcAction.m_icon.m_borderHilight.m_params.m_fAlpha = fA;
-        }
-    }
+    for (int nI = 0; nI < 6; nI++)
+        m_personalActionWidgets[nI].Update(fDelta);
 
     if ((m_nInterfaceFlags & 2) != 0)
         UpdateActionQueue();
@@ -8694,7 +8562,7 @@ void CSWGuiMainInterface::Draw(float fDelta) {
             AurGUIStartLayer();
             if (AurGUISetupViewport(m_extent.x, m_extent.y, m_extent.w, m_extent.h, m_vColor,
                                     false, m_fAlpha)) {
-                K1ConsoleDrawPlate(m_actionDescLabel2, m_lblMoulding1, fDelta);
+                K1ConsoleDrawPlate(m_actionDescLabel2, m_lblMoulding[0], fDelta);
                 AurGUICloseViewport();
             }
             AurGUIStopLayer();
@@ -8790,19 +8658,20 @@ void CSWGuiMainInterface::Draw(float fDelta) {
         m_feedbackTimer = 0.0f;
         m_feedbackStrRef = 0;
         CExoString sText;
-        int nIdx = m_nPartyItemUseTarget;
-        if (nIdx == 2)
-            nIdx = g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount == 3 ? 2 : 1;
-        if (nIdx == -1) {
+        if (m_nPartyItemUseTarget == -1) {
             sText = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_PARTY_ITEM_USE_CLICK_PORTRAIT);
             sText = sText + "\n" + g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_CLICK_PANEL_TO_CANCEL);
             m_btnFeedback.m_text.m_params.SetText(sText);
             m_btnFeedback.m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_NEW_HIGHLIGHT);
         } else {
+            int nIdx = m_nPartyItemUseTarget;
+            if (nIdx == 2)
+                nIdx = g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount == 3 ? 2 : 1;
             CSWCCreature* pTarget = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(nIdx);
             int nServerId = static_cast<int>(g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_oidPartyItemUse));
             CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(nServerId);
-            if (pTarget->GetServerCreature()->CanUseItem(pItem, 0, 1)) {
+            int bCanUse = pTarget->GetServerCreature()->CanUseItem(pItem, 0, 1);
+            if (bCanUse) {
                 sText = g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_USE_ITEM_ON);
                 sText = sText + " " + pTarget->GetName();
                 sText = sText + "\n" + g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_CLICK_PANEL_TO_CANCEL);
@@ -8852,14 +8721,12 @@ void CSWGuiMainInterface::Draw(float fDelta) {
     if (m_fRotationTimer > 0.0f) {
         m_fRotationTimer -= fDelta;
         if (m_fRotationTimer > 0.0f) {
-            m_aCharacters[0].Adjust(m_fRotationTimer);
-            m_aCharacters[1].Adjust(m_fRotationTimer);
-            m_aCharacters[2].Adjust(m_fRotationTimer);
+            for (int i = 0; i < 3; i++)
+                m_aCharacters[i].Adjust(m_fRotationTimer);
             m_charOffscreen.Adjust(m_fRotationTimer);
         } else {
-            m_aCharacters[0].Adjust(0.25f);
-            m_aCharacters[1].Adjust(0.25f);
-            m_aCharacters[2].Adjust(0.25f);
+            for (int i = 0; i < 3; i++)
+                m_aCharacters[i].Adjust(0.25f);
             m_charOffscreen.Adjust(0.25f);
             m_charOffscreen.Show(0, 0, 0, 0);
             m_fRotationTimer = 0.0f;
@@ -8869,28 +8736,8 @@ void CSWGuiMainInterface::Draw(float fDelta) {
     ShowActionQueue(g_pAppManager->m_pClientExoApp->GetCombatMode());
 
     // the personal action slots' dim pulse
-    for (int nI = 0; nI < 7; nI++) {
-        CSWGuiMainInterfaceAction& rcAction = m_personalActionWidgets[nI];
-        if (rcAction.m_nPulseSteps != 0) {
-            rcAction.m_fPulseTimer -= fDelta;
-            float fA;
-            if (rcAction.m_fPulseTimer <= 0.0f) {
-                rcAction.m_nPulseSteps -= 1;
-                rcAction.m_fPulseTimer = 0.1f;
-                if (rcAction.m_nPulseSteps != 0) {
-                    float fT = (0.1f - rcAction.m_fPulseTimer) / 0.1f;
-                    fA = rcAction.m_nPulseSteps == 2 ? 1.0f - fT : fT;
-                } else {
-                    fA = 1.0f;
-                }
-            } else {
-                float fT = (0.1f - rcAction.m_fPulseTimer) / 0.1f;
-                fA = rcAction.m_nPulseSteps == 2 ? 1.0f - fT : fT;
-            }
-            rcAction.m_icon.m_border.m_params.m_fAlpha = fA;
-            rcAction.m_icon.m_borderHilight.m_params.m_fAlpha = fA;
-        }
-    }
+    for (int nI = 0; nI < 7; nI++)
+        m_personalActionWidgets[nI].Update(fDelta);
 
     if ((m_nInterfaceFlags & 2) != 0)
         UpdateActionQueue();
@@ -9221,6 +9068,8 @@ void CSWGuiMainInterfaceChar::Initialize(CSWGuiMainInterface* pInterface, int nS
     ShiftControlExtent(m_aLabels[2], 1, -1);
     ShiftControlExtent(m_btnChar, 1, -1);
     CSWGuiControl* pPortrait = &m_aLabels[5];
+    CSWGuiExtent extent;
+    CSWGuiControl* pBar;
     portrait = pPortrait->m_extent;
     AndroidExtentShift(portrait, 1, -1);
     pPortrait->SetExtent(portrait);
@@ -9239,7 +9088,7 @@ void CSWGuiMainInterfaceChar::Initialize(CSWGuiMainInterface* pInterface, int nS
     }
 #endif
 
-    CSWGuiExtent extent = m_lblCombatEffectInc.m_extent;
+    extent = m_lblCombatEffectInc.m_extent;
     AndroidExtentShift(extent, 1, -1);
     extent.x -= portrait.x;
     extent.y -= portrait.y;
@@ -9250,7 +9099,7 @@ void CSWGuiMainInterfaceChar::Initialize(CSWGuiMainInterface* pInterface, int nS
     extent.y -= portrait.y;
     m_lblCombatEffectRed.SetExtent(extent);
 
-    CSWGuiControl* pBar = &m_aBars[0];
+    pBar = &m_aBars[0];
     extent = pBar->m_extent;
     AndroidExtentShift(extent, 1, -1);
     pBar->SetExtent(extent);
@@ -9477,46 +9326,21 @@ void CSWGuiMainInterfaceChar::Adjust(float f)
     int nDY = static_cast<int>(static_cast<float>(m_nTargetBarY - m_nScaledBarY) * fT + static_cast<float>(m_nScaledBarY)
                     - static_cast<float>(extent.y));
 
-    extent = m_aLabels[0].m_extent;
-    extent.x += nDX;
-    extent.y += nDY;
-    m_aLabels[0].SetExtent(extent);
+    for (unsigned int i = 0; i < sizeof(m_aLabels) / sizeof(m_aLabels[0]); i++)
+    {
+        extent = m_aLabels[i].m_extent;
+        extent.x += nDX;
+        extent.y += nDY;
+        m_aLabels[i].SetExtent(extent);
+    }
 
-    extent = m_aLabels[1].m_extent;
-    extent.x += nDX;
-    extent.y += nDY;
-    m_aLabels[1].SetExtent(extent);
-
-    extent = m_aLabels[2].m_extent;
-    extent.x += nDX;
-    extent.y += nDY;
-    m_aLabels[2].SetExtent(extent);
-
-    extent = m_aLabels[3].m_extent;
-    extent.x += nDX;
-    extent.y += nDY;
-    m_aLabels[3].SetExtent(extent);
-
-    extent = m_aLabels[4].m_extent;
-    extent.x += nDX;
-    extent.y += nDY;
-    m_aLabels[4].SetExtent(extent);
-#if KOTOR1
-    extent = m_aLabels[5].m_extent;
-    extent.x += nDX;
-    extent.y += nDY;
-    m_aLabels[5].SetExtent(extent);
-#endif
-
-    extent = m_aBars[0].m_extent;
-    extent.x += nDX;
-    extent.y += nDY;
-    m_aBars[0].SetExtent(extent);
-
-    extent = m_aBars[1].m_extent;
-    extent.x += nDX;
-    extent.y += nDY;
-    m_aBars[1].SetExtent(extent);
+    for (unsigned int i = 0; i < sizeof(m_aBars) / sizeof(m_aBars[0]); i++)
+    {
+        extent = m_aBars[i].m_extent;
+        extent.x += nDX;
+        extent.y += nDY;
+        m_aBars[i].SetExtent(extent);
+    }
 
     extent = m_btnChar.m_extent;
     extent.x += nDX;

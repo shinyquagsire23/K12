@@ -85,7 +85,9 @@ public:
     void LoadFromMessage(CSWCMessage* pMsg);
     void UpdateTimeOfDay();
     void Update();
+#if !KOTOR1  // K1 has no weather thunder
     void Thunder(int bClose);
+#endif
     void StartSounds();
     void StopSounds(int a);
     void StopAllMusic();
@@ -100,10 +102,12 @@ public:
     void SetAmbientDayVolume(int nVolume);
     void SetAmbientNightVolume(int nVolume);
 
+#if !KOTOR1
     static const CExoString THUNDER1;
     static const CExoString THUNDER2;
     static const CExoString THUNDER_ROLLING1;
     static const CExoString THUNDER_ROLLING2;
+#endif
 
     CSWCAmbientSoundTrack m_musicDayTrack;
     CSWCAmbientSoundTrack m_musicNightTrack;

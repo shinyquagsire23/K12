@@ -16,11 +16,7 @@ CExoLocString::CExoLocString()
 CExoLocString::CExoLocString(const CExoLocString& other)
 {
     m_pInternal = new CExoLocStringInternal();
-    if (this != &other)
-    {
-        m_pInternal->Assign(other.m_pInternal);
-        m_nStrRef = other.m_nStrRef;
-    }
+    *this = other;
 }
 
 // EFFECTIVE: scheduler tie-break on the frame-setup slot, not source-fixable.

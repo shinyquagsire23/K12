@@ -46,9 +46,6 @@ CAurObject* NewCAurObject(char* pszResRef, char* pszParam2, FILE* pFile, FILE* p
 // Walkmesh-first line probe, defined with the creature code.
 int SceneHitCheck(CAurScene* pScene, Vector vFrom, Vector vTo, Vector* pHit, CHitInfo* pInfo);
 
-// The bullet list's AddPointer, instantiated here so the whole tree shares one copy.
-extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObject>*);
-
 #if !KOTOR1 && defined(K2_FIX_ENGINE_BUGS)
 // The track follower's distortion wake latch stays on while any minigame exists. RestartMiniGame
 // builds the new game before deleting the old one, so this has to be a count, not a flag.
@@ -301,25 +298,19 @@ void CSWMiniGame::SetCurPos(Vector v)
 // a centred stick, one for a hard brake when a fast slide is opposed by the stick.
 void CSWMiniGame::AxisAcceleration(const Vector& vAxis, float fDelta)
 {
-    Vector vAxisPrev = m_vSteerAxis;
-    Vector vVel = m_prevPhysicsState.m_vVelocity;
-    Vector vPos = m_prevPhysicsState.m_vPosition;
-    float  fLateral = m_lateralAccelPerSec;
-    float  fDamp = fLateral / m_movementPerSecond;
-    Vector vAxisMid = (vAxisPrev + vAxis) * 0.5f;
+    CSWMGPhysicsState sStage, k1, k2, k3, k4;
+    Vector vAxisMid = (vAxis + m_vSteerAxis) * 0.5f;
 
-    Vector k1 = (vAxisPrev * fLateral - vVel * fDamp) * fDelta;
-    Vector v1 = vVel + k1 * 0.5f;
-    Vector k2 = (vAxisMid * fLateral - v1 * fDamp) * fDelta;
-    Vector v2 = vVel + k2 * 0.5f;
-    Vector k3 = (vAxisMid * fLateral - v2 * fDamp) * fDelta;
-    Vector v3 = vVel + k3;
-    Vector k4 = (vAxis * fLateral - v3 * fDamp) * fDelta;
+    k1 = CSWMGPhysicsState(GetAcceleration(m_prevPhysicsState, m_vSteerAxis) * fDelta,
+                           m_prevPhysicsState.m_vVelocity * fDelta);
+    sStage = m_prevPhysicsState + k1 * 0.5f;
+    k2 = CSWMGPhysicsState(GetAcceleration(sStage, vAxisMid) * fDelta, sStage.m_vVelocity * fDelta);
+    sStage = m_prevPhysicsState + k2 * 0.5f;
+    k3 = CSWMGPhysicsState(GetAcceleration(sStage, vAxisMid) * fDelta, sStage.m_vVelocity * fDelta);
+    sStage = m_prevPhysicsState + k3;
+    k4 = CSWMGPhysicsState(GetAcceleration(sStage, vAxis) * fDelta, sStage.m_vVelocity * fDelta);
 
-    m_curPhysicsState.m_vVelocity = vVel + k1 * (1.0f / 6.0f) + k2 * (2.0f / 6.0f)
-                                  + k3 * (2.0f / 6.0f) + k4 * (1.0f / 6.0f);
-    m_curPhysicsState.m_vPosition = vPos + vVel * fDelta * (1.0f / 6.0f) + v1 * fDelta * (2.0f / 6.0f)
-                                  + v2 * fDelta * (2.0f / 6.0f) + v3 * fDelta * (1.0f / 6.0f);
+    m_curPhysicsState = m_prevPhysicsState + k1 / 6.0f + k2 / 3.0f + k3 / 3.0f + k4 / 6.0f;
 
 #if !KOTOR1  // K1 has the Runge-Kutta step only, for every minigame type
     if (m_type == MINIGAME_TYPE_SWOOP) {
@@ -1410,10 +1401,11 @@ int CSWMiniGame::Load()
         // The camerahook needs a resref of its own; resTemp still holds the track.
         CResRef resCameraHook;
         resCameraHook = m_pRes->ReadFieldCResRef(&sPlayer, const_cast<char*>("Camera"), bSuccess, CResRef(""));
+        unsigned char nCameraRotate;
         if (resCameraHook.IsValid() == 0)
             return 0;
-        pPlayer = SetPlayer(models, flags, resTemp, resCameraHook,
-            m_pRes->ReadFieldBYTE(&sPlayer, const_cast<char*>("CameraRotate"), bSuccess, 0));
+        nCameraRotate = m_pRes->ReadFieldBYTE(&sPlayer, const_cast<char*>("CameraRotate"), bSuccess, 0);
+        pPlayer = SetPlayer(models, flags, resTemp, resCameraHook, nCameraRotate);
     }
     else
     {

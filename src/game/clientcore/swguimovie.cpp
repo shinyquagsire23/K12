@@ -254,9 +254,9 @@ void CSWGuiTitleMovies::PopulateMovies()
 
     int i = 0;
     const char* pszOverridePath;
+    char szDir[200];
     while ((pszOverridePath = GetOverridePath(i, false)) != 0)
     {
-        char szDir[200];
         sprintf(szDir, "%s\\movies", pszOverridePath);
         g_pExoBase->GetDirectoryList(&aDirs, CExoString(szDir), RESTYPE_BIK, 0, 0);
         i++;
@@ -283,6 +283,7 @@ void CSWGuiTitleMovies::PopulateMovies()
     int nNumDirs = aDirs.m_count;
     for (int nDir = 0; nDir < nNumDirs; nDir++)
     {
+        CSWGuiButton* pRow;
         sName = aDirs.m_pArray[nDir];
         sName = sName.SubString(0, sName.GetLength() - 4);
 
@@ -298,7 +299,7 @@ void CSWGuiTitleMovies::PopulateMovies()
             }
         }
 
-        CSWGuiButton* pRow = new CSWGuiButton();
+        pRow = new CSWGuiButton();
         pRow->Initialize(extent, static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem));
 
         int nStrrefName = 0;
@@ -318,7 +319,8 @@ void CSWGuiTitleMovies::PopulateMovies()
         pRow->m_tail.m_nUserData = reinterpret_cast<unsigned long long>(pMovieName);
 
         extent.h = 56;
-        extent.h = static_cast<int>(GetResolutionTextScalar() * static_cast<float>(extent.h));
+        float fScale = GetResolutionTextScalar();
+        extent.h = static_cast<int>(fScale * static_cast<float>(extent.h));
         pRow->SetExtent(extent);
 
         pRow->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiTitleMovies::OnMoviePicked));

@@ -45,7 +45,7 @@ K2_LAYOUT_ASSERT(sizeof(PartProjection) == 0xa8, "PartProjection size drift");
 // The beam variant of the projection part.
 class PartBeam : public PartProjection {
 public:
-    PartBeam(PartTriMesh* pTriMesh, PartLight* pLight) : PartProjection(pTriMesh, pLight) {}
+    PartBeam(PartTriMesh* pTriMesh, PartLight* pLight) : PartProjection(pTriMesh, pLight) { Draw(false); }
 
     virtual void* AsPartBeam() { return this; }
     virtual void* AsPartDummy() { return 0; }
@@ -60,7 +60,7 @@ public:
 // The planar shadow variant of the projection part.
 class PartShadow : public PartProjection {
 public:
-    PartShadow(PartTriMesh* pTriMesh, PartLight* pLight) : PartProjection(pTriMesh, pLight) {}
+    PartShadow(PartTriMesh* pTriMesh, PartLight* pLight) : PartProjection(pTriMesh, pLight) { Draw(false); }
 
     virtual void* AsPartShadow() { return this; }
     virtual void* AsPartDummy() { return 0; }

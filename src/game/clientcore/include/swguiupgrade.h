@@ -205,7 +205,7 @@ public:
     void OnEnterAssemble(CSWGuiControl* pControl);
     void OnSlotSelected(CSWGuiControl* pControl);
     void OnEnterSlot(CSWGuiControl* pControl);
-    int  GetNumUpgrades();
+    unsigned char GetNumUpgrades();
     void CloseItems();
     void ShowItems(int n);
     void UpdateItems();

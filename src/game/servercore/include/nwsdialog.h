@@ -141,38 +141,24 @@ struct CSWSDialogBase {
 };
 
 // One element of the per-entry reply array at CSWSDialogEntry::m_paReplies.
-struct CSWSDialogReplyLink : CSWSDialogLinkEntry {
+struct CSWSDialogLinkReply : CSWSDialogLinkEntry {
     int m_nIsChild = 0;
 };
 
-// cl.exe has no warning-free spelling of the attribute before C++20 (C4848), so under cl.exe K1's
-// reply count follows the camera instead of sitting in its tail padding.
-#if defined(_MSC_VER) && !defined(__clang__)
-#define K2_NO_UNIQUE_ADDRESS
-#else
-#define K2_NO_UNIQUE_ADDRESS [[no_unique_address]]
-#endif
+// The DLG node shared by entries and replies: the CSWSDialogBase prefix, then the camera block as a
+// second base. K1's camera ends in tail padding, so both node kinds put their first own field there.
+struct CSWSDialogNode : CSWSDialogBase, CSWSDialogCamera {
+};
 
-// One element of the DLG's EntryList array, holding the CSWSDialogBase prefix, a camera block, then
-// the entry's own reply array.
-struct CSWSDialogEntry : CSWSDialogBase {
-#if KOTOR1  // the reply count sits in the camera's tail padding
-    K2_NO_UNIQUE_ADDRESS CSWSDialogCamera m_camera;
-#else
-    CSWSDialogCamera m_camera;
-#endif
+// One element of the DLG's EntryList array, a node followed by the entry's own reply array.
+struct CSWSDialogEntry : CSWSDialogNode {
     unsigned int     m_nReplyCount = 0;
-    CSWSDialogReplyLink* m_paReplies = 0;
+    CSWSDialogLinkReply* m_paReplies = 0;
 };
 
 // One element of the DLG's ReplyList array; the layout matches CSWSDialogEntry's apart from the
 // trailing field.
-struct CSWSDialogReply : CSWSDialogBase {
-#if KOTOR1
-    K2_NO_UNIQUE_ADDRESS CSWSDialogCamera m_camera;
-#else
-    CSWSDialogCamera m_camera;
-#endif
+struct CSWSDialogReply : CSWSDialogNode {
     unsigned int     m_nEntryCount = 0;
     CSWSDialogLinkEntry* m_paEntries = 0;
     unsigned int     m_nLinkIndex = 0xffffffff;   // reply index last handled, -1 when unanswered
@@ -183,14 +169,14 @@ struct CSWSDialogReply : CSWSDialogBase {
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogAnim) == 0x18, "DLG AnimList element stride");
 #if KOTOR1
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogLinkEntry) == 0x14, "K1 DLG link stride");
-K2_LAYOUT_ASSERT(sizeof(CSWSDialogReplyLink) == 0x18, "K1 EntryList element's reply-array stride");
+K2_LAYOUT_ASSERT(sizeof(CSWSDialogLinkReply) == 0x18, "K1 EntryList element's reply-array stride");
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogBase) == 0xb0, "K1 DLG element prefix");
 K2_LAYOUT_ASSERT(__builtin_offsetof(CSWSDialogEntry, m_nReplyCount) == 0xdc, "K1 reply count");
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogEntry) == 0xe8, "K1 EntryList element stride");
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogReply) == 0xf0, "K1 ReplyList element stride");
 #else
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogLinkEntry) == 0x78, "DLG link stride");
-K2_LAYOUT_ASSERT(sizeof(CSWSDialogReplyLink) == 0x80, "EntryList element's reply-array stride");
+K2_LAYOUT_ASSERT(sizeof(CSWSDialogLinkReply) == 0x80, "EntryList element's reply-array stride");
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogBase) == 0x110, "DLG element prefix");
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogEntry) == 0x150, "EntryList element stride");
 K2_LAYOUT_ASSERT(sizeof(CSWSDialogReply) == 0x158, "ReplyList element stride");

@@ -43,11 +43,7 @@ int CScriptCompilerInternal::GenerateFinalCodeFromParseTree()
     m_bGeneratingFinalCode = 1;
     int nResult = InstallLoader();
 
-    CScriptParseTreeNode* pTree = pReturnNode;
-    if (m_pGlobalVariableParseTree != 0) {
-        pTree = CreateScriptParseTreeNode(NODE_FUNCTIONAL_UNIT, m_pGlobalVariableParseTree, pReturnNode);
-        m_pGlobalVariableParseTree = 0;
-    }
+    CScriptParseTreeNode* pTree = InsertGlobalVariablesInParseTree(pReturnNode);
 
 #if KOTOR1
     if (nResult < 0) {
@@ -400,7 +396,9 @@ lMissingLabel:
 }
 
 // Rebuilds m_pCompiledCode as the final, relocated image.
+#if !KOTOR1 || !defined(__arm__)  // K1 armv7 inlines it into GenerateFinalCodeFromParseTree
 __attribute__((noinline))
+#endif
 int CScriptCompilerInternal::WriteResolvedOutput()
 {
     int64_t nSize = m_nResolvedCodeSize;
@@ -655,8 +653,8 @@ int CScriptCompilerInternal::AddSymbolToQueryList(const CExoString& sLabel, int 
     {
         m_nSymbolQueryListCapacity = m_nSymbolQueryListCapacity + SYMBOL_LIST_GROWTH;
         K2_ASSUME(m_nSymbolQueryListCount < m_nSymbolQueryListCapacity);   // the old capacity was the count
-        CScriptCompilerSymbolListEntry* pNewEntries =
-            new CScriptCompilerSymbolListEntry[m_nSymbolQueryListCapacity];
+        CScriptCompilerSymbolTableEntry* pNewEntries =
+            new CScriptCompilerSymbolTableEntry[m_nSymbolQueryListCapacity];
 
         if (m_pSymbolQueryList != 0)
         {
@@ -988,20 +986,11 @@ int CScriptCompilerInternal::PreVisitGenerateCode(CScriptParseTreeNode* pNode)
 
         m_nVarStackRecursionLevel++;
         m_sFunctionImpName = pNode->m_pLeft->m_pLeft->m_sName;
-        uint64_t nLen = m_sFunctionImpName.GetLength();
-
-        int i;
-        CScriptCompilerIdListEntry* pEntry = m_pIdentifierList;
-        for (i = 0; i <= m_nIdentifierCount; i++)
-        {
-            if (pEntry->m_nNameLength == static_cast<int>(nLen) &&
-                pEntry->m_sName == m_sFunctionImpName)
-                break;
-            pEntry++;
-        }
-        if (i < 0 || i > m_nIdentifierCount)
+        int nIdentifier = GetIdentifierByName(m_sFunctionImpName);
+        if (nIdentifier < 0)
             return OutputWalkTreeError(-SCRIPT_ERROR_UNKNOWN_STATE_IN_COMPILER, pNode);
 
+        CScriptCompilerIdListEntry* pEntry = &m_pIdentifierList[nIdentifier];
         pEntry->m_nCodeOffset = m_nBinaryCodeOffset;
         pEntry->m_nCodeEnd = -1;
         pEntry->m_nOutputStart = -1;
@@ -1532,8 +1521,8 @@ int CScriptCompilerInternal::AddSymbolToLabelList(const CExoString& sLabel, int 
     {
         m_nSymbolLabelListCapacity = m_nSymbolLabelListCapacity + SYMBOL_LIST_GROWTH;
         K2_ASSUME(m_nSymbolLabelListCount < m_nSymbolLabelListCapacity);   // the old capacity was the count
-        CScriptCompilerSymbolListEntry* pNewEntries =
-            new CScriptCompilerSymbolListEntry[m_nSymbolLabelListCapacity];
+        CScriptCompilerSymbolTableEntry* pNewEntries =
+            new CScriptCompilerSymbolTableEntry[m_nSymbolLabelListCapacity];
 
         if (m_pSymbolLabelList != 0)
         {
@@ -2000,8 +1989,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ",
-                        m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH],
                         bBP ? "CPDOWNSP %08x,%04x\n" : "CPDOWNBP %08x,%04x\n",
                         nValue, nSize);
@@ -2511,7 +2499,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "CONSTI %08x\n",
                         pNode->m_nValue);
                 nLen = 29;
@@ -2579,7 +2567,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
 #endif
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "CONSTS %04x %s\n",
                         nStrLen, pNode->m_sName.CStr());
                 m_nCompiledCodeLocation += nStrLen + 26;
@@ -2612,7 +2600,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "CONSTO %08x\n",
                         pNode->m_nValue);
                 nLen = 29;
@@ -2878,7 +2866,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "COMPI\n");
                 nLen = 19;
             }
@@ -3079,7 +3067,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "NOTI\n");
                 nLen = 18;
             }
@@ -3100,7 +3088,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 m_nCompiledCodeLocation += SYMBOLIC_ADDRESS_WIDTH;
 
                 int nMnemonic;
@@ -3213,7 +3201,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 m_nCompiledCodeLocation += SYMBOLIC_ADDRESS_WIDTH;
                 if (pNode->m_nType == NODE_SHIFT_LEFT)
                 {
@@ -3257,7 +3245,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 m_nCompiledCodeLocation += SYMBOLIC_ADDRESS_WIDTH;
 
                 if (pNode->m_nType == NODE_ADD)
@@ -4222,8 +4210,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
                 int nOperand = nDelta * 4;
                 if (m_bCompileSymbolicOutput != 0)
                 {
-                    sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ",
-                            m_nBinaryCodeOffset);
+                    PrintBinaryAddress();
                     sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "MOVSP %08x\n",
                             nOperand);
                     m_nCompiledCodeLocation += 28;
@@ -4307,8 +4294,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
                     int nLen;
                     if (m_bCompileSymbolicOutput != 0)
                     {
-                        sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ",
-                                m_nBinaryCodeOffset);
+                        PrintBinaryAddress();
                         sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH],
                                 bBP ? "CPTOPSP %08x,%04x\n" : "CPTOPBP %08x,%04x\n",
                                 nValue, nSize);
@@ -4567,7 +4553,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
                 int nLen;
                 if (m_bCompileSymbolicOutput != 0)
                 {
-                    sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                    PrintBinaryAddress();
                     sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH],
                             "ACTION %04x %02x\n", nAction & 0xffff,
                             static_cast<unsigned short>(
@@ -4592,7 +4578,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
 
             if (m_bCompileSymbolicOutput != 0)
             {
-                sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ", m_nBinaryCodeOffset);
+                PrintBinaryAddress();
                 sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "JSR FE_%s\n",
                         m_pIdentifierList[nIndex].m_sName.CStr());
                 uint64_t nNameLen = m_pIdentifierList[nIndex].m_sName.GetLength();
@@ -4647,8 +4633,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
                 int nLen;
                 if (m_bCompileSymbolicOutput != 0)
                 {
-                    sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ",
-                            m_nBinaryCodeOffset);
+                    PrintBinaryAddress();
                     sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH],
                             pNode->m_nType == NODE_POST_INCREMENT ? "INCI" : "DECI");
                     sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + (SYMBOLIC_ADDRESS_WIDTH + 4)],
@@ -4705,8 +4690,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
                     return OutputWalkTreeError(-SCRIPT_ERROR_BREAK_OUTSIDE_OF_LOOP_OR_CASE_STATEMENT, pNode);
                 if (m_bCompileSymbolicOutput != 0)
                 {
-                    sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ",
-                            m_nBinaryCodeOffset);
+                    PrintBinaryAddress();
                     sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "JMP _BR_%08x\n",
                             nValue);
                     m_nCompiledCodeLocation += 30;
@@ -4728,8 +4712,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
             {
                 if (m_bCompileSymbolicOutput != 0)
                 {
-                    sprintf(&m_pCompiledCode[m_nCompiledCodeLocation], "  %08x   ",
-                            m_nBinaryCodeOffset);
+                    PrintBinaryAddress();
                     sprintf(&m_pCompiledCode[m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH], "JMP _CN_%08x\n",
                             static_cast<int>(m_nLoopIdentifier));
                     m_nCompiledCodeLocation += 30;

@@ -257,7 +257,8 @@ void CSWGuiInGameMap::OnPanelAdded()
 
     // The map's texture is the module's own resref, "lbl_map<modname>", or the fixed placeholder
     // when the party table says the map is disabled or the module has no area map at all.
-    CResRef resModId = pServer->GetModule()->m_resRef;
+    const CResRef& rModRef = pServer->GetModule()->m_resRef;
+    CResRef resModId = rModRef;
     CExoString sModId;
     CExoString sLayoutName;
     resModId.CopyToString(sModId);
@@ -611,7 +612,6 @@ void CSWGuiInGameMap::OnMapNoteClicked(CSWGuiControl* pControl)
     if (pControl->m_tail.nCurrentEventArg != 0)
     {
         CExoString sText;
-        CExoLinkedListNode* pNode;
         unsigned long long nNoteId = pControl->m_tail.m_nUserData;
 
         CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(nNoteId);
@@ -619,24 +619,7 @@ void CSWGuiInGameMap::OnMapNoteClicked(CSWGuiControl* pControl)
             pObject->AsSWSWaypoint()->m_mapNote.GetString(
                 g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sText, 0);
         SetMapNote(sText);
-
-        // CSWGuiMapHider::SetMapNote, written out here: the loop body has to stay visible.
-        pNode = m_mapHider.m_mapNotes.m_pInternal->m_pHead;
-        if (pNode != 0)
-        {
-            for (;;)
-            {
-                unsigned long long* pNoteId =
-                    static_cast<unsigned long long*>(m_mapHider.m_mapNotes.GetAtPos(pNode));
-                if (*pNoteId == nNoteId)
-                    break;
-                m_mapHider.m_mapNotes.GetNext(pNode);
-                if (pNode == 0)
-                    goto done;
-            }
-            m_mapHider.m_pCurrentMapNote = pNode;
-        }
-    done:
+        m_mapHider.SetMapNote(nNoteId);
         CSWGuiInGameMap::Draw(0.001f);
         m_pGuiManager->HandleMouseMove(m_pGuiManager->m_currentMousePos.x,
                                        m_pGuiManager->m_currentMousePos.y);
@@ -784,8 +767,7 @@ void CSWGuiMapHider::ClearMapNotes()
     {
         unsigned long long* pNoteId =
             static_cast<unsigned long long*>(m_mapNotes.m_pInternal->m_pHead->m_pData);
-        if (pNoteId)
-            operator delete(pNoteId);
+        delete pNoteId;
         m_mapNotes.RemoveHead();
     }
     m_pCurrentMapNote = 0;
@@ -793,20 +775,14 @@ void CSWGuiMapHider::ClearMapNotes()
 
 void CSWGuiMapHider::SetMapNote(unsigned long long nNoteId)
 {
-    CExoLinkedListNode* pNode = m_mapNotes.m_pInternal->m_pHead;
-    if (pNode != 0)
+    for (CExoLinkedListNode* pNode = m_mapNotes.GetHeadPos(); pNode != 0; m_mapNotes.GetNext(pNode))
     {
-        for (;;)
+        unsigned long long* pNoteId = static_cast<unsigned long long*>(m_mapNotes.GetAtPos(pNode));
+        if (*pNoteId == nNoteId)
         {
-            unsigned long long* pNoteId =
-                static_cast<unsigned long long*>(m_mapNotes.GetAtPos(pNode));
-            if (*pNoteId == nNoteId)
-                break;
-            m_mapNotes.GetNext(pNode);
-            if (pNode == 0)
-                return;
+            m_pCurrentMapNote = pNode;
+            return;
         }
-        m_pCurrentMapNote = pNode;
     }
 }
 
@@ -1772,33 +1748,22 @@ void CSWGuiInGameGalaxyMap::NextPlanet()
     CSWGuiButton* pButton = &m_aPlanetButtons[pPartyTable->m_selectedPlanet];
     pButton->SetActive(0);
 
-    int nIndex = pPartyTable->m_selectedPlanet;
-    int nNext = nIndex + 1;
-    for (;;)
+    for (int i = pPartyTable->m_selectedPlanet + 1; i != pPartyTable->m_selectedPlanet; i++)
     {
-        nIndex = (nIndex >= GALAXY_MAP_PLANET_COUNT - 1) ? 0 : nNext;
+        if (i >= GALAXY_MAP_PLANET_COUNT)
+            i = 0;
 #if KOTOR1  // K1 also skips planets that are shown but not selectable
-        if (pPartyTable->GetPlanetAvailable(nIndex) != 0 &&
-            pPartyTable->GetPlanetSelectable(nIndex) != 0)
-            break;
-        nNext = nIndex + 1;
-        if (nNext == pPartyTable->m_selectedPlanet)
-            goto found;
+        if (pPartyTable->GetPlanetAvailable(i) != 0 && pPartyTable->GetPlanetSelectable(i) != 0)
 #else
-        if (pPartyTable->GetPlanetAvailable(nIndex) != 0)
-            break;
-        int nSelected = pPartyTable->m_selectedPlanet;
-        nNext = nIndex + 1;
-        if (nNext == nSelected)
-            goto found;
+        if (pPartyTable->GetPlanetAvailable(i) != 0)
 #endif
+        {
+            pPartyTable->SetSelectedPlanet(i);
+            break;
+        }
     }
-    pPartyTable->SetSelectedPlanet(nIndex);
-found:
-    {
-        CSWGuiButton* pNew = &m_aPlanetButtons[pPartyTable->m_selectedPlanet];
-        pNew->SetActive(1);
-    }
+    CSWGuiButton* pNew = &m_aPlanetButtons[pPartyTable->m_selectedPlanet];
+    pNew->SetActive(1);
     DisplayPlanet(pPartyTable->m_selectedPlanet, 1);
 }
 

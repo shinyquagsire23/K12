@@ -37,7 +37,7 @@ int CResDDS::GetDDSAttrib(unsigned int* pWidth, unsigned int* pHeight,
     *pBytesPerPixel = static_cast<unsigned char>(h->m_nBytesPerPixel);
     h = static_cast<DDSHeader*>(m_pDDSHeader);
     *pDataSize = h->m_nDataSize;
-    *reinterpret_cast<unsigned int*>(pAlphaTest) = h->m_fAlphaTest;
+    *pAlphaTest = h->m_fAlphaTest;
     return 1;
 }
 

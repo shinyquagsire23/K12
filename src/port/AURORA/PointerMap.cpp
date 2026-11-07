@@ -32,7 +32,7 @@ inline MaxTree::MaxTree(const MaxTree32& p)
     m_freeList.m_pData = reinterpret_cast<MdlNode**>(static_cast<int64_t>(p.m_pFreeList));
     __builtin_memcpy(&m_freeList.m_count, &p.m_nFreeListCount, sizeof(int));
     __builtin_memcpy(&m_freeList.m_capacity, &p.m_nFreeListCap, sizeof(int));
-    m_freeTokens.m_pData = reinterpret_cast<unsigned int*>(static_cast<int64_t>(p.m_pFreeTokens));
+    m_freeTokens.m_pData = reinterpret_cast<uint32_l_t*>(static_cast<int64_t>(p.m_pFreeTokens));
     __builtin_memcpy(&m_freeTokens.m_count, &p.m_nFreeTokenCount, sizeof(int));
     __builtin_memcpy(&m_freeTokens.m_capacity, &p.m_nFreeTokenCap, sizeof(int));
     m_pMdlResource = reinterpret_cast<void*>(static_cast<int64_t>(p.m_pMdlResource));
@@ -124,7 +124,7 @@ MaxTree* PointerMap::CreateMaxTreeNode(MaxTree32* p)
 #else
         pPool->m_pCurrent += sizeof(Model);
 #endif
-        new (pModel) Model(*static_cast<Model32*>(p));
+        ::new (pModel) Model(*static_cast<Model32*>(p));
         pNode = static_cast<MaxTree*>(pModel);
     } else if (p->m_cType == MaxTree::MAXTREE_ANIMATION_ID) {
         MemoryBlock64* pPool = m_blocks.find(m_activeBlocks.front().m_nId)->second;
@@ -134,7 +134,7 @@ MaxTree* PointerMap::CreateMaxTreeNode(MaxTree32* p)
 #else
         pPool->m_pCurrent += sizeof(Animation);
 #endif
-        new (pAnim) Animation(*static_cast<Animation32*>(p));
+        ::new (pAnim) Animation(*static_cast<Animation32*>(p));
         pNode = static_cast<MaxTree*>(pAnim);
     } else if (p->m_cType == MaxTree::MAXTREE_BASE_ID) {
         MemoryBlock64* pPool = m_blocks.find(m_activeBlocks.front().m_nId)->second;
@@ -144,7 +144,7 @@ MaxTree* PointerMap::CreateMaxTreeNode(MaxTree32* p)
 #else
         pPool->m_pCurrent += sizeof(MaxTree);
 #endif
-        new (pTree) MaxTree(*p);
+        ::new (pTree) MaxTree(*p);
         pNode = pTree;
     }
 
@@ -260,10 +260,10 @@ MdlNodeTriMesh::MdlNodeTriMesh(MdlNodeTriMesh32& p) : MdlNode(p)
     m_lVertexIndicesCount.m_pData = reinterpret_cast<int*>(static_cast<int64_t>(p.m_pBoneVertexCounts));
     __builtin_memcpy(&m_lVertexIndicesCount.m_count, &p.m_nBoneVertexCount, sizeof(int));
     __builtin_memcpy(&m_lVertexIndicesCount.m_capacity, &p.m_nBoneVertexCap, sizeof(int));
-    m_lIndexPoolOffsets.m_pData = reinterpret_cast<unsigned int*>(static_cast<int64_t>(p.m_pIndexPoolOffsets));
+    m_lIndexPoolOffsets.m_pData = reinterpret_cast<uint32_l_t*>(static_cast<int64_t>(p.m_pIndexPoolOffsets));
     __builtin_memcpy(&m_lIndexPoolOffsets.m_count, &p.m_nIndexPoolOffsetCount, sizeof(int));
     __builtin_memcpy(&m_lIndexPoolOffsets.m_capacity, &p.m_nIndexPoolOffsetCap, sizeof(int));
-    m_lIndexPools.m_pData = reinterpret_cast<unsigned int*>(static_cast<int64_t>(p.m_pBonePools));
+    m_lIndexPools.m_pData = reinterpret_cast<uint32_l_t*>(static_cast<int64_t>(p.m_pBonePools));
     __builtin_memcpy(&m_lIndexPools.m_count, &p.m_nBonePoolCount, sizeof(int));
     m_lIndexPools.m_capacity = p.m_nBonePoolCap;
     m_nLeftOverPoolOffset = p.m_nLeftOverPoolOffset;
@@ -304,7 +304,7 @@ MdlNodeTriMesh::MdlNodeTriMesh(MdlNodeTriMesh32& p) : MdlNode(p)
     m_bHologramDoNotDraw = p.m_bHologramDoNotDraw;
 #endif
     m_fSurfaceArea = p.m_fSurfaceArea;
-    m_nReserved4 = p.m_nReserved4;
+    m_fReserved4 = p.m_fReserved4;
     m_nGeomBase = p.m_nGeomBase;
     m_paVertices = reinterpret_cast<float*>(static_cast<int64_t>(p.m_paVertices));
 }
@@ -343,7 +343,7 @@ MdlNodeDanglyMesh::MdlNodeDanglyMesh(MdlNodeDanglyMesh32& p) : MdlNodeTriMesh(p)
     m_fDisplacement = p.m_fDisplacement;
     m_fTightness = p.m_fTightness;
     m_fPeriod = p.m_fPeriod;
-    m_pVertexSource = reinterpret_cast<void*>(static_cast<int64_t>(p.m_pVertexSource));
+    m_pVertexSource = reinterpret_cast<Vector3*>(static_cast<int64_t>(p.m_pVertexSource));
 }
 
 // The 32-bit image's bounding-box node converter.

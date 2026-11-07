@@ -314,8 +314,10 @@ void CExoSoundSourceInternal::SetPriorityGroup(unsigned char nGroup)
     m_nGroupVolume = pGroup->m_nVolume;
     SetVolume(m_nVolume, 0, 1.0f);
     SetPitchVariance(pGroup->m_fPlaybackVariance);
-    m_fMaxDistance = pGroup->m_fMaxDistance;
-    m_fMinDistance = pGroup->m_fMinDistance;
+    float fMaxDistance = pGroup->m_fMaxDistance;
+    float fMinDistance = pGroup->m_fMinDistance;
+    m_fMaxDistance = fMaxDistance;
+    m_fMinDistance = fMinDistance;
 }
 
 // Returns 0 for an out-of-range variance, 1 otherwise.
@@ -668,18 +670,15 @@ Try2D:
                 CalculateFixedVarianceFrequency();
         }
 
-        if (m_b3D != 0)
+        if (!GetWithinRangeOfListener())
         {
-            if (!GetWithinRangeOfListener())
-            {
-                Release();
-                if (m_bLooping == 0)
-                    goto Fail;
-                if (m_nListState != 0)
-                    return m_nSoundLength;
-                m_pSound->AddToNonPlayingLoopingList(this);
+            Release();
+            if (m_bLooping == 0)
+                goto Fail;
+            if (m_nListState != 0)
                 return m_nSoundLength;
-            }
+            m_pSound->AddToNonPlayingLoopingList(this);
+            return m_nSoundLength;
         }
 
         CPriorityGroup* pGroup = m_pSound->GetPriorityGroup(m_nPriorityGroup);

@@ -99,7 +99,6 @@ public:
     float m_fFPS;
     int   m_nTIDIndex;
     float m_fFrameTime;
-    int   m_nReserved1;
 };
 
 #endif // CYCLETIDTEXTURECONTROLLER_H
@@ -117,7 +116,7 @@ public:
     virtual void Init();  // Defined in CSWSArea.cpp, not here.
     virtual bool IsLinear() { return false; }
 
-    DirtyTextureController(CAurTexture* pTexture, int nMode) : TextureController(pTexture)
+    DirtyTextureController(int nMode, CAurTexture* pTexture) : TextureController(pTexture)
     {
         m_pImage = 0;
         m_nReserved1 = 0;

@@ -1,6 +1,7 @@
 // CSWCAnimBase's leaf accessors and its m_pModel forwarding layer.
 
 #include "k2stdint.h"
+#include <string.h>
 #include "nwcanimbase.h"
 #include "AURORA/aurmodel.h"
 #include "aurcamera.h"
@@ -125,7 +126,7 @@ int CSWCAnimBase::LoadModel(CResRef const& cResRef, unsigned char which)
     Vector vPosition;
     if (which != ANIM_MODEL_BODY)
         return 0;
-    char szName[20];
+    char szName[17];
     cResRef.CopyToString(szName);
     m_pModel = NewCAurObject(szName, const_cast<char*>("body"), 0, 0);
     if (!m_pModel)
@@ -262,11 +263,11 @@ void CSWCAnimBase::SetGroundTilt(Vector const& vTilt, Vector const& vFacing)
     Quaternion qTilt(cross(zaxis, vTilt), fComplement * 0.017453292f);
     Quaternion qBlended = slerp(qTilt, m_quatFc, 0.5f);
     m_quatFc = qTilt;
-    Quaternion qFacing = YawPitchRoll(Yaw(vFacing), 0.0f, 0.0f);
 #if KOTOR1  // K1: the multiplication precedes the m_pModel read
-    Quaternion qOrientation = qBlended * qFacing;
+    Quaternion qOrientation = qBlended * YawPitchRoll(Yaw(vFacing), 0.0f, 0.0f);
     m_pModel->SetOrientation(qOrientation);
 #else
+    Quaternion qFacing = YawPitchRoll(Yaw(vFacing), 0.0f, 0.0f);
     m_pModel->SetOrientation(qBlended * qFacing);
 #endif
 }
@@ -352,13 +353,8 @@ void CSWCAnimBase::UnloadModel()
 
 void CSWCAnimBase::UnloadModel(unsigned char which)
 {
-    if (which != ANIM_MODEL_BODY)
-        return;
-    if (!m_pModel)
-        return;
-    AttachToScene(0);
-    delete m_pModel;
-    m_pModel = 0;
+    if (which == ANIM_MODEL_BODY)
+        CSWCAnimBase::UnloadModel();
 }
 
 // In the texture family, each arm copies both CResRefs into 20-byte scratch, lower-cases them and
@@ -368,8 +364,8 @@ int CSWCAnimBase::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, int b
 {
     if (!m_pModel)
         return 0;
-    char szOld[20];
-    char szNew[20];
+    char szOld[17];
+    char szNew[17];
     sOld.CopyToString(szOld);
     sNew.CopyToString(szNew);
     _strlwr(szNew);
@@ -388,8 +384,8 @@ int CSWCAnimBase::ReplaceTexture(unsigned char which, CResRef const& sOld, CResR
 {
     if (!m_pModel || which != ANIM_MODEL_BODY)
         return 0;
-    char szOld[20];
-    char szNew[20];
+    char szOld[17];
+    char szNew[17];
     sOld.CopyToString(szOld);
     sNew.CopyToString(szNew);
     _strlwr(szNew);
@@ -412,8 +408,8 @@ int CSWCAnimBase::ReplaceTexture(unsigned char which, CResRef const& sOld, CResR
     int nResult = 0;
     if (!m_pModel || which != ANIM_MODEL_BODY)
         return nResult;
-    char szOld[20];
-    char szNew[20];
+    char szOld[17];
+    char szNew[17];
     sOld.CopyToString(szOld);
     sNew.CopyToString(szNew);
     _strlwr(szOld);
@@ -434,11 +430,11 @@ int CSWCAnimBase::ReplaceTexture(unsigned char which, CResRef const& sOld, CResR
 int CSWCAnimBase::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, unsigned int nCount,
                                  unsigned short* paData, int bCache, unsigned int nOffset)
 {
+    char szOld[17];
+    char szNew[17];
     int nResult = 0;
     if (m_pModel)
     {
-        char szOld[20];
-        char szNew[20];
         sOld.CopyToString(szOld);
         sNew.CopyToString(szNew);
         _strlwr(szOld);
@@ -489,11 +485,11 @@ int CSWCAnimBase::RestoreTexture(unsigned char which)
 // Sets the environment map to the argument's name, the cached one, or the empty string.
 int CSWCAnimBase::SetEnvMap(int nIndex, int bCache, CResRef const& cResRef)
 {
+    char szName[17];
     if (!m_pModel)
         return 0;
     if (nIndex)
     {
-        char szName[17];
         cResRef.CopyToString(szName);
         m_pModel->SetEnvironmentMap(szName);
     }
@@ -509,11 +505,11 @@ int CSWCAnimBase::SetEnvMap(int nIndex, int bCache, CResRef const& cResRef)
 
 int CSWCAnimBase::SetEnvMap(unsigned char which, int nIndex, int bCache, CResRef const& cResRef)
 {
+    char szName[17];
     if (!m_pModel || which != ANIM_MODEL_BODY)
         return 0;
     if (nIndex)
     {
-        char szName[17];
         cResRef.CopyToString(szName);
         m_pModel->SetEnvironmentMap(szName);
     }
@@ -529,11 +525,11 @@ int CSWCAnimBase::SetEnvMap(unsigned char which, int nIndex, int bCache, CResRef
 
 int CSWCAnimBase::RestoreEnvMap()
 {
+    char szName[17];
     if (!m_pModel)
         return 0;
     if (m_bModelEnvMapEnabled)
     {
-        char szName[17];
         m_resModelEnvMap.CopyToString(szName);
         m_pModel->SetEnvironmentMap(szName);
     }
@@ -576,7 +572,7 @@ CExoString CSWCAnimBase::GetAnimationName(unsigned short nAnimation)
         sSuffix = "wl";
     }
 
-    if (nBase != 0 && static_cast<unsigned>(nBase + nAnimation + 1) != 0)
+    if (nBase != 0 && nBase + nAnimation != -1)
     {
         char szNumber[4];  // three digits plus the terminator
         sprintf(szNumber, "%03d", nBase + nAnimation + 1);
@@ -585,8 +581,7 @@ CExoString CSWCAnimBase::GetAnimationName(unsigned short nAnimation)
     }
 
     // NONE keeps its empty name instead of falling back to PAUSE's.
-    bool bHasName = !sResult.IsEmpty();
-    if (nAnimation != SERVER_ANIMATION_NONE && !bHasName)
+    if (sResult.IsEmpty() && nAnimation != SERVER_ANIMATION_NONE)
     {
         unsigned short nDefaultId = ServerToClientAnimation(SERVER_ANIMATION_PAUSE);
         if (!g_pRules->m_p2DArrays->m_pAnimations->GetCExoStringEntry(
@@ -602,8 +597,8 @@ CExoString CSWCAnimBase::GetAnimationName(unsigned short nAnimation)
 
 int CSWCAnimBase::AnimationExists(unsigned short nAnimation)
 {
-    float fStart, fEnd;
     CExoString sName;
+    float fStart, fEnd;
     sName = GetAnimationName(nAnimation);
     if (m_pModel)
     {
@@ -615,20 +610,20 @@ int CSWCAnimBase::AnimationExists(unsigned short nAnimation)
 
 int CSWCAnimBase::GetOverlayAnimationPlaying(unsigned short nAnimation)
 {
+    float fStart, fEnd;
     if (!m_pModel)
         return 0;
     CExoString sName = GetAnimationName(nAnimation);
-    float fStart, fEnd;
     m_pModel->GetAnimation(sName.CStr(), &fStart, &fEnd);
     return fStart > 0.0f;
 }
 
 int CSWCAnimBase::GetOverlayAnimation(unsigned short nAnimation)
 {
+    float fStart, fEnd;
     if (!m_pModel)
         return 0;
     CExoString sName = GetAnimationName(nAnimation);
-    float fStart, fEnd;
     return m_pModel->GetAnimation(sName.CStr(), &fStart, &fEnd) != 0;
 }
 
@@ -637,8 +632,8 @@ int CSWCAnimBase::GetOverlayAnimation(unsigned short nAnimation)
 
 float CSWCAnimBase::GetAnimationTime(unsigned short nAnimation)
 {
-    float fStart, fEnd;
     CExoString sName = GetAnimationName(nAnimation);
+    float fStart, fEnd;
     if (m_pModel)
     {
         m_pModel->GetAnimation(sName.CStr(), &fStart, &fEnd);
@@ -650,8 +645,8 @@ float CSWCAnimBase::GetAnimationTime(unsigned short nAnimation)
 
 float CSWCAnimBase::GetAnimationLength(unsigned short nAnimation)
 {
-    float fStart, fEnd;
     CExoString sName = GetAnimationName(nAnimation);
+    float fStart, fEnd;
     if (m_pModel)
     {
         m_pModel->GetAnimation(sName.CStr(), &fStart, &fEnd);
@@ -701,10 +696,8 @@ void CSWCAnimBase::Lean()
 {
     if (!m_pModel)
         return;
-    Quaternion qOrientation = m_pModel->GetOrientation();
-    float fYaw = Yaw(qOrientation);
-    qOrientation = m_pModel->GetOrientation();
-    float fPitch = Pitch(qOrientation);
+    float fYaw = Yaw(m_pModel->GetOrientation());
+    float fPitch = Pitch(m_pModel->GetOrientation());
     m_pModel->SetOrientation(YawPitchRoll(fYaw, fPitch, m_fLean));
 }
 
@@ -879,11 +872,18 @@ CSWCAnimBase::CSWCAnimBase()
     m_resModelTexture = const_cast<char*>("");
     m_bModelTextureDataCached = 0;
     m_nModelTextureCount = 0;
+    __builtin_memset(static_cast<void*>(m_anModelTextureData), 0, sizeof(m_anModelTextureData));
     m_nModelTextureOffset = 0;
-    for (int i = 0; i < 10; i++)
-        m_anModelTextureData[i] = 0;
+#if defined(__arm__)  // the 32-bit body clears each slot with its [+5] partner; the arm64 image's is one 10-slot loop
+    for (int i = 0; i < 5; i++)
+    {
+        m_anHiliteSlot[i] = 0;
+        m_anHiliteSlot[i + 5] = 0;
+    }
+#else
     for (int i = 0; i < 10; i++)
         m_anHiliteSlot[i] = 0;
+#endif
     m_resModelEnvMap = const_cast<char*>("");
     m_bModelEnvMapEnabled = 0;
     m_alpha = 1.0f;
@@ -919,22 +919,20 @@ CSWCAnimBase::~CSWCAnimBase()
 // quaternionidentityoptimization is on.
 extern int quaternionidentityoptimization;
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
-        float xx = x * x, yy = y * y, zz = z * z;
-        float xy = x * y, xz = x * z, wx = x * w;
-        float yz = y * z, wy = y * w;
-        float wz = z * w;
-        Vector r;
-        r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
-        r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
-        r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
-        return r;
-    }
-    return v;
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
+        return v;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
+    float xx = x * x, yy = y * y, zz = z * z;
+    float xy = x * y, xz = x * z, wx = x * w;
+    float yz = y * z, wy = y * w;
+    float wz = z * w;
+    Vector r;
+    r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
+    r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
+    r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
+    return r;
 }
 
 // Projects the model's rotated bounding-box centre into camera space and maps it to screen. Returns

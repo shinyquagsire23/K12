@@ -20,11 +20,15 @@ class CSWSCreature;
 class CSWSItem;
 class CSWSpell;
 class CSWFeat;
+class CSWSStats_Spell;
 class CSWSStats_SpellLikeAbility;
 
 // One per-class record of a multiclassed creature, indexed by class slot.
 struct CSWSCreatureStats_ClassInfo {
-    CExoArrayList<unsigned int> m_knownSpells[2];
+    // Per spell level, of which KOTOR keeps level 0: the level-taking members index these
+    // unchecked, so level 1 reads the memorized list (never filled) as an empty known list.
+    CExoArrayList<uint32_l_t>       m_knownSpells[1];
+    CExoArrayList<CSWSStats_Spell*> m_memorizedSpells[1];
     unsigned char m_nReserved1;
     unsigned char m_spellsPerDayLeft;
     unsigned char m_maxSpellsPerDayLeft;
@@ -46,7 +50,7 @@ struct CSWSCreatureStats_ClassInfo {
     void          RemoveKnownSpell(unsigned char level, unsigned int nSpellId);
     int           GetKnownSpell(unsigned char nLevel, unsigned char nIndex);
     void          ResetSpellsPerDayLeft(unsigned char nLevel, unsigned char nValue);
-    unsigned int  GetNumberKnownSpells(unsigned char nLevel);
+    unsigned short GetNumberKnownSpells(unsigned char nLevel);
     int           HasSpell(unsigned char nLevel, unsigned int nSpellId);
 
     CSWSCreatureStats_ClassInfo();
@@ -269,7 +273,7 @@ public:
     CExoString m_sDeity;
     float m_hpAccumulator;
     float m_fpAccumulator;
-    unsigned char _pad238[0x240 - 0x238];
+    void* m_pReserved2;  // pointer-width
 
     CSWSCreatureStats(CSWSCreature* pOwner);
     ~CSWSCreatureStats();
@@ -391,13 +395,13 @@ public:
     unsigned char GetSpellsPerDayLeft(unsigned char classIndex, unsigned char level);
 #if KOTOR1
     // K1 and the four below have no level-up parameter.
-    unsigned int ComputeNumberKnownSpellsLeft(unsigned char classIndex);
-    unsigned int ComputeNumberKnownSpellsLeft(unsigned char classIndex, int)
+    unsigned char ComputeNumberKnownSpellsLeft(unsigned char classIndex);
+    unsigned char ComputeNumberKnownSpellsLeft(unsigned char classIndex, int)
     {
         return ComputeNumberKnownSpellsLeft(classIndex);
     }
 #else
-    unsigned int ComputeNumberKnownSpellsLeft(unsigned char classIndex, int bLevelUp);
+    unsigned char ComputeNumberKnownSpellsLeft(unsigned char classIndex, int bLevelUp);
 #endif
     void ResetSpellsPerDayLeft(unsigned char classIndex, unsigned char nSpellLevel);
     // The live known-spell list for a class slot and spell level.
@@ -455,13 +459,13 @@ public:
     int  HasSpell(unsigned char nSpellLevel, unsigned int nSpellId, int a);
     int  UnReadySpell(unsigned int nSpellId);
 #if KOTOR1
-    int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned int>* pChosenSpells);
-    int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned int>* pChosenSpells, int)
+    int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<uint32_l_t>* pChosenSpells);
+    int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<uint32_l_t>* pChosenSpells, int)
     {
         return HasSpellPrereq(pSpell, pChosenSpells);
     }
 #else
-    int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned int>* pChosenSpells, int bLevelUp);
+    int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<uint32_l_t>* pChosenSpells, int bLevelUp);
 #endif
     int  HasForcePowerRequirments(unsigned int nSpellId);
     int  HasFeatPrereq(CSWFeat* pFeat, CExoArrayList<unsigned short>* pFeats);
@@ -488,15 +492,15 @@ public:
     int  FeatAcquired(unsigned short nFeat, CExoArrayList<unsigned short>* pFeats);
 #if KOTOR1
     int  CanChooseSpell(unsigned int nSpellId, unsigned char nSpellsLeft,
-                        CExoArrayList<unsigned int>* pChosenSpells);
+                        CExoArrayList<uint32_l_t>* pChosenSpells);
     int  CanChooseSpell(unsigned int nSpellId, unsigned char nSpellsLeft,
-                        CExoArrayList<unsigned int>* pChosenSpells, int)
+                        CExoArrayList<uint32_l_t>* pChosenSpells, int)
     {
         return CanChooseSpell(nSpellId, nSpellsLeft, pChosenSpells);
     }
 #else
     int  CanChooseSpell(unsigned int nSpellId, unsigned char nSpellsLeft,
-                        CExoArrayList<unsigned int>* pChosenSpells, int bLevelUp);
+                        CExoArrayList<uint32_l_t>* pChosenSpells, int bLevelUp);
 #endif
     int  GetCanUseSkill(unsigned char nSkill);
 
@@ -563,10 +567,10 @@ public:
     // The force-point twin of AdjustHPAccumulatorBy.
     short AdjustFPAccumulatorBy(float fDelta);
 
-    unsigned char GetACNaturalBase();
-    int  GetTotalACFeatMod();
-    int  GetUnarmedDamageDice();
-    int  GetUnarmedDamageDie();
+    signed char GetACNaturalBase();
+    char GetTotalACFeatMod();
+    unsigned char GetUnarmedDamageDice();
+    unsigned char GetUnarmedDamageDie();
     int  GetUseMonkAttackTables(int a);
     int  GetUnarmedDamageRoll(CSWSObject* pObject);
 

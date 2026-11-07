@@ -90,10 +90,9 @@ CGameObject* CServerAIList::GetObjectAtPosition(int index)
     }
     unsigned long long id = m_aObjectIds[index];
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(id);
-    if (pObject == 0) {
+    if (pObject == 0 || pObject->m_objectType <= CGameObject::OBJECT_TYPE_AREA)
         return 0;
-    }
-    return (pObject->m_objectType > CGameObject::OBJECT_TYPE_AREA) ? pObject : 0;
+    return pObject;
 }
 
 // Removes an object id from the list; returns 0 when it was not there.
@@ -117,10 +116,9 @@ CGameObject* CServerAIList::GetNextObject()
     m_nIterIndex = index;
     unsigned long long id = m_aObjectIds[index];
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(id);
-    if (pObject == 0) {
+    if (pObject == 0 || pObject->m_objectType <= CGameObject::OBJECT_TYPE_AREA)
         return 0;
-    }
-    return (pObject->m_objectType > CGameObject::OBJECT_TYPE_AREA) ? pObject : 0;
+    return pObject;
 }
 
 // The lists, the event queue and m_sScriptsRun construct implicitly; the body only zeroes the rest.

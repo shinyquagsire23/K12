@@ -16,12 +16,14 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
     CExoString sOut;
     if (*pMessage != 's') return 0;
 
+    unsigned int nSize;
+    unsigned char* pBuffer;
     CNetLayerPlayerInfo* pPlayerInfo = g_pAppManager->m_pServerExoApp->GetNetLayer()
                                            ->GetPlayerInfo(nPlayerId);
     if (pPlayerInfo->m_isAdminPermitted == 0) return 0;
 
-    unsigned int nSize = nLength - 1;
-    unsigned char* pBuffer = pMessage + 1;
+    nSize = nLength - 1;
+    pBuffer = pMessage + 1;
 
     // Echo: echoes the message body back to the sender.
     if (ParseToken("Echo", &pBuffer, nSize, 0))
@@ -72,9 +74,11 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
             CExoString sModuleName;
             if (ParseGetString(pBuffer, nSize, sModuleName, 256))
             {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(g_pAppManager->m_pServerExoApp
-                                          ->GetClientObjectByPlayerId(nPlayerId, 0));
-                g_pAppManager->m_pServerExoApp->LoadModule(sModuleName, pPlayer->AsSWSPlayer());
+                g_pAppManager->m_pServerExoApp->LoadModule(
+                    sModuleName,
+                    static_cast<CSWSPlayer*>(g_pAppManager->m_pServerExoApp
+                                                 ->GetClientObjectByPlayerId(nPlayerId, 0))
+                        ->AsSWSPlayer());
             }
             return 1;
         }
@@ -148,30 +152,25 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
             if (nSize == 0) return 0;
             if (ParseGetString(pBuffer, nSize, sOut, 256))
             {
-                // Say: broadcast the text to every server admin, then to every regular player.
-                CExoLinkedListNode* pNode = g_pAppManager->m_pServerExoApp
-                                                 ->GetSysAdminList()->m_pInternal->m_pHead;
-                while (pNode != 0)
+                // Say: broadcast the text to every server admin, then to every regular player. Both
+                // passes resolve the node through the player list.
+                CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetSysAdminList();
+                for (int nPass = 0; nPass < 2; nPass++)
                 {
-                    CSWSPlayer* pAdmin = static_cast<CSWSPlayer*>(g_pAppManager->m_pServerExoApp
-                                                          ->GetPlayerList()->GetAtPos(pNode));
-                    CSWSMessage* pSWSMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
-                    pSWSMessage->SendServerToPlayerChatMessage(5, OBJECT_INVALID, CExoString(sOut),
-                                                               pAdmin->m_nPlayerId, CExoString(""));
-                    g_pAppManager->m_pServerExoApp->GetPlayerList()->GetNext(pNode);
+                    CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
+                    while (pNode != 0)
+                    {
+                        CSWSMessage* pSWSMessage;
+                        CSWSPlayer* pAdmin = reinterpret_cast<CExoLinkedList<CSWSPlayer>*>(
+                            g_pAppManager->m_pServerExoApp->GetPlayerList())->GetAtPos(pNode);
+                        pSWSMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
+                        pSWSMessage->SendServerToPlayerChatMessage(5, OBJECT_INVALID, CExoString(sOut),
+                                                                   pAdmin->m_nPlayerId, CExoString(""));
+                        reinterpret_cast<CExoLinkedList<CSWSPlayer>*>(
+                            g_pAppManager->m_pServerExoApp->GetPlayerList())->GetNext(pNode);
+                    }
+                    pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
                 }
-                pNode = g_pAppManager->m_pServerExoApp
-                             ->GetPlayerList()->m_pInternal->m_pHead;
-                while (pNode != 0)
-                {
-                    CSWSPlayer* pAdmin = static_cast<CSWSPlayer*>(g_pAppManager->m_pServerExoApp
-                                                          ->GetPlayerList()->GetAtPos(pNode));
-                    CSWSMessage* pSWSMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
-                    pSWSMessage->SendServerToPlayerChatMessage(5, OBJECT_INVALID, CExoString(sOut),
-                                                               pAdmin->m_nPlayerId, CExoString(""));
-                    g_pAppManager->m_pServerExoApp->GetPlayerList()->GetNext(pNode);
-                }
-                g_pAppManager->m_pServerExoApp->GetPlayerList();
             }
         }
     }
@@ -193,12 +192,15 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
     {
         do
         {
+            int nType;
+            int nValue;
+            int nPos;
+            int nLen;
             int nOption = g_pAppManager->m_pServerExoApp->GetServerInfo()
                               ->FindOptionIndex(sToken0, sToken1);
             if (nOption == 0) break;   // return nReturnAccum (0 first, 1 after any success)
             g_pAppManager->m_pServerExoApp->GetServerInfo()->m_nUpdatedFlags |= 2;
-            int nType = pServerInfo->m_Options[nOption].m_nType;
-            int nValue;
+            nType = pServerInfo->m_Options[nOption].m_nType;
             if (nType == 2)
             {
                 nValue = atoi(sToken2.CStr());
@@ -220,7 +222,7 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
                 SendServerToServerAdminMessage(nAllAdmins, sResp4);
             }
 
-            int nPos = 0;
+            nPos = 0;
             while (sToken2[nPos] != 0 && sToken2[nPos] != '\n')
                 nPos++;
             if (sToken2[nPos] != '\n')
@@ -229,7 +231,7 @@ int CSWSMessage::HandleServerAdminToServerMessage(unsigned int nPlayerId, unsign
                 break;
             }
             nReturnAccum = 1;
-            int nLen = sToken2.GetLength();
+            nLen = sToken2.GetLength();
             nTokens = GetTokenPair(reinterpret_cast<unsigned char*>(sToken2.CStr() + nPos + 1),
                                    nLen - (nPos + 1), sToken0, sToken1, sToken2);
             if (nTokens != 3)

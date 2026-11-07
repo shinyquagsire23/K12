@@ -280,7 +280,7 @@ struct MdlNodeEmitter32;
 class MdlNodeEmitter : public MdlNode {
 public:
     MdlNodeEmitter(MdlNodeEmitter32& p32);
-    MdlNodeEmitter(char* pszName) throw();
+    MdlNodeEmitter(char* pszName);
 
     void InternalParseField(char* pszLine);
     void InternalPostProcess();
@@ -328,10 +328,7 @@ public:
     char m_szRender[32];
     char m_szBlend[32];
     char m_szTexture[32];
-    union {
-        char m_szChunkName[16];
-        int  m_anChunkName[4];
-    };
+    char m_szChunkName[16];
     int  m_nTwoSidedTex;
     int  m_nLoop;
     short m_nRenderOrder;

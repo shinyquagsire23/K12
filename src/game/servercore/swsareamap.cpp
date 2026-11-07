@@ -1,5 +1,6 @@
 
 #include "k2stdint.h"
+#include <string.h>
 #include "swsareamap.h"
 
 #include "port/libcstring.h"
@@ -14,9 +15,12 @@ CSWSAreaMap::CSWSAreaMap()
     m_fScaleY = 0.0f;
     m_fOffsetX = 0.0f;
     m_fOffsetY = 0.0f;
-    memset(m_anPartyMapX, -1, sizeof(m_anPartyMapX));
-    memset(m_anPartyMapY, -1, sizeof(m_anPartyMapY));
-    memset(m_afPartyOrientation, 0, sizeof(m_afPartyOrientation));
+    for (int i = 0; i < 3; i++)
+    {
+        m_anPartyMapX[i] = -1;
+        m_anPartyMapY[i] = -1;
+        m_afPartyOrientation[i] = 0.0f;
+    }
 }
 
 CSWSAreaMap::~CSWSAreaMap()
@@ -205,7 +209,7 @@ void CSWSAreaMap::SetMapPointExplored(int nMapX, int nMapY)
     int nWord = nIndex / 32;
     if (nWord > static_cast<int>(m_nSize))
         return;
-    m_pData[nWord] |= 1 << nIndex;
+    m_pData[nWord] |= 1 << (nIndex & 31);
 }
 
 // The second bound here is 355 while SetMapPointExplored uses 354, so the two guards are not
@@ -322,7 +326,7 @@ int CSWSAreaMap::IsWorldPointExplored(Vector vPos)
     int nWord = nIndex / 32;
     if (nWord > static_cast<int>(m_nSize))
         return false;
-    return (m_pData[nWord] & (1 << nIndex)) != 0;
+    return (m_pData[nWord] & (1 << (nIndex & 31))) != 0;
 }
 
 void CSWSAreaMap::SetEntireMapExplored()

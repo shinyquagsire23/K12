@@ -39,8 +39,8 @@ public:
     int   Test2D3DBias();
 
     void SetRollOffFactor(float f);
-    int  GetNumber2DVoices();
-    int  GetNumber3DVoices();
+    unsigned char GetNumber2DVoices();
+    unsigned char GetNumber3DVoices();
     void Render();
 
     void SetListenerOrientation(const Vector& vDir, const Vector& vUp);
@@ -56,7 +56,7 @@ public:
     int Play3DOneShotSound(const CResRef& r, Vector vPos, float fZOffset, unsigned char a,
                            unsigned int b, unsigned char c, float d, float e);
     void StopAllOneShots();
-    int  GetSpeakerType();
+    unsigned char GetSpeakerType();
     void SetEnvironment(unsigned char env);
 
     void EnableStreamingEnvironmentEffects(int b);

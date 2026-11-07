@@ -61,7 +61,7 @@ float CSWRumbleMotorData::GetMagnitude(float fSamplePoint, int bLoop)
     if (m_paSamplePoints == NULL || m_paMagnitudes == NULL)
         return 0.0f;
 
-    int64_t nLast = static_cast<int64_t>(m_nNumSamplePoints) - 1;
+    int nLast = m_nNumSamplePoints - 1;
     float fLast = m_paSamplePoints[nLast];
 
     if (bLoop == 0) {
@@ -74,22 +74,23 @@ float CSWRumbleMotorData::GetMagnitude(float fSamplePoint, int bLoop)
 
     // Scans forward from the cached cursor, then wraps from 0 back up to it; the wrap scan's bound
     // is the cursor captured before the first scan.
-    int64_t nCurrent = static_cast<int64_t>(m_nCurrentIndex);
+    int nCurrent = m_nCurrentIndex;
     int i;
 
-    for (i = static_cast<int>(nCurrent); i < nLast; i++) {
+    for (i = nCurrent; i < nLast; i++) {
         if (fSamplePoint >= m_paSamplePoints[i] && fSamplePoint < m_paSamplePoints[i + 1])
-            goto found;
+            break;
     }
 
-    for (i = 0; i < nCurrent; i++) {
-        if (fSamplePoint >= m_paSamplePoints[i] && fSamplePoint < m_paSamplePoints[i + 1])
-            goto found;
+    if (i >= nLast) {
+        for (i = 0; i < nCurrent; i++) {
+            if (fSamplePoint >= m_paSamplePoints[i] && fSamplePoint < m_paSamplePoints[i + 1])
+                break;
+        }
+        if (i >= nCurrent)
+            return 0.0f;
     }
 
-    return 0.0f;
-
-found:
     m_nCurrentIndex = i;
     return m_paMagnitudes[i] + (m_paMagnitudes[i + 1] - m_paMagnitudes[i]) *
            ((fSamplePoint - m_paSamplePoints[i]) /
@@ -97,8 +98,8 @@ found:
 }
 
 CSWRumblePattern::CSWRumblePattern()
+    : m_nLooping(0)
 {
-    __builtin_memset(static_cast<void*>(this), 0, offsetof(CSWRumblePattern, m_nLooping) + sizeof(m_nLooping));
 }
 
 void CSWRumblePattern::LoadPattern(int nRow, C2DA* p2DA)

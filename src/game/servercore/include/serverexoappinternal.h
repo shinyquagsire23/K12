@@ -158,6 +158,13 @@ public:
         v.z += m_fCameraOffset;
         return v;
     }
+    Vector GetPosition() {
+        if (m_pCameraObject != 0) return m_pCameraObject->GetPosition();
+        return Vector(0.0f, 0.0f, 0.0f);
+    }
+    void SetPosition(Vector vPosition) {
+        if (m_pCameraObject != 0) m_pCameraObject->SetPosition(vPosition);
+    }
 
     SafePointer<CAurObject> m_pTargetObject;
     SafePointer<CAurObject> m_pCombatCamera;
@@ -333,8 +340,8 @@ public:
 
     float m_fHookHeadHeight;
     float m_fTargetHeadHeight;
-    int   m_fCamHeightOffset;
-    int   m_fTarHeightOffset;
+    float m_fCamHeightOffset;
+    float m_fTarHeightOffset;
     float m_fPullBackRange;
     int m_nShotType;
     float m_fShakeYaw;
@@ -474,7 +481,7 @@ public:
     int                                    m_buttonMashCheck;
     uint64_ll_t                            m_logHeartbeatInterval;
     uint64_ll_t                            m_logHeartbeatLastTime;
-    CExoArrayList<unsigned int>            m_aCharListRequests;
+    CExoArrayList<uint32_l_t>            m_aCharListRequests;
     CExoLinkedListNode*                    m_pcObjectIterPos;
     CSWGlobalVariableTable           m_globalVariableTable;
     CSWPartyTable                         m_partyTable;
@@ -484,7 +491,7 @@ public:
     unsigned long long                     m_lastModuleFoundId;
     CSWSModule*                            m_pLastModuleFound;
     unsigned long long                     m_areaCacheId;
-    unsigned long long                     m_pCachedArea;
+    CSWSArea*                              m_pCachedArea;
     int                                    m_nReserved2;
     int                                    m_nReserved3;
     unsigned int                           m_autoSaveTimerDay;

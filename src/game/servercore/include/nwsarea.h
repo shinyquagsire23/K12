@@ -27,17 +27,12 @@ class CGameObject;
 struct CResStruct;
 struct NWAreaExpansion_st;
 
-// One walk-route point. x/y are read as a Vector by the plot code; the third word doubles as the
-// DFS neighbour count, and the union keeps both spellings typed.
+// One walk-route point: its position and its run of m_paPathPointLinks.
 struct CSWSAreaPathPoint {
-    union {
-        Vector  m_point;
-        struct {
-            float         m_x;
-            float         m_y;
-            unsigned int  m_nNeighborCount;
-        } m_node;
-    };
+    CSWSAreaPathPoint() {}
+    float        m_x;
+    float        m_y;
+    unsigned int m_nNeighborCount;
     unsigned int m_nNeighborStart;
 };
 
@@ -156,10 +151,14 @@ public:
     CExoString             m_sDebugName;  // the area's tag, lower-cased
     void SetTag(const CExoString& sTag) { m_sDebugName = sTag.LowerCase(); }
     CSWSAreaHeaderIds*     m_pHeaderIds;
-    CExoString             m_scriptOnHeartbeat;
-    CExoString             m_scriptOnUserDefined;
-    CExoString             m_scriptOnEnter;
-    CExoString             m_scriptOnExit;
+    // m_scripts[] slot indices, in the order the GFF keys are read.
+    enum {
+        AREA_SCRIPT_ONHEARTBEAT   = 0,
+        AREA_SCRIPT_ONUSERDEFINED = 1,
+        AREA_SCRIPT_ONENTER       = 2,
+        AREA_SCRIPT_ONEXIT        = 3,
+    };
+    CExoString             m_scripts[4];
     int                    m_chanceFog;
     int                    m_modSpotCheck;
     int                    m_nListenModifier;

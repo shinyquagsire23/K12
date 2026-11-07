@@ -41,7 +41,7 @@ bool ASLPlat_IsControllerPlugged();
 
 // This port renders dialogs through CSWGuiDialog, so the iOS dialog path is compiled out and the
 // three helpers below are unreachable.
-int IosNewDialog()
+bool IosNewDialog()
 {
     return 1;
 }
@@ -647,23 +647,21 @@ CSWGuiDialogComputer::CSWGuiDialogComputer(CSWGuiManager* pGuiManager)
     }
 #endif
 
-    m_aInfo[0].m_labelCaption.m_text.m_params.SetStrRef(
-        g_pRules->m_paSkills[0].m_nNameStrRef);
-    m_aInfo[0].m_labelIcon.m_border.m_params.SetFillImage(
-        CResRef(g_pRules->m_paSkills[0].m_icon));
-    m_aInfo[1].m_labelCaption.m_text.m_params.SetStrRef(
-        g_pRules->m_paSkills[5].m_nNameStrRef);
-    m_aInfo[1].m_labelIcon.m_border.m_params.SetFillImage(
-        CResRef(g_pRules->m_paSkills[5].m_icon));
+    CSWSkill* pSkill = &g_pRules->m_paSkills[0];
+    m_aInfo[0].m_labelCaption.m_text.m_params.SetStrRef(pSkill->m_nNameStrRef);
+    m_aInfo[0].m_labelIcon.m_border.m_params.SetFillImage(CResRef(pSkill->m_icon));
+    pSkill = &g_pRules->m_paSkills[5];
+    m_aInfo[1].m_labelCaption.m_text.m_params.SetStrRef(pSkill->m_nNameStrRef);
+    m_aInfo[1].m_labelIcon.m_border.m_params.SetFillImage(CResRef(pSkill->m_icon));
 
     CSWGuiLabel* pProtoLabel = static_cast<CSWGuiLabel*>(CSWGuiDialog::m_listBox.m_pProtoItem);
     for (int i = 0; i < 20; i++)
     {
-        CSWGuiExtent replyExtent(0, 0,
-                                 CSWGuiDialog::m_listBox.m_innerExtent.w
-                                     - CSWGuiDialog::m_listBox.m_nPadding * 2,
-                                 20);
-        m_replyLabels[i].Initialize(replyExtent, pProtoLabel, 1.0f);
+        m_replyLabels[i].Initialize(CSWGuiExtent(0, 0,
+                                                 CSWGuiDialog::m_listBox.m_innerExtent.w
+                                                     - CSWGuiDialog::m_listBox.m_nPadding * 2,
+                                                 20),
+                                    pProtoLabel, 1.0f);
         m_replyLabels[i].AddEvent(SWGUIEVENT_FOCUS, this,
                                   static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDialog::SetReplyActive));
         m_replyLabels[i].AddEvent(SWGUIEVENT_UNFOCUS, this,
@@ -852,8 +850,8 @@ void CSWGuiDialogComputer::SetReplies(int n, CExoString* pa)
     m_replies.m_tail.bVisible = 1;
     m_replies.SetReplies(aReplies);
 
-    m_replies.SetExtent(CSWGuiExtent(static_cast<int>(s_fScale * 90.0f),
-                                     static_cast<int>(g_SDL_mode.h * 0.5f + s_fScale * -320.0f * 0.5f),
+    int nTop = static_cast<int>(g_SDL_mode.h * 0.5f + s_fScale * -320.0f * 0.5f);
+    m_replies.SetExtent(CSWGuiExtent(static_cast<int>(s_fScale * 90.0f), nTop,
                                      static_cast<int>(794.0f * s_fScale), static_cast<int>(290.0f * s_fScale)));
     AddControl(&m_replies);
 }
@@ -1473,8 +1471,8 @@ void CSWGuiDialogLetterbox::SetFade(int nFadeType, float fFadeLength, float fFad
     m_fAlpha = (nFadeType == 0) ? 0.0f : 1.0f;
     m_fadeElapsed = fFadeLength;
     m_fadeDuration = fFadeDelay;
-    m_fadeAmount = 0.1f;
     m_nFadeType = nFadeType;
+    m_fadeAmount = 0.1f;
 }
 
 int CSWGuiDialogLetterbox::GetLetterboxChangeHeight(const float& f) {
@@ -2155,8 +2153,9 @@ CSWGuiDialogTop::CSWGuiDialogTop(CSWGuiManager* pGuiManager, const CResRef& resR
 #endif
     m_pDialog = pDialog;
 
-#if KOTOR1  // K1's panel is the whole screen
-    CSWGuiObject::SetExtent(CSWGuiExtent(0, 0, g_SDL_mode.w, g_SDL_mode.h));
+#if KOTOR1  // K1's panel is the whole screen; one extent local serves the panel and then the label
+    CSWGuiExtent labelExtent(0, 0, g_SDL_mode.w, g_SDL_mode.h);
+    CSWGuiObject::SetExtent(labelExtent);
 #else
     // GetSafeMargin's two out-parameters are the x/y letterbox the panel keeps on both sides.
     int nMarginX;
@@ -2170,7 +2169,11 @@ CSWGuiDialogTop::CSWGuiDialogTop(CSWGuiManager* pGuiManager, const CResRef& resR
 #endif
 
     // The label keeps the panel's width but its own (shorter) height.
+#if KOTOR1
+    labelExtent = m_label.m_extent;
+#else
     CSWGuiExtent labelExtent = m_label.m_extent;
+#endif
     labelExtent.w = m_extent.w;
     m_label.SetExtent(labelExtent);
 
@@ -2189,8 +2192,8 @@ CSWGuiDialogTop::CSWGuiDialogTop(CSWGuiManager* pGuiManager, const CResRef& resR
     for (int i = 0; i < 16; i++)
     {
         char sImage[256];
-        sprintf(sImage, "ios_reply_%d", i + 1);
         CSWGuiExtent extent(940, 160 + i * 63, g_nReplyButtonWidth, g_nReplyButtonHeight);
+        sprintf(sImage, "ios_reply_%d", i + 1);
 
         m_replyButtons[i].SetExtent(extent);
         m_replyButtons[i].m_text.m_params.SetText(CExoString(""));
@@ -2378,11 +2381,11 @@ void CSWGuiDialogTop::SetReply(const CExoString& sText)
     else
     {
         CSWGuiExtent panelExtent(m_extent.x, m_extent.y, m_extent.w, 0);
-        nHeight = (m_pGuiManager->m_nScreenHeight
-                   - static_cast<int>(static_cast<float>(m_pGuiManager->m_nScreenWidth) / 2.333333f)) / 2
-                  - nMarginY - 5;
-        panelExtent.h = nHeight;
+        panelExtent.h = (m_pGuiManager->m_nScreenHeight
+                         - static_cast<int>(static_cast<float>(m_pGuiManager->m_nScreenWidth) / 2.333333f)) / 2
+                        - nMarginY - 5;
         CSWGuiObject::SetExtent(panelExtent);
+        nHeight = panelExtent.h;
     }
 #else
     if (nHeight <= m_extent.h)

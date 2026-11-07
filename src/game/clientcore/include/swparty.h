@@ -211,7 +211,7 @@ struct CSWParty {
     Quaternion         m_followAnchorOrientation;
     CSWPartyFollowDataArray m_followData;         // embedded, not a pointer
     // Unmodelled tail slot that no shipped build reads or writes.
-    unsigned long long m_nReserved2;
+    uint64_ll_t m_nReserved2;
 
     CSWParty();
     ~CSWParty();

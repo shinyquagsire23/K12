@@ -85,11 +85,10 @@ extern int quaternionidentityoptimization;
 
 #if KOTOR1
 // K1 rotates with the quaternion-inverse operator instead.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -163,10 +162,10 @@ void ExecuteSkinTransforms(MdlNodeSkin* node, List<Vector>& inPositions, List<Ma
                            VertexPrimitiveSkinned* vp, bool flag)
 {
     static unsigned int sVertexCount = static_cast<short>(node->m_nVertexCount);
-    static unsigned int sPoolPositions =
+    static uint32_l_t sPoolPositions =
         GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0), sVertexCount * 12, 0x42, 0,
                               &sPoolPositions);
-    static unsigned int sPoolNormals =
+    static uint32_l_t sPoolNormals =
         GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0), sVertexCount * 12, 0x42, 0,
                               &sPoolNormals);
 
@@ -187,42 +186,11 @@ void ExecuteSkinTransforms(MdlNodeSkin* node, List<Vector>& inPositions, List<Ma
     for (int nBone = 0; nBone < static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_lIndexPools.m_count; nBone++) {
         const unsigned int nBonePool = static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_lIndexPools.m_pData[nBone];
         unsigned char* pBone = static_cast<unsigned char*>(GLRender::LockPool(nBonePool, 0, 0, 8));
-        if (static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_lVertexIndicesCount.m_pData[nBone] >= 1) {
-            for (int nVert = 0; nVert < static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_lVertexIndicesCount.m_pData[nBone]; nVert++) {
+        for (int nVert = 0; nVert < static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_lVertexIndicesCount.m_pData[nBone]; nVert++) {
 #if KOTOR1  // K1 has no reversed-component index flip
-                const unsigned short idx = reinterpret_cast<unsigned short*>(pBone)[nVert];
+            const unsigned short idx = reinterpret_cast<unsigned short*>(pBone)[nVert];
 #else
-                const unsigned short idx = reinterpret_cast<unsigned short*>(pBone)[nVert ^ static_cast<int>(gHasRevComps_Mac)];
-#endif
-                unsigned char* pBase = pVertexBase + static_cast<int64_t>(node->m_nVertexStride) * idx;
-                vPos = *reinterpret_cast<Vector*>(pBase + node->m_nVertexOfs + node->m_nGeomBase);
-                vNorm = *reinterpret_cast<Vector*>(pBase + node->m_nNormalOfs + node->m_nGeomBase);
-                Vector vAccumPos = {0.0f, 0.0f, 0.0f};
-                Vector vAccumNorm = {0.0f, 0.0f, 0.0f};
-                for (int nComp = 0; nComp < 4; nComp++) {
-                    const float weight = *reinterpret_cast<float*>(pVertexBase + node->m_nGeomBase + static_cast<int64_t>(node->m_nVertexStride) * idx +
-                                                  node->m_nBoneWeightsOfs + nComp * 4);
-                    if (weight == 0.0f)
-                        continue;
-                    const int nBoneIdx = node->m_aBoneNodeIndices[static_cast<unsigned int>(*reinterpret_cast<float*>(pVertexBase +
-                                        node->m_nGeomBase + static_cast<int64_t>(node->m_nVertexStride) * idx + node->m_nBoneIndicesOfs + nComp * 4))];
-                    vAccumPos = vAccumPos + (inMatrices.m_pData[nBoneIdx] * vPos + inPositions.m_pData[nBoneIdx]) * weight;
-                    vAccumNorm = vAccumNorm + (inMatrices.m_pData[nBoneIdx] * vNorm) * weight;
-                }
-                pPositions[idx] = vAccumPos;
-                pNormals[idx] = vAccumNorm;
-            }
-        }
-        GLRender::UnlockPool(nBonePool);
-    }
-
-    unsigned char* pBonePhase = static_cast<unsigned char*>(GLRender::LockPool(static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_nLeftOverPool, 0, 0, 8));
-    if (static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_nLeftOverIndexCount >= 1) {
-        for (int nBone2 = 0; nBone2 < static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_nLeftOverIndexCount; nBone2++) {
-#if KOTOR1
-            const unsigned short idx = reinterpret_cast<unsigned short*>(pBonePhase)[nBone2];
-#else
-            const unsigned short idx = reinterpret_cast<unsigned short*>(pBonePhase)[nBone2 ^ static_cast<int>(gHasRevComps_Mac)];
+            const unsigned short idx = reinterpret_cast<unsigned short*>(pBone)[nVert ^ static_cast<int>(gHasRevComps_Mac)];
 #endif
             unsigned char* pBase = pVertexBase + static_cast<int64_t>(node->m_nVertexStride) * idx;
             vPos = *reinterpret_cast<Vector*>(pBase + node->m_nVertexOfs + node->m_nGeomBase);
@@ -234,16 +202,43 @@ void ExecuteSkinTransforms(MdlNodeSkin* node, List<Vector>& inPositions, List<Ma
                                               node->m_nBoneWeightsOfs + nComp * 4);
                 if (weight == 0.0f)
                     continue;
-                const int nBoneIdx = node->m_aBoneNodeIndices[*reinterpret_cast<unsigned short*>(pVertexBase +
-                                    node->m_nGeomBase + static_cast<int64_t>(node->m_nVertexStride) * idx + node->m_nBoneIndicesOfs + nComp * 2)];
+                const int nBoneIdx = node->m_aBoneNodeIndices[static_cast<unsigned int>(*reinterpret_cast<float*>(pVertexBase +
+                                    node->m_nGeomBase + static_cast<int64_t>(node->m_nVertexStride) * idx + node->m_nBoneIndicesOfs + nComp * 4))];
                 vAccumPos = vAccumPos + (inMatrices.m_pData[nBoneIdx] * vPos + inPositions.m_pData[nBoneIdx]) * weight;
                 vAccumNorm = vAccumNorm + (inMatrices.m_pData[nBoneIdx] * vNorm) * weight;
             }
-            if (flag)
-                vAccumPos = vAccumPos + vAccumNorm * vp->m_pPart->m_pGob->m_fBumpOutDistance;
             pPositions[idx] = vAccumPos;
             pNormals[idx] = vAccumNorm;
         }
+        GLRender::UnlockPool(nBonePool);
+    }
+
+    unsigned char* pBonePhase = static_cast<unsigned char*>(GLRender::LockPool(static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_nLeftOverPool, 0, 0, 8));
+    for (int nBone2 = 0; nBone2 < static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_nLeftOverIndexCount; nBone2++) {
+#if KOTOR1
+        const unsigned short idx = reinterpret_cast<unsigned short*>(pBonePhase)[nBone2];
+#else
+        const unsigned short idx = reinterpret_cast<unsigned short*>(pBonePhase)[nBone2 ^ static_cast<int>(gHasRevComps_Mac)];
+#endif
+        unsigned char* pBase = pVertexBase + static_cast<int64_t>(node->m_nVertexStride) * idx;
+        vPos = *reinterpret_cast<Vector*>(pBase + node->m_nVertexOfs + node->m_nGeomBase);
+        vNorm = *reinterpret_cast<Vector*>(pBase + node->m_nNormalOfs + node->m_nGeomBase);
+        Vector vAccumPos = {0.0f, 0.0f, 0.0f};
+        Vector vAccumNorm = {0.0f, 0.0f, 0.0f};
+        for (int nComp = 0; nComp < 4; nComp++) {
+            const float weight = *reinterpret_cast<float*>(pVertexBase + node->m_nGeomBase + static_cast<int64_t>(node->m_nVertexStride) * idx +
+                                          node->m_nBoneWeightsOfs + nComp * 4);
+            if (weight == 0.0f)
+                continue;
+            const int nBoneIdx = node->m_aBoneNodeIndices[*reinterpret_cast<unsigned short*>(pVertexBase +
+                                node->m_nGeomBase + static_cast<int64_t>(node->m_nVertexStride) * idx + node->m_nBoneIndicesOfs + nComp * 2)];
+            vAccumPos = vAccumPos + (inMatrices.m_pData[nBoneIdx] * vPos + inPositions.m_pData[nBoneIdx]) * weight;
+            vAccumNorm = vAccumNorm + (inMatrices.m_pData[nBoneIdx] * vNorm) * weight;
+        }
+        if (flag)
+            vAccumPos = vAccumPos + vAccumNorm * vp->m_pPart->m_pGob->m_fBumpOutDistance;
+        pPositions[idx] = vAccumPos;
+        pNormals[idx] = vAccumNorm;
     }
     GLRender::UnlockPool(static_cast<MdlNodeTriMesh*>(vp->m_pNode)->m_nLeftOverPool);
     GLRender::UnlockPool(sPoolPositions);
@@ -501,32 +496,30 @@ void RenderSkinned(VertexPrimitiveSkinned* vertices, bool flag)
 
     // For each bone, rotate the bone position by the gathered frame, merge it into the
     // frame list and append the resulting rotation matrix.
-    if (0 < tbones.m_count) {
-        for (int64_t i = 0; i < tbones.m_count; i++) {
-            Quaternion q = qbones.m_pData[i];
-            Vector src = node->m_lTBoneRefInv.m_pData[i];
-            Vector r;
-            if (quaternionidentityoptimization == 0 || (q.w != -1.0f && q.w != 1.0f)) {
-                float w = q.w, x = q.x, y = q.y, z = q.z;
-                float t1 = y * y + z * z;
-                float t2 = x * x + z * z;
-                float t3 = x * y - w * z;
-                float t4 = x * y + w * z;
-                float t5 = w * y + x * z;
-                float t6 = x * z - w * y;
-                float t7 = y * z - w * x;
-                float t8 = w * x + y * z;
-                float t9 = x * x + y * y;
-                r.x = (1.0f - (t1 + t1)) * src.x + (t3 + t3) * src.y + (t5 + t5) * src.z;
-                r.y = (t4 + t4) * src.x + (1.0f - (t2 + t2)) * src.y + (t7 + t7) * src.z;
-                r.z = (t6 + t6) * src.x + (t8 + t8) * src.y + (1.0f - (t9 + t9)) * src.z;
-            } else {
-                r = src;
-            }
-            tbones.m_pData[i] = tbones.m_pData[i] + r;
-            qbones.m_pData[i] = qbones.m_pData[i] * node->m_lQBoneRefInv.m_pData[i];
-            rbones.Add(qbones.m_pData[i].getmatrix());
+    for (int64_t i = 0; i < tbones.m_count; i++) {
+        Quaternion q = qbones.m_pData[i];
+        Vector src = node->m_lTBoneRefInv.m_pData[i];
+        Vector r;
+        if (quaternionidentityoptimization == 0 || (q.w != -1.0f && q.w != 1.0f)) {
+            float w = q.w, x = q.x, y = q.y, z = q.z;
+            float t1 = y * y + z * z;
+            float t2 = x * x + z * z;
+            float t3 = x * y - w * z;
+            float t4 = x * y + w * z;
+            float t5 = w * y + x * z;
+            float t6 = x * z - w * y;
+            float t7 = y * z - w * x;
+            float t8 = w * x + y * z;
+            float t9 = x * x + y * y;
+            r.x = (1.0f - (t1 + t1)) * src.x + (t3 + t3) * src.y + (t5 + t5) * src.z;
+            r.y = (t4 + t4) * src.x + (1.0f - (t2 + t2)) * src.y + (t7 + t7) * src.z;
+            r.z = (t6 + t6) * src.x + (t8 + t8) * src.y + (1.0f - (t9 + t9)) * src.z;
+        } else {
+            r = src;
         }
+        tbones.m_pData[i] = tbones.m_pData[i] + r;
+        qbones.m_pData[i] = qbones.m_pData[i] * node->m_lQBoneRefInv.m_pData[i];
+        rbones.Add(qbones.m_pData[i].getmatrix());
     }
 
     static Vector coord;
@@ -792,20 +785,19 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             newSkinBumpyVP->Enable(part, true);
             PartLight* pLight = bumpLights.m_pData[k];
             Vector vLight = RotateVector(pLight->m_vWorldPosition - vWS, -lq);
-            {
             Vector vDiff(pLight->m_vLightColour.x * (fAmbiX * diffuseintensity),
                          pLight->m_vLightColour.y * (fAmbiY * diffuseintensity),
                          fAmbiZ * diffuseintensity * pLight->m_vLightColour.z);
+            float fTheta = specularintensity;
+            Vector vSpec;
+            float fR;
             if (usebumpdiffuse == 0)
                 GLRender::pfuncSetBumpLightColor(vZero, 1.0f);
             else
                 GLRender::pfuncSetBumpLightColor(vDiff, 1.0f);
-            }
-            float fTheta = specularintensity;
-            float fSpec = part->m_pMaterial->Textures(4).m_pObject->GetBumpIntensity();
-            Vector vSpec(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
-                         vSpecColor.y * fTheta * fSpec * pLight->m_vLightColour.y,
-                         vSpecColor.z * fTheta * fSpec * pLight->m_vLightColour.z);
+            vSpec = vSpecColor * fTheta * part->m_pMaterial->Textures(4).m_pObject->GetBumpIntensity();
+            vSpec = Vector(vSpec.x * pLight->m_vLightColour.x, vSpec.y * pLight->m_vLightColour.y,
+                           vSpec.z * pLight->m_vLightColour.z);
             if (usebumpspecular == 0)
                 GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
             else
@@ -815,7 +807,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                  usearbvertexprograms) &&
                 (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, vView.x, vView.y, vView.z, 1.0f),
                  usearbvertexprograms)) {
-                float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
                 ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
                                                   9.0f / (fR + fR), 1.0f);
             }
@@ -881,20 +873,19 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             wsNewSkinBumpyVP->Enable(part, false);
             PartLight* pLight = bumpLights.m_pData[k];
             Vector vLight = RotateVector(pLight->m_vWorldPosition - vWS, -lq);
-            {
             Vector vDiff(pLight->m_vLightColour.x * (fAmbiX * diffuseintensity),
                          pLight->m_vLightColour.y * (fAmbiY * diffuseintensity),
                          fAmbiZ * diffuseintensity * pLight->m_vLightColour.z);
+            float fTheta = specularintensity;
+            Vector vSpec;
+            float fR;
             if (usebumpdiffuse == 0)
                 GLRender::pfuncSetBumpLightColor(vZero, 1.0f);
             else
                 GLRender::pfuncSetBumpLightColor(vDiff, 1.0f);
-            }
-            float fTheta = specularintensity;
-            float fSpec = part->m_pMaterial->Textures(4).m_pObject->GetBumpIntensity();
-            Vector vSpec(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
-                         vSpecColor.y * fTheta * fSpec * pLight->m_vLightColour.y,
-                         vSpecColor.z * fTheta * fSpec * pLight->m_vLightColour.z);
+            vSpec = vSpecColor * fTheta * part->m_pMaterial->Textures(4).m_pObject->GetBumpIntensity();
+            vSpec = Vector(vSpec.x * pLight->m_vLightColour.x, vSpec.y * pLight->m_vLightColour.y,
+                           vSpec.z * pLight->m_vLightColour.z);
             if (usebumpspecular == 0)
                 GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
             else
@@ -904,7 +895,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                  usearbvertexprograms) &&
                 (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, vView.x, vView.y, vView.z, 1.0f),
                  usearbvertexprograms)) {
-                float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
                 ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
                                                   9.0f / (fR + fR), 1.0f);
             }
@@ -969,20 +960,19 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
             skinBumpyVP->Enable(part, true);
             PartLight* pLight = bumpLights.m_pData[k];
             Vector vLight = RotateVector(pLight->m_vWorldPosition - vWS, -lq);
-            {
             Vector vDiff(pLight->m_vLightColour.x * (fAmbiX * diffuseintensity),
                          pLight->m_vLightColour.y * (fAmbiY * diffuseintensity),
                          fAmbiZ * diffuseintensity * pLight->m_vLightColour.z);
+            float fTheta = specularintensity;
+            Vector vSpec;
+            float fR;
             if (usebumpdiffuse == 0)
                 GLRender::pfuncSetBumpLightColor(vZero, 1.0f);
             else
                 GLRender::pfuncSetBumpLightColor(vDiff, 1.0f);
-            }
-            float fTheta = specularintensity;
-            float fSpec = part->m_pMaterial->Textures(4).m_pObject->GetBumpIntensity();
-            Vector vSpec(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
-                         vSpecColor.y * fTheta * fSpec * pLight->m_vLightColour.y,
-                         vSpecColor.z * fTheta * fSpec * pLight->m_vLightColour.z);
+            vSpec = vSpecColor * fTheta * part->m_pMaterial->Textures(4).m_pObject->GetBumpIntensity();
+            vSpec = Vector(vSpec.x * pLight->m_vLightColour.x, vSpec.y * pLight->m_vLightColour.y,
+                           vSpec.z * pLight->m_vLightColour.z);
             if (usebumpspecular == 0)
                 GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
             else
@@ -992,7 +982,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                  usearbvertexprograms) &&
                 (ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 13, vView.x, vView.y, vView.z, 1.0f),
                  usearbvertexprograms)) {
-                float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
                 ASLgl::glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 14, 1.0f, 0.0f,
                                                   9.0f / (fR + fR), 1.0f);
             }
@@ -1190,79 +1180,77 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
 
     // For each bone, rotate the cached frame and the bone position by the accumulated basis, then
     // upload the resulting rotation-matrix rows as vertex-program constants.
-    if (node->m_nBoneCount >= 1) {
-        bool bFWPos = (fW == 1.0f);
-        bool bFWNeg = (fW == -1.0f);
-        float mM00 = 1.0f - ((fY * fY + fZ * fZ) + (fY * fY + fZ * fZ));
-        float mM10 = (fX * fY - fW * fZ) + (fX * fY - fW * fZ);
-        float mM20 = (fW * fY + fX * fZ) + (fW * fY + fX * fZ);
-        float mM01 = (fX * fY + fW * fZ) + (fX * fY + fW * fZ);
-        float mM11 = 1.0f - ((fX * fX + fZ * fZ) + (fX * fX + fZ * fZ));
-        float mM21 = (fY * fZ - fW * fX) + (fY * fZ - fW * fX);
-        float mM02 = (fX * fZ - fW * fY) + (fX * fZ - fW * fY);
-        float mM12 = (fW * fX + fY * fZ) + (fW * fX + fY * fZ);
-        float mM22 = 1.0f - ((fX * fX + fY * fY) + (fX * fX + fY * fY));
-        for (int64_t i = 0; i < node->m_nBoneCount; i++) {
-            int nBone = static_cast<int>(node->m_paBoneMap[i]);   // the bone index is stored as a float
-            if (nBone == -1)
-                continue;
-            // Stage 1: rotate the cached frame by the accumulated transpose.
-            float olxr, oly, olz;
-            if (quaternionidentityoptimization != 0 && (bFWNeg || bFWPos)) {
-                olxr = tb.m_pData[i].x;
-                oly = tb.m_pData[i].y;
-                olz = tb.m_pData[i].z;
-            } else {
-                olz = mM22 * tb.m_pData[i].z +
-                      (mM02 * tb.m_pData[i].x + mM12 * tb.m_pData[i].y);
-                oly = mM21 * tb.m_pData[i].z +
-                      (mM01 * tb.m_pData[i].x + mM11 * tb.m_pData[i].y);
-                olxr = mM20 * tb.m_pData[i].z +
-                       (mM00 * tb.m_pData[i].x + mM10 * tb.m_pData[i].y);
-            }
-            // Stage 2: rotate the bone position by the gathered quaternion, then by the basis (also
-            // identity-gated on the accumulated quaternion).
-            Vector src = node->m_lTBoneRefInv.m_pData[i];
-            Quaternion q = qb.m_pData[i];
-            float rx, ry, rz;
-            if (quaternionidentityoptimization == 0 || (q.w != -1.0f && q.w != 1.0f)) {
-                float w = q.w, x = q.x, y = q.y, z = q.z;
-                float t1 = y * y + z * z;
-                float t2 = x * x + z * z;
-                float t3 = x * y - w * z;
-                float t4 = x * y + w * z;
-                float t5 = w * y + x * z;
-                float t6 = x * z - w * y;
-                float t7 = y * z - w * x;
-                float t8 = w * x + y * z;
-                float t9 = x * x + y * y;
-                rx = (1.0f - (t1 + t1)) * src.x + (t3 + t3) * src.y + (t5 + t5) * src.z;
-                ry = (t4 + t4) * src.x + (1.0f - (t2 + t2)) * src.y + (t7 + t7) * src.z;
-                rz = (t6 + t6) * src.x + (t8 + t8) * src.y + (1.0f - (t9 + t9)) * src.z;
-                if (quaternionidentityoptimization == 0 || (!bFWPos && !bFWNeg))
-                    goto lbl_second;
-            } else {
-                rx = src.x; ry = src.y; rz = src.z;
-                if (!bFWPos && !bFWNeg)
-                    goto lbl_second;
-            }
-            goto lbl_env;
-        lbl_second:
-            {
-                float nx = mM20 * rz + (mM00 * rx + mM10 * ry);
-                float ny = mM21 * rz + (mM01 * rx + mM11 * ry);
-                rz = mM22 * rz + (mM02 * rx + mM12 * ry);
-                rx = nx;
-                ry = ny;
-            }
-        lbl_env:
-            {
-                Matrix m = (Quaternion(fW, fX, fY, fZ) * q * node->m_lQBoneRefInv.m_pData[i]).getmatrix();
-                int nIdx = nBone * 3;
-                GLRender::SetVertexShaderConstant(nIdx + 18, m.m_f[0], m.m_f[3], m.m_f[6], px + olxr + rx);
-                GLRender::SetVertexShaderConstant(nIdx + 19, m.m_f[1], m.m_f[4], m.m_f[7], py + oly + ry);
-                GLRender::SetVertexShaderConstant(nIdx + 20, m.m_f[2], m.m_f[5], m.m_f[8], pz + olz + rz);
-            }
+    bool bFWPos = (fW == 1.0f);
+    bool bFWNeg = (fW == -1.0f);
+    float mM00 = 1.0f - ((fY * fY + fZ * fZ) + (fY * fY + fZ * fZ));
+    float mM10 = (fX * fY - fW * fZ) + (fX * fY - fW * fZ);
+    float mM20 = (fW * fY + fX * fZ) + (fW * fY + fX * fZ);
+    float mM01 = (fX * fY + fW * fZ) + (fX * fY + fW * fZ);
+    float mM11 = 1.0f - ((fX * fX + fZ * fZ) + (fX * fX + fZ * fZ));
+    float mM21 = (fY * fZ - fW * fX) + (fY * fZ - fW * fX);
+    float mM02 = (fX * fZ - fW * fY) + (fX * fZ - fW * fY);
+    float mM12 = (fW * fX + fY * fZ) + (fW * fX + fY * fZ);
+    float mM22 = 1.0f - ((fX * fX + fY * fY) + (fX * fX + fY * fY));
+    for (int64_t i = 0; i < node->m_nBoneCount; i++) {
+        int nBone = static_cast<int>(node->m_paBoneMap[i]);   // the bone index is stored as a float
+        if (nBone == -1)
+            continue;
+        // Stage 1: rotate the cached frame by the accumulated transpose.
+        float olxr, oly, olz;
+        if (quaternionidentityoptimization != 0 && (bFWNeg || bFWPos)) {
+            olxr = tb.m_pData[i].x;
+            oly = tb.m_pData[i].y;
+            olz = tb.m_pData[i].z;
+        } else {
+            olz = mM22 * tb.m_pData[i].z +
+                  (mM02 * tb.m_pData[i].x + mM12 * tb.m_pData[i].y);
+            oly = mM21 * tb.m_pData[i].z +
+                  (mM01 * tb.m_pData[i].x + mM11 * tb.m_pData[i].y);
+            olxr = mM20 * tb.m_pData[i].z +
+                   (mM00 * tb.m_pData[i].x + mM10 * tb.m_pData[i].y);
+        }
+        // Stage 2: rotate the bone position by the gathered quaternion, then by the basis (also
+        // identity-gated on the accumulated quaternion).
+        Vector src = node->m_lTBoneRefInv.m_pData[i];
+        Quaternion q = qb.m_pData[i];
+        float rx, ry, rz;
+        if (quaternionidentityoptimization == 0 || (q.w != -1.0f && q.w != 1.0f)) {
+            float w = q.w, x = q.x, y = q.y, z = q.z;
+            float t1 = y * y + z * z;
+            float t2 = x * x + z * z;
+            float t3 = x * y - w * z;
+            float t4 = x * y + w * z;
+            float t5 = w * y + x * z;
+            float t6 = x * z - w * y;
+            float t7 = y * z - w * x;
+            float t8 = w * x + y * z;
+            float t9 = x * x + y * y;
+            rx = (1.0f - (t1 + t1)) * src.x + (t3 + t3) * src.y + (t5 + t5) * src.z;
+            ry = (t4 + t4) * src.x + (1.0f - (t2 + t2)) * src.y + (t7 + t7) * src.z;
+            rz = (t6 + t6) * src.x + (t8 + t8) * src.y + (1.0f - (t9 + t9)) * src.z;
+            if (quaternionidentityoptimization == 0 || (!bFWPos && !bFWNeg))
+                goto lbl_second;
+        } else {
+            rx = src.x; ry = src.y; rz = src.z;
+            if (!bFWPos && !bFWNeg)
+                goto lbl_second;
+        }
+        goto lbl_env;
+    lbl_second:
+        {
+            float nx = mM20 * rz + (mM00 * rx + mM10 * ry);
+            float ny = mM21 * rz + (mM01 * rx + mM11 * ry);
+            rz = mM22 * rz + (mM02 * rx + mM12 * ry);
+            rx = nx;
+            ry = ny;
+        }
+    lbl_env:
+        {
+            Matrix m = (Quaternion(fW, fX, fY, fZ) * q * node->m_lQBoneRefInv.m_pData[i]).getmatrix();
+            int nIdx = nBone * 3;
+            GLRender::SetVertexShaderConstant(nIdx + 18, m.m_f[0], m.m_f[3], m.m_f[6], px + olxr + rx);
+            GLRender::SetVertexShaderConstant(nIdx + 19, m.m_f[1], m.m_f[4], m.m_f[7], py + oly + ry);
+            GLRender::SetVertexShaderConstant(nIdx + 20, m.m_f[2], m.m_f[5], m.m_f[8], pz + olz + rz);
         }
     }
 
@@ -1417,58 +1405,58 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                 GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
                 currentscene->m_pLightManager->DisableBumpMapLights();
                 GLRender::Disable(Aurora::kCapFog);
-                if (bumpLights.m_count > 0) {
-                    for (int64_t k = 0; k < bumpLights.m_count; k++) {
-                        newSkinBumpyVP->Enable(part, false);
-                        PartLight* pLight = bumpLights.m_pData[k];
-                        float lx = pLight->m_vWorldPosition.x - vWS.x;
-                        float ly = pLight->m_vWorldPosition.y - vWS.y;
-                        float lz = pLight->m_vWorldPosition.z - vWS.z;
-                        {
-                            float qw = lq.w, qx = lq.x, qy = lq.y, qz = lq.z;
-                            float nw = -qw;
-                            if (quaternionidentityoptimization == 0 || (qw != -1.0f && qw != 1.0f)) {
-                                float t1 = qy * qy + qz * qz;
-                                float t2 = qx * qx + qz * qz;
-                                float t3 = qx * qy - qz * nw;
-                                float t4 = qx * qy + qz * nw;
-                                float t5 = qy * nw + qx * qz;
-                                float t6 = qx * qz - qy * nw;
-                                float t7 = qy * qz - qx * nw;
-                                float t8 = qx * nw + qy * qz;
-                                float t9 = qx * qx + qy * qy;
-                                t4 = (t4 + t4) * lx;
-                                t6 = (t6 + t6) * lx;
-                                t8 = (t8 + t8) * ly;
-                                lx = (1.0f - (t1 + t1)) * lx + (t3 + t3) * ly + (t5 + t5) * lz;
-                                ly = t4 + (1.0f - (t2 + t2)) * ly + (t7 + t7) * lz;
-                                lz = t6 + t8 + (1.0f - (t9 + t9)) * lz;
-                            }
+                for (int64_t k = 0; k < bumpLights.m_count; k++) {
+                    newSkinBumpyVP->Enable(part, false);
+                    PartLight* pLight = bumpLights.m_pData[k];
+                    float lx = pLight->m_vWorldPosition.x - vWS.x;
+                    float ly = pLight->m_vWorldPosition.y - vWS.y;
+                    float lz = pLight->m_vWorldPosition.z - vWS.z;
+                    {
+                        float qw = lq.w, qx = lq.x, qy = lq.y, qz = lq.z;
+                        float nw = -qw;
+                        if (quaternionidentityoptimization == 0 || (qw != -1.0f && qw != 1.0f)) {
+                            float t1 = qy * qy + qz * qz;
+                            float t2 = qx * qx + qz * qz;
+                            float t3 = qx * qy - qz * nw;
+                            float t4 = qx * qy + qz * nw;
+                            float t5 = qy * nw + qx * qz;
+                            float t6 = qx * qz - qy * nw;
+                            float t7 = qy * qz - qx * nw;
+                            float t8 = qx * nw + qy * qz;
+                            float t9 = qx * qx + qy * qy;
+                            t4 = (t4 + t4) * lx;
+                            t6 = (t6 + t6) * lx;
+                            t8 = (t8 + t8) * ly;
+                            lx = (1.0f - (t1 + t1)) * lx + (t3 + t3) * ly + (t5 + t5) * lz;
+                            ly = t4 + (1.0f - (t2 + t2)) * ly + (t7 + t7) * lz;
+                            lz = t6 + t8 + (1.0f - (t9 + t9)) * lz;
                         }
-                        {
-                        Vector vDiff(pLight->m_vLightColour.x * (fAmbiX * diffuseintensity),
-                                     pLight->m_vLightColour.y * (fAmbiY * diffuseintensity),
-                                     fAmbiZ * diffuseintensity * pLight->m_vLightColour.z);
-                        if (usebumpdiffuse == 0)
-                            GLRender::pfuncSetBumpLightColor(vZero, 1.0f);
-                        else
-                            GLRender::pfuncSetBumpLightColor(vDiff, 1.0f);
-                        }
+                    }
+                    Vector vSpec;
+                    float fR;
+                    Vector vDiff(pLight->m_vLightColour.x * (fAmbiX * diffuseintensity),
+                                 pLight->m_vLightColour.y * (fAmbiY * diffuseintensity),
+                                 fAmbiZ * diffuseintensity * pLight->m_vLightColour.z);
+                    if (usebumpdiffuse == 0)
+                        GLRender::pfuncSetBumpLightColor(vZero, 1.0f);
+                    else
+                        GLRender::pfuncSetBumpLightColor(vDiff, 1.0f);
+                    {
                         float fTheta = specularintensity;
                         float fSpec = pMat->Textures(4).m_pObject->GetBumpIntensity();
-                        Vector vSpec(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
+                        vSpec = Vector(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
                                      vSpecColor.y * fTheta * fSpec * pLight->m_vLightColour.y,
                                      vSpecColor.z * fTheta * fSpec * pLight->m_vLightColour.z);
-                        if (usebumpspecular == 0)
-                            GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
-                        else
-                            GLRender::pfuncSetPixelShaderAmbientColor(vSpec, 1.0f);
-                        GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
-                        GLRender::SetVertexShaderConstant(13, vx, vy, vz, 1.0f);
-                        float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
-                        GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
-                        RenderFlat(vertices);
                     }
+                    if (usebumpspecular == 0)
+                        GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
+                    else
+                        GLRender::pfuncSetPixelShaderAmbientColor(vSpec, 1.0f);
+                    GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
+                    GLRender::SetVertexShaderConstant(13, vx, vy, vz, 1.0f);
+                    fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                    GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
+                    RenderFlat(vertices);
                 }
                 if (bumpLights.m_count == 0) {
                     newSkinBumpyVP->Enable(part, false);
@@ -1611,7 +1599,8 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                             lz = t6 + t8 + (1.0f - (t9 + t9)) * lz;
                         }
                     }
-                    {
+                    Vector vSpec;
+                    float fR;
                     Vector vDiff(pLight->m_vLightColour.x * (fAmbiX * diffuseintensity),
                                  pLight->m_vLightColour.y * (fAmbiY * diffuseintensity),
                                  fAmbiZ * diffuseintensity * pLight->m_vLightColour.z);
@@ -1619,19 +1608,20 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                         GLRender::pfuncSetBumpLightColor(vZero, 1.0f);
                     else
                         GLRender::pfuncSetBumpLightColor(vDiff, 1.0f);
+                    {
+                        float fTheta = specularintensity;
+                        float fSpec = pMat->Textures(4).m_pObject->GetBumpIntensity();
+                        vSpec = Vector(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
+                                     vSpecColor.y * fTheta * fSpec * pLight->m_vLightColour.y,
+                                     vSpecColor.z * fTheta * fSpec * pLight->m_vLightColour.z);
                     }
-                    float fTheta = specularintensity;
-                    float fSpec = pMat->Textures(4).m_pObject->GetBumpIntensity();
-                    Vector vSpec(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
-                                 vSpecColor.y * fTheta * fSpec * pLight->m_vLightColour.y,
-                                 vSpecColor.z * fTheta * fSpec * pLight->m_vLightColour.z);
                     if (usebumpspecular == 0)
                         GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
                     else
                         GLRender::pfuncSetPixelShaderAmbientColor(vSpec, 1.0f);
                     GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
                     GLRender::SetVertexShaderConstant(13, vx, vy, vz, 1.0f);
-                    float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                    fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
                     GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
                     RenderFlat(vertices);
                 }
@@ -1754,7 +1744,8 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                             lz = t6 + t8 + (1.0f - (t9 + t9)) * lz;
                         }
                     }
-                    {
+                    Vector vSpec;
+                    float fR;
                     Vector vDiff(pLight->m_vLightColour.x * (fAmbiX * diffuseintensity),
                                  pLight->m_vLightColour.y * (fAmbiY * diffuseintensity),
                                  fAmbiZ * diffuseintensity * pLight->m_vLightColour.z);
@@ -1762,19 +1753,20 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
                         GLRender::pfuncSetBumpLightColor(vZero, 1.0f);
                     else
                         GLRender::pfuncSetBumpLightColor(vDiff, 1.0f);
+                    {
+                        float fTheta = specularintensity;
+                        float fSpec = pMat->Textures(4).m_pObject->GetBumpIntensity();
+                        vSpec = Vector(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
+                                     vSpecColor.y * fTheta * fSpec * pLight->m_vLightColour.y,
+                                     vSpecColor.z * fTheta * fSpec * pLight->m_vLightColour.z);
                     }
-                    float fTheta = specularintensity;
-                    float fSpec = pMat->Textures(4).m_pObject->GetBumpIntensity();
-                    Vector vSpec(vSpecColor.x * fTheta * fSpec * pLight->m_vLightColour.x,
-                                 vSpecColor.y * fTheta * fSpec * pLight->m_vLightColour.y,
-                                 vSpecColor.z * fTheta * fSpec * pLight->m_vLightColour.z);
                     if (usebumpspecular == 0)
                         GLRender::pfuncSetPixelShaderAmbientColor(vZero, 1.0f);
                     else
                         GLRender::pfuncSetPixelShaderAmbientColor(vSpec, 1.0f);
                     GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
                     GLRender::SetVertexShaderConstant(13, vx, vy, vz, 1.0f);
-                    float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+                    fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
                     GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
                     RenderFlat(vertices);
                     currentscene->m_pLightManager->EnableBumpMapLights();
@@ -2079,38 +2071,36 @@ RenderInterface::SetDepthMask(0);
 #endif
 
         // For each bone, rotate the bone position and upload the rotation rows as constants.
-        if (node->m_nBoneCount >= 1) {
-            for (int64_t i = 0; i < node->m_nBoneCount; i++) {
-                int nBone = static_cast<int>(node->m_paBoneMap[i]);   // the bone index is stored as a float
-                if (nBone != -1) {
-                    Quaternion q = qbones.m_pData[i];
-                    Vector src = node->m_lTBoneRefInv.m_pData[i];
-                    Vector r;
-                    if (quaternionidentityoptimization == 0 || (q.w != -1.0f && q.w != 1.0f)) {
-                        float w = q.w, x = q.x, y = q.y, z = q.z;
-                        float t1 = y * y + z * z;
-                        float t2 = x * x + z * z;
-                        float t3 = x * y - w * z;
-                        float t4 = x * y + w * z;
-                        float t5 = w * y + x * z;
-                        float t6 = x * z - w * y;
-                        float t7 = y * z - w * x;
-                        float t8 = w * x + y * z;
-                        float t9 = x * x + y * y;
-                        r.x = (1.0f - (t1 + t1)) * src.x + (t3 + t3) * src.y + (t5 + t5) * src.z;
-                        r.y = (t4 + t4) * src.x + (1.0f - (t2 + t2)) * src.y + (t7 + t7) * src.z;
-                        r.z = (t6 + t6) * src.x + (t8 + t8) * src.y + (1.0f - (t9 + t9)) * src.z;
-                    } else {
-                        r = src;
-                    }
-                    tbones.m_pData[i] = tbones.m_pData[i] + r;
-                    qbones.m_pData[i] = qbones.m_pData[i] * node->m_lQBoneRefInv.m_pData[i];
-                    int nIdx = nBone * 3;
-                    Matrix m = qbones.m_pData[i].getmatrix();
-                    GLRender::SetVertexShaderConstant(nIdx + 18, m.m_f[0], m.m_f[3], m.m_f[6], tbones.m_pData[i].x);
-                    GLRender::SetVertexShaderConstant(nIdx + 19, m.m_f[1], m.m_f[4], m.m_f[7], tbones.m_pData[i].y);
-                    GLRender::SetVertexShaderConstant(nIdx + 20, m.m_f[2], m.m_f[5], m.m_f[8], tbones.m_pData[i].z);
+        for (int64_t i = 0; i < node->m_nBoneCount; i++) {
+            int nBone = static_cast<int>(node->m_paBoneMap[i]);   // the bone index is stored as a float
+            if (nBone != -1) {
+                Quaternion q = qbones.m_pData[i];
+                Vector src = node->m_lTBoneRefInv.m_pData[i];
+                Vector r;
+                if (quaternionidentityoptimization == 0 || (q.w != -1.0f && q.w != 1.0f)) {
+                    float w = q.w, x = q.x, y = q.y, z = q.z;
+                    float t1 = y * y + z * z;
+                    float t2 = x * x + z * z;
+                    float t3 = x * y - w * z;
+                    float t4 = x * y + w * z;
+                    float t5 = w * y + x * z;
+                    float t6 = x * z - w * y;
+                    float t7 = y * z - w * x;
+                    float t8 = w * x + y * z;
+                    float t9 = x * x + y * y;
+                    r.x = (1.0f - (t1 + t1)) * src.x + (t3 + t3) * src.y + (t5 + t5) * src.z;
+                    r.y = (t4 + t4) * src.x + (1.0f - (t2 + t2)) * src.y + (t7 + t7) * src.z;
+                    r.z = (t6 + t6) * src.x + (t8 + t8) * src.y + (1.0f - (t9 + t9)) * src.z;
+                } else {
+                    r = src;
                 }
+                tbones.m_pData[i] = tbones.m_pData[i] + r;
+                qbones.m_pData[i] = qbones.m_pData[i] * node->m_lQBoneRefInv.m_pData[i];
+                int nIdx = nBone * 3;
+                Matrix m = qbones.m_pData[i].getmatrix();
+                GLRender::SetVertexShaderConstant(nIdx + 18, m.m_f[0], m.m_f[3], m.m_f[6], tbones.m_pData[i].x);
+                GLRender::SetVertexShaderConstant(nIdx + 19, m.m_f[1], m.m_f[4], m.m_f[7], tbones.m_pData[i].y);
+                GLRender::SetVertexShaderConstant(nIdx + 20, m.m_f[2], m.m_f[5], m.m_f[8], tbones.m_pData[i].z);
             }
         }
 
@@ -2347,8 +2337,8 @@ void GatherBones(Part* part, List<Vector>& outVectors, List<Quaternion>& outQuat
     Quaternion orientOut = orient * qat;
     outVectors.Add(posOut);
     outQuats.Add(orientOut);
-    for (int i = 0; i < part->m_nChildren; i++)
-        GatherBones(part->m_paChildren[i], outVectors, outQuats, posOut, orientOut);
+    for (int i = 0; i < part->m_aChildren.m_count; i++)
+        GatherBones(part->m_aChildren.m_pData[i], outVectors, outQuats, posOut, orientOut);
 }
 
 // Member instantiations only.
@@ -2360,8 +2350,8 @@ template void List<Quaternion>::Add(Quaternion item);
 void MakeInlinePartList(Part* pPart, List<Part*>& listParts)
 {
     listParts.Add(pPart);
-    for (int64_t i = 0; i < pPart->m_nChildren; i++)
-        MakeInlinePartList(pPart->m_paChildren[i], listParts);
+    for (int64_t i = 0; i < pPart->m_aChildren.m_count; i++)
+        MakeInlinePartList(pPart->m_aChildren.m_pData[i], listParts);
 }
 
 int FindPartIndexDFS(Part* pPart, char* szName)
@@ -2680,21 +2670,6 @@ void PartSkin::DrawBumpedOutShellVP()
 }
 #endif
 
-// Temporary axis-aligned-bounds/skin-segment element resolved by PostProcess.
-struct SkinSegment {
-    Part*  m_paParts[4];
-    float  m_faWeights[4];
-    int    m_naBoneIdx[4];
-    int    m_naPad[2];
-};
-
-// The per-vertex source array a tri-mesh node points at.
-struct VertexStrategy {
-    char         m_pad80[128];
-    void**       m_ppVertices;
-    unsigned int m_nVertexCount;
-};
-
 // NodeVertex::m_nTexCoordFlags (the strategy vertex's byte at +84): which texture-coordinate sets
 // the vertex carries.
 enum {
@@ -2712,7 +2687,7 @@ enum : unsigned int
     kGuardCoordBits = 0x49742400,
     kNoBoneBits = 0xbf800000,
 };
-enum : unsigned long long
+enum : uint64_ll_t
 {
     kGuardCoordPairBits = 0x4974240049742400ULL,
     kWeightOneZeroBits = 0x3f800000ULL,
@@ -2731,7 +2706,8 @@ void PartSkin::PostProcess(Part* part)
 
         if (node->m_lTBoneRefInv.m_count == 0) {
             List<Quaternion> quatFrames; // GatherBones output: world-frame orientations
-            List<Vector>     vecFrames;  // GatherBones output: world-frame positions
+            List<Vector> vecFrames; // GatherBones output: world-frame positions
+            MdlNodeTriMesh_PostProcess* pStrat;
 #if KOTOR1
             // (1) The same world-to-local frame walk.
             Quaternion qInv = -m_qLocalOrientation;
@@ -2855,77 +2831,73 @@ void PartSkin::PostProcess(Part* part)
 
             // (1c) Copy the gathered world frames into the node's bone stores, inverse-rotating
             // each frame by its own orientation.
-            if (vecFrames.m_count >= 1) {
-                for (int i = 0; i < vecFrames.m_count; i++) {
-                    List<Vector>&     rBonePos = *&node->m_lTBoneRefInv;
-                    List<Quaternion>& rBoneQuat = *&node->m_lQBoneRefInv;
-                    float vx = vecFrames.m_pData[i].x;
-                    float vy = vecFrames.m_pData[i].y;
-                    float vz = vecFrames.m_pData[i].z;
-                    float qw = quatFrames.m_pData[i].w;
-                    float qx = quatFrames.m_pData[i].x;
-                    float qy = quatFrames.m_pData[i].y;
-                    float qz = quatFrames.m_pData[i].z;
-                    float nx = -vx, ny = -vy, nz = -vz;
-                    if (quaternionidentityoptimization == 0 || (qw != -1.0f && qw != 1.0f)) {
-                        float nwn = -qw;
-                        float t1 = qy*qy + qz*qz;
-                        float t2 = qx*qx + qz*qz;
-                        float t9 = qx*qx + qy*qy;
-                        float t3 = qx*qy - qz*nwn;
-                        float t5 = qy*nwn + qx*qz;
-                        float t4 = qx*qy + qz*nwn;
-                        float t7 = qy*qz - qx*nwn;
-                        float t6 = qx*qz - qy*nwn;
-                        float t8 = qx*nwn + qy*qz;
-                        float u1 = (t4 + t4) * nx;
-                        float u2 = (t6 + t6) * nx;
-                        float u3 = (t8 + t8) * ny;
-                        nx = (1.0f - (t1 + t1)) * nx + (t3 + t3) * ny + (t5 + t5) * nz;
-                        ny = u1 + (1.0f - (t2 + t2)) * ny + (t7 + t7) * nz;
-                        nz = u2 + u3 + (1.0f - (t9 + t9)) * nz;
-                    }
-                    rBonePos.Add(Vector(nx, ny, nz));
-                    rBoneQuat.Add(Quaternion(-quatFrames.m_pData[i].w,
-                                             quatFrames.m_pData[i].x,
-                                             quatFrames.m_pData[i].y,
-                                             quatFrames.m_pData[i].z));
+            for (int i = 0; i < vecFrames.m_count; i++) {
+                List<Vector>&     rBonePos = *&node->m_lTBoneRefInv;
+                List<Quaternion>& rBoneQuat = *&node->m_lQBoneRefInv;
+                float vx = vecFrames.m_pData[i].x;
+                float vy = vecFrames.m_pData[i].y;
+                float vz = vecFrames.m_pData[i].z;
+                float qw = quatFrames.m_pData[i].w;
+                float qx = quatFrames.m_pData[i].x;
+                float qy = quatFrames.m_pData[i].y;
+                float qz = quatFrames.m_pData[i].z;
+                float nx = -vx, ny = -vy, nz = -vz;
+                if (quaternionidentityoptimization == 0 || (qw != -1.0f && qw != 1.0f)) {
+                    float nwn = -qw;
+                    float t1 = qy*qy + qz*qz;
+                    float t2 = qx*qx + qz*qz;
+                    float t9 = qx*qx + qy*qy;
+                    float t3 = qx*qy - qz*nwn;
+                    float t5 = qy*nwn + qx*qz;
+                    float t4 = qx*qy + qz*nwn;
+                    float t7 = qy*qz - qx*nwn;
+                    float t6 = qx*qz - qy*nwn;
+                    float t8 = qx*nwn + qy*qz;
+                    float u1 = (t4 + t4) * nx;
+                    float u2 = (t6 + t6) * nx;
+                    float u3 = (t8 + t8) * ny;
+                    nx = (1.0f - (t1 + t1)) * nx + (t3 + t3) * ny + (t5 + t5) * nz;
+                    ny = u1 + (1.0f - (t2 + t2)) * ny + (t7 + t7) * nz;
+                    nz = u2 + u3 + (1.0f - (t9 + t9)) * nz;
                 }
+                rBonePos.Add(Vector(nx, ny, nz));
+                Quaternion qBoneInv(-quatFrames.m_pData[i].w,
+                                    quatFrames.m_pData[i].x,
+                                    quatFrames.m_pData[i].y,
+                                    quatFrames.m_pData[i].z);
+                rBoneQuat.Add(qBoneInv);
             }
 #endif
 
-            // (2) The bounds/skin-segment table: resolve unset bone indices and free the part slots.
-            if (node->m_lWeights.m_count >= 1) {
-                for (int i = 0; i < node->m_lWeights.m_count; i++) {
-                    SkinSegment* pS = &reinterpret_cast<SkinSegment*>(node->m_lWeights.m_pData)[i];
-                    if (pS->m_naBoneIdx[0] == -1) {
-                        pS->m_naBoneIdx[0] = FindPartIndexDFS(pTop, reinterpret_cast<char*>(pS->m_paParts[0]));
-                        pS->m_naBoneIdx[1] = FindPartIndexDFS(pTop, reinterpret_cast<char*>(pS->m_paParts[1]));
-                        pS->m_naBoneIdx[2] = FindPartIndexDFS(pTop, reinterpret_cast<char*>(pS->m_paParts[2]));
-                        pS->m_naBoneIdx[3] = FindPartIndexDFS(pTop, reinterpret_cast<char*>(pS->m_paParts[3]));
-                    }
-                    if (pS->m_paParts[0]) operator delete[](pS->m_paParts[0]);
-                    if (pS->m_paParts[1]) operator delete[](pS->m_paParts[1]);
-                    if (pS->m_paParts[2]) operator delete[](pS->m_paParts[2]);
-                    if (pS->m_paParts[3]) operator delete[](pS->m_paParts[3]);
-                    pS->m_paParts[0] = 0;
-                    pS->m_paParts[1] = 0;
-                    pS->m_paParts[2] = 0;
-                    pS->m_paParts[3] = 0;
+            // (2) The skin weights: resolve unset bone indices from the bone names, then free the names.
+            for (int i = 0; i < node->m_lWeights.m_count; i++) {
+                if (node->m_lWeights.m_pData[i].m_nBoneIdx0 == -1) {
+                    node->m_lWeights.m_pData[i].m_nBoneIdx0 = FindPartIndexDFS(pTop, node->m_lWeights.m_pData[i].m_paszName0);
+                    node->m_lWeights.m_pData[i].m_nBoneIdx1 = FindPartIndexDFS(pTop, node->m_lWeights.m_pData[i].m_paszName1);
+                    node->m_lWeights.m_pData[i].m_nBoneIdx2 = FindPartIndexDFS(pTop, node->m_lWeights.m_pData[i].m_paszName2);
+                    node->m_lWeights.m_pData[i].m_nBoneIdx3 = FindPartIndexDFS(pTop, node->m_lWeights.m_pData[i].m_paszName3);
                 }
+                delete[] node->m_lWeights.m_pData[i].m_paszName0;
+                delete[] node->m_lWeights.m_pData[i].m_paszName1;
+                delete[] node->m_lWeights.m_pData[i].m_paszName2;
+                delete[] node->m_lWeights.m_pData[i].m_paszName3;
+                node->m_lWeights.m_pData[i].m_paszName0 = 0;
+                node->m_lWeights.m_pData[i].m_paszName1 = 0;
+                node->m_lWeights.m_pData[i].m_paszName2 = 0;
+                node->m_lWeights.m_pData[i].m_paszName3 = 0;
             }
 
             // (3) Node geometry prep.
             node->m_pfnGenVertices(node);
-            VertexStrategy* pStrat = static_cast<VertexStrategy*>(node->m_pPostProcess);
-            node->m_nVertexCount = static_cast<unsigned short>(pStrat->m_nVertexCount);
+            pStrat = static_cast<MdlNodeTriMesh_PostProcess*>(node->m_pPostProcess);
+            node->m_nVertexCount = static_cast<unsigned short>(pStrat->m_vertices.m_count);
             node->BuildVertexIndices();
             node->BuildNeighborLists();
 
             // (4) Build the piece-vertex element-offset table from the strategy vertex's flag
             // byte; with no vertices, every element offset stays off.
             int  nCount = static_cast<short>(node->m_nVertexCount);
-            unsigned char* pVert = (nCount >= 1) ? static_cast<unsigned char*>(pStrat->m_ppVertices[0]) : 0;
+            unsigned char* pVert = (nCount >= 1) ? reinterpret_cast<unsigned char*>(pStrat->m_vertices.m_pData[0]) : 0;
             unsigned int uFlags = node->m_uVertexFlags | MDX_VERTICES | MDX_VERTEX_NORMALS;
             int iStride = 24;
             node->m_nNormalOfs = 12;   // normal offset
@@ -2987,61 +2959,63 @@ void PartSkin::PostProcess(Part* part)
 
             // (5) Grow and lock the owning model's pool, then copy every vertex's elements.
             // Do not cache the owning model: re-derive it at each use.
+            int nPoolA;
+            int nAlign;
+            char* pLock;
             int nBase = node->m_pTree->AsModel()->m_nPoolSize;
-            int nPoolA = node->m_pTree->AsModel()->m_nPool;
-            int nAlign = nBase & 0xf;
+            nPoolA = node->m_pTree->AsModel()->m_nPool;
+            nAlign = nBase & 0xf;
             GLRender::ResizePool(nPoolA, node->m_pTree->AsModel()->m_nPoolSize + nAlign +
-                                             (nCount + 1) * node->m_nVertexStride);
-            char* pLock = static_cast<char*>(GLRender::LockPool(node->m_pTree->AsModel()->m_nPool, 0, 0, 1));
+                                             (static_cast<short>(node->m_nVertexCount) + 1) * node->m_nVertexStride);
+            pLock = static_cast<char*>(GLRender::LockPool(node->m_pTree->AsModel()->m_nPool, 0, 0, 1));
+            unsigned int nGeom;
             node->m_nGeomBase = node->m_pTree->AsModel()->m_nPoolSize + nAlign;
-            node->m_pTree->AsModel()->m_nPoolSize += nAlign + (nCount + 1) * node->m_nVertexStride;
-            node->m_paVertices = new float[3 * (nCount + 1)];
+            node->m_pTree->AsModel()->m_nPoolSize += nAlign + (static_cast<short>(node->m_nVertexCount) + 1) * node->m_nVertexStride;
+            node->m_paVertices = reinterpret_cast<float*>(new Vector3[static_cast<short>(node->m_nVertexCount) + 1]);
 
             int nStride = node->m_nVertexStride;
-            unsigned int nGeom = node->m_nGeomBase;
+            nGeom = node->m_nGeomBase;
             if (nCount >= 1) {
-                for (int i = 0; i < nCount; i++) {
-                    const float* v = static_cast<const float*>(pStrat->m_ppVertices[i]);
+                for (int64_t i = 0; i < static_cast<short>(node->m_nVertexCount); i++) {
+                    NodeVertex* pVertex = pStrat->m_vertices.m_pData[i];
                     if (node->m_nTex0Ofs != -1) {
-                        *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + node->m_nTex0Ofs]) = v[3];
-                        *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + 4 + node->m_nTex0Ofs]) = v[4];
+                        *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + node->m_nTex0Ofs]) = pVertex->m_vTex0.x;
+                        *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + 4 + node->m_nTex0Ofs]) = pVertex->m_vTex0.y;
                     }
                     if (node->m_nTex1Ofs != -1) {
-                        *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + node->m_nTex1Ofs]) = v[6];
-                        *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + 4 + node->m_nTex1Ofs]) = v[7];
+                        *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + node->m_nTex1Ofs]) = pVertex->m_vTex1.x;
+                        *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + 4 + node->m_nTex1Ofs]) = pVertex->m_vTex1.y;
                     }
                     if (node->m_nTex2Ofs != -1) {
-                        *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + node->m_nTex2Ofs]) = v[9];
-                        *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + 4 + node->m_nTex2Ofs]) = v[10];
+                        *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + node->m_nTex2Ofs]) = pVertex->m_vTex2.x;
+                        *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + 4 + node->m_nTex2Ofs]) = pVertex->m_vTex2.y;
                     }
                     if (node->m_nTex3Ofs != -1) {
-                        *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + node->m_nTex3Ofs]) = v[12];
-                        *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + 4 + node->m_nTex3Ofs]) = v[13];
+                        *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + node->m_nTex3Ofs]) = pVertex->m_vTex3.x;
+                        *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + 4 + node->m_nTex3Ofs]) = pVertex->m_vTex3.y;
                     }
-                    *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + node->m_nVertexOfs]) = v[0];
-                    *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + 4 + node->m_nVertexOfs]) = v[1];
-                    *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + 8 + node->m_nVertexOfs]) = v[2];
-                    node->m_paVertices[3*i + 0] = v[0];
-                    node->m_paVertices[3*i + 1] = v[1];
-                    node->m_paVertices[3*i + 2] = v[2];
-                    *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + node->m_nNormalOfs]) = v[15];
-                    *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + 4 + node->m_nNormalOfs]) = v[16];
-                    *reinterpret_cast<float*>(&pLock[nGeom + i * nStride + 8 + node->m_nNormalOfs]) = v[17];
+                    *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + node->m_nVertexOfs]) = pVertex->m_vPos.x;
+                    *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + 4 + node->m_nVertexOfs]) = pVertex->m_vPos.y;
+                    *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + 8 + node->m_nVertexOfs]) = pVertex->m_vPos.z;
+                    reinterpret_cast<Vector*>(node->m_paVertices)[i] = pVertex->m_vPos;
+                    *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + node->m_nNormalOfs]) = pVertex->m_vNormal.x;
+                    *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + 4 + node->m_nNormalOfs]) = pVertex->m_vNormal.y;
+                    *reinterpret_cast<float*>(&pLock[nGeom + i * node->m_nVertexStride + 8 + node->m_nNormalOfs]) = pVertex->m_vNormal.z;
                 }
             }
             char* pGuard = pLock + nGeom + static_cast<short>(nCount) * nStride + node->m_nVertexOfs;
             memset(pGuard, 0, nStride);  // idiom-exempt: runtime stride (per-mesh vertex stride)
-            *reinterpret_cast<unsigned long long*>(pGuard) = kGuardCoordPairBits;
+            *reinterpret_cast<uint64_ll_t*>(pGuard) = kGuardCoordPairBits;
             *(reinterpret_cast<unsigned int*>(pGuard) + 2) = kGuardCoordBits;  // idiom-exempt: GL vertex pool bytes
 
             // (6) Root walk and short-lived part list, then the bone/skin lists sized to it.
             Part* pRoot = this;
             while (pRoot->m_pParent)
                 pRoot = static_cast<Part*>(pRoot->m_pParent);
+            int nBones;
             MakeInlinePartList(pRoot, listParts);
-            int nBones = listParts.m_count;
-            List<int>& rSkinSeg = node->m_lBoneConstantIndices;
-            rSkinSeg.SetSize(nBones);
+            nBones = listParts.m_count;
+            node->m_lBoneConstantIndices.SetSize(nBones);
             node->m_nBoneCount = nBones;
             node->m_paBoneMap = new float[nBones];
             for (int i = 0; i < nBones; i++)
@@ -3053,18 +3027,29 @@ void PartSkin::PostProcess(Part* part)
             int64_t nRow;
             if (nCount > 0) {
                 int i = 0;
-                SkinSegment* pSegs = reinterpret_cast<SkinSegment*>(node->m_lWeights.m_pData);
                 do {
-                    SkinSegment& seg = pSegs[i];
+                    SkinVertexWeight& seg = node->m_lWeights.m_pData[i];
                     char* pW = pLock + nGeom + static_cast<short>(i) * nStride + node->m_nBoneWeightsOfs;
                     char* pB = pLock + nGeom + static_cast<short>(i) * nStride + node->m_nBoneIndicesOfs;
                     for (int s = 0; s < 4; s++) {
                         *reinterpret_cast<unsigned int*>(pB + 4*s) = kNoBoneBits;
                         *reinterpret_cast<unsigned int*>(pW + 4*s) = kNoBoneBits;
-                        float w = seg.m_faWeights[s];
+                        float w = 0.0f;
+                        switch (s) {
+                        case 0: w = seg.m_fWeight0; break;
+                        case 1: w = seg.m_fWeight1; break;
+                        case 2: w = seg.m_fWeight2; break;
+                        case 3: w = seg.m_fWeight3; break;
+                        }
                         *reinterpret_cast<float*>(pW + 4*s) = w;
                         if (w != 0.0f) {
-                            int bone = seg.m_naBoneIdx[s];
+                            int bone = 0;
+                            switch (s) {
+                            case 0: bone = seg.m_nBoneIdx0; break;
+                            case 1: bone = seg.m_nBoneIdx1; break;
+                            case 2: bone = seg.m_nBoneIdx2; break;
+                            case 3: bone = seg.m_nBoneIdx3; break;
+                            }
                             float remap = node->m_paBoneMap[bone];
                             if (remap < 0.0f) {
                                 remap = static_cast<float>(nBoneRemap++);
@@ -3083,19 +3068,14 @@ void PartSkin::PostProcess(Part* part)
             // Guard row of zero weights plus a leading 1.0f sentinel weight.
             {
                 char* pTail = pLock + nGeom + static_cast<short>(nRow) * nStride;
-                *reinterpret_cast<unsigned long long*>(pTail + node->m_nBoneIndicesOfs) = 0;
-                *reinterpret_cast<unsigned long long*>(pTail + node->m_nBoneIndicesOfs + 8) = 0;
-                *reinterpret_cast<unsigned long long*>(pTail + node->m_nBoneWeightsOfs) = kWeightOneZeroBits;
-                *reinterpret_cast<unsigned long long*>(pTail + node->m_nBoneWeightsOfs + 8) = 0;
+                *reinterpret_cast<uint64_ll_t*>(pTail + node->m_nBoneIndicesOfs) = 0;
+                *reinterpret_cast<uint64_ll_t*>(pTail + node->m_nBoneIndicesOfs + 8) = 0;
+                *reinterpret_cast<uint64_ll_t*>(pTail + node->m_nBoneWeightsOfs) = kWeightOneZeroBits;
+                *reinterpret_cast<uint64_ll_t*>(pTail + node->m_nBoneWeightsOfs + 8) = 0;
             }
 
             // (8) Tear down the transient segment buffer and unlock the pool.
-            if (node->m_lWeights.m_pData) {
-                operator delete[](node->m_lWeights.m_pData);
-                node->m_lWeights.m_pData = 0;
-            }
-            node->m_lWeights.m_count = 0;
-            node->m_lWeights.m_capacity = 0;
+            node->m_lWeights.SetSize(0);
             GLRender::UnlockPool(node->m_pTree->AsModel()->m_nPool);
             bDone = true;
         }
@@ -3162,11 +3142,5 @@ void MdlNodeSkin::InternalGenVertices()
         }
     }
 
-#if KOTOR1  // K1 assigns the re-indexed list in one operator=
     m_lWeights = lWeights;
-#else
-    m_lWeights.m_count = 0;
-    for (int i = 0; i < lWeights.m_count; i++)
-        m_lWeights.Add(lWeights.m_pData[i]);
-#endif
 }

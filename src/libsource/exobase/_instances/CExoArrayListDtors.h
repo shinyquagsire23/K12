@@ -12,10 +12,8 @@ public:
 
     CExoArrayList(const CExoArrayList& other);
 
-    // Reserves n slots up front; the count stays 0. A constructor template, so the explicit
-    // instantiations in CExoArrayList.cpp do not emit it (the arm64 images export none).
-    template <class N>
-    explicit CExoArrayList(N n) : m_pArray(0), m_count(0), m_capacity(0)
+    // Reserves n slots up front; the count stays 0.
+    explicit CExoArrayList(int n) : m_pArray(0), m_count(0), m_capacity(0)
     {
         if (n != 0)
             Allocate(n);
@@ -53,8 +51,14 @@ public:
     // Returns the number of matching elements, not a bool.
     int Contains(T v) const
     {
+#if defined(__arm__)  // the 32-bit source's counter, declared first; the arm64 port's is loop-scoped and 64-bit
+        int i = 0;
+        int count = 0;
+        for (; i < m_count; i++)
+#else
         int count = 0;
         for (int64_t i = 0; i < m_count; i++)
+#endif
             if (m_pArray[i] == v)
                 count++;
         return count;

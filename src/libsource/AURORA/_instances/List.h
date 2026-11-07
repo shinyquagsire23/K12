@@ -19,7 +19,7 @@ void  operator delete(void*, void*) throw();
 //
 // Add appends one element, growing the buffer to twice the count (16 for the first element) and
 // copying the old elements over. operator= clears the list and then Adds every element of the
-// source; the copy constructor zeroes the fields and Adds every element.
+// source; both copy constructors zero the fields and Add every element.
 template <class T>
 class List {
 public:
@@ -27,6 +27,7 @@ public:
     List() { m_pData = 0; __builtin_memset(&m_count, 0, sizeof(m_count) + sizeof(m_capacity)); }
     ~List();
     List(List<T>& rhs);
+    List(const List<T>& rhs);
     // Grows the buffer and moves the existing elements over. Shared by Add and SetSize, and
     // called directly to reserve a small capacity.
     void allocate(int nNewCapacity);
@@ -38,8 +39,14 @@ public:
     // Counts the matching elements; the whole list is scanned rather than stopping at the first.
     int Contains(T item)
     {
+#if defined(__arm__)  // the 32-bit source's counter, declared first; the arm64 port's is loop-scoped and 64-bit
+        int i = 0;
+        int nFound = 0;
+        for (; i < m_count; i++)
+#else
         int nFound = 0;
         for (int64_t i = 0; i < m_count; i++)
+#endif
             if (m_pData[i] == item)
                 nFound++;
         return nFound;
@@ -93,6 +100,12 @@ List<T>::List(List<T>& rhs) : m_pData(0), m_count(0), m_capacity(0) {
         Add(rhs.m_pData[i]);
 }
 
+template <class T>
+List<T>::List(const List<T>& rhs) : m_pData(0), m_count(0), m_capacity(0) {
+    for (int i = 0; i < rhs.m_count; i++)
+        Add(rhs.m_pData[i]);
+}
+
 // Erase the last matching element: a backwards scan, then the shift is delegated to DelIndex,
 // which is also what hands it -1 when nothing matched.
 template <class T>
@@ -123,9 +136,6 @@ void List<T>::allocate(int nNewCapacity) {
 }
 
 template <class T>
-#if KOTOR1
-inline  // K1 inlines SetSize at every call site
-#endif
 void List<T>::SetSize(int nNewSize) {
     if (nNewSize) {
         allocate(nNewSize);

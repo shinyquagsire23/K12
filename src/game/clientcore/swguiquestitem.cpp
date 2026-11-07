@@ -92,16 +92,7 @@ void CSWGuiQuestItem::HandleInputEvent(int type, int val)
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
             m_pGuiManager->PopModalPanel();
 
-#if KOTOR1  // K1: the panel state bits sit one higher (bit 3 inserted)
-            unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-            if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-            unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-            if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-            m_stateFlags = nFlags;
+            SetToBeRemoved(0);
             break;
         }
         case INPUTEVENT_GUI_SCROLL_UP:
@@ -132,28 +123,25 @@ void CSWGuiQuestItem::PopulateItemListBox()
     CItemRepository* pRepository = pServerCreature->GetItemRepository(1);
 
     CExoArrayList<CSWGuiControl*> aControls;
-    if (pRepository->ItemListGetCount() != 0)
-    {
-        int nWidth = m_listBox.m_innerExtent.w - static_cast<int>(m_listBox.m_nPadding) * 2;
-        CSWGuiControl* pProto = m_listBox.m_pProtoItem;
+    int nWidth = m_listBox.m_innerExtent.w - static_cast<int>(m_listBox.m_nPadding) * 2;
+    CSWGuiControl* pProto = m_listBox.m_pProtoItem;
 
-        for (unsigned int i = 0; i < pRepository->ItemListGetCount(); i++)
+    for (unsigned int i = 0; i < pRepository->ItemListGetCount(); i++)
+    {
+        CSWGuiInGameItemEntry* pEntry;
+        CSWSItem* pItem = pRepository->ItemListGetItem(i);
+        if (pItem != 0 && pItem->m_bPlot != 0)
         {
-            CSWGuiInGameItemEntry* pEntry;
-            CSWSItem* pItem = pRepository->ItemListGetItem(i);
-            if (pItem != 0 && pItem->m_bPlot != 0)
-            {
-                pEntry = new CSWGuiInGameItemEntry();
-                pEntry->Initialize(static_cast<CSWGuiButton*>(pProto)->m_text,
-                                   static_cast<CSWGuiButton*>(pProto)->m_border,
-                                   static_cast<CSWGuiButton*>(pProto)->m_borderHilight,
-                                   nWidth, 0);
-                pEntry->AddEvent(SWGUIEVENT_FOCUS, this,
-                    static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiQuestItem::OnControlEntered));
-                pEntry->SetItem(pItem->m_objectId, 0, 0);
-                m_aItemEntries.AddTail(pEntry);
-                aControls.Add(pEntry);
-            }
+            pEntry = new CSWGuiInGameItemEntry();
+            pEntry->Initialize(static_cast<CSWGuiButton*>(pProto)->m_text,
+                               static_cast<CSWGuiButton*>(pProto)->m_border,
+                               static_cast<CSWGuiButton*>(pProto)->m_borderHilight,
+                               nWidth, 0);
+            pEntry->AddEvent(SWGUIEVENT_FOCUS, this,
+                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiQuestItem::OnControlEntered));
+            pEntry->SetItem(pItem->m_objectId, 0, 0);
+            m_aItemEntries.AddTail(pEntry);
+            aControls.Add(pEntry);
         }
     }
 

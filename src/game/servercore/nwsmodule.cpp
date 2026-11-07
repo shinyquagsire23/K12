@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "nwsmodule.h"
 #include "nwsscriptevent.h"
 #include "nwmessagetypes.h"
@@ -495,14 +496,11 @@ unsigned int CSWSModule::PlotInterAreaPath(CPathfindInformation* pPathInfo, unsi
         int nCount = pPathInfo->m_nTraversedTransitions;
         unsigned long long* paNew = new unsigned long long[nCount + 1];
         // The old count is published before the old pointer is freed.
-        if (nCount > 0)
+        int i = 0;
+        while (i < nCount)
         {
-            int i = 0;
-            do
-            {
-                paNew[i] = pPathInfo->m_paTraversedTransitions[i];
-            }
-            while (++i < nCount);
+            paNew[i] = pPathInfo->m_paTraversedTransitions[i];
+            i++;
         }
         paNew[nCount] = pPathInfo->m_paInterAreaTransitionIds[0];
         pPathInfo->m_nTraversedTransitions = nCount + 1;
@@ -586,7 +584,7 @@ int CSWSModule::PlotPath(CPathfindInformation* pPathInfo, unsigned int nPathId)
 unsigned int CSWSModule::PlotPathInArea(CPathfindInformation* pPathInfo, unsigned int nTimeOut)
 {
     float fHitFraction = pPathInfo->m_fPersonalSpace;
-    float fRadius = pPathInfo->m_fHeightAlias;
+    float fRadius = pPathInfo->m_fHeight;
     float fFromX = pPathInfo->m_vStartPoint.x;
     float fFromY = pPathInfo->m_vStartPoint.y;
     float fToX = pPathInfo->m_goal.m_vPoint.x;
@@ -1657,37 +1655,25 @@ void CSWSModule::AddObjectToLimbo(unsigned long long objectId)
 // The index of the module's primary player in the IFO's player list, or -1.
 int CSWSModule::GetPrimaryPlayerIndex()
 {
-    CExoLinkedListNode* pNode = m_ifoPlayerList.m_pInternal->m_pHead;
-    if (pNode == 0)
-        return -1;
-
     int nIndex = 0;
-    for (;;)
+    for (CExoLinkedListNode* pNode = m_ifoPlayerList.GetHeadPos(); pNode != 0; nIndex++)
     {
-        NWPlayerListItem_st* pItem =
-            m_ifoPlayerList.GetAtPos(pNode);
+        NWPlayerListItem_st* pItem = m_ifoPlayerList.GetAtPos(pNode);
         if (pItem->m_nIsPrimaryPlayer == 1)
             return nIndex;
         m_ifoPlayerList.GetNext(pNode);
-        nIndex++;
-        if (pNode == 0)
-            return -1;
     }
+    return -1;
 }
 
 // The index in the IFO's player list of the row that describes pPlayer, or -1. A row matches when
 // its community name and both localized names agree with the player and its creature.
 int CSWSModule::GetPlayerIndexInPlayerList(CSWSPlayer* pPlayer)
 {
-    CExoLinkedListNode* pNode = m_ifoPlayerList.m_pInternal->m_pHead;
-    if (pNode == 0)
-        return -1;
-
     int nIndex = 0;
-    for (;;)
+    for (CExoLinkedListNode* pNode = m_ifoPlayerList.GetHeadPos(); pNode != 0; nIndex++)
     {
-        NWPlayerListItem_st* pItem =
-            m_ifoPlayerList.GetAtPos(pNode);
+        NWPlayerListItem_st* pItem = m_ifoPlayerList.GetAtPos(pNode);
         if (pItem->m_sCommunityName == pPlayer->GetPlayerName())
         {
             CSWSCreature* pCreature =
@@ -1697,10 +1683,8 @@ int CSWSModule::GetPlayerIndexInPlayerList(CSWSPlayer* pPlayer)
                 return nIndex;
         }
         m_ifoPlayerList.GetNext(pNode);
-        if (pNode == 0)
-            return -1;
-        nIndex++;
     }
+    return -1;
 }
 
 // Appends the module's own IFO player list to a character list already built from the servervault.
@@ -2026,17 +2010,14 @@ CExoString CSWSModule::GetModuleResourceName()
 // end of the array, an off-by-one that is reproduced rather than corrected.
 int CSWSModule::GetWorldJournalIndexUnique()
 {
-    int i = 0;
+    int i;
     int nIndex = 1;
-    if (m_worldJournal.m_count > 0) {
-        do {
-            if ((m_worldJournal.m_pArray[i].m_nEntryFlags & 1) == 0
-                && m_worldJournal.m_pArray[i].m_nEntryId == static_cast<unsigned int>(nIndex)) {
-                nIndex++;
-                i = -1;
-            }
-            i++;
-        } while (i < m_worldJournal.m_count);
+    for (i = 0; i < m_worldJournal.m_count; i++) {
+        if ((m_worldJournal.m_pArray[i].m_nEntryFlags & 1) == 0
+            && m_worldJournal.m_pArray[i].m_nEntryId == static_cast<unsigned int>(nIndex)) {
+            nIndex++;
+            i = -1;
+        }
     }
     return nIndex;
 }
@@ -2442,7 +2423,7 @@ int CSWSModule::SavePlayers(CResGFF* pGFF, CResStruct* pStruct, const CExoString
 {
     K2_UNUSED(sUnused);
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
-    CExoArrayList<unsigned int> aPlayerIndices;
+    CExoArrayList<uint32_l_t> aPlayerIndices;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
     CResList list;
     pGFF->AddList(&list, pStruct, const_cast<char*>("Mod_PlayerList"));

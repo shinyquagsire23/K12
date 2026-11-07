@@ -27,7 +27,7 @@ const char* GetOverridePath(int nIndex, bool bFlag);
 bool IosAnyTouches();
 void IosTemporaryDisableInteraction(int nDisable);
 int  IosGetTemporaryDisableInteraction();
-int  IosGetRelativeTouch(float& fX, float& fY);
+bool IosGetRelativeTouch(float& fX, float& fY);
 float GetIosControl(bool bUpDown, float fScale, float fDeadZone, bool bAnalog);
 float GetIosControl(bool bUpDown, float fScale, float fDeadZone);
 void ClearIosControl(bool bUpDown);

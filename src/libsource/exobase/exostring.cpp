@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "exostring.h"
 
 // The step Format grows its shared buffer by until the text fits.

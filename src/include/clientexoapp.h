@@ -110,7 +110,7 @@ public:
     CExoLinkedList<CSWCPlayer>* GetPlayerList();
     void                 DestroyMainMenuPanel();
     CAurCamera*       GetModuleCamera();
-    int                  GetActivePauseState();
+    unsigned char        GetActivePauseState();
     CSWCModule*          GetModule();
     int                  GetPauseState(unsigned char mask);
     CSWGuiStore*      GetStorePanel();
@@ -124,7 +124,7 @@ public:
     int GetAllowHighMonitorFrequency();
 #endif
     CServerInfo*         GetServerInfo();
-    unsigned short       GetServerMode();
+    short                GetServerMode();
     int                  IsClientInitialized();
     CSWCPlayer*          GetPlayerByGameObjectID(unsigned long long id);
     CSWCItem*            GetItemByGameObjectID(unsigned long long id);

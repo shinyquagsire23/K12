@@ -224,15 +224,10 @@ void CClientOptions::SetCameraMode(unsigned char mode)
 
 void CClientOptions::ToggleCameraMode()
 {
-    if (m_nCameraMode == CAMERA_MODE_STIFF_CHASE_CAMERA) {
-        m_nCameraMode = m_nSavedCameraMode;
-#if !KOTOR1
-        if (m_nSavedCameraMode == CAMERA_MODE_DIALOG)
-            g_ForceSight = 0;
-#endif
-    } else {
+    if (m_nCameraMode == CAMERA_MODE_STIFF_CHASE_CAMERA)
+        SetCameraMode(m_nSavedCameraMode);
+    else
         m_nCameraMode = CAMERA_MODE_STIFF_CHASE_CAMERA;
-    }
 }
 
 void CClientOptions::SetActionFeedbackMode(unsigned char n)
@@ -622,7 +617,8 @@ void CClientOptions::SetDefaultAdvancedGraphicsOptions()
 
 void CClientOptions::SetAllMoviesShown()
 {
-    __builtin_memset(m_movieShown, -1, sizeof(m_movieShown));
+    for (unsigned int i = 0; i < sizeof(m_movieShown); i++)
+        m_movieShown[i] = 0xff;
 }
 
 void CClientOptions::SetDefaultKeyboardCamera()
@@ -770,6 +766,8 @@ const char* enableminspec(char* pszArgs) {
         CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
         pOptions->m_nMinSpecMode = 16;
     }
+    // EFFECTIVE: both images sink only the m_nMinSpecMode store and keep each arm's GetClientOptions;
+    // ours sinks the call too (the store written through the call gives the same bytes).
     g_pAppManager->m_pClientExoApp->GetModule()->m_pArea->m_pAmbientSound->StopSounds(0);
     g_pAppManager->m_pClientExoApp->GetModule()->m_pArea->m_pAmbientSound->StartSounds();
     return "Success";

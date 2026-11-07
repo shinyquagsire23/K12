@@ -30,11 +30,7 @@ const unsigned int  CNetLayer::CONNECTION_PENDING        = 2;
 
 CNetLayerPlayerInfo::CNetLayerPlayerInfo()
 {
-    m_bValid = 0;
-    m_sName = "";
-    m_isPlayerPermitted = 0;
-    m_isGameMasterPermitted = 0;
-    m_isAdminPermitted = 0;
+    Initialize();
 }
 
 void CNetLayerPlayerInfo::Initialize()
@@ -94,13 +90,9 @@ int CNetLayer::Initialize(CBaseExoApp* pApp)
     {
         m_pApp = pApp;
         m_bServerModeActive = 0;
-        m_playerInfo.m_bValid = 0;
         bDidInit = 1;
         m_bInitialized = bDidInit;
-        m_playerInfo.m_sName = "";
-        m_playerInfo.m_isPlayerPermitted = 0;
-        m_playerInfo.m_isGameMasterPermitted = 0;
-        m_playerInfo.m_isAdminPermitted = 0;
+        m_playerInfo.Initialize();
         m_bConnecting = 0;
         m_nConnectType = 0;
         m_bConnectResponseReceived = 0;

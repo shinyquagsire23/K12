@@ -14,101 +14,100 @@ enum {
 };
 
 CScriptEvent::CScriptEvent()
-    : m_params()
 {
 }
 
 int CScriptEvent::GetInteger(int index)
 {
-    if (index < m_params.m_aIntegers.m_count)
-        return m_params.m_aIntegers.m_pArray[index];
+    if (index < m_aIntegers.m_count)
+        return m_aIntegers.m_pArray[index];
     return 0;
 }
 
 float CScriptEvent::GetFloat(int index)
 {
     float fValue = 0.0f;
-    if (index < m_params.m_aFloats.m_count)
-        fValue = m_params.m_aFloats.m_pArray[index];
+    if (index < m_aFloats.m_count)
+        fValue = m_aFloats.m_pArray[index];
     return fValue;
 }
 
 // An absent object is reported as the "no object" sentinel id.
 unsigned long long CScriptEvent::GetObjectID(int index)
 {
-    if (index < m_params.m_aObjects.m_count)
-        return m_params.m_aObjects.m_pArray[index];
+    if (index < m_aObjects.m_count)
+        return m_aObjects.m_pArray[index];
     return OBJECT_INVALID;
 }
 
 CExoString CScriptEvent::GetString(int index)
 {
-    if (index < m_params.m_aStrings.m_count)
-        return m_params.m_aStrings.m_pArray[index];
+    if (index < m_aStrings.m_count)
+        return m_aStrings.m_pArray[index];
     return CExoString("");
 }
 
 void CScriptEvent::SetInteger(int index, int value)
 {
-    if (index >= m_params.m_aIntegers.m_count)
-        m_params.m_aIntegers.SetSize(index + 1);
-    m_params.m_aIntegers.m_pArray[index] = value;
+    if (index >= m_aIntegers.m_count)
+        m_aIntegers.SetSize(index + 1);
+    m_aIntegers.m_pArray[index] = value;
 }
 
 void CScriptEvent::SetFloat(int index, float value)
 {
-    if (index >= m_params.m_aFloats.m_count)
-        m_params.m_aFloats.SetSize(index + 1);
-    m_params.m_aFloats.m_pArray[index] = value;
+    if (index >= m_aFloats.m_count)
+        m_aFloats.SetSize(index + 1);
+    m_aFloats.m_pArray[index] = value;
 }
 
 void CScriptEvent::SetObjectID(int index, unsigned long long objectId)
 {
-    if (index >= m_params.m_aObjects.m_count)
-        m_params.m_aObjects.SetSize(index + 1);
-    m_params.m_aObjects.m_pArray[index] = objectId;
+    if (index >= m_aObjects.m_count)
+        m_aObjects.SetSize(index + 1);
+    m_aObjects.m_pArray[index] = objectId;
 }
 
 void CScriptEvent::SetString(int index, const CExoString& sValue)
 {
-    if (index >= m_params.m_aStrings.m_count)
-        m_params.m_aStrings.SetSize(index + 1);
-    m_params.m_aStrings.m_pArray[index] = sValue;
+    if (index >= m_aStrings.m_count)
+        m_aStrings.SetSize(index + 1);
+    m_aStrings.m_pArray[index] = sValue;
 }
 
 CScriptEvent::~CScriptEvent()
 {
-    m_params.m_aIntegers.SetSize(0);
-    m_params.m_aFloats.SetSize(0);
-    m_params.m_aObjects.SetSize(0);
-    m_params.m_aStrings.SetSize(0);
+    m_aIntegers.SetSize(0);
+    m_aFloats.SetSize(0);
+    m_aObjects.SetSize(0);
+    m_aStrings.SetSize(0);
 }
 
 // Compares the integer, float, object and string parameter lists; the event type is ignored.
 int CScriptEvent::operator==(const CScriptEvent& other) const
 {
-    if (m_params.m_aIntegers.m_count != other.m_params.m_aIntegers.m_count)
+    if (m_aIntegers.m_count != other.m_aIntegers.m_count)
         return 0;
-    for (int i = 0; i < m_params.m_aIntegers.m_count; i++)
-        if (m_params.m_aIntegers.m_pArray[i] != other.m_params.m_aIntegers.m_pArray[i])
+    for (int i = 0; i < m_aIntegers.m_count; i++)
+        if (m_aIntegers.m_pArray[i] != other.m_aIntegers.m_pArray[i])
             return 0;
 
-    if (m_params.m_aFloats.m_count != other.m_params.m_aFloats.m_count)
+    if (m_aFloats.m_count != other.m_aFloats.m_count)
         return 0;
-    for (int i = 0; i < m_params.m_aFloats.m_count; i++)
-        if (m_params.m_aFloats.m_pArray[i] != other.m_params.m_aFloats.m_pArray[i])
+    for (int i = 0; i < m_aFloats.m_count; i++)
+        if (m_aFloats.m_pArray[i] != other.m_aFloats.m_pArray[i])
             return 0;
 
-    if (m_params.m_aObjects.m_count != other.m_params.m_aObjects.m_count)
+    if (m_aObjects.m_count != other.m_aObjects.m_count)
         return 0;
-    for (int i = 0; i < m_params.m_aObjects.m_count; i++)
-        if (m_params.m_aObjects.m_pArray[i] != other.m_params.m_aObjects.m_pArray[i])
+    for (int i = 0; i < m_aObjects.m_count; i++)
+        if (m_aObjects.m_pArray[i] != other.m_aObjects.m_pArray[i])
             return 0;
 
-    if (m_params.m_aStrings.m_count != other.m_params.m_aStrings.m_count)
+    if (m_aStrings.m_count != other.m_aStrings.m_count)
         return 0;
-    for (int i = 0; i < m_params.m_aStrings.m_count; i++)
-        if (m_params.m_aStrings.m_pArray[i] != other.m_params.m_aStrings.m_pArray[i])
+    for (int i = 0; i < m_aStrings.m_count; i++)
+        if (m_aStrings.m_pArray[i] != other.m_aStrings.m_pArray[i])
             return 0;
 
     return 1;
@@ -126,39 +125,39 @@ int CScriptEvent::SaveEvent(CResGFF* pGff, CResStruct* pStruct)
 
     pGff->WriteFieldWORD(pStruct, m_eventType, const_cast<char*>("EventType"));
 
-    if (m_params.m_aIntegers.m_count >= 1) {
+    if (m_aIntegers.m_count >= 1) {
         pGff->AddList(&list, pStruct, const_cast<char*>("IntList"));
-        for (i = 0; i < m_params.m_aIntegers.m_count; i++) {
+        for (i = 0; i < m_aIntegers.m_count; i++) {
             CResStruct elem;
             pGff->AddListElement(&elem, &list, GFF_STRUCT_ID_EVENT_PARAMETER);
-            pGff->WriteFieldINT(&elem, m_params.m_aIntegers.m_pArray[i], const_cast<char*>("Parameter"));
+            pGff->WriteFieldINT(&elem, m_aIntegers.m_pArray[i], const_cast<char*>("Parameter"));
         }
     }
 
-    if (m_params.m_aFloats.m_count >= 1) {
+    if (m_aFloats.m_count >= 1) {
         pGff->AddList(&list, pStruct, const_cast<char*>("FloatList"));
-        for (i = 0; i < m_params.m_aFloats.m_count; i++) {
+        for (i = 0; i < m_aFloats.m_count; i++) {
             CResStruct elem;
             pGff->AddListElement(&elem, &list, GFF_STRUCT_ID_EVENT_PARAMETER);
-            pGff->WriteFieldFLOAT(&elem, m_params.m_aFloats.m_pArray[i], const_cast<char*>("Parameter"));
+            pGff->WriteFieldFLOAT(&elem, m_aFloats.m_pArray[i], const_cast<char*>("Parameter"));
         }
     }
 
-    if (m_params.m_aStrings.m_count >= 1) {
+    if (m_aStrings.m_count >= 1) {
         pGff->AddList(&list, pStruct, const_cast<char*>("StringList"));
-        for (i = 0; i < m_params.m_aStrings.m_count; i++) {
+        for (i = 0; i < m_aStrings.m_count; i++) {
             CResStruct elem;
             pGff->AddListElement(&elem, &list, GFF_STRUCT_ID_EVENT_PARAMETER);
-            pGff->WriteFieldCExoString(&elem, m_params.m_aStrings.m_pArray[i], const_cast<char*>("Parameter"));
+            pGff->WriteFieldCExoString(&elem, m_aStrings.m_pArray[i], const_cast<char*>("Parameter"));
         }
     }
 
-    if (m_params.m_aObjects.m_count >= 1) {
+    if (m_aObjects.m_count >= 1) {
         pGff->AddList(&list, pStruct, const_cast<char*>("ObjectList"));
-        for (i = 0; i < m_params.m_aObjects.m_count; i++) {
+        for (i = 0; i < m_aObjects.m_count; i++) {
             CResStruct elem;
             pGff->AddListElement(&elem, &list, GFF_STRUCT_ID_EVENT_PARAMETER);
-            pGff->WriteFieldDWORD(&elem, static_cast<unsigned int>(m_params.m_aObjects.m_pArray[i]), const_cast<char*>("Parameter"));
+            pGff->WriteFieldDWORD(&elem, static_cast<unsigned int>(m_aObjects.m_pArray[i]), const_cast<char*>("Parameter"));
         }
     }
 
@@ -173,21 +172,21 @@ void CScriptEvent::CopyScriptEvent(CScriptEvent* pSource)
 
     m_eventType = pSource->m_eventType;
 
-    m_params.m_aIntegers.SetSize(pSource->m_params.m_aIntegers.m_count);
-    for (i = 0; i < pSource->m_params.m_aIntegers.m_count; i++)
-        m_params.m_aIntegers.m_pArray[i] = pSource->m_params.m_aIntegers.m_pArray[i];
+    m_aIntegers.SetSize(pSource->m_aIntegers.m_count);
+    for (i = 0; i < pSource->m_aIntegers.m_count; i++)
+        m_aIntegers.m_pArray[i] = pSource->m_aIntegers.m_pArray[i];
 
-    m_params.m_aFloats.SetSize(pSource->m_params.m_aFloats.m_count);
-    for (i = 0; i < pSource->m_params.m_aFloats.m_count; i++)
-        m_params.m_aFloats.m_pArray[i] = pSource->m_params.m_aFloats.m_pArray[i];
+    m_aFloats.SetSize(pSource->m_aFloats.m_count);
+    for (i = 0; i < pSource->m_aFloats.m_count; i++)
+        m_aFloats.m_pArray[i] = pSource->m_aFloats.m_pArray[i];
 
-    m_params.m_aObjects.SetSize(pSource->m_params.m_aObjects.m_count);
-    for (i = 0; i < pSource->m_params.m_aObjects.m_count; i++)
-        m_params.m_aObjects.m_pArray[i] = pSource->m_params.m_aObjects.m_pArray[i];
+    m_aObjects.SetSize(pSource->m_aObjects.m_count);
+    for (i = 0; i < pSource->m_aObjects.m_count; i++)
+        m_aObjects.m_pArray[i] = pSource->m_aObjects.m_pArray[i];
 
-    m_params.m_aStrings.SetSize(pSource->m_params.m_aStrings.m_count);
-    for (i = 0; i < pSource->m_params.m_aStrings.m_count; i++)
-        m_params.m_aStrings.m_pArray[i] = pSource->m_params.m_aStrings.m_pArray[i];
+    m_aStrings.SetSize(pSource->m_aStrings.m_count);
+    for (i = 0; i < pSource->m_aStrings.m_count; i++)
+        m_aStrings.m_pArray[i] = pSource->m_aStrings.m_pArray[i];
 }
 
 int CScriptEvent::LoadEvent(CResGFF* pGff, CResStruct* pStruct)
@@ -200,14 +199,14 @@ int CScriptEvent::LoadEvent(CResGFF* pGff, CResStruct* pStruct)
     if (pGff->GetList(&list, pStruct, const_cast<char*>("IntList"))) {
         for (i = 0; i < pGff->GetListCount(&list); i++) {
             pGff->GetListElement(&elem, &list, i);
-            m_params.m_aIntegers.Add(pGff->ReadFieldINT(&elem, const_cast<char*>("Parameter"), bSuccess, 0));
+            m_aIntegers.Add(pGff->ReadFieldINT(&elem, const_cast<char*>("Parameter"), bSuccess, 0));
         }
     }
 
     if (pGff->GetList(&list, pStruct, const_cast<char*>("FloatList"))) {
         for (i = 0; i < pGff->GetListCount(&list); i++) {
             pGff->GetListElement(&elem, &list, i);
-            m_params.m_aFloats.Add(pGff->ReadFieldFLOAT(&elem, const_cast<char*>("Parameter"), bSuccess, 0.0f));
+            m_aFloats.Add(pGff->ReadFieldFLOAT(&elem, const_cast<char*>("Parameter"), bSuccess, 0.0f));
         }
     }
 
@@ -216,14 +215,14 @@ int CScriptEvent::LoadEvent(CResGFF* pGff, CResStruct* pStruct)
         for (i = 0; i < pGff->GetListCount(&list); i++) {
             pGff->GetListElement(&elem, &list, i);
             sValue = pGff->ReadFieldCExoString(&elem, const_cast<char*>("Parameter"), bSuccess, CExoString(""));
-            m_params.m_aStrings.Add(sValue);
+            m_aStrings.Add(sValue);
         }
     }
 
     if (pGff->GetList(&list, pStruct, const_cast<char*>("ObjectList"))) {
         for (i = 0; i < pGff->GetListCount(&list); i++) {
             pGff->GetListElement(&elem, &list, i);
-            m_params.m_aObjects.Add(pGff->ReadFieldDWORD(&elem, const_cast<char*>("Parameter"), bSuccess, 0));
+            m_aObjects.Add(pGff->ReadFieldDWORD(&elem, const_cast<char*>("Parameter"), bSuccess, 0));
         }
     }
 

@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "swguiDebugLoadModule.h"
 
 #include "appmanager.h"
@@ -49,6 +50,8 @@ CSWGuiLoadModuleDebugMenu::CSWGuiLoadModuleDebugMenu(CSWGuiManager* pGuiManager)
     CExoString sFile;
     CExoArrayList<CExoString> aDirs;
     CExoArrayList<CExoString> aFiles;
+    CExoArrayList<CExoString> aUnusedA;
+    CExoArrayList<CExoString> aUnusedB;
     // Unused; the locals below are laid out around it.
     CExoString sUnused;
 
@@ -85,20 +88,16 @@ CSWGuiLoadModuleDebugMenu::CSWGuiLoadModuleDebugMenu(CSWGuiManager* pGuiManager)
 
     int nNumDirs = aDirs.m_count;
     int nNumFiles = aFiles.m_count;
-    int i = 0;
     int j = 0;
-    bool bDir = i < nNumDirs;
-    bool bFile = j < nNumFiles;
-    while (bDir || bFile)
+    int i = 0;
+    while (j < nNumFiles || i < nNumDirs)
     {
-        if (bDir)
+        if (i < nNumDirs)
         {
             sDir = aDirs.m_pArray[i];
             if (sDir.Find(CExoString("_s.rim"), 0) != -1)
             {
                 i++;
-                bDir = i < nNumDirs;
-                bFile = j < nNumFiles;
                 continue;
             }
         }
@@ -107,14 +106,12 @@ CSWGuiLoadModuleDebugMenu::CSWGuiLoadModuleDebugMenu(CSWGuiManager* pGuiManager)
             sDir = CExoString("zzzzzzzz.zzz");
         }
 
-        if (bFile)
+        if (j < nNumFiles)
         {
             sFile = aFiles.m_pArray[j];
             if (sFile.Find(CExoString("_s.rim"), 0) != -1)
             {
                 i++;
-                bDir = i < nNumDirs;
-                bFile = j < nNumFiles;
                 continue;
             }
         }
@@ -142,9 +139,6 @@ CSWGuiLoadModuleDebugMenu::CSWGuiLoadModuleDebugMenu(CSWGuiManager* pGuiManager)
         aOptions.Add(CreateOption(sCaption,
             static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiLoadModuleDebugMenu::OnModulePicked),
             pTemplate));
-
-        bDir = i < nNumDirs;
-        bFile = j < nNumFiles;
     }
 
     m_listBox.AddControls(aOptions, 1, 0, 0);

@@ -22,7 +22,8 @@ void CExoArrayList<T>::Allocate(int n)
     for (int i = 0; i < m_count; i++)
 #endif
         m_pArray[i] = pOld[i];
-    delete[] pOld;
+    if (pOld)
+        delete[] pOld;
 }
 
 template <class T>

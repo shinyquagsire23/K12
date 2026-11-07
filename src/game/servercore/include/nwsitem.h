@@ -217,11 +217,9 @@ public:
     CExoLocString m_descriptionIdentified;
     CExoLocString m_description;
     CExoLocString m_localizedName;
-    // Read at both widths, since the store accesses the full 16-bit flags word while the placeable
-    // inventory scan reads only the low byte. The union keeps both shapes.
+    // The FLAG_* word, written whole by the store and the inventory code and bit by bit through m_bits.
     union {
         unsigned short m_flags;
-        unsigned char  m_nFlagsLow;
         struct {
             unsigned short m_nLowFlagBits : 3;
             unsigned short m_bDropable : 1;   // GFF "Dropable"

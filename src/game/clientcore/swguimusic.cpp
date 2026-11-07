@@ -393,10 +393,12 @@ void CSWGuiTitleMusic::StopMusic()
     m_nPlaying = 0;
     int nStart = static_cast<int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
     m_pMusic->FadeAndStop(500);
-    do
+    int nNow = nStart;
+    while (static_cast<unsigned int>(nNow - nStart) < 500)
     {
         g_pExoSound->Render();
-    } while (static_cast<unsigned int>(static_cast<int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000) - nStart) < 500);
+        nNow = static_cast<int>(g_pExoBase->m_pTimers->GetHighResolutionTimer() / 1000);
+    }
     m_labelTrackName.m_text.m_params.SetText(CExoString(""));
 }
 

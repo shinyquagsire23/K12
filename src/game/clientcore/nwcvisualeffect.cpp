@@ -129,6 +129,9 @@ void CSWCVisualEffect::SetPosition(const Vector& v) {
 
 #include "port/libcbase.h"
 
+#if defined(K2_NO_FORTIFY)
+#define FormatName(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
 {
     __builtin_va_list ap;
@@ -137,6 +140,7 @@ static int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 int CSWCVisualEffect::LoadModel(const CResRef& r, unsigned char a, unsigned char b) {
     K2_UNUSED(a); K2_UNUSED(b);
@@ -186,8 +190,8 @@ void CSWCVisualEffect::Reset()
 
     m_nLastAIUpdateDay = nDay;
     m_nLastAIUpdateTod = nTimeOfDay;
-    m_bFinishing = 0;
     m_bFinished = 0;
+    m_bFinishing = 0;
 }
 
 void CSWCVisualEffect::UnloadCachedVFX()

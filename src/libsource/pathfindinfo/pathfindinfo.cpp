@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "pathfindinfo.h"
 #include "appmanager.h"
 #include "Quaternion.h"
@@ -200,11 +201,11 @@ void CPathfindInformation::ResetInterAreaSearchData()
     if (m_paTraversedTransitions)
         delete[] m_paTraversedTransitions;
     m_nPathType = 0;
+    m_bPlotFinished = 1;
     m_nReserved1 = 0;
-    m_bReturnClosestResult = 0;
     m_nTraversedTransitions = 0;
     m_bPointsReversed = 0;
-    m_bPlotFinished = 1;
+    m_bReturnClosestResult = 0;
     m_paTraversedTransitions = 0;
     ResetInterAreaPathSearchData();
 }
@@ -422,11 +423,10 @@ const int   CAvoidCreature::AVOIDCREATURE_ENDINHEX   = -2;
 const float CAvoidCreature::LINEFACTOR               = 0.866025f;
 
 // Rotates a vector by a quaternion.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -449,8 +449,8 @@ static inline float DistSq(const Vector& a, const Vector& b)
     return dx * dx + dy * dy + dz * dz;
 }
 
-// Works out which hex edge the flat xy path enters through (m_transit[0]) and which it leaves
-// through (m_transit[1]). Each path segment is tested against all six edges two ways: a corner-touch
+// Works out which hex edge the flat xy path enters through (m_transitEntry) and which it leaves
+// through (m_transitExit). Each path segment is tested against all six edges two ways: a corner-touch
 // test, which fills the exit record, and an IntersectLineSegments2d hit, which fills the exit record
 // on the first hit and rolls entry <- exit on every later one. Whichever end was never found is
 // filled from the nearest hex corner.
@@ -478,35 +478,35 @@ int CAvoidCreature::FindEntryAndExit(CPathfindInformation* pPathInfo)
                         static_cast<int>(bToNext) > 1) {
                     if (nTouching == 0) {
                         if (bFromCur || bFromNext) {
-                            m_transit[1].m_nPathSegment = i / 2;
-                            m_transit[1].m_nHexPoint = k;
+                            m_transitExit.m_nPathSegment = i / 2;
+                            m_transitExit.m_nHexPoint = k;
                             nTouching = 1;
-                            m_transit[1].m_vPoint = vFrom;
+                            m_transitExit.m_vPoint = vFrom;
                         } else {
                             nTouching = 0;
                         }
                     }
                     if (bToCur || bToNext) {
-                        m_transit[1].m_nPathSegment = i / 2;
-                        m_transit[1].m_nHexPoint = k;
+                        m_transitExit.m_nPathSegment = i / 2;
+                        m_transitExit.m_nHexPoint = k;
                         nTouching++;
-                        m_transit[1].m_vPoint = vTo;
+                        m_transitExit.m_vPoint = vTo;
                     }
                 }
                 if (IntersectLineSegments2d(vFrom, vTo, vCur, vNext, vHit) != 0) {
                     if (nTouching == 0) {
-                        m_transit[1].m_nPathSegment = i / 2;
-                        m_transit[1].m_nHexPoint = k;
-                        m_transit[1].m_vPoint = vHit;
+                        m_transitExit.m_nPathSegment = i / 2;
+                        m_transitExit.m_nHexPoint = k;
+                        m_transitExit.m_vPoint = vHit;
                         nTouching = 1;
                     } else if (nTouching >= 1) {
-                        m_transit[0].m_nPathSegment = m_transit[1].m_nPathSegment;
-                        m_transit[0].m_nHexPoint = m_transit[1].m_nHexPoint;
-                        m_transit[0].m_vPoint = m_transit[1].m_vPoint;
+                        m_transitEntry.m_nPathSegment = m_transitExit.m_nPathSegment;
+                        m_transitEntry.m_nHexPoint = m_transitExit.m_nHexPoint;
+                        m_transitEntry.m_vPoint = m_transitExit.m_vPoint;
                         nTouching++;
-                        m_transit[1].m_nPathSegment = i / 2;
-                        m_transit[1].m_nHexPoint = k;
-                        m_transit[1].m_vPoint = vHit;
+                        m_transitExit.m_nPathSegment = i / 2;
+                        m_transitExit.m_nHexPoint = k;
+                        m_transitExit.m_vPoint = vHit;
                     }
                     break;
                 }
@@ -515,31 +515,31 @@ int CAvoidCreature::FindEntryAndExit(CPathfindInformation* pPathInfo)
             i += 2;
         } while (i < pPathInfo->m_nWayPointFloats);
     }
-    if (m_transit[0].m_nHexPoint == -1) {
-        if (m_transit[1].m_nHexPoint == -1) return 0;
+    if (m_transitEntry.m_nHexPoint == -1) {
+        if (m_transitExit.m_nHexPoint == -1) return 0;
         int nStart = pPathInfo->m_nWayPointCursor - 2;
         if (nStart < 0) nStart = 0;
         vTo = Vector(pPathInfo->m_paWayPoints[nStart], pPathInfo->m_paWayPoints[nStart + 1], 0.0f);
         int nBest = GetClosestPointTo(vTo);
-        m_transit[0].m_nHexPoint = nBest;
+        m_transitEntry.m_nHexPoint = nBest;
         int nSegment = 0;
         if (pPathInfo->m_nWayPointCursor >= 4) nSegment = (pPathInfo->m_nWayPointCursor - 2) / 2;
-        m_transit[0].m_nPathSegment = nSegment;
-        m_transit[0].m_vPoint = m_vHexPoints[nBest];
+        m_transitEntry.m_nPathSegment = nSegment;
+        m_transitEntry.m_vPoint = m_vHexPoints[nBest];
         nTouching++;
     } else {
-        if (m_transit[1].m_nHexPoint == -1) {
+        if (m_transitExit.m_nHexPoint == -1) {
             int nCount = pPathInfo->m_nWayPointFloats;
             vTo = Vector(pPathInfo->m_paWayPoints[nCount - 2], pPathInfo->m_paWayPoints[nCount - 1], 0.0f);
             int nBest = GetClosestPointTo(vTo);
-            m_transit[1].m_nPathSegment = nCount / 2;
-            m_transit[1].m_nHexPoint = nBest;
-            m_transit[1].m_vPoint = m_vHexPoints[nBest];
+            m_transitExit.m_nPathSegment = nCount / 2;
+            m_transitExit.m_nHexPoint = nBest;
+            m_transitExit.m_vPoint = m_vHexPoints[nBest];
             nTouching++;
         }
     }
     bool bResult = nTouching > 1;
-    equal(m_transit[1].m_vPoint, m_transit[0].m_vPoint);
+    equal(m_transitExit.m_vPoint, m_transitEntry.m_vPoint);
     return bResult;
 }
 
@@ -577,12 +577,13 @@ int CAvoidCreature::PlotPathAroundCreature(CSWSCreature* pSelf, CSWSCreature* pB
     Vector* pTrial2;
     if (FindEntryAndExit(pSelf->m_pPathfindInfo) == 0) return AVOIDCREATURE_FAILED;
 
+    int bClear1;
+    int bClear2;
     pTrial1 = FindPath(nPoints1);
-    int bClear1 = IsPathClear(pSelf->m_objectId, pTrial1, nPoints1, oidAvoid1);
-    int nOldSide = m_nSide;
-    m_nSide = (nOldSide == 0);
+    bClear1 = IsPathClear(pSelf->m_objectId, pTrial1, nPoints1, oidAvoid1);
+    m_nSide = (m_nSide == 0);
     pTrial2 = FindPath(nPoints2);
-    int bClear2 = IsPathClear(pSelf->m_objectId, pTrial2, nPoints2, oidAvoid2);
+    bClear2 = IsPathClear(pSelf->m_objectId, pTrial2, nPoints2, oidAvoid2);
     int nClass1 = 0;
     if (bClear1) {
         nClass1 = 2;
@@ -606,10 +607,10 @@ int CAvoidCreature::PlotPathAroundCreature(CSWSCreature* pSelf, CSWSCreature* pB
         pSelf->m_pPathfindInfo->m_oidFoundEnemy = OBJECT_INVALID;
         g_pVirtualMachine->RunScript(&sScript, pSelf->m_objectId, pSelf->m_objectId != OBJECT_INVALID);
     } else if (nPick == 1) {
-        InsertPathSegmentBetween(m_transit[0].m_nPathSegment, m_transit[1].m_nPathSegment, pTrial1,
+        InsertPathSegmentBetween(m_transitEntry.m_nPathSegment, m_transitExit.m_nPathSegment, pTrial1,
                                  nPoints1, pSelf->m_pPathfindInfo);
-        if (m_transit[0].m_nPathSegment * 2 < pSelf->m_pPathfindInfo->m_nWayPointCursor) {
-            int nCursor = m_transit[0].m_nPathSegment * 2;
+        if (m_transitEntry.m_nPathSegment * 2 < pSelf->m_pPathfindInfo->m_nWayPointCursor) {
+            int nCursor = m_transitEntry.m_nPathSegment * 2;
             if (nCursor < 0) nCursor = 0;
             pSelf->m_pPathfindInfo->m_nWayPointCursor = nCursor;
         }
@@ -624,10 +625,10 @@ int CAvoidCreature::PlotPathAroundCreature(CSWSCreature* pSelf, CSWSCreature* pB
         }
         nResult = AVOIDCREATURE_SUCSESS;
     } else if (nPick == 2) {
-        InsertPathSegmentBetween(m_transit[0].m_nPathSegment, m_transit[1].m_nPathSegment, pTrial2,
+        InsertPathSegmentBetween(m_transitEntry.m_nPathSegment, m_transitExit.m_nPathSegment, pTrial2,
                                  nPoints2, pSelf->m_pPathfindInfo);
-        if (m_transit[0].m_nPathSegment * 2 < pSelf->m_pPathfindInfo->m_nWayPointCursor) {
-            int nCursor = m_transit[0].m_nPathSegment * 2;
+        if (m_transitEntry.m_nPathSegment * 2 < pSelf->m_pPathfindInfo->m_nWayPointCursor) {
+            int nCursor = m_transitEntry.m_nPathSegment * 2;
             if (nCursor < 0) nCursor = 0;
             pSelf->m_pPathfindInfo->m_nWayPointCursor = nCursor;
         }
@@ -686,10 +687,10 @@ int CAvoidCreature::IsPathClear(unsigned long long oid, Vector* pv, int n,
 // walk. Returns the newly allocated point array.
 Vector* CAvoidCreature::FindPath(int& n)
 {
-    if (m_transit[0].m_nHexPoint == m_transit[1].m_nHexPoint) {
+    if (m_transitEntry.m_nHexPoint == m_transitExit.m_nHexPoint) {
         Vector* pResult = new Vector[2];
-        pResult[0] = m_transit[0].m_vPoint;
-        pResult[1] = m_transit[1].m_vPoint;
+        pResult[0] = m_transitEntry.m_vPoint;
+        pResult[1] = m_transitExit.m_vPoint;
         n = 2;
         return pResult;
     }
@@ -698,47 +699,43 @@ Vector* CAvoidCreature::FindPath(int& n)
 }
 
 // Walks the hex perimeter downwards from the entry corner, wrapping a negative index to 5.
-#if KOTOR1  // K1 keeps it out of line in PlotPathAroundCreature
+#if KOTOR1 && !defined(__arm__)  // K1 arm64 keeps it out of line; K1 armv7 inlines it into FindPath
 __attribute__((noinline))
 #endif
 Vector* CAvoidCreature::FindPath_Left(int& n)
 {
     Vector aPoints[10];
     n = 0;
-    int nCorner = m_transit[0].m_nHexPoint;
-    aPoints[n++] = m_transit[0].m_vPoint;
+    int nCorner = m_transitEntry.m_nHexPoint;
+    aPoints[n++] = m_transitEntry.m_vPoint;
     aPoints[n++] = m_vHexPoints[nCorner];
-    if (nCorner != (m_transit[1].m_nHexPoint + 1) % 6) {
-        do {
-            nCorner = (nCorner - 1) % 6;
-            if (nCorner < 0) nCorner = 5;
-            aPoints[n++] = m_vHexPoints[nCorner];
-        } while (nCorner != (m_transit[1].m_nHexPoint + 1) % 6);
+    while (nCorner != (m_transitExit.m_nHexPoint + 1) % 6) {
+        nCorner = (nCorner - 1) % 6;
+        if (nCorner < 0) nCorner = 5;
+        aPoints[n++] = m_vHexPoints[nCorner];
     }
-    aPoints[n++] = m_transit[1].m_vPoint;
+    aPoints[n++] = m_transitExit.m_vPoint;
     Vector* pResult = new Vector[n];
     memcpy(pResult, aPoints, n * static_cast<int>(sizeof(Vector)));
     return pResult;
 }
 
 // The mirror of FindPath_Left, where the corner index steps up with `% 6` and never goes negative.
-#if KOTOR1  // K1 keeps it out of line in PlotPathAroundCreature
+#if KOTOR1 && !defined(__arm__)  // K1 arm64 keeps it out of line; K1 armv7 inlines it into FindPath
 __attribute__((noinline))
 #endif
 Vector* CAvoidCreature::FindPath_Right(int& n)
 {
     Vector aPoints[10];
     n = 0;
-    int nCorner = (m_transit[0].m_nHexPoint + 1) % 6;
-    aPoints[n++] = m_transit[0].m_vPoint;
+    int nCorner = (m_transitEntry.m_nHexPoint + 1) % 6;
+    aPoints[n++] = m_transitEntry.m_vPoint;
     aPoints[n++] = m_vHexPoints[nCorner];
-    if (nCorner != m_transit[1].m_nHexPoint) {
-        do {
-            nCorner = (nCorner + 1) % 6;
-            aPoints[n++] = m_vHexPoints[nCorner];
-        } while (nCorner != m_transit[1].m_nHexPoint);
+    while (nCorner != m_transitExit.m_nHexPoint) {
+        nCorner = (nCorner + 1) % 6;
+        aPoints[n++] = m_vHexPoints[nCorner];
     }
-    aPoints[n++] = m_transit[1].m_vPoint;
+    aPoints[n++] = m_transitExit.m_vPoint;
     Vector* pResult = new Vector[n];
     memcpy(pResult, aPoints, n * static_cast<int>(sizeof(Vector)));
     return pResult;

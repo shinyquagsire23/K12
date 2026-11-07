@@ -10,7 +10,34 @@ struct CSWPhysicsState {
     Vector m_vDisplacement;
 
     CSWPhysicsState() : m_vValue(), m_vDisplacement() {}
+    CSWPhysicsState(const Vector& vValue, const Vector& vDisplacement)
+        : m_vValue(vValue), m_vDisplacement(vDisplacement) {}
+
+    CSWPhysicsState& operator+=(const CSWPhysicsState& s)
+    {
+        m_vValue = m_vValue + s.m_vValue;
+        m_vDisplacement = m_vDisplacement + s.m_vDisplacement;
+        return *this;
+    }
 };
+
+inline CSWPhysicsState operator+(const CSWPhysicsState& a, const CSWPhysicsState& b)
+{
+    return CSWPhysicsState(a.m_vValue + b.m_vValue, a.m_vDisplacement + b.m_vDisplacement);
+}
+
+inline CSWPhysicsState operator*(const CSWPhysicsState& s, float f)
+{
+    return CSWPhysicsState(s.m_vValue * f, s.m_vDisplacement * f);
+}
+
+// A zero divisor returns the zero state.
+inline CSWPhysicsState operator/(const CSWPhysicsState& s, float f)
+{
+    if (f != 0.0f)
+        return CSWPhysicsState(s.m_vValue / f, s.m_vDisplacement / f);
+    return CSWPhysicsState();
+}
 
 class CSWRK4Acceleration {
 public:

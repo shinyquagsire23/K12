@@ -61,13 +61,41 @@ class InputBinary {
 public:
     uint64_t m_nMdlSize;
     unsigned int  m_nMdxSize;
-    char m_abPad0c[0x18 - 0x0c];
+#if defined(__arm__)  // the 32-bit source's slot is a pointer (no stack canary in ReadSync); the arm64 port's is a byte array
+    void* m_pReserved1;
+#else
+    char  m_abReserved1[sizeof(void*)];
+#endif
     void* m_pHandle;
     MaxTree* Read(void* pRes, void* pMdx);
     static void ResetMdlNode(MdlNode*& pNode, unsigned char* pBase);
     static void ResetAABBTree(AABB*& pAABB, unsigned char* pBase);
     static void ResetTriMeshParts(MdlNodeTriMesh* pMesh, unsigned char* pBase);
     static void ResetMdlNodeParts(MdlNode* pNode, unsigned char* pBase);
+};
+}
+
+// One entry of the pointer-to-offset table. The two records are file-local: the armv7 image keeps
+// the table's Add and the context's destructor out of line but unexported.
+namespace {
+struct MDLNodeLink {
+    void*         m_pObject;   // a Model*, an Animation* or an MdlNode*
+    uint64_t m_nOffset;   // where that object landed in the .mdl image
+};
+
+// The three fields share one object. The two tree walkers take it by address and read its
+// m_nMdlSize as the running .mdl size, so &ctx is &m_links.
+struct MDLWriteContext {
+    CExoArrayList<MDLNodeLink*> m_links;
+    unsigned int m_nMdlSize;
+    unsigned int m_nMdxSize;
+
+    MDLWriteContext() : m_nMdlSize(0), m_nMdxSize(0) {}
+    // Owns the links, so the writer's normal exit and its landing pad both free every entry.
+    ~MDLWriteContext() {
+        for (int i = 0; i < m_links.m_count; i++)
+            delete m_links.m_pArray[i];
+    }
 };
 }
 
@@ -102,6 +130,7 @@ IODispatcher* IODispatcher::GetRef() {
 // Writes the .mdl header bytes to a fixed d:\override\ path. The result is deliberately ignored,
 // so every caller reads failure.
 bool IODispatcher::Write(MaxTree* pTree, char* pszName) {
+    MDLWriteContext ctx;
     if (pszName)
         sprintf_s(s_szOverridePath, sizeof(s_szOverridePath), "d:\\override\\%s", pszName);
     else
@@ -226,8 +255,8 @@ AsyncEntry* IODispatcher::PreSpawnAsync(char* pszName) {
 // reports 0.
 MaxTree* IODispatcher::RetreiveAsync(void* pHandle) {
     int nFound = m_asyncList.Contains(pHandle);
-    if (pHandle != 0 && nFound != 0)
-        operator delete(pHandle);
+    if (nFound != 0)
+        delete static_cast<AsyncEntry*>(pHandle);
     return 0;
 }
 
@@ -505,7 +534,7 @@ void InputBinary::ResetMdlNode(MdlNode*& pNode, unsigned char* pBase)
         if (nVertices > 0) {
             void* pSource = ImageAddress(reinterpret_cast<uintptr_t>(pDangly->m_pVertexSource), pBase);
             uint64_t nSize = nVertices * sizeof(Vector3);
-            pDangly->m_pVertexSource = PointerMap::s_pointerMap.TakeBlockMemory(static_cast<int>(nSize));
+            pDangly->m_pVertexSource = static_cast<Vector3*>(PointerMap::s_pointerMap.TakeBlockMemory(static_cast<int>(nSize)));
             memcpy(pDangly->m_pVertexSource, pSource, nSize);  // idiom-exempt: a bulk image copy
         }
     } else if (nType == MdlNode::MDLNODE_EMITTER_ID) {
@@ -779,8 +808,8 @@ void InputBinary::ResetTriMeshParts(MdlNodeTriMesh* pMesh, unsigned char* pBase)
     ByteSwap(&pMesh->m_nReserved3);
     ByteSwap(reinterpret_cast<short*>(&pMesh->m_nVertexCount));
     ByteSwap(reinterpret_cast<short*>(&pMesh->m_nTexCoordSets));
-    ByteSwap(reinterpret_cast<float*>(&pMesh->m_fSurfaceArea));
-    ByteSwap(reinterpret_cast<float*>(&pMesh->m_nReserved4));
+    ByteSwap(&pMesh->m_fSurfaceArea);
+    ByteSwap(&pMesh->m_fReserved4);
     ByteSwap(&pMesh->m_nGeomBase);
     ByteSwap(reinterpret_cast<uint64_t*>(&pMesh->m_paVertices));
 
@@ -950,92 +979,6 @@ inline int Part::GetDefaultOffset64(int nIndex) {
 // fixed order. Two tree walkers do the heavy lifting, MDLWriteCollect (the sizes) and MDLWriteNode
 // (the image).
 
-// One entry of the pointer-to-offset table.
-struct MDLNodeLink {
-    void*         m_pObject;   // a Model*, an Animation* or an MdlNode*
-    uint64_t m_nOffset;   // where that object landed in the .mdl image
-};
-
-// The three fields share one object. The two tree walkers take it by address and read its
-// m_nMdlSize as the running .mdl size, so &ctx is &m_links.
-struct MDLWriteContext {
-    CExoArrayList<MDLNodeLink*> m_links;
-    unsigned int m_nMdlSize;
-    unsigned int m_nMdxSize;
-
-    // Owns the links, so the writer's normal exit and its landing pad both free every entry.
-    ~MDLWriteContext() {
-        for (int i = 0; i < m_links.m_count; i++)
-            delete m_links.m_pArray[i];
-    }
-};
-
-// The image's two headers. The writer blits each runtime object's own bytes into the image and then
-// replaces its pointer slots with byte offsets. These two structs are that image: identical offsets
-// and widths, with the pointer slots typed as 8-byte integers because they hold offsets.
-struct MDLModelImage {
-    uint64_t m_pfnDestructor;
-    uint64_t m_pfnParseField;
-    char m_szName[32];
-    uint64_t m_nRootNode;       // Model::m_pMdlNode, as an offset
-    char _raw38[0x40 - 0x38];
-    uint64_t m_nFreeList;       // List<MdlNode*>::m_pData
-    int  m_nFreeListCount;
-    int  m_nFreeListCap;
-    uint64_t m_nFreeTokens;     // List<unsigned int>::m_pData
-    int  m_nFreeTokenCount;
-    int  m_nFreeTokenCap;
-    char _raw60[0x6c - 0x60];
-    unsigned short m_nFlags;
-    char _raw6e[2];
-    int  m_nRefCount;                // zeroed in the image
-    char _raw74[0x78 - 0x74];
-    uint64_t m_nAnimTable;      // Model::m_animations.m_pData, as an offset
-    int  m_nAnimCount;
-    int  m_nAnimCap;                 // set to the count
-    uint64_t m_pSuperModel;
-    Vector m_vBoundsMin;
-    Vector m_vBoundsMax;
-    char _rawa8[0xac - 0xa8];        // float 7.0f copied verbatim
-    float m_fAnimScale;
-    char _rawb0[0xd0 - 0xb0];
-    uint64_t m_nAnimRootNode;   // Model::m_pAnimationRoot, as an offset
-    int  m_nPool;                    // zeroed in the image
-    char _rawdc[0xe0 - 0xdc];        // the .mdx source byte count, copied verbatim
-    char _rawe0[0xe8 - 0xe0];
-    uint64_t m_nStringTable;    // Model::m_listStrings.m_pData, as an offset
-    int  m_nStringCount;
-    int  m_nStringCap;               // set to the count
-};
-#ifndef _MSC_VER   // the MSVC ABI lays Model / Animation out otherwise: no writer there
-static_assert(sizeof(MDLModelImage) == sizeof(Model), "the header blit is sizeof(Model)");
-#endif
-
-struct MDLAnimationImage {
-    uint64_t m_pfnDestructor;
-    uint64_t m_pfnParseField;
-    char m_szName[32];
-    uint64_t m_nRootNode;       // Animation::m_pMdlNode, as an offset
-    char _raw38[0x40 - 0x38];
-    uint64_t m_nFreeList;
-    int  m_nFreeListCount;
-    int  m_nFreeListCap;
-    uint64_t m_nFreeTokens;
-    int  m_nFreeTokenCount;
-    int  m_nFreeTokenCap;
-    char _raw60[0x6c - 0x60];
-    float m_fLength;
-    char _raw70[0x74 - 0x70];        // float 0.25f copied verbatim
-    char m_szAnimRoot[36];
-    uint64_t m_nEventTable;     // Animation::m_events.m_pData, as an offset
-    int  m_nEventCount;
-    int  m_nEventCap;                // set to the count
-    uint64_t m_nModel;          // Animation::m_pModel, zeroed in the image
-};
-#ifndef _MSC_VER
-static_assert(sizeof(MDLAnimationImage) == sizeof(Animation), "the blit is sizeof(Animation)");
-#endif
-
 // The writer's two tree walkers and their helpers, all file-local. The image they fill is the
 // blitted runtime objects themselves, so a slot is addressed through the object's own type and an
 // offset is stored where the pointer was.
@@ -1054,6 +997,13 @@ template <class T>
 static inline T* MDLImage(unsigned char* pOut, unsigned int nBase)
 {
     return reinterpret_cast<T*>(pOut + nBase);
+}
+
+// The table an image pointer slot names: the slot already holds the table's image offset.
+template <class T>
+static inline T* MDLImageAt(unsigned char* pOut, T* pSlot)
+{
+    return reinterpret_cast<T*>(pOut + reinterpret_cast<uintptr_t>(pSlot));
 }
 
 // Appends a list's elements at *pnOffset and points the image's copy of the list at them. The
@@ -1224,9 +1174,9 @@ static void MDLWriteNodeParts(MDLWriteContext* pCtx, MdlNode* pNode, unsigned ch
         pImage->m_pParent = MDLFindOffset(pCtx, reinterpret_cast<void*>(pNode->m_pParent));
 
     MDLWriteList(pImage->m_listChildren, pNode->m_listChildren, pOut, pnOffset);
-    uint64_t* pChildTable = reinterpret_cast<uint64_t*>(pOut + reinterpret_cast<uint64_t>(pImage->m_listChildren.m_pData));
+    MdlNode** pChildTable = MDLImageAt(pOut, pImage->m_listChildren.m_pData);
     for (int64_t i = 0; i < pNode->m_listChildren.m_count; i++) {
-        pChildTable[i] = *pnOffset;
+        pChildTable[i] = MDLImageOffset{*pnOffset};
         MDLWriteNode(pCtx, pNode->m_listChildren.m_pData[i], pOut, pnOffset);
     }
 
@@ -1261,11 +1211,12 @@ static void MDLWriteTriMeshParts(MDLWriteContext* pCtx, MdlNodeTriMesh* pMesh, u
         MDLWriteList(pImage->m_lIndexPoolOffsets, pMesh->m_lIndexPoolOffsets, pOut, pnOffset);
         MDLWriteList(pImage->m_lIndexPools, pMesh->m_lIndexPools, pOut, pnOffset);
 
-        // Each pool's payload offset is stored as 8 bytes into the 4-byte table, so every entry
-        // spills over the next one and the last spills past the table.
+        // Each pool's payload offset is stored pointer-wide into the 4-byte table (4 bytes in the
+        // 32-bit images, 8 on 64-bit), so on 64-bit every entry spills over the next one and the last
+        // spills past the table.
         for (int i = 0; i < pMesh->m_lIndexPools.m_count; i++) {
             void* pPool = GLRender::LockPool(pMesh->m_lIndexPools.m_pData[i], 0, 0, 8);
-            *static_cast<uint64_t*>(ImageAddress(reinterpret_cast<uint64_t>(&pImage->m_lIndexPoolOffsets.m_pData[i]), pOut)) = *pnOffset;
+            *static_cast<uintptr_t*>(ImageAddress(reinterpret_cast<uintptr_t>(&pImage->m_lIndexPoolOffsets.m_pData[i]), pOut)) = *pnOffset;
             memcpy(pOut + *pnOffset, pPool,  // idiom-exempt: a pool's byte count
                    GLRender::GetPoolSize(pMesh->m_lIndexPools.m_pData[i]));
             *pnOffset += GLRender::GetPoolSize(pMesh->m_lIndexPools.m_pData[i]);
@@ -1451,28 +1402,35 @@ bool IODispatcher::Write(MaxTree* pTree, FILE* pFile, FILE* pOut) {
     if (pFile == 0)
         return false;
 
-    uint64_ll_t nZero = 0;
+    unsigned char* pMdlBuf;
+    unsigned char* pMdxBuf;
+    unsigned int nOffset;
+    MDLNodeLink* pModelLink;
+    Model* pImage;
+    unsigned char* pPool;
+    Model* pModel;
 #if KOTOR1
-    SDL_RWwrite(pFile, &nZero, 8, 1);
+    unsigned int nSize;
+#endif
+    uint64_t nZero = 0;
+#if KOTOR1
+    SDL_RWwrite(pFile, &nZero, sizeof(nZero), 1);
 #else
-    fwrite(&nZero, 8, 1, pFile);
+    fwrite(&nZero, sizeof(nZero), 1, pFile);
 #endif
 
-    Model* pModel = pTree->AsModel();
-
-    ctx.m_nMdlSize = 0;
-    ctx.m_nMdxSize = 0;
+    pModel = pTree->AsModel();
 
     ctx.m_nMdxSize = ctx.m_nMdxSize + pModel->m_nPoolSize;
-    ctx.m_nMdlSize = ctx.m_nMdlSize + pModel->m_animations.m_count * 8 + 248;
+    ctx.m_nMdlSize = ctx.m_nMdlSize + pModel->m_animations.m_count * sizeof(Animation*) + sizeof(Model);
 
     for (int64_t i = 0; i < pModel->m_animations.m_count; i++) {
         Animation* pAnim = pModel->m_animations.m_pData[i];
-        ctx.m_nMdlSize = ctx.m_nMdlSize + pAnim->m_events.m_count * 36 + 176;
+        ctx.m_nMdlSize = ctx.m_nMdlSize + pAnim->m_events.m_count * sizeof(AurKey<char[32]>) + sizeof(Animation);
         MDLWriteCollect(&ctx, pAnim->m_pMdlNode);
     }
 
-    ctx.m_nMdlSize = ctx.m_nMdlSize + pModel->m_listStrings.m_count * 8;
+    ctx.m_nMdlSize = ctx.m_nMdlSize + pModel->m_listStrings.m_count * sizeof(char*);
     for (int64_t i = 0; i < pModel->m_listStrings.m_count; i++)
         ctx.m_nMdlSize = ctx.m_nMdlSize
                        + static_cast<unsigned int>(strlen(pModel->m_listStrings.m_pData[i])) + 1;
@@ -1480,7 +1438,7 @@ bool IODispatcher::Write(MaxTree* pTree, FILE* pFile, FILE* pOut) {
     MDLWriteCollect(&ctx, pModel->m_pMdlNode);
 
 #if KOTOR1  // K1: the two sizes are written byte-swapped
-    unsigned int nSize = ctx.m_nMdlSize;
+    nSize = ctx.m_nMdlSize;
     ByteSwap(&nSize);
     SDL_RWwrite(pFile, &nSize, 4, 1);
     nSize = ctx.m_nMdxSize;
@@ -1491,16 +1449,16 @@ bool IODispatcher::Write(MaxTree* pTree, FILE* pFile, FILE* pOut) {
     fwrite(&ctx.m_nMdxSize, 4, 1, pFile);
 #endif
 
-    unsigned char* pMdlBuf = new unsigned char[ctx.m_nMdlSize];
+    pMdlBuf = new unsigned char[ctx.m_nMdlSize];
     memset(pMdlBuf, 0, ctx.m_nMdlSize);  // idiom-exempt: the image is a raw byte buffer
 
-    unsigned char* pMdxBuf = 0;
+    pMdxBuf = 0;
     if (ctx.m_nMdxSize != 0)
         pMdxBuf = new unsigned char[ctx.m_nMdxSize];
 
-    unsigned int nOffset = 0;
+    nOffset = 0;
 
-    MDLNodeLink* pModelLink = new MDLNodeLink;
+    pModelLink = new MDLNodeLink;
     pModelLink->m_pObject = pModel;
     pModelLink->m_nOffset = 0;
     ctx.m_links.Add(pModelLink);
@@ -1508,66 +1466,67 @@ bool IODispatcher::Write(MaxTree* pTree, FILE* pFile, FILE* pOut) {
     memcpy(pMdlBuf, pModel, sizeof(Model));
     nOffset = sizeof(Model);
 
-    MDLModelImage* pImage = reinterpret_cast<MDLModelImage*>(pMdlBuf);
+    pImage = MDLImage<Model>(pMdlBuf, 0);
 
-    unsigned char* pPool = static_cast<unsigned char*>(GLRender::LockPool(pModel->m_nPool, 0, 0, 8));
+    pPool = static_cast<unsigned char*>(GLRender::LockPool(pModel->m_nPool, 0, 0, 8));
     pImage->m_nPool = 0;
     memcpy(pMdxBuf, pPool, static_cast<unsigned int>(pModel->m_nPoolSize));  // idiom-exempt: a runtime byte count
     GLRender::UnlockPool(pModel->m_nPool);
 
-    pImage->m_nStringTable = nOffset;
+    pImage->m_listStrings.m_pData = MDLImageOffset{nOffset};
     memcpy(pMdlBuf + nOffset, pModel->m_listStrings.m_pData,
-           static_cast<uint64_t>(pModel->m_listStrings.m_count) * 8);
-    nOffset = nOffset + static_cast<unsigned int>(pModel->m_listStrings.m_count) * 8;
-    pImage->m_nStringCap = pModel->m_listStrings.m_count;
+           static_cast<uint64_t>(pModel->m_listStrings.m_count) * sizeof(char*));
+    nOffset = nOffset + static_cast<unsigned int>(pModel->m_listStrings.m_count) * sizeof(char*);
+    pImage->m_listStrings.m_capacity = pModel->m_listStrings.m_count;
     for (int64_t i = 0; i < pModel->m_listStrings.m_count; i++) {
         const char* pszName = pModel->m_listStrings.m_pData[i];
-        reinterpret_cast<uint64_t*>(pMdlBuf + pImage->m_nStringTable)[i] = nOffset;
+        MDLImageAt(pMdlBuf, pImage->m_listStrings.m_pData)[i] = MDLImageOffset{nOffset};
         strcpy(reinterpret_cast<char*>(pMdlBuf + nOffset), pszName);
         nOffset = nOffset + static_cast<unsigned int>(strlen(pszName)) + 1;
     }
 
-    pImage->m_nAnimTable = nOffset;
+    pImage->m_animations.m_pData = MDLImageOffset{nOffset};
     memcpy(pMdlBuf + nOffset, pModel->m_animations.m_pData,
-           static_cast<uint64_t>(pModel->m_animations.m_count) * 8);
-    pImage->m_nAnimCap = pModel->m_animations.m_count;
-    nOffset = nOffset + static_cast<unsigned int>(pModel->m_animations.m_count) * 8;
+           static_cast<uint64_t>(pModel->m_animations.m_count) * sizeof(Animation*));
+    pImage->m_animations.m_capacity = pModel->m_animations.m_count;
+    nOffset = nOffset + static_cast<unsigned int>(pModel->m_animations.m_count) * sizeof(Animation*);
 
     for (int64_t i = 0; i < pModel->m_animations.m_count; i++) {
         unsigned int nObjOffset = nOffset;
-        MDLAnimationImage* pAnimImage = reinterpret_cast<MDLAnimationImage*>(pMdlBuf + nObjOffset);
-        reinterpret_cast<uint64_t*>(pMdlBuf + pImage->m_nAnimTable)[i] = nObjOffset;
+        Animation* pAnimImage = MDLImage<Animation>(pMdlBuf, nObjOffset);
+        MDLImageAt(pMdlBuf, pImage->m_animations.m_pData)[i] = MDLImageOffset{nObjOffset};
         Animation* pAnim = pModel->m_animations.m_pData[i];
+        uint64_t nEventSize;
 
         MDLNodeLink* pLink = new MDLNodeLink;
         pLink->m_pObject = pAnim;
         pLink->m_nOffset = nObjOffset;
         ctx.m_links.Add(pLink);
 
-        memcpy(pAnimImage, pAnim, sizeof(Animation));
+        memcpy(pMdlBuf + nObjOffset, pAnim, sizeof(Animation));
         nOffset = nOffset + sizeof(Animation);
 
-        uint64_t nEventSize = sizeof(AurKey<char[32]>) * static_cast<uint64_t>(pAnim->m_events.m_count);
+        nEventSize = sizeof(AurKey<char[32]>) * static_cast<uint64_t>(pAnim->m_events.m_count);
         if (pAnim->m_events.m_count != 0) {
-            pAnimImage->m_nEventTable = nOffset;
+            pAnimImage->m_events.m_pData = MDLImageOffset{nOffset};
             memcpy(pMdlBuf + nOffset, pAnim->m_events.m_pData,  // idiom-exempt: the size is a count
                    nEventSize);
             nOffset = nOffset + static_cast<unsigned int>(nEventSize);
-            pAnimImage->m_nEventCap = pAnim->m_events.m_count;
+            pAnimImage->m_events.m_capacity = pAnim->m_events.m_count;
         }
 
         if (pAnim->m_pMdlNode != 0) {
-            pAnimImage->m_nRootNode = nOffset;
+            pAnimImage->m_pMdlNode = MDLImageOffset{nOffset};
             MDLWriteNode(&ctx, pAnim->m_pMdlNode, pMdlBuf, &nOffset);
         }
 
-        pAnimImage->m_nModel = 0;
+        pAnimImage->m_pModel = 0;
     }
 
     pImage->m_nRefCount = 0;
 
     if (pModel->m_pMdlNode != 0) {
-        pImage->m_nRootNode = nOffset;
+        pImage->m_pMdlNode = MDLImageOffset{nOffset};
         MDLWriteNode(&ctx, pModel->m_pMdlNode, pMdlBuf, &nOffset);
     }
 
@@ -1579,7 +1538,7 @@ bool IODispatcher::Write(MaxTree* pTree, FILE* pFile, FILE* pOut) {
                 break;
             }
         }
-        pImage->m_nAnimRootNode = nFound;
+        pImage->m_pAnimationRoot = MDLImageOffset{nFound};
     }
 
 #if KOTOR1  // K1: both images are byte-swapped word by word before the write

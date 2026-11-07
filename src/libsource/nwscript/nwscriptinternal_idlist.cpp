@@ -87,8 +87,8 @@ int CScriptCompilerInternal::GenerateIdentifierList()
             m_nEngineStructureCount = nValue;
             delete[] m_pEngineStructureValid;
             m_pEngineStructureValid = new int[nValue];
-            if (nValue > 0)
-                __builtin_memset(m_pEngineStructureValid, 0, nValue * sizeof(int));
+            for (int j = 0; j < nValue; j++)
+                m_pEngineStructureValid[j] = 0;
             delete[] m_pEngineStructureNames;
             m_pEngineStructureNames = new CExoString[nValue];
             m_nIdentifierListState = IDLIST_IDLE;

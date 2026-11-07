@@ -1,5 +1,6 @@
 
 #include "k2stdint.h"
+#include <string.h>
 #include "port/aslglapi.h"
 #if KOTOR1
 #define K1_AURORA_LIST
@@ -82,10 +83,7 @@ CAurInternalGL::CAurInternalGL()
 
 CAurInternal* CAurInternal::NewCAuroraInstance()
 {
-    if (AuroraInstance == 0)
-        AuroraInstance = new CAurInternalGL();
-    AuroraCount++;
-    return AuroraInstance;
+    return CAurInternalGL::NewCAuroraInstance();
 }
 
 CAurInternal* CAurInternalGL::NewCAuroraInstance()
@@ -470,7 +468,7 @@ int CAurInternalGL::Initialize(HWND__*, HWND__* hWnd, unsigned int nWidth, unsig
                 if (devMode.m_pelsWidth == nWidth && devMode.m_pelsHeight == nHeight
                     && devMode.m_bitsPerPel == nBits && devMode.m_displayFrequency == nFrequency)
                 {
-                    m_devMode = devMode;
+                    memcpy(&m_devMode, &devMode, sizeof(devMode));
                     ChangeDisplaySettingsA(&devMode, 4);
                     m_bDisplayModeSet = 1;
                     break;
@@ -745,7 +743,7 @@ int CAurInternalGL::InitEditor(HWND__*, HWND__* hWnd, unsigned int nWidth, unsig
                 {
                     if (ChangeDisplaySettingsA(&devMode, 2) != 0)
                         return 0;
-                    m_devMode = devMode;
+                    memcpy(&m_devMode, &devMode, sizeof(devMode));
                     ChangeDisplaySettingsA(&devMode, 4);
                     m_bDisplayModeSet = 1;
                     break;

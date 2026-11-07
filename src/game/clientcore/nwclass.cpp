@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "nwclass.h"
 #include "nwsrules.h"
 #include "nwskill.h"
@@ -25,32 +26,37 @@ const unsigned char CSWClass::CCLASS_SITHASSASSIN = 16;
 #include "port/libcstring.h"
 #include "exostringinline.h"
 
-// Seeds the row's defaults. The bonus-feat clear starts one entry in, since the normal-feat clear
-// owns that slot.
+// Seeds the row's defaults. K2 fills the attack-bonus and spell-gain tables with '0', then clears
+// the spell-gain table again with the saving-throw tables.
+// EFFECTIVE (K2 armv7): the armor/spells-known pointer pair's strd issues last, after the third store in the orig.
 CSWClass::CSWClass()
 {
     m_nNameStrRef = STRREF_NONE;
     m_nNamePluralStrRef = STRREF_NONE;
     m_nDescriptionStrRef = STRREF_NONE;
+    for (int i = 0; i < 60; i++)
 #if KOTOR1
-    __builtin_memset(m_aAttackBonus, 0, sizeof(m_aAttackBonus));
+        m_aAttackBonus[i] = 0;
 #else
-    __builtin_memset(m_aAttackBonus, 0x30, sizeof(m_aAttackBonus));
+        m_aAttackBonus[i] = '0';
 #endif
-    __builtin_memset(m_aSpellGain, 0x30, sizeof(m_aSpellGain));
-    __builtin_memset(&m_bonusFeats.m_aByLevel[1], 0, sizeof(m_bonusFeats.m_aByLevel) - 2);
-    __builtin_memset(m_normalFeats.m_aByLevel, 0, sizeof(m_normalFeats.m_aByLevel));
-    __builtin_memset(m_abRecommendedScores, 0, sizeof(m_abRecommendedScores));
+    for (int i = 0; i < static_cast<int>(sizeof(m_aSpellGain)); i++) {
 #if KOTOR1
-    __builtin_memset(m_anEffCRByLevel, 0, 20);  // idiom-exempt: K1 skips the 21st byte the same way
+        m_aSpellGain[i] = 0;
 #else
-    __builtin_memset(m_anEffCRByLevel, 0, 50);  // idiom-exempt: 50 == +0x223..+0x254, one byte short of the 51-entry array; the ORIG skips +0x255
+        m_aSpellGain[i] = '0';
 #endif
-    __builtin_memset(m_aFortSaveBonus, 0, sizeof(m_aFortSaveBonus));
-    __builtin_memset(m_aWillSaveBonus, 0, sizeof(m_aWillSaveBonus));
-    __builtin_memset(m_aSpellGainMinLevel, 0, sizeof(m_aSpellGainMinLevel));
-    __builtin_memset(m_aSpellGain, 0, sizeof(m_aSpellGain));
-    __builtin_memset(m_aRefSaveBonus, 0, sizeof(m_aRefSaveBonus));
+        m_anEffCRByLevel[i] = 0;
+        m_aBonusFeatGain[i] = 0;
+        m_aNormalFeatGain[i] = 0;
+    }
+    for (int i = 0; i < 6; i++)
+        m_abRecommendedScores[i] = 0;
+    memset(m_aFortSaveBonus, 0, sizeof(m_aFortSaveBonus));
+    memset(m_aWillSaveBonus, 0, sizeof(m_aWillSaveBonus));
+    memset(m_aRefSaveBonus, 0, sizeof(m_aRefSaveBonus));
+    memset(m_aSpellGainMinLevel, 0, sizeof(m_aSpellGainMinLevel));
+    memset(m_aSpellGain, 0, sizeof(m_aSpellGain));
     m_paClassSkills = 0;
     m_paRecommendedSpells = 0;
     m_nHitDie = 0;
@@ -107,7 +113,7 @@ char CSWClass::GetArmorBonus(int nLevel)
 }
 
 // Force-power slots at a caster level, gated by the row's own minimum caster level.
-int CSWClass::GetSpellGain(unsigned char nLevel, unsigned char nMinLevel)
+unsigned char CSWClass::GetSpellGain(unsigned char nLevel, unsigned char nMinLevel)
 {
 #if KOTOR1
     if (static_cast<unsigned char>(nLevel - 1) < 20 && nMinLevel < m_aSpellGainMinLevel[static_cast<uint64_t>(nLevel) - 1])
@@ -393,8 +399,7 @@ void CSWClass::LoadAttackBonusTable(const CExoString& sTable)
 }
 
 // featgain.2da, opened by literal: the column names are the argument plus a "_REG"/"_BON" suffix.
-// Writes are conditional here (a missing entry leaves the slot alone) and the slots are one-based,
-// while the readers index with the raw class level.
+// Writes are conditional here (a missing entry leaves the slot alone).
 void CSWClass::LoadFeatGain(const CExoString& sTable)
 {
     C2DA* p2DA = new C2DA(CResRef("featgain"), 0);
@@ -412,9 +417,9 @@ void CSWClass::LoadFeatGain(const CExoString& sTable)
 #endif
         int nValue;
         if (p2DA->GetINTEntry(i, sNormal, &nValue))
-            m_normalFeats.m_aByLevel[i + 1] = static_cast<unsigned char>(nValue);
+            m_aNormalFeatGain[i] = static_cast<unsigned char>(nValue);
         if (p2DA->GetINTEntry(i, sBonus, &nValue))
-            (&m_bonusFeats.m_aByLevel[1])[i] = static_cast<unsigned char>(nValue);
+            m_aBonusFeatGain[i] = static_cast<unsigned char>(nValue);
     }
 
     delete p2DA;

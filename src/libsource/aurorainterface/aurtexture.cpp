@@ -66,13 +66,11 @@ void CAuroraTexture::Unload() {
         unsigned int nPixels = nWidth * nHeight;
         unsigned int nBytesPerPixel = nBitsPerPixel / 8;
         unsigned char* p = static_cast<unsigned char*>(m_pRes->GetTGADataPtr());
-        if (nPixels != 0) {
-            do {
-                unsigned char nSwap = p[0];
-                p[0] = p[2];
-                p[2] = nSwap;
-                p += nBytesPerPixel;
-            } while (--nPixels != 0);
+        for (unsigned int i = 0; i < nPixels; i++) {
+            unsigned char nSwap = p[0];
+            p[0] = p[2];
+            p[2] = nSwap;
+            p += nBytesPerPixel;
         }
 
         m_pRes->Release();

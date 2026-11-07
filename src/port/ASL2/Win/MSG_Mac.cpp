@@ -68,15 +68,15 @@ void CWin32MSGQueue::Add(tagMSG const& msg, bool bPosted)
 }
 
 // Makes up to four passes over the deque, one per message class in the requested range.
-unsigned int CWin32MSGQueue::GetNext(tagMSG* pMsg, HWND__* hwnd, unsigned int nMin,
-                                     unsigned int nMax, bool bRemove)
+bool CWin32MSGQueue::GetNext(tagMSG* pMsg, HWND__* hwnd, unsigned int nMin,
+                             unsigned int nMax, bool bRemove)
 {
     K2_UNUSED(hwnd);
 
     ProcessSendQ();
 
     if (m_queue.empty())
-        return 0;
+        return false;
 
     unsigned int nMask = QS_NEW_WORD & ~(QS_POSTED_PAIR & QS_NEW_WORD);
     unsigned int nFilterMax = 0xffff;
@@ -90,7 +90,7 @@ unsigned int CWin32MSGQueue::GetNext(tagMSG* pMsg, HWND__* hwnd, unsigned int nM
 
     m_nMsgFlags &= nMask;
 
-    unsigned int nResult;
+    bool bResult;
     std::deque<MSG_Mac_t>::iterator it;
 
     m_lock.lock();
@@ -130,7 +130,7 @@ unsigned int CWin32MSGQueue::GetNext(tagMSG* pMsg, HWND__* hwnd, unsigned int nM
     }
 
     m_lock.unlock();
-    nResult = 0;
+    bResult = false;
     goto Done;
 
 Found:
@@ -142,7 +142,7 @@ Found:
     }
 
 Publish:
-    nResult = 1;
+    bResult = true;
     m_lock.unlock();
 
     m_nMsgTime = pMsg->time;
@@ -150,7 +150,7 @@ Publish:
 
 Done:
     ProcessSendQ();
-    return nResult;
+    return bResult;
 }
 
 // Counts each message class in one counter and its own bit pair in the non-empty flag word.
@@ -268,17 +268,15 @@ unsigned int CWin32MSGQueue::Send(HWND__* hwnd, unsigned int nMsg, unsigned long
 }
 
 // Runs the window procedure each queued message names under m_sendLock, then satisfies its promise.
+// EFFECTIVE (K2 armv7): the two hoisted member addresses (queue, lock) issue in the other order.
 void CWin32MSGQueue::ProcessSendQ()
 {
     while (m_sendQueue.size() != 0)
     {
-        SendMsg sMsg = [&]() -> SendMsg
-        {
-            std::lock_guard<std::mutex> lock(m_sendLock);
-            SendMsg sFront = std::move(m_sendQueue.front());
-            m_sendQueue.pop_front();
-            return sFront;
-        }();
+        m_sendLock.lock();
+        SendMsg sMsg = std::move(m_sendQueue.front());
+        m_sendQueue.pop_front();
+        m_sendLock.unlock();
 
         if (sMsg.m_bUnicode)
         {

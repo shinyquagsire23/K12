@@ -85,9 +85,25 @@ typedef __UINTPTR_TYPE__ uintptr_t;
 // bits; tools/v7match.py's armv7 rewrite narrows every spelling but this typedef's. On arm64 it is
 // `unsigned long long` itself, so no object changes.
 typedef unsigned long long uint64_ll_t;
+// uint64_ll_a4_t: the same 64-bit value at 4-byte alignment, as the 32-bit images lay it out where it
+// follows a 4-byte member (AAPCS would align a plain 64-bit member to 8 and shift the record).
+typedef uint64_ll_t uint64_ll_a4_t __attribute__((aligned(4)));
 // int64_ll_t: its signed counterpart where the source spells int64_t (K1's GFF INT64 field). It is
 // int64_t on every target; the armv7 rewrite, which narrows `int64_t` to `long`, leaves it 64-bit.
 typedef __INT64_TYPE__ int64_ll_t;
+
+// uint32_l_t: a 32-bit value the original's 32-bit build spells `unsigned long` (a Win32 DWORD, such
+// as a GL pool handle) and its 64-bit port `unsigned int`. On armv7 the two are distinct template
+// arguments (List<unsigned long> is its own instantiation there); everywhere else it is unsigned int.
+#if defined(__arm__)
+typedef unsigned long uint32_l_t;
+#else
+typedef unsigned int uint32_l_t;
+#endif
+// K2_ULL_DISTINCT: uint32_l_t and `unsigned long long` are different types, so a file of explicit
+// instantiations names both. tools/v7match.py's armv7 rewrite (ull32) makes them one type, the
+// original's 32-bit `unsigned long`, and sets this to 0.
+#define K2_ULL_DISTINCT 1
 
 // The engine's wide character is a 32-bit code unit. Win64's wchar_t is a 16-bit UTF-16 unit, so a
 // host spells it char32_t, which is 32 bits under every compiler; port/libcstring.h and

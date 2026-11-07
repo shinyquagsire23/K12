@@ -50,7 +50,7 @@ public:
     virtual void SetFogRange(float fNear, float fFar) = 0;
     virtual void SetSceneFocus(Vector v) = 0;
     virtual bool SetGeomFadeProperties(int a) = 0;
-    virtual int IsGeomFadeEnabled() = 0;
+    virtual bool IsGeomFadeEnabled() = 0;
     virtual int GetObjectCount() = 0;
     virtual void FinishSceneGeometry() = 0;
     virtual int GetNumRooms() = 0;
@@ -108,6 +108,8 @@ public:
     static const int FADING_ON;
     // The camera position captured the last time CameraMoved answered true.
     static Vector m_vLastCameraPosition;
+    // Defined beside it and never read.
+    static Quaternion m_qLastCameraOrientation;
 
     // Removes a gob from the scene's render buckets; static, acting on the global bucket lists.
     static void RemoveFromSceneManager(Gob* pGob);
@@ -162,7 +164,7 @@ public:
     virtual void SetFogRange(float, float);
     virtual void SetSceneFocus(Vector);
     virtual bool SetGeomFadeProperties(int);
-    virtual int IsGeomFadeEnabled();
+    virtual bool IsGeomFadeEnabled();
     virtual int GetObjectCount();
     virtual void FinishSceneGeometry();
     virtual int GetNumRooms();

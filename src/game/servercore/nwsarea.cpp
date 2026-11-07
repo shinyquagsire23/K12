@@ -302,11 +302,11 @@ void CSWSArea::EventHandler(unsigned int nEventType, unsigned long long nCallerI
         case CSWSSCRIPTEVENT_EVENTTYPE_ON_HEARTBEAT:
             m_lastUpdateDay = nDay;
             m_lastUpdateTod = nTod;
-            g_pVirtualMachine->RunScript(&m_scriptOnHeartbeat, m_objectId, 1);
+            g_pVirtualMachine->RunScript(&m_scripts[AREA_SCRIPT_ONHEARTBEAT], m_objectId, 1);
             break;
         case CSWSSCRIPTEVENT_EVENTTYPE_ON_USER_DEFINED_EVENT:
             m_nUserDefinedEventNumber = pEvent->GetInteger(0);
-            g_pVirtualMachine->RunScript(&m_scriptOnUserDefined, m_objectId, 1);
+            g_pVirtualMachine->RunScript(&m_scripts[AREA_SCRIPT_ONUSERDEFINED], m_objectId, 1);
             break;
         case CSWSSCRIPTEVENT_EVENTTYPE_ON_OBJECT_ENTER:
             m_oidEnteringObject = nCallerId;
@@ -315,13 +315,13 @@ void CSWSArea::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                 // parameter 0, then restored.
                 int bWasLoadFromSaveGame = g_pAppManager->m_pServerExoApp->GetLoadFromSaveGame();
                 g_pAppManager->m_pServerExoApp->SetLoadFromSaveGame(pEvent->GetInteger(0));
-                g_pVirtualMachine->RunScript(&m_scriptOnEnter, m_objectId, 1);
+                g_pVirtualMachine->RunScript(&m_scripts[AREA_SCRIPT_ONENTER], m_objectId, 1);
                 g_pAppManager->m_pServerExoApp->SetLoadFromSaveGame(bWasLoadFromSaveGame);
             }
             break;
         case CSWSSCRIPTEVENT_EVENTTYPE_ON_OBJECT_EXIT:
             m_onExitScriptCallerId = nCallerId;
-            g_pVirtualMachine->RunScript(&m_scriptOnExit, m_objectId, 1);
+            g_pVirtualMachine->RunScript(&m_scripts[AREA_SCRIPT_ONEXIT], m_objectId, 1);
             break;
         }
     }
@@ -820,11 +820,10 @@ CSWSArea::CSWSArea(const CResRef& cResRef, int nFlags, unsigned long long nAreaI
     m_pSoundPathInfo = new CPathfindInformation;
     InitializeStaticObjects();
 
-    CGameObject* pGameObject = this;
     if (nAreaId == OBJECT_INVALID)
-        g_pAppManager->m_pServerExoApp->GetObjectArray()->AddInternalObject(m_objectId, pGameObject, 0);
+        g_pAppManager->m_pServerExoApp->GetObjectArray()->AddInternalObject(m_objectId, this, 0);
     else
-        g_pAppManager->m_pServerExoApp->GetObjectArray()->AddObjectAtPos(nAreaId, pGameObject);
+        g_pAppManager->m_pServerExoApp->GetObjectArray()->AddObjectAtPos(nAreaId, this);
 
     m_pAmbientSound = new CSWSAmbientSound(m_objectId);
 
@@ -1070,7 +1069,7 @@ int CSWSArea::LoadPathPoints(CResStruct* pStruct)
             delete pGff;
             return 0;
         }
-        m_paPathPoints = reinterpret_cast<CSWSAreaPathPoint*>(new char[m_nPathPointCount * sizeof(CSWSAreaPathPoint)]);
+        m_paPathPoints = new CSWSAreaPathPoint[m_nPathPointCount];
         nSuccess = 1;
         for (unsigned int i = 0; i < m_nPathPointCount; i++)
         {
@@ -1079,11 +1078,11 @@ int CSWSArea::LoadPathPoints(CResStruct* pStruct)
             if (pGff->GetElementType(&stElem) != 2)
                 continue;
 
-            m_paPathPoints[i].m_node.m_x = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("X"), bSuccess, 0.0f);
+            m_paPathPoints[i].m_x = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("X"), bSuccess, 0.0f);
             nSuccess &= bSuccess;
-            m_paPathPoints[i].m_node.m_y = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("Y"), bSuccess, 0.0f);
+            m_paPathPoints[i].m_y = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("Y"), bSuccess, 0.0f);
             nSuccess &= bSuccess;
-            m_paPathPoints[i].m_node.m_nNeighborCount = pGff->ReadFieldDWORD(&stElem, const_cast<char*>("Conections"), bSuccess, 0);
+            m_paPathPoints[i].m_nNeighborCount = pGff->ReadFieldDWORD(&stElem, const_cast<char*>("Conections"), bSuccess, 0);
             nSuccess &= bSuccess;
             m_paPathPoints[i].m_nNeighborStart = pGff->ReadFieldDWORD(&stElem, const_cast<char*>("First_Conection"), bSuccess, 0);
             nSuccess &= bSuccess;
@@ -1167,10 +1166,7 @@ int CSWSArea::LoadWaypoints(CResGFF* pGff, CResStruct* pStruct, int nFlags, int 
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("WaypointList")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1194,7 +1190,7 @@ int CSWSArea::LoadWaypoints(CResGFF* pGff, CResStruct* pStruct, int nFlags, int 
         Vector v = pWaypoint->m_position;
         v.z = ComputeHeight(v, 1, 0, 0);
         pWaypoint->SetPosition(v, 1, 1, 0);
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1253,10 +1249,7 @@ int CSWSArea::LoadSounds(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUs
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("SoundList")))
         return 1;
     int nCount = pGff->GetListCount(&list);
-    if (!nCount)
-        return 1;
-    int i = 0;
-    do
+    for (int i = 0; i != nCount; i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1283,14 +1276,17 @@ int CSWSArea::LoadSounds(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUs
             v.y = fY;
             v.z = fZ;
             pSound->SetPosition(v, 1, 1, 0);
+            pSound->AddToArea(this, !nFlags);
         }
-        else if (!pSound->Load(pGff, &stElem))
+        else if (pSound->Load(pGff, &stElem))
+        {
+            pSound->AddToArea(this, !nFlags);
+        }
+        else
         {
             delete pSound;
-            continue;
         }
-        pSound->AddToArea(this, !nFlags);
-    } while (++i != nCount);
+    }
     return 1;
 }
 
@@ -1300,10 +1296,7 @@ int CSWSArea::LoadStores(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUs
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("StoreList")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1349,7 +1342,7 @@ int CSWSArea::LoadStores(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUs
         float fPY = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("YPosition"), bSuccess, 0.0f);
         float fPZ = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("ZPosition"), bSuccess, 0.0f);
         pStore->AddToArea(this, fPX, fPY, fPZ, !nFlags);
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1359,10 +1352,7 @@ int CSWSArea::LoadEncounters(CResGFF* pGff, CResStruct* pStruct, int nFlags, int
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("Encounter List")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1375,46 +1365,39 @@ int CSWSArea::LoadEncounters(CResGFF* pGff, CResStruct* pStruct, int nFlags, int
         if (nUseTemplates)
         {
             CResRef refEnc = pGff->ReadFieldCResRef(&stElem, const_cast<char*>("TemplateResRef"), bSuccess, CResRef(""));
-            if (bSuccess && pEnc->LoadFromTemplate(refEnc, 0, 0))
-            {
-                float fX = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("XPosition"), bSuccess, 0.0f);
-                float fY = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("YPosition"), bSuccess, 0.0f);
-                float fZ = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("ZPosition"), bSuccess, 0.0f);
-                CResList resList;   // reused for both "Geometry" and "SpawnPointList"
-                pEnc->SetPosition(Vector(fX, fY, fZ), 1, 1, 0);
-                if (pGff->GetList(&resList, &stElem, const_cast<char*>("Geometry")))
-                {
-                    if (!pEnc->LoadEncounterGeometry(pGff, resList))
-                    {
-                        delete pEnc;
-                        pEnc = 0;
-                    }
-                }
-                if (pGff->GetList(&resList, &stElem, const_cast<char*>("SpawnPointList")))
-                    pEnc->LoadEncounterSpawnPoints(pGff, resList);
-                if (pEnc)
-                {
-                    if (nFlags)
-                        pEnc->LoadObjectState(pGff, &stElem);
-                    pEnc->AddToArea(this, pEnc->m_position.x, pEnc->m_position.y, pEnc->m_position.z, !nFlags);
-                }
-                continue;
-            }
-            delete pEnc;
-            continue;
-        }
-        else
-        {
-            if (!pEnc->LoadEncounter(pGff, &stElem))
+            if (!bSuccess || !pEnc->LoadFromTemplate(refEnc, 0, 0))
             {
                 delete pEnc;
                 continue;
             }
+            float fX = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("XPosition"), bSuccess, 0.0f);
+            float fY = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("YPosition"), bSuccess, 0.0f);
+            float fZ = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("ZPosition"), bSuccess, 0.0f);
+            CResList resList;   // reused for both "Geometry" and "SpawnPointList"
+            pEnc->SetPosition(Vector(fX, fY, fZ), 1, 1, 0);
+            if (pGff->GetList(&resList, &stElem, const_cast<char*>("Geometry")))
+            {
+                if (!pEnc->LoadEncounterGeometry(pGff, resList))
+                {
+                    delete pEnc;
+                    pEnc = 0;
+                }
+            }
+            if (pGff->GetList(&resList, &stElem, const_cast<char*>("SpawnPointList")))
+                pEnc->LoadEncounterSpawnPoints(pGff, resList);
+        }
+        else if (!pEnc->LoadEncounter(pGff, &stElem))
+        {
+            delete pEnc;
+            continue;
+        }
+        if (pEnc)
+        {
             if (nFlags)
                 pEnc->LoadObjectState(pGff, &stElem);
             pEnc->AddToArea(this, pEnc->m_position.x, pEnc->m_position.y, pEnc->m_position.z, !nFlags);
         }
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1424,10 +1407,7 @@ int CSWSArea::LoadItems(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUse
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("List")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1441,14 +1421,17 @@ int CSWSArea::LoadItems(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUse
         if (nUseTemplates)
         {
             CResRef refItem = pGff->ReadFieldCResRef(&stElem, const_cast<char*>("TemplateResRef"), bSuccessReads, CResRef(""));
-            if (bSuccessReads && pItem->LoadFromTemplate(refItem))
-                goto DoLoad;
+            if (!bSuccessReads || !pItem->LoadFromTemplate(refItem))
+            {
+                delete pItem;
+                continue;
+            }
         }
-        else if (pItem->LoadItem(pGff, &stElem))
-            goto DoLoad;
-        delete pItem;
-        continue;
-    DoLoad:
+        else if (!pItem->LoadItem(pGff, &stElem))
+        {
+            delete pItem;
+            continue;
+        }
         Vector v(0.0f, 0.0f, 0.0f);
         if (nFlags)
             static_cast<CSWSObject*>(pItem)->LoadObjectState(pGff, &stElem);
@@ -1460,7 +1443,7 @@ int CSWSArea::LoadItems(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUse
         v.y = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("YOrientation"), bSuccessReads, 0.0f);
         v.z = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("ZOrientation"), bSuccessReads, 0.0f);
         static_cast<CSWSObject*>(pItem)->SetOrientation(v);
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1471,10 +1454,7 @@ int CSWSArea::LoadCreatures(CResGFF* pGff, CResStruct* pStruct, int nFlags, int 
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("Creature List")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1487,19 +1467,22 @@ int CSWSArea::LoadCreatures(CResGFF* pGff, CResStruct* pStruct, int nFlags, int 
         {
             pCreature = new CSWSCreature(OBJECT_INVALID, 0);
             CResRef refCreature = pGff->ReadFieldCResRef(&stElem, const_cast<char*>("TemplateResRef"), bSuccess, CResRef(""));
-            if (bSuccess && pCreature->LoadFromTemplate(refCreature, 1))
-                goto DoLoad;
+            if (!bSuccess || !pCreature->LoadFromTemplate(refCreature, 1))
+            {
+                delete pCreature;
+                continue;
+            }
         }
         else
         {
             unsigned long long nObjectId = pGff->ReadFieldDWORD(&stElem, const_cast<char*>("ObjectId"), bSuccess, OBJECT_INVALID);
             pCreature = new CSWSCreature(nObjectId, 0);
-            if (pCreature->LoadCreature(pGff, &stElem, nFlags))
-                goto DoLoad;
+            if (!pCreature->LoadCreature(pGff, &stElem, nFlags))
+            {
+                delete pCreature;
+                continue;
+            }
         }
-        delete pCreature;
-        continue;
-    DoLoad:
         Vector pos(0.0f, 0.0f, 0.0f);
         Vector out(0.0f, 0.0f, 0.0f);
         pos.x = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("XPosition"), bSuccess, 0.0f);
@@ -1512,7 +1495,7 @@ int CSWSArea::LoadCreatures(CResGFF* pGff, CResStruct* pStruct, int nFlags, int 
         float oY = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("YOrientation"), bSuccess, 0.0f);
         float oZ = pGff->ReadFieldFLOAT(&stElem, const_cast<char*>("ZOrientation"), bSuccess, 0.0f);
         pCreature->SetOrientation(Vector(oX, oY, oZ));
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1523,10 +1506,7 @@ int CSWSArea::LoadDoors(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUse
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("Door List")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1553,7 +1533,7 @@ int CSWSArea::LoadDoors(CResGFF* pGff, CResStruct* pStruct, int nFlags, int nUse
         pDoor->AddToArea(this, fX, fY, fZ, !nFlags);
         if (pDoor->m_bTrapFlag)
             m_mineObjects.Add(pDoor->m_objectId);
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1564,10 +1544,7 @@ int CSWSArea::LoadPlaceables(CResGFF* pGff, CResStruct* pStruct, int nFlags, int
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("Placeable List")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1607,7 +1584,7 @@ int CSWSArea::LoadPlaceables(CResGFF* pGff, CResStruct* pStruct, int nFlags, int
         pPlaceable->AddToArea(this, pos, nFlags);
         if (pPlaceable->m_bTrapFlag)
             m_mineObjects.Add(pPlaceable->m_objectId);
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1618,10 +1595,7 @@ int CSWSArea::LoadTriggers(CResGFF* pGff, CResStruct* pStruct, int nFlags, int n
     CResList list;
     if (!pGff->GetList(&list, pStruct, const_cast<char*>("TriggerList")))
         return 1;
-    if (!pGff->GetListCount(&list))
-        return 1;
-    unsigned int i = 0;
-    do
+    for (unsigned int i = 0; i < pGff->GetListCount(&list); i++)
     {
         CResStruct stElem;
         if (!pGff->GetListElement(&stElem, &list, i))
@@ -1676,7 +1650,7 @@ int CSWSArea::LoadTriggers(CResGFF* pGff, CResStruct* pStruct, int nFlags, int n
         pTrigger->AddToArea(this, fX, fY, fZ, !nFlags);
         if (pTrigger->m_bTrap)
             m_mineObjects.Add(pTrigger->m_objectId);
-    } while (++i < pGff->GetListCount(&list));
+    }
     return 1;
 }
 
@@ -1721,8 +1695,6 @@ int CSWSArea::LoadPlaceableCameras(CResGFF* pGff, CResStruct* pStruct)
 #endif
         return 0;
     g_pAppManager->m_pClientExoApp->GetInGameGui()->InitializePlaceableCameras(nCameras);
-    if (nCameras <= 0)
-        return 1;
     for (int i = 0; i < nCameras; i++)
     {
         pGff->GetListElement(&stElem, &list, i);
@@ -1774,23 +1746,22 @@ int CSWSArea::LoadArea(int nFlags)
     LoadAreaHeader(&st);
     LoadRoomInfo(&st);
 #if !KOTOR1  // K1 has no room-to-area-table index map
-    if (m_nRoomCount > 0)
-        for (int i = 0; i < m_nRoomCount; i++)
+    for (int i = 0; i < m_nRoomCount; i++)
+    {
+        if (m_nRoomAudioCount <= 0)
+            continue;
+        CResRef cResRef = m_paRooms[i].m_resRoom;
+        int nCount = 0;
+        for (int j = 0; nCount < m_nRoomAudioCount; j++)
         {
-            if (m_nRoomAudioCount <= 0)
-                continue;
-            CResRef cResRef = m_paRooms[i].m_resRoom;
-            int nCount = 0;
-            for (int j = 0; nCount < m_nRoomAudioCount; j++)
+            if (m_paRoomNames[j].CompareNoCase(cResRef.GetResRefStr()))
             {
-                if (m_paRoomNames[j].CompareNoCase(cResRef.GetResRefStr()))
-                {
-                    m_paRoomTableIndex[i] = static_cast<unsigned char>(nCount);
-                    break;
-                }
-                nCount++;
+                m_paRoomTableIndex[i] = static_cast<unsigned char>(nCount);
+                break;
             }
+            nCount++;
         }
+    }
 #endif
     LoadGIT(nFlags);
     LoadPathPoints(&st);
@@ -1849,13 +1820,13 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
     // before being assigned to its member.
     CExoString scriptStr;
     m_pRes->ReadFieldCResRef(pStruct, const_cast<char*>("OnHeartbeat"), bSuccess, CResRef("")).CopyToString(scriptStr);
-    m_scriptOnHeartbeat = scriptStr;
+    m_scripts[AREA_SCRIPT_ONHEARTBEAT] = scriptStr;
     m_pRes->ReadFieldCResRef(pStruct, const_cast<char*>("OnUserDefined"), bSuccess, CResRef("")).CopyToString(scriptStr);
-    m_scriptOnUserDefined = scriptStr;
+    m_scripts[AREA_SCRIPT_ONUSERDEFINED] = scriptStr;
     m_pRes->ReadFieldCResRef(pStruct, const_cast<char*>("OnEnter"), bSuccess, CResRef("")).CopyToString(scriptStr);
-    m_scriptOnEnter = scriptStr;
+    m_scripts[AREA_SCRIPT_ONENTER] = scriptStr;
     m_pRes->ReadFieldCResRef(pStruct, const_cast<char*>("OnExit"), bSuccess, CResRef("")).CopyToString(scriptStr);
-    m_scriptOnExit = scriptStr;
+    m_scripts[AREA_SCRIPT_ONEXIT] = scriptStr;
 
     m_areaName = m_pRes->ReadFieldCExoLocString(pStruct, const_cast<char*>("Name"), bSuccess, CExoLocString());
 
@@ -1928,10 +1899,10 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
     m_grassTexName = m_pRes->ReadFieldCResRef(pStruct, const_cast<char*>("Grass_TexName"), bSuccess, CResRef(""));
     if (!m_grassTexName.IsValid())
         m_grassTexName = const_cast<char*>("grass");
-    m_grassProbLL = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("Grass_Prob_LL"), bSuccess, 0.0f);
-    m_grassProbLR = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("Grass_Prob_LR"), bSuccess, 0.0f);
-    m_grassProbUL = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("Grass_Prob_UL"), bSuccess, 0.0f);
-    m_grassProbUR = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("Grass_Prob_UR"), bSuccess, 0.0f);
+    m_grassProb[0] = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("Grass_Prob_LL"), bSuccess, 0.0f);
+    m_grassProb[1] = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("Grass_Prob_LR"), bSuccess, 0.0f);
+    m_grassProb[2] = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("Grass_Prob_UL"), bSuccess, 0.0f);
+    m_grassProb[3] = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("Grass_Prob_UR"), bSuccess, 0.0f);
     m_alphaTest = m_pRes->ReadFieldFLOAT(pStruct, const_cast<char*>("AlphaTest"), bSuccess, 0.2f);
 
     // -- Rooms --
@@ -1990,6 +1961,16 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
                 int nMapPt1X, nMapPt1Y, nMapPt2X, nMapPt2Y;
                 if (m_pRes->GetFieldType(&stElem, const_cast<char*>("MapPt1X"), static_cast<unsigned int>(-1)) == 8)
                 {
+#if KOTOR1  // K1's map image is 440 x 256, K2's 708 x 354; K1 converts each read in place
+                    nMapPt1X = static_cast<int>(__builtin_floorf(
+                        m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt1X"), bSuccess, 0.0f) * 440.0f + 0.5f));
+                    nMapPt1Y = static_cast<int>(__builtin_floorf(
+                        m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt1Y"), bSuccess, 0.0f) * 256.0f + 0.5f));
+                    nMapPt2X = static_cast<int>(__builtin_floorf(
+                        m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt2X"), bSuccess, 0.0f) * 440.0f + 0.5f));
+                    nMapPt2Y = static_cast<int>(__builtin_floorf(
+                        m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt2Y"), bSuccess, 0.0f) * 256.0f + 0.5f));
+#else
                     float f1x;
                     float f1y;
                     float f2x;
@@ -1998,12 +1979,6 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
                     f1y = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt1Y"), bSuccess, 0.0f);
                     f2x = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt2X"), bSuccess, 0.0f);
                     f2y = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("MapPt2Y"), bSuccess, 0.0f);
-#if KOTOR1  // K1's map image is 440 x 256, K2's 708 x 354
-                    nMapPt1X = static_cast<int>(__builtin_floorf(f1x * 440.0f + 0.5f));
-                    nMapPt1Y = static_cast<int>(__builtin_floorf(f1y * 256.0f + 0.5f));
-                    nMapPt2X = static_cast<int>(__builtin_floorf(f2x * 440.0f + 0.5f));
-                    nMapPt2Y = static_cast<int>(__builtin_floorf(f2y * 256.0f + 0.5f));
-#else
                     nMapPt1X = static_cast<int>(__builtin_floorf(f1x * 708.0f + 0.5f));
                     nMapPt1Y = static_cast<int>(__builtin_floorf(f1y * 354.0f + 0.5f));
                     nMapPt2X = static_cast<int>(__builtin_floorf(f2x * 708.0f + 0.5f));
@@ -2618,8 +2593,8 @@ void CSWSArea::EnforceNoPCHeadCloning(int nHeadId)
 
         if (pCreature)
         {
-            C2DA* pAppearance = g_pRules->m_p2DArrays->m_pAppearance;
             int nHead;
+            C2DA* pAppearance = g_pRules->m_p2DArrays->m_pAppearance;
 
             if (pCreature->m_bDisguised)
             {
@@ -2772,7 +2747,7 @@ int CSWSArea::AIUpdate()
     if ((elapsedTod >> 4) >= CSWSObject::HEARTBEAT_INTERVAL_16MS)
     {
         if (m_lastUpdateTod != 0)
-            g_pVirtualMachine->RunScript(&m_scriptOnHeartbeat, m_objectId, 1);
+            g_pVirtualMachine->RunScript(&m_scripts[AREA_SCRIPT_ONHEARTBEAT], m_objectId, 1);
 
         m_lastUpdateDay = day;
         m_lastUpdateTod = tod;
@@ -2994,18 +2969,18 @@ int CSWSArea::TestPathPoint(float fHitFraction, int nFlag)
 
     for (unsigned int i = 0; i < m_nPathPointCount; i++)
     {
-        ComputeHeight(Vector(m_paPathPoints[i].m_node.m_x, m_paPathPoints[i].m_node.m_y, 0.0f), 1, 0, 0);
+        ComputeHeight(Vector(m_paPathPoints[i].m_x, m_paPathPoints[i].m_y, 0.0f), 1, 0, 0);
 
-        if (m_paPathPoints[i].m_nNeighborStart + m_paPathPoints[i].m_node.m_nNeighborCount == 0)
+        if (m_paPathPoints[i].m_nNeighborStart + m_paPathPoints[i].m_nNeighborCount == 0)
             bBad = 1;
 
         for (unsigned int j = m_paPathPoints[i].m_nNeighborStart;
-             j < m_paPathPoints[i].m_nNeighborStart + m_paPathPoints[i].m_node.m_nNeighborCount;
+             j < m_paPathPoints[i].m_nNeighborStart + m_paPathPoints[i].m_nNeighborCount;
              j++)
         {
-            Vector vFrom = { m_paPathPoints[i].m_node.m_x, m_paPathPoints[i].m_node.m_y, 0.0f };
-            Vector vTo   = { m_paPathPoints[m_paPathPointLinks[j]].m_node.m_x,
-                             m_paPathPoints[m_paPathPointLinks[j]].m_node.m_y, 0.0f };
+            Vector vFrom = { m_paPathPoints[i].m_x, m_paPathPoints[i].m_y, 0.0f };
+            Vector vTo   = { m_paPathPoints[m_paPathPointLinks[j]].m_x,
+                             m_paPathPoints[m_paPathPointLinks[j]].m_y, 0.0f };
 
             vFrom.z = ComputeHeight(vFrom, 1, 0, 0);
             vTo.z   = ComputeHeight(vTo, 1, 0, 0);
@@ -3253,9 +3228,6 @@ int CSWSArea::ClearLineOfSight(const Vector& vFrom, const Vector& vTo, Vector* p
     float fZLow = (vFrom.z < vTo.z) ? vFrom.z : vTo.z;
     float fZHigh = (vFrom.z < vTo.z) ? vTo.z : vFrom.z;
 
-    CWalkHitInfo hitInfo = {};
-    hitInfo.m_hitSubType = 0;
-
     Vector vRoomHit = {};
     unsigned long long oidRoomHit = OBJECT_INVALID;
 
@@ -3269,7 +3241,9 @@ int CSWSArea::ClearLineOfSight(const Vector& vFrom, const Vector& vTo, Vector* p
     if (pObject != 0 && pObject->AsSWSObject() != 0)
         aObjects.Add(pObject);
 
+    CWalkHitInfo hitInfo = {};
     hitInfo.m_hitObjectId = OBJECT_INVALID;
+    hitInfo.m_hitSubType = 0;
 
     int bResult = 1;
     int nResult = NoNonWalkPolysDetailed(vFrom, vTo, fZLow, fZHigh, 0.001f, OBJECT_INVALID,
@@ -3385,6 +3359,9 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
     CExoString sValue;
     CExoArrayList<int> aPins;
     CExoArrayList<unsigned long long> aSounds;
+    CSWSCreature* pCreature;
+    CSWSObject* pPlayerObject;
+    unsigned short nSoundCount;
 
     if (pMsg == 0)
         return 0;
@@ -3444,10 +3421,8 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
 #if !KOTOR1
     pMsg->WriteDWORD(m_grassEmissive, 32);
 #endif
-    pMsg->WriteFLOAT(m_grassProbLL, 1.0f, 32);
-    pMsg->WriteFLOAT(m_grassProbLR, 1.0f, 32);
-    pMsg->WriteFLOAT(m_grassProbUL, 1.0f, 32);
-    pMsg->WriteFLOAT(m_grassProbUR, 1.0f, 32);
+    for (int i = 0; i < 4; i++)
+        pMsg->WriteFLOAT(m_grassProb[i], 1.0f, 32);
     pMsg->WriteBYTE(m_chanceLightning, 8);
     pMsg->WriteBYTE(m_windPower, 8);
     if (m_nWeatherOverride == WEATHER_NONE)
@@ -3501,9 +3476,10 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
         for (int i = 0; i < m_aObjectsByX.m_count; i++)
         {
             CGameObject* pObject;
+            CSWSWaypoint* pWaypoint;
             if (pObjectArray->GetGameObject(m_aObjectsByX.m_pArray[i], &pObject) != CGameObjectArray::SUCCESS)
                 continue;
-            CSWSWaypoint* pWaypoint = pObject->AsSWSWaypoint();
+            pWaypoint = pObject->AsSWSWaypoint();
             if (pWaypoint == 0)
             {
                 if (pObject->AsSWSSoundObject() != 0)
@@ -3523,9 +3499,10 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
         for (int i = 0; i < nCount; i++)
         {
             CGameObject* pObject;
+            CSWSWaypoint* pWaypoint;
             if (pObjectArray->GetGameObject(aWaypoints.m_pArray[i], &pObject) != CGameObjectArray::SUCCESS)
                 continue;
-            CSWSWaypoint* pWaypoint = pObject->AsSWSWaypoint();
+            pWaypoint = pObject->AsSWSWaypoint();
             if (pWaypoint == 0)
                 continue;
             pMsg->WriteOBJECTIDServer(pWaypoint->m_objectId);
@@ -3539,8 +3516,8 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
 
     // Map pins live as script variables on the player's own creature; only the pins that name
     // this area are sent.
-    CSWSCreature* pCreature = 0;
-    CSWSObject* pPlayerObject = pPlayer->GetGameObject();
+    pCreature = 0;
+    pPlayerObject = pPlayer->GetGameObject();
     if (pPlayerObject != 0)
         pCreature = pPlayerObject->AsSWSCreature();
     if (pCreature != 0)
@@ -3580,14 +3557,15 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
         pMsg->WriteFLOAT(pCreature->m_scriptVars.GetFloat(sName), 1.0f, 32);
     }
 
-    unsigned short nSoundCount = static_cast<unsigned short>(aSounds.m_count);
+    nSoundCount = static_cast<unsigned short>(aSounds.m_count);
     pMsg->WriteWORD(nSoundCount, 16);
     for (unsigned short i = 0; i < nSoundCount; i++)
     {
         CGameObject* pObject;
+        CSWSSoundObject* pSound;
         if (pObjectArray->GetGameObject(aSounds.m_pArray[i], &pObject) != CGameObjectArray::SUCCESS)
             continue;
-        CSWSSoundObject* pSound = pObject->AsSWSSoundObject();
+        pSound = pObject->AsSWSSoundObject();
         if (pSound != 0)
             pSound->PackIntoMessage(pMsg);
     }
@@ -3599,12 +3577,14 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
     {
         for (int i = 0; i < m_aObjectsByX.m_count; i++)
         {
+            int bLightIsOn;
+            int bStatic;
             CSWSPlaceable* pPlaceable =
                 g_pAppManager->m_pServerExoApp->GetPlaceableByGameObjectID(m_aObjectsByX.m_pArray[i]);
             if (pPlaceable == 0)
                 continue;
-            int bLightIsOn = pPlaceable->GetLightIsOn();
-            int bStatic = pPlaceable->m_bStatic;
+            bLightIsOn = pPlaceable->GetLightIsOn();
+            bStatic = pPlaceable->m_bStatic;
             nLitCount += (bLightIsOn != 0);
             nStaticCount += (bStatic == 1);
         }
@@ -3661,14 +3641,15 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
             pMsg->WriteFLOAT(vOrientation.y, 1.0f, 32);
             pMsg->WriteFLOAT(vOrientation.z, 1.0f, 32);
 #else
+            Vector vOrientation = pPlaceable->CSWSObject::m_orientation;
             pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
             pMsg->WriteINT(pPlaceable->m_appearanceType, 32);
             pMsg->WriteFLOAT(pPlaceable->m_position.x, 1.0f, 32);
             pMsg->WriteFLOAT(pPlaceable->m_position.y, 1.0f, 32);
             pMsg->WriteFLOAT(pPlaceable->m_position.z, 1.0f, 32);
-            pMsg->WriteFLOAT(pPlaceable->CSWSObject::m_orientation.x, 1.0f, 32);
-            pMsg->WriteFLOAT(pPlaceable->CSWSObject::m_orientation.y, 1.0f, 32);
-            pMsg->WriteFLOAT(pPlaceable->CSWSObject::m_orientation.z, 1.0f, 32);
+            pMsg->WriteFLOAT(vOrientation.x, 1.0f, 32);
+            pMsg->WriteFLOAT(vOrientation.y, 1.0f, 32);
+            pMsg->WriteFLOAT(vOrientation.z, 1.0f, 32);
 #endif
         }
     }

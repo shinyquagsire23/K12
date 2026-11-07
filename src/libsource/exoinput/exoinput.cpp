@@ -453,9 +453,9 @@ void CExoInput::SetMousePos(int a, int b, bool c)
 }
 #endif
 
-char CExoInput::GetNumberJoysticks()
+unsigned char CExoInput::GetNumberJoysticks()
 {
-    return static_cast<char>(m_pInternal->m_pMainDevice->m_nNumJoysticks);
+    return static_cast<unsigned char>(m_pInternal->m_pMainDevice->m_nNumJoysticks);
 }
 
 int CExoInput::IsJoystickActive()
@@ -484,8 +484,8 @@ void CExoInput::Configure()
 
 int CExoInput::CreateNewEventInClass(unsigned int a, int b, unsigned int c, int d, unsigned int e, unsigned int f)
 {
-    m_pInternal->CreateNewEvent(a, b, d, e, f);
-    return m_pInternal->AddEvent(a, c);
+    CreateNewEvent(a, b, d, e, f);
+    return AddEvent(a, c);
 }
 
 CExoInput::CExoInput()

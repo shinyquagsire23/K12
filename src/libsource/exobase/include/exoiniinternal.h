@@ -53,6 +53,10 @@ private:
 // in the flat file.
 namespace ASL {
     bool GetPrefAsBool(const char* key, bool defaultValue);
+
+    namespace Display {
+        inline bool GetFullScreenPref() { return GetPrefAsBool("DisplayFullScreen", true); }
+    }
 }
 
 #endif

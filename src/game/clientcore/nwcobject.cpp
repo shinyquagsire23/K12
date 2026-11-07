@@ -793,8 +793,7 @@ char CSWCObject::GetReticlePoint(Vector& v)
             CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
             Vector vDir = -pCamera->GetOrientation().zdir();
             float fPoint = dot(v, vDir);
-            Vector vCamPos = pCamera->GetPosition();
-            float fCam = dot(vDir, vCamPos);
+            float fCam = dot(vDir, pCamera->GetPosition());
             char nRet = !(fPoint > fCam) ? 2 : 1;
             v = pCamera->MapToScreen(v, true);
             short nWidth = g_pAppManager->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
@@ -1084,6 +1083,8 @@ void CSWCObject::SetArea(CSWCArea* pArea)
 // Decides the object's fade state on entering an area. Only placeables (unless the server marks
 // them a body bag that is still invisible), doors and items participate. An object at the origin,
 // or one no spawn position can see, starts hidden.
+// EFFECTIVE: both arms' SetFadeState sink into one call with a phi here; the images keep one per arm (an int
+// flag, or SetDesiredFadeState written per arm, compile to the same bytes).
 void CSWCObject::SetObjectVisibilityOnSetArea(CSWCArea* pArea)
 {
     Vector vPosition = {0.0f, 0.0f, 0.0f};
@@ -1981,28 +1982,23 @@ int CSWCObject::DeleteVisualEffect(unsigned short a)
 // itself; a beam effect matches nothing.
 void CSWCObject::DetachVisualEffectsMatchingHardCodedClass(CSWCVisualEffectOnObject* pParam)
 {
-    CExoLinkedListNode* pos = m_visualEffects.m_pInternal->m_pTail;
-    if (pos != 0)
+    CExoLinkedListNode* pos = m_visualEffects.GetTailPos();
+    CSWCVisualEffectOnObject* p = m_visualEffects.GetTail();
+    while (pos != 0)
     {
-        CSWCVisualEffectOnObject* p = static_cast<CSWCVisualEffectOnObject*>(pos->m_pData);
-        while (true)
+        if (pParam->GetHardCodedEffectClass() != CSWCVisualEffectOnObject::HARDCODED_CLASS_BEAM)
         {
-            if (pParam->GetHardCodedEffectClass() != CSWCVisualEffectOnObject::HARDCODED_CLASS_BEAM)
+            unsigned char paramClass = pParam->GetHardCodedEffectClass();
+            unsigned char nodeClass = p->GetHardCodedEffectClass();
+            if (p != pParam && paramClass == nodeClass &&
+                p->m_nPriority != 0 && p->m_bFinished == 0)
             {
-                unsigned char paramClass = pParam->GetHardCodedEffectClass();
-                unsigned char nodeClass = p->GetHardCodedEffectClass();
-                if (p != pParam && paramClass == nodeClass &&
-                    p->m_nPriority != 0 && p->m_bFinished == 0)
-                {
-                    if (p->m_bAttached != 0)
-                        p->DetachVisualEffect();
-                    break;
-                }
-            }
-            p = m_visualEffects.GetPrev(pos);
-            if (pos == 0)
+                if (p->m_bAttached != 0)
+                    p->DetachVisualEffect();
                 break;
+            }
         }
+        p = m_visualEffects.GetPrev(pos);
     }
 }
 
@@ -2029,42 +2025,32 @@ int CSWCObject::RefreshVisualEffects(int a)
 // The alpha of the highest-priority active tint/alpha-class effect, or -1.0 when there is none.
 float CSWCObject::GetVisualEffectAlpha()
 {
-    unsigned char best = 0xff;
     float alpha = -1.0f;
-    CExoLinkedListNode* pos = m_visualEffects.m_pInternal->m_pTail;
-    if (pos != 0)
+    unsigned char best = 0xff;
+    CExoLinkedListNode* pos = m_visualEffects.GetTailPos();
+    CSWCVisualEffectOnObject* p = m_visualEffects.GetTail();
+    while (pos != 0)
     {
-        CSWCVisualEffectOnObject* p = static_cast<CSWCVisualEffectOnObject*>(pos->m_pData);
-        while (true)
+        if (p->GetHardCodedEffectClass() == CSWCVisualEffectOnObject::HARDCODED_CLASS_TINT_ALPHA && p->m_bFinished == 0 &&
+            p->m_bAttached != 0 && p->m_nPriority < best)
         {
-            if (p->GetHardCodedEffectClass() == CSWCVisualEffectOnObject::HARDCODED_CLASS_TINT_ALPHA && p->m_bFinished == 0 &&
-                p->m_bAttached != 0 && p->m_nPriority < best)
-            {
-                alpha = p->m_fAlpha;
-                best = p->m_nPriority;
-            }
-            p = m_visualEffects.GetPrev(pos);
-            if (pos == 0)
-                break;
+            alpha = p->m_fAlpha;
+            best = p->m_nPriority;
         }
+        p = m_visualEffects.GetPrev(pos);
     }
     return alpha;
 }
 
 int CSWCObject::HasVisualEffectApplied(unsigned int a)
 {
-    CExoLinkedListNode* pos = m_visualEffects.m_pInternal->m_pTail;
-    if (pos != 0)
+    CExoLinkedListNode* pos = m_visualEffects.GetTailPos();
+    CSWCVisualEffectOnObject* p = m_visualEffects.GetTail();
+    while (pos != 0)
     {
-        CSWCVisualEffectOnObject* p = static_cast<CSWCVisualEffectOnObject*>(pos->m_pData);
-        while (true)
-        {
-            if (p->m_effectId == a)
-                return 1;
-            p = m_visualEffects.GetPrev(pos);
-            if (pos == 0)
-                break;
-        }
+        if (p->m_effectId == a)
+            return 1;
+        p = m_visualEffects.GetPrev(pos);
     }
     return 0;
 }

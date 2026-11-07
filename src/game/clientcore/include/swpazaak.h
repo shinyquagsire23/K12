@@ -44,6 +44,12 @@ public:
 #endif
 
     int GetCardValue();
+#if !KOTOR1
+    int operator!=(CPazaakCard other) {
+        return m_nCardType != other.m_nCardType || m_bIsNegative != other.m_bIsNegative ||
+               m_nValue != other.m_nValue;
+    }
+#endif
 
 #if KOTOR1  // K1 has 28 types: +1..+6, -1..-6, +/-1..6 and the main deck 1..10
     static int s_pnPazaakCardValues[28];

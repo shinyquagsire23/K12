@@ -1,5 +1,6 @@
 #pragma once
 #include "k2stdint.h"
+#include "port/libcbase.h"
 
 #include "Quaternion.h"
 #include "Vector.h"
@@ -13,16 +14,10 @@ class Material;
 class MdlNode;
 class Part;
 
-// A node of a model's part tree: the local transform, the child list and the owning object.
+// A node of a model's part tree: the local transform and the node it was built from.
 class CAurPart {
 public:
-
-#if KOTOR1  // K1 has no hologram / per-object illumination flags
-    CAurPart() { __builtin_memset(&m_nNodeID, 0, sizeof(m_nNodeID) + sizeof(m_bDrawEnabled)); }
-#else
-    CAurPart() { __builtin_memset(&m_nNodeID, 0, sizeof(m_nNodeID) + 3 * sizeof(m_bDrawEnabled)); }
-#endif
-
+    CAurPart() {}
     virtual ~CAurPart() {}
 
     virtual char* Name() = 0;
@@ -44,19 +39,12 @@ public:
         int   m_nScaleBits = kScaleOneBits;
         float m_fScale;
     } m_scale;
-    int  m_nNodeID = 0;
-    bool m_bDrawEnabled = false;
+    int  m_nNodeID;
+    bool m_bDrawEnabled;
 #if !KOTOR1  // K2-only: Gob::EnableHologramRendering / EnablePerObjectIllumination
-    bool m_bHologramRendering = false;
-    bool m_bPerObjectIllumination = false;
+    bool m_bHologramRendering;
+    bool m_bPerObjectIllumination;
 #endif
-    Part** m_paChildren = 0;
-    int  m_nChildren = 0;
-    int  m_nCapacity = 0;
-    Part* m_pParent = 0;
-    Gob* m_pGob = 0;
-    Material* m_pMaterial = 0;
-    int  m_nLocalPositionSet = 0;
 };
 
 #ifndef PART_H
@@ -84,7 +72,6 @@ class Part : public CAurPart {
 public:
 
     Part(MdlNode* p);
-    Part() = default;
     char* Name();
     List<Part*>* GetChildren();
     Part* GetParent();
@@ -98,15 +85,14 @@ public:
 #else
     virtual ~Part()
     {
-        for (int64_t i = m_nChildren - 1; i != -1; i--) {
-            if (m_paChildren[i])
-                delete m_paChildren[i];
-            m_nChildren = static_cast<int>(i);
+        for (int64_t i = m_aChildren.m_count - 1; i != -1; i--) {
+            if (m_aChildren.m_pData[i])
+                delete m_aChildren.m_pData[i];
+            m_aChildren.m_count = static_cast<int>(i);
         }
         if (m_pMaterial)
             delete m_pMaterial;
         countpart--;
-        delete[] m_paChildren;
     }
 #endif
 
@@ -170,7 +156,31 @@ public:
     bool GetMinimumSphere_cache(GetMinimumSphere_cache_data* pData);
     float GetMinimumSphere_localradius();
 #endif
+
+    List<Part*> m_aChildren;
+    Part* m_pParent = 0;
+    Gob* m_pGob = 0;
+    Material* m_pMaterial = 0;
+    int  m_nLocalPositionSet = 0;
 };
+
+#if !KOTOR1  // K2-only (no K1 counterpart)
+// The member offsets, printed in this build's layout. Inline: the subclasses' printMemory open with it.
+inline int Part::printMemory()
+{
+    return printf("Part: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
+                  static_cast<int>(K2_OFFSETOF(Part, m_pNode)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_vLocalPosition)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_qLocalOrientation)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_scale)), static_cast<int>(K2_OFFSETOF(Part, m_nNodeID)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_bDrawEnabled)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_bHologramRendering)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_bPerObjectIllumination)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_aChildren)), static_cast<int>(K2_OFFSETOF(Part, m_pParent)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_pGob)), static_cast<int>(K2_OFFSETOF(Part, m_pMaterial)),
+                  static_cast<int>(K2_OFFSETOF(Part, m_nLocalPositionSet)));
+}
+#endif
 
 #if KOTOR1  // K1-only cache size check
 K2_LAYOUT_ASSERT(sizeof(Part::GetMinimumSphere_cache_data) == 0x30, "K1 operator new(0x30) @0x5b627c");
@@ -312,6 +322,7 @@ public:
 // Camera part; only the AsPartCamera probe distinguishes it.
 class PartCamera : public Part {
 public:
+    PartCamera(MdlNode* p) : Part(p) {}
 
     virtual void* AsPartCamera() { return this; }
 
@@ -427,6 +438,7 @@ class CAurObject;
 // Reference part: an instance of another model.
 class PartReference : public Part {
 public:
+    PartReference(MdlNode* p) : Part(p) {}
 
     virtual PartReference* AsPartReference();
     virtual void* AsPartDummy();
@@ -439,7 +451,7 @@ public:
     static void DeleteObject(CAurObject* pObject);
 #endif
 
-    char _pad70[0x78 - 0x70];
+    void* m_pReserved1;  // pointer-width
 };
 
 #endif
@@ -788,9 +800,9 @@ public:
 
 #if !KOTOR1  // force points, alignment and hologram slots are K2-only
     virtual void SetForcePoints(short a);
-    virtual unsigned short GetForcePoints();
+    virtual short GetForcePoints();
     virtual void SetAlignmentValue(short a);
-    virtual unsigned short GetAlignmentValue();
+    virtual short GetAlignmentValue();
     virtual void SetForceGlowColor(float a, float b, float c, float d);
     virtual void GetForceGlowColor(float& a, float& b, float& c, float& d);
     virtual void EnableForceGlow(bool a);
@@ -979,21 +991,12 @@ public:
 
     Vector& Normal() { return *reinterpret_cast<Vector*>(this); }
 
-    union {
-        float m_fNormal[3];
-        int   m_nNormal[3];
-    };
+    int   m_nNormal[3];   // the normal's bits: Normal() reads it as a Vector, the grass copies it as ints
     float m_fPlaneDist;
-    union {
-        int m_nSurfaceMaterial;
-        int m_nMaterial;
-    };
+    int   m_nMaterial;
     short m_anNeighbors[3];
 
-    union {
-        unsigned short m_anVertIndices[3];
-        short m_nVIndex[3];
-    };
+    unsigned short m_anVertIndices[3];
 };
 
 // Per-face MeshSmooth data carried alongside MaxFace.
@@ -1264,18 +1267,21 @@ public:
 #else
     void foobar(void* pTree);
 #endif
+#if defined(__arm__)  // the 32-bit build allocates trees through the class; the arm64 images have none
+    static void* operator new(size_t nSize);
+#endif
 
     void FreeTheFreeList();
     Model* AsModel();
     Animation* AsAnimation();
-    int GetType();
+    unsigned char GetType();
     void (*m_pfnDestructor)(void*);
     void (*m_pfnParseField)(void*, char*);
     char m_szName[32];
     MdlNode* m_pMdlNode;
     int  m_nNodeCount;
     List<MdlNode*> m_freeList;
-    List<unsigned int> m_freeTokens;
+    List<uint32_l_t> m_freeTokens;
     void* m_pMdlResource;
     char m_cType;
     char _pad69[0x6c - 0x69];
@@ -1338,10 +1344,10 @@ public:
     List<unsigned int*> m_lVertexIndices;
     List<unsigned int> m_lLeftOverFaces;
     List<int> m_lVertexIndicesCount;
-    List<unsigned int> m_lIndexPoolOffsets;
-    List<unsigned int> m_lIndexPools;
+    List<uint32_l_t> m_lIndexPoolOffsets;
+    List<uint32_l_t> m_lIndexPools;
     int m_nLeftOverPoolOffset;
-    unsigned int m_nLeftOverPool;
+    uint32_l_t m_nLeftOverPool;
     int m_nLeftOverIndexCount;
     int m_nPrimitiveType;
     void* m_pPostProcess;
@@ -1380,8 +1386,8 @@ public:
     bool m_bHologramDoNotDraw;
     char _pad1d1[0x1d4 - 0x1d1];
 #endif
-    int m_fSurfaceArea;
-    int m_nReserved4;
+    float m_fSurfaceArea;
+    float m_fReserved4;
     int m_nGeomBase;
     float* m_paVertices;
 };
@@ -1470,7 +1476,7 @@ public:
     float m_fDisplacement;
     float m_fTightness;
     float m_fPeriod;
-    void* m_pVertexSource;
+    Vector3* m_pVertexSource;
     ~MdlNodeDanglyMesh();
     void InternalDestructor();
     void InternalParseField(char* pszLine);
@@ -1535,7 +1541,7 @@ public:
     Vector3* m_paPositions;
     Vector2* m_aTexCoords;
     Vector3* m_aNormals;
-    unsigned int m_anBladePools[2];
+    uint32_l_t m_anBladePools[2];
     ~MdlNodeLightsaber();
     void InternalDestructor();
     void InternalParseField(char* pszLine);
@@ -1681,7 +1687,7 @@ public:
     float m_fAnimScale;
     char m_szSuperModelName[0xd0 - 0xb0];
     MdlNode* m_pAnimationRoot;
-    unsigned int m_nPool;
+    uint32_l_t m_nPool;
     int  m_nPoolSize;
     void* m_pMdxResource;
     List<char*> m_listStrings;

@@ -15,9 +15,6 @@ template <class T>
 class SafePointerList : public List<SafePointer<T>*> {
 public:
     // Reserves capacity 2 before delegating to the base Add.
-#if KOTOR1  // K1: AddPointer is never out of line
-    __attribute__((always_inline))
-#endif
     void AddPointer(SafePointer<T>* pPointer) {
 #if !KOTOR1  // K1 has no grow-to-2 pre-pass
         if (this->m_capacity == 0)
@@ -44,26 +41,17 @@ public:
     // Lets a SafePointer be used where a raw T* is expected.
     operator T*() const { return m_pObject; }
 
-    // Constructs already bound. Deliberately a member template rather than a plain
-    // SafePointer(T*) constructor.
-#if KOTOR1  // K1: a plain constructor
+    // Constructs already bound.
     explicit SafePointer(T* pObject) : m_pObject(pObject) {
         if (m_pObject != 0)
             m_pObject->AddPointer(this);
     }
-#else
-    template <class U> explicit SafePointer(U* pObject) : m_pObject(pObject) {
-        if (m_pObject != 0)
-            m_pObject->AddPointer(this);
-    }
-#endif
 
-#if KOTOR1  // K1: a user-declared copy constructor that registers the copy
+    // A copy registers itself with the pointee as another watcher.
     SafePointer(const SafePointer<T>& rhs) : m_pObject(rhs.m_pObject) {
         if (m_pObject != 0)
             m_pObject->AddPointer(this);
     }
-#endif
 
     // Rebinding unregisters from the old pointee first, so the entry moves to the end of the
     // watcher list. There is no self-assignment guard.
@@ -78,8 +66,7 @@ public:
 
     // Delegates to the pointer overload so copies rebind through the watcher list.
     SafePointer<T>& operator=(const SafePointer<T>& rhs) {
-        *this = rhs.m_pObject;
-        return *this;
+        return *this = rhs.m_pObject;
     }
 
     // Unregisters from the pointee; does not clear the watched pointer.

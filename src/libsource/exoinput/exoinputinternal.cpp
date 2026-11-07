@@ -29,27 +29,24 @@ CExoInputInternal::~CExoInputInternal()
         ::operator delete(pDevice);
         m_pMainDevice = 0;
     }
-    // The descriptors have virtual functions, but their destructors are never called; they are
-    // freed directly. Then the index array is released and its count and capacity reset.
+    // The descriptors have virtual functions but no virtual destructor (theirs are trivial), so
+    // each is deleted as its base. Then the index array is released and its count and capacity reset.
     for (int i = 0, nCount = m_aEvents.m_count; i < nCount; i++) {
         CExoInputEventDesc* pDesc = m_aEvents.m_pArray[i];
-        if (pDesc != 0)
-            ::operator delete(pDesc);
+        delete pDesc;
     }
     m_aEvents.SetSize(0);
     // The repeat-timer list nodes belong to the member's own destructor; the records do not.
     CExoLinkedListNode* pNode = m_repeatList.m_pInternal->m_pHead;
     while (pNode != 0) {
         CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
-        if (pRec != 0)
-            ::operator delete(pRec);
+        delete pRec;
         m_repeatList.GetNext(pNode);
     }
     while (m_mouseEventList.m_pInternal->m_pHead != 0) {
         CExoInputEvent* pEvent = m_mouseEventList.RemoveHead();
         if (pEvent != 0) {
-            if (pEvent->m_pEvent != 0)
-                ::operator delete(pEvent->m_pEvent);
+            delete pEvent->m_pEvent;
             ::operator delete(pEvent);
         }
     }
@@ -225,9 +222,9 @@ CExoInputInternal::CExoInputInternal(HINSTANCE__* hInst, HWND__* hWnd)
     m_aEvents.m_pArray[0] = 0;
     for (int i = 0; i < 6; i++) {
         m_aEventClass[i].m_sName = "Unnamed Input Class";
-        // Reserves one slot but leaves the list empty, setting the count back to zero.
+        // Reserves one slot, then assigns an empty list over it: the count drops to zero, the slot stays.
         m_aEventClass[i].m_aEventBits.SetSize(1);
-        m_aEventClass[i].m_aEventBits.m_count = 0;
+        m_aEventClass[i].m_aEventBits = CExoArrayList<uint32_l_t>();
     }
     // The timer is kept in milliseconds, and the two position pairs below are separate fields.
     nTimer = g_pExoBase->m_pTimers->GetHighResolutionTimer();
@@ -312,11 +309,8 @@ void CExoInputInternal::ClearKeyboardEvents()
 
 void CExoInputInternal::ClearMouseEvents()
 {
-    while (m_mouseEventList.m_pInternal->m_pHead != 0) {
-        void* p = m_mouseEventList.RemoveHead();
-        if (p != 0)
-            ::operator delete(p);
-    }
+    while (m_mouseEventList.m_pInternal->m_pHead != 0)
+        delete m_mouseEventList.RemoveHead();
 }
 
 void CExoInputInternal::SetActive(int a)
@@ -459,17 +453,15 @@ int CExoInputInternal::GetLastCapturedKeyboardKey()
     int nResult = 0;
     if (m_pMainDevice != 0 && m_bCaptureKeyboardKeys != 0) {
         m_pMainDevice->GetKeyboardBuffer(buffer);
-        if (buffer.m_nCount != 0) {
-            int nKbStart = CExoInput::KEYBOARD_START;
-            int nJoyStart = CExoInput::JOYSTICK_START;
-            for (uint64_t i = 0; i < buffer.m_nCount; i++) {
-                if (buffer.m_pEntries[i].m_flags & INPUTKEY_DOWN) {
-                    int nKeyCode = buffer.m_pEntries[i].m_nKeyCode;
-                    for (int j = nKbStart; j < nJoyStart; j++) {
-                        if (nKeyCode == m_keyArray[j]) {
-                            nResult = j;
-                            break;
-                        }
+        int nKbStart = CExoInput::KEYBOARD_START;
+        int nJoyStart = CExoInput::JOYSTICK_START;
+        for (uint64_t i = 0; i < buffer.m_nCount; i++) {
+            if (buffer.m_pEntries[i].m_nValue & INPUTKEY_DOWN) {
+                int nKeyCode = buffer.m_pEntries[i].m_nKeyCode;
+                for (int j = nKbStart; j < nJoyStart; j++) {
+                    if (nKeyCode == m_keyArray[j]) {
+                        nResult = j;
+                        break;
                     }
                 }
             }
@@ -490,8 +482,8 @@ void CExoInputInternal::UpdateMouseDelta(float param_1)
 {
     K2_UNUSED(param_1);
     CExoMouseState state = {};
-    float fX = 0.0f;
     float fY = 0.0f;
+    float fX = 0.0f;
     if (m_pMainDevice->GetMouseState(state) == 1) {
         float fMax = fMaxMickies * 0.7f;
         Ios_lastfDeltaX = g_fMouseDeltaSmoothing * Ios_lastfDeltaX
@@ -613,22 +605,20 @@ int CExoInputInternal::SetEventRepeatable(unsigned int nEvent, unsigned int p2, 
 
 void CExoInputInternal::CoolDownEvent(unsigned int nEvent, unsigned int p2)
 {
-    CExoLinkedListInternal* pList = m_cooldownList.m_pInternal;
-    CExoLinkedListNode* pNode = pList->m_pHead;
+    CExoLinkedListNode* pNode = m_cooldownList.GetHeadPos();
     CExoInputEventDesc** ppEvent = &m_aEvents.m_pArray[static_cast<int>(nEvent)];
     if (*ppEvent != 0) {
         (*ppEvent)->m_nCooldown = p2;
         while (pNode != 0) {
-            CExoInputEventDesc** ppRec = static_cast<CExoInputEventDesc**>(pList->GetAtPos(pNode));
+            CExoInputEventDesc** ppRec = m_cooldownList.GetAtPos(pNode);
             if (*ppRec != 0 && (*ppRec)->m_nId == (*ppEvent)->m_nId) {
                 if (p2 == 0)
                     m_cooldownList.Remove(pNode);
                 return;
             }
             m_cooldownList.GetNext(pNode);
-            pList = m_cooldownList.m_pInternal;
         }
-        pList->AddTail(ppEvent);
+        m_cooldownList.AddTail(ppEvent);
     }
 }
 
@@ -764,26 +754,6 @@ void UpdateCusorVisible(float fElapsed)
     }
 }
 
-int CExoInputEventDesc::IsDetailed()
-{
-    return 0;
-}
-
-int CExoInputEventDesc::Is2Button()
-{
-    return 0;
-}
-
-int CExoInputEventDescDetailed::IsDetailed()
-{
-    return 1;
-}
-
-int CExoInputeventDesc2ButtonAxis::Is2Button()
-{
-    return 1;
-}
-
 // Records (or grows the bit mask for) event id `nEvent` in class `nType`, then reports whether it is
 // set. The query and the lazy grow are fused: the bit mask is an array that is resized to
 // nEvent/32*2 + 1 words the first time an id past its end is asked about, so this is as much an
@@ -860,17 +830,29 @@ int CExoInputInternal::CreateNewEvent(unsigned int nEvent, int nEventClass, int 
     case INPUTKIND_BUTTON:
     case INPUTKIND_STATE_B:
     case INPUTKIND_STATE_C:
-        pDesc = new CExoInputEventDesc(nEvent, nEventClass, nDevice);
+        pDesc = new CExoInputEventDesc;
+        pDesc->m_nId = static_cast<int>(nEvent);
+        pDesc->m_nEventClass = nEventClass;
+        pDesc->m_nDevice = nDevice;
         pDesc->m_nKeyCode = static_cast<int>(nKeyCode);
         break;
     case INPUTKIND_AXIS:
-        pDesc = new CExoInputEventDescDetailed(nEvent, 3, nDevice);
+        pDesc = new CExoInputEventDescDetailed;
+        pDesc->m_nId = static_cast<int>(nEvent);
+        pDesc->m_nEventClass = INPUTKIND_AXIS;
+        pDesc->m_nDevice = nDevice;
         pDesc->m_nKeyCode = static_cast<int>(nKeyCode);
         break;
-    case INPUTKIND_BUTTON_AXIS:
-        pDesc = new CExoInputeventDesc2ButtonAxis(nEvent, 4, nDevice, nKeyCode2);
-        pDesc->m_nKeyCode = static_cast<int>(nKeyCode);
+    case INPUTKIND_BUTTON_AXIS: {
+        CExoInputeventDesc2ButtonAxis* pAxis = new CExoInputeventDesc2ButtonAxis;
+        pAxis->m_nId = static_cast<int>(nEvent);
+        pAxis->m_nEventClass = INPUTKIND_BUTTON_AXIS;
+        pAxis->m_nDevice = nDevice;
+        pAxis->m_nKeyCode = static_cast<int>(nKeyCode);
+        pAxis->m_nKeyCode2 = static_cast<int>(nKeyCode2);
+        pDesc = pAxis;
         break;
+    }
     default:
         pDesc = 0;
         break;
@@ -886,7 +868,7 @@ void CExoInputInternal::ClearAllInputEventDescriptions()
 {
     for (int64_t nClass = 0; nClass < 6; nClass++) {
         for (int64_t nDevice = 0; nDevice < m_nDeviceCount; nDevice++) {
-            while (m_aEventClass[nClass].m_apDeviceLists[nDevice].m_pInternal->m_pHead != 0)
+            while (m_aEventClass[nClass].m_apDeviceLists[nDevice].GetHeadPos() != 0)
                 m_aEventClass[nClass].m_apDeviceLists[nDevice].RemoveHead();
         }
         for (int64_t i = 0; i < m_aEventClass[nClass].m_aEventBits.m_count; i++)
@@ -940,19 +922,11 @@ int CExoInputInternal::ScaleEvent(unsigned int nEvent, float fScaleX, float fSca
         } else if (static_cast<unsigned int>(pDesc->m_nEventClass) <= 5 &&
                    ((1 << pDesc->m_nEventClass) &
                     ((1 << INPUTKIND_STATE) | (1 << INPUTKIND_STATE_B) | (1 << INPUTKIND_STATE_C))) != 0) {
-            CExoInputEventDescDetailed* pNew = new CExoInputEventDescDetailed;
+            CExoInputEventDescDetailed* pNew = new CExoInputEventDescDetailed(pDesc);
             bScaled = 1;
-            pNew->m_nState = pDesc->m_nState;
-            pNew->m_nClassCount = pDesc->m_nClassCount;
-            pNew->m_nCooldown = pDesc->m_nCooldown;
-            pNew->m_nId = pDesc->m_nId;
-            pNew->m_nEventClass = pDesc->m_nEventClass;
-            pNew->m_nDevice = pDesc->m_nDevice;
-            pNew->m_nKeyCode = pDesc->m_nKeyCode;
             pNew->m_fScaleX = fScaleX;
             pNew->m_fScaleY = fScaleY;
             pNew->m_bScaled = 1;
-            pNew->m_nAxisState = 0;
             unsigned int nDevice = RemoveEvent(nEvent);
             m_aEvents.m_pArray[static_cast<int>(nEvent)] = pNew;
             AddEvent(nEvent, nDevice);
@@ -1034,9 +1008,9 @@ int CExoInputInternal::AddEvent(unsigned int nEvent, unsigned int nEventClass)
 
     pDesc->m_nClassCount++;
     if (pDesc->m_nDevice == CExoInput::INPUTDEVICE_NONE) {
-        m_aEventClass[nEventClass].m_unboundList.AddHead(reinterpret_cast<uint32_t*>(&pDesc->m_nId));
+        m_aEventClass[nEventClass].m_unboundList.AddHead(reinterpret_cast<uint32_l_t*>(&pDesc->m_nId));
     } else {
-        m_aEventClass[nEventClass].m_apDeviceLists[pDesc->m_nDevice].AddHead(reinterpret_cast<uint32_t*>(&pDesc->m_nId));
+        m_aEventClass[nEventClass].m_apDeviceLists[pDesc->m_nDevice].AddHead(reinterpret_cast<uint32_l_t*>(&pDesc->m_nId));
         int nWord = static_cast<int>(nEvent) / 32;
         m_aEventClass[nEventClass].m_aEventBits.m_pArray[nWord] |= 1 << (nEvent % 32);
     }
@@ -1241,9 +1215,8 @@ void CExoInputInternal::ClearEvents()
     while (m_mouseEventList.m_pInternal->m_pHead != 0) {
         CExoInputEvent* pEvent = m_mouseEventList.RemoveHead();
         if (pEvent != 0) {
-            if (pEvent->m_pEvent != 0)
-                ::operator delete(pEvent->m_pEvent);
-            ::operator delete(pEvent);
+            delete pEvent->m_pEvent;
+            delete pEvent;
         }
     }
 #if !KOTOR1
@@ -1337,7 +1310,10 @@ void CExoInputInternal::BufferEvent(int nDevice, unsigned int nControl, unsigned
     pEvent->m_nTimeStamp = 0;
     pEvent->m_nSequence = 0;
 
-    CExoInputEventDesc* pDesc = new CExoInputEventDesc(0, 0, nDevice);
+    CExoInputEventDesc* pDesc = new CExoInputEventDesc;
+    pDesc->m_nId = 0;
+    pDesc->m_nEventClass = 0;
+    pDesc->m_nDevice = nDevice;
     pDesc->m_nKeyCode = static_cast<int>(nControl);
     pEvent->m_pEvent = pDesc;
 
@@ -1616,6 +1592,8 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
 #endif
 
     CExoDeviceBuffer aBuffers[6];
+    CExoLinkedListNode* apNodes[6];
+    int nDevices;
 
     nCount = 0;
     m_eventQueue.m_count = 0;
@@ -1635,8 +1613,7 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
     }
 
     // Per-device binding-list cursors.
-    CExoLinkedListNode* apNodes[6];
-    int nDevices = m_nDeviceCount;
+    nDevices = m_nDeviceCount;
     for (int i = 0; i < nDevices; i++)
         apNodes[i] = m_aEventClass[nInputClass].m_apDeviceLists[i].GetHeadPos();
 
@@ -1653,22 +1630,17 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
     }
 
     unsigned int aConsumed[6];
-    bool bAllEmpty = true;
+    int bAllEmpty = 1;
+    for (int i = 0; i < nDevices; i++) {
+        aConsumed[i] = 0;
+        if (aBuffers[i].m_nCount != 0)
+            bAllEmpty = 0;
+    }
+    m_nEventQueueCount = 0;
     int nTotal = 0;
-    if (nDevices > 0) {
-        __builtin_memset(aConsumed, 0, sizeof(unsigned int) * nDevices);
-        for (int i = 0; i < nDevices; i++) {
-            if (aBuffers[i].m_nCount != 0)
-                bAllEmpty = false;
-        }
-        m_nEventQueueCount = 0;
-        for (int i = 0; i < nDevices; i++)
-            nTotal += aBuffers[i].m_nCount;
-    }
-    else {
-        m_nEventQueueCount = 0;
-    }
-    if (nDevices > 0 && nTotal != 0 && !bAllEmpty) {
+    for (int i = 0; i < nDevices; i++)
+        nTotal += aBuffers[i].m_nCount;
+    if (nTotal != 0 && !bAllEmpty) {
         // The per-frame key pump. The device buffers hold raw scancodes and the binding lists hold
         // event ids whose descriptors name the control each id is bound to. Pick a device, walk its
         // binding list for a descriptor whose control maps to the device's next buffered scancode,
@@ -1693,7 +1665,7 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
                     continue;
                 if (!bFound) {
                     if (aConsumed[i] < aBuffers[i].m_nCount) {
-                        CExoLinkedList<uint32_t>& rList = m_aEventClass[nInputClass].m_apDeviceLists[i];
+                        CExoLinkedList<uint32_l_t>& rList = m_aEventClass[nInputClass].m_apDeviceLists[i];
                         bool bMatch;
                         do {
                             bMatch = false;
@@ -1768,11 +1740,15 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
                             ++m_nEventQueueCount;
                         }
                         else {
+                            int nValue;
+                            int nState;
+                            int nLastValue;
+                            int nLastState;
                             int nThreshold = m_pMainDevice->GetControlThreshold(pEntry->m_nKeyCode);
-                            int nValue = pEntry->m_nValue;
-                            int nState = nValue >= -nThreshold ? static_cast<int>(nValue > nThreshold) : -1;
-                            int nLastValue = m_pMainDevice->GetLastState(nIdx, pEntry->m_nKeyCode);
-                            int nLastState = nLastValue >= -nThreshold ? static_cast<int>(nLastValue > nThreshold) : -1;
+                            nValue = pEntry->m_nValue;
+                            nState = nValue >= -nThreshold ? static_cast<int>(nValue > nThreshold) : -1;
+                            nLastValue = m_pMainDevice->GetLastState(nIdx, pEntry->m_nKeyCode);
+                            nLastState = nLastValue >= -nThreshold ? static_cast<int>(nLastValue > nThreshold) : -1;
                             if (nState != nLastState) {
                                 pDesc->m_nState = nState;
                                 CExoInputEvent sEvent;
@@ -1834,14 +1810,14 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
     }
 
     // Drain the queued mouse events into the per-device bound descriptors.
-    CExoLinkedListInternal* pMouseList = m_mouseEventList.m_pInternal;
-    while (pMouseList->m_pHead != 0) {
-        CExoInputEvent* pEvent = static_cast<CExoInputEvent*>(pMouseList->RemoveTail());
-        CExoLinkedListInternal* pBound = m_aEventClass[nInputClass].m_apDeviceLists[pEvent->m_pEvent->m_nDevice].m_pInternal;
-        CExoLinkedListNode* pNode = pBound->m_pHead;
+    while (m_mouseEventList.GetHeadPos() != 0) {
+        CExoInputEvent* pEvent = m_mouseEventList.RemoveTail();
+        CExoLinkedList<uint32_l_t>& rBound = m_aEventClass[nInputClass].m_apDeviceLists[pEvent->m_pEvent->m_nDevice];
+        CExoLinkedListNode* pNode = rBound.GetHeadPos();
         while (pNode != 0) {
-            int* pnId = static_cast<int*>(pBound->GetAtPos(pNode));
-            CExoInputEventDesc* pFound = m_aEvents.m_pArray[*pnId];
+            CExoInputEventDesc* pFound;
+            int* pnId = reinterpret_cast<int*>(rBound.GetAtPos(pNode));
+            pFound = m_aEvents.m_pArray[*pnId];
             if (static_cast<int>(static_cast<unsigned char>(pFound->m_nKeyCode)) == pEvent->m_pEvent->m_nKeyCode) {
                 CExoInputEvent sEvent;
                 sEvent.m_nValue = pEvent->m_nValue;
@@ -1854,12 +1830,10 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
                 *pnEventQueueCount = *pnEventQueueCount + 1;
                 break;
             }
-            pBound->GetNext(pNode);
+            rBound.GetNext(pNode);
         }
-        if (pEvent->m_pEvent != 0)
-            ::operator delete(pEvent->m_pEvent);
-        ::operator delete(pEvent);
-        pMouseList = m_mouseEventList.m_pInternal;
+        delete pEvent->m_pEvent;
+        delete pEvent;
     }
     m_nMouseX = -1;
     m_nMouseY = -1;
@@ -1869,39 +1843,36 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
     int& nLastTimer = m_nLastTimer;
     unsigned int nElapsed = nNow - nLastTimer;
     nLastTimer = static_cast<int>(nNow);
-    CExoLinkedListInternal* pCooldown = m_cooldownList.m_pInternal;
-    CExoLinkedListNode* pCd = pCooldown->m_pHead;
+    CExoLinkedListNode* pCd = m_cooldownList.GetHeadPos();
     while (pCd != 0) {
-        CExoLinkedListNode* pCur = pCd;
         // The cooldown list stores pointers into the event array (see CoolDownEvent), so what is
         // decayed here is the descriptor's own cooldown field.
-        CExoInputEventDesc** ppRec = static_cast<CExoInputEventDesc**>(pCooldown->GetAtPos(pCd));
-        CExoInputEventDesc* pRec = *ppRec;
+        CExoInputEventDesc* pRec;
+        unsigned int nLeft;
+        CExoInputEventDesc** ppRec = m_cooldownList.GetAtPos(pCd);
+        pRec = *ppRec;
         if (pRec == 0) {
-            pCooldown->GetNext(pCd);
+            m_cooldownList.GetNext(pCd);
         }
         else {
-            unsigned int nLeft = static_cast<unsigned int>(pRec->m_nCooldown) - nElapsed;
+            nLeft = static_cast<unsigned int>(pRec->m_nCooldown) - nElapsed;
             if (static_cast<unsigned int>(pRec->m_nCooldown) <= nElapsed) {
                 pRec->m_nCooldown = 0;
-                pCooldown->GetNext(pCd);
-                pCooldown->Remove(pCur);
+                CExoLinkedListNode* pCur = pCd;
+                m_cooldownList.GetNext(pCd);
+                m_cooldownList.Remove(pCur);
             }
             else {
                 pRec->m_nCooldown = static_cast<int>(nLeft);
-                pCooldown->GetNext(pCd);
+                m_cooldownList.GetNext(pCd);
             }
         }
-        if (pCd == 0)
-            break;
-        pCooldown = m_cooldownList.m_pInternal;
     }
 
     // Walk the repeat list, latching each repeat-timer record.
-    CExoLinkedListInternal* pRepeat = m_repeatList.m_pInternal;
-    CExoLinkedListNode* pRep = pRepeat->m_pHead;
+    CExoLinkedListNode* pRep = m_repeatList.GetHeadPos();
     while (pRep != 0) {
-        CExoInputRepeatEvent* pRec = static_cast<CExoInputRepeatEvent*>(pRepeat->GetAtPos(pRep));
+        CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pRep);
         if (pRec != 0 && IsEventInClass(pRec->m_nEventIndex, nInputClass) != 0) {
             // The repeat record mirrors the bound descriptor's current state word. A nonzero state
             // arms the timer, a state change restarts it, and the two thresholds (the first-repeat and
@@ -1957,10 +1928,7 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
                 }
             }
         }
-        pRepeat->GetNext(pRep);
-        if (pRep == 0)
-            break;
-        pRepeat = m_repeatList.m_pInternal;
+        m_repeatList.GetNext(pRep);
     }
 
     // The hardcoded pad mapping is the port's mobile layout for a game controller. aKeys holds five

@@ -804,72 +804,33 @@ void CSWCVisualEffectOnObject::StopVisualEffect(int a)
     m_bFinished = a;
 
     int bPlaying = 0;
-    m_anSlotTimer[0] = 0;
-    if (m_apSlotEffect[0] != 0)
+    float fUnused;
+    float fLength;
+    for (int i = 0; i < 3; i++)
     {
-        float fUnused;
-        float fLength;
-        m_apSlotEffect[0]->GetAnimation(const_cast<char*>("cessation"), &fUnused, &fLength);
-        if (m_apSlotEffect[0]->PlayAnimation(const_cast<char*>("cessation"), 1.0f, 1, 0.0f))
+        m_anSlotTimer[i] = 0;
+        if (m_apSlotEffect[i] != 0)
         {
-            m_aSlotId[0] = STAGE_CESSATION;
-            m_anSlotTimer[0] = static_cast<unsigned int>(fLength * 1000.0f);
-            m_nEffectDuration0 = m_anSlotTimer[0] + 3000;
-            bPlaying = 1;
+            m_apSlotEffect[i]->GetAnimation(const_cast<char*>("cessation"), &fUnused, &fLength);
+            if (m_apSlotEffect[i]->PlayAnimation(const_cast<char*>("cessation"), 1.0f, 1, 0.0f))
+            {
+                m_aSlotId[i] = STAGE_CESSATION;
+                m_anSlotTimer[i] = static_cast<unsigned int>(fLength * 1000.0f);
+                m_nEffectDuration0 = m_anSlotTimer[i] + 3000;
+                bPlaying = 1;
+            }
+            else
+                m_bEffect0Expired = 1;
         }
-        else
-        {
-            m_bEffect0Expired = 1;
-            bPlaying = 0;
-        }
-    }
-
-    m_anSlotTimer[1] = 0;
-    if (m_apSlotEffect[1] != 0)
-    {
-        float fUnused;
-        float fLength;
-        m_apSlotEffect[1]->GetAnimation(const_cast<char*>("cessation"), &fUnused, &fLength);
-        if (m_apSlotEffect[1]->PlayAnimation(const_cast<char*>("cessation"), 1.0f, 1, 0.0f))
-        {
-            m_aSlotId[1] = STAGE_CESSATION;
-            m_anSlotTimer[1] = static_cast<unsigned int>(fLength * 1000.0f);
-            m_nEffectDuration0 = m_anSlotTimer[1] + 3000;
-            bPlaying = 1;
-        }
-        else
-            m_bEffect0Expired = 1;
-    }
-
-    m_anSlotTimer[2] = 0;
-    if (m_apSlotEffect[2] != 0)
-    {
-        float fUnused;
-        float fLength;
-        m_apSlotEffect[2]->GetAnimation(const_cast<char*>("cessation"), &fUnused, &fLength);
-        if (m_apSlotEffect[2]->PlayAnimation(const_cast<char*>("cessation"), 1.0f, 1, 0.0f))
-        {
-            m_aSlotId[2] = STAGE_CESSATION;
-            m_anSlotTimer[2] = static_cast<unsigned int>(fLength * 1000.0f);
-            m_nEffectDuration0 = m_anSlotTimer[2] + 3000;
-            bPlaying = 1;
-        }
-        else
-            m_bEffect0Expired = 1;
     }
 
     if (a != 0 && !bPlaying)
         m_bExpiring = 1;
 
-    if (m_nState == STAGE_IMPACT)
-    {
-        RemoveHardCodedVisualEffect(m_nEffectId0);
-        UnloadHardCodedVisualEffect();
-    }
-    else if (m_nState == STAGE_DURATION)
+    if (m_nState == STAGE_DURATION)
     {
         if (!(static_cast<unsigned short>(m_nEffectId1 - PROGFX_LIGHT_SOURCE) < PROGFX_BAND_SIZE
-              && static_cast<unsigned int>(m_nEffectId2 - PROGFX_LIGHT_SOURCE) < PROGFX_BAND_SIZE))
+              && static_cast<unsigned short>(m_nEffectId2 - PROGFX_LIGHT_SOURCE) < PROGFX_BAND_SIZE))
         {
             RemoveHardCodedVisualEffect(m_nEffectId1);
             UnloadHardCodedVisualEffect();
@@ -884,6 +845,11 @@ void CSWCVisualEffectOnObject::StopVisualEffect(int a)
             m_hardCodedEffectClass = GetHardCodedEffectClass(m_nEffectId2);
             m_nEffectTimer = 1000;
         }
+    }
+    else if (m_nState == STAGE_IMPACT)
+    {
+        RemoveHardCodedVisualEffect(m_nEffectId0);
+        UnloadHardCodedVisualEffect();
     }
 
     if (m_nEffectId2 != PROGFX_NONE)
@@ -1013,20 +979,13 @@ void CSWCVisualEffectOnObject::DetachVisualEffect()
 {
     m_bAttached = 0;
 
-    if (m_apSlotEffect[0] != 0)
+    for (unsigned int i = 0; i < sizeof(m_apSlotEffect) / sizeof(m_apSlotEffect[0]); i++)
     {
-        m_apSlotEffect[0]->AttachToObject(0, 0, 0);
-        m_apSlotEffect[0]->AttachToScene(0);
-    }
-    if (m_apSlotEffect[1] != 0)
-    {
-        m_apSlotEffect[1]->AttachToObject(0, 0, 0);
-        m_apSlotEffect[1]->AttachToScene(0);
-    }
-    if (m_apSlotEffect[2] != 0)
-    {
-        m_apSlotEffect[2]->AttachToObject(0, 0, 0);
-        m_apSlotEffect[2]->AttachToScene(0);
+        if (m_apSlotEffect[i] != 0)
+        {
+            m_apSlotEffect[i]->AttachToObject(0, 0, 0);
+            m_apSlotEffect[i]->AttachToScene(0);
+        }
     }
 
     if (m_pLight != 0)
@@ -1245,20 +1204,13 @@ void CSWCVisualEffectOnObject::HideVisualEffect()
     if (m_bShown == 0)
         return;
 
-    if (m_apSlotEffect[0] != 0)
+    for (unsigned int i = 0; i < sizeof(m_apSlotEffect) / sizeof(m_apSlotEffect[0]); i++)
     {
-        m_apSlotEffect[0]->AttachToObject(0, 0, 0);
-        m_apSlotEffect[0]->AttachToScene(0);
-    }
-    if (m_apSlotEffect[1] != 0)
-    {
-        m_apSlotEffect[1]->AttachToObject(0, 0, 0);
-        m_apSlotEffect[1]->AttachToScene(0);
-    }
-    if (m_apSlotEffect[2] != 0)
-    {
-        m_apSlotEffect[2]->AttachToObject(0, 0, 0);
-        m_apSlotEffect[2]->AttachToScene(0);
+        if (m_apSlotEffect[i] != 0)
+        {
+            m_apSlotEffect[i]->AttachToObject(0, 0, 0);
+            m_apSlotEffect[i]->AttachToScene(0);
+        }
     }
     if (m_pLight != 0)
     {
@@ -1549,11 +1501,10 @@ unsigned char CSWCVisualEffectOnObject::GetHardCodedEffectClass(unsigned short n
 extern int quaternionidentityoptimization;
 
 // Rotates v by q, skipping the work when the rotation is the identity.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -1659,8 +1610,8 @@ void CSWCVisualEffectOnObject::AttachVFXModelToTargetModel(CAurObject* pTarget, 
 
     if (nOrientationOff != 0)
     {
-        Vector vPos;
         Quaternion qRot;
+        Vector vPos;
         pTarget->AttachToObject(pModel, sPart.CStr(), 3);
         pTarget->GetPartPosition(const_cast<char*>("root"), &vPos, &qRot);
         pTarget->SetPartPosition(const_cast<char*>("root"), vPos, Quaternion());

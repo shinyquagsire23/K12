@@ -14,10 +14,14 @@ CSWFeat::CSWFeat()
     m_nMinDEX = 0;
     m_nMinINT = 0;
     m_nMinWIS = 0;
-    memset(&m_nPrereqFeat1, -1, 16);  // idiom-exempt: 16 == the eight sentinel shorts +0x34..+0x43
+    m_nPrereqFeat1 = 0xffff;
+    m_nPrereqFeat2 = 0xffff;
+    m_nReqSkill = -1;
+    for (int i = 0; i < 5; i++)
+        m_anOrReqFeat[i] = 0xffff;
     m_nMinSpellLvl = 0;
-    m_maxUses = 0;
     m_nSuccessor = -1;
+    m_maxUses = 0;
     m_nSpellId = -1;
     m_nFlags = (m_nFlags & ~FLAG_MASK) | FLAG_PRESENT;
 #if !KOTOR1

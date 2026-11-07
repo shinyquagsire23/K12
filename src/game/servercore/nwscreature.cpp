@@ -286,12 +286,9 @@ int CSWSCreature::GetLastInstantEquip(unsigned int slot) {
 }
 
 unsigned char CSWSCreature::GetDetectMode() {
-    unsigned char mode = m_detectMode;
-    if (m_nAnimation != SERVER_ANIMATION_PAUSE)
-        return mode;
-    if (mode == 1)
-        return mode;
-    return 2;
+    if (m_nAnimation == SERVER_ANIMATION_PAUSE && m_detectMode != 1)
+        return 2;
+    return m_detectMode;
 }
 
 // Computes the maximum force points as either the per-level advancement record's formula (WIS
@@ -445,17 +442,15 @@ short CSWSCreature::GetArmorClass()
         nDodge = 10;
     nAC += static_cast<signed char>(nDodge);
     nAC += static_cast<signed char>(m_pStats->GetDEXMod(1));
-    nAC += static_cast<signed char>(m_pStats->GetTotalACFeatMod());
+    nAC += m_pStats->GetTotalACFeatMod();
     if (IsDebilitated())
         nAC -= 4;
     return nAC;
 #else
     int nAC = 0;
-    if (m_pStats->m_numClasses != 0) {
-        for (int64_t i = 0; i < m_pStats->m_numClasses; i++) {
-            nAC += static_cast<signed char>(g_pRules->m_paClasses[m_pStats->GetClass(static_cast<unsigned char>(i))]
-                       .GetArmorBonus(m_pStats->GetClassLevel(static_cast<unsigned char>(i), 0)));
-        }
+    for (int64_t i = 0; i < m_pStats->m_numClasses; i++) {
+        nAC += static_cast<signed char>(g_pRules->GetClass(m_pStats->GetClass(static_cast<unsigned char>(i)))
+                   ->GetArmorBonus(m_pStats->GetClassLevel(static_cast<unsigned char>(i), 0)));
     }
 
 #if !KOTOR1
@@ -477,7 +472,7 @@ short CSWSCreature::GetArmorClass()
         nDodge = 10;
     nAC += static_cast<signed char>(nDodge);
     nAC += static_cast<signed char>(m_pStats->GetDEXMod(1));
-    nAC += static_cast<signed char>(m_pStats->GetTotalACFeatMod());
+    nAC += m_pStats->GetTotalACFeatMod();
 
     if (IsDebilitated(1))
         return static_cast<short>(nAC + 6);
@@ -609,10 +604,10 @@ void CSWSCreature::GetSpikeDetails(CExoArrayList<CSWGuiInterfaceAction>& list, u
 {
     CItemRepository* pRepo;
     pRepo = GetItemRepository(1);
-    CExoString sName;
     CSWItemProperty* pProp;
+    CExoString sName;
     int nLanguage = g_pAppManager->m_pClientExoApp->GetClientLanguage();
-    if (pRepo != 0 && pRepo->ItemListGetCount() != 0) {
+    if (pRepo != 0) {
         int nIdx = list.m_count;
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
             CSWSItem* pItem = pRepo->ItemListGetItem(i);
@@ -940,6 +935,7 @@ void CSWSCreature::AddToArea(CSWSArea* pArea, float x, float y, float z, int a, 
 #endif
 
     CSWSMessage* pMsg = 0;
+    CSWSArea* pCurArea;
     if (static_cast<CSWSArea*>(GetArea()) != pArea && pPlayer != 0
         && pArea->m_objectId != m_currentAreaId)
     {
@@ -963,12 +959,14 @@ void CSWSCreature::AddToArea(CSWSArea* pArea, float x, float y, float z, int a, 
     }
     else
     {
-        Vector vPos;
-        vPos.x = x;
-        vPos.y = y;
-        vPos.z = z;
-        SetPosition(vPos, 1, 1, 0);
-        CSWSArea* pCurArea = static_cast<CSWSArea*>(GetArea());
+        {
+            Vector vPos;
+            vPos.x = x;
+            vPos.y = y;
+            vPos.z = z;
+            SetPosition(vPos, 1, 1, 0);
+        }
+        pCurArea = static_cast<CSWSArea*>(GetArea());
         if (a == 1 || pCurArea != pArea)
             pArea->AddObjectToArea(m_objectId, a == 0);
         SetArea(pArea);
@@ -2315,7 +2313,7 @@ int CSWSCreature::UseItem(unsigned long long oidItem, unsigned char nProperty, u
     if ((pProperty->m_nUpgradeType == CSWItemProperty::UPGRADE_TYPE_NONE
          || (pItem->m_nUpgrades & (1 << pProperty->m_nUpgradeType)) != 0)
         && pProperty->m_type == ITEM_PROPERTY_ACTIVATE_ITEM) {
-        if (pProperty->m_bUseableByte != 0) {
+        if (static_cast<unsigned char>(pProperty->m_bUseable) != 0) {
             if (pObject != 0 && pObject->AsSWSCreature() != 0) {
                 CSWVisibilityNode* pNode = GetVisibleListElement(oidTarget);
                 if (pNode != 0 && (pNode->m_flags & VISIBILITY_PACIFY_STATE_MASK) == VISIBILITY_PACIFIED)
@@ -2768,24 +2766,16 @@ int CSWSCreature::CancelAction(unsigned short nActionId, unsigned short nGroupId
 {
     K2_UNUSED(nActionId);
     // arg1 (nActionId) is unused; only the group id is matched.
-    CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
-    if (pNode == 0)
-        return 0;
-    CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(pNode->m_pData);
-    if (pAction == 0)
-        return 0;
+    CSWSObjectActionNode* pAction = m_actionList.GetHead();
+    CExoLinkedListNode* pNode = m_actionList.GetHeadPos();
     int nRemoved = 0;
-    do {
+    while (pAction != 0) {
         if (pAction->m_nGroupId == nGroupId) {
             CExoLinkedListNode* pCur = pNode;
             pAction = static_cast<CSWSObjectActionNode*>(m_actionList.GetNext(pNode));
             CSWSObjectActionNode* pCurAction =
                 static_cast<CSWSObjectActionNode*>(m_actionList.GetAtPos(pCur));
-            CExoLinkedListNode* pHead = m_actionList.m_pInternal->m_pHead;
-            void* pHeadData = 0;
-            if (pHead != 0)
-                pHeadData = pHead->m_pData;
-            if (ClearAction(pCurAction, pHeadData == pCurAction) == 1) {
+            if (ClearAction(pCurAction, pCurAction == m_actionList.GetHead()) == 1) {
                 CSWSObjectActionNode* pRemoved =
                     static_cast<CSWSObjectActionNode*>(m_actionList.Remove(pCur));
                 if (pRemoved != 0)
@@ -2795,7 +2785,7 @@ int CSWSCreature::CancelAction(unsigned short nActionId, unsigned short nGroupId
         } else {
             pAction = static_cast<CSWSObjectActionNode*>(m_actionList.GetNext(pNode));
         }
-    } while (pAction != 0);
+    }
     return nRemoved;
 }
 
@@ -6739,8 +6729,7 @@ int CSWSCreature::DoListenDetection(CSWSCreature* pTarget, int a)
     float fDeltaZ = vSelf.z - vTarget.z;
 #if KOTOR1  // K1: the distance sum is formed separately in each arm.
     float fDistSq;
-    if (a != 0 || (m_nVisionFlags & VISION_BLINDNESS) != 0
-        || (m_nVisionFlags & (VISION_ULTRAVISION | VISION_DARKNESS)) == VISION_DARKNESS) {
+    if (a != 0 || GetBlind() != 0) {
         fDistSq = fDeltaX * fDeltaX + fDeltaY * fDeltaY + fDeltaZ * fDeltaZ;
         float fReach = MaxAttackRange(pTarget->m_objectId, 0, 0);
         if (fDistSq > fReach * fReach)
@@ -7415,7 +7404,7 @@ int CSWSCreature::GetItemCount(int a, int b, int c)
 #endif
             CSWSItem* pItem = static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(1 << i));
             if (pItem != 0 &&
-                (a == 0 || (pItem->m_nFlagsLow & 8) != 0) &&
+                (a == 0 || (pItem->m_flags & 8) != 0) &&
                 (c == 0 || pItem->m_bPlot == 0)) {
                 nCount++;
             }
@@ -7423,11 +7412,11 @@ int CSWSCreature::GetItemCount(int a, int b, int c)
     }
     CItemRepository* pRepo;
     pRepo = GetItemRepository(1);
-    if (pRepo != 0 && pRepo->ItemListGetCount() != 0) {
+    if (pRepo != 0) {
         for (unsigned int nItem = 0; nItem < pRepo->ItemListGetCount(); nItem++) {
             CSWSItem* pItem = pRepo->ItemListGetItem(nItem);
             if (pItem != 0 &&
-                (a == 0 || (pItem->m_nFlagsLow & 8) != 0) &&
+                (a == 0 || (pItem->m_flags & 8) != 0) &&
                 (c == 0 || pItem->m_bPlot == 0)) {
                 nCount++;
             }
@@ -7566,19 +7555,17 @@ int CSWSCreature::GetHasPlotItemUseableOnObject()
 {
     CItemRepository* pRepo;
     pRepo = GetItemRepository(1);
-    if (pRepo->ItemListGetCount() != 0) {
-        for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
-            CSWSItem* pItem = pRepo->ItemListGetItem(i);
-            if (pItem == 0 || pItem->m_bPlot == 0)
-                continue;
-            CSWItemProperty* pProp;
-            if (!pItem->GetPropertyByType(&pProp, ITEM_PROPERTY_ACTIVATE_ITEM, 0))
-                continue;
-            unsigned short nSubType = pProp->m_subType;
-            CSWSpell* pSpell = g_pRules->GetSpell(nSubType);
-            if (pSpell != 0 && pSpell->m_nItemTargeting == 2)
-                return 1;
-        }
+    for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++) {
+        CSWSItem* pItem = pRepo->ItemListGetItem(i);
+        if (pItem == 0 || pItem->m_bPlot == 0)
+            continue;
+        CSWItemProperty* pProp;
+        if (!pItem->GetPropertyByType(&pProp, ITEM_PROPERTY_ACTIVATE_ITEM, 0))
+            continue;
+        unsigned short nSubType = pProp->m_subType;
+        CSWSpell* pSpell = g_pRules->GetSpell(nSubType);
+        if (pSpell != 0 && pSpell->m_nItemTargeting == 2)
+            return 1;
     }
     return 0;
 }
@@ -7664,7 +7651,7 @@ void CSWSCreature::PacifyCreature(unsigned long long objectId)
 void CSWSCreature::PacifyCreature()
 {
     CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
-    if (pArea != 0 && pArea->m_aObjectsByX.m_count >= 1) {
+    if (pArea != 0) {
         for (int i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
             CSWSCreature* pCr =
                 g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(pArea->m_aObjectsByX.m_pArray[i]);
@@ -7813,17 +7800,15 @@ int CSWSCreature::RemoveAction(unsigned int nActionId)
 {
     int nRemoved = 0;
     CExoLinkedListNode* pPos = m_actionList.m_pInternal->m_pHead;
-    if (pPos != 0) {
-        do {
-            CSWSObjectActionNode* pNode = static_cast<CSWSObjectActionNode*>(m_actionList.GetAtPos(pPos));
-            if (static_cast<unsigned int>(pNode->m_nActionId) == nActionId && ClearAction(pNode, 1) == 1) {
-                m_actionList.Remove(pPos);
-                nRemoved = 1;
-                delete pNode;
-                break;
-            }
-            m_actionList.GetNext(pPos);
-        } while (pPos != 0);
+    while (pPos != 0) {
+        CSWSObjectActionNode* pNode = static_cast<CSWSObjectActionNode*>(m_actionList.GetAtPos(pPos));
+        if (static_cast<unsigned int>(pNode->m_nActionId) == nActionId && ClearAction(pNode, 1) == 1) {
+            m_actionList.Remove(pPos);
+            nRemoved = 1;
+            delete pNode;
+            break;
+        }
+        m_actionList.GetNext(pPos);
     }
     return nRemoved;
 }
@@ -7896,17 +7881,13 @@ void CSWSCreature::LoadAttackerList(CResGFF* pGFF, CResStruct* pStruct)
     CResList list;
     if (pGFF->GetList(&list, pStruct, const_cast<char*>("AttackerList")) == 1) {
         m_pAttackerList = new CExoArrayList<unsigned long long>();
-        if (pGFF->GetListCount(&list) != 0) {
-            unsigned int i = 0;
-            do {
-                CResStruct elem;
-                pGFF->GetListElement(&elem, &list, i);
-                int bSuccess;
-                unsigned long long attackerId =
-                    pGFF->ReadFieldDWORD(&elem, const_cast<char*>("ObjectId"), bSuccess, OBJECT_INVALID);
-                m_pAttackerList->Add(attackerId);
-                i++;
-            } while (i < pGFF->GetListCount(&list));
+        for (unsigned int i = 0; i < pGFF->GetListCount(&list); i++) {
+            CResStruct elem;
+            pGFF->GetListElement(&elem, &list, i);
+            int bSuccess;
+            unsigned long long attackerId =
+                pGFF->ReadFieldDWORD(&elem, const_cast<char*>("ObjectId"), bSuccess, OBJECT_INVALID);
+            m_pAttackerList->Add(attackerId);
         }
     }
 }
@@ -8378,8 +8359,7 @@ CSWSCreature::~CSWSCreature()
     for (int i = m_visibilityList.m_count - 1; i >= 0; i--) {
         CSWVisibilityNode* pNode = m_visibilityList.m_pArray[i];
         m_visibilityList.DelIndex(i);
-        if (pNode != 0)
-            operator delete(pNode);
+        delete pNode;
     }
 
     if (m_pJournal != NULL) {
@@ -9118,7 +9098,7 @@ void CSWSCreature::UpdateMineCheck()
     if (nMsSince < nInterval)
         return;
 
-    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->m_fChallengeRating = 1;
+    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->m_bRanMineCheck = 1;
     CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
     if (pArea != 0) {
         CServerExoApp* pServerApp = g_pAppManager->m_pServerExoApp;
@@ -9981,6 +9961,8 @@ CExoArrayList<CGameEffect*> CSWSCreature::GetFilteredEffectList(unsigned char nT
 
     if (nType == 2)
     {
+        int nRankNew;
+        int nRankOld;
         if (m_effects.m_count > 0)
         {
             for (int i = m_pStats->m_iFirstDamageIncrease; i < m_effects.m_count; i++)
@@ -10015,8 +9997,6 @@ CExoArrayList<CGameEffect*> CSWSCreature::GetFilteredEffectList(unsigned char nT
 
             rankDamage:
                 {
-                    int nRankNew;
-                    int nRankOld;
                     Log_Base2(pEffect->GetInteger(1));
                     g_pRules->m_p2DArrays->m_pIPRPDamage->GetINTEntry(
                         pEffect->GetInteger(0), "Rank", &nRankNew);
@@ -10492,13 +10472,13 @@ void CSWSCreature::ProcessPendingCombatActions()
 {
     if (m_pCombatRound->GetActionPending() == 0)
         return;
-    if (m_pCombatRound->m_pRoundActionList == 0)
+    CExoLinkedList<CSWSCombatRoundAction>* pList = m_pCombatRound->m_pRoundActionList;
+    if (pList == 0)
         return;
-    CExoLinkedListInternal* pInternal = m_pCombatRound->m_pRoundActionList->m_pInternal;
-    CExoLinkedListNode* pNode = pInternal->m_pTail;
+    CExoLinkedListNode* pNode = pList->GetTailPos();
     if (pNode == 0)
         return;
-    CSWSCombatRoundAction* pAction = static_cast<CSWSCombatRoundAction*>(pInternal->GetAtPos(pNode));
+    CSWSCombatRoundAction* pAction = pList->GetAtPos(pNode);
     while (pNode != 0) {
         if (pAction->m_nActionType == 6) {
             CSWSItem* pItem =
@@ -10508,9 +10488,9 @@ void CSWSCreature::ProcessPendingCombatActions()
                                     pAction->m_bIsPC, 0, 0);
                 CExoLinkedListNode* pOldNode = pNode;
                 CSWSCombatRoundAction* pOldAction = pAction;
-                pAction = static_cast<CSWSCombatRoundAction*>(pInternal->GetPrev(pNode));
+                pAction = pList->GetPrev(pNode);
                 if (pOldNode != 0) {
-                    pInternal->Remove(pOldNode);
+                    pList->Remove(pOldNode);
                     delete pOldAction;
                 }
                 continue;
@@ -10522,15 +10502,15 @@ void CSWSCreature::ProcessPendingCombatActions()
                 AddUnequipActions(pItem, pAction->m_oidTargetRepository, 1, 1, pAction->m_nActionParam, 0, 0);
                 CExoLinkedListNode* pOldNode = pNode;
                 CSWSCombatRoundAction* pOldAction = pAction;
-                pAction = static_cast<CSWSCombatRoundAction*>(pInternal->GetPrev(pNode));
+                pAction = pList->GetPrev(pNode);
                 if (pOldNode != 0) {
-                    pInternal->Remove(pOldNode);
+                    pList->Remove(pOldNode);
                     delete pOldAction;
                 }
                 continue;
             }
         }
-        pAction = static_cast<CSWSCombatRoundAction*>(pInternal->GetPrev(pNode));
+        pAction = pList->GetPrev(pNode);
     }
 }
 

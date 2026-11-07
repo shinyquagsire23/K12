@@ -84,6 +84,7 @@ public:
     // Sets the card to display `card` and repaints the caption and border key from the engine's
     // static label/image tables.
     void SetCard(CPazaakCard card);
+    CPazaakCard GetCard() { return m_card; }
 
 public:
     CSWGuiLabel    m_label;

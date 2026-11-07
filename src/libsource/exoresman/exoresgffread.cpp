@@ -26,21 +26,12 @@ void CResGFFFieldIDHash::Initialize()
 // Hashes a name of nLength bytes.
 unsigned int CResGFFFieldIDHash::Hash(const char* pszName, unsigned int nLength)
 {
-    if (nLength == 0)
-        return 0;
-
     unsigned int nHash = 0;
-    uint64_t nRemaining = nLength;
-
-    do
+    for (unsigned int i = 0; i < nLength; i++)
     {
-        if (*pszName == 0)
+        if (pszName[i] == 0)
             break;
-
-        nHash = m_nCRC32[(nHash & 0xff) ^ static_cast<unsigned char>(*pszName)] ^ (nHash >> 8);
-        pszName++;
+        nHash = m_nCRC32[(nHash & 0xff) ^ static_cast<unsigned char>(pszName[i])] ^ (nHash >> 8);
     }
-    while (--nRemaining != 0);
-
     return nHash;
 }

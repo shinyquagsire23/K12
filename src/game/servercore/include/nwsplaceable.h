@@ -234,10 +234,7 @@ public:
     int           m_bIsBodyBagVisible;
     unsigned long long m_oidCorpse;
     // Zeroed as one 8-byte word by the constructor.
-    union {
-        unsigned long long m_nCorpseFlags;
-        struct { int m_bIsCorpse; int m_bUseAnimationPending; } m_corpse;
-    };
+    struct { int m_bIsCorpse; int m_bUseAnimationPending; } m_corpse;
 #if !KOTOR1
     class CSWSTrigger* m_pOwnedTrigger;
 #endif

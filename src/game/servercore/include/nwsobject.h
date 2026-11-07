@@ -111,7 +111,7 @@ public:
     virtual int DoDamageReduction(CSWSCreature* pAttacker, int nDamage, unsigned char a, int b, int c);
     virtual int DoDamageResistance(CSWSCreature* pAttacker, int nDamage, unsigned short nFlags, int a, int b, int c);
     virtual int DoDamageImmunity(CSWSCreature* pAttacker, int nDamage, unsigned short nFlags, int a, int b);
-    virtual int GetDamageImmunity(unsigned char nType);
+    virtual char GetDamageImmunity(unsigned char nType);
     virtual char GetDamageImmunityByFlags(unsigned short nFlags);
     virtual unsigned int GetEffectSpellId();
     virtual void SetEffectSpellId(unsigned int nSpellId);
@@ -749,7 +749,17 @@ struct CSWActionNode {
 
     unsigned long long m_targetId;
 
-    CSWActionNode() { ClearData(); }
+    CSWActionNode()
+    {
+        m_nGroupId = SLOT_EMPTY;
+        m_nActionId = SLOT_EMPTY;
+        m_nAltActionId = SLOT_EMPTY;
+        m_vTarget.x = 0.0f;
+        m_vTarget.y = 0.0f;
+        m_vTarget.z = 0.0f;
+        m_targetId = OBJECT_INVALID;
+        m_nSpellId = -1;
+    }
 
     // Back to an empty slot.
     void ClearData()

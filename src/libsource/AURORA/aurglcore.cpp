@@ -365,8 +365,7 @@ static PBUFFERARB_IOS* s_pPBuffer;
 #if !KOTOR1
 static PBUFFERARB_IOS* s_pDistortPBuffer;
 #endif
-static PBUFFERARB_IOS* s_pHalfPBuffer1;
-static PBUFFERARB_IOS* s_pHalfPBuffer2;
+static PBUFFERARB_IOS* s_apHalfPBuffer[2];
 static PBUFFERARB_IOS* s_pHalfPBuffer3;
 
 
@@ -927,7 +926,7 @@ struct VertexArraysInfo {
 }
 
 unsigned int GLRender::RequestPool(Aurora::AuroraBufferRequestType eType, unsigned int a,
-                                   unsigned int b, unsigned int c, unsigned int* pnOut)
+                                   unsigned int b, unsigned int c, uint32_l_t* pnOut)
 {
     K2_UNUSED(c);
     unsigned int nPool = manRef->RequestPoolGeneric(eType, a, b);
@@ -2343,7 +2342,7 @@ void GLRender::InitializeFrameBufferModifications()
 
 Vector GLRender::m_vSaturationMultiplier(1.0f, 1.0f, 1.0f);
 
-List<unsigned int> GLRender::cm_listSquaresToRender;
+List<uint32_l_t> GLRender::cm_listSquaresToRender;
 
 void GLRender::AddSquareToRender(unsigned int nHandle)
 {
@@ -2384,10 +2383,8 @@ void GLRender::RenderSquares(unsigned int nHandle)
     {
         ASLgl::glBegin(2);
         ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex->color));
-        ASLgl::glVertex3fv(pVertex[0].pos);
-        ASLgl::glVertex3fv(pVertex[1].pos);
-        ASLgl::glVertex3fv(pVertex[2].pos);
-        ASLgl::glVertex3fv(pVertex[3].pos);
+        for (int i = 0; i < 4; i++)
+            ASLgl::glVertex3fv(pVertex[i].pos);
         ASLgl::glEnd();
     }
 }
@@ -2597,13 +2594,11 @@ void GLRender::RenderObjectsVTC(Aurora::AuroraPrimitiveTypes eType, unsigned int
     {
         ASLgl::glBegin(primTypeTranslationTable[eType]);
         RenderVertexVTC* pVertex = reinterpret_cast<RenderVertexVTC*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex->color));
-            ASLgl::glTexCoord2f(pVertex->u, pVertex->v);
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex[i].color));
+            ASLgl::glTexCoord2f(pVertex[i].u, pVertex[i].v);
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2614,31 +2609,29 @@ void GLRender::RenderObjectsVTCQuadUP(RenderVertexVTC* paVertices, int nCount)
     if (AurVertexBufferObjectARBAvailable())
     {
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, 0);
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_COLOR_ARRAY);
-        ASLgl::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glDisableClientState(GL_NORMAL_ARRAY);
+        EnableClientState(Aurora::kClientStateVertex);
+        EnableClientState(Aurora::kClientStateColor);
+        EnableClientState(Aurora::kClientStateTexCoord);
+        DisableClientState(Aurora::kClientStateNormal);
         ASLgl::glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(RenderVertexVTC), &paVertices->color);
         ASLgl::glTexCoordPointer(2, GL_FLOAT, sizeof(RenderVertexVTC), &paVertices->u);
         ASLgl::glVertexPointer(3, GL_FLOAT, sizeof(RenderVertexVTC), paVertices);
         ASLgl::glDrawArrays(7, 0, nCount);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, 0);
 #if !KOTOR1 // K1: the colour and texcoord arrays stay enabled
-        ASLgl::glDisableClientState(GL_COLOR_ARRAY);
-        ASLgl::glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        DisableClientState(Aurora::kClientStateColor);
+        DisableClientState(Aurora::kClientStateTexCoord);
 #endif
     }
     else
     {
         ASLgl::glBegin(7);
         RenderVertexVTC* pVertex = paVertices;
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex->color));
-            ASLgl::glTexCoord2f(pVertex->u, pVertex->v);
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex[i].color));
+            ASLgl::glTexCoord2f(pVertex[i].u, pVertex[i].v);
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2664,13 +2657,11 @@ void GLRender::RenderObjectsVTCQuad(unsigned int nPool, int nCount)
     {
         ASLgl::glBegin(7);
         RenderVertexVTC* pVertex = reinterpret_cast<RenderVertexVTC*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex->color));
-            ASLgl::glTexCoord2f(pVertex->u, pVertex->v);
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex[i].color));
+            ASLgl::glTexCoord2f(pVertex[i].u, pVertex[i].v);
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2693,12 +2684,10 @@ void GLRender::RenderObjectsVTQuadUP(RenderVertexVT* paVertices, int nCount)
     {
         ASLgl::glBegin(7);
         RenderVertexVT* pVertex = paVertices;
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glTexCoord2f(pVertex->u, pVertex->v);
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glTexCoord2f(pVertex[i].u, pVertex[i].v);
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2722,12 +2711,10 @@ void GLRender::RenderObjectsVTQuad(unsigned int nPool, int nCount)
     {
         ASLgl::glBegin(7);
         RenderVertexVT* pVertex = reinterpret_cast<RenderVertexVT*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glTexCoord2f(pVertex->u, pVertex->v);
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glTexCoord2f(pVertex[i].u, pVertex[i].v);
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2755,12 +2742,10 @@ void GLRender::RenderObjectsVTQuadStrip(unsigned int nPool, int nCount)
     {
         ASLgl::glBegin(8);
         RenderVertexVT* pVertex = reinterpret_cast<RenderVertexVT*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glTexCoord2f(pVertex->u, pVertex->v);
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glTexCoord2f(pVertex[i].u, pVertex[i].v);
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2771,9 +2756,9 @@ void GLRender::RenderObjectsVTNQuadStrip(unsigned int nPool, int nCount)
     if (AurVertexBufferObjectARBAvailable())
     {
         char* pPool = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glEnableClientState(GL_NORMAL_ARRAY);
+        EnableClientState(Aurora::kClientStateVertex);
+        EnableClientState(Aurora::kClientStateTexCoord);
+        EnableClientState(Aurora::kClientStateNormal);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pPool)));
         ASLgl::glTexCoordPointer(2, GL_FLOAT, sizeof(RenderVertexVTN), reinterpret_cast<void*>(offsetof(RenderVertexVTN, u)));
         ASLgl::glVertexPointer(3, GL_FLOAT, sizeof(RenderVertexVTN), static_cast<void*>(0));
@@ -2789,13 +2774,11 @@ void GLRender::RenderObjectsVTNQuadStrip(unsigned int nPool, int nCount)
     {
         ASLgl::glBegin(8);
         RenderVertexVTN* pVertex = reinterpret_cast<RenderVertexVTN*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glTexCoord2f(pVertex->u, pVertex->v);
-            ASLgl::glNormal3f(pVertex->normal[0], pVertex->normal[1], pVertex->normal[2]);
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glTexCoord2f(pVertex[i].u, pVertex[i].v);
+            ASLgl::glNormal3f(pVertex[i].normal[0], pVertex[i].normal[1], pVertex[i].normal[2]);
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2819,12 +2802,10 @@ void GLRender::RenderObjectsVCUP(Aurora::AuroraPrimitiveTypes eType, RenderVerte
     {
         ASLgl::glBegin(primTypeTranslationTable[eType]);
         RenderVertexVC* pVertex = paVertices;
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex->color));
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex[i].color));
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2850,12 +2831,10 @@ void GLRender::RenderObjectsVC(Aurora::AuroraPrimitiveTypes eType, unsigned int 
     {
         ASLgl::glBegin(primTypeTranslationTable[eType]);
         RenderVertexVC* pVertex = reinterpret_cast<RenderVertexVC*>(pPool);
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex->color));
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex[i].color));
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2881,13 +2860,11 @@ void GLRender::RenderObjectsVCQuads(unsigned int nPool, int nOffset, int nCount)
     else
     {
         ASLgl::glBegin(7);
-        RenderVertexVC* pVertex = reinterpret_cast<RenderVertexVC*>(pPool) + nOffset;
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        RenderVertexVC* pVertex = reinterpret_cast<RenderVertexVC*>(pPool);
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex->color));
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glColor4ubv(reinterpret_cast<unsigned char*>(&pVertex[nOffset + i].color));
+            ASLgl::glVertex3fv(pVertex[nOffset + i].pos);
         }
         ASLgl::glEnd();
     }
@@ -2899,9 +2876,9 @@ void GLRender::RenderObjectsVTN(Aurora::AuroraPrimitiveTypes eType, unsigned int
     char* pPool = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(manRef->GetPool(nPool)));
     if (bVBO)
     {
-        ASLgl::glEnableClientState(GL_VERTEX_ARRAY);
-        ASLgl::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        ASLgl::glEnableClientState(GL_NORMAL_ARRAY);
+        EnableClientState(Aurora::kClientStateVertex);
+        EnableClientState(Aurora::kClientStateTexCoord);
+        EnableClientState(Aurora::kClientStateNormal);
         ASLgl::glBindBufferARB(GL_ARRAY_BUFFER, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pPool)));
         ASLgl::glTexCoordPointer(2, GL_FLOAT, sizeof(RenderVertexVTN), reinterpret_cast<void*>(offsetof(RenderVertexVTN, u)));
         ASLgl::glNormalPointer(GL_FLOAT, sizeof(RenderVertexVTN), reinterpret_cast<void*>(offsetof(RenderVertexVTN, normal)));
@@ -2913,13 +2890,11 @@ void GLRender::RenderObjectsVTN(Aurora::AuroraPrimitiveTypes eType, unsigned int
     {
         ASLgl::glBegin(primTypeTranslationTable[eType]);
         RenderVertexVTN* pVertex = reinterpret_cast<RenderVertexVTN*>(pPool);
-        if (nCount > 0)
-        for (uint64_t i = static_cast<unsigned int>(nCount); i > 0; i--)
+        for (int i = 0; i < nCount; i++)
         {
-            ASLgl::glTexCoord2f(pVertex->u, pVertex->v);
-            ASLgl::glNormal3f(pVertex->normal[0], pVertex->normal[1], pVertex->normal[2]);
-            ASLgl::glVertex3fv(pVertex->pos);
-            pVertex++;
+            ASLgl::glTexCoord2f(pVertex[i].u, pVertex[i].v);
+            ASLgl::glNormal3f(pVertex[i].normal[0], pVertex[i].normal[1], pVertex[i].normal[2]);
+            ASLgl::glVertex3fv(pVertex[i].pos);
         }
         ASLgl::glEnd();
     }
@@ -3081,10 +3056,8 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         GLRender::SetActiveTexture(1);
         ASLgl::glEnable(GL_TEXTURE_2D);
         pTex1->Bind();
-        cm_uiCurrentStage = 2;
         tex1on = 1;
-        if (AurMultiTextureAvailable())
-            ASLgl::glActiveTextureARB(cm_uiCurrentStage + GL_TEXTURE0);
+        GLRender::SetActiveTexture(2);
         ASLgl::glEnable(GL_TEXTURE_3D);
         pTex2->Bind();
         ASLgl::glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -3105,14 +3078,13 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         pTex0->Bind();
         GLRender::SetActiveTexture(1);
         pTex1->Bind();
-        unsigned int nEnable;
         if (!pTex1->IsCubeMap())
         {
             ASLgl::glEnable(GL_TEXTURE_2D);
             ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
             ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
-            nEnable = GL_TEXTURE_GEN_T;
+            ASLgl::glEnable(GL_TEXTURE_GEN_T);
         }
         else
         {
@@ -3121,9 +3093,8 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
             ASLgl::glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
             ASLgl::glEnable(GL_TEXTURE_GEN_T);
-            nEnable = GL_TEXTURE_GEN_R;
+            ASLgl::glEnable(GL_TEXTURE_GEN_R);
         }
-        ASLgl::glEnable(nEnable);
         break;
     }
 
@@ -3458,14 +3429,13 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
         pTex0->Bind();
         GLRender::SetActiveTexture(1);
         pTex1->Bind();
-        unsigned int nEnable;
         if (!pTex1->IsCubeMap())
         {
             ASLgl::glEnable(GL_TEXTURE_2D);
             ASLgl::glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
             ASLgl::glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
-            nEnable = GL_TEXTURE_GEN_T;
+            ASLgl::glEnable(GL_TEXTURE_GEN_T);
         }
         else
         {
@@ -3474,9 +3444,8 @@ void GLRender::EnableCombiners(int nShaderID, CAurTexture* pTex0, CAurTexture* p
             ASLgl::glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
             ASLgl::glEnable(GL_TEXTURE_GEN_S);
             ASLgl::glEnable(GL_TEXTURE_GEN_T);
-            nEnable = GL_TEXTURE_GEN_R;
+            ASLgl::glEnable(GL_TEXTURE_GEN_R);
         }
-        ASLgl::glEnable(nEnable);
         break;
     }
 
@@ -3839,10 +3808,10 @@ void GLRender::InitAttenuationTexture()
     ASLgl::glGenTextures(1, &cm_tidAttenuationTexture);
     BindTexture(Aurora::kCapTexture2D, cm_tidAttenuationTexture);
 #endif
-    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    SetTextureParameteri(Aurora::kTexTarget2D, Aurora::kTexParamWrapS, 1);
+    SetTextureParameteri(Aurora::kTexTarget2D, Aurora::kTexParamWrapT, 1);
+    SetTextureParameteri(Aurora::kTexTarget2D, Aurora::kTexParamMagFilter, 5);
+    SetTextureParameteri(Aurora::kTexTarget2D, Aurora::kTexParamMinFilter, 5);
     CreateTextureImageRaw(Aurora::kTexTarget2D, 0, GL_RGB8, 64, 64, 0, Aurora::kTexFormatRGBA, anAttenuation);
 }
 
@@ -5720,6 +5689,7 @@ void GLRender::BloomFilterATI(void* hDC, void* hGLRC, float fWidth, float fHeigh
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(fWidth); K2_UNUSED(fHeight); K2_UNUSED(pPBuffer); K2_UNUSED(nTexture); K2_UNUSED(fSize); K2_UNUSED(bSoftShadow);
 }
 #else
+// EFFECTIVE: same calls and arguments; the tap loop's float temporaries and corner branches are allocated differently.
 // The ATI bloom accumulation pass, with the same tap walk as the plain build.
 void GLRender::BloomFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeight,
                               HPBUFFERARB__* pPBuffer, unsigned int nTexture, float fSize,
@@ -5739,17 +5709,38 @@ void GLRender::BloomFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_COLOR_BUFFER_BIT);
 
-    for (int nUnit = 0; nUnit < 4; nUnit++)
-    {
-        ASLgl::glActiveTextureARB(GL_TEXTURE0 + nUnit);
-        ASLgl::glEnable(GL_TEXTURE_2D);
-        ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
-        wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
+    ASLgl::glActiveTextureARB(GL_TEXTURE0);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE1);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE2);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE3);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     if (bSoftShadow)
         FrameBufferModificationPixelShadersATI(kFBShaderSoftShadow,  0, 0, 0, 0);
@@ -5781,30 +5772,30 @@ void GLRender::BloomFilterATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
 
             ASLgl::glActiveTextureARB(GL_TEXTURE0);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0,
-                (nCorner > 1) ? (fU0 + fSize - pixeloffset) / fSize
-                              : (fU0 - pixeloffset) / fSize + fTexOffset,
-                (nCorner != 1 && nCorner != 2) ? (fV0 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU0 - pixeloffset) / fSize + fTexOffset
+                              : (fU0 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV0 + fSize - pixeloffset) / fSize
                                                : (fV0 - pixeloffset) / fSize + fTexOffset);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE1);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1,
-                (nCorner > 1) ? (fU1 + fSize - pixeloffset) / fSize
-                              : (fU1 - pixeloffset) / fSize + fTexOffset,
-                (nCorner != 1 && nCorner != 2) ? (fV1 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU1 - pixeloffset) / fSize + fTexOffset
+                              : (fU1 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV1 + fSize - pixeloffset) / fSize
                                                : (fV1 - pixeloffset) / fSize);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE2);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE2,
-                (nCorner > 1) ? (fU2 + fSize - pixeloffset) / fSize
-                              : (fU2 - pixeloffset) / fSize,
-                (nCorner != 1 && nCorner != 2) ? (fV2 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU2 - pixeloffset) / fSize
+                              : (fU2 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV2 + fSize - pixeloffset) / fSize
                                                : (fV2 - pixeloffset) / fSize);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE3);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE3,
-                (nCorner > 1) ? (fU3 + fSize - pixeloffset) / fSize
-                              : (fU3 - pixeloffset) / fSize,
-                (nCorner != 1 && nCorner != 2) ? (fV3 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU3 - pixeloffset) / fSize
+                              : (fU3 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV3 + fSize - pixeloffset) / fSize
                                                : (fV3 - pixeloffset) / fSize);
             ASLgl::glActiveTextureARB(GL_TEXTURE0);
 
@@ -5839,6 +5830,7 @@ void GLRender::BloomFilter(void* hDC, void* hGLRC, float fWidth, float fHeight, 
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(fWidth); K2_UNUSED(fHeight); K2_UNUSED(pPBuffer); K2_UNUSED(nTexture); K2_UNUSED(fSize); K2_UNUSED(bSoftShadow);
 }
 #else
+// EFFECTIVE: same calls and arguments; the tap loop's float temporaries and corner branches are allocated differently.
 // Runs the bloom accumulation pass with four units on the same pbuffer, seven quads in a rolling
 // 5x5 tap grid.
 void GLRender::BloomFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeight,
@@ -5861,17 +5853,38 @@ void GLRender::BloomFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeig
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_COLOR_BUFFER_BIT);
 
-    for (int nUnit = 0; nUnit < 4; nUnit++)
-    {
-        ASLgl::glActiveTextureARB(GL_TEXTURE0 + nUnit);
-        ASLgl::glEnable(GL_TEXTURE_2D);
-        ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
-        wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
+    ASLgl::glActiveTextureARB(GL_TEXTURE0);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE1);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE2);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE3);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    wglBindTexImageARB(pPBuffer, WGL_FRONT_LEFT_ARB);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_BLEND);
 
@@ -5899,30 +5912,30 @@ void GLRender::BloomFilter(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeig
 
             ASLgl::glActiveTextureARB(GL_TEXTURE0);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0,
-                (nCorner > 1) ? (fU0 + fSize - pixeloffset) / fSize
-                              : (fU0 - pixeloffset) / fSize + fTexOffset,
-                (nCorner != 1 && nCorner != 2) ? (fV0 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU0 - pixeloffset) / fSize + fTexOffset
+                              : (fU0 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV0 + fSize - pixeloffset) / fSize
                                                : (fV0 - pixeloffset) / fSize + fTexOffset);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE1);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1,
-                (nCorner > 1) ? (fU1 + fSize - pixeloffset) / fSize
-                              : (fU1 - pixeloffset) / fSize + fTexOffset,
-                (nCorner != 1 && nCorner != 2) ? (fV1 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU1 - pixeloffset) / fSize + fTexOffset
+                              : (fU1 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV1 + fSize - pixeloffset) / fSize
                                                : (fV1 - pixeloffset) / fSize);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE2);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE2,
-                (nCorner > 1) ? (fU2 + fSize - pixeloffset) / fSize
-                              : (fU2 - pixeloffset) / fSize,
-                (nCorner != 1 && nCorner != 2) ? (fV2 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU2 - pixeloffset) / fSize
+                              : (fU2 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV2 + fSize - pixeloffset) / fSize
                                                : (fV2 - pixeloffset) / fSize);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE3);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE3,
-                (nCorner > 1) ? (fU3 + fSize - pixeloffset) / fSize
-                              : (fU3 - pixeloffset) / fSize,
-                (nCorner != 1 && nCorner != 2) ? (fV3 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU3 - pixeloffset) / fSize
+                              : (fU3 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV3 + fSize - pixeloffset) / fSize
                                                : (fV3 - pixeloffset) / fSize);
 
             ASLgl::glVertex3f(nCorner < 2 ? 0.0f : fWidth,
@@ -5956,6 +5969,7 @@ void GLRender::BloomFilterFromTexture(void* hDC, void* hGLRC, float fWidth, floa
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(fWidth); K2_UNUSED(fHeight); K2_UNUSED(nTexture); K2_UNUSED(fSizeU); K2_UNUSED(fSizeV);
 }
 #else
+// EFFECTIVE: same calls and arguments; the tap loop's float temporaries and corner branches are allocated differently.
 // The BloomFilter twin that samples an existing texture instead of a pbuffer.
 void GLRender::BloomFilterFromTexture(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeight,
                                       unsigned int nTexture, float fSizeU, float fSizeV)
@@ -5963,16 +5977,34 @@ void GLRender::BloomFilterFromTexture(HDC__* hDC, HGLRC__* hGLRC, float fWidth, 
     K2_UNUSED(hDC); K2_UNUSED(hGLRC);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
 
-    for (int nUnit = 0; nUnit < 4; nUnit++)
-    {
-        ASLgl::glActiveTextureARB(GL_TEXTURE0 + nUnit);
-        ASLgl::glEnable(GL_TEXTURE_2D);
-        ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
+    ASLgl::glActiveTextureARB(GL_TEXTURE0);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE1);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE2);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE3);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     ASLgl::glEnable(GL_BLEND);
 
@@ -6058,6 +6090,7 @@ void GLRender::BloomFilterFromTextureATI(void* hDC, void* hGLRC, float fWidth, f
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(fWidth); K2_UNUSED(fHeight); K2_UNUSED(nTexture); K2_UNUSED(fSizeU); K2_UNUSED(fSizeV);
 }
 #else
+// EFFECTIVE: same calls and arguments; the tap loop's float temporaries and corner branches are allocated differently.
 // The ATI half of the FromTexture pair, sampling the power-of-two render targets.
 void GLRender::BloomFilterFromTextureATI(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeight,
                                          unsigned int nTexture, float fSizeU, float fSizeV)
@@ -6065,16 +6098,34 @@ void GLRender::BloomFilterFromTextureATI(HDC__* hDC, HGLRC__* hGLRC, float fWidt
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(fSizeU); K2_UNUSED(fSizeV);
     GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
 
-    for (int nUnit = 0; nUnit < 4; nUnit++)
-    {
-        ASLgl::glActiveTextureARB(GL_TEXTURE0 + nUnit);
-        ASLgl::glEnable(GL_TEXTURE_2D);
-        ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
+    ASLgl::glActiveTextureARB(GL_TEXTURE0);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE1);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE2);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE3);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     FrameBufferModificationPixelShadersATI(kFBShaderSoftShadow,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
@@ -6105,30 +6156,30 @@ void GLRender::BloomFilterFromTextureATI(HDC__* hDC, HGLRC__* hGLRC, float fWidt
 
             ASLgl::glActiveTextureARB(GL_TEXTURE0);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0,
-                (nCorner > 1) ? (fU0 + fSizeW - pixeloffset) / fSizeW
-                              : (fU0 - pixeloffset) / fSizeW + fTexOffset,
-                (nCorner != 1 && nCorner != 2) ? (fV0 + fSizeH - pixeloffset) / fSizeH
+                (nCorner < 2) ? (fU0 - pixeloffset) / fSizeW + fTexOffset
+                              : (fU0 + fSizeW - pixeloffset) / fSizeW,
+                (nCorner == 0 || nCorner == 3) ? (fV0 + fSizeH - pixeloffset) / fSizeH
                                                : (fV0 - pixeloffset) / fSizeH + fTexOffset);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE1);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1,
-                (nCorner > 1) ? (fU1 + fSizeW - pixeloffset) / fSizeW
-                              : (fU1 - pixeloffset) / fSizeW + fTexOffset,
-                (nCorner != 1 && nCorner != 2) ? (fV1 + fSizeH - pixeloffset) / fSizeH
+                (nCorner < 2) ? (fU1 - pixeloffset) / fSizeW + fTexOffset
+                              : (fU1 + fSizeW - pixeloffset) / fSizeW,
+                (nCorner == 0 || nCorner == 3) ? (fV1 + fSizeH - pixeloffset) / fSizeH
                                                : (fV1 - pixeloffset) / fSizeH);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE2);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE2,
-                (nCorner > 1) ? (fU2 + fSizeW - pixeloffset) / fSizeW
-                              : (fU2 - pixeloffset) / fSizeW,
-                (nCorner != 1 && nCorner != 2) ? (fV2 + fSizeH - pixeloffset) / fSizeH
+                (nCorner < 2) ? (fU2 - pixeloffset) / fSizeW
+                              : (fU2 + fSizeW - pixeloffset) / fSizeW,
+                (nCorner == 0 || nCorner == 3) ? (fV2 + fSizeH - pixeloffset) / fSizeH
                                                : (fV2 - pixeloffset) / fSizeH);
 
             ASLgl::glActiveTextureARB(GL_TEXTURE3);
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE3,
-                (nCorner > 1) ? (fU3 + fSizeW - pixeloffset) / fSizeW
-                              : (fU3 - pixeloffset) / fSizeW,
-                (nCorner != 1 && nCorner != 2) ? (fV3 + fSizeH - pixeloffset) / fSizeH
+                (nCorner < 2) ? (fU3 - pixeloffset) / fSizeW
+                              : (fU3 + fSizeW - pixeloffset) / fSizeW,
+                (nCorner == 0 || nCorner == 3) ? (fV3 + fSizeH - pixeloffset) / fSizeH
                                                : (fV3 - pixeloffset) / fSizeH);
 
             ASLgl::glVertex3f(nCorner < 2 ? 0.0f : fWidth,
@@ -6175,6 +6226,7 @@ void GLRender::BloomFilterARB(void* hDC, void* hGLRC, float fWidth, float fHeigh
     K2_UNUSED(hDC); K2_UNUSED(hGLRC); K2_UNUSED(fWidth); K2_UNUSED(fHeight); K2_UNUSED(pPBuffer); K2_UNUSED(nTexture); K2_UNUSED(fSize); K2_UNUSED(bSoftShadow);
 }
 #else
+// EFFECTIVE: same calls and arguments; the tap loop's float temporaries and corner branches are allocated differently.
 // Runs the ARB bloom accumulation pass, the same tap walk with the kernel pushed as env parameters.
 void GLRender::BloomFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fHeight,
                               HPBUFFERARB__* pPBuffer, unsigned int nTexture, float fSize,
@@ -6194,16 +6246,34 @@ void GLRender::BloomFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
     ASLgl::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     ASLgl::glClear(GL_COLOR_BUFFER_BIT);
 
-    for (int nUnit = 0; nUnit < 4; nUnit++)
-    {
-        ASLgl::glActiveTextureARB(GL_TEXTURE0 + nUnit);
-        ASLgl::glEnable(GL_TEXTURE_2D);
-        ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
+    ASLgl::glActiveTextureARB(GL_TEXTURE0);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE1);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE2);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ASLgl::glActiveTextureARB(GL_TEXTURE3);
+    ASLgl::glEnable(GL_TEXTURE_2D);
+    ASLgl::glBindTexture(GL_TEXTURE_2D, nTexture);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ASLgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ASLgl::glActiveTextureARB(GL_TEXTURE0);
     FrameBufferModificationPixelShadersARB(bSoftShadow ? kFBShaderSoftShadow : kFBShaderDecal4,  0, 0, 0, 0);
     ASLgl::glEnable(GL_BLEND);
@@ -6251,27 +6321,27 @@ void GLRender::BloomFilterARB(HDC__* hDC, HGLRC__* hGLRC, float fWidth, float fH
             ASLgl::glColor4f(1.0f, 1.0f, 1.0f, multiplier);
 
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE0,
-                (nCorner > 1) ? (fU0 + fSize - pixeloffset) / fSize
-                              : (fU0 - pixeloffset) / fSize + fTexOffset,
-                (nCorner != 1 && nCorner != 2) ? (fV0 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU0 - pixeloffset) / fSize + fTexOffset
+                              : (fU0 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV0 + fSize - pixeloffset) / fSize
                                                : (fV0 - pixeloffset) / fSize + fTexOffset);
 
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE1,
-                (nCorner > 1) ? (fU1 + fSize - pixeloffset) / fSize
-                              : (fU1 - pixeloffset) / fSize + fTexOffset,
-                (nCorner != 1 && nCorner != 2) ? (fV1 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU1 - pixeloffset) / fSize + fTexOffset
+                              : (fU1 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV1 + fSize - pixeloffset) / fSize
                                                : (fV1 - pixeloffset) / fSize);
 
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE2,
-                (nCorner > 1) ? (fU2 + fSize - pixeloffset) / fSize
-                              : (fU2 - pixeloffset) / fSize,
-                (nCorner != 1 && nCorner != 2) ? (fV2 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU2 - pixeloffset) / fSize
+                              : (fU2 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV2 + fSize - pixeloffset) / fSize
                                                : (fV2 - pixeloffset) / fSize);
 
             ASLgl::glMultiTexCoord2fARB(GL_TEXTURE3,
-                (nCorner > 1) ? (fU3 + fSize - pixeloffset) / fSize
-                              : (fU3 - pixeloffset) / fSize,
-                (nCorner != 1 && nCorner != 2) ? (fV3 + fSize - pixeloffset) / fSize
+                (nCorner < 2) ? (fU3 - pixeloffset) / fSize
+                              : (fU3 + fSize - pixeloffset) / fSize,
+                (nCorner == 0 || nCorner == 3) ? (fV3 + fSize - pixeloffset) / fSize
                                                : (fV3 - pixeloffset) / fSize);
 
             ASLgl::glVertex3f(nCorner < 2 ? 0.0f : fWidth,
@@ -6827,15 +6897,12 @@ int GetCompressedContactSheetOffset(int nNumBlocks, int nSize, int nLevels)
     int nBlocks = (nSize + 3) / 4;
     int nTotal = nBlocks * nBlocks * nBytesPerBlock;
 
-    unsigned int nCur = nSize;
-    if (nSize >= 2)
+    int nCur = nSize;
+    while (nCur >= 2)
     {
-        do
-        {
-            nCur >>= 1;
-            unsigned int n = (nCur + 3) >> 2;
-            nTotal += n * n * nBytesPerBlock;
-        } while (nCur > 1);
+        nCur >>= 1;
+        int n = (nCur + 3) / 4;
+        nTotal += n * n * nBytesPerBlock;
     }
     return nTotal * nNumBlocks;
 }
@@ -6975,53 +7042,45 @@ int GLRender::BuildShadowArray(Vector const& vOrigin, float const& fHeight, Plan
     static Vector scratch[2];
 
     int nUsed = 0;
-    if (nCount >= 1)
+    for (int i = 0; i < nCount; i++)
     {
-        unsigned short* pUsed = m_UsedVertices;
-        for (uint64_t i = static_cast<unsigned int>(nCount); i != 0; i--, pUsed++)
+        if (m_UsedVertices[i] == 1)
         {
-            if (*pUsed == 1)
-            {
-                nUsed++;
-                *pUsed = static_cast<unsigned short>(nUsed);
-            }
+            nUsed++;
+            m_UsedVertices[i] = static_cast<unsigned short>(nUsed);
         }
     }
 
     float* pShadow = static_cast<float*>(AllocateShadowMemory(nUsed * 24 + 24));
     cm_pUserShadowData = pShadow;
 
-    if (nCount >= 1)
+    for (int i = 0; i < nCount; i++)
     {
-        unsigned short* pUsed = m_UsedVertices;
-        for (uint64_t i = static_cast<unsigned int>(nCount); i != 0; pVerts++, i--, pUsed++)
+        uint64_t nIndex = m_UsedVertices[i];
+        if (nIndex == 0)
+            continue;
+
+        uint64_t nOffset = nIndex * 6 - 6;
+
+        scratch[0] = reinterpret_cast<const Vector*>(&pVerts[i])[0];
+        light2temp = normalize(scratch[0] - vOrigin);
+        scratch[1] = light2temp * fHeight + vOrigin;
+
+        if (noclipshadows == 0)
         {
-            uint64_t nIndex = *pUsed;
-            if (nIndex == 0)
-                continue;
-
-            uint64_t nOffset = nIndex * 6 - 6;
-
-            scratch[0] = reinterpret_cast<const Vector*>(pVerts)[0];
-            light2temp = normalize(scratch[0] - vOrigin);
-            scratch[1] = light2temp * fHeight + vOrigin;
-
-            if (noclipshadows == 0)
-            {
-                ClipProjection(scratch[0], vOrigin, plane);
-                ClipProjection(scratch[1], vOrigin, plane);
-            }
-
-            if (dontprotectagainstclip != 0)
-            {
-                if ((scratch[0].x - scratch[1].x) * light2temp.x +
-                    (scratch[0].y - scratch[1].y) * light2temp.y +
-                    (scratch[0].z - scratch[1].z) * light2temp.z > 0.0f)
-                    scratch[1] = scratch[0];
-            }
-
-            memcpy(&pShadow[nOffset], scratch, sizeof(scratch));
+            ClipProjection(scratch[0], vOrigin, plane);
+            ClipProjection(scratch[1], vOrigin, plane);
         }
+
+        if (dontprotectagainstclip != 0)
+        {
+            if ((scratch[0].x - scratch[1].x) * light2temp.x +
+                (scratch[0].y - scratch[1].y) * light2temp.y +
+                (scratch[0].z - scratch[1].z) * light2temp.z > 0.0f)
+                scratch[1] = scratch[0];
+        }
+
+        memcpy(&pShadow[nOffset], scratch, sizeof(scratch));
     }
 
     reinterpret_cast<Vector*>(&pShadow[nUsed * 6])[0] = vA;
@@ -7121,10 +7180,10 @@ static void K2QolBuildBloomLevels(int nWidth, int nHeight)
         s_apQolBloomLevels[s_nQolBloomLevels] = CreatePBufferIos(nWidth, nHeight, false);
 }
 
-// Halves the bright pass in s_pHalfPBuffer1 down to the blur's size.
+// Halves the bright pass in s_apHalfPBuffer[0] down to the blur's size.
 static void K2QolHalveBloom()
 {
-    PBUFFERARB_IOS* pSource = s_pHalfPBuffer1;
+    PBUFFERARB_IOS* pSource = s_apHalfPBuffer[0];
     for (int i = 0; i < s_nQolBloomLevels; i++)
     {
         PBUFFERARB_IOS* pTarget = s_apQolBloomLevels[i];
@@ -7147,7 +7206,7 @@ static inline PBUFFERARB_IOS* BloomPBuffer()
     if (s_nQolBloomLevels > 0)
         return s_apQolBloomLevels[s_nQolBloomLevels - 1];
 #endif
-    return s_pHalfPBuffer1;
+    return s_apHalfPBuffer[0];
 }
 
 static inline PBUFFERARB_IOS* BloomScratchPBuffer()
@@ -7156,7 +7215,7 @@ static inline PBUFFERARB_IOS* BloomScratchPBuffer()
     if (s_nQolBloomLevels > 0)
         return s_apQolBloomLevels[s_nQolBloomLevels];
 #endif
-    return s_pHalfPBuffer2;
+    return s_apHalfPBuffer[1];
 }
 #endif
 
@@ -8047,7 +8106,7 @@ PBUFFERARB_IOS* CreatePBufferIos(int nWidth, int nHeight, bool bNoDepth)
 }
 #endif
 
-int _aglRestoreContext()
+bool _aglRestoreContext()
 {
 #if KOTOR1
     glBindFramebufferOES(GL_FRAMEBUFFER, s_nSavedFramebuffer);
@@ -8057,7 +8116,7 @@ int _aglRestoreContext()
     return 1;
 }
 
-int _aglSetCurrentPBuffer(PBUFFERARB_IOS* pPBuffer)
+bool _aglSetCurrentPBuffer(PBUFFERARB_IOS* pPBuffer)
 {
     ASLgl::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &s_nSavedFramebuffer);
 #if KOTOR1
@@ -8068,7 +8127,7 @@ int _aglSetCurrentPBuffer(PBUFFERARB_IOS* pPBuffer)
     return 1;
 }
 
-int _aglDestroyPBuffer(PBUFFERARB_IOS* pPBuffer)
+bool _aglDestroyPBuffer(PBUFFERARB_IOS* pPBuffer)
 {
     K2_UNUSED(pPBuffer);
     return 1;
@@ -8509,8 +8568,8 @@ void FrameBufferModificationsEndIos(bool bEnable)
 #endif
 
             _aglRestoreContext();
-            _aglSetCurrentPBuffer(s_pHalfPBuffer1);
-            android_port_glViewportRaw(0, 0, s_pHalfPBuffer1->m_nWidth, s_pHalfPBuffer1->m_nHeight);
+            _aglSetCurrentPBuffer(s_apHalfPBuffer[0]);
+            android_port_glViewportRaw(0, 0, s_apHalfPBuffer[0]->m_nWidth, s_apHalfPBuffer[0]->m_nHeight);
             ASLgl::glBindTexture(GL_TEXTURE_2D, s_pPBuffer->m_nTexture);
             afParam1[1] = g_afIosPostParams[0];
             ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, afParam1);
@@ -8520,11 +8579,9 @@ void FrameBufferModificationsEndIos(bool bEnable)
 
             float fScale = g_afIosPostParams[1] * (1.0f / static_cast<float>(nHalfWidth));
             _aglRestoreContext();
-            _aglSetCurrentPBuffer(s_pHalfPBuffer2);
+            _aglSetCurrentPBuffer(s_apHalfPBuffer[1]);
             ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBlur);
-            afParam2[0] = 0.0f;
-            afParam2[1] = 0.0f;
-            afParam2[2] = 0.0f;
+            __builtin_memset(afParam2, 0, sizeof(afParam2));
             afParam2[3] = 1.0f;
             ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 0, afParam2);
             afParam3[0] = fScale;
@@ -8532,13 +8589,13 @@ void FrameBufferModificationsEndIos(bool bEnable)
             afParam3[2] = 1.0f;
             afParam3[3] = 1.0f;
             ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, afParam3);
-            ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
+            ASLgl::glBindTexture(GL_TEXTURE_2D, s_apHalfPBuffer[0]->m_nTexture);
             RenderModificationQuad();
             ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostPresent);
 
             fScale = g_afIosPostParams[1] * (1.0f / static_cast<float>(nHalfWidth));
             _aglRestoreContext();
-            _aglSetCurrentPBuffer(s_pHalfPBuffer1);
+            _aglSetCurrentPBuffer(s_apHalfPBuffer[0]);
             ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBlur);
             float fBloom = g_fIosBloomAmount;
             afParam2[0] = fBloom;
@@ -8551,7 +8608,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
             afParam3[2] = g_afIosPostParams[2];
             afParam3[3] = g_afIosPostParams[3];
             ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 1, afParam3);
-            ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer2->m_nTexture);
+            ASLgl::glBindTexture(GL_TEXTURE_2D, s_apHalfPBuffer[1]->m_nTexture);
             RenderModificationQuad();
             ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostPresent);
         }
@@ -8582,7 +8639,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
         {
             GLRender::Enable(Aurora::kCapBlend);
             GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendOne);
-            ASLgl::glBindTexture(GL_TEXTURE_2D, s_pHalfPBuffer1->m_nTexture);
+            ASLgl::glBindTexture(GL_TEXTURE_2D, s_apHalfPBuffer[0]->m_nTexture);
             RenderModificationQuad();
             GLRender::Disable(Aurora::kCapBlend);
         }
@@ -8672,8 +8729,8 @@ void FrameBufferModificationsEndIos(bool bEnable)
     float fDistortScale = fInvScale * g_fIosDistortScale;
 
     _aglRestoreContext();
-    _aglSetCurrentPBuffer(s_pHalfPBuffer1);
-    ASLgl::glViewport(0, 0, s_pHalfPBuffer1->m_nWidth, s_pHalfPBuffer1->m_nHeight);
+    _aglSetCurrentPBuffer(s_apHalfPBuffer[0]);
+    ASLgl::glViewport(0, 0, s_apHalfPBuffer[0]->m_nWidth, s_apHalfPBuffer[0]->m_nHeight);
     ASLgl::glBindTexture(GL_TEXTURE_2D, s_pPBuffer->m_nTexture);
 
     afParam1[1] = g_fIosBloomScaleU;
@@ -8690,9 +8747,7 @@ void FrameBufferModificationsEndIos(bool bEnable)
     _aglSetCurrentPBuffer(BloomScratchPBuffer());
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBlur);
 
-    afParam2[0] = 0.0f;
-    afParam2[1] = 0.0f;
-    afParam2[2] = 0.0f;
+    __builtin_memset(afParam2, 0, sizeof(afParam2));
     afParam2[3] = 1.0f;
     ASLgl::glProgramEnvParameter4fvARB(GL_FRAGMENT_PROGRAM_ARB, 0, afParam2);
     afParam1[0] = fDistortScale;
@@ -8812,8 +8867,8 @@ void GLRender::InitializeFrameBufferModificationsARB()
     InitializeFrameBufferModificationFragmentShadersARB();
 #ifdef K2_QOL_K1_ANTIALIAS
     K1DeletePBuffer(s_pPBuffer);
-    K1DeletePBuffer(s_pHalfPBuffer1);
-    K1DeletePBuffer(s_pHalfPBuffer2);
+    K1DeletePBuffer(s_apHalfPBuffer[0]);
+    K1DeletePBuffer(s_apHalfPBuffer[1]);
 #endif
     int nWidth = g_SDL_mode.w;
     int nHeight = g_SDL_mode.h;
@@ -8824,8 +8879,8 @@ void GLRender::InitializeFrameBufferModificationsARB()
     {
         nWidth /= 2;
         nHeight /= 2;
-        s_pHalfPBuffer1 = CreatePBufferIos(nWidth, nHeight);
-        s_pHalfPBuffer2 = CreatePBufferIos(nWidth, nHeight);
+        for (int i = 0; i < 2; i++)
+            s_apHalfPBuffer[i] = CreatePBufferIos(nWidth, nHeight);
     }
 #else
     int nWidth = g_nScreenWidth;
@@ -8833,8 +8888,8 @@ void GLRender::InitializeFrameBufferModificationsARB()
 #ifdef K2_QOL_IMPROVEMENTS
     K2QolDeletePBufferIos(s_pPBuffer);
     K2QolDeletePBufferIos(s_pDistortPBuffer);
-    K2QolDeletePBufferIos(s_pHalfPBuffer1);
-    K2QolDeletePBufferIos(s_pHalfPBuffer2);
+    K2QolDeletePBufferIos(s_apHalfPBuffer[0]);
+    K2QolDeletePBufferIos(s_apHalfPBuffer[1]);
     K2QolDeletePBufferIos(s_pHalfPBuffer3);
     K2QolSceneBufferSize(nWidth, nHeight);
 #elif defined(K2_MOBILE_OPT)   // the mobile port's: the scene at 7/10 of a screen 2048 or wider
@@ -8852,8 +8907,8 @@ void GLRender::InitializeFrameBufferModificationsARB()
     IosSetDistortBuffer(false);
     nWidth /= 2;
     nHeight /= 2;
-    s_pHalfPBuffer1 = CreatePBufferIos(nWidth, nHeight, false);
-    s_pHalfPBuffer2 = CreatePBufferIos(nWidth, nHeight, false);
+    for (int i = 0; i < 2; i++)
+        s_apHalfPBuffer[i] = CreatePBufferIos(nWidth, nHeight, false);
     s_pHalfPBuffer3 = CreatePBufferIos(nWidth, nHeight, false);
 #ifdef K2_QOL_STEADY_FILTERS
     K2QolBuildBloomLevels(nWidth, nHeight);
@@ -8861,6 +8916,7 @@ void GLRender::InitializeFrameBufferModificationsARB()
 #endif
 }
 
+#if !KOTOR1 // K1: no distort pass
 // Runs the distort pass, two units staged as in the modification quad, with the same full-screen
 // quad.
 void RenderDistortIos(CAurTexture* pSrc, CAurTexture* pDst)
@@ -8896,6 +8952,7 @@ void RenderDistortIos(CAurTexture* pSrc, CAurTexture* pDst)
 
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, GLRender::kPSPostBloomSource);
 }
+#endif
 
 
 // Draws the ARB accumulation-blur composite. The source is not the argument, and the quad colour is
@@ -9718,9 +9775,9 @@ void GLRender::DrawTriangles(List<MaxFace>& faces, RenderVertexV* pVerts, Render
     for (int64_t i = 0; i < faces.m_count; i++)
     {
         ASLgl::glColor4ubv(reinterpret_cast<const unsigned char*>(&pColors[faces.m_pData[i].m_nMaterial]));
-        v0 = reinterpret_cast<const Vector*>(pVerts)[static_cast<unsigned int>(faces.m_pData[i].m_nVIndex[0])];
-        v1 = reinterpret_cast<const Vector*>(pVerts)[static_cast<unsigned int>(faces.m_pData[i].m_nVIndex[1])];
-        v2 = reinterpret_cast<const Vector*>(pVerts)[static_cast<unsigned int>(faces.m_pData[i].m_nVIndex[2])];
+        v0 = reinterpret_cast<const Vector*>(pVerts)[static_cast<unsigned int>(static_cast<short>(faces.m_pData[i].m_anVertIndices[0]))];
+        v1 = reinterpret_cast<const Vector*>(pVerts)[static_cast<unsigned int>(static_cast<short>(faces.m_pData[i].m_anVertIndices[1]))];
+        v2 = reinterpret_cast<const Vector*>(pVerts)[static_cast<unsigned int>(static_cast<short>(faces.m_pData[i].m_anVertIndices[2]))];
         Vector vNormal = NormalOf(v0, v1, v2);
         ASLgl::glNormal3fv(&vNormal.x);
         ASLgl::glVertex3fv(&v0.x);
@@ -9858,7 +9915,8 @@ int GLRender::SetUpImposters(int nCount, float* pOffsets)
     Imposter* pNew = new Imposter[nSlots * 2];
 
     manRefImposter.m_pImposters = pNew;
-    memset(pNew, 0, nSlots * 2);  // idiom-exempt: the ORIG's size argument is a BYTE count of `nSlots * 2` (`mov x2,x23`), not a sizeof-shaped one -- see the PARKED note above
+    // Not bionic's memset: both K1 images keep the builtin's shape (the clear trimmed past the copy).
+    __builtin_memset(pNew, 0, nSlots * 2);  // idiom-exempt: the ORIG's size argument is a BYTE count of `nSlots * 2` (`mov x2,x23`), not a sizeof-shaped one -- see the PARKED note above
     memcpy(pNew, pOld, nSlots * sizeof(Imposter));
     if (pOld)
         delete[] pOld;
@@ -10796,10 +10854,10 @@ void GLRender::MakeLookUpTexture(float fGamma)
 void GLRender::MakeNormalizationCubeMap(int nSize)
 {
     unsigned char* pData = new unsigned char[nSize * nSize * 3];
-    ASLgl::glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    ASLgl::glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    ASLgl::glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    ASLgl::glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    SetTextureParameteri(Aurora::kTexTargetCubeMap, Aurora::kTexParamWrapS, 1);
+    SetTextureParameteri(Aurora::kTexTargetCubeMap, Aurora::kTexParamWrapT, 1);
+    SetTextureParameteri(Aurora::kTexTargetCubeMap, Aurora::kTexParamMagFilter, 5);
+    SetTextureParameteri(Aurora::kTexTargetCubeMap, Aurora::kTexParamMinFilter, 5);
 
     static const unsigned int mapping[6] = { 2, 3, 4, 5, 6, 7 };
 
@@ -10918,7 +10976,6 @@ void GLRender::Transform(const Vector& v, const Quaternion& qRot, int n)
     ASLgl::glTranslatef(p.x, p.y, p.z);
     q = qRot;
 
-    float fAngle = q.angle();
     Vector vAxis = q.axis();
-    ASLgl::glRotatef(fAngle * 57.295776f, vAxis.x, vAxis.y, vAxis.z);
+    ASLgl::glRotatef(q.angle() * 57.295776f, vAxis.x, vAxis.y, vAxis.z);
 }

@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "port/sdlapi.h"
 #include "exorandinternal.h"
 #include "exostring.h"
@@ -8,7 +9,17 @@
 
 // GetSystemInfo's out-parameter: only its size matters, and the bytes go to Add() opaque.
 struct _SYSTEM_INFO {
-    unsigned long long w0, w1, w2, w3, w4, w5;
+    unsigned short wProcessorArchitecture;
+    unsigned short wReserved;
+    unsigned int   dwPageSize;
+    void*          lpMinimumApplicationAddress;
+    void*          lpMaximumApplicationAddress;
+    uintptr_t      dwActiveProcessorMask;
+    unsigned int   dwNumberOfProcessors;
+    unsigned int   dwProcessorType;
+    unsigned int   dwAllocationGranularity;
+    unsigned short wProcessorLevel;
+    unsigned short wProcessorRevision;
 };
 
 #ifdef K2_FIX_ENGINE_BUGS
@@ -111,12 +122,14 @@ void CExoRandInternal::Add(unsigned char* pData, int nLen)
 // One round of the four-lane state step, then the xor fold of the new state.
 int CExoRandInternal::Rand()
 {
-    for (int i = 0; i < 4; i++)
-    {
-        unsigned int nState = m_anState[i];
-        unsigned int nShifted = nState ^ (nState << m_anFeedbackShift[i]);
-        m_anState[i] = (nShifted >> m_anRShift[i]) ^ ((nState & m_anMask[i]) << m_anStepShift[i]);
-    }
+    unsigned int nState0 = m_anState[0];
+    m_anState[0] = ((nState0 ^ (nState0 << m_anFeedbackShift[0])) >> m_anRShift[0]) ^ ((nState0 & m_anMask[0]) << m_anStepShift[0]);
+    unsigned int nState1 = m_anState[1];
+    m_anState[1] = ((nState1 ^ (nState1 << m_anFeedbackShift[1])) >> m_anRShift[1]) ^ ((nState1 & m_anMask[1]) << m_anStepShift[1]);
+    unsigned int nState2 = m_anState[2];
+    m_anState[2] = ((nState2 ^ (nState2 << m_anFeedbackShift[2])) >> m_anRShift[2]) ^ ((nState2 & m_anMask[2]) << m_anStepShift[2]);
+    unsigned int nState3 = m_anState[3];
+    m_anState[3] = ((nState3 ^ (nState3 << m_anFeedbackShift[3])) >> m_anRShift[3]) ^ ((nState3 & m_anMask[3]) << m_anStepShift[3]);
     return m_anState[0] ^ m_anState[1] ^ m_anState[2] ^ m_anState[3];
 }
 
@@ -124,25 +137,25 @@ int CExoRandInternal::Rand()
 // step.
 void CExoRandInternal::ReSeed(unsigned int a, unsigned int b, unsigned int c, unsigned int d) throw()
 {
-    unsigned int anSeed[4];
-    anSeed[0] = a;
-    anSeed[1] = b;
-    anSeed[2] = c;
-    anSeed[3] = d;
-
     m_bSeeded = 1;
 
-    for (int i = 0; i < 4; i++)
-    {
-        m_anRShift[i] = m_anBits[i] - m_anStepShift[i];
-        m_anMask[i] = 0xffffffffu << (32 - m_anBits[i]);
-    }
+    m_anRShift[0] = m_anBits[0] - m_anStepShift[0];
+    m_anRShift[1] = m_anBits[1] - m_anStepShift[1];
+    m_anRShift[2] = m_anBits[2] - m_anStepShift[2];
+    m_anRShift[3] = m_anBits[3] - m_anStepShift[3];
+    m_anMask[0] = 0xffffffffu << (32 - m_anBits[0]);
+    m_anMask[1] = 0xffffffffu << (32 - m_anBits[1]);
+    m_anMask[2] = 0xffffffffu << (32 - m_anBits[2]);
+    m_anMask[3] = 0xffffffffu << (32 - m_anBits[3]);
 
-    for (int i = 0; i < 4; i++)
-    {
-        if (anSeed[i] > (1u << m_anRShift[i]))
-            m_anState[i] = anSeed[i];
-    }
+    if (a > (1u << m_anRShift[0]))
+        m_anState[0] = a;
+    if (b > (1u << m_anRShift[1]))
+        m_anState[1] = b;
+    if (c > (1u << m_anRShift[2]))
+        m_anState[2] = c;
+    if (d > (1u << m_anRShift[3]))
+        m_anState[3] = d;
 
     Rand();
 }

@@ -37,148 +37,136 @@ int CSWPlaceableSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int siz
     int gotNode = 0;
     int sawTrimesh = 0;
 
-    if (size == 0) {
-        delete[] lineBuf;
-        m_resRef.GetResRef();
-        return 1;
-    }
+    while (remaining != 0) {
+        if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) != 1)
+            break;
 
-    {
-        do {
-            if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) != 1)
-                break;
+        unsigned char* p = lineBuf;
+        while (*p == ' ' || *p == '\t')
+            p++;
 
-            unsigned char* p = lineBuf;
-            while (*p == ' ' || *p == '\t')
-                p++;
-
-            if (strncmp(reinterpret_cast<char*>(p), "node", 4) == 0) {
-                p += 4;
-                if (strncmp(reinterpret_cast<char*>(p), " trimesh ", 9) == 0) {
-                    gotNode = 1;
-                    sawTrimesh = 1;
-                } else if (strncmp(reinterpret_cast<char*>(p), " dummy ", 7) == 0) {
-                    gotNode = 0;
-                    // The mesh-tag suffix selects which door state this .wok's action points
-                    // belong to; an unrecognised suffix leaves `state` alone.
-                    unsigned char* pTag = p + 11;
-                    unsigned char* pSuffix = 0;
-                    if (_strnicmp(reinterpret_cast<char*>(pTag), "pwk_use", 7) == 0)
-                        pSuffix = pTag + 7;
-                    else if (_strnicmp(reinterpret_cast<char*>(pTag), "pwk_dp_use_", 11) == 0)
-                        pSuffix = pTag + 11;
-                    if (pSuffix != 0) {
-                        if (strncmp(reinterpret_cast<char*>(pSuffix), "01", 2) == 0)
-                            state = 1;
-                        else if (strncmp(reinterpret_cast<char*>(pSuffix), "02", 2) == 0)
-                            state = 2;
-                    }
-                } else {
-                    gotNode = 0;
-                }
-                continue;
-            }
-
-            if (strncmp(reinterpret_cast<char*>(p), "position", 8) == 0) {
-                p += 8;
-                static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%f %f %f", &posX, &posY, &posZ));
-                if (state == 0) {
-                    if (gotNode != 1) {
-                        delete[] lineBuf;
-                        return 0;
-                    }
-                    m_localOrigin.x = posX;
-                    m_localOrigin.y = posY;
-                    m_localOrigin.z = posZ;
-                    state = 0;
-                } else {
-                    if (state != 1 && state != 2) {
-                        delete[] lineBuf;
-                        return 0;
-                    }
-                    // The two action-point handles are adjacent members, selected by state - 1.
-                    SetActionPoint(state - 1, Vector(posX, posY, posZ));
-                    state = 0;
-                }
-                continue;
-            }
-
-            if (gotNode != 1)
-                continue;
-
-            if (strncmp(reinterpret_cast<char*>(p), "endnode", 7) == 0) {
+        if (strncmp(reinterpret_cast<char*>(p), "node", 4) == 0) {
+            p += 4;
+            if (strncmp(reinterpret_cast<char*>(p), " trimesh ", 9) == 0) {
+                gotNode = 1;
+                sawTrimesh = 1;
+            } else if (strncmp(reinterpret_cast<char*>(p), " dummy ", 7) == 0) {
                 gotNode = 0;
-                state = 0;
-                continue;
-            }
-
-            if (strncmp(reinterpret_cast<char*>(p), "orientation", 11) == 0) {
-                p += 11;
-                float axisX = 0.0f, axisY = 0.0f, axisZ = 0.0f;
-                float angle;
-                static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%f %f %f %f", &axisX, &axisY, &axisZ, &angle));
-                if (axisX != 0.0f || axisY != 0.0f || axisZ != 0.0f) {
-                    Quaternion rotation(Vector(axisX, axisY, axisZ), angle);
-                    (void)rotation;
+                // The mesh-tag suffix selects which door state this .wok's action points
+                // belong to; an unrecognised suffix leaves `state` alone.
+                unsigned char* pTag = p + 11;
+                unsigned char* pSuffix = 0;
+                if (_strnicmp(reinterpret_cast<char*>(pTag), "pwk_use", 7) == 0)
+                    pSuffix = pTag + 7;
+                else if (_strnicmp(reinterpret_cast<char*>(pTag), "pwk_dp_use_", 11) == 0)
+                    pSuffix = pTag + 11;
+                if (pSuffix != 0) {
+                    if (strncmp(reinterpret_cast<char*>(pSuffix), "01", 2) == 0)
+                        state = 1;
+                    else if (strncmp(reinterpret_cast<char*>(pSuffix), "02", 2) == 0)
+                        state = 2;
                 }
             } else {
+                gotNode = 0;
+            }
+            continue;
+        }
 
-                int nVertsKw = strncmp(reinterpret_cast<char*>(p), "verts", 5);
-                if (nVertsKw == 0 || strncmp(reinterpret_cast<char*>(p), "vertices", 8) == 0) {
-                    if (nVertsKw == 0)
-                        p += 5;
-                    if (strncmp(reinterpret_cast<char*>(p), "vertices", 8) == 0)
-                        p += 8;
-                    int nVerts;
-                    char ch;
-                    static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%d %c", &nVerts, &ch));
-                    SetVertexCount(nVerts);
-                    if (nVerts > 0) {
-                        for (int i = 0; i < nVerts; i++) {
-                            if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) == 0)
-                                return 0;
-                            static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%f %f %f", &vertX, &vertY, &vertZ));
-                            m_paVertices[i].x = vertX;
-                            m_paVertices[i].y = vertY;
-                            m_paVertices[i].z = vertZ;
-                        }
-                    }
-                } else if (strncmp(reinterpret_cast<char*>(p), "faces", 5) == 0) {
+        if (strncmp(reinterpret_cast<char*>(p), "position", 8) == 0) {
+            p += 8;
+            static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%f %f %f", &posX, &posY, &posZ));
+            if (state == 0) {
+                if (gotNode != 1) {
+                    delete[] lineBuf;
+                    return 0;
+                }
+                m_localOrigin.x = posX;
+                m_localOrigin.y = posY;
+                m_localOrigin.z = posZ;
+                state = 0;
+            } else {
+                if (state != 1 && state != 2) {
+                    delete[] lineBuf;
+                    return 0;
+                }
+                // The two action-point handles are adjacent members, selected by state - 1.
+                SetActionPoint(state - 1, Vector(posX, posY, posZ));
+                state = 0;
+            }
+            continue;
+        }
+
+        if (gotNode != 1)
+            continue;
+
+        if (strncmp(reinterpret_cast<char*>(p), "endnode", 7) == 0) {
+            gotNode = 0;
+            state = 0;
+            continue;
+        }
+
+        if (strncmp(reinterpret_cast<char*>(p), "orientation", 11) == 0) {
+            p += 11;
+            float axisX = 0.0f, axisY = 0.0f, axisZ = 0.0f;
+            float angle;
+            static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%f %f %f %f", &axisX, &axisY, &axisZ, &angle));
+            if (axisX != 0.0f || axisY != 0.0f || axisZ != 0.0f) {
+                Quaternion rotation(Vector(axisX, axisY, axisZ), angle);
+                (void)rotation;
+            }
+        } else {
+
+            int nVertsKw = strncmp(reinterpret_cast<char*>(p), "verts", 5);
+            if (nVertsKw == 0 || strncmp(reinterpret_cast<char*>(p), "vertices", 8) == 0) {
+                if (nVertsKw == 0)
                     p += 5;
-                    int nTris;
-                    char ch;
-                    static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%d %c", &nTris, &ch));
-                    SetTriangleCount(nTris);
-                    if (nTris > 0) {
-                        for (int i = 0; i < nTris; i++) {
-                            if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) == 0) {
-                                delete[] lineBuf;
-                                return 0;
-                            }
-                            // A face is three vertex indices plus a trailing attribute record.
-                            int f0, f1, f2, f3, f4, f5, f6;
-#if KOTOR1  // K1: the material lands in a local and every store goes through the aligned-pointer setter
-                            int nMaterial;
-                            static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%d %d %d %d %d %d %d %d", &f0, &f1, &f2, &f3,
-                                   &f4, &f5, &f6, &nMaterial));
-                            m_paTriMaterials.Set(i, nMaterial);
-                            m_paTriVertIndices.Set(i * 3 + 0, f0);
-                            m_paTriVertIndices.Set(i * 3 + 1, f1);
-                            m_paTriVertIndices.Set(i * 3 + 2, f2);
-#else
-                            static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%d %d %d %d %d %d %d %d", &f0, &f1, &f2, &f3,
-                                   &f4, &f5, &f6, &m_paTriMaterials[i]));
-                            m_paTriVertIndices[i * 3 + 0] = f0;
-                            m_paTriVertIndices[i * 3 + 1] = f1;
-                            m_paTriVertIndices[i * 3 + 2] = f2;
-#endif
-                        }
+                if (strncmp(reinterpret_cast<char*>(p), "vertices", 8) == 0)
+                    p += 8;
+                int nVerts;
+                char ch;
+                static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%d %c", &nVerts, &ch));
+                SetVertexCount(nVerts);
+                for (int i = 0; i < nVerts; i++) {
+                    if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) == 0)
+                        return 0;
+                    static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%f %f %f", &vertX, &vertY, &vertZ));
+                    m_paVertices[i].x = vertX;
+                    m_paVertices[i].y = vertY;
+                    m_paVertices[i].z = vertZ;
+                }
+            } else if (strncmp(reinterpret_cast<char*>(p), "faces", 5) == 0) {
+                p += 5;
+                int nTris;
+                char ch;
+                static_cast<void>(sscanf(reinterpret_cast<char*>(p), "%d %c", &nTris, &ch));
+                SetTriangleCount(nTris);
+                for (int i = 0; i < nTris; i++) {
+                    if (LoadMeshString(&cursor, &remaining, lineBuf, MESH_LINE_SIZE) == 0) {
+                        delete[] lineBuf;
+                        return 0;
                     }
+                    // A face is three vertex indices plus a trailing attribute record.
+                    int f0, f1, f2, f3, f4, f5, f6;
+#if KOTOR1  // K1: the material lands in a local and every store goes through the aligned-pointer setter
+                    int nMaterial;
+                    static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%d %d %d %d %d %d %d %d", &f0, &f1, &f2, &f3,
+                           &f4, &f5, &f6, &nMaterial));
+                    m_paTriMaterials.Set(i, nMaterial);
+                    m_paTriVertIndices.Set(i * 3 + 0, f0);
+                    m_paTriVertIndices.Set(i * 3 + 1, f1);
+                    m_paTriVertIndices.Set(i * 3 + 2, f2);
+#else
+                    static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%d %d %d %d %d %d %d %d", &f0, &f1, &f2, &f3,
+                           &f4, &f5, &f6, &m_paTriMaterials[i]));
+                    m_paTriVertIndices[i * 3 + 0] = f0;
+                    m_paTriVertIndices[i * 3 + 1] = f1;
+                    m_paTriVertIndices[i * 3 + 2] = f2;
+#endif
                 }
             }
+        }
 
-            gotNode = 1;
-        } while (remaining != 0);
+        gotNode = 1;
     }
 
     delete[] lineBuf;

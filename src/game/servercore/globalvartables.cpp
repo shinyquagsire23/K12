@@ -2,6 +2,7 @@
 // arrays, each with its own count. Every accessor resolves the name through FindIdentifierIndex and
 // checks the entry's two-bit type; the failure paths build diagnostics that are then discarded.
 #include "k2stdint.h"
+#include <string.h>
 #include "globalvartables.h"
 #include "resgff.h"
 #include "exoresman.h"
@@ -31,12 +32,9 @@ CSWGlobalVariableTable::CSWGlobalVariableTable()
 }
 
 // Clears the identifier table and every counter and statistic, then the values.
-#if KOTOR1  // K1 calls this from the constructor's tail, so it clears the values too
-__attribute__((noinline))
-#endif
 void CSWGlobalVariableTable::ClearIdentifiers()
 {
-    __builtin_memset(m_aIdentifiers, 0, sizeof(m_aIdentifiers));
+    memset(m_aIdentifiers, 0, sizeof(m_aIdentifiers));
     m_nCollisions = 0;
     m_nProbes = 0;
     m_nMaxProbes = 0;
@@ -51,18 +49,14 @@ CSWGlobalVariableTable::~CSWGlobalVariableTable()
 {
 }
 
-// Zeroes the four value arrays.
-// EFFECTIVE: the boolean and number zeroings are adjacent, so the backend merges them into one
-// 1113-byte memset where the original makes the number array its own call.
-#if !KOTOR1  // K1 inlines this into ClearIdentifiers
-__attribute__((noinline))
-#endif
+// Zeroes the four value arrays. Each memset is bionic's fortified one, which keeps them apart (and
+// keeps this function out of line): the object size is unknown until code generation.
 void CSWGlobalVariableTable::ClearValues()
 {
-    __builtin_memset(m_aBooleanBits, 0, sizeof(m_aBooleanBits));
-    __builtin_memset(m_aNumbers, 0, sizeof(m_aNumbers));
-    __builtin_memset(m_aLocations, 0, sizeof(m_aLocations));
-    __builtin_memset(m_aStrings, 0, sizeof(m_aStrings));
+    memset(m_aBooleanBits, 0, sizeof(m_aBooleanBits));
+    memset(m_aNumbers, 0, sizeof(m_aNumbers));
+    memset(m_aLocations, 0, sizeof(m_aLocations));
+    memset(m_aStrings, 0, sizeof(m_aStrings));
 }
 
 // Hashes the name with a CRC-32 walk that case-folds each character, xor's it into the low byte of
@@ -80,7 +74,7 @@ unsigned int CSWGlobalVariableTable::Hash(const CExoString& sName)
 // while the slot is occupied and the name differs. Returns -1 when the name is not in the table.
 int CSWGlobalVariableTable::FindIdentifierIndex(const CExoString& sName)
 {
-    unsigned int nHash = Hash(sName) % NUM_IDENTIFIERS;
+    unsigned int nHash = Hash(sName);
     int nIndex = static_cast<int>(nHash);
     if (m_aIdentifiers[nIndex].m_szName[0] != 0 &&
         sName.CompareNoCase(m_aIdentifiers[nIndex].m_szName) == 0)
@@ -106,28 +100,21 @@ int CSWGlobalVariableTable::FindIdentifierIndex(const CExoString& sName)
 int CSWGlobalVariableTable::AddIdentifier(const CExoString& sName, unsigned int nType,
                                           unsigned int nIndex)
 {
-    unsigned int nHash = Hash(sName) % NUM_IDENTIFIERS;
+    unsigned int nHash = Hash(sName);
     int nSlot = static_cast<int>(nHash);
-    int nProbe = 0;
     if (m_aIdentifiers[nSlot].m_szName[0] != 0)
     {
+        int nProbe = 1;
+        int nNext = nSlot;
         m_nCollisions++;
-        int nNext = (nSlot + 1) % NUM_IDENTIFIERS;
-        nProbe = 1;
-        if (nNext != nSlot)
+        while (nSlot != (nNext = (nNext + 1) % NUM_IDENTIFIERS))
         {
-            for (;;)
+            if (m_aIdentifiers[nNext].m_szName[0] == 0)
             {
-                if (m_aIdentifiers[nNext].m_szName[0] == 0)
-                {
-                    nSlot = nNext;
-                    break;
-                }
-                nNext = (nNext + 1) % NUM_IDENTIFIERS;
-                nProbe++;
-                if (nSlot == nNext)
-                    break;
+                nSlot = nNext;
+                break;
             }
+            nProbe++;
         }
         m_nProbes += nProbe;
         if (nProbe > m_nMaxProbes)
@@ -627,19 +614,20 @@ void CSWGlobalVariableTable::WriteTable(const CExoString& sFileName, int bBinary
     CScriptLocation aLocations[NUM_LOCATIONS];
     CExoString      aStrings[5];
     CExoString      sPath;
+    CResStruct topStruct;
+    CResList listBoolean;
+    CResList listNumber;
+    CResList listLocation;
+    CResList listString;
+    CResList listStringOut;
 
     int nPos = sFileName.Find(CExoString(":"), 0);
     if (nPos != -1)
         sPath = sFileName.Left(nPos + 1);
 
     CResGFF* pGFF = new CResGFF();
-    CResStruct topStruct;
     pGFF->CreateGFFFile(&topStruct, CExoString("GVT "), CExoString("V2.0"));
 
-    CResList listBoolean;
-    CResList listNumber;
-    CResList listLocation;
-    CResList listString;
     if (bBinary)
     {
         pGFF->AddList(&listBoolean,  &topStruct, const_cast<char*>("CatBoolean"));
@@ -699,7 +687,6 @@ void CSWGlobalVariableTable::WriteTable(const CExoString& sFileName, int bBinary
     pGFF->WriteFieldVOID(&topStruct, aNumbers, m_nNumberCount, const_cast<char*>("ValNumber"));
     pGFF->WriteFieldVOID(&topStruct, aLocations, sizeof(aLocations), const_cast<char*>("ValLocation"));
 
-    CResList listStringOut;
     pGFF->AddList(&listStringOut, &topStruct, const_cast<char*>("ValString"));
     if (nString >= 1)
     {

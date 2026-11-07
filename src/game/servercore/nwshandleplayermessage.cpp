@@ -2362,18 +2362,7 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
 
         // Clear all actions.
         case MSG_INPUT_CANCEL_GUI_TIMING_EVENT:
-        {
-            CSWSObject* pObj = pPlayer->GetGameObject();
-            if (pObj == 0)
-                return 0;
-            CSWSCreature* pC = pObj->AsSWSCreature();
-            if (pC != 0 && pC->m_bCommandable == 1)
-            {
-                nResult = 1;
-                pC->ClearAllActions(1);
-            }
-            return 1;
-        }
+            return HandlePlayerToServerInputCancelGuiTimingEvent(pPlayer);
 
         // Use a talent.
         case MSG_INPUT_CAST_SPELL_LIKE_ABILITY:
@@ -2535,9 +2524,8 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
             int nOverride = g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter();
             if (nOverride != -1)
             {
-                unsigned long long nSubjectId =
-                    g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(nOverride, 0, 1);
-                pObject = static_cast<CSWSObject*>(g_pAppManager->m_pServerExoApp->GetGameObject(nSubjectId));
+                pObject = static_cast<CSWSObject*>(g_pAppManager->m_pServerExoApp->GetGameObject(
+                    g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(nOverride, 0, 1)));
                 if (pObject == 0)
                     return 0;
             }
@@ -2677,9 +2665,8 @@ int CSWSMessage::HandlePlayerToServerInventoryMessage(CSWSPlayer* pPlayer, unsig
             int nOverride = g_pAppManager->m_pClientExoApp->GetInGameGui()->GetTopMenuOverrideCharacter();
             if (nOverride != -1)
             {
-                unsigned long long nSubjectId =
-                    g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(nOverride, 0, 1);
-                pObject = static_cast<CSWSObject*>(g_pAppManager->m_pServerExoApp->GetGameObject(nSubjectId));
+                pObject = static_cast<CSWSObject*>(g_pAppManager->m_pServerExoApp->GetGameObject(
+                    g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(nOverride, 0, 1)));
                 if (pObject == 0)
                     return 0;
             }
@@ -3991,22 +3978,21 @@ int CSWSMessage::HandlePlayerToServerPlayModuleCharacterList_Start(CSWSPlayer* p
         return 0;
 
     CAppManager** const ppMgr = &g_pAppManager;
-    CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
+    CExoLinkedList<CSWSPlayer>* pList =
+        reinterpret_cast<CExoLinkedList<CSWSPlayer>*>((*ppMgr)->m_pServerExoApp->GetPlayerList());
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-    if (pNode != 0) {
-        do {
-            CSWSPlayer* pOther = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-            if (pOther != 0 && pOther->GetGameObject() != 0) {
-                unsigned long long objectId = pOther->GetGameObject()->m_objectId;
-                if (objectId != CGameObjectArray::INVALIDOBJID) {
-                    CSWSMessage* pMsg = (*ppMgr)->m_pServerExoApp->GetSWSMessage();
-                    if (pMsg != 0)
-                        pMsg->SendServerToPlayerPlayModuleCharacterListResponse(
-                            pPlayer->m_nPlayerId, objectId, 1);
-                }
+    while (pNode != 0) {
+        CSWSPlayer* pOther = pList->GetAtPos(pNode);
+        if (pOther != 0 && pOther->GetGameObject() != 0) {
+            unsigned long long objectId = pOther->GetGameObject()->m_objectId;
+            if (objectId != CGameObjectArray::INVALIDOBJID) {
+                CSWSMessage* pMsg = (*ppMgr)->m_pServerExoApp->GetSWSMessage();
+                if (pMsg != 0)
+                    pMsg->SendServerToPlayerPlayModuleCharacterListResponse(
+                        pPlayer->m_nPlayerId, objectId, 1);
             }
-            pList->GetNext(pNode);
-        } while (pNode != 0);
+        }
+        pList->GetNext(pNode);
     }
 
     pPlayer->m_bPlayModuleListingCharacters = 1;

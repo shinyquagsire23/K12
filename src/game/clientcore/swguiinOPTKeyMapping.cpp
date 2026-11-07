@@ -165,6 +165,7 @@ void CSWGuiInGameOptKeyMappings::FillListWithEvents()
 void CSWGuiInGameOptKeyMappings::FillListBox(int nPage)
 {
     CExoArrayList<CSWGuiControl*> aPage;
+    int nIndex;
     for (int64_t i = 0; i < static_cast<int64_t>(m_aOptions.m_count); i++) {
         CSWGuiKeyMapButton* pButton = static_cast<CSWGuiKeyMapButton*>(m_aOptions.m_pArray[i]);
         if (pButton->m_nPage != nPage)
@@ -173,7 +174,6 @@ void CSWGuiInGameOptKeyMappings::FillListBox(int nPage)
         if (aPage.m_count < 1) {
             aPage.Add(pButton);
         } else {
-            int nIndex;
             for (nIndex = 0; nIndex < aPage.m_count; nIndex++) {
                 if (static_cast<CSWGuiKeyMapButton*>(aPage.m_pArray[nIndex])->m_nSortPos > pButton->m_nSortPos)
                     break;
@@ -371,6 +371,9 @@ CSWGuiKeyMapButton* CSWGuiInGameOptKeyMappings::CreateOption(int nActionId, CSWG
     int nForceDisplay;
     int nDisabled = 0;
     int nSortPos = -1;
+#if KOTOR1
+    int nIdealHeight;
+#endif
     g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(sActionName, CExoString("ReMappable"),
                                                    &nReMappable);
     g_pRules->m_p2DArrays->m_pKeymap->GetINTEntry(sActionName, CExoString("ForceDisplay"),
@@ -382,17 +385,23 @@ CSWGuiKeyMapButton* CSWGuiInGameOptKeyMappings::CreateOption(int nActionId, CSWG
 
 #if KOTOR1
     // K1 excludes one more action id and takes a single border dimension for the row height.
-    if ((nForceDisplay == 0 && nReMappable == 0) || nDisabled == 1 || nActionId == INPUTEVENT_FREELOOK) {
+    if ((nReMappable == 0 && nForceDisplay == 0) || nDisabled == 1) {
+        delete pButton;
+        return 0;
+    }
+    if (nActionId == INPUTEVENT_FREELOOK) {
         delete pButton;
         return 0;
     }
 
     pButton->SetDescription(sActionName);
 
-    int nIdealHeight = pButton->m_text.GetIdealHeight();
-    int nHilightDim = pButton->m_borderHilight.m_params.GetBorderDim();
-    int nBorderDim = pButton->m_border.m_params.GetBorderDim();
-    extent.h = (((nHilightDim > nBorderDim) ? nHilightDim : nBorderDim) + nIdealHeight) * 2;
+    nIdealHeight = static_cast<CSWGuiText*>(&pButton->m_text)->GetIdealHeight();
+    {
+        int nHilightDim = pButton->m_borderHilight.m_params.GetBorderDim();
+        int nBorderDim = pButton->m_border.m_params.GetBorderDim();
+        extent.h = (((nHilightDim > nBorderDim) ? nHilightDim : nBorderDim) + nIdealHeight) * 2;
+    }
     pButton->SetExtent(extent);
 #else
     if ((nForceDisplay == 0 && nReMappable == 0) || nDisabled == 1) {
@@ -400,11 +409,14 @@ CSWGuiKeyMapButton* CSWGuiInGameOptKeyMappings::CreateOption(int nActionId, CSWG
         return 0;
     }
 
+    int nIdealHeight;
+    int nHilightDim;
+    int nBorderDim;
     pButton->SetDescription(sActionName);
 
-    int nIdealHeight = pButton->m_text.GetIdealHeight();
-    int nHilightDim = pButton->m_borderHilight.m_params.GetBorderDim();
-    int nBorderDim = pButton->m_border.m_params.GetBorderDim();
+    nIdealHeight = pButton->m_text.GetIdealHeight();
+    nHilightDim = pButton->m_borderHilight.m_params.GetBorderDim();
+    nBorderDim = pButton->m_border.m_params.GetBorderDim();
     if (nHilightDim > nBorderDim)
         nBorderDim = pButton->m_borderHilight.m_params.GetBorderDim();
     else
@@ -723,10 +735,10 @@ CSWGuiKeyMapButton::CSWGuiKeyMapButton(CSWGuiInGameOptKeyMappings* pOwner)
     m_nActionId = 0;
     m_bChanged = 0;
     m_nKeyCode = 0;
+    m_nPage = 0;
     m_nDefaultKey = -1;
     m_bDisabled = 0;
     m_nInputClassMask = 0;
-    m_nPage = 0;
     m_nSortPos = -1;
     m_btnKey.m_pContainer = pOwner;
     m_btnKey.m_pParent = this;

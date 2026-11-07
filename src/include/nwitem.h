@@ -57,10 +57,7 @@ public:
     unsigned char  m_weaponWieldType;
     unsigned char  m_nWeaponType;
     unsigned char  _pad0a[0x0c - 0x0a];
-    union {
-        int            m_nDamageFlags;
-        unsigned char  m_abDamageFlagBytes[4];
-    };
+    int            m_nDamageFlags;
     int            m_nMinRange;
     int            m_nMaxRange;
     unsigned char  m_nModelType;

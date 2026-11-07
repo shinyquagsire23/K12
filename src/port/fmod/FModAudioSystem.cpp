@@ -306,12 +306,10 @@ int FModAudioSystem::PauseChannel(FModId nChannel)
 {
     if (nChannel == kInvalidChannel)
         return 0;
-#ifdef K2_FIX_ENGINE_BUGS
     FModAudioSystemChannelInfo* pInfo = GetChannelInfoByUID(static_cast<unsigned int>(nChannel));
+#ifdef K2_FIX_ENGINE_BUGS
     if (pInfo == 0)
         return 0;
-#else
-    FModAudioSystemChannelInfo* pInfo = CHANNEL_MAP.lower_bound(static_cast<unsigned int>(nChannel))->second;
 #endif
     pInfo->m_bPaused = 1;
     m_nLastResult = pInfo->m_pChannel->setPaused(true);
@@ -324,12 +322,10 @@ int FModAudioSystem::ResumeChannel(FModId nChannel)
 {
     if (nChannel == kInvalidChannel)
         return 0;
-#ifdef K2_FIX_ENGINE_BUGS
     FModAudioSystemChannelInfo* pInfo = GetChannelInfoByUID(static_cast<unsigned int>(nChannel));
+#ifdef K2_FIX_ENGINE_BUGS
     if (pInfo == 0)
         return 0;
-#else
-    FModAudioSystemChannelInfo* pInfo = CHANNEL_MAP.lower_bound(static_cast<unsigned int>(nChannel))->second;
 #endif
     pInfo->m_bPaused = 0;
     pInfo->m_bDone = 0;
@@ -442,12 +438,8 @@ int FModAudioSystem::SetChannel3DPosition(FModId nChannel, float x, float y, flo
     pPosition->x = x;
     pPosition->y = y;
     pPosition->z = z;
-    m_nLastResult = pInfo->m_pChannel->set3DAttributes(pPosition, 0);
-    if (m_nLastResult == FMOD_OK)
-    {
-        pInfo->SetPosition(pPosition);
+    if (SetChannel3DPosition(pInfo, pPosition))
         return 1;
-    }
     operator delete(pPosition);
     return 0;
 }

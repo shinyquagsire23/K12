@@ -1094,31 +1094,26 @@ bool CTwoDimArrays::LoadIPRPCostTables()
     CExoString sResRef;
     unsigned char count = m_nIPRPCostTableCount;
     m_paIPRPCostTables = new C2DA*[count];
-    if (count != 0)
+    for (uint64_t i = 0; i < m_nIPRPCostTableCount; i++)
     {
-        uint64_t i = 0;
-        do
+        m_paIPRPCostTables[i] = 0;
+        int nClientLoad = 1;
+        bool bLoadTable = true;
+        if (g_nClientServerMode == 1)
         {
-            m_paIPRPCostTables[i] = 0;
-            int nClientLoad = 1;
-            bool bLoadTable = true;
-            if (g_nClientServerMode == 1)
+            pMaster->GetINTEntry(static_cast<int>(i), CExoString("ClientLoad"), &nClientLoad);
+            bLoadTable = (nClientLoad != 0);
+        }
+        if (bLoadTable)
+        {
+            pMaster->GetCExoStringEntry(static_cast<int>(i), CExoString("Name"), &sResRef);
+            m_paIPRPCostTables[i] = new C2DA(CResRef(static_cast<char*>(sResRef.CStr())), 0);
+            if (!m_paIPRPCostTables[i]->Load2DArray())
             {
-                pMaster->GetINTEntry(static_cast<int>(i), CExoString("ClientLoad"), &nClientLoad);
-                bLoadTable = (nClientLoad != 0);
+                delete pMaster;
+                return false;
             }
-            if (bLoadTable)
-            {
-                pMaster->GetCExoStringEntry(static_cast<int>(i), CExoString("Name"), &sResRef);
-                m_paIPRPCostTables[i] = new C2DA(CResRef(static_cast<char*>(sResRef.CStr())), 0);
-                if (!m_paIPRPCostTables[i]->Load2DArray())
-                {
-                    delete pMaster;
-                    return false;
-                }
-            }
-            i++;
-        } while (i < m_nIPRPCostTableCount);
+        }
     }
     delete pMaster;
     return true;
@@ -1134,26 +1129,17 @@ bool CTwoDimArrays::LoadIPRPParamTables()
     CExoString sResRef;
     unsigned char count = m_nIPRPParamTableCount;
     m_paIPRPParamTables = new C2DA*[count];
-    if (count == 0) goto delete_master_success;
-
+    for (uint64_t i = 0; i < m_nIPRPParamTableCount; i++)
     {
-        uint64_t i = 0;
-        while (true) {
-            m_paIPRPParamTables[i] = 0;
-            pMaster->GetCExoStringEntry(static_cast<int>(i), CExoString("TableResRef"), &sResRef);
-            C2DA* pTable = new C2DA(CResRef(static_cast<char*>(sResRef.CStr())), 0);
-            m_paIPRPParamTables[i] = pTable;
-            if (!pTable->Load2DArray())
-                break;
-            i++;
-            if (m_nIPRPParamTableCount <= i)
-                goto delete_master_success;
+        m_paIPRPParamTables[i] = 0;
+        pMaster->GetCExoStringEntry(static_cast<int>(i), CExoString("TableResRef"), &sResRef);
+        m_paIPRPParamTables[i] = new C2DA(CResRef(static_cast<char*>(sResRef.CStr())), 0);
+        if (!m_paIPRPParamTables[i]->Load2DArray())
+        {
+            delete pMaster;
+            return false;
         }
     }
-    delete pMaster;
-    return false;
-
-delete_master_success:
     delete pMaster;
     return true;
 }
@@ -1161,52 +1147,36 @@ delete_master_success:
 bool CTwoDimArrays::UnLoadIPRPCostTables()
 {
     C2DA** paTables = m_paIPRPCostTables;
-    if (paTables == 0) return true;
-
-    unsigned char count = m_nIPRPCostTableCount;
-    if (count != 0) {
+    if (paTables != 0) {
         for (uint64_t i = 0; i < m_nIPRPCostTableCount; i++) {
-            C2DA* pTable = m_paIPRPCostTables[i];
-            if (pTable != 0) {
-                pTable->Unload2DArray();
+            if (paTables[i] != 0) {
+                paTables[i]->Unload2DArray();
                 delete m_paIPRPCostTables[i];
                 m_paIPRPCostTables[i] = 0;
                 paTables = m_paIPRPCostTables;
             }
         }
-        if (paTables == 0) {
-            m_paIPRPCostTables = 0;
-            return true;
-        }
+        delete[] paTables;
+        m_paIPRPCostTables = 0;
     }
-    operator delete[](paTables);
-    m_paIPRPCostTables = 0;
     return true;
 }
 
 bool CTwoDimArrays::UnLoadIPRPParamTables()
 {
     C2DA** paTables = m_paIPRPParamTables;
-    if (paTables == 0) return true;
-
-    unsigned char count = m_nIPRPParamTableCount;
-    if (count != 0) {
+    if (paTables != 0) {
         for (uint64_t i = 0; i < m_nIPRPParamTableCount; i++) {
-            C2DA* pTable = m_paIPRPParamTables[i];
-            if (pTable != 0) {
-                pTable->Unload2DArray();
+            if (paTables[i] != 0) {
+                paTables[i]->Unload2DArray();
                 delete m_paIPRPParamTables[i];
                 m_paIPRPParamTables[i] = 0;
                 paTables = m_paIPRPParamTables;
             }
         }
-        if (paTables == 0) {
-            m_paIPRPParamTables = 0;
-            return true;
-        }
+        delete[] paTables;
+        m_paIPRPParamTables = 0;
     }
-    operator delete[](paTables);
-    m_paIPRPParamTables = 0;
     return true;
 }
 

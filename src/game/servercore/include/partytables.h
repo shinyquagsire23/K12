@@ -180,8 +180,7 @@ public:
     int                 m_nNumPartyMembers;
     int                 m_nNumPuppets;
     int                 m_partyMemberIndex[2];
-    int                 m_puppetIndex[2];
-    int                 m_nThirdPuppetIndex;
+    int                 m_puppetIndex[3];
     unsigned long long  m_partyMemberID[12];
     int                 m_npcAvailable[12];
     unsigned char       m_npcSelectability[12];

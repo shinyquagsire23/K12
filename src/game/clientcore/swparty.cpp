@@ -977,6 +977,7 @@ int CSWPartyFollowDataArray::GetPointBackFromStart(float fDistance, Vector& vOut
 {
     CWalkHitInfo hitInfo = {};
     hitInfo.m_hitObjectId = OBJECT_INVALID;
+    hitInfo.m_hitSubType = 0;
 
     int nIndex = m_nWriteIndex + ((m_nWriteIndex < 1) ? 99 : -1);
 
@@ -1099,11 +1100,12 @@ float CSWPartyFollowDataArray::AdvancePointOnPath(float fDistance, int nDirectio
 // Runs the party's per-frame tick. It picks the full-screen video effect the leader's force powers
 // ask for, slides the follow anchor toward the point behind the leader, then runs the companion
 // proximity scripts.
+// EFFECTIVE (K2): armv7 keeps the leader in a register where the image spills it; arm64 swaps two registers.
 void CSWParty::Update(float fDelta)
 {
     Vector vAnchor = m_followAnchorPosition;
 
-    CSWCCreature* pLeader = GetPlayerCharacter();
+    CSWCCreature* pLeader = GetCharacter(0);
 
 #if !KOTOR1  // K1's party tick picks no video effect
     int nGuiSuppressed = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nGlobalDialogState;
@@ -1197,50 +1199,47 @@ void CSWParty::Update(float fDelta)
     g_pRules->m_p2DArrays->m_pRanges->GetFLOATEntry(RANGES_PARTY_ESCAPE, CExoString("SecondaryRange"),
                                                     &fSecondaryRange);
 
+    int bRanRetreat = 0;
 #ifdef K2_FIX_ENGINE_BUGS
-    if (m_nCharacterCount >= 2 && pLeader != 0) {
+    for (int i = 1; pLeader != 0 && i < m_nCharacterCount; i++) {
 #else
-    if (m_nCharacterCount >= 2) {
+    for (int i = 1; i < m_nCharacterCount; i++) {
 #endif
-        int bRanRetreat = 0;
-        for (int i = 1; i < m_nCharacterCount; i++) {
-            unsigned long long oid;
-            CSWSCreature* pServerMember;
-            oid = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_members[i].id);
-            pServerMember = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oid);
-            if (pServerMember == 0) {
-                continue;
-            }
-            if (pServerMember->m_pFollowInfo == 0) {
-                continue;
-            }
-            int bWasWithin5m = pServerMember->m_pFollowInfo->m_bWithin5m;
-
-            CSWCCreature* pMember = GetCharacter(i);
-            float fDx = pLeader->m_position.x - pMember->m_position.x;
-            float fDy = pLeader->m_position.y - pMember->m_position.y;
-            float fDz = pLeader->m_position.z - pMember->m_position.z;
-            float fDistanceSq = fDx * fDx + fDy * fDy + fDz * fDz;
-
-            if (m_fRetreatScriptTimer >= fSecondaryRange && fDistanceSq >= fPrimaryRange) {
-                g_pVirtualMachine->RunScript(&sRetreat, oid, oid != OBJECT_INVALID);
-                bRanRetreat = 1;
-            }
-
-            if (bWasWithin5m != 0 && !(fDistanceSq <= 25.0f)) {
-                CExoString sExit("k_hen_exit5m");
-                g_pVirtualMachine->RunScript(&sExit, oid, oid != OBJECT_INVALID);
-                pServerMember->m_pFollowInfo->m_bWithin5m = 0;
-            }
-            if (bWasWithin5m == 0 && fDistanceSq <= 25.0f) {
-                CExoString sEnter("k_hen_enter5m");
-                g_pVirtualMachine->RunScript(&sEnter, oid, oid != OBJECT_INVALID);
-                pServerMember->m_pFollowInfo->m_bWithin5m = 1;
-            }
+        unsigned long long oid;
+        CSWSCreature* pServerMember;
+        oid = g_pAppManager->m_pServerExoApp->ClientToServerObjectId(m_members[i].id);
+        pServerMember = g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oid);
+        if (pServerMember == 0) {
+            continue;
         }
-        if (bRanRetreat) {
-            m_fRetreatScriptTimer = 0.0f;
+        if (pServerMember->m_pFollowInfo == 0) {
+            continue;
         }
+        int bWasWithin5m = pServerMember->m_pFollowInfo->m_bWithin5m;
+
+        CSWCCreature* pMember = GetCharacter(i);
+        float fDx = pLeader->m_position.x - pMember->m_position.x;
+        float fDy = pLeader->m_position.y - pMember->m_position.y;
+        float fDz = pLeader->m_position.z - pMember->m_position.z;
+        float fDistanceSq = fDx * fDx + fDy * fDy + fDz * fDz;
+
+        if (m_fRetreatScriptTimer >= fSecondaryRange && fDistanceSq >= fPrimaryRange) {
+            g_pVirtualMachine->RunScript(&sRetreat, oid, oid != OBJECT_INVALID);
+            bRanRetreat = 1;
+        }
+
+        if (bWasWithin5m != 0 && !(fDistanceSq <= 25.0f)) {
+            CExoString sExit("k_hen_exit5m");
+            g_pVirtualMachine->RunScript(&sExit, oid, oid != OBJECT_INVALID);
+            pServerMember->m_pFollowInfo->m_bWithin5m = 0;
+        } else if (bWasWithin5m == 0 && fDistanceSq <= 25.0f) {
+            CExoString sEnter("k_hen_enter5m");
+            g_pVirtualMachine->RunScript(&sEnter, oid, oid != OBJECT_INVALID);
+            pServerMember->m_pFollowInfo->m_bWithin5m = 1;
+        }
+    }
+    if (bRanRetreat) {
+        m_fRetreatScriptTimer = 0.0f;
     }
 }
 
@@ -1252,6 +1251,7 @@ void CSWPartyFollowDataArray::ProcessPoint(const Vector& vPos, float fYaw, float
     K2_UNUSED(fUnused);
     CWalkHitInfo hitInfo = {};
     hitInfo.m_hitObjectId = OBJECT_INVALID;
+    hitInfo.m_hitSubType = 0;
 
     int nIndex = m_nWriteIndex + ((m_nWriteIndex < 1) ? 99 : -1);
     static Vector m_vLastGoodProcessedPoint;
@@ -1281,7 +1281,7 @@ void CSWPartyFollowDataArray::ProcessPoint(const Vector& vPos, float fYaw, float
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
     float fPersonalSpace = pLeader->m_pPathfindInfo->m_fPersonalSpace;
     int nBlocked = pServer->TestDirectLine(oidLeader, resRef, GetPathData(nIndex)->m_pos, vPos,
-                                            fPersonalSpace, pLeader->m_pPathfindInfo->m_fHeightAlias, 1,
+                                            fPersonalSpace, pLeader->m_pPathfindInfo->m_fHeight, 1,
                                             &hitInfo);
 
     if (nBlocked != 1 &&
@@ -1431,11 +1431,12 @@ void CSWPartyFollowDataArray::SmoothFollowPath()
     }
 
 #if !KOTOR1  // K1 has no per-companion line-of-walk test (and so no follow-point refresh here)
-    CSWPartyFollowData* pLastEntry = GetPathData(nLast);
+    CSWPartyFollowData* pLastEntry = &m_entries[nLast];
 
     CResRef resRef;
     CWalkHitInfo hitInfo = {};
     hitInfo.m_hitObjectId = OBJECT_INVALID;
+    hitInfo.m_hitSubType = 0;
 
     // sic: both lookups resolve the party leader, not companions 1 and 2, though the results are
     // stored as the companions' follow samples.
@@ -1450,7 +1451,7 @@ void CSWPartyFollowDataArray::SmoothFollowPath()
         float fSpace = pLeader->m_pPathfindInfo->m_fPersonalSpace;
         int nResult = g_pAppManager->m_pServerExoApp->TestDirectLine(
             oidLeader, resRef, pCompanion1->m_position, pLastEntry->m_pos, fSpace,
-            pLeader->m_pPathfindInfo->m_fHeightAlias, 1, &hitInfo);
+            pLeader->m_pPathfindInfo->m_fHeight, 1, &hitInfo);
         unsigned long long oidHit =
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(hitInfo.m_hitObjectId);
         if (nResult == -3) {
@@ -1466,7 +1467,7 @@ void CSWPartyFollowDataArray::SmoothFollowPath()
         float fSpace = pLeader->m_pPathfindInfo->m_fPersonalSpace;
         int nResult = g_pAppManager->m_pServerExoApp->TestDirectLine(
             oidLeader, resRef, pCompanion2->m_position, pLastEntry->m_pos, fSpace,
-            pLeader->m_pPathfindInfo->m_fHeightAlias, 1, &hitInfo);
+            pLeader->m_pPathfindInfo->m_fHeight, 1, &hitInfo);
         unsigned long long oidHit =
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(hitInfo.m_hitObjectId);
         if (nResult == -3) {
@@ -1479,7 +1480,8 @@ void CSWPartyFollowDataArray::SmoothFollowPath()
     }
 #endif
 
-    int nStart = m_pParty->m_members[FindClosestPartyMemeber_Current()].m_nPathIndex;
+    int nClosest = FindClosestPartyMemeber_Current();
+    int nStart = m_pParty->m_members[nClosest].m_nPathIndex;
     if (static_cast<unsigned int>(nStart) > 99) {
         nStart = 0;
     }
@@ -1496,6 +1498,7 @@ void CSWPartyFollowDataArray::SmoothFollowPath()
     while (nCur != nLast && nLast != nStart && nCount <= 199 && nResult != 0) {
         CWalkHitInfo hitInfoWalk = {};
         hitInfoWalk.m_hitObjectId = OBJECT_INVALID;
+        hitInfoWalk.m_hitSubType = 0;
 
         Vector vA = aPath[nCount - 1] - GetPathData(nCur)->m_pos;
         Vector vB = aPath[nCount - 1] - GetPathData(nCur)->m_pos;
@@ -1507,7 +1510,7 @@ void CSWPartyFollowDataArray::SmoothFollowPath()
             float fSpace = pLeader->m_pPathfindInfo->m_fPersonalSpace;
             nResult = pServer->TestDirectLine(oidLeader, resRefWalk, aPath[nCount - 1],
                                                GetPathData(nCur)->m_pos, fSpace,
-                                               pLeader->m_pPathfindInfo->m_fHeightAlias, 1,
+                                               pLeader->m_pPathfindInfo->m_fHeight, 1,
                                                &hitInfoWalk);
         }
         unsigned long long oidHit =
@@ -1538,7 +1541,7 @@ void CSWPartyFollowDataArray::SmoothFollowPath()
         float fSpace = pLeader->m_pPathfindInfo->m_fPersonalSpace;
         int nTail = pServer->TestDirectLine(oidLeader, resRefWalk, aPath[nCount - 1],
                                              GetPathData(nCur)->m_pos, fSpace,
-                                             pLeader->m_pPathfindInfo->m_fHeightAlias, 1, 0);
+                                             pLeader->m_pPathfindInfo->m_fHeight, 1, 0);
         if (nTail == 1) {
             aPath[nCount] = GetPathData(nCur)->m_pos;
             nCount = nCount + 1;

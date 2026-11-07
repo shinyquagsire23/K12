@@ -9,7 +9,7 @@ struct GFFHeader;
 
 // bionic's fortified strncpy (port/libcbase.h), for CResGFF::SetFileType.
 extern "C" char* __strncpy_chk2(char* dst, const char* src, size_t n, size_t nDstSize, size_t nSrcSize);  // idiom-exempt: bionic declaration
-#if !defined(K2_HOST_BUILD) && !defined(_FORTIFY_SOURCE)
+#if !defined(K2_HOST_BUILD) && (!defined(_FORTIFY_SOURCE) || (defined(__ANDROID_API__) && __ANDROID_API__ < 17))
 #include "port/libcbase.h"
 #endif
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -218,7 +218,7 @@ public:
     char         m_sFileType[4];
     // strncpy(m_sFileType, sType, 4) through bionic's _FORTIFY_SOURCE wrapper: a source of known size
     // goes to __strncpy_chk2, an unknown one to the compiler's checked strncpy (a plain strncpy here).
-    void SetFileType(const char* sType)
+    void SetFileType(char* sType)
     {
         uint64_t nSrcSize = __builtin_object_size(sType, 1);
         if (nSrcSize == static_cast<uint64_t>(-1))
@@ -279,8 +279,8 @@ void ByteSwap(double* p);
 // The on-disk GFF header (56 bytes). m_pFileHeader points at one, either the raw resource-cache
 // buffer or a grown one on the write path. Every multi-byte field is read through ByteSwap.
 struct GFFHeader {
-    char         sFileType[4];
-    char         sFileVersion[4];
+    unsigned int nFileType;
+    unsigned int nFileVersion;
     unsigned int nStructOffset;
     unsigned int nStructCount;
     unsigned int nFieldOffset;

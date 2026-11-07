@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "nwsplayer.h"
 #include "nwsplayerluo.h"
 #include "nwsjournal.h"
@@ -908,7 +909,7 @@ int CSWSPlayer::LoadCharacterFromIFO(unsigned int playerIndex, int bRestorePosit
         {
             pGff = new CResGFF;
             g_pExoResMan->SetResObject(CResRef("pifo"), RESTYPE_IFO, pGff);
-            pGff->SetFileType("IFO ");
+            pGff->SetFileType(const_cast<char*>("IFO "));
 
             bNewGff = 1;
         }

@@ -8,6 +8,19 @@
 
 struct CSWGuiExtent;
 
+// One skill row of a CSWGuiSkillFlow, with the icon and background images and the id and status the
+// chart sets.
+struct CSWGuiFlowSkillStruct {
+#if KOTOR1  // K1: each slot also carries its own border
+    CSWGuiBorder  m_border;
+#endif
+    CSWGuiImage   m_imageIcon;
+    CSWGuiImage   m_imageBg;
+    int           m_nId;
+    unsigned char m_bStatus;
+    unsigned char m_bSelected;
+};
+
 // One row group of the character-screen skill/feat/power flow chart.
 class CSWGuiSkillFlow : public CSWGuiControl {
 public:
@@ -24,7 +37,7 @@ public:
     // and falls back to slot 0's id when nothing hits. The scan stops at the first empty slot.
     int SkillHitCheckMouse(int nX, int nY);
 
-    // Slot::m_bStatus, how SetSkillStatus paints a slot: what the level-up and character screens
+    // CSWGuiFlowSkillStruct::m_bStatus, how SetSkillStatus paints a slot: what the level-up and character screens
     // know about that feat or power.
     enum {
         SKILL_STATUS_AVAILABLE = 0,
@@ -43,18 +56,7 @@ public:
     // The slot holding nId, or -1.
     int GetSkillIDIndex(unsigned int nId);
 
-    // One skill row, with the icon and background images and the id and status the chart sets.
-    struct Slot {
-#if KOTOR1  // K1: each slot also carries its own border
-        CSWGuiBorder  m_border;
-#endif
-        CSWGuiImage   m_imageIcon;
-        CSWGuiImage   m_imageBg;
-        int           m_nId;
-        unsigned char m_bStatus;
-        unsigned char m_bSelected;
-    };
-    Slot m_aSlots[3];
+    CSWGuiFlowSkillStruct m_aSlots[3];
 
     // Arrow k-1 pairs with slot k.
     CSWGuiImage m_aArrow[2];
@@ -98,7 +100,7 @@ public:
 
     void ClearChart();
 
-    void BuildSortedPowerList(CExoArrayList<unsigned>& list);
+    void BuildSortedPowerList(CExoArrayList<uint32_l_t>& list);
     void BuildSortedFeatList(CExoArrayList<unsigned short>& list);
 
     void AddFeatSet(unsigned int nFeatA, unsigned int nFeatB, unsigned int nFeatC);
@@ -123,10 +125,10 @@ public:
     {
         if (m_aFlows.m_count < 1)
             return -1;
-        return m_aFlows.m_pArray[m_nSelectedFlow]->m_aSlots[m_nSelectedSlot].m_nId;
+        return static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow])->m_aSlots[m_nSelectedSlot].m_nId;
     }
 
-    CExoArrayList<CSWGuiSkillFlow*> m_aFlows;
+    CExoArrayList<CSWGuiControl*> m_aFlows;
     unsigned char m_nSelectedSlot;
     unsigned char m_nSelectedFlow;
 };
@@ -153,7 +155,7 @@ public:
     // </VTABLE-GEN>
 
     CSWGuiSkillInfoBox(CSWGuiManager* pGuiManager);
-    void SetSkillList(const CExoArrayList<unsigned int>& skills, unsigned char nType);
+    void SetSkillList(const CExoArrayList<uint32_l_t>& skills, unsigned char nType);
 #if !KOTOR1
     void SetCallback(CSWGuiObject* pObj, void (CSWGuiObject::*pFn)(CSWGuiControl*));
 #endif

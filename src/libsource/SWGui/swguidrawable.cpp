@@ -36,8 +36,8 @@ CSWGuiTextParams::CSWGuiTextParams()
     m_defaultColor.x = 1.0f;
     m_defaultColor.y = 1.0f;
     m_defaultColor.z = 1.0f;
-    m_nStrRef = STRREF_NONE;
     m_color = m_defaultColor;
+    m_nStrRef = STRREF_NONE;
     m_fAlpha = 1.0f;
     m_pTextObject = NULL;
     bHilight = false;
@@ -2009,34 +2009,30 @@ void CSWGuiIndicator::DrawJointedLine()
 
     // Spread the leftover pixels the same way the straight renderers do: every tile grows by the
     // extra, and the first `remainder` of them take one more each.
-    if (nHorzTiles) {
-        int nRemainder = nHorzSlack - nHorzExtra * nHorzTiles;
-        int nTileWidth = nHorzExtra + nEdgeWidth;
-        for (int i = 0; i < nHorzTiles; i++) {
-            int nThisWidth = nTileWidth;
-            if (nRemainder) {
-                nThisWidth++;
-                nRemainder--;
-            }
-            m_pEdgeImage->DrawBuffered(nHorzX, nHorzY, nThisWidth, nHorzH, 0, fHorzRotate,
-                                       CSWGuiDrawable::NO_COLOURING, fAlpha);
-            nHorzX += nThisWidth;
+    int nRemainder = nHorzSlack - nHorzExtra * nHorzTiles;
+    int nTileWidth = nHorzExtra + nEdgeWidth;
+    for (int i = 0; i < nHorzTiles; i++) {
+        int nThisWidth = nTileWidth;
+        if (nRemainder) {
+            nThisWidth++;
+            nRemainder--;
         }
+        m_pEdgeImage->DrawBuffered(nHorzX, nHorzY, nThisWidth, nHorzH, 0, fHorzRotate,
+                                   CSWGuiDrawable::NO_COLOURING, fAlpha);
+        nHorzX += nThisWidth;
     }
 
-    if (nVertTiles) {
-        int nRemainder  = nVertSlack - nVertExtra * nVertTiles;
-        int nTileHeight = nVertExtra + nEdgeHeight;
-        for (int i = 0; i < nVertTiles; i++) {
-            int nThisHeight = nTileHeight;
-            if (nRemainder) {
-                nThisHeight++;
-                nRemainder--;
-            }
-            m_pEdgeImage->DrawBuffered(nVertX, nVertY, nVertW, nThisHeight, 0, fVertRotate,
-                                       CSWGuiDrawable::NO_COLOURING, fAlpha);
-            nVertY += nThisHeight;
+    nRemainder = nVertSlack - nVertExtra * nVertTiles;
+    int nTileHeight = nVertExtra + nEdgeHeight;
+    for (int i = 0; i < nVertTiles; i++) {
+        int nThisHeight = nTileHeight;
+        if (nRemainder) {
+            nThisHeight++;
+            nRemainder--;
         }
+        m_pEdgeImage->DrawBuffered(nVertX, nVertY, nVertW, nThisHeight, 0, fVertRotate,
+                                   CSWGuiDrawable::NO_COLOURING, fAlpha);
+        nVertY += nThisHeight;
     }
 
     m_pCornerImage->DrawBuffered(nVertX, nHorzY, nVertW, nHorzH, 0, fCornerRotate,

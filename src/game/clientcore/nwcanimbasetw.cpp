@@ -32,12 +32,12 @@ CSWCAnimBaseTW::CSWCAnimBaseTW()
     m_bTailTexturePartial = 0;
     m_tailTextureCache.m_nCount = 0;
     m_tailTextureCache.m_nOffset = 0;
-    memset(m_tailTextureCache.m_anData, 0, sizeof(m_tailTextureCache.m_anData));
+    memset(static_cast<void*>(m_tailTextureCache.m_anData), 0, sizeof(m_tailTextureCache.m_anData));
     m_resWingsTexture = const_cast<char*>("");
     m_bWingsTexturePartial = 0;
     m_wingsTextureCache.m_nCount = 0;
     m_wingsTextureCache.m_nOffset = 0;
-    memset(m_wingsTextureCache.m_anData, 0, sizeof(m_wingsTextureCache.m_anData));
+    memset(static_cast<void*>(m_wingsTextureCache.m_anData), 0, sizeof(m_wingsTextureCache.m_anData));
     m_resTailEnvMap = const_cast<char*>("");
     m_bTailEnvMap = 0;
     m_resWingsEnvMap = const_cast<char*>("");
@@ -59,6 +59,7 @@ Gob* CSWCAnimBaseTW::GetModel(unsigned char which)
 // re-attaches the already-built sub-objects; a failed base load aborts the whole call.
 int CSWCAnimBaseTW::LoadModel(CResRef const& cResRef, unsigned char which)
 {
+    char szName[17];
     if (which == ANIM_MODEL_BODY)
     {
         if (!CSWCAnimBase::LoadModel(cResRef, ANIM_MODEL_BODY))
@@ -71,7 +72,6 @@ int CSWCAnimBaseTW::LoadModel(CResRef const& cResRef, unsigned char which)
     }
     if (which == ANIM_MODEL_TAIL)
     {
-        char szName[17];
         cResRef.CopyToString(szName);
         m_pTail = NewCAurObject(szName, const_cast<char*>("tail"), 0, 0);
         if (!m_pTail)
@@ -83,7 +83,6 @@ int CSWCAnimBaseTW::LoadModel(CResRef const& cResRef, unsigned char which)
     }
     if (which == ANIM_MODEL_WINGS)
     {
-        char szName[17];
         cResRef.CopyToString(szName);
         m_pWings = NewCAurObject(szName, const_cast<char*>("wings"), 0, 0);
         if (!m_pWings)
@@ -101,10 +100,10 @@ int CSWCAnimBaseTW::LoadModel(CResRef const& cResRef, unsigned char which)
 
 int CSWCAnimBaseTW::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, int bCache)
 {
+    char szOld[17];
+    char szNew[17];
     if (m_pTail)
     {
-        char szOld[20];
-        char szNew[20];
         sOld.CopyToString(szOld);
         sNew.CopyToString(szNew);
         _strlwr(szNew);
@@ -118,8 +117,6 @@ int CSWCAnimBaseTW::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, int
     }
     if (m_pWings)
     {
-        char szOld[20];
-        char szNew[20];
         sOld.CopyToString(szOld);
         sNew.CopyToString(szNew);
         _strlwr(szNew);
@@ -137,12 +134,12 @@ int CSWCAnimBaseTW::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, int
 int CSWCAnimBaseTW::ReplaceTexture(unsigned char which, CResRef const& sOld, CResRef const& sNew,
                                    int bCache)
 {
+    char szOld[17];
+    char szNew[17];
     if (which == ANIM_MODEL_TAIL)
     {
         if (!m_pTail)
             return 0;
-        char szOld[20];
-        char szNew[20];
         sOld.CopyToString(szOld);
         sNew.CopyToString(szNew);
         _strlwr(szOld);
@@ -159,8 +156,6 @@ int CSWCAnimBaseTW::ReplaceTexture(unsigned char which, CResRef const& sOld, CRe
     {
         if (!m_pWings)
             return 0;
-        char szOld[20];
-        char szNew[20];
         sOld.CopyToString(szOld);
         sNew.CopyToString(szNew);
         _strlwr(szOld);
@@ -180,13 +175,13 @@ int CSWCAnimBaseTW::ReplaceTexture(unsigned char which, CResRef const& sOld, CRe
                                    unsigned int nCount, unsigned short* paData, int bCache,
                                    unsigned int nOffset)
 {
+    char szOld[17];
+    char szNew[17];
     int nResult = 0;
     if (which == ANIM_MODEL_TAIL)
     {
         if (m_pTail)
         {
-            char szOld[20];
-            char szNew[20];
             sOld.CopyToString(szOld);
             sNew.CopyToString(szNew);
             _strlwr(szOld);
@@ -207,8 +202,6 @@ int CSWCAnimBaseTW::ReplaceTexture(unsigned char which, CResRef const& sOld, CRe
     {
         if (m_pWings)
         {
-            char szOld[20];
-            char szNew[20];
             sOld.CopyToString(szOld);
             sNew.CopyToString(szNew);
             _strlwr(szOld);
@@ -233,10 +226,10 @@ int CSWCAnimBaseTW::ReplaceTexture(unsigned char which, CResRef const& sOld, CRe
 int CSWCAnimBaseTW::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, unsigned int nCount,
                                    unsigned short* paData, int bCache, unsigned int nOffset)
 {
+    char szOld[17];
+    char szNew[17];
     if (m_pTail)
     {
-        char szOld[20];
-        char szNew[20];
         sOld.CopyToString(szOld);
         sNew.CopyToString(szNew);
         _strlwr(szOld);
@@ -253,8 +246,6 @@ int CSWCAnimBaseTW::ReplaceTexture(CResRef const& sOld, CResRef const& sNew, uns
     }
     if (m_pWings)
     {
-        char szOld[20];
-        char szNew[20];
         sOld.CopyToString(szOld);
         sNew.CopyToString(szNew);
         _strlwr(szOld);
@@ -328,9 +319,9 @@ int CSWCAnimBaseTW::RestoreTexture(unsigned char which)
 // selector one only into the sub-object it named.
 int CSWCAnimBaseTW::SetEnvMap(int nIndex, int bCache, CResRef const& cResRef)
 {
+    char szName[17];
     if (nIndex)
     {
-        char szName[17];
         cResRef.CopyToString(szName);
         if (m_pTail)
             m_pTail->SetEnvironmentMap(szName);
@@ -400,11 +391,11 @@ int CSWCAnimBaseTW::SetEnvMap(unsigned char which, int nIndex, int bCache, CResR
 
 int CSWCAnimBaseTW::RestoreEnvMap()
 {
+    char szName[17];
     if (m_pTail)
     {
         if (m_bTailEnvMap)
         {
-            char szName[17];
             m_resTailEnvMap.CopyToString(szName);
             m_pTail->SetEnvironmentMap(szName);
         }
@@ -415,7 +406,6 @@ int CSWCAnimBaseTW::RestoreEnvMap()
     {
         if (m_bWingsEnvMap)
         {
-            char szName[17];
             m_resWingsEnvMap.CopyToString(szName);
             m_pWings->SetEnvironmentMap(szName);
         }

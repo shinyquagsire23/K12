@@ -138,7 +138,12 @@ void CSWSScriptVarTable::SetInt(const CExoString& sName, int nValue, int nFlag)
 void CSWSScriptVarTable::SetFloat(const CExoString& sName, float fValue)
 {
     CSWSScriptVar* pVar = MatchIndex(sName, VARTYPE_FLOAT, 1);
+#ifdef K2_FIX_ENGINE_BUGS
+    pVar->m_oObject = 0;
+    pVar->m_fFloat = fValue;
+#else
     pVar->m_oObject = *reinterpret_cast<unsigned long long*>(&fValue);
+#endif
 }
 
 // Assigns through the entry's own heap CExoString.

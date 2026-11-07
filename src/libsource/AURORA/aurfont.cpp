@@ -31,7 +31,6 @@ static bool s_bUseBitmapFont;
 static StringGob* textureFont;
 CStringColor g_cDefCol;
 CStringColor g_cDefCol2;
-CStringColor g_cSavedCol;
 List<PostedString*> posts;
 List<TraceString*> TraceStrings;
 int g_nCurrentPrintLine;

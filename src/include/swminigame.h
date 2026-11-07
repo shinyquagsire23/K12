@@ -1,16 +1,13 @@
 #pragma once
 
-// One vehicle's per-frame physics pair. CSWMiniGame embeds two of them by value, and
+// The swoop-race and turret minigame controller. It embeds two CSWMGPhysicsStates by value, and
 // CSWMiniPlayer::Control differences the two states field by field into its offset accumulator.
 
 #include "Vector.h"
 #include "Vector.h"
 #include "Quaternion.h"
 
-struct CSWMGPhysicsState {
-    Vector m_vVelocity;
-    Vector m_vPosition;
-};
+#include "swmgphysicsstate.h"
 
 #include "CResHelper.h"
 #include "CExoArrayListDtors.h"
@@ -71,9 +68,9 @@ public:
     CAurCamera* m_pCamera;
     CSWTrackFollower* m_pPlayer;
     CSWCArea* m_pArea;
-    CExoArrayList<unsigned int>     m_enemyIds;
+    CExoArrayList<uint32_l_t>     m_enemyIds;
     CExoArrayList<SWMGTrackInfo*> m_protoTracks;
-    CExoArrayList<unsigned int>     m_obstacleIds;
+    CExoArrayList<uint32_l_t>     m_obstacleIds;
     CExoArrayList<SafePointer<CAurObject>*> m_bullets;
     CExoArrayList<SWMGExplodeBullet*> m_explodeBullets;
     float  m_clipNear;
@@ -125,6 +122,11 @@ public:
     void SetMusic(const CResRef& resMusic) { m_resForfeitSound = resMusic; }
     void SetCurrentPhysicsState(CSWMGPhysicsState sState) { m_curPhysicsState = sState; }
     void SetPreviousPhysicsState(CSWMGPhysicsState sState) { m_prevPhysicsState = sState; }
+    // The stick axis accelerates the vehicle and the velocity damps in proportion to itself.
+    Vector GetAcceleration(CSWMGPhysicsState& state, const Vector& vAxis)
+    {
+        return vAxis * m_lateralAccelPerSec - state.m_vVelocity * (m_lateralAccelPerSec / m_movementPerSecond);
+    }
     SWMGTrackInfo* GetProtoTrack(const CResRef& resTrack);
     SWMGTrackInfo* AddTrack(const CResRef& resTrack, const Vector& vPosition);
     Vector BumpPlane(const Quaternion& qRot);

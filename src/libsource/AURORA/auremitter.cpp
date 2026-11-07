@@ -50,9 +50,14 @@ PartEmitter::PartEmitter(MdlNode* pNode) : Part(pNode)
     m_fAlphaEnd = 0.0f;
     m_fAlphaStart = 0.0f;
 
-    // Clear the emitter's parameter block.
+    // Clear the emitter's parameter block. K1's is bionic's fortified memset, K2's the builtin (its armv7
+    // image keeps the alignment: __aeabi_memclr4).
     // idiom-exempt: requires_token_comment
-    memset(&m_fBirthRate, 0, 0x5c);  // idiom-exempt: the emitter's parameter block  // idiom-exempt: the orig's own +0x70 store-run construct
+#if KOTOR1
+    memset(&m_fBirthRate, 0, 0x5c);  // idiom-exempt: the emitter's parameter block
+#else
+    __builtin_memset(&m_fBirthRate, 0, 0x5c);  // idiom-exempt: the emitter's parameter block  // idiom-exempt: the orig's own +0x70 store-run construct
+#endif
     m_fBlurLength = 1.0f;
 
     m_fLightningDelay = 0.0f;
@@ -296,31 +301,29 @@ extern int quaternionidentityoptimization;
 extern int useoldlightninginterp;
 
 // Rotates a vector by a quaternion.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
-        float xx = x * x, yy = y * y, zz = z * z;
-        float xy = x * y, xz = x * z, wx = x * w;
-        float yz = y * z, wy = y * w;
-        float wz = z * w;
-        Vector r;
-        float m00 = 1.0f - ((yy + zz) + (yy + zz));
-        float m01 = (xy - wz) + (xy - wz);
-        float m02 = (xz + wy) + (xz + wy);
-        float m10 = (xy + wz) + (xy + wz);
-        float m11 = 1.0f - ((xx + zz) + (xx + zz));
-        float m12 = (yz - wx) + (yz - wx);
-        float m20 = (xz - wy) + (xz - wy);
-        float m21 = (yz + wx) + (yz + wx);
-        float m22 = 1.0f - ((xx + yy) + (xx + yy));
-        r.x = v.x * m00 + v.y * m01 + v.z * m02;
-        r.y = v.x * m10 + v.y * m11 + v.z * m12;
-        r.z = v.x * m20 + v.y * m21 + v.z * m22;
-        return r;
-    }
-    return v;
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
+        return v;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
+    float xx = x * x, yy = y * y, zz = z * z;
+    float xy = x * y, xz = x * z, wx = x * w;
+    float yz = y * z, wy = y * w;
+    float wz = z * w;
+    Vector r;
+    float m00 = 1.0f - ((yy + zz) + (yy + zz));
+    float m01 = (xy - wz) + (xy - wz);
+    float m02 = (xz + wy) + (xz + wy);
+    float m10 = (xy + wz) + (xy + wz);
+    float m11 = 1.0f - ((xx + zz) + (xx + zz));
+    float m12 = (yz - wx) + (yz - wx);
+    float m20 = (xz - wy) + (xz - wy);
+    float m21 = (yz + wx) + (yz + wx);
+    float m22 = 1.0f - ((xx + yy) + (xx + yy));
+    r.x = v.x * m00 + v.y * m01 + v.z * m02;
+    r.y = v.x * m10 + v.y * m11 + v.z * m12;
+    r.z = v.x * m20 + v.y * m21 + v.z * m22;
+    return r;
 }
 
 // Inverse rotation, spelled as the engine stores it: (-w, x, y, z).
@@ -618,124 +621,121 @@ void PartEmitter::moveParticleP2PBezier(float fDeltaT)
         vTarget.z += static_cast<float>((n4 & 1) ? n5 : -n5) / 100.0f;
     }
 
-    if (m_lParticles.m_count >= 1)
+    int nBouncing = pNode->m_nEmitterFlags & MdlNodeEmitter::kEmitterBouncing;
+    float fOneMinusDt = 1.0f - fDeltaT;
+
+    for (int i = 0; i < m_lParticles.m_count; i++)
     {
-        int nBouncing = pNode->m_nEmitterFlags & MdlNodeEmitter::kEmitterBouncing;
-        float fOneMinusDt = 1.0f - fDeltaT;
+        Particle* pParticle = m_lParticles.m_pData[i];
+        Vector vPos = pParticle->m_vPosition;
+        Vector v;
 
-        for (int i = 0; i < m_lParticles.m_count; i++)
+        if (nInheriting)
         {
-            Particle* pParticle = m_lParticles.m_pData[i];
-            Vector vPos = pParticle->m_vPosition;
-            Vector v;
-
-            if (nInheriting)
-            {
 #if KOTOR1  // K1 recomputes the relative rotation for each of the two rotates
-                Quaternion qRel = m_qWorldOrientation * -m_qPrevWorldOrientation;
-                v = RotateVector(pParticle->m_vPosition - m_avVectors[7], qRel) + m_avVectors[6];
+            Quaternion qRel = m_qWorldOrientation * -m_qPrevWorldOrientation;
+            v = RotateVector(pParticle->m_vPosition - m_avVectors[7], qRel) + m_avVectors[6];
 #else
-                Quaternion qInv(-m_qPrevWorldOrientation.w, m_qPrevWorldOrientation.x, m_qPrevWorldOrientation.y, m_qPrevWorldOrientation.z);
-                Quaternion qRel = m_qWorldOrientation * qInv;
-                v = RotateVector(vPos - m_avVectors[7], qRel) + m_avVectors[6];
+            Quaternion qInv(-m_qPrevWorldOrientation.w, m_qPrevWorldOrientation.x, m_qPrevWorldOrientation.y, m_qPrevWorldOrientation.z);
+            Quaternion qRel = m_qWorldOrientation * qInv;
+            v = RotateVector(vPos - m_avVectors[7], qRel) + m_avVectors[6];
 #endif
 #if KOTOR1
-                qRel = m_qWorldOrientation * -m_qPrevWorldOrientation;
-                pParticle->m_vSpreadVelocity = RotateVector(pParticle->m_vSpreadVelocity, qRel);
+            qRel = m_qWorldOrientation * -m_qPrevWorldOrientation;
+            pParticle->m_vSpreadVelocity = RotateVector(pParticle->m_vSpreadVelocity, qRel);
 #else
-                pParticle->m_vSpreadVelocity = RotateVector(pParticle->m_vSpreadVelocity, qRel);
+            pParticle->m_vSpreadVelocity = RotateVector(pParticle->m_vSpreadVelocity, qRel);
 #endif
-            }
-            else
+        }
+        else
+        {
+            v = vPos;
+        }
+
+        // In the particle's own travel this frame, the spread velocity is added whole, with no
+        // gravity term yet.
+        Vector vStep = v + pParticle->m_vSpreadVelocity * fDeltaT;
+
+        if (pNode->m_flags.m_bAffectedByWind)
+            vStep = vStep + currentscene->GetWindVector(v, fDeltaT);
+
+        // The curve parameter is the particle's age as a fraction of the emitter's lifetime,
+        // clamped to 1.
+        float fT = pParticle->m_fAge / m_fLifeExp;
+        if (fT > 1.0f)
+            fT = 1.0f;
+        float fT2 = fT * fT;
+        float fT3 = fT2 * fT;
+        float fU = 1.0f - fT;
+        float fU2 = fU * fU;
+        float fU3 = fU2 * fU;
+        float f3T = fT * 3.0f;
+        float fA = fU3;
+        float fB = f3T * fU * fU;
+        float fC = fT * f3T * fU;
+        float fD = fT3;
+
+        // The two inner control points ride the watched object's forward axis and the
+        // emitter's own third axis, each scaled by a handle length.
+        Vector vCtrl1 = m_avVectors[6] + m_avVectors[3] * m_fP2PBezier2;
+        Vector vCtrl2 = vTarget + m_spTarget.m_pObject->GetOrientation().zdir() * m_fP2PBezier3;
+        Vector vBez = m_avVectors[6] * fA + vCtrl1 * fB + vCtrl2 * fC + vTarget * fD;
+
+        // The curve is only one term of the blend. It is damped against the particle's own
+        // travel, and the inherited velocity is added outright.
+        float fPow = powf(fT3, m_fCombineTime);
+        pParticle->m_vPosition = vBez * fPow + vStep * (1.0f - fPow)
+                               + pParticle->m_vVelocity * pParticle->m_fSpeed * fDeltaT;
+
+        // Gravity on the vertical velocity, then the frame-rate-independent speed decay.
+        pParticle->m_vSpreadVelocity.z = pParticle->m_vSpreadVelocity.z + m_fMass * -9.81f * fDeltaT;
+        float fSpeed = pParticle->m_fSpeed * fOneMinusDt;
+        pParticle->m_fSpeed = fSpeed < 0.0f ? -fSpeed : fSpeed;
+
+        // Cleared every frame, not only when bouncing.
+        m_pHitInfo->ClearOutput();
+
+        if (nBouncing)
+        {
+            // A chunky emitter must exclude its own particles' meshes from the probe, and it
+            // extends the probe ray past the particle by the emitter's handle length.
+            Vector vA = pParticle->m_vPosition;
+            if (pNode->m_szChunkName[0] != 0)
             {
-                v = vPos;
+                m_pHitInfo->m_ignoreList.SetSize(0);
+                CAurObject* pChunk = static_cast<ChunkyParticle*>(pParticle)->m_pAurObject;
+                if (pChunk != NULL)
+                    m_pHitInfo->m_ignoreList.Add(pChunk);
+                vA = pParticle->m_vPosition + (pParticle->m_vPosition - vPos) * m_fSizeStart;
             }
 
-            // In the particle's own travel this frame, the spread velocity is added whole, with no
-            // gravity term yet.
-            Vector vStep = v + pParticle->m_vSpreadVelocity * fDeltaT;
-
-            if (pNode->m_flags.m_bAffectedByWind)
-                vStep = vStep + currentscene->GetWindVector(v, fDeltaT);
-
-            // The curve parameter is the particle's age as a fraction of the emitter's lifetime,
-            // clamped to 1.
-            float fT = pParticle->m_fAge / m_fLifeExp;
-            if (fT > 1.0f)
-                fT = 1.0f;
-            float fT2 = fT * fT;
-            float fT3 = fT2 * fT;
-            float fU = 1.0f - fT;
-            float fU2 = fU * fU;
-            float fU3 = fU2 * fU;
-            float f3T = fT * 3.0f;
-            float fA = fU3;
-            float fB = f3T * fU * fU;
-            float fC = fT * f3T * fU;
-            float fD = fT3;
-
-            // The two inner control points ride the watched object's forward axis and the
-            // emitter's own third axis, each scaled by a handle length.
-            Vector vCtrl1 = m_avVectors[6] + m_avVectors[3] * m_fP2PBezier2;
-            Vector vCtrl2 = vTarget + m_spTarget.m_pObject->GetOrientation().zdir() * m_fP2PBezier3;
-            Vector vBez = m_avVectors[6] * fA + vCtrl1 * fB + vCtrl2 * fC + vTarget * fD;
-
-            // The curve is only one term of the blend. It is damped against the particle's own
-            // travel, and the inherited velocity is added outright.
-            float fPow = powf(fT3, m_fCombineTime);
-            pParticle->m_vPosition = vBez * fPow + vStep * (1.0f - fPow)
-                                   + pParticle->m_vVelocity * pParticle->m_fSpeed * fDeltaT;
-
-            // Gravity on the vertical velocity, then the frame-rate-independent speed decay.
-            pParticle->m_vSpreadVelocity.z = pParticle->m_vSpreadVelocity.z + m_fMass * -9.81f * fDeltaT;
-            float fSpeed = pParticle->m_fSpeed * fOneMinusDt;
-            pParticle->m_fSpeed = fSpeed < 0.0f ? -fSpeed : fSpeed;
-
-            // Cleared every frame, not only when bouncing.
-            m_pHitInfo->ClearOutput();
-
-            if (nBouncing)
+            if (currentscene->HitCheck(vPos, vA, &pParticle->m_vPosition,
+                                       m_pHitInfo) != 0)
             {
-                // A chunky emitter must exclude its own particles' meshes from the probe, and it
-                // extends the probe ray past the particle by the emitter's handle length.
-                Vector vA = pParticle->m_vPosition;
+                const Vector& vNormal = m_pHitInfo->m_vHitNormal;
+                float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
+                pParticle->m_vSpreadVelocity =
+                    (pParticle->m_vSpreadVelocity + vNormal * (-2.0f * fDot)) * m_fBounceCoeff;
+
+                // A nudge off the surface, then the reorient, which lays the particle flat on
+                // the hit normal and has it remember the normal, with a second, longer nudge
+                // for a chunky one.
+                pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.005f;
+
+                float fMagSq = pParticle->m_vSpreadVelocity.x * pParticle->m_vSpreadVelocity.x
+                             + pParticle->m_vSpreadVelocity.y * pParticle->m_vSpreadVelocity.y
+                             + pParticle->m_vSpreadVelocity.z * pParticle->m_vSpreadVelocity.z;
+                if (fMagSq < 0.5f)
+                {
+                    pParticle->m_bLanded = true;
+                    pParticle->m_qOrientation =
+                        RotationArc(Vector(0.0f, 0.0f, 1.0f), vNormal);
+                    pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.02f;
+                    pParticle->m_vDirection = vNormal;
+                }
                 if (pNode->m_szChunkName[0] != 0)
-                {
-                    m_pHitInfo->m_ignoreList.SetSize(0);
-                    CAurObject* pChunk = static_cast<ChunkyParticle*>(pParticle)->m_pAurObject;
-                    if (pChunk != NULL)
-                        m_pHitInfo->m_ignoreList.Add(pChunk);
-                    vA = pParticle->m_vPosition + (pParticle->m_vPosition - vPos) * m_fSizeStart;
-                }
-
-                if (currentscene->HitCheck(vPos, vA, &pParticle->m_vPosition,
-                                           m_pHitInfo) != 0)
-                {
-                    const Vector& vNormal = m_pHitInfo->m_vHitNormal;
-                    float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
-                    pParticle->m_vSpreadVelocity =
-                        (pParticle->m_vSpreadVelocity + vNormal * (-2.0f * fDot)) * m_fBounceCoeff;
-
-                    // A nudge off the surface, then the reorient, which lays the particle flat on
-                    // the hit normal and has it remember the normal, with a second, longer nudge
-                    // for a chunky one.
-                    pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.005f;
-
-                    float fMagSq = pParticle->m_vSpreadVelocity.x * pParticle->m_vSpreadVelocity.x
-                                 + pParticle->m_vSpreadVelocity.y * pParticle->m_vSpreadVelocity.y
-                                 + pParticle->m_vSpreadVelocity.z * pParticle->m_vSpreadVelocity.z;
-                    if (fMagSq < 0.5f)
-                    {
-                        pParticle->m_bLanded = true;
-                        pParticle->m_qOrientation =
-                            RotationArc(Vector(0.0f, 0.0f, 1.0f), vNormal);
-                        pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.02f;
-                        pParticle->m_vDirection = vNormal;
-                    }
-                    if (pNode->m_szChunkName[0] != 0)
-                        pParticle->m_vPosition =
-                            pParticle->m_vPosition + vNormal * m_fSizeStart;
-                }
+                    pParticle->m_vPosition =
+                        pParticle->m_vPosition + vNormal * m_fSizeStart;
             }
         }
     }
@@ -773,171 +773,168 @@ void PartEmitter::moveParticleP2PGrav(float fDeltaT)
         vTarget.z = fOffZ + vTarget.z;
     }
 
-    if (m_lParticles.m_count >= 1)
+    int nBouncing = pNode->m_nEmitterFlags & MdlNodeEmitter::kEmitterBouncing;
+    float fOneMinusDt = 1.0f - fDeltaT;
+
+    for (int i = 0; i < m_lParticles.m_count; i++)
     {
-        int nBouncing = pNode->m_nEmitterFlags & MdlNodeEmitter::kEmitterBouncing;
-        float fOneMinusDt = 1.0f - fDeltaT;
+        Particle* pParticle = m_lParticles.m_pData[i];
+        Vector vPos = pParticle->m_vPosition;
 
-        for (int i = 0; i < m_lParticles.m_count; i++)
+        if (nInheriting)
         {
-            Particle* pParticle = m_lParticles.m_pData[i];
-            Vector vPos = pParticle->m_vPosition;
-
-            if (nInheriting)
-            {
 #if KOTOR1  // K1 recomputes the relative rotation for each of the two rotates
-                Quaternion qRel = m_qWorldOrientation * -m_qPrevWorldOrientation;
-                v = RotateVector(pParticle->m_vPosition - m_avVectors[7], qRel) + m_avVectors[6];
+            Quaternion qRel = m_qWorldOrientation * -m_qPrevWorldOrientation;
+            v = RotateVector(pParticle->m_vPosition - m_avVectors[7], qRel) + m_avVectors[6];
 #else
-                Quaternion qInv(-m_qPrevWorldOrientation.w, m_qPrevWorldOrientation.x, m_qPrevWorldOrientation.y, m_qPrevWorldOrientation.z);
-                Quaternion qRel = m_qWorldOrientation * qInv;
-                v = RotateVector(vPos - m_avVectors[7], qRel) + m_avVectors[6];
+            Quaternion qInv(-m_qPrevWorldOrientation.w, m_qPrevWorldOrientation.x, m_qPrevWorldOrientation.y, m_qPrevWorldOrientation.z);
+            Quaternion qRel = m_qWorldOrientation * qInv;
+            v = RotateVector(vPos - m_avVectors[7], qRel) + m_avVectors[6];
 #endif
 #if KOTOR1
-                qRel = m_qWorldOrientation * -m_qPrevWorldOrientation;
-                pParticle->m_vSpreadVelocity = RotateVector(pParticle->m_vSpreadVelocity, qRel);
+            qRel = m_qWorldOrientation * -m_qPrevWorldOrientation;
+            pParticle->m_vSpreadVelocity = RotateVector(pParticle->m_vSpreadVelocity, qRel);
 #else
-                pParticle->m_vSpreadVelocity = RotateVector(pParticle->m_vSpreadVelocity, qRel);
+            pParticle->m_vSpreadVelocity = RotateVector(pParticle->m_vSpreadVelocity, qRel);
 #endif
-            }
-            else
-            {
-                v = vPos;
-            }
+        }
+        else
+        {
+            v = vPos;
+        }
 
-            // For Gob inherit, re-rotate the particle's offset between the cached and current Gob
-            // orientations, then re-base it on the Gob's live position.
-            if ((pNode->m_nEmitterFlags & (MdlNodeEmitter::kEmitterInheriting | MdlNodeEmitter::kEmitterInheritingLocal)) == MdlNodeEmitter::kEmitterInheritingLocal && m_pGob != NULL)
-            {
-                Quaternion& qGob = m_pGob->m_qOrientation;
+        // For Gob inherit, re-rotate the particle's offset between the cached and current Gob
+        // orientations, then re-base it on the Gob's live position.
+        if ((pNode->m_nEmitterFlags & (MdlNodeEmitter::kEmitterInheriting | MdlNodeEmitter::kEmitterInheritingLocal)) == MdlNodeEmitter::kEmitterInheritingLocal && m_pGob != NULL)
+        {
+            Quaternion& qGob = m_pGob->m_qOrientation;
 #if KOTOR1  // K1 inverts the Gob orientation again for the velocity rotate
-                v = RotateVector(v - m_avVectors[5], InverseOf(m_qInheritOrientation));
+            v = RotateVector(v - m_avVectors[5], InverseOf(m_qInheritOrientation));
 #else
-                Quaternion qInv = InverseOf(m_qInheritOrientation);
-                v = RotateVector(v - m_avVectors[5], qInv);
+            Quaternion qInv = InverseOf(m_qInheritOrientation);
+            v = RotateVector(v - m_avVectors[5], qInv);
 #endif
-                v = RotateVector(v, qGob);
+            v = RotateVector(v, qGob);
 
-                Vector vDelta = m_pGob->m_vPosition - m_avVectors[5];
-                pParticle->m_vTrailPosition = pParticle->m_vTrailPosition + vDelta;
-                v = v + vDelta;
-                v = v + m_avVectors[5];
+            Vector vDelta = m_pGob->m_vPosition - m_avVectors[5];
+            pParticle->m_vTrailPosition = pParticle->m_vTrailPosition + vDelta;
+            v = v + vDelta;
+            v = v + m_avVectors[5];
 
 #if KOTOR1
-                pParticle->m_vSpreadVelocity =
-                    RotateVector(RotateVector(pParticle->m_vSpreadVelocity, InverseOf(m_qInheritOrientation)), qGob);
+            pParticle->m_vSpreadVelocity =
+                RotateVector(RotateVector(pParticle->m_vSpreadVelocity, InverseOf(m_qInheritOrientation)), qGob);
 #else
-                pParticle->m_vSpreadVelocity = RotateVector(RotateVector(pParticle->m_vSpreadVelocity, qInv), qGob);
+            pParticle->m_vSpreadVelocity = RotateVector(RotateVector(pParticle->m_vSpreadVelocity, qInv), qGob);
 #endif
+        }
+
+        // Part inherit does the same double rotation, taken off the emitter's own frame
+        // origins, with the trail position re-expressed around the Gob.
+        if ((pNode->m_nEmitterFlags & MdlNodeEmitter::kEmitterInheritingPart) && m_pGob != NULL)
+        {
+            Quaternion& qGob = m_pGob->m_qOrientation;
+            Vector vDelta = m_avVectors[6] - m_avVectors[5];
+
+            v = RotateVector(v - m_avVectors[5], InverseOf(m_qInheritOrientation));
+            v = RotateVector(v, qGob);
+            v = v + vDelta;
+
+            pParticle->m_vTrailPosition = pParticle->m_vTrailPosition + vDelta;
+            pParticle->m_vTrailPosition = pParticle->m_vTrailPosition - m_pGob->m_vPosition;
+            pParticle->m_vTrailPosition =
+                RotateVector(RotateVector(pParticle->m_vTrailPosition, InverseOf(m_qInheritOrientation)), qGob);
+            pParticle->m_vTrailPosition = pParticle->m_vTrailPosition + m_pGob->m_vPosition;
+
+            v = v + m_avVectors[5];
+            pParticle->m_vSpreadVelocity =
+                RotateVector(RotateVector(pParticle->m_vSpreadVelocity, InverseOf(m_qInheritOrientation)), qGob);
+        }
+
+        // The Euler step, then the wind sample, which is passed the pre-step position.
+        vStep = v + pParticle->m_vSpreadVelocity * fDeltaT;
+        if (pNode->m_flags.m_bAffectedByWind)
+            vStep = vStep + currentscene->GetWindVector(v, fDeltaT);
+
+        // The homing pull. A particle already inside the arrival radius ends here; its age is
+        // set to the emitter lifetime and the call returns.
+        vToTarget = vTarget - v;
+        float fDistSq = vToTarget.x * vToTarget.x + vToTarget.y * vToTarget.y
+                      + vToTarget.z * vToTarget.z;
+        float fArriveSq = m_fThreshold * m_fThreshold;
+        if (fDistSq <= fArriveSq)
+        {
+            pParticle->m_fAge = m_fLifeExp;
+            return;
+        }
+
+        // Damp the spread velocity, then accelerate along the unit line to the target: the
+        // same `vPush` is added to the velocity outright and to the position by one more dt.
+        float fPow = powf(m_fDrag, fDeltaT);
+        pParticle->m_vSpreadVelocity = pParticle->m_vSpreadVelocity * fPow;
+        Vector vPush = normalize(vToTarget) * m_fGrav * fDeltaT;
+        vStep = vStep + vPush * fDeltaT;
+        pParticle->m_vSpreadVelocity = pParticle->m_vSpreadVelocity + vPush;
+
+        // The travel direction is this frame's actual displacement, not the aim vector.
+        Vector vTravel = vStep - v;
+        Vector vZero;
+        if (!equal(vTravel, vZero))
+            pParticle->m_vDirection = normalize(vTravel);
+
+        // Arrival is re-tested against the segment the particle swept, and a near miss only
+        // resets the age (it does not return).
+        vToTarget = vTarget - segmentproject(v, vStep, vTarget);
+        float fNearSq = vToTarget.x * vToTarget.x + vToTarget.y * vToTarget.y
+                      + vToTarget.z * vToTarget.z;
+        if (fNearSq <= fArriveSq)
+            pParticle->m_fAge = m_fLifeExp;
+
+        pParticle->m_vPosition = vStep
+                               + pParticle->m_vVelocity * pParticle->m_fSpeed * fDeltaT;
+
+        // Gravity on the vertical velocity, then the frame-rate-independent speed decay.
+        pParticle->m_vSpreadVelocity.z = pParticle->m_vSpreadVelocity.z + m_fMass * -9.81f * fDeltaT;
+        float fSpeed = pParticle->m_fSpeed * fOneMinusDt;
+        pParticle->m_fSpeed = fSpeed < 0.0f ? -fSpeed : fSpeed;
+
+        m_pHitInfo->ClearOutput();
+
+        if (nBouncing)
+        {
+            Vector vA = pParticle->m_vPosition;
+            if (pNode->m_szChunkName[0] != 0)
+            {
+                m_pHitInfo->m_ignoreList.SetSize(0);
+                CAurObject* pChunk = static_cast<ChunkyParticle*>(pParticle)->m_pAurObject;
+                if (pChunk != NULL)
+                    m_pHitInfo->m_ignoreList.Add(pChunk);
+                vA = pParticle->m_vPosition + (pParticle->m_vPosition - vPos) * m_fSizeStart;
             }
 
-            // Part inherit does the same double rotation, taken off the emitter's own frame
-            // origins, with the trail position re-expressed around the Gob.
-            if ((pNode->m_nEmitterFlags & MdlNodeEmitter::kEmitterInheritingPart) && m_pGob != NULL)
+            if (currentscene->HitCheck(vPos, vA, &pParticle->m_vPosition,
+                                       m_pHitInfo) != 0)
             {
-                Quaternion& qGob = m_pGob->m_qOrientation;
-                Vector vDelta = m_avVectors[6] - m_avVectors[5];
-
-                v = RotateVector(v - m_avVectors[5], InverseOf(m_qInheritOrientation));
-                v = RotateVector(v, qGob);
-                v = v + vDelta;
-
-                pParticle->m_vTrailPosition = pParticle->m_vTrailPosition + vDelta;
-                pParticle->m_vTrailPosition = pParticle->m_vTrailPosition - m_pGob->m_vPosition;
-                pParticle->m_vTrailPosition =
-                    RotateVector(RotateVector(pParticle->m_vTrailPosition, InverseOf(m_qInheritOrientation)), qGob);
-                pParticle->m_vTrailPosition = pParticle->m_vTrailPosition + m_pGob->m_vPosition;
-
-                v = v + m_avVectors[5];
+                const Vector& vNormal = m_pHitInfo->m_vHitNormal;
+                float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
                 pParticle->m_vSpreadVelocity =
-                    RotateVector(RotateVector(pParticle->m_vSpreadVelocity, InverseOf(m_qInheritOrientation)), qGob);
-            }
+                    (pParticle->m_vSpreadVelocity + vNormal * (-2.0f * fDot)) * m_fBounceCoeff;
+                pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.005f;
 
-            // The Euler step, then the wind sample, which is passed the pre-step position.
-            vStep = v + pParticle->m_vSpreadVelocity * fDeltaT;
-            if (pNode->m_flags.m_bAffectedByWind)
-                vStep = vStep + currentscene->GetWindVector(v, fDeltaT);
-
-            // The homing pull. A particle already inside the arrival radius ends here; its age is
-            // set to the emitter lifetime and the call returns.
-            vToTarget = vTarget - v;
-            float fDistSq = vToTarget.x * vToTarget.x + vToTarget.y * vToTarget.y
-                          + vToTarget.z * vToTarget.z;
-            float fArriveSq = m_fThreshold * m_fThreshold;
-            if (fDistSq <= fArriveSq)
-            {
-                pParticle->m_fAge = m_fLifeExp;
-                return;
-            }
-
-            // Damp the spread velocity, then accelerate along the unit line to the target: the
-            // same `vPush` is added to the velocity outright and to the position by one more dt.
-            float fPow = powf(m_fDrag, fDeltaT);
-            pParticle->m_vSpreadVelocity = pParticle->m_vSpreadVelocity * fPow;
-            Vector vPush = normalize(vToTarget) * m_fGrav * fDeltaT;
-            vStep = vStep + vPush * fDeltaT;
-            pParticle->m_vSpreadVelocity = pParticle->m_vSpreadVelocity + vPush;
-
-            // The travel direction is this frame's actual displacement, not the aim vector.
-            Vector vTravel = vStep - v;
-            Vector vZero;
-            if (!equal(vTravel, vZero))
-                pParticle->m_vDirection = normalize(vTravel);
-
-            // Arrival is re-tested against the segment the particle swept, and a near miss only
-            // resets the age (it does not return).
-            vToTarget = vTarget - segmentproject(v, vStep, vTarget);
-            float fNearSq = vToTarget.x * vToTarget.x + vToTarget.y * vToTarget.y
-                          + vToTarget.z * vToTarget.z;
-            if (fNearSq <= fArriveSq)
-                pParticle->m_fAge = m_fLifeExp;
-
-            pParticle->m_vPosition = vStep
-                                   + pParticle->m_vVelocity * pParticle->m_fSpeed * fDeltaT;
-
-            // Gravity on the vertical velocity, then the frame-rate-independent speed decay.
-            pParticle->m_vSpreadVelocity.z = pParticle->m_vSpreadVelocity.z + m_fMass * -9.81f * fDeltaT;
-            float fSpeed = pParticle->m_fSpeed * fOneMinusDt;
-            pParticle->m_fSpeed = fSpeed < 0.0f ? -fSpeed : fSpeed;
-
-            m_pHitInfo->ClearOutput();
-
-            if (nBouncing)
-            {
-                Vector vA = pParticle->m_vPosition;
+                float fMagSq = pParticle->m_vSpreadVelocity.x * pParticle->m_vSpreadVelocity.x
+                             + pParticle->m_vSpreadVelocity.y * pParticle->m_vSpreadVelocity.y
+                             + pParticle->m_vSpreadVelocity.z * pParticle->m_vSpreadVelocity.z;
+                if (fMagSq < 0.5f)
+                {
+                    pParticle->m_bLanded = true;
+                    pParticle->m_qOrientation =
+                        RotationArc(Vector(0.0f, 0.0f, 1.0f), vNormal);
+                    pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.02f;
+                    pParticle->m_vDirection = vNormal;
+                }
                 if (pNode->m_szChunkName[0] != 0)
-                {
-                    m_pHitInfo->m_ignoreList.SetSize(0);
-                    CAurObject* pChunk = static_cast<ChunkyParticle*>(pParticle)->m_pAurObject;
-                    if (pChunk != NULL)
-                        m_pHitInfo->m_ignoreList.Add(pChunk);
-                    vA = pParticle->m_vPosition + (pParticle->m_vPosition - vPos) * m_fSizeStart;
-                }
-
-                if (currentscene->HitCheck(vPos, vA, &pParticle->m_vPosition,
-                                           m_pHitInfo) != 0)
-                {
-                    const Vector& vNormal = m_pHitInfo->m_vHitNormal;
-                    float fDot = dot(pParticle->m_vSpreadVelocity, vNormal);
-                    pParticle->m_vSpreadVelocity =
-                        (pParticle->m_vSpreadVelocity + vNormal * (-2.0f * fDot)) * m_fBounceCoeff;
-                    pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.005f;
-
-                    float fMagSq = pParticle->m_vSpreadVelocity.x * pParticle->m_vSpreadVelocity.x
-                                 + pParticle->m_vSpreadVelocity.y * pParticle->m_vSpreadVelocity.y
-                                 + pParticle->m_vSpreadVelocity.z * pParticle->m_vSpreadVelocity.z;
-                    if (fMagSq < 0.5f)
-                    {
-                        pParticle->m_bLanded = true;
-                        pParticle->m_qOrientation =
-                            RotationArc(Vector(0.0f, 0.0f, 1.0f), vNormal);
-                        pParticle->m_vPosition = pParticle->m_vPosition + vNormal * 0.02f;
-                        pParticle->m_vDirection = vNormal;
-                    }
-                    if (pNode->m_szChunkName[0] != 0)
-                        pParticle->m_vPosition =
-                            pParticle->m_vPosition + vNormal * m_fSizeStart;
-                }
+                    pParticle->m_vPosition =
+                        pParticle->m_vPosition + vNormal * m_fSizeStart;
             }
         }
     }
@@ -961,20 +958,85 @@ void PartEmitter::moveParticleP2PGrav(float fDeltaT)
 #if !KOTOR1  // K1 has no memory report
 int PartEmitter::printMemory()
 {
-    printf("Part: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-           8, 16, 28, 44, 48, 52, 53, 54, 56, 72, 80, 88, 96);
+    Part::printMemory();
     return printf(
         " -> PartEmitter: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, "
         "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, "
         "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, "
         "%d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-        100, 104, 108, 112, 116, 120, 124,
-        128, 132, 136, 140, 144, 148, 152, 156, 160, 164, 168, 172, 176, 180, 184, 188,
-        192, 196, 200, 204, 208, 212, 216, 220, 224, 228, 232, 236, 240, 244, 248, 252,
-        256, 260, 264, 268, 272, 276, 280, 284, 288, 292, 296, 300, 304, 308,
-        320, 332, 344, 356, 368, 380, 392, 404, 416, 428,
-        444, 460, 480, 488, 504, 520, 528, 536, 544, 552,
-        560, 562, 563, 564);
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_nBlendMode)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fAlphaEnd)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fAlphaStart)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fBirthRate)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fBounceCoeff)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fCombineTime)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fDrag)), static_cast<int>(K2_OFFSETOF(PartEmitter, m_fFPS)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fFrameEnd)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fFrameStart)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fGrav)), static_cast<int>(K2_OFFSETOF(PartEmitter, m_fLifeExp)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fMass)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fP2PBezier2)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fP2PBezier3)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fParticleRot)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fRandVel)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fSizeStart)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fSizeEnd)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fSizeStartY)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fSizeEndY)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fSpread)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fThreshold)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fVelocity)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fXSize)), static_cast<int>(K2_OFFSETOF(PartEmitter, m_fYSize)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fBlurLength)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fLightningDelay)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fLightningRadius)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fLightningScale)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fLightningSubDiv)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fLightningZigzag)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fBirthTimer)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fRadius)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fGravityAccel)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fAlphaMid)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fPercentStart)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fPercentMid)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fPercentEnd)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fSizeMid)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fSizeMidY)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fRandomBirthRate)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fDelayTimer)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fControlPtTimer)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fTargetSize)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fNumControlPts)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fControlPtRadius)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fControlPtDelay)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fTangentSpread)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_fTangentLength)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_nRenderMode)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, _pad130)), static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[1])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[2])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[3])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[4])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[5])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[6])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[7])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[8])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_avVectors[9])),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_qInheritOrientation)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_qWorldOrientation)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_qPrevWorldOrientation)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_spWindManager)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_lParticles)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_lFreeParticles)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_pParticleMaterial)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_spTarget)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_pHitInfo)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_pTileData)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_pTargetCallBack)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_nGradientMode)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_bDetonate)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_bStarted)),
+        static_cast<int>(K2_OFFSETOF(PartEmitter, m_bWeather)));
 }
 #endif // !KOTOR1
 
@@ -1047,22 +1109,17 @@ SingleEmitter::SingleEmitter(MdlNode* pNode) : PartEmitter(pNode) {}
 LightningEmitter::LightningEmitter(MdlNode* pNode) : PartEmitter(pNode)
 {
     m_fLightningScale = 0.0f;
-    // Clear the bolt state.
-#if KOTOR1  // K1 zeroes the scalars one by one (the Vectors/Lists by their own ctors)
     m_fJitterAxisX = 0.0f;
     m_fJitterAxisY = 0.0f;
     m_fJitterAxisZ = 0.0f;
     m_nActiveBranches = 0;
     m_bIsBranch = false;
-#else
-    memset(&m_vBoltSpan, 0, 0x2f1 - 0x238);  // idiom-exempt: the aggregate member block  // idiom-exempt: the orig's own 0x238..0x2f1 store-run
-#endif
 }
 
 LightningEmitter::~LightningEmitter()
 {
     MdlNodeEmitter* pNode = static_cast<MdlNodeEmitter*>(m_pNode->AsMdlNodeEmitter());
-    if (m_lBranches.m_count != 0 && pNode->m_nNumBranches > 0)
+    if (m_lBranches.m_count != 0)
     {
         for (int64_t i = 0; i < pNode->m_nNumBranches; i++)
         {
@@ -1239,13 +1296,16 @@ void LightningEmitter::UpdateControlPoints()
         {
             m_lControlPoints.m_pData[nSeg + 1] = m_lControlPoints.m_pData[m_lControlPoints.m_count - 1];
 
-            // Shrinking truncates the six lists in place; SetSize would reallocate a smaller
-            // buffer.
-            List<Vector>* apLists[6] = { &m_lControlPoints, &m_lPrevPoints, &m_lNextPoints,
-                                         &m_lControlTangents, &m_lPrevTangents, &m_lNextTangents };
-            while (m_lControlPoints.m_count > nCount)
-                for (int k = 0; k < 6; k++)
-                    apLists[k]->m_count--;
+            // Shrinking drops the six lists' last entries in place; SetSize would reallocate a
+            // smaller buffer.
+            while (m_lControlPoints.m_count > nCount) {
+                m_lControlPoints.DelIndex(m_lControlPoints.m_count - 1);
+                m_lPrevPoints.DelIndex(m_lPrevPoints.m_count - 1);
+                m_lNextPoints.DelIndex(m_lNextPoints.m_count - 1);
+                m_lControlTangents.DelIndex(m_lControlTangents.m_count - 1);
+                m_lPrevTangents.DelIndex(m_lPrevTangents.m_count - 1);
+                m_lNextTangents.DelIndex(m_lNextTangents.m_count - 1);
+            }
         }
 
         // The two end directions are the emitter's world up-axis at the head and the direction to
@@ -1295,64 +1355,61 @@ void LightningEmitter::UpdateControlPoints()
 
     // In the per-point jitter pair, both lists keep the previous frame's jittered points before
     // this frame's are rolled.
-    if (m_lControlPoints.m_count >= 1)
+    int nYawRange = static_cast<int>(fYawRange * 100.0f);
+    int nPitchRange = static_cast<int>(fPitchRange * 100.0f);
+
+    for (int i = 0; i < m_lControlPoints.m_count; i++)
     {
-        int nYawRange = static_cast<int>(fYawRange * 100.0f);
-        int nPitchRange = static_cast<int>(fPitchRange * 100.0f);
+        m_lPrevPoints.m_pData[i] = m_lNextPoints.m_pData[i];
+        m_lPrevTangents.m_pData[i] = m_lNextTangents.m_pData[i];
 
-        for (int i = 0; i < m_lControlPoints.m_count; i++)
+        if (i == 0)
         {
-            m_lPrevPoints.m_pData[i] = m_lNextPoints.m_pData[i];
-            m_lPrevTangents.m_pData[i] = m_lNextTangents.m_pData[i];
-
-            if (i == 0)
+            m_lNextPoints.m_pData[0] = m_lControlPoints.m_pData[0];
+            m_lNextTangents.m_pData[0] = m_qWorldOrientation.zdir() * m_fTangentLength;
+        }
+        else if (i == m_lControlPoints.m_count - 1)
+        {
+            m_lNextPoints.m_pData[i] = m_lControlPoints.m_pData[i];
+            m_lNextTangents.m_pData[i] = normalize(m_spTarget.m_pObject->GetPosition() -
+                                               m_avVectors[6]) * m_fTangentLength;
+        }
+        else
+        {
+            if (nYawRange != 0)
             {
-                m_lNextPoints.m_pData[0] = m_lControlPoints.m_pData[0];
-                m_lNextTangents.m_pData[0] = m_qWorldOrientation.zdir() * m_fTangentLength;
-            }
-            else if (i == m_lControlPoints.m_count - 1)
-            {
-                m_lNextPoints.m_pData[i] = m_lControlPoints.m_pData[i];
-                m_lNextTangents.m_pData[i] = normalize(m_spTarget.m_pObject->GetPosition() -
-                                                   m_avVectors[6]) * m_fTangentLength;
+                int nYaw = rand_wincompatible() % nYawRange;
+                float fYaw = (rand_wincompatible() & 1) ? static_cast<float>(nYaw) * -0.01f
+                                                        : static_cast<float>(nYaw) * 0.01f;
+                Quaternion qYaw = YawPitchRoll(0.0f, static_cast<float>(rand_wincompatible() % 360), 0.0f);
+                m_lNextPoints.m_pData[i] =
+                    m_lControlPoints.m_pData[i] +
+                    RotateVector(Vector(m_fJitterAxisX, m_fJitterAxisY, m_fJitterAxisZ) * fYaw, qYaw);
             }
             else
             {
-                if (nYawRange != 0)
-                {
-                    int nYaw = rand_wincompatible() % nYawRange;
-                    float fYaw = (rand_wincompatible() & 1) ? static_cast<float>(nYaw) * -0.01f
-                                                            : static_cast<float>(nYaw) * 0.01f;
-                    Quaternion qYaw = YawPitchRoll(0.0f, static_cast<float>(rand_wincompatible() % 360), 0.0f);
-                    m_lNextPoints.m_pData[i] =
-                        m_lControlPoints.m_pData[i] +
-                        RotateVector(Vector(m_fJitterAxisX, m_fJitterAxisY, m_fJitterAxisZ) * fYaw, qYaw);
-                }
-                else
-                {
-                    m_lNextPoints.m_pData[i] = m_lControlPoints.m_pData[i];
-                }
-
-                if (nPitchRange != 0)
-                {
-                    int nYaw2 = rand_wincompatible() % nPitchRange;
-                    float fYaw2 = (rand_wincompatible() & 1) ? static_cast<float>(nYaw2) * -0.01f
-                                                             : static_cast<float>(nYaw2) * 0.01f;
-                    int nPitch = rand_wincompatible() % nPitchRange;
-                    float fPitch = (rand_wincompatible() & 1) ? static_cast<float>(nPitch) * -0.01f
-                                                              : static_cast<float>(nPitch) * 0.01f;
-                    Quaternion qPitch = YawPitchRoll(fYaw2, fPitch, 0.0f);
-                    m_lNextTangents.m_pData[i] = RotateVector(m_lControlTangents.m_pData[i], qPitch);
-                }
-                else
-                {
-                    m_lNextTangents.m_pData[i] = m_lControlTangents.m_pData[i];
-                }
+                m_lNextPoints.m_pData[i] = m_lControlPoints.m_pData[i];
             }
 
-            if (m_bIsBranch)
-                m_lPrevPoints.m_pData[i] = m_lNextPoints.m_pData[i];
+            if (nPitchRange != 0)
+            {
+                int nYaw2 = rand_wincompatible() % nPitchRange;
+                float fYaw2 = (rand_wincompatible() & 1) ? static_cast<float>(nYaw2) * -0.01f
+                                                         : static_cast<float>(nYaw2) * 0.01f;
+                int nPitch = rand_wincompatible() % nPitchRange;
+                float fPitch = (rand_wincompatible() & 1) ? static_cast<float>(nPitch) * -0.01f
+                                                          : static_cast<float>(nPitch) * 0.01f;
+                Quaternion qPitch = YawPitchRoll(fYaw2, fPitch, 0.0f);
+                m_lNextTangents.m_pData[i] = RotateVector(m_lControlTangents.m_pData[i], qPitch);
+            }
+            else
+            {
+                m_lNextTangents.m_pData[i] = m_lControlTangents.m_pData[i];
+            }
         }
+
+        if (m_bIsBranch)
+            m_lPrevPoints.m_pData[i] = m_lNextPoints.m_pData[i];
     }
 
     // Place every particle along the polyline.
@@ -1551,7 +1608,7 @@ void LightningEmitter::Update(float fDeltaT)
                     do
                     {
                         fSegLo = fSegStep;
-                        fSegStep = fSegLo + 1.0f / static_cast<float>(nSegMax);
+                        fSegStep = fSegLo + 1.0f / static_cast<float>(m_lNextPoints.m_count - 1);
                         nSeg++;
                     } while (fSegStep < fT);
                 }
@@ -1592,9 +1649,9 @@ void LightningEmitter::Update(float fDeltaT)
                 float dz = bz - (fFadeInv * dD.z + fFade * dE.z);
 
                 Particle* pParticle = m_lParticles.m_pData[i];
-                pParticle->m_vPosition.x = ax * fB0 + cx * fB1 + dx * fB2 + bx * fB3;
-                pParticle->m_vPosition.y = ay * fB0 + cy * fB1 + dy * fB2 + by * fB3;
-                pParticle->m_vPosition.z = az * fB0 + cz * fB1 + dz * fB2 + bz * fB3;
+                pParticle->m_vPosition = Vector(ax * fB0 + cx * fB1 + dx * fB2 + bx * fB3,
+                                                ay * fB0 + cy * fB1 + dy * fB2 + by * fB3,
+                                                az * fB0 + cz * fB1 + dz * fB2 + bz * fB3);
             }
         }
 
@@ -1679,7 +1736,7 @@ void LightningEmitter::Update(float fDeltaT)
                         do
                         {
                             fSegLo = fSegStep;
-                            fSegStep = fSegLo + 1.0f / static_cast<float>(nSegMax);
+                            fSegStep = fSegLo + 1.0f / static_cast<float>(m_lNextPoints.m_count - 1);
                             nSeg++;
                         } while (fSegStep < fT);
                     }
@@ -1717,9 +1774,9 @@ void LightningEmitter::Update(float fDeltaT)
                     float dz = bz - (fFadeInv * dD.z + fFade * dE.z);
 
                     Particle* pParticle = m_lParticles.m_pData[i];
-                    pParticle->m_vPosition.x = ax * fB0 + cx * fB1 + dx * fB2 + bx * fB3;
-                    pParticle->m_vPosition.y = ay * fB0 + cy * fB1 + dy * fB2 + by * fB3;
-                    pParticle->m_vPosition.z = az * fB0 + cz * fB1 + dz * fB2 + bz * fB3;
+                    pParticle->m_vPosition = Vector(ax * fB0 + cx * fB1 + dx * fB2 + bx * fB3,
+                                                    ay * fB0 + cy * fB1 + dy * fB2 + by * fB3,
+                                                    az * fB0 + cz * fB1 + dz * fB2 + bz * fB3);
 
                     // Only the head moved, so only the first segment is re-blended: the walk stops
                     // after the first particle past it.
@@ -1782,9 +1839,9 @@ void LightningEmitter::Update(float fDeltaT)
                     float dz = bz - (fFadeInv * dD.z + fFade * dE.z);
 
                     Particle* pParticle = m_lParticles.m_pData[i];
-                    pParticle->m_vPosition.x = ax * fB0 + cx * fB1 + dx * fB2 + bx * fB3;
-                    pParticle->m_vPosition.y = ay * fB0 + cy * fB1 + dy * fB2 + by * fB3;
-                    pParticle->m_vPosition.z = az * fB0 + cz * fB1 + dz * fB2 + bz * fB3;
+                    pParticle->m_vPosition = Vector(ax * fB0 + cx * fB1 + dx * fB2 + bx * fB3,
+                                                    ay * fB0 + cy * fB1 + dy * fB2 + by * fB3,
+                                                    az * fB0 + cz * fB1 + dz * fB2 + bz * fB3);
                 }
             }
         }
@@ -2892,11 +2949,25 @@ void PartEmitter::RenderLinked()
     Quaternion qCam = CurrentCamera->m_qOrientation;
     float fFPS = m_fFPS;
 
+    List<Vector> lPositions;
+    float fScale;
+    float fFade;
+    float fFrameStep;
+    int nXGrid;
+    int nYGrid;
+    float fInvXGrid;
+    float fInvYGrid;
+    unsigned char bBlendWasEnabled;
+    float fTileAlpha;
+    float fGobAlpha;
+    Vector vAxisX;
+    Vector vAxisY;
+    Vector vAxisZ;
+    int nVert;
     LightningEmitter* pLightning = AsLightningEmitter();
 
     // The per-particle ribbon positions are the particle's own position, plus the bolt's fragment
     // vector at the same index when this emitter is a lightning bolt.
-    List<Vector> lPositions;
     lPositions.SetSize(m_lParticles.m_count);
     for (int64_t i = 0; i < m_lParticles.m_count; i++)
     {
@@ -2919,11 +2990,11 @@ void PartEmitter::RenderLinked()
     }
 
     // A Gob colour-shift scale, applied to both ribbon widths when it is not exactly 1.0.
-    float fScale = 1.0f;
+    fScale = 1.0f;
     if (m_pGob != NULL && m_pGob->m_fObjectScale != 1.0f)
         fScale = m_pGob->m_fObjectScale;
 
-    float fFade = fFPS > 0.0f ? 1.0f / fFPS : 0.0f;
+    fFade = fFPS > 0.0f ? 1.0f / fFPS : 0.0f;
 
     m_pParticleMaterial->BindTexture0();
     m_pParticleMaterial->SetBlendingMode(0);
@@ -2934,17 +3005,16 @@ void PartEmitter::RenderLinked()
     // The per-particle colour/frame step. A "position" emitter (mode 6) spreads the whole particle
     // set across one frame; every other kind advances by its own rate, or by the engine's 0.01
     // quantum when that rate is not positive.
-    float fFrameStep;
     if (m_nGradientMode == 6)
         fFrameStep = 1.0f / static_cast<float>(m_lParticles.m_count);
     else
         fFrameStep = m_fLifeExp > 0.0f ? 1.0f / m_fLifeExp : 0.01f;
 
     // The texcoords walk (u,v) across the node's sprite-sheet grid.
-    int nXGrid = pNode->m_nXGrid != 0 ? pNode->m_nXGrid : 1;
-    int nYGrid = pNode->m_nYGrid != 0 ? pNode->m_nYGrid : 1;
-    float fInvXGrid = 1.0f / static_cast<float>(nXGrid);
-    float fInvYGrid = 1.0f / static_cast<float>(nYGrid);
+    nXGrid = pNode->m_nXGrid != 0 ? pNode->m_nXGrid : 1;
+    nYGrid = pNode->m_nYGrid != 0 ? pNode->m_nYGrid : 1;
+    fInvXGrid = 1.0f / static_cast<float>(nXGrid);
+    fInvYGrid = 1.0f / static_cast<float>(nYGrid);
 
     RenderInterface::SetDepthMask(0);
     GLRender::Disable(Aurora::kCapLighting);
@@ -2954,7 +3024,7 @@ void PartEmitter::RenderLinked()
     // The emitter's own texture-blend mode, picked by Initialize from the node's blend name. The
     // additive arm saves and restores the fog state, not the blend cap the first two arms touch:
     // additive particle drawing turns fog off and puts it back.
-    unsigned char bBlendWasEnabled = 0;
+    bBlendWasEnabled = 0;
     if (m_nBlendMode == 1)
     {
         GLRender::Disable(Aurora::kCapBlend);
@@ -2974,16 +3044,17 @@ void PartEmitter::RenderLinked()
     updateParticleFrame(fFade);
     particlecount += m_lParticles.m_count;
 
-    float fTileAlpha = GetTileAlpha();
-    float fGobAlpha = GetGobAlpha();
+    fTileAlpha = GetTileAlpha();
+    fGobAlpha = GetGobAlpha();
 
     // The camera orientation's three rows as world-space axes; row 2 is the ribbon's frame axis.
-    Vector vAxisX = qCam.xdir();
-    Vector vAxisY = qCam.ydir();
-    Vector vAxisZ = qCam.zdir();
+    vAxisX = qCam.xdir();
+    vAxisY = qCam.ydir();
+    vAxisZ = qCam.zdir();
 
-    int nVert = 0;
-    for (int i = 0; i < m_lParticles.m_count; i++)
+    nVert = 0;
+    int i;
+    for (i = 0; i < m_lParticles.m_count; i++)
     {
         Particle* pParticle = m_lParticles.m_pData[i];
 
@@ -3466,6 +3537,7 @@ void PartEmitter::RenderStandard()
 
     // Frame blending draws the whole particle set once per sprite frame, five frames deep.
     int nPassCount = pNode->m_bFrameBlending ? 5 : 1;
+    unsigned int nNodeFlags = pNode->m_nEmitterFlags;
 
     if (renderemitterspheres)
         RenderBoundingSphere();
@@ -3668,7 +3740,6 @@ void PartEmitter::RenderStandard()
             // replaces both widths and picks the particle's own m_vDirection as the spin axis. A
             // self-oriented particle spins its own m_qOrientation, every other one the emitter's
             // orientation built by the mode switch above.
-            unsigned int nNodeFlags = pNode->m_nEmitterFlags;
             Quaternion qFrame;
             if (pParticle->m_bLanded)
             {
@@ -4363,21 +4434,21 @@ void Particle::randomDirection(int nA, int nB)
     K2_UNUSED(nA); K2_UNUSED(nB);
     // Both int arguments are unused by the body; they stay on the signature only.
 
-    // Half of the emitter's cone spread, in radians, converted to hundredths below.
-    float fSpread = m_pEmitter->m_fSpread * 0.5f;
+    // The emitter's cone spread, in radians; the tilt below takes half of it, in hundredths.
+    float fSpread = m_pEmitter->m_fSpread;
+    Quaternion qResult;
 
     // The direction from the camera to this particle.
     Vector vDir = normalize(m_vPosition - CurrentCamera->m_vPosition);
+    fSpread *= 0.5f;
 
     // Two random spins, a Y-axis tilt of up to half the cone spread, then a roll over a full turn
     // (628 hundredths of a radian).
     float fTilt = static_cast<float>(rand_wincompatible() % (static_cast<int>(fSpread * 100.0f) + 1)) * 0.01f;
-    Quaternion qTilt(m_pEmitter->m_avVectors[1], fTilt);
-    m_qOrientation = qTilt * m_qOrientation;
+    m_qOrientation = Quaternion(m_pEmitter->m_avVectors[1], fTilt) * m_qOrientation;
 
     float fRoll = static_cast<float>(rand_wincompatible() % 628) * 0.01f;
-    Quaternion qRoll(m_pEmitter->m_avVectors[3], fRoll);
-    m_qOrientation = qRoll * m_qOrientation;
+    m_qOrientation = Quaternion(m_pEmitter->m_avVectors[3], fRoll) * m_qOrientation;
 
     // The node's dead space; zero means no aim pass at all.
     float fNode = static_cast<MdlNodeEmitter*>(m_pEmitter->m_pNode)->m_fDeadSpace;
@@ -4386,19 +4457,17 @@ void Particle::randomDirection(int nA, int nB)
 
     // The orientation's row 1 (the up axis) is the aim target. The loop spins the particle about
     // cross(vDir, up) by the angle still missing from the cone.
-    Vector vUp = m_qOrientation.ydir();
-    float fDot = dot(vDir, vUp);
+    float fDot = dot(vDir, m_qOrientation.ydir());
 
     // The cosine here is evaluated in double precision; the angle arms below use float.
-    Quaternion qResult = m_qOrientation;
+    qResult = m_qOrientation;
     while ((fDot < 0.0f ? -fDot : fDot)
                < cos(1.57079632 - static_cast<MdlNodeEmitter*>(m_pEmitter->m_pNode)->m_fDeadSpace))
     {
-        Vector vTurnUp = m_qOrientation.ydir();
-        float fAngle = fDot < 0.0f ? fNode + 1.5707964f - fDot
-                                   : fDot - 1.5707964f + fNode;
-        Quaternion qTurn(cross(vDir, vTurnUp), fAngle);
-        qResult = qTurn * m_qOrientation;
+        float fDeadSpace = static_cast<MdlNodeEmitter*>(m_pEmitter->m_pNode)->m_fDeadSpace;
+        float fAngle = fDot < 0.0f ? fDeadSpace + 1.5707964f - fDot
+                                   : fDot - 1.5707964f + fDeadSpace;
+        qResult = Quaternion(cross(vDir, m_qOrientation.ydir()), fAngle) * m_qOrientation;
 
         float fNewDot = dot(vDir, qResult.ydir());
         fDot = fNewDot < 0.0f ? -fNewDot : fNewDot;
@@ -4467,16 +4536,14 @@ LightningEmitter* LightningEmitter::AsLightningEmitter() { return this; }
 // MdlNodeEmitter is the particle-emitter flavor of a parsed .mdl node. This file hosts the
 // one-line accessors over its flag word; its parser-table trampolines are aurmodel.cpp's.
 
-extern template SafePointer<CAurObject>& SafePointer<CAurObject>::operator=(CAurObject*);
-
 void SetEmitterTarget(CAurObject* pObject, char* pszName, void* pContext)
 {
     K2_UNUSED(pObject); K2_UNUSED(pszName);
     PartEmitter* pEmitter = static_cast<PartEmitter*>(pContext);
 
-    for (int i = 0; i < pEmitter->m_nChildren; i++)
+    for (int i = 0; i < pEmitter->m_aChildren.m_count; i++)
     {
-        Part* pChild = pEmitter->m_paChildren[i];
+        Part* pChild = pEmitter->m_aChildren.m_pData[i];
         if (pChild->AsPartReference() != 0)
         {
             pEmitter->m_spTarget = pChild->AsPartReference()->m_pObject;
@@ -4527,8 +4594,8 @@ CAurObject* GetEmitterTarget(CAurObject* pObject, char* pszName)
         Part* pSearch = searchParts.m_pData[--searchParts.m_count];
         if (pSearch->AsPartEmitter() != 0)
             return pSearch->AsPartEmitter()->m_spTarget;
-        for (int i = 0; i < pSearch->m_nChildren; i++)
-            searchParts.Add(pSearch->m_paChildren[i]);
+        for (int i = 0; i < pSearch->m_aChildren.m_count; i++)
+            searchParts.Add(pSearch->m_aChildren.m_pData[i]);
     }
     return 0;
 }

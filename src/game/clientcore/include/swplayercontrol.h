@@ -1,4 +1,5 @@
 #pragma once
+#include "k2stdint.h"
 
 // The player input-control policy object held by CClientExoAppInternal; ChangeControlType installs
 // one of the two concrete subclasses, CSWPlayerControlDriving or CSWPlayerControlCamRelative. The
@@ -68,26 +69,17 @@ public:
     float     m_fAcceleration;
     float     m_fMaxSpeed;
     float     m_fDeceleration;
-    union {
-        unsigned long long m_nSpeedPair;
-        struct
-        {
-            float m_fForwardSpeed;
-            float m_fStrafeSpeed;
-        } m_axis;
-    };
-    union {
-        unsigned long long m_nPrevSpeedPair;
-        struct
-        {
-            float m_fPrevForwardSpeed;
-            float m_fPrevStrafeSpeed;
-        } m_prev;
-    };
-    union {
-        unsigned long long m_nReserved1;
-        unsigned int       m_anReserved1[2];
-    };
+    struct
+    {
+        float m_fForwardSpeed;
+        float m_fStrafeSpeed;
+    } m_axis;
+    struct
+    {
+        float m_fPrevForwardSpeed;
+        float m_fPrevStrafeSpeed;
+    } m_prev;
+    uint64_ll_a4_t m_nReserved1;
     // The per-axis move request the two input hooks accumulate: UpDown sets MOVE_FORWARD for a
     // negative value and MOVE_BACK for a positive one, LeftRight MOVE_STRAFE_LEFT for a negative
     // value and MOVE_STRAFE_RIGHT for a positive one. Control and Drive consume it.
@@ -98,6 +90,7 @@ public:
         MOVE_STRAFE_RIGHT = 0x20,
     };
     int       m_nMoveMask;
+    int       m_nReserved2;
 };
 
 #endif
@@ -106,6 +99,7 @@ public:
 // overrides the movement and walking accessors and leaves the rest to the base.
 
 #include "SWAccelerationControlers.h"
+#include "swmgphysicsstate.h"
 
 class CSWPlayerControlCamRelative : public CSWPlayerControl {
 public:
@@ -147,19 +141,23 @@ public:
     float     m_fMinTurnRate;
     float     m_fMaxTurnRate;
     float     m_fTurnDirection;
-    // The drive state the integrator reads, made of this frame's velocity and position, the
-    // persistent copies, and the input axis being chased.
-    Vector    m_vDriveA;
-    Vector    m_vDriveB;
-    Vector    m_vDriveVel;
-    Vector    m_vDrivePos;
+    // The drive states the integrator steps from m_prevDriveState into m_curDriveState, and the
+    // input axis being chased.
+    CSWMGPhysicsState m_curDriveState;
+    CSWMGPhysicsState m_prevDriveState;
     Vector    m_vDriveTarget;
 
-    Vector& DriveA()      { return m_vDriveA; }
-    Vector& DriveB()      { return m_vDriveB; }
-    Vector& DriveVel()    { return m_vDriveVel; }
-    Vector& DrivePos()    { return m_vDrivePos; }
-    Vector& DriveTarget() { return m_vDriveTarget; }
+    // One Runge-Kutta stage's derivative: the axis times the acceleration, damped by the
+    // velocity over the top speed. A top speed at or under 1.8 scales the acceleration down.
+    inline Vector GetAcceleration(CSWMGPhysicsState& state, const Vector& vAxis)
+    {
+        float fAccel = GetAcceleration();
+        float fMax = GetMaxSpeed();
+        if (fMax <= 1.8f)
+            fAccel = fAccel * (fMax / 1.8f);
+        float fInvMax = fAccel / fMax;
+        return fAccel * vAxis - state.m_vVelocity * fInvMax;
+    }
     Vector& TurnVector()  { return m_vTurn; }
     // The drive acceleration integrator, held by value.
     CSWRK4SplitAcceleration m_acceleration;

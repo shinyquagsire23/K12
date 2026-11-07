@@ -132,8 +132,8 @@ struct MdlNodeTriMesh32 : MdlNode32 {
     bool m_bHologramDoNotDraw;
     char _pad191[3];
 #endif
-    int  m_fSurfaceArea;
-    int  m_nReserved4;
+    float m_fSurfaceArea;
+    float m_fReserved4;
     int  m_nGeomBase;
     int  m_paVertices;
 };

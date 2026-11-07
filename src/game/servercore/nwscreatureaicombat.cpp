@@ -903,12 +903,8 @@ unsigned long long CSWSCreature::GetFirstAttacker()
 {
     CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
     if (pArea != 0) {
-        CExoArrayList<unsigned long long>* pList = m_pAttackerList;
-        if (pList != 0) {
-            if (pList->m_pArray != 0)
-                delete[] pList->m_pArray;
-            operator delete(pList);
-        }
+        if (m_pAttackerList != 0)
+            delete m_pAttackerList;
         m_pAttackerList = new CExoArrayList<unsigned long long>();
         if (pArea->m_aObjectsByX.m_count >= 1) {
             for (int i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
@@ -962,11 +958,8 @@ void CSWSCreature::SetCombatPaused(unsigned long long objectId, int bPaused)
 
 void CSWSCreature::ClearAttackerList()
 {
-    CExoArrayList<unsigned long long>* pList = m_pAttackerList;
-    if (pList != 0) {
-        if (pList->m_pArray != 0)
-            delete[] pList->m_pArray;
-        operator delete(pList);
+    if (m_pAttackerList != 0) {
+        delete m_pAttackerList;
         m_pAttackerList = 0;
         m_nNextAttackerIdx = 0;
     }
@@ -1530,7 +1523,7 @@ int CSWSCreature::IsProjectileParryable(CSWSObject* pObject, int a, int b,
         unsigned int nSlot =
                 (c == 0) ? CSWInventory::SLOT_RIGHTWEAPON : ((c == 1) ? CSWInventory::SLOT_LEFTWEAPON : 0);
         CSWSItem* pItem = static_cast<CSWSItem*>(m_pInventory->GetItemInSlot(nSlot));
-        if (pItem != 0 && (pItem->GetBaseItem()->m_abDamageFlagBytes[1] & (DAMAGE_TYPE_BLASTER >> 8)) != 0) {
+        if (pItem != 0 && (pItem->GetBaseItem()->m_nDamageFlags & DAMAGE_TYPE_BLASTER) != 0) {
             CSWCCreature* pClient = pCreature->GetClientCreature();
             Vector vTarget = pClient->m_orientation;
             Vector vSelf = m_orientation;
@@ -1781,8 +1774,7 @@ void CSWSCreature::ResolveRangedMiss(CSWSObject* pObject)
 {
     if (pObject != 0) {
         CSWSCombatAttackData* pAttack = m_pCombatRound->GetAttack(m_pCombatRound->m_currentAttack);
-        Vector vMissLocation = ResolveProjectileMissLocation(pObject);
-        pAttack->m_vMissLocation = vMissLocation;
+        pAttack->m_vMissLocation = ResolveProjectileMissLocation(pObject);
         pAttack->m_nReaxnDelay = static_cast<unsigned short>(CalculateProjectileTimeToTarget(pAttack->m_vMissLocation, 0));
     }
 }
@@ -2216,7 +2208,7 @@ int CSWSCreature::ResolveMoveToForceJump(CSWSObject* pObject, unsigned short& nF
     if (g_pAppManager->m_pServerExoApp->TestDirectLine(m_objectId, CResRef(""), m_position,
                                                        pObject->m_position,
                                                        static_cast<float>(m_pPathfindInfo->m_fPersonalSpace),
-                                                       m_pPathfindInfo->m_fHeightAlias, 0, 0) != 1)
+                                                       m_pPathfindInfo->m_fHeight, 0, 0) != 1)
         return 0;
     CGameEffect* pEffect = new CGameEffect(1);
     pEffect->m_subType = static_cast<unsigned short>(CSWSEffectListHandler::EFFECT_FORCEJUMP);
@@ -2584,11 +2576,11 @@ void CSWSCreature::SignalRangedDamage(unsigned long long oidTarget)
                                      pAttack->m_messages.m_pArray[i]);
     pAttack->m_messages.m_count = 0;
 
+    int bDeflected = 0;
     if (bResolved != 0)
     {
         CSWSCreature* pTarget =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidTarget);
-        int bDeflected = 0;
         if (pTarget != 0 && IsAttackParried(pAttack->m_nAttackResult))
             bDeflected = 1;
         if (bDeflected != 0 && (pAttack->m_nAttackResult | 2) == 10)
@@ -3037,10 +3029,9 @@ void CSWSCreature::ResolveSneakAttack(CSWSCreature* pTarget)
 // meets.
 Vector CSWSCreature::ResolveProjectileMissLocation(CSWSObject* pTarget)
 {
-    if (pTarget == 0) {
-        Vector vZero = { 0.0f, 0.0f, 0.0f };
-        return vZero;
-    }
+    Vector vResult = { 0.0f, 0.0f, 0.0f };
+    if (pTarget == 0)
+        return vResult;
 
     float fSpread = 1.0f;
     float fScale;
@@ -3085,8 +3076,10 @@ Vector CSWSCreature::ResolveProjectileMissLocation(CSWSObject* pTarget)
     unsigned long long oidHit = OBJECT_INVALID;
     if (static_cast<CSWSArea*>(GetArea())->ClearLineOfSight(vFrom, vTo, &vHit, &oidHit,
                                                  m_objectId, pTarget->m_objectId, 1, 1) != 0)
-        return vTo;
-    return vHit;
+        vResult = vTo;
+    else
+        vResult = vHit;
+    return vResult;
 }
 
 int g_nCombatAttackRoll;
@@ -3495,8 +3488,7 @@ void CSWSCreature::ResolveRangedAttack(CSWSObject* pTarget, int a, int nTime, in
     int nAnimation = nForcedAnimation;
     if (bForceResult == 0) {
         unsigned short nFeat = pAttack->m_nFeatId;
-        nAnimation = g_pAppManager->m_pClientExoApp->GetClientRangedAnimation(
-            m_objectId, nFeat, 0, 0);
+        nAnimation = GetClientRangedAnimation(nFeat, 0, 0);
     }
 
     int nShots = GetWeaponDischargeShots(nAnimation);
@@ -3604,9 +3596,8 @@ void CSWSCreature::ResolveMeleeAttack(CSWSObject* pTarget, int a, int nTime, int
         pTarget->AsSWSCreature();
 #endif
         ResolveAttackRoll(pTarget, bForceResult, nForcedResult);
-        int nAnimation = g_pAppManager->m_pClientExoApp->GetClientMeleeAnimation(
-            m_objectId, pTarget->m_objectId, static_cast<unsigned short>(m_nAnimation), pAttack->m_nFeatId, bForceResult,
-            nForcedAnimation);
+        int nAnimation = GetClientMeleeAnimation(pTarget->m_objectId, static_cast<unsigned short>(m_nAnimation),
+                                                 pAttack->m_nFeatId, bForceResult, nForcedAnimation);
         int nImpactTime = GetWeaponImpactTime(nAnimation, i);
 #if KOTOR1
         if (pAttack->m_nFeatId != 0)

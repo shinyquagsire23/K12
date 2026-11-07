@@ -154,17 +154,15 @@ void CSWSSoundObject::ChangePosition(Vector newPos) {
         CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
         if (pMsg != 0 && pList != 0) {
             CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-            if (pNode != 0) {
-                do {
-                    CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-                    if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
-                        CGameObject* pGameObj = pPlayer->GetGameObject();
-                        if (pGameObj->AsSWSCreature() != 0) {
-                            pMsg->SendServerToPlayerSoundObject_ChangePosition(pPlayer, m_objectId, newPos);
-                        }
+            while (pNode != 0) {
+                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
+                if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
+                    CGameObject* pGameObj = pPlayer->GetGameObject();
+                    if (pGameObj->AsSWSCreature() != 0) {
+                        pMsg->SendServerToPlayerSoundObject_ChangePosition(pPlayer, m_objectId, newPos);
                     }
-                    pList->GetNext(pNode);
-                } while (pNode != 0);
+                }
+                pList->GetNext(pNode);
             }
         }
     }
@@ -178,17 +176,15 @@ void CSWSSoundObject::Play() {
     CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
     if (pMsg != 0 && pList != 0) {
         CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-        if (pNode != 0) {
-            do {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-                if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
-                    CGameObject* pGameObj = pPlayer->GetGameObject();
-                    if (pGameObj->AsSWSCreature() != 0) {
-                        pMsg->SendServerToPlayerSoundObject_Play(pPlayer, m_objectId);
-                    }
+        while (pNode != 0) {
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
+            if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
+                CGameObject* pGameObj = pPlayer->GetGameObject();
+                if (pGameObj->AsSWSCreature() != 0) {
+                    pMsg->SendServerToPlayerSoundObject_Play(pPlayer, m_objectId);
                 }
-                pList->GetNext(pNode);
-            } while (pNode != 0);
+            }
+            pList->GetNext(pNode);
         }
     }
 }
@@ -201,17 +197,15 @@ void CSWSSoundObject::Stop() {
     CExoLinkedList<CSWSClient>* pList = (*ppMgr)->m_pServerExoApp->GetPlayerList();
     if (pMsg != 0 && pList != 0) {
         CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-        if (pNode != 0) {
-            do {
-                CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-                if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
-                    CGameObject* pGameObj = pPlayer->GetGameObject();
-                    if (pGameObj->AsSWSCreature() != 0) {
-                        pMsg->SendServerToPlayerSoundObject_Stop(pPlayer, m_objectId);
-                    }
+        while (pNode != 0) {
+            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
+            if (pPlayer != 0 && pPlayer->GetGameObject() != 0) {
+                CGameObject* pGameObj = pPlayer->GetGameObject();
+                if (pGameObj->AsSWSCreature() != 0) {
+                    pMsg->SendServerToPlayerSoundObject_Stop(pPlayer, m_objectId);
                 }
-                pList->GetNext(pNode);
-            } while (pNode != 0);
+            }
+            pList->GetNext(pNode);
         }
     }
 }

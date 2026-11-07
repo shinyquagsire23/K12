@@ -79,12 +79,16 @@ float talkalpha;
 void ProceduralAnimateHierarchy(Part* pPart);
 
 // A bounded formatter; the size argument is the destination buffer length.
+#if defined(K2_NO_FORTIFY)
+#define snprintff(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
     __vsprintf_chk(buf, 0, n, fmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 
 Gob* FindGob(char* pszName);
 
@@ -100,9 +104,6 @@ template <class T> static inline const T& max(const T& a, const T& b) { return a
 
 int checkevents = 1;
 
-// Kept out of line, so the SafePointer construction sites branch to it rather than expanding it.
-extern template void SafePointerList<CAurObject>::AddPointer(SafePointer<CAurObject>*);
-
 extern float gobspherescaling;
 
 #include "aurglcore.h"
@@ -110,37 +111,6 @@ extern float gobspherescaling;
 #include "Vector.h"
 
 extern int quaternionidentityoptimization;
-
-// Rotates by the transpose, undoing the orientation and bringing a point already in the gob's world
-// frame back into its local frame.
-static inline Vector RotateByTransposeModel(const Vector& v, const Quaternion& q)
-{
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != -1.0f && w != 1.0f)) {
-        float nw = -w;
-        float x = q.x, y = q.y, z = q.z;
-        float xx = x * x, yy = y * y, zz = z * z;
-        float xy = x * y, xz = x * z, yz = y * z;
-        float wx = nw * x, wy = nw * y, wz = nw * z;
-        Vector r;
-        float m00 = 1.0f - ((yy + zz) + (yy + zz));
-        float m01 = (xy - wz) + (xy - wz);
-        float m02 = (xz + wy) + (xz + wy);
-        float m10 = (xy + wz) + (xy + wz);
-        float m11 = 1.0f - ((xx + zz) + (xx + zz));
-        float m12 = (yz - wx) + (yz - wx);
-        float m20 = (xz - wy) + (xz - wy);
-        float m21 = (yz + wx) + (yz + wx);
-        float m22 = 1.0f - ((xx + yy) + (xx + yy));
-        r.x = v.x * m00 + v.y * m01 + v.z * m02;
-        r.y = v.x * m10 + v.y * m11 + v.z * m12;
-        r.z = v.x * m20 + v.y * m21 + v.z * m22;
-        return r;
-    }
-    return v;
-}
-
-
 
 // Capability ordinals for the port's GL translation table; this is its own numbering, not the GL
 
@@ -163,11 +133,10 @@ extern int systemmemoryshadows;
 
 extern int quaternionidentityoptimization;
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -179,6 +148,13 @@ static inline Vector RotateVector(const Vector& v, const Quaternion& q)
         return r;
     }
     return v;
+}
+
+// Rotates by the transpose, undoing the orientation and bringing a point already in the gob's world
+// frame back into its local frame.
+static inline __attribute__((always_inline)) Vector RotateByTransposeModel(const Vector& v, const Quaternion& q)
+{
+    return RotateVector(v, Quaternion(-q.w, q.x, q.y, q.z));
 }
 
 
@@ -641,8 +617,8 @@ int Gob::PlayAnimation(char* pszName, float fSpeed, int nFlags, float fStart)
 
 CallBack::CallBack()
 {
-    m_szName[0] = 0;
     m_pfnCallback = 0;
+    m_szName[0] = 0;
     m_pUserData = 0;
     m_fTime = 10.0f;
     m_bFlag = 0;
@@ -804,9 +780,13 @@ CustomAnimation::~CustomAnimation()
 LookAtAnimation::LookAtAnimation(CAurObject* pObject, Part* pPart, Gob* pGob, Part* pPart2,
                                  float fArcH, float fArcV, float f3, float f4)
 {
+#if KOTOR1  // K1 binds the watcher in place
     m_pObject.m_pObject = pObject;
     if (pObject != 0)
         pObject->AddPointer(&m_pObject);
+#else
+    m_pObject = pObject;
+#endif
     m_pTargetPart = pPart;
     m_pGob = pGob;
     m_pSourcePart = pPart2;
@@ -1051,9 +1031,9 @@ Animation::~Animation()
 Animation::Animation(char* pszName) : MaxTree(pszName), m_pModel(0)
 {
     m_cType = MaxTree::MAXTREE_ANIMATION_ID;
-    m_szAnimRoot[0] = 0;
     m_fLength = 1.0f;
     m_fTransTime = 0.25f;
+    m_szAnimRoot[0] = 0;
     m_pfnParseField = AnimationParseField;
 }
 
@@ -1084,8 +1064,6 @@ int animremove(char* pszArgs) { K2_UNUSED(pszArgs); return AnimRun::kAnimRemove;
 // nor in the view volume.
 void Gob::Animate(float fDelta)
 {
-    char szBuf[64];
-
     ProcessGob();
 
     if (enablegobanimations == 0)
@@ -1155,10 +1133,12 @@ void Gob::Animate(float fDelta)
     // When the scene is not animating, only a force-animated gob is posed; a model carrying the force flag
     // is asked a second time, because the two calls may disagree.
     bool bAnimate = true;
+    int nCount;
+    bool bCanPose;
+    bool bPose;
     if (m_pScene != 0 && !m_pScene->IsAnimating())
     {
-        bool bForce = IsForceAnimated();
-        if (!bForce && (m_pModel == 0 || (m_pModel->m_nFlags & Model::kModelLightsaber) == 0))
+        if (!IsForceAnimated() && (m_pModel == 0 || (m_pModel->m_nFlags & Model::kModelLightsaber) == 0))
             return;
         if (m_pModel != 0 && (m_pModel->m_nFlags & Model::kModelLightsaber) != 0)
             bAnimate = IsForceAnimated();
@@ -1209,11 +1189,11 @@ void Gob::Animate(float fDelta)
         }
     }
 
-    int nCount = m_paAnimations.m_count;
+    nCount = m_paAnimations.m_count;
 #if KOTOR1  // K1: no pose gate word, the pose always applies
-    bool bCanPose = true;
+    bCanPose = true;
 #else
-    bool bCanPose = m_nPoseDisabled == 0;
+    bCanPose = m_nPoseDisabled == 0;
 #endif
     m_cForcePose = 0;
     m_bAnimating = nCount > 0;
@@ -1226,11 +1206,12 @@ void Gob::Animate(float fDelta)
         if (pLast->m_nFlags & AnimRun::kAnimQueue)
         {
             pLast->m_nFlags -= AnimRun::kAnimQueue;
+            char szBuf[64];
             snprintff(szBuf, 64, "start%s", pLast->m_pAnimation->m_szName);
             DoEvent(szBuf, 0);
         }
     }
-    bool bPose = bAnimate && bCanPose;
+    bPose = bAnimate && bCanPose;
 
     // Runs are walked back to front. Three flags matter: the queue marker, which makes the entry a skip;
     // the blend-out bit, which makes the run blend out at its end instead of wrapping; and the
@@ -1256,18 +1237,16 @@ void Gob::Animate(float fDelta)
             if (pRun->m_nFinished != 0)
             {
                 // The blend-out finished last tick, so announce it, unlink it and free it.
+                char szBuf[64];
                 snprintff(szBuf, 64, "done%s", pRun->m_pAnimation->m_szName);
                 m_paAnimations.Remove(pRun);
                 DoEvent(szBuf, 0);
+                // The flag is the only type tag there is: an out-of-order run is freed as the subclass,
+                // whose destructor frees its key arrays.
                 if (pRun->m_nFlags & AnimRun::kAnimOutOfOrder)
-                {
-                    // The key arrays belong to the run subclass and are freed here; the flag is the only type
-                    // tag there is.
-                    OOAnimRun* pOORun = static_cast<OOAnimRun*>(pRun);
-                    delete[] pOORun->m_pfValues;
-                    delete[] pOORun->m_pfTimes;
-                }
-                delete pRun;
+                    delete static_cast<OOAnimRun*>(pRun);
+                else
+                    delete pRun;
                 continue;
             }
 
@@ -1303,6 +1282,7 @@ void Gob::Animate(float fDelta)
                     if (pQueued->m_nFlags & AnimRun::kAnimQueue)
                     {
                         pQueued->m_nFlags -= AnimRun::kAnimQueue;
+                        char szBuf[64];
                         snprintff(szBuf, 64, "start%s", pQueued->m_pAnimation->m_szName);
                         DoEvent(szBuf, 0);
                     }
@@ -1328,6 +1308,7 @@ void Gob::Animate(float fDelta)
             {
                 if (pRun->m_nFlags & AnimRun::kAnimLoopEvents)
                 {
+                    char szBuf[64];
                     snprintff(szBuf, 64, "loop%s", pRun->m_pAnimation->m_szName);
                     DoEvent(szBuf, 0);
                 }
@@ -1340,6 +1321,7 @@ void Gob::Animate(float fDelta)
             {
                 if (pRun->m_nFlags & AnimRun::kAnimLoopEvents)
                 {
+                    char szBuf[64];
                     snprintff(szBuf, 64, "loop%s", pRun->m_pAnimation->m_szName);
                     DoEvent(szBuf, 0);
                 }
@@ -1405,7 +1387,7 @@ void Gob::Animate(float fDelta)
             float fT = pRun->m_fTime / pOORun->m_fDuration;
             int nKeys = pOORun->m_nKeys;
             int k = 0;
-            if (pOORun->m_pfTimes[0] < fT && nKeys >= 1)
+            if (pOORun->m_pfTimes[0] < fT)
             {
                 for (k = 1; k < nKeys; k++)
                 {
@@ -1628,7 +1610,7 @@ void LookAtAnimation::BuildAnimation()
     m_pAnimation->m_pMdlNode = pTop;
 
     NewController c;
-    unsigned long long nTimeIndex = static_cast<unsigned long long>(static_cast<unsigned short>(pNode->m_listFloats.m_count));
+    uint64_ll_t nTimeIndex = static_cast<uint64_ll_t>(static_cast<unsigned short>(pNode->m_listFloats.m_count));
     pNode->m_listFloats.Add(0.0f);
     pNode->m_listFloats.Add(0.25f);
     int nKey = pNode->m_listFloats.m_count;
@@ -1642,8 +1624,10 @@ void LookAtAnimation::BuildAnimation()
     pNode->m_listFloats.Add(0.0f);
     pNode->m_listFloats.Add(1.0f);
 
-    c.m_nKeysPacked = nTimeIndex | (4ULL << 32) | (static_cast<unsigned long long>(static_cast<unsigned short>(nKey)) << 16);
-    c.m_nTargetPacked = kTargetOrientation | (2ULL << 48);
+    uint64_ll_t nKeysPacked = nTimeIndex | (4ULL << 32) | (static_cast<uint64_ll_t>(static_cast<unsigned short>(nKey)) << 16);
+    memcpy(&c.m_keys, &nKeysPacked, sizeof(c.m_keys));
+    uint64_ll_t nTargetPacked = kTargetOrientation | (2ULL << 48);
+    memcpy(&c.m_target, &nTargetPacked, sizeof(c.m_target));
     pNode->m_listControllers.Add(c);
 
     m_pSourceKey = reinterpret_cast<Quaternion*>(&pNode->m_listFloats.m_pData[static_cast<unsigned short>(nKey)]);
@@ -1656,24 +1640,18 @@ void LookAtAnimation::BuildAnimation()
 // Frees the two key arrays and clears both pointers.
 OOAnimRun::~OOAnimRun()
 {
-    if (m_pfValues != 0)
-    {
-        delete[] m_pfValues;
-        m_pfValues = 0;
-    }
-    if (m_pfTimes != 0)
-    {
-        delete[] m_pfTimes;
-        m_pfTimes = 0;
-    }
+    delete[] m_pfValues;
+    delete[] m_pfTimes;
+    m_pfValues = 0;
+    m_pfTimes = 0;
 }
 
 // Cascades the tick to every child part. The bound is re-read through the loop because the virtual call
 // may add or remove children.
 void Part::Animate(float f)
 {
-    for (int64_t i = 0; i < m_nChildren; i++)
-        m_paChildren[i]->Animate(f);
+    for (int64_t i = 0; i < m_aChildren.m_count; i++)
+        m_aChildren.m_pData[i]->Animate(f);
 }
 
 // Ages the blade's ring buffer one frame, then emits a new segment if the part has moved.
@@ -1811,7 +1789,7 @@ void PartDanglyMesh::Animate(float fDelta)
 
     // The vertex count is read as a signed short off the unsigned field.
     const int nVerts = static_cast<short>(pNode->m_nVertexCount);
-    Vector* paSource = static_cast<Vector*>(pNode->m_pVertexSource);
+    Vector* paSource = reinterpret_cast<Vector*>(pNode->m_pVertexSource);
 
     if (magnitude(vPos - m_vLastPosition) > 5.0f)
     {
@@ -2071,9 +2049,12 @@ void MdlNodeAnimMesh::InternalControl(Part* pPart, float fA, float fB, float fC)
         if (nFrame >= m_nVertexFrameCount)
             nFrame = m_nVertexFrameCount - 1;
         if (static_cast<short>(m_nVertexCount) >= 1) {
-            for (int j = 0; j < static_cast<short>(m_nVertexCount); j++) {
-                float* pF = reinterpret_cast<float*>(m_paVertexFrames);
-                int i = (nFrame + j * m_nVertexFrameCount) * 3;
+            float* pFrames = reinterpret_cast<float*>(m_paVertexFrames);
+            int nCount = m_nVertexFrameCount;
+            int64_t nVerts = static_cast<short>(m_nVertexCount);
+            for (int64_t j = 0; j < nVerts; j++) {
+                float* pF = pFrames;
+                int i = static_cast<int>((nFrame + j * nCount) * 3);
                 Vector3 vA = { pF[i], pF[i + 1], pF[i + 2] };  // raw-offset: float-granular frame index, as the original computes it
                 Vector3 v = pDst[j];
                 v.x = v.x * (1.0f - fC) + vA.x * fC;
@@ -2230,16 +2211,16 @@ void ProceduralAnimateHierarchy(Part* pPart)
 #if KOTOR1
             char* pDst = static_cast<char*>(GLRender::LockPool(pNode->m_pTree->AsModel()->m_nPool, 0, 0, 1));
             for (int64_t i = 0; i < static_cast<short>(pNode->m_nVertexCount); i++)
-                *reinterpret_cast<unsigned long long*>(pDst + pNode->m_nGeomBase + pNode->m_nVertexStride * static_cast<int>(i) +
+                *reinterpret_cast<uint64_ll_t*>(pDst + pNode->m_nGeomBase + pNode->m_nVertexStride * static_cast<int>(i) +
                                        pNode->m_nTex0Ofs)
-                    = reinterpret_cast<unsigned long long*>(pfPool)[i];
+                    = reinterpret_cast<uint64_ll_t*>(pfPool)[i];
 #else
             char* pDst = static_cast<char*>(GLRender::LockPool(pNode->m_pTree->AsModel()->m_nPool,
                                                    pNode->m_nGeomBase,
                                                    pNode->m_nVertexStride * static_cast<short>(pNode->m_nVertexCount), 1));
             for (int64_t i = 0; i < static_cast<short>(pNode->m_nVertexCount); i++)
-                *reinterpret_cast<unsigned long long*>(pDst + pNode->m_nVertexStride * i + pNode->m_nTex0Ofs)
-                    = reinterpret_cast<unsigned long long*>(pfPool)[i];
+                *reinterpret_cast<uint64_ll_t*>(pDst + pNode->m_nVertexStride * i + pNode->m_nTex0Ofs)
+                    = reinterpret_cast<uint64_ll_t*>(pfPool)[i];
 #endif
 
             GLRender::UnlockPool(pNode->m_pTree->AsModel()->m_nPool);
@@ -2247,8 +2228,8 @@ void ProceduralAnimateHierarchy(Part* pPart)
         }
     }
 
-    for (int64_t i = 0; i < pPart->m_nChildren; i++)
-        ProceduralAnimateHierarchy(pPart->m_paChildren[i]);
+    for (int64_t i = 0; i < pPart->m_aChildren.m_count; i++)
+        ProceduralAnimateHierarchy(pPart->m_aChildren.m_pData[i]);
 }
 
 extern int   depth;
@@ -2294,9 +2275,9 @@ void AnimateHierarchy(Part* pPart, MdlNode* pNode, float fA, float fB, float fC,
 
     if (depth < nMaxDepth && depth < maxdepth)
     {
-        for (int i = 0; i < pPart->m_nChildren; i++)
+        for (int i = 0; i < pPart->m_aChildren.m_count; i++)
         {
-            Part* pChild = pPart->m_paChildren[i];
+            Part* pChild = pPart->m_aChildren.m_pData[i];
             if (pChild->m_nNodeID != -1)
             {
                 for (int j = 0; j < pNode->m_listChildren.m_count; j++)
@@ -2347,17 +2328,14 @@ void NewController::GetKeyIndexAndAlpha(float fTime, MdlNode* pNode, int& nIndex
 
     unsigned short nCount = m_target.m_nKeyCount;
     if (nCount != 0) {
-        unsigned short nTimeIndex = m_keys.m_nTimeIndex;
-        float* pafValues = pNode->m_listFloats.m_pData;
-
         uint64_t i = 0;
-        while (i < nCount && pafValues[nTimeIndex + i] < fTime) {
+        while (i < nCount && pNode->m_listFloats.m_pData[m_keys.m_nTimeIndex + i] < fTime) {
             i++;
             nIndex = static_cast<int>(i);
         }
         if (i != 0 && i != nCount) {
-            float fLow = pafValues[m_keys.m_nTimeIndex + static_cast<int>(i) - 1];
-            float fHigh = pafValues[m_keys.m_nTimeIndex + static_cast<int>(i)];
+            float fLow = pNode->m_listFloats.m_pData[m_keys.m_nTimeIndex + static_cast<int>(i) - 1];
+            float fHigh = pNode->m_listFloats.m_pData[m_keys.m_nTimeIndex + static_cast<int>(i)];
             fAlpha = (fTime - fLow) / (fHigh - fLow);
         }
     }

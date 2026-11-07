@@ -33,12 +33,16 @@ float fLastSpeedSet = 100.0f;
 #include "port/libcstring.h"
 
 // A bounded sprintf, the fortified form the engine's string formatting resolves to.
+#if defined(K2_NO_FORTIFY)
+#define snprintff(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
     __vsprintf_chk(buf, 0, n, fmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 
 extern CExoSound* g_pExoSound;
 extern unsigned char g_adjustWake;
@@ -303,8 +307,10 @@ CExoSoundSource* CSWTrackFollower::SetSoundName(int index, CResRef const& resSou
                 m_pSounds[index]->Set3D(1);
                 m_pSounds[index]->SetPosition(GetPosition(), 0.0f);
                 m_pSounds[index]->SetVolume(static_cast<unsigned char>(m_sounds[index].volume));
-                int nPriority = AsPlayer() != 0 ? 23 : 24;
-                m_pSounds[index]->SetPriorityGroup(static_cast<unsigned char>(nPriority));
+                if (AsPlayer() != 0)
+                    m_pSounds[index]->SetPriorityGroup(23);
+                else
+                    m_pSounds[index]->SetPriorityGroup(24);
             }
             return m_pSounds[index];
         }
@@ -476,9 +482,10 @@ int CSWTrackFollower::ClearModels() {
 
 // The follower's world position is its first model's; with no models it sits at the origin.
 Vector CSWTrackFollower::GetPosition() {
-    if (m_models.m_count == 0)
-        return Vector(0.0f, 0.0f, 0.0f);
-    return m_models.m_pArray[0].pModel->GetPosition();
+    Vector vPos(0.0f, 0.0f, 0.0f);
+    if (m_models.m_count != 0)
+        vPos = m_models.m_pArray[0].pModel->GetPosition();
+    return vPos;
 }
 
 CExoString CSWTrackFollower::GetName() {
@@ -829,9 +836,9 @@ CSWTrackFollower::CSWTrackFollower(CSWMiniGame* pMiniGame, unsigned int nObjectI
     m_fSpeed = 100.0f;
     m_invincibilityTimer = 0.0f;
     m_invincibility = 0.0f;
-    m_pSounds[0] = 0;
     m_nLastObstacleHitId = CSWMiniGameObjectArray::OBJECT_ID_NONE;
     m_hitPointAdjust = 0;
+    m_pSounds[0] = 0;
 #if !KOTOR1  // K1: no wake latch
     g_adjustWake = 1;
 #endif
@@ -917,11 +924,10 @@ extern float fInertiaScale;
 
 #if !KOTOR1
 // Rotates v by the conjugate of q, with a fast path for the identity.
-static inline Vector RotateByQuaternionInverse(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternionInverse(const Vector& v, const Quaternion& q)
 {
-    float w = q.w, x = q.x, y = q.y, z = q.z;
-    float nw = -w;
-    if (quaternionidentityoptimization == 0 || (w != -1.0f && w != 1.0f))
+    float nw = -q.w, x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (nw != 1.0f && nw != -1.0f))
     {
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * nw;
@@ -937,11 +943,11 @@ static inline Vector RotateByQuaternionInverse(const Vector& v, const Quaternion
 }
 #else
 // K1 rotates a key position forward by the track's orientation.
-static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 {
-    float w = q.w, x = q.x, y = q.y, z = q.z;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f))
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f))
     {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = w * x;
         float yz = y * z, wy = w * y;
@@ -956,7 +962,9 @@ static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 }
 #endif
 
+#if !defined(K2_NO_FORTIFY)
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...);
+#endif
 
 float ClosestDistanceBetweenSegments(const Vector& a1, const Vector& a2, const Vector& b1,
                                      const Vector& b2);
@@ -976,7 +984,8 @@ CSWMiniPlayer::CSWMiniPlayer(CSWMiniGame* pMiniGame)
     m_aps = 0.0f;
     m_pCameraHook = 0;
 #if !KOTOR1
-    m_nStartHookOrientationXY = 0;
+    m_nStartHookOrientationX = 0;
+    m_nStartHookOrientationY = 0;
     m_nStartHookOrientationZ = 0;
 #endif
 #if KOTOR1  // K1: half the reserved capacities
@@ -1530,7 +1539,7 @@ int SphereIntersect(const Vector& vStart, const Vector& vEnd, const Vector& vCen
 
 // K1 runs a relative-motion sphere test instead, projects the push onto the bump plane, moves
 // every model, and drops the vehicle to its minimum speed on a self-bump.
-int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bApply)
+int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<uint32_l_t>& list, int bApply)
 {
     int nModels = m_models.m_count;
     if (nModels == 0)
@@ -1643,7 +1652,7 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
     return nHits;
 }
 #else
-int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bApply)
+int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<uint32_l_t>& list, int bApply)
 {
     int nModels = m_models.m_count;
     if (nModels == 0)
@@ -1668,6 +1677,11 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
 
     for (int i = list.m_count - 1; i >= 0; i--)
     {
+        CAurObject* pCandFollowModel;
+        float fEnemyRadius;
+        float fDistance;
+        float fMyRadius;
+        int nBumpDamage;
         CSWMiniEnemy* pEnemy = static_cast<CSWMiniEnemy*>(pMgoArray->GetMiniGameObject(list.m_pArray[i], CSWMiniGameObjectArray::PROBE_ENEMY));
         if (pEnemy == 0)
         {
@@ -1680,15 +1694,15 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
 
         if (pEnemy->m_models.m_count < 1)
             break;
-        CAurObject* pCandFollowModel = pEnemy->m_models.m_pArray[0].pModel;
+        pCandFollowModel = pEnemy->m_models.m_pArray[0].pModel;
         if (pCandFollowModel == 0)
             break;
 
         vCandPos = pCandFollowModel->GetPosition();
         vCandPrevPos = pCandFollowModel->GetPreviousPosition();
 
-        float fEnemyRadius = pEnemy->m_sphereRadius;
-        float fDistance =
+        fEnemyRadius = pEnemy->m_sphereRadius;
+        fDistance =
             ClosestDistanceBetweenSegments(vFollowPrevPos, vFollowPos, vCandPrevPos, vCandPos);
         if (!(fDistance < fEnemyRadius + m_sphereRadius))
             continue;
@@ -1707,7 +1721,7 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
         vDir = normalize(vFollowPos - vCandPos);
         // Both radii are captured before the hit scripts run (OnDamage / OnHitFollower can call
         // SWMG_SetSphereRadius); the push uses these, not the post-script values.
-        float fMyRadius = m_sphereRadius;
+        fMyRadius = m_sphereRadius;
 
         if (bApply != 0)
         {
@@ -1718,7 +1732,7 @@ int CSWMiniPlayer::DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bAp
                 pEnemy->m_invincibilityTimer = pEnemy->m_invincibility;
             }
             m_nLastFollowerHit = pEnemy->m_nObjectId;
-            int nBumpDamage = pEnemy->m_nBumpDamage;
+            nBumpDamage = pEnemy->m_nBumpDamage;
             OnHitFollower(0);
             if (nBumpDamage > nMaxBump)
                 nMaxBump = nBumpDamage;
@@ -1812,8 +1826,6 @@ CSWMiniPlayer::~CSWMiniPlayer()
     delete m_pCameraHook;
 }
 
-extern template class SafePointer<CAurObject>;
-
 
 
 CSWMGObstacle::CSWMGObstacle(CSWMiniGame* pGame, CAurObject* pGob) : CSWMiniGameObject(3)
@@ -1861,7 +1873,9 @@ void CSWMGObstacle::LoadScripts(CResGFF* pGff, CResStruct* pStruct, CResStruct& 
     CSWMiniGameObject::LoadScripts(pGff, pStruct, sScripts);
 }
 
+#if !defined(K2_NO_FORTIFY)
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...);
+#endif
 
 // Loads the enemy's gun through a guard chain over the GFF's gun block that fills a
 // CSWMGTargettingParameters, the nested "Bullet" struct's CSWMGBullet and three resrefs, then hands

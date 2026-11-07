@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "swguiingameareatransition.h"
 #include "guiingame.h"
 #include "clientexoapp.h"

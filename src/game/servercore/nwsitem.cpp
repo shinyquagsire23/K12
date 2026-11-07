@@ -2,6 +2,7 @@
 // defined here as well.
 
 #include "k2stdint.h"
+#include <string.h>
 #include "nwsitem.h"
 #define CEXO_ARRAYLIST_KEEP_ADDUNIQUE_OUT_OF_LINE
 #include "CExoArrayListImpl.h"
@@ -465,17 +466,15 @@ void CSWSItem::CloseItemForAllPlayers()
 
     CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-    if (pNode != 0) {
-        do {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-            if (pPlayer != 0) {
-                CGameObject* pGameObj = pPlayer->GetGameObject();
-                if (pGameObj != 0 && pPlayer->m_pContainerGUI->m_objectId == m_objectId) {
-                    CloseInventory(pGameObj->m_objectId, 1);
-                }
+    while (pNode != 0) {
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
+        if (pPlayer != 0) {
+            CGameObject* pGameObj = pPlayer->GetGameObject();
+            if (pGameObj != 0 && pPlayer->m_pContainerGUI->m_objectId == m_objectId) {
+                CloseInventory(pGameObj->m_objectId, 1);
             }
-            pList->GetNext(pNode);
-        } while (pNode != 0);
+        }
+        pList->GetNext(pNode);
     }
 }
 
@@ -679,6 +678,10 @@ int CItemRepository::AddItem(CSWSItem** ppItem, int bStack, int nPossessor, int 
             }
         }
 
+        // A one-item list of the arrival that nothing reads.
+        CExoArrayList<CSWSItem*> aAdded;
+        aAdded.Add(*ppItem);
+
         if (m_bPartyInventory)
         {
             // The party inventory stamps the new item with the driven player's id before filing it.
@@ -839,7 +842,7 @@ int CItemRepository::GetMatchingItemCount(CSWSItem* pItem)
             continue;
         if (!pItem->CompareItem(pCur))
             continue;
-        if (pCur->m_nFlagsLow & CSWSItem::FLAG_INFINITE)
+        if (pCur->m_flags & CSWSItem::FLAG_INFINITE)
             return -1;
         return pCur->m_stackCount;
     }
@@ -930,7 +933,9 @@ void CSWSItem::RestoreUsedActiveProperties(int bSlottedOnly)
 
 void CSWSItem::UpdateUsedActiveProperties()
 {
-    unsigned char aUsesLeft[8] = {0};
+    unsigned char aUsesLeft[8];
+    for (int k = 0; k < 8; k++)
+        aUsesLeft[k] = 0;
     int64_t i = 0;
     unsigned char nUsedMask = 0;
     for (; i < m_nActiveProperties; i++)
@@ -941,7 +946,7 @@ void CSWSItem::UpdateUsedActiveProperties()
         switch (pProp->m_costTableValue)
         {
         case IPRP_CHARGECOST_SINGLE_USE:
-            if (pProp->m_bUseableByte == 0)
+            if (static_cast<unsigned char>(pProp->m_bUseable) == 0)
                 continue;
             break;
         case IPRP_CHARGECOST_5_CHARGES_PER_USE: case IPRP_CHARGECOST_4_CHARGES_PER_USE:
@@ -977,11 +982,12 @@ void CSWSItem::UpdateUsedActiveProperties()
             nChanged |= static_cast<unsigned char>(1 << j);
     }
 
-    if (nUsedMask == m_nUsedActivePropertyMask && nChanged == 0)
+    if (nChanged == 0 && nUsedMask == m_nUsedActivePropertyMask)
         return;
 
     m_nUsedActivePropertyMask = nUsedMask;
-    memcpy(m_nUsedActivePropertyUsesLeft, aUsesLeft, sizeof(m_nUsedActivePropertyUsesLeft));
+    for (int k = 0; k < 8; k++)
+        m_nUsedActivePropertyUsesLeft[k] = aUsesLeft[k];
 
     CSWSMessage* pMessage = g_pAppManager->m_pServerExoApp->GetSWSMessage();
     if (CSWSPlayer* pPlayer = g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(m_possessorId))
@@ -1737,7 +1743,7 @@ int CSWSItem::LoadFromTemplate(const CResRef& templateRef)
 
 void CSWSItem::OpenInventory(unsigned long long objectId)
 {
-    if (m_nFlagsLow & FLAG_INVENTORY_OPEN)
+    if (m_flags & FLAG_INVENTORY_OPEN)
         return;
     int nBaseItem = m_baseItem;
     if (g_pRules->GetBaseItem(nBaseItem)->m_bContainer == 0)
@@ -1774,7 +1780,7 @@ void CSWSItem::AIUpdate()
         unsigned short nValue = pProp->m_costTableValue;
         if (static_cast<unsigned short>(nValue - 14) > 4)
             continue;
-        if (pProp->m_bUseableByte != 0)
+        if (static_cast<unsigned char>(pProp->m_bUseable) != 0)
             continue;
         unsigned int nElapsedDay, nElapsedTod;
         g_pAppManager->m_pServerExoApp->GetWorldTimer()->SubtractWorldTimes(
@@ -1790,7 +1796,7 @@ void CSWSItem::AIUpdate()
 
 void CSWSItem::CloseInventory(unsigned long long objectId, int flag)
 {
-    if ((m_nFlagsLow & FLAG_INVENTORY_OPEN) == 0)
+    if ((m_flags & FLAG_INVENTORY_OPEN) == 0)
         return;
     if (flag != 0)
     {
@@ -1983,21 +1989,25 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
     }
     else
     {
-        unsigned char nDice = g_pRules->GetBaseItem(m_baseItem)->m_nNumDice;
-        unsigned char nDieSize =
-            g_pRules->GetBaseItem(m_baseItem)->m_nDieToRoll;
+        unsigned char nDice;
+        unsigned char nDieSize;
+        int nMin;
+        int nMax;
+        nDice = g_pRules->GetBaseItem(m_baseItem)->m_nNumDice;
+        nDieSize = g_pRules->GetBaseItem(m_baseItem)->m_nDieToRoll;
         CExoString sDamageType;
         GetDamageTypeString(GetDamageFlags(), sDamageType);
         if (sDamageType != "")
             sOut = sOut + sDamageType + ", ";
-        int nMin = nDice;
-        int nMax = nDieSize * nDice;
+        nMin = nDice;
+        nMax = nDieSize * nDice;
         if (GetPropertyByTypeExists(ITEM_PROPERTY_DECREASED_DAMAGE, 0) || GetPropertyByTypeExists(ITEM_PROPERTY_ENHANCEMENT_BONUS, 0) ||
             GetPropertyByTypeExists(ITEM_PROPERTY_DAMAGE_BONUS, 0))
         {
             for (int i = 0; i < m_nPassiveProperties; i++)
             {
                 CSWItemProperty* pProp = &m_pPassiveProperties[i];
+                int nAddMin, nAddMax;
                 if (pProp == 0)
                     continue;
                 if (pProp->m_nUpgradeType != CSWItemProperty::UPGRADE_TYPE_NONE && (m_nUpgrades & (1 << pProp->m_nUpgradeType)) == 0)
@@ -2011,7 +2021,6 @@ void CSWSItem::AddDamageProperties(CExoString& sOut)
                 {
                     if ((1 << pProp->m_subType) & GetDamageFlags())
                     {
-                        int nAddMin, nAddMax;
                         GetPropertyDamageRange(pProp->m_costTableValue, nAddMin, nAddMax);
                         nMin += nAddMin;
                         nMax += nAddMax;
@@ -3360,35 +3369,35 @@ unsigned short CSWSItem::GetUsedActivePropertyUsesLeft(unsigned char nIndex)
     switch (pProp->m_costTableValue)
     {
     case IPRP_CHARGECOST_SINGLE_USE:
-        if (pProp->m_bUseableByte == 0)
+        if (static_cast<unsigned char>(pProp->m_bUseable) == 0)
             return 0;
         return static_cast<unsigned char>(m_stackCount);
     case IPRP_CHARGECOST_5_CHARGES_PER_USE:
-        if (pProp->m_bUseableByte == 0)
+        if (static_cast<unsigned char>(pProp->m_bUseable) == 0)
             return 0;
         if (m_nCharges < 1)
             return 0;
         return static_cast<unsigned short>(m_nCharges / 5);
     case IPRP_CHARGECOST_4_CHARGES_PER_USE:
-        if (pProp->m_bUseableByte == 0)
+        if (static_cast<unsigned char>(pProp->m_bUseable) == 0)
             return 0;
         if (m_nCharges < 1)
             return 0;
         return static_cast<unsigned short>(m_nCharges / 4);
     case IPRP_CHARGECOST_3_CHARGES_PER_USE:
-        if (pProp->m_bUseableByte == 0)
+        if (static_cast<unsigned char>(pProp->m_bUseable) == 0)
             return 0;
         if (m_nCharges < 1)
             return 0;
         return static_cast<unsigned short>(m_nCharges / 3);
     case IPRP_CHARGECOST_2_CHARGES_PER_USE:
-        if (pProp->m_bUseableByte == 0)
+        if (static_cast<unsigned char>(pProp->m_bUseable) == 0)
             return 0;
         if (m_nCharges < 1)
             return 0;
         return static_cast<unsigned short>(m_nCharges / 2);
     case IPRP_CHARGECOST_1_CHARGE_PER_USE:
-        if (pProp->m_bUseableByte == 0)
+        if (static_cast<unsigned char>(pProp->m_bUseable) == 0)
             return 0;
         return static_cast<unsigned short>(m_nCharges > 0 ? m_nCharges : 0);
     case IPRP_CHARGECOST_1_USE_PER_DAY:
@@ -3396,7 +3405,7 @@ unsigned short CSWSItem::GetUsedActivePropertyUsesLeft(unsigned char nIndex)
     case IPRP_CHARGECOST_3_USES_PER_DAY:
     case IPRP_CHARGECOST_4_USES_PER_DAY:
     case IPRP_CHARGECOST_5_USES_PER_DAY:
-        if (pProp->m_bUseableByte == 0)
+        if (static_cast<unsigned char>(pProp->m_bUseable) == 0)
             return 0;
         return pProp->m_nUsesPerDay;
     case IPRP_CHARGECOST_1_PER_MINUTE:
@@ -3404,7 +3413,7 @@ unsigned short CSWSItem::GetUsedActivePropertyUsesLeft(unsigned char nIndex)
     case IPRP_CHARGECOST_1_PER_3_MINUTES:
     case IPRP_CHARGECOST_1_PER_4_MINUTES:
     case IPRP_CHARGECOST_1_PER_5_MINUTES:
-        return pProp->m_bUseableByte != 0;
+        return static_cast<unsigned char>(pProp->m_bUseable) != 0;
     }
     return 0;
 }
@@ -3898,9 +3907,9 @@ void CSWSItem::DecrementUses(int nIndex, unsigned long long userId) {
     else
         pProp = 0;
 
-    bool bChanged = false;
-    bool bFlag = true;
-    bool bDestroy = false;
+    int bChanged = 0;
+    int bFlag = 1;
+    int bDestroy = 0;
 
 #ifdef K2_FIX_ENGINE_BUGS
     if (pProp == 0)
@@ -3914,9 +3923,9 @@ void CSWSItem::DecrementUses(int nIndex, unsigned long long userId) {
         }
         // The last use of a single-use item is not a change: the item is destroyed instead.
         pProp->m_bUseable = 0;
-        bChanged = false;
-        bFlag = true;
-        bDestroy = true;
+        bChanged = 0;
+        bFlag = 1;
+        bDestroy = 1;
         break;
 
     case IPRP_CHARGECOST_5_CHARGES_PER_USE:
@@ -3934,7 +3943,7 @@ void CSWSItem::DecrementUses(int nIndex, unsigned long long userId) {
         }
         if (m_nCharges >= nDec)
             m_nCharges -= nDec;
-        // The sweep reuses pProp as its iterator, so the m_bUseableByte test below reads the last
+        // The sweep reuses pProp as its iterator, so the m_bUseable byte test below reads the last
         // active property, not the one that was used.
         for (int i = 0; i < m_nActiveProperties; i++) {
             pProp = &m_pActiveProperties[i];
@@ -3948,9 +3957,9 @@ void CSWSItem::DecrementUses(int nIndex, unsigned long long userId) {
             case IPRP_CHARGECOST_1_CHARGE_PER_USE: if (m_nCharges < 1) pProp->m_bUseable = 0; break;
             }
         }
-        bChanged = false;
-        bFlag = false;
-        bDestroy = false;
+        bChanged = 0;
+        bFlag = 0;
+        bDestroy = 0;
         break;
     }
 
@@ -3964,14 +3973,14 @@ void CSWSItem::DecrementUses(int nIndex, unsigned long long userId) {
         if (pProp->m_nUsesPerDay != 0) {
             pProp->m_nUsesPerDay--;
             if (pProp->m_nUsesPerDay != 0) {
-                bChanged = true;
-                bFlag = true;
+                bChanged = 1;
+                bFlag = 1;
                 break;
             }
         }
         pProp->m_bUseable = 0;
-        bChanged = true;
-        bFlag = true;
+        bChanged = 1;
+        bFlag = 1;
         break;
 
     case IPRP_CHARGECOST_1_PER_MINUTE: case IPRP_CHARGECOST_1_PER_2_MINUTES:
@@ -3983,20 +3992,20 @@ void CSWSItem::DecrementUses(int nIndex, unsigned long long userId) {
         pProp->m_nLastUseDay = nDay;
         pProp->m_nLastUseTod = nTime;
         pProp->m_bUseable = 0;
-        bChanged = true;
-        bFlag = true;
+        bChanged = 1;
+        bFlag = 1;
         break;
     }
     }
 
-    if (pProp->m_bUseableByte == 0) {
+    if (static_cast<unsigned char>(pProp->m_bUseable) == 0) {
         if (GetBaseItem()->m_nItemType == ITEM_TYPE_STIMULANT || GetBaseItem()->m_nItemType == ITEM_TYPE_MEDICAL_EQUIPMENT) {
-            bDestroy = true;
+            bDestroy = 1;
         } else {
-            bool bRecoveryKit = (GetBaseItem()->m_nItemType == ITEM_TYPE_SQUAD_RECOVERY_KIT);
+            int bRecoveryKit = (GetBaseItem()->m_nItemType == ITEM_TYPE_SQUAD_RECOVERY_KIT);
             if (bFlag || bRecoveryKit) {
                 if (bRecoveryKit)
-                    bDestroy = true;
+                    bDestroy = 1;
             } else {
                 int i;
                 for (i = 0; i < m_nActiveProperties; i++) {
@@ -4004,11 +4013,11 @@ void CSWSItem::DecrementUses(int nIndex, unsigned long long userId) {
                     if (p != 0 && p->m_type == ITEM_PROPERTY_ACTIVATE_ITEM &&
                         static_cast<unsigned int>(p->m_costTableValue - IPRP_CHARGECOST_5_CHARGES_PER_USE) <=
                             IPRP_CHARGECOST_1_CHARGE_PER_USE - IPRP_CHARGECOST_5_CHARGES_PER_USE &&
-                        p->m_bUseableByte != 0)
+                        static_cast<unsigned char>(p->m_bUseable) != 0)
                         break;
                 }
                 if (i == m_nActiveProperties)
-                    bDestroy = true;
+                    bDestroy = 1;
             }
         }
     }

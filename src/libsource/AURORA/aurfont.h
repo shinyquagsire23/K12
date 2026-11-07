@@ -10,13 +10,18 @@
 
 class StringGob;
 
-// A colour quad.
-class CStringColor {
-public:
+// A colour quad's four channels, left unset on construction.
+struct SStringColorQuad {
     float r;
     float g;
     float b;
     float a;
+};
+
+// A colour quad; a new one is opaque white.
+class CStringColor : public SStringColorQuad {
+public:
+    CStringColor() { r = 1.0f; g = 1.0f; b = 1.0f; a = 1.0f; }
 };
 
 // A queued screen message that removes itself from the module's post list on destruction.
@@ -31,8 +36,8 @@ public:
     int m_nLength;
     float m_fTimeLeft;
     float m_fTotalTime;
-    CStringColor m_cColorStart;
-    CStringColor m_cColorEnd;
+    SStringColorQuad m_cColorStart;  // the fade endpoints: unset until the constructor copies the defaults
+    SStringColorQuad m_cColorEnd;
     int m_nX;
     int m_nY;
 };

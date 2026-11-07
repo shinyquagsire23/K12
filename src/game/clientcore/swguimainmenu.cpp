@@ -734,7 +734,7 @@ void CSWGuiMainMenu::OnContinueButton(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
     if (TestLoadNewestGame(m_pGuiManager))
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE_AND_DELETE;
+        SetToBeDeleted(0);
 }
 #else
 void CSWGuiMainMenu::OnQuitButtonPressed(CSWGuiControl* pControl)
@@ -1765,11 +1765,11 @@ void CSWGuiMainMenu::OnPanelAdded()
 {
     uint64_ll_t nFreeBytes;
     g_pExoResMan->GetFreeDiskSpace(CExoString("SAVES:"), &nFreeBytes);
-    unsigned long long nFreeKB = nFreeBytes >> 14;
+    uint64_ll_t nFreeKB = nFreeBytes >> 14;
 
     CExoString sSaveDir;
     sSaveDir.Format(const_cast<char*>("SAVES:%06d - %s"), 1, "AUTOSAVE");
-    unsigned long long nRequired;
+    uint64_ll_t nRequired;
 
     if (g_pExoResMan->CreateDirectory2(sSaveDir) != 0)
     {
@@ -1998,6 +1998,8 @@ void CSWGuiMainMenu::PopulateModules()
     CExoString sB;
     CExoArrayList<CExoString> aModsB;
     CExoArrayList<CExoString> aModsA;
+    CExoArrayList<CExoString> aUnusedA;
+    CExoArrayList<CExoString> aUnusedB;
     CExoArrayList<CSWGuiControl*> aControls;
     CSWGuiExtent extent = m_lbModules.m_innerExtent;
     CExoString sUnused;
@@ -2043,11 +2045,14 @@ void CSWGuiMainMenu::PopulateModules()
 #endif
     }
 
-    int nIdxA = 0;
+    int nCountB = aModsB.m_count;
+    int nCountA = aModsA.m_count;
     int nIdxB = 0;
-    while (nIdxA < aModsA.m_count || nIdxB < aModsB.m_count)
+    int nIdxA = 0;
+    CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_lbModules.m_pProtoItem);
+    while (nIdxA < nCountA || nIdxB < nCountB)
     {
-        if (nIdxB < aModsB.m_count)
+        if (nIdxB < nCountB)
         {
             sA = aModsB.m_pArray[nIdxB];
             if (sA.Find(CExoString("_s.rim"), 0) != -1)
@@ -2061,7 +2066,8 @@ void CSWGuiMainMenu::PopulateModules()
             sA = CExoString("zzzzzzzz.zzz");
         }
 
-        if (nIdxA < aModsA.m_count)
+        bool bAdvance;
+        if (nIdxA < nCountA)
         {
             sB = aModsA.m_pArray[nIdxA];
             if (sB.Find(CExoString("_s.rim"), 0) != -1)
@@ -2078,7 +2084,7 @@ void CSWGuiMainMenu::PopulateModules()
         sA = sA.SubString(0, sA.GetLength() - 4);
         sB = sB.SubString(0, sB.GetLength() - 4);
 
-        bool bAdvance = true;
+        bAdvance = true;
         if (sA.LowerCase() <= sB.LowerCase())
         {
             sName = sA;
@@ -2090,11 +2096,12 @@ void CSWGuiMainMenu::PopulateModules()
             sName = sB;
         }
 
+        CSWGuiText* pText;
         CSWGuiButton* pButton = new CSWGuiButton();
-        pButton->Initialize(extent, static_cast<CSWGuiButton*>(m_lbModules.m_pProtoItem));
+        pButton->Initialize(extent, pTemplate);
         pButton->m_text.m_params.SetText(sName);
         // Called through the base text pointer, so the call stays virtual.
-        CSWGuiText* pText = &pButton->m_text;
+        pText = &pButton->m_text;
         extent.h = pText->GetIdealHeight()
                  + pButton->m_border.m_params.GetBorderDim() * 2;
         pButton->SetExtent(extent);

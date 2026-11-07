@@ -1343,6 +1343,8 @@ void AurStripify(List<int>& faceIndices, List<List<int> >& stripList)
     }
 
     std::vector<unsigned short> indices;
+    int nStrips;
+    int n;
     indices.reserve(faces.size() * 3);
     for (unsigned int i = 0; i < faces.size(); i++) {
         indices.push_back(static_cast<unsigned short>(faces[i].m_nIndex[0]));
@@ -1355,10 +1357,10 @@ void AurStripify(List<int>& faceIndices, List<List<int> >& stripList)
 
     delete pStripifier;
 
-    int nStrips = static_cast<int>(stripLengths.size()) + 1;
+    nStrips = static_cast<int>(stripLengths.size()) + 1;
     stripList.SetSize(nStrips);
 
-    int n = 0;
+    n = 0;
     for (unsigned int i = 0; i < stripLengths.size(); i++)
         for (int j = 0; j < static_cast<int>(stripLengths[i]); j++)
             stripList[i].Add(strips[n++]);

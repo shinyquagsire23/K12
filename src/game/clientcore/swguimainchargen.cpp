@@ -253,7 +253,7 @@ void CSWGuiMainCharGen::AbilitiesChanged()
 #endif
     for (unsigned int i = 0; i < m_pCreature->m_pStats->m_nNumClasses; i++)
     {
-        pClass = &g_pRules->m_paClasses[m_pCreature->m_pStats->GetClass(static_cast<unsigned char>(i))];
+        pClass = g_pRules->GetClass(m_pCreature->m_pStats->GetClass(static_cast<unsigned char>(i)));
         nArmorClass += static_cast<signed char>(pClass->GetArmorBonus(m_pCreature->m_pStats->GetClassLevel(static_cast<unsigned char>(i))));
     }
     m_pCreature->m_pStats->m_nArmorClass = static_cast<unsigned short>(nArmorClass);

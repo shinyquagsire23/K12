@@ -12,6 +12,12 @@ class CSWCCreature;
 class CSWGuiLabelHilight;
 class CExoString;
 
+// A portrait arrow's hilight flash: the label and the seconds it has left.
+struct CSWGuiCGArrowCountDown {
+    CSWGuiLabelHilight* m_pHilight;
+    float               m_fTimer;
+};
+
 class CSWGuiPortraitCharGen : public CSWGuiPanel {
 public:
     // Declared only: CSWGuiCustomPanel::OnSelectPortraitButton is the one call site.
@@ -46,11 +52,7 @@ public:
 #endif
     CExoArrayList<int> m_paPortraitIds;
     CExoArrayList<int> m_paAppearanceIds;
-    struct ArrowFlash {
-        CSWGuiLabelHilight* m_pHilight;
-        float               m_fTimer;
-    };
-    CExoArrayList<ArrowFlash> m_aFlashes;
+    CExoArrayList<CSWGuiCGArrowCountDown> m_aFlashes;
     float          m_fIdleAnimTimer;      // a countdown re-rolled on expiry
     int            m_nCurrentPortrait;
     int            m_nCurrentPortraitId;

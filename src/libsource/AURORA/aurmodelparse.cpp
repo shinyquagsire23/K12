@@ -63,14 +63,14 @@ void Parse(char* pszLine, Vector& vValue)
 // Reads four floats, then normalizes the (a,b,c) normal and scales d by the same magnitude.
 void Parse(char* pszLine, Plane& pValue)
 {
-    static_cast<void>(sscanf(pszLine, "%f %f %f %f", &pValue.a, &pValue.b, &pValue.c, &pValue.d));
-    float fMag = magnitude(*reinterpret_cast<Vector*>(&pValue));
+    static_cast<void>(sscanf(pszLine, "%f %f %f %f", &pValue.normal.x, &pValue.normal.y, &pValue.normal.z, &pValue.d));
+    float fMag = magnitude(pValue.normal);
     pValue.d = pValue.d / fMag;
     if (fMag != 0.0f) {
         float fInv = 1.0f / fMag;
-        pValue.a = pValue.a * fInv;
-        pValue.b = pValue.b * fInv;
-        pValue.c = pValue.c * fInv;
+        pValue.normal.x = pValue.normal.x * fInv;
+        pValue.normal.y = pValue.normal.y * fInv;
+        pValue.normal.z = pValue.normal.z * fInv;
     }
 }
 
@@ -272,11 +272,9 @@ void Parse(char* pszLine, unsigned int* value)
 {
     int nCount = 0;
     static_cast<void>(sscanf(pszLine, "%d", &nCount));
-    if (nCount >= 1) {
-        for (int64_t i = 0; i < nCount; i++) {
-            static_cast<void>(sscanf(AurResGetNextLine(), "%d", reinterpret_cast<int*>(value)));
-            value++;
-        }
+    for (int64_t i = 0; i < nCount; i++) {
+        static_cast<void>(sscanf(AurResGetNextLine(), "%d", reinterpret_cast<int*>(value)));
+        value++;
     }
 }
 
@@ -310,8 +308,12 @@ void Parse(char* pszLine, MaxFace_PostProcess& value)
 // ---- the bone-weight record --------------------------------------------------------------------
 
 
-// Kept at external linkage so the constant format argument stays at the call sites.
-int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
+// Bionic's fortified sprintf, one file-local copy per TU (K2 armv7 calls it pc-relative); the K1 armv7
+// build (API 16, no checked entry points) calls sprintf, which folds the "ROOT" copies.
+#if defined(K2_NO_FORTIFY)
+#define FormatName(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
+static int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
 {
     __builtin_va_list ap;
     __builtin_va_start(ap, pszFmt);
@@ -319,6 +321,7 @@ int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...)
     __builtin_va_end(ap);
     return nResult;
 }
+#endif
 
 // Reads one record per weighted bone, with four 32-byte name buffers, the four weights, then the
 // bone ids (seeded to -1).
@@ -423,7 +426,7 @@ template void Parse<int>(char*, List<int>&);
 template void Parse<MaxFace_PostProcess>(char*, List<MaxFace_PostProcess>&);
 template void Parse<unsigned int>(char*, List<unsigned int>&);
 template void Parse<SkinVertexWeight>(char*, List<SkinVertexWeight>&);
-template void Parse<Quaternion>(char*, List<Quaternion>&);
+template void Parse<Quaternion>(char*, List<Quaternion>&);  // EFFECTIVE (K1 armv7): one spill reload scheduled after the element store, same length
 #if KOTOR1  // K1 emits the float and Vector readers here; in K2 they live in other translation units
 template void Parse<float>(char*, List<float>&);
 template void Parse<Vector>(char*, List<Vector>&);
@@ -513,27 +516,6 @@ void CullUnnecessaryKeys(List<AurGenericKey>& list)
 // The node-kind post-process gate, defined in aurora.cpp.
 extern bool disablepostprocessing;
 
-// The animation arm's controller-list copy. List.h keeps `operator=` and `Add` declaration-only, so
-// both bodies are defined here for this instantiation.
-template <> inline void List<NewController>::Add(NewController item)
-{
-    if (m_count == m_capacity)
-#if KOTOR1  // K1 grows the list from 8 on first allocation
-        allocate(m_count ? m_count * 2 : static_cast<int>(K1ListFirstGrow<NewController>::value));
-#else
-        allocate(m_count ? m_count * 2 : 16);
-#endif
-    new (&m_pData[m_count++]) NewController(item);
-}
-
-template <> inline List<NewController>& List<NewController>::operator=(List<NewController>& rhs)
-{
-    m_count = 0;
-    for (int i = 0; i < rhs.m_count; i++)
-        Add(rhs.m_pData[i]);
-    return *this;
-}
-
 // Packs the key list in place. Each key's quaternion collapses from four floats into one word (11
 // bits x, 11 bits y, 10 bits z, each mapped from [-1,1] onto a fixed-point range) and the run is
 // rewritten through a scratch list.
@@ -607,7 +589,7 @@ void CompressQuaternionKey(List<AurGenericKey>& list)
 
 // The kind word per key value count, one entry per count 1..4, already shifted into the upper half
 // of the record word.
-static const unsigned long long g_anControllerKinds[4] = {
+static const uint64_ll_t g_anControllerKinds[4] = {
     1ULL << 32, 0, 3ULL << 32, 4ULL << 32,
 };
 
@@ -738,23 +720,25 @@ void AddGenericControllerSingle(char* pszName, char* pszType, List<NewController
     key.m_nCount = nCount + 1;
     key.m_afValues[0] = 0.0f;
 
-    unsigned long long nKind = 0;
+    uint64_ll_t nKind = 0;
     if (static_cast<unsigned>(nType) < 4) {
         K2_ASSUME(nType >= 0);   // the unsigned test bounds both ends
         nKind = g_anControllerKinds[nType];
     }
 
     NewController c;
-    c.m_nKeysPacked = nKind | static_cast<unsigned long long>(static_cast<unsigned short>(floats.m_count));
+    uint64_ll_t nKeysPacked = nKind | static_cast<uint64_ll_t>(static_cast<unsigned short>(floats.m_count));
     floats.Add(0.0f);
-    c.m_nKeysPacked |= static_cast<unsigned long long>(static_cast<unsigned short>(floats.m_count)) << 16;
+    nKeysPacked |= static_cast<uint64_ll_t>(static_cast<unsigned short>(floats.m_count)) << 16;
+    memcpy(&c.m_keys, &nKeysPacked, sizeof(c.m_keys));
     for (int i = 1; i < key.m_nCount; i++)
         floats.Add(key.m_afValues[i]);
     // The first word is built last, so the two pointer arguments do not stay live across the float
     // loop below.
-    c.m_nTargetPacked = static_cast<unsigned long long>(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pOffset)))
-              | ((static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(pDefaultOffset)) & 0xffff) << 32)
+    uint64_ll_t nTargetPacked = static_cast<uint64_ll_t>(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pOffset)))
+              | ((static_cast<uint64_ll_t>(reinterpret_cast<uintptr_t>(pDefaultOffset)) & 0xffff) << 32)
               | (1ULL << 48);
+    memcpy(&c.m_target, &nTargetPacked, sizeof(c.m_target));
     controllers.Add(c);
     countnewcontrollers++;
 }
@@ -800,10 +784,10 @@ void MdlNodeEmitter::InternalParseField(char* pszLine)
             Parse(pszLine + strlen("m_isTinted"), bTinted);
         if (_stricmp("bounce", firstword(pszLine)) == 0)
             Parse(pszLine + strlen("bounce"), bBouncing);
-        if (_stricmp("inherit", firstword(pszLine)) == 0)
-            Parse(pszLine + strlen("inherit"), bInheriting);
         if (_stricmp("random", firstword(pszLine)) == 0)
             Parse(pszLine + strlen("random"), nRandom);
+        if (_stricmp("inherit", firstword(pszLine)) == 0)
+            Parse(pszLine + strlen("inherit"), bInheriting);
         if (_stricmp("inheritvel", firstword(pszLine)) == 0)
             Parse(pszLine + strlen("inheritvel"), bInheritingVelocity);
         if (_stricmp("inherit_local", firstword(pszLine)) == 0)
@@ -1699,8 +1683,6 @@ void BinaryInsertModel(Model* pModel, int nLow, int nHigh);
 #include "sdlrwops.h"
 #endif
 
-int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...);
-
 Model* BinaryFindModel(char* pszName);
 
 // ---- the MaxTree parser hooks -------------------------------------------------------------------
@@ -1767,19 +1749,6 @@ extern int countmodelnodes;
 
 // The IsX siblings are plain mask tests.
 
-// ---- the checked downcasts --------------------------------------------------------------------
-//
-// The bodies the dispatch arms call directly.
-
-#ifndef _MSC_VER  // MSVC: aurmodel.cpp's definition only (an inline copy beside it is LNK2005)
-inline MdlNodeLight* MdlNode::AsMdlNodeLight()
-{
-    if ((m_nFlags & NODE_LIGHT) != NODE_LIGHT)
-        return 0;
-    return static_cast<MdlNodeLight*>(this);
-}
-#endif
-
 // ---- the per-kind ConJoin factories --------------------------------------------------------------
 //
 // The dispatcher above expands this block whole; the shape splits on the constructor's visibility.
@@ -1804,11 +1773,9 @@ inline MdlNodeLight* MdlNode::AsMdlNodeLight()
 // value-initialises the object, which prepends a whole-object memset. The node-taking factories
 // pass an argument and are unaffected.
 //
-// There are two shapes. Part, PartCamera and PartReference take the default constructor and store
-// m_pNode explicitly; PartTriMesh, PartAnimMesh, PartDanglyMesh, PartAABB and PartLightsaber take
-// the node as a constructor argument, so those arms are `operator new` plus a call. The Gob is
-// unused by every one of them and stays in the signature because all twelve arms share one function
-// type.
+// Every part kind takes the node as a constructor argument (Part has no default constructor), so
+// the arms are `operator new` plus a call. The Gob is unused by every one of them and stays in the
+// signature because all twelve arms share one function type.
 //
 // The zero stores from Part's in-class initialisers pair up into one 16-byte store, and which pairs
 // form is fixed by the declaration order. Do not reorder CAurPart.h's members: every offset in that
@@ -2207,7 +2174,7 @@ void MdlNodeTriMesh::InternalParseField(char* pszLine)
         if (pPost->m_faces.m_count >= 1) {
             m_faces.SetSize(pPost->m_faces.m_count);
             for (int64_t i = 0; i < pPost->m_faces.m_count; i++)
-                m_faces.m_pData[i].m_nSurfaceMaterial = pPost->m_faces.m_pData[i].m_nMaterial;
+                m_faces.m_pData[i].m_nMaterial = pPost->m_faces.m_pData[i].m_nMaterial;
         }
 
         if (_stricmp("diffuse", firstword(pszLine)) == 0)

@@ -626,8 +626,10 @@ unsigned char* ImageCrop(unsigned char* pData, int nWidth, int nHeight, int nBpp
     {
         for (int x = 0; x < nCropWidth; x++)
         {
-            if (nBpp > 0)
-                memcpy(pNew + static_cast<int>(nDstRow + x * nBpp), pData + static_cast<int>(nSrcRow + x * nBpp), static_cast<unsigned int>(nBpp));  // idiom-exempt: runtime length
+            unsigned char* pSrc = pData + static_cast<int>(nSrcRow + x * nBpp);
+            unsigned char* pDst = pNew + static_cast<int>(nDstRow + x * nBpp);
+            for (int b = 0; b < nBpp; b++)
+                pDst[b] = pSrc[b];
         }
         nSrcRow += nWidth * nBpp;
         nDstRow += nCropWidth * nBpp;

@@ -81,5 +81,5 @@ public:
     int  CreateWingAppearance(struct CCAppearanceInfo* pInfo);
     void ForceAnimate();
 
-    int GetAnimType(const CExoString& s);
+    unsigned char GetAnimType(const CExoString& s);
 };

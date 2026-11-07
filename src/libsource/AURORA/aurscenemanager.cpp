@@ -71,31 +71,39 @@ static int NodeContainsGob(BSPNode* pNode, void* pData)
 
 void LightBins(BSPNode* pNode, void* pData);
 
-List<BSPNode*> staticlightbucket;
+#if KOTOR1  // K1 defines the outside reference point and its per-texture arrays ahead of the lists
+__attribute__((visibility("hidden"))) Vector vOutsideRef;
 
+Bucket meshbuckets[5000];
+Bucket fadebuckets[5000];
+Bucket capbuckets[5000];
+#else
+std::map<unsigned int, Bucket> meshbuckets;
+std::map<unsigned int, Bucket> fadebuckets;
+std::map<unsigned int, Bucket> capbuckets;
+#endif
 
+Bucket g_listBackgroundBucket;
+List<PartShadow*> staticshadowbucket;
+List<PartBeam*> staticbeambucket;
+List<PartTriMesh*> meshshadowbucket;
+List<PartEmitter*> emitterbucket;
 List<Gob*>  gobbucket;
-List<Gob*>  blurbucket;
 List<Gob*>  g_listForcePushBucket;
 List<Gob*>  g_listLightsaberBucket;
+#if !KOTOR1  // K1 has no hologram bucket
 List<Gob*>  g_listHologramBucket;
-List<PartTriMesh*> g_listBackgroundBucket;
-List<Gob*>  fadinginbucket;
-List<Gob*>  fadingoutbucket;
-List<Part*> staticshadowbucket;
-List<Part*> staticbeambucket;
-List<PartEmitter*> emitterbucket;
-List<PartTriMesh*> meshshadowbucket;
+#endif
+List<BSPNode*> staticlightbucket;
 List<PartTrigger*> triggerbucket;
 List<CAurTriangleBin*> binbucket;
-
+List<Gob*>  blurbucket;
+List<TileData*> fadinginbucket;
+List<TileData*> fadingoutbucket;
 List<CAurTriangleBin*> g_pActiveBins;
 List<CAurTriangleBin*> g_pOldActiveBins;
 
 #if KOTOR1  // K1 indexes fixed per-texture arrays
-Bucket meshbuckets[5000];
-Bucket fadebuckets[5000];
-Bucket capbuckets[5000];
 #ifdef K2_FIX_ENGINE_BUGS
 // A texture name past the arrays goes in bucket 0, whose parts each bind their own texture.
 static inline int K1BucketTID(int nTID)
@@ -105,10 +113,6 @@ static inline int K1BucketTID(int nTID)
 #else
 #define K1BucketTID(n) (n)
 #endif
-#else
-std::map<unsigned int, Bucket> meshbuckets;
-std::map<unsigned int, Bucket> fadebuckets;
-std::map<unsigned int, Bucket> capbuckets;
 #endif
 
 int countbinbucket;
@@ -130,7 +134,9 @@ extern List<Model*> Models;
 
 extern float DeltaT;
 
+#if !KOTOR1
 __attribute__((visibility("hidden"))) Vector vOutsideRef;
+#endif
 
 __attribute__((visibility("hidden"))) float fOutsideClampRadius = 40.0f;
 __attribute__((visibility("hidden"))) float fOutsideDistThreshold = 15.0f;
@@ -164,11 +170,10 @@ extern int quaternionidentityoptimization;
 int crap;
 int GetMiniGamePlayingType();
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -240,7 +245,6 @@ List<PartEmitter*>* nodedata::GetMovingEmitters()
 
 nodedata::nodedata()
 {
-    __builtin_memset(static_cast<void*>(this), 0, sizeof(nodedata));
 }
 
 // m_pTileData is the only owned pointer; the lists free themselves.
@@ -283,12 +287,7 @@ void SceneBSPAddTileData(Scene* pScene, TileData* pTileData, Vector vTile)
     nodedata* pNodeData = BSPFitSphere(pScene->m_pBSPRoot, vTile, 0.0f)->m_pNodeData;
     pNodeData->m_pTileData = pTileData;
 
-    if (pTileData->m_aParts.m_count > 0) {
-        Part* pPart = pTileData->m_aParts.m_pData[0];
-        SceneBSPAddPart(pScene, pPart, pPart->m_pNode->m_pTree->AsModel());
-    }
-
-    for (int64_t i = 1; i < pTileData->m_aParts.m_count; i++) {
+    for (int64_t i = 0; i < pTileData->m_aParts.m_count; i++) {
         Part* pPart = pNodeData->m_pTileData->m_aParts.m_pData[i];
         SceneBSPAddPart(pScene, pPart, pPart->m_pNode->m_pTree->AsModel());
     }
@@ -523,8 +522,8 @@ void SceneBSPGetObjectTextures(Part* pPart, List<CAurTexture*>& out)
     if (pMesh != 0)
         out.Add(pMesh->m_pMaterial->m_spr0.m_pObject);
 
-    for (int64_t i = 0; i < pPart->m_nChildren; i++)
-        SceneBSPGetObjectTextures(pPart->m_paChildren[i], out);
+    for (int64_t i = 0; i < pPart->m_aChildren.m_count; i++)
+        SceneBSPGetObjectTextures(pPart->m_aChildren.m_pData[i], out);
 }
 
 // The tile-level half of the texture gather.
@@ -619,10 +618,10 @@ void AurClearActiveBins()
 // True when every x/y corner of the box lies above the plane.
 bool TwoDBoxAbovePlane(const Vector& vCorner0, const Vector& vCorner1, const Plane& plane)
 {
-    return !(vCorner0.x * plane.a + vCorner0.y * plane.b + plane.d <= 0.0f)
-        && !(vCorner1.x * plane.a + vCorner1.y * plane.b + plane.d <= 0.0f)
-        && !(vCorner0.x * plane.a + vCorner1.y * plane.b + plane.d <= 0.0f)
-        && !(vCorner1.x * plane.a + vCorner0.y * plane.b + plane.d <= 0.0f);
+    return !(vCorner0.x * plane.normal.x + vCorner0.y * plane.normal.y + plane.d <= 0.0f)
+        && !(vCorner1.x * plane.normal.x + vCorner1.y * plane.normal.y + plane.d <= 0.0f)
+        && !(vCorner0.x * plane.normal.x + vCorner1.y * plane.normal.y + plane.d <= 0.0f)
+        && !(vCorner1.x * plane.normal.x + vCorner0.y * plane.normal.y + plane.d <= 0.0f);
 }
 
 // Distance pre-reject, then a box sweep of the planes from a persistent cursor.
@@ -865,14 +864,14 @@ void AddPartToMeshBuckets(PartTriMesh* pPart)
 
     MdlNodeTriMesh* pTriMesh = pPart->m_pNode->AsMdlNodeTriMesh();
     if (pTriMesh->m_bIsBackgroundGeometry) {
-        g_listBackgroundBucket.Add(pPart);
+        g_listBackgroundBucket.m_parts.Add(pPart);
         return;
     }
 
 #if KOTOR1
-    meshbuckets[K1BucketTID(pPart->m_pMaterial->GetTextureTID())].Add(pPart);
+    meshbuckets[K1BucketTID(pPart->m_pMaterial->GetTextureTID())].m_parts.Add(pPart);
 #else
-    meshbuckets[pPart->m_pMaterial->GetTextureTID()].Add(pPart);
+    meshbuckets[pPart->m_pMaterial->GetTextureTID()].m_parts.Add(pPart);
 #endif
     meshshadowbucket.Add(pPart);
 }
@@ -881,9 +880,9 @@ void AddPartToMeshBuckets(PartTriMesh* pPart)
 void AddPartToCapBuckets(PartTriMesh* pPart)
 {
 #if KOTOR1
-    capbuckets[K1BucketTID(pPart->m_pMaterial->GetTextureTID())].Add(pPart);
+    capbuckets[K1BucketTID(pPart->m_pMaterial->GetTextureTID())].m_parts.Add(pPart);
 #else
-    capbuckets[pPart->m_pMaterial->GetTextureTID()].Add(pPart);
+    capbuckets[pPart->m_pMaterial->GetTextureTID()].m_parts.Add(pPart);
 #endif
 }
 
@@ -904,10 +903,10 @@ void ClearBuckets(Scene* pScene)
     emitterbucket.m_count = 0;
 #if KOTOR1
     for (int i = 0; i <= nMaxTexID; i++)
-        capbuckets[i].m_nCount = 0;
+        capbuckets[i].m_parts.m_count = 0;
     for (int i = 0; i <= nMaxTexID; i++) {
-        meshbuckets[i].m_nCount = 0;
-        fadebuckets[i].m_nCount = 0;
+        meshbuckets[i].m_parts.m_count = 0;
+        fadebuckets[i].m_parts.m_count = 0;
     }
 #else
     g_listHologramBucket.m_count = 0;
@@ -917,7 +916,7 @@ void ClearBuckets(Scene* pScene)
     capbuckets.clear();
 #endif
 
-    g_listBackgroundBucket.m_count = 0;
+    g_listBackgroundBucket.m_parts.m_count = 0;
     staticshadowbucket.m_count = 0;
     staticbeambucket.m_count = 0;
     meshshadowbucket.m_count = 0;
@@ -1079,12 +1078,12 @@ void BSPCreateStaticProjections(Scene* pScene)
     if (buildstaticshadows == 0)
         return;
 
+    List<PartLight*> shadowLights;
     GLRender::EnableClientState(Aurora::kClientStateVertex);
     GLRender::DisableClientState(Aurora::kClientStateColor);
     GLRender::DisableClientState(Aurora::kClientStateTexCoord);
     GLRender::DisableClientState(Aurora::kClientStateNormal);
 
-    List<PartLight*> shadowLights;
     shadowLights = pScene->m_pLightManager->GetShadowLights(1);
 
     List<BSPNode*> nodeList;
@@ -1143,14 +1142,12 @@ void BSPCreateStaticProjections(Scene* pScene)
 
                 if (pMdlNode->m_bBeaming) {
                     PartBeam* pBeam = new PartBeam(pMesh, pLight);
-                    pBeam->Draw(false);
                     if (pBeam->m_nQuadCount == 0)
                         delete pBeam;
                     else
                         SceneBSPAddPart(pScene, pBeam, 0);
                 } else {
                     PartShadow* pShadow = new PartShadow(pMesh, pLight);
-                    pShadow->Draw(false);
                     if (pShadow->m_nQuadCount == 0)
                         delete pShadow;
                     else
@@ -1461,7 +1458,7 @@ void LightPartTriMesh(PartTriMesh* pPart, List<PartLight*> lights, Scene* pScene
     if (!pPart->m_bHasColorPool) {
         GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0),
                               static_cast<short>(pNode->m_nVertexCount) * 4 + 4, 0x42, 0,
-                              reinterpret_cast<unsigned int*>(&pPart->m_nColorPool));
+                              reinterpret_cast<uint32_l_t*>(&pPart->m_nColorPool));
         pPart->m_bHasColorPool = true;
         pPart->m_pVertexPrimitive->Rebuild();
     }
@@ -1469,10 +1466,10 @@ void LightPartTriMesh(PartTriMesh* pPart, List<PartLight*> lights, Scene* pScene
 
     unsigned int* pColors = static_cast<unsigned int*>(GLRender::LockPool(pPart->m_nColorPool, 0, 0, 1));
     unsigned char* pVerts = static_cast<unsigned char*>(GLRender::LockPool(pNode->m_pTree->AsModel()->m_nPool,
-                                                               0, 0, 16));
+                                                               0, 0, 16)) + pNode->m_nGeomBase;
 
     for (int i = 0; i < static_cast<short>(pNode->m_nVertexCount); i++) {
-        unsigned char* pVertex = pVerts + pNode->m_nGeomBase + pNode->m_nVertexStride * i;
+        unsigned char* pVertex = pVerts + pNode->m_nVertexStride * i;
         Vector r1 = RotateVector(*reinterpret_cast<Vector*>(pVertex + pNode->m_nVertexOfs), q) + vWorldPos;
         Vector r2 = RotateVector(*reinterpret_cast<Vector*>(pVertex + pNode->m_nNormalOfs), q);
 
@@ -1564,14 +1561,12 @@ void CollectActiveRooms(Scene* pScene, List<CAurRoom*>& outRooms)
 void CollectActiveRooms(Scene* pScene, List<CAurRoom*>& outRooms)
 {
     CAurRoom* pCurrentRoom = pScene->m_pCurrentRoom;
-    outRooms.m_count = 0;
-
     if (pCurrentRoom == 0) {
-        for (int64_t i = 0; i < pScene->m_rooms.m_count; i++)
-            outRooms.Add(pScene->m_rooms.m_pData[i]);
+        outRooms = pScene->m_rooms;
         return;
     }
 
+    outRooms.m_count = 0;
     if (pScene->m_nIgnoreVisibilityGraph != 0 || enablevisibilitygraph == 0) {
         outRooms = pScene->m_rooms;
         return;
@@ -1677,17 +1672,17 @@ static void ConstructCameraFadePlaneDef(Scene* pScene, const Vector& vTarget, co
     Vector vNear = normalize(cross(vertZ, vDelta * (1.0f - wedgeCloseFactor) - vPerp));
     Vector vNearPoint = vCamPos + vPerp;
     Plane planeNear;
-    planeNear.a = vNear.x;
-    planeNear.b = vNear.y;
-    planeNear.c = vNear.z;
+    planeNear.normal.x = vNear.x;
+    planeNear.normal.y = vNear.y;
+    planeNear.normal.z = vNear.z;
     planeNear.d = -(vNear.x * vNearPoint.x + vNear.y * vNearPoint.y + vNear.z * vNearPoint.z);
 
     Vector vFar = normalize(cross(vDelta * (1.0f - wedgeCloseFactor) + vPerp, vertZ));
     Vector vFarPoint = vCamPos - vPerp;
     Plane planeFar;
-    planeFar.a = vFar.x;
-    planeFar.b = vFar.y;
-    planeFar.c = vFar.z;
+    planeFar.normal.x = vFar.x;
+    planeFar.normal.y = vFar.y;
+    planeFar.normal.z = vFar.z;
     planeFar.d = -(vFar.x * vFarPoint.x + vFar.y * vFarPoint.y + vFar.z * vFarPoint.z);
 
     pScene->m_eFadeState = Scene::FADING_ON;
@@ -1695,9 +1690,9 @@ static void ConstructCameraFadePlaneDef(Scene* pScene, const Vector& vTarget, co
     Camera* pCam = CurrentCamera;
     Vector vNormal = Vector(vDir.x, vDir.y, 0.0f) * (1.0f / fMag);
     Vector vPoint = vTarget - vDelta * perpCloseFactor;
-    pCam->m_viewState.m_fadePlane.a = vNormal.x;
-    pCam->m_viewState.m_fadePlane.b = vNormal.y;
-    pCam->m_viewState.m_fadePlane.c = vNormal.z;
+    pCam->m_viewState.m_fadePlane.normal.x = vNormal.x;
+    pCam->m_viewState.m_fadePlane.normal.y = vNormal.y;
+    pCam->m_viewState.m_fadePlane.normal.z = vNormal.z;
     pCam->m_viewState.m_fadePlane.d =
         -(vNormal.x * vPoint.x + vNormal.y * vPoint.y + vNormal.z * vPoint.z);
 
@@ -2111,8 +2106,8 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
 
     // Shadows, triggers and beams.
     for (int64_t i = 0; i < pNodeData->m_shadows.m_count; i++) {
-        Part* pShadow = pNodeData->m_shadows.m_pData[i];
-        if (PartOutside(static_cast<PartProjection*>(pShadow), planes)) {
+        PartShadow* pShadow = pNodeData->m_shadows.m_pData[i];
+        if (PartOutside(pShadow, planes)) {
             countculledshadows++;
             continue;
         }
@@ -2129,8 +2124,8 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
     }
 
     for (int64_t i = 0; i < pNodeData->m_beams.m_count; i++) {
-        Part* pBeam = pNodeData->m_beams.m_pData[i];
-        if (PartOutside(static_cast<PartProjection*>(pBeam), planes)) {
+        PartBeam* pBeam = pNodeData->m_beams.m_pData[i];
+        if (PartOutside(pBeam, planes)) {
             countculledbeams++;
             continue;
         }

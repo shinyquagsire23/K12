@@ -112,7 +112,7 @@ public:
     virtual int  SetCaretLinePos(int nLine) = 0;
 #endif
     virtual int  GetCaretColumnPos() = 0;
-    virtual int  SetCaretColumnPos(int nColumn) = 0;
+    virtual bool SetCaretColumnPos(int nColumn) = 0;
     virtual int  MoveCaretTo(Vector v) = 0;
     virtual void SetCaretVisible(bool bVisible) = 0;
     virtual int  SuggestDeleteCurrentFont() = 0;
@@ -160,27 +160,11 @@ struct SStringGobDisplayInfo {
     float m_fHitMargin;
     float m_fLineHeight;
 };
-
-// K1: one entry of the colour table; a new entry is opaque white.
-struct SStringGobColor {
-    float r, g, b, a;
-    SStringGobColor() : r(1.0f), g(1.0f), b(1.0f), a(1.0f) {}
-};
 #else
 struct SStringGobDisplayInfo {
     char _pad00[0x2fc - 0x2f0];
 };
 #endif
-
-// An owning pointer list. The destructor deletes the array, and nCount is what the counts accessors
-// return. nCapacity is never read.
-template <class T>
-struct SStringGobList {
-    T*  pa;
-    int nCount;
-    int nCapacity;
-    ~SStringGobList() { delete[] pa; }
-};
 
 class StringGob : public Gob, public CAurString {
 public:
@@ -249,7 +233,7 @@ public:
     virtual int  SetCaretLinePos(int nLine);
 #endif
     virtual int  GetCaretColumnPos();
-    virtual int  SetCaretColumnPos(int nColumn);
+    virtual bool SetCaretColumnPos(int nColumn);
     virtual int  ScrollToLine(int nLine);
     virtual int  ScrollToPixel(int nPixel);
     virtual CStringItem** GetStringsArray();
@@ -275,7 +259,7 @@ public:
     List<CStringItem*> m_lines;
     int   m_nMaxLines;
     bool  m_bCaretVisible;
-    List<SStringGobColor> m_colors;
+    List<CStringColor> m_colors;
     SStringGobDisplayInfo m_displayInfo;
 #else
     bool  m_bTextWrapping;
@@ -283,10 +267,10 @@ public:
     CCaret m_caret;
     float m_fAlignment;
     float m_fAlignmentVertical;
-    SStringGobList<CStringItem*> m_lines;
+    List<CStringItem*> m_lines;
     char  _pad2d8[0x2dc - 0x2d8];
     bool  m_bCaretVisible;
-    SStringGobList<void*> m_colors;
+    List<CStringColor> m_colors;
     SStringGobDisplayInfo m_displayInfo;
     float m_fMaxWidth;
     float m_fMaxHeight;

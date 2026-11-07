@@ -306,10 +306,7 @@ public:
     unsigned char  m_nParam1Value;
     unsigned char  m_nChanceAppear;
     unsigned char  _pad0b[0x0c-0x0b];
-    union {
-        int            m_bUseable;
-        unsigned char  m_bUseableByte;
-    };
+    int            m_bUseable;
     unsigned char  m_nUsesPerDay;
     unsigned char  m_nUpgradeType;
     unsigned short m_nPropUpgrade;

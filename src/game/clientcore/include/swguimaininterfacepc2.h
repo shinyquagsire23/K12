@@ -548,9 +548,7 @@ public:
     CSWGuiTargetActionMenu m_targetActionMenu;
     int           m_personalActionIds[6];
     int           m_nFocusedAction;
-    CSWGuiLabel   m_lblMoulding1;
-    CSWGuiLabel   m_lblMoulding2;
-    CSWGuiLabel   m_lblMoulding3;
+    CSWGuiLabel   m_lblMoulding[3];  // LBL_MOULDING1..3
     CSWGuiMainInterfaceChar m_aCharacters[3];
     CSWGuiMainInterfaceChar m_charOffscreen;  // the portrait the party rotation slides in
     float         m_fRotationTimer;
@@ -567,9 +565,7 @@ public:
     int           m_nMapHeight;
     CSWGuiButton  m_altMenuButton;
     CSWGuiLabel   m_actionQueueIcons[4];
-    CSWGuiLabel   m_lblCombatBg1;
-    CSWGuiLabel   m_lblCombatBg2;
-    CSWGuiLabel   m_lblCombatBg3;
+    CSWGuiLabel   m_lblCombatBg[3];  // LBL_COMBATBG1..3
     CSWGuiLabelHilight m_actionQueueHilight;
     CSWGuiButton  m_btnClearOne;
     CSWGuiButton  m_btnClearOne2;
@@ -631,8 +627,7 @@ public:
     int           m_nFocusedAction;
     float         m_scaleX;
     float         m_scaleY;
-    CSWGuiLabel   m_lblMoulding1;
-    CSWGuiLabel   m_lblMoulding3;
+    CSWGuiLabel   m_lblMoulding[2];  // LBL_MOULDING1, LBL_MOULDING3
     CSWGuiMainInterfaceChar m_aCharacters[3];
     CSWGuiMainInterfaceChar m_charOffscreen;  // the portrait the party rotation slides in
     float         m_fRotationTimer;
@@ -649,8 +644,7 @@ public:
     int           m_nMapHeight;
     CSWGuiButton m_altMenuButton;
     CSWGuiLabel   m_actionQueueIcons[4];
-    CSWGuiLabel   m_lblCombatBg2;
-    CSWGuiLabel   m_lblCombatBg3;
+    CSWGuiLabel   m_lblCombatBg[2];   // LBL_COMBATBG2, LBL_COMBATBG3
     CSWGuiLabelHilight m_actionQueueHilight;
     CSWGuiButton m_btnClearOne;
     CSWGuiButton m_btnClearOne2;

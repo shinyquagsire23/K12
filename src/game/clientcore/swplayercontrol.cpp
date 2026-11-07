@@ -64,8 +64,10 @@ void CSWPlayerControlDriving::Init()
     m_fAcceleration = 10.0f;
     m_fMaxSpeed = 6.0f;
     m_fDeceleration = 15.0f;
-    m_nSpeedPair = 0;
-    m_nPrevSpeedPair = 0;
+    m_axis.m_fForwardSpeed = 0.0f;
+    m_axis.m_fStrafeSpeed = 0.0f;
+    m_prev.m_fPrevForwardSpeed = 0.0f;
+    m_prev.m_fPrevStrafeSpeed = 0.0f;
     m_nReserved1 = 0x3f800000;
 }
 
@@ -75,6 +77,7 @@ CSWPlayerControlDriving::CSWPlayerControlDriving(unsigned long long id, CAurCame
     Init();
 }
 
+// EFFECTIVE: K2 armv7 swaps r2/r3 between the base's 0x7f000000 id word and the 15.0f deceleration.
 CSWPlayerControlDriving::CSWPlayerControlDriving()
     : CSWPlayerControl()
 {
@@ -122,13 +125,12 @@ void CSWPlayerControlDriving::LeftRight(float f)
 extern int quaternionidentityoptimization;
 
 // Rotates a vector by a quaternion, skipping the work when the rotation is the identity.
-static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
         return v;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
 
-    float x = q.x, y = q.y, z = q.z;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, wx = x * w;
     float yz = y * z, wy = y * w, wz = z * w;
@@ -272,7 +274,7 @@ int CSWPlayerControlDriving::Control(float f)
 CSWPlayerControlCamRelative::CSWPlayerControlCamRelative(unsigned long long id, CAurCamera* pAurCamera)
     : CSWPlayerControl(id, pAurCamera),
       m_vTurn(), m_nReserved1(0), m_nReserved2(0), m_nReserved3(0),
-      m_vDriveA(), m_vDriveB(), m_vDriveVel(), m_vDrivePos(), m_vDriveTarget(), m_acceleration()
+      m_curDriveState(), m_prevDriveState(), m_vDriveTarget(), m_acceleration()
 {
     Init();
 }
@@ -280,7 +282,7 @@ CSWPlayerControlCamRelative::CSWPlayerControlCamRelative(unsigned long long id, 
 CSWPlayerControlCamRelative::CSWPlayerControlCamRelative()
     : CSWPlayerControl(),
       m_vTurn(), m_nReserved1(0), m_nReserved2(0), m_nReserved3(0),
-      m_vDriveA(), m_vDriveB(), m_vDriveVel(), m_vDrivePos(), m_vDriveTarget(), m_acceleration()
+      m_curDriveState(), m_prevDriveState(), m_vDriveTarget(), m_acceleration()
 {
     Init();
 }
@@ -456,7 +458,7 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
 
     Quaternion qHeading = YawPitchRoll(Yaw(vCamFwd), 0.0f, 0.0f);
 
-    pCreature->m_fTurnAngle = 0;
+    pCreature->m_fTurnAngle = 0.0f;
 
     // The turn direction and its magnitude.
     float fResult = 0.0f;
@@ -488,12 +490,11 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
         m_fTurnDirection = fSign;
 
         float fAngle = fDiff > 180.0f ? 360.0f - fDiff : fDiff;
-// The field is declared int but holds the float's bits.
-        *reinterpret_cast<float*>(&pCreature->m_fTurnAngle) = fSign * fAngle;
+        pCreature->m_fTurnAngle = fSign * fAngle;
 
         if (__builtin_fabsf(fAngle) > 0.1f && __builtin_fabsf(pCreature->m_swAnimationSpeed) > 0.1f)
         {
-            float fSpeedRatio = magnitude(DriveVel()) / GetMaxSpeed();
+            float fSpeedRatio = magnitude(m_prevDriveState.m_vVelocity) / GetMaxSpeed();
             float fTurnRate = m_fMinTurnRate + (1.0f - fSpeedRatio) * (m_fMaxTurnRate - m_fMinTurnRate);
             float fTurn = fStep * fTurnRate * m_fTurnDirection;
             if (fTurn > fAngle)
@@ -515,84 +516,42 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
 
     // The four-stage drive integrator.
     bool bStopped = bAxisZero &&
-                    !(DriveVel().x == 0.0f && DriveVel().y == 0.0f) &&
-                    __builtin_fabsf(DriveVel().x) < 0.25f && __builtin_fabsf(DriveVel().y) < 0.25f;
+                    !(m_prevDriveState.m_vVelocity.x == 0.0f && m_prevDriveState.m_vVelocity.y == 0.0f) &&
+                    __builtin_fabsf(m_prevDriveState.m_vVelocity.x) < 0.25f && __builtin_fabsf(m_prevDriveState.m_vVelocity.y) < 0.25f;
 
     if (bStopped)
     {
-        DriveVel() = Vector(0.0f, 0.0f, 0.0f);
-        DriveA() = DriveVel();
-        DriveB() = DrivePos();
+        m_prevDriveState.m_vVelocity = Vector(0.0f, 0.0f, 0.0f);
+        m_curDriveState = m_prevDriveState;
     }
     else
     {
         if (vAxis.x == 0.0f && vAxis.y != 0.0f)
-            DriveVel().x = 0.0f;
+            m_prevDriveState.m_vVelocity.x = 0.0f;
         if (vAxis.x != 0.0f && vAxis.y == 0.0f)
-            DriveVel().y = 0.0f;
+            m_prevDriveState.m_vVelocity.y = 0.0f;
 
-// In stage 1, the derivative is target*accel - velocity*accel/maxSpeed, scaled by the step.
-        Vector vMid = (vAxis + DriveTarget()) * 0.5f;
-        float fAccel = GetAcceleration();
-        float fMax = GetMaxSpeed();
-        if (fMax <= 1.8f)
-            fAccel = fAccel * (fMax / 1.8f);
-        float fInvMax = fAccel / fMax;
+// The four stages step m_prevDriveState with the derivative GetAcceleration takes from each stage's
+// velocity: this frame's axis at the end, the midpoint axis in between. Simpson weights combine them.
+        CSWMGPhysicsState sStage, k1, k2, k3, k4;
+        Vector vMid = (vAxis + m_vDriveTarget) * 0.5f;
 
-        Vector k1;
-        k1.x = (DriveTarget().x * fAccel - DriveVel().x * fInvMax) * fStep;
-        k1.y = (DriveTarget().y * fAccel - DriveVel().y * fInvMax) * fStep;
-        k1.z = (DriveTarget().z * fAccel - fInvMax * DriveVel().z) * fStep;
-        Vector m1 = DriveVel() + k1 * 0.5f;
+        k1 = CSWMGPhysicsState(fStep * GetAcceleration(m_prevDriveState, m_vDriveTarget),
+                               fStep * m_prevDriveState.m_vVelocity);
+        sStage = m_prevDriveState + k1 * 0.5f;
+        k2 = CSWMGPhysicsState(fStep * GetAcceleration(sStage, vMid), fStep * sStage.m_vVelocity);
+        sStage = m_prevDriveState + k2 * 0.5f;
+        k3 = CSWMGPhysicsState(fStep * GetAcceleration(sStage, vMid), fStep * sStage.m_vVelocity);
+        sStage = m_prevDriveState + k3;
+        k4 = CSWMGPhysicsState(fStep * GetAcceleration(sStage, vAxis), fStep * sStage.m_vVelocity);
 
-        Vector k2;
-        fAccel = GetAcceleration();
-        fMax = GetMaxSpeed();
-        if (fMax <= 1.8f)
-            fAccel = fAccel * (fMax / 1.8f);
-        fInvMax = fAccel / fMax;
-        k2.x = (vMid.x * fAccel - m1.x * fInvMax) * fStep;
-        k2.y = (vMid.y * fAccel - m1.y * fInvMax) * fStep;
-        k2.z = (vMid.z * fAccel - m1.z * fInvMax) * fStep;
-        Vector m2 = DriveVel() + k2 * 0.5f;
-
-        Vector k3;
-        fAccel = GetAcceleration();
-        fMax = GetMaxSpeed();
-        if (fMax <= 1.8f)
-            fAccel = fAccel * (fMax / 1.8f);
-        fInvMax = fAccel / fMax;
-        k3.x = (vMid.x * fAccel - m2.x * fInvMax) * fStep;
-        k3.y = (vMid.y * fAccel - m2.y * fInvMax) * fStep;
-        k3.z = (vMid.z * fAccel - m2.z * fInvMax) * fStep;
-
-        Vector vEnd = DriveVel() + k3;
-
-        fAccel = GetAcceleration();
-        fMax = GetMaxSpeed();
-        if (fMax <= 1.8f)
-            fAccel = fAccel * (fMax / 1.8f);
-        fInvMax = fAccel / fMax;
-
-// The two accumulators, Simpson-weighted. k4 uses this frame's axis, not the midpoint.
-        Vector k4;
-        k4.x = (vAxis.x * fAccel - vEnd.x * fInvMax) * fStep;
-        k4.y = (vAxis.y * fAccel - vEnd.y * fInvMax) * fStep;
-        k4.z = (vAxis.z * fAccel - vEnd.z * fInvMax) * fStep;
-
-// With Simpson weights, the velocity arm carries 1/6, 1/3, 1/3, 1/6, and the position arm scales
-// every term by the step as well.
-        const float fSixth = 1.0f / 6.0f;
-        const float fThird = 1.0f / 3.0f;
-        DriveA() = DriveVel() + k1 * fSixth + k2 * fThird + k3 * fThird + k4 * fSixth;
-        DriveB() = DrivePos() + DriveVel() * fStep * fSixth + m1 * fStep * fThird
-                 + m2 * fStep * fThird + vEnd * fStep * fSixth;
+        m_curDriveState = m_prevDriveState + k1 / 6.0f + k2 / 3.0f + k3 / 3.0f + k4 / 6.0f;
 
 // This frame's axis becomes next frame's drive target.
-        DriveTarget() = vAxis;
+        m_vDriveTarget = vAxis;
 
         // The frame's travel, and the threshold that decides "arrived" from "still moving".
-        Vector vMove = DriveB() - DrivePos();
+        Vector vMove = m_curDriveState.m_vPosition - m_prevDriveState.m_vPosition;
 // Travel below the threshold counts as arrived, and so does a NaN travel.
         float fThreshold = GetMaxSpeed() < 5000.0f ? 0.0f : 0.001089f;
         if (!(vMove.x * vMove.x + vMove.y * vMove.y + vMove.z * vMove.z > fThreshold))
@@ -644,7 +603,7 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
 // The magnitude is computed and discarded; the call is kept.
             magnitude(pCreature->m_position - vNext);
 
-            float fSpeed = magnitude(DriveA());
+            float fSpeed = magnitude(m_curDriveState.m_vVelocity);
 #if KOTOR1
             // K1 tests finiteness in single precision, and only after the 1.0 test.
             if (fSpeed > 1.0f && __builtin_isfinite(fSpeed))
@@ -662,8 +621,7 @@ int CSWPlayerControlCamRelative::Control(float fDelta)
             }
         }
 
-        DriveVel() = DriveA();
-        DrivePos() = DriveB();
+        m_prevDriveState = m_curDriveState;
     }
 
 #ifdef K2_HOST_BUILD
@@ -717,10 +675,10 @@ int CSWPlayerControlCamRelative::GetPlayerWalking()
 void CSWPlayerControlCamRelative::ResetDriveAcceleration()
 {
     m_vTurn = Vector();
-    m_vDriveA = Vector();
-    m_vDriveB = Vector();
-    m_vDriveVel = Vector();
-    m_vDrivePos = Vector();
+    m_curDriveState.m_vVelocity = Vector();
+    m_curDriveState.m_vPosition = Vector();
+    m_prevDriveState.m_vVelocity = Vector();
+    m_prevDriveState.m_vPosition = Vector();
     m_vDriveTarget = Vector();
 }
 
@@ -803,7 +761,7 @@ void CSWPlayerControlCamRelative::SetAcceleration(float fAcceleration)
 // The larger of the two velocity components.
 float CSWPlayerControlCamRelative::GetCurSpeed()
 {
-    float fX = __builtin_fabsf(m_vDriveVel.x);
-    float fY = __builtin_fabsf(m_vDriveVel.y);
+    float fX = __builtin_fabsf(m_prevDriveState.m_vVelocity.x);
+    float fY = __builtin_fabsf(m_prevDriveState.m_vVelocity.y);
     return fX > fY ? fX : fY;
 }

@@ -608,13 +608,13 @@ public:
 #define CSCRIPTCOMPILERINTERNAL_H
 
 // One entry of the global-variable table the code generator fills.
-struct CScriptCompilerTable700Entry {
+struct CScriptCompilerVarStackEntry {
     CExoString m_sName;
     int        m_nType;
     int        m_nRecursionLevel;
     int        m_nRunTimeLocation;
     CExoString m_sStructureName;
-    CScriptCompilerTable700Entry()
+    CScriptCompilerVarStackEntry()
     {
         m_nType = 0;
         m_nRecursionLevel = 0;
@@ -623,12 +623,12 @@ struct CScriptCompilerTable700Entry {
 };
 // One built-in type descriptor, with its name, the first and last field index and the size in
 // bytes.
-struct CScriptCompilerTable720Entry {
+struct CScriptCompilerStructureEntry {
     CExoString m_sName;
     int        m_nFirstField;
     int        m_nLastField;
     int        m_nSize;
-    CScriptCompilerTable720Entry()
+    CScriptCompilerStructureEntry()
     {
         m_nFirstField = 0;
         m_nLastField = 0;
@@ -636,12 +636,12 @@ struct CScriptCompilerTable720Entry {
     }
 };
 // One field of a built-in type, with its name and its byte offset.
-struct CScriptCompilerTable728Entry {
+struct CScriptCompilerStructureFieldEntry {
     unsigned char m_nType;
     CExoString m_sStructureName;
     CExoString m_sName;
     int        m_nOffset;
-    CScriptCompilerTable728Entry()
+    CScriptCompilerStructureFieldEntry()
     {
         m_nType = 0;
         m_nOffset = 0;
@@ -649,20 +649,20 @@ struct CScriptCompilerTable728Entry {
 };
 
 // One entry of the two symbol lists, a label and its location in the compiled script.
-struct CScriptCompilerSymbolListEntry {
+struct CScriptCompilerSymbolTableEntry {
     CExoString m_sLabel;
     int        m_nCodeLocation;
-    CScriptCompilerSymbolListEntry()
+    CScriptCompilerSymbolTableEntry()
     {
         m_sLabel = "";
         m_nCodeLocation = 0;
     }
 };
-K2_LAYOUT_ASSERT(sizeof(CScriptCompilerSymbolListEntry) == 24, "symbol-list stride");
+K2_LAYOUT_ASSERT(sizeof(CScriptCompilerSymbolTableEntry) == 24, "symbol-list stride");
 
 // One slot of the include-file stack, holding the file name, its loaded script and its saved
 // cursor.
-struct CScriptCompilerIncludeFile {
+struct CScriptCompilerIncludeFileStackEntry {
     CExoString m_sFileName;
     CSourceScript m_script;
     int m_nLine;
@@ -828,14 +828,14 @@ public:
     int        m_nIdentifierBase;
     int        m_nNextActionId;
     int        m_nIncludeFileDepth;
-    CScriptCompilerIncludeFile m_includeFiles[INCLUDE_FILE_COUNT];
+    CScriptCompilerIncludeFileStackEntry m_includeFiles[INCLUDE_FILE_COUNT];
     int        m_nVarStackRecursionLevel;
-    CScriptCompilerTable700Entry* m_pVarStackList;
+    CScriptCompilerVarStackEntry* m_pVarStackList;
     int        m_nVarStackTop;
     int        m_nVarStackVariableType;
     CExoString m_sVarStackVariableTypeName;
-    CScriptCompilerTable720Entry* m_pStructureList;
-    CScriptCompilerTable728Entry* m_pStructureFieldList;
+    CScriptCompilerStructureEntry* m_pStructureList;
+    CScriptCompilerStructureFieldEntry* m_pStructureFieldList;
     int        m_nStructureCount;
     int        m_nFieldCount;
     int        m_nStructureDefinition;
@@ -867,10 +867,10 @@ public:
     char       m_aStackTypes[532];
     int        m_nSymbolQueryListCapacity;
     int        m_nSymbolQueryListCount;
-    CScriptCompilerSymbolListEntry* m_pSymbolQueryList;
+    CScriptCompilerSymbolTableEntry* m_pSymbolQueryList;
     int        m_nSymbolLabelListCapacity;
     int        m_nSymbolLabelListCount;
-    CScriptCompilerSymbolListEntry* m_pSymbolLabelList;
+    CScriptCompilerSymbolTableEntry* m_pSymbolLabelList;
     int        m_bCompileSymbolicOutput;
     int        m_bOptimizeBinaryCodeLength;
     int        m_bGeneratingFinalCode;
@@ -884,7 +884,7 @@ public:
     int        m_nResolvedCodeSize;
 };
 
-K2_LAYOUT_ASSERT(sizeof(CScriptCompilerIncludeFile) == 72, "include-file slot stride");
+K2_LAYOUT_ASSERT(sizeof(CScriptCompilerIncludeFileStackEntry) == 72, "include-file slot stride");
 K2_LAYOUT_ASSERT(sizeof(CScriptSRStackEntry) == 32, "SR stack entry stride");
 K2_LAYOUT_ASSERT(sizeof(CScriptCompilerInternal) == 3184, "CScriptCompilerInternal span");
 

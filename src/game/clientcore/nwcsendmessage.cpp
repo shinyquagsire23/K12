@@ -1,5 +1,6 @@
 #include "k2stdint.h"
 #include "nwchandlemessage.h"
+#include "CExoArrayListImpl.h"
 
 #include "appmanager.h"
 #include "clientexoapp.h"
@@ -220,17 +221,16 @@ int CSWCMessage::SendPlayerToServer_LevelUp(CSWCLevelUpStats* pCopy, CSWCLevelUp
     }
 
     {
-    CExoArrayList<unsigned int> lstAdd;
-    CExoArrayList<unsigned int> lstRemove;
+    CExoArrayList<uint32_l_t> lstAdd;
+    CExoArrayList<uint32_l_t> lstRemove;
     unsigned char nClassPos = pReal->m_nNumClasses - 1;
 
     for (unsigned char i = 0; i < pReal->GetNumberKnownSpells(nClassPos, 0); i++) {
         int nSpell = pReal->GetKnownSpell(nClassPos, 0, i);
         int bFound = 0;
-        for (unsigned char j = 0; j < pCopy->GetNumberKnownSpells(nClassPos, 0); j++) {
+        for (unsigned char j = 0; !bFound && j < pCopy->GetNumberKnownSpells(nClassPos, 0); j++) {
             if (pCopy->GetKnownSpell(nClassPos, 0, j) == nSpell) {
                 bFound = 1;
-                break;
             }
         }
         if (bFound == 0)
@@ -240,10 +240,9 @@ int CSWCMessage::SendPlayerToServer_LevelUp(CSWCLevelUpStats* pCopy, CSWCLevelUp
     for (unsigned char i = 0; i < pCopy->GetNumberKnownSpells(nClassPos, 0); i++) {
         int nSpell = pCopy->GetKnownSpell(nClassPos, 0, i);
         int bFound = 0;
-        for (unsigned char j = 0; j < pReal->GetNumberKnownSpells(nClassPos, 0); j++) {
+        for (unsigned char j = 0; !bFound && j < pReal->GetNumberKnownSpells(nClassPos, 0); j++) {
             if (pReal->GetKnownSpell(nClassPos, 0, j) == nSpell) {
                 bFound = 1;
-                break;
             }
         }
         if (bFound == 0)
@@ -2213,14 +2212,12 @@ char* visualeffect(char* sArgs) {
 
 char* playerpathfindrule(char* sArgs) {
     CSWCMessage* pMessage = g_pAppManager->m_pClientExoApp->GetSWCMessage();
-    char* pszResult;
     if (pMessage) {
         pMessage->SendPlayerToServerCheat_PlayerPathfindRule(static_cast<unsigned char>(atoi(sArgs)));
-        pszResult = const_cast<char*>("Success");
+        sprintf_s(szResult, sizeof(szResult), "Success");
     } else {
-        pszResult = const_cast<char*>("Failure");
+        sprintf_s(szResult, sizeof(szResult), "Failure");
     }
-    sprintf_s(szResult, sizeof(szResult), pszResult);
     return szResult;
 }
 
@@ -2273,6 +2270,7 @@ char* showeffects(char* sArgs) {
 // `spawnnasty [<type> <resref>]`: the type defaults to 6 and the creature to "dagger".
 char* spawnnasty(char* sArgs) {
     CSWCMessage* pMessage = g_pAppManager->m_pClientExoApp->GetSWCMessage();
+    char szName[256];
     CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
     CSWCArea* pArea = pCreature ? pCreature->m_pArea : 0;
     if (!pCreature || !pMessage || !pArea) {
@@ -2280,7 +2278,6 @@ char* spawnnasty(char* sArgs) {
         return szResult;
     }
 
-    char szName[256];
     strcpy(szName, "dagger");
     int nType = 6;
     char* pSpace = strchr(sArgs, ' ');
@@ -2545,25 +2542,29 @@ char* dm_gettime(char* sArgs) {
     }
 
     char szBuffer[128];
-    const char* pszTime;
+    // The module is fetched five more times before the switch; every result is discarded.
+    g_pAppManager->m_pClientExoApp->GetModule();
+    g_pAppManager->m_pClientExoApp->GetModule();
+    g_pAppManager->m_pClientExoApp->GetModule();
+    g_pAppManager->m_pClientExoApp->GetModule();
+    g_pAppManager->m_pClientExoApp->GetModule();
     switch (g_pAppManager->m_pClientExoApp->GetModule()->m_nTimeOfDayState) {
     case CSWCModule::TIME_OF_DAY_DAY:
-        pszTime = "TimeOfDayState: Day";
+        sprintf_s(szBuffer, sizeof(szBuffer), "TimeOfDayState: Day");
         break;
     case CSWCModule::TIME_OF_DAY_NIGHT:
-        pszTime = "TimeOfDayState: Night";
+        sprintf_s(szBuffer, sizeof(szBuffer), "TimeOfDayState: Night");
         break;
     case CSWCModule::TIME_OF_DAY_DAWN:
-        pszTime = "TimeOfDayState: Dawn";
+        sprintf_s(szBuffer, sizeof(szBuffer), "TimeOfDayState: Dawn");
         break;
     case CSWCModule::TIME_OF_DAY_DUSK:
-        pszTime = "TimeOfDayState: Dusk";
+        sprintf_s(szBuffer, sizeof(szBuffer), "TimeOfDayState: Dusk");
         break;
     default:
-        pszTime = "TimeOfDayState: Uh oh...";
+        sprintf_s(szBuffer, sizeof(szBuffer), "TimeOfDayState: Uh oh...");
         break;
     }
-    sprintf_s(szBuffer, sizeof(szBuffer), pszTime);
     return const_cast<char*>("Success");
 }
 
@@ -2707,30 +2708,29 @@ char* giveforcepowers(char* sArgs) {
     CExoIni ini;
     CExoString sValue;
     CExoString sKey;
+    int bAny = 0;
     CSWSCreature* pCreature = g_pAppManager->m_pServerExoApp->GetPlayerCreature();
 
-    int bAny = 0;
     for (int i = 1; i < 1000; i++) {
+        int nSpell;
         sKey.Format(const_cast<char*>("power%d"), i);
 #if KOTOR1
         if (ini.ReadIniEntry(sValue, CExoString("forcepowers.ini"),
 #else
         if (ini.ReadIniEntry(sValue, CExoString(".\\forcepowers.ini"),
 #endif
-                             CExoString("Force Powers"), sKey) != 1) {
-            if (!bAny) {
-                sprintf_s(szResult, sizeof(szResult), "Failed: no entries");
-                return szResult;
-            }
+                             CExoString("Force Powers"), sKey) != 1)
             break;
-        }
-        int nSpell = sValue.AsINT();
+        nSpell = sValue.AsINT();
         if (!pCreature->m_pStats->HasSpell(0, nSpell, 1)) {
             pCreature->AddSpellWithPrerequisites(nSpell);
         }
         bAny = 1;
     }
 
-    sprintf_s(szResult, sizeof(szResult), "Success");
+    if (bAny)
+        sprintf_s(szResult, sizeof(szResult), "Success");
+    else
+        sprintf_s(szResult, sizeof(szResult), "Failed: no entries");
     return szResult;
 }

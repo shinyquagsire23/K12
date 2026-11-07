@@ -28,36 +28,34 @@ void CSWRK4Acceleration::SetVelocity(float velocity)
     m_cur.m_vValue.z = 0;
 }
 
-// One RK4 step of the spring integration.
+// One RK4 step of the spring integration. Each k term holds the stage's acceleration and value
+// times dt.
 void CSWRK4Acceleration::Accelerate(Vector const& vVelocity, float fDeltaTime)
 {
-    // The value pairs integrate each stage's k term times dt.
-    CSWPhysicsState sStage = {};
+    CSWPhysicsState sStage, k1, k2, k3, k4;
     Vector vMidVelocity = (vVelocity + m_velocity) * 0.5f;
-    float fDt = __builtin_fminf(fDeltaTime, 0.2f);
+    CSWPhysicsState sSum, d1, d2, d3, d4;
+    float fDt = fDeltaTime < 0.2f ? fDeltaTime : 0.2f;
 
-    Vector k1v = GetAccelerationVector(m_prev, m_velocity) * fDt;
-    Vector k1u = m_prev.m_vValue * fDt;
-    sStage.m_vValue = (m_prev.m_vValue + k1v) * 0.5f;
-    sStage.m_vDisplacement = (m_prev.m_vDisplacement + k1u) * 0.5f;
+    k1 = CSWPhysicsState(fDt * GetAccelerationVector(m_prev, m_velocity), fDt * m_prev.m_vValue);
+    sSum = m_prev + k1;
+    sStage = sSum * 0.5f;
 
-    Vector k2v = GetAccelerationVector(sStage, vMidVelocity) * fDt;
-    Vector k2u = sStage.m_vValue * fDt;
-    sStage.m_vValue = (m_prev.m_vValue + k2v) * 0.5f;
-    sStage.m_vDisplacement = (m_prev.m_vDisplacement + k2u) * 0.5f;
+    k2 = CSWPhysicsState(fDt * GetAccelerationVector(sStage, vMidVelocity), fDt * sStage.m_vValue);
+    sSum = m_prev + k2;
+    sStage = sSum * 0.5f;
 
-    Vector k3v = GetAccelerationVector(sStage, vMidVelocity) * fDt;
-    Vector k3u = sStage.m_vValue * fDt;
-    sStage.m_vValue = m_prev.m_vValue + k3v;
-    sStage.m_vDisplacement = m_prev.m_vDisplacement + k3u;
+    k3 = CSWPhysicsState(fDt * GetAccelerationVector(sStage, vMidVelocity), fDt * sStage.m_vValue);
+    sStage = m_prev + k3;
 
-    Vector k4v = GetAccelerationVector(sStage, vVelocity) * fDt;
-    Vector k4u = sStage.m_vValue * fDt;
+    k4 = CSWPhysicsState(fDt * GetAccelerationVector(sStage, vVelocity), fDt * sStage.m_vValue);
 
-    const float fSixth = 1.0f / 6.0f;
-    const float fThird = 1.0f / 3.0f;
-    m_cur.m_vValue = m_prev.m_vValue + (k1v * fSixth + k2v * fThird + k3v * fThird + k4v * fSixth);
-    m_cur.m_vDisplacement = m_prev.m_vDisplacement + (k1u * fSixth + k2u * fThird + k3u * fThird + k4u * fSixth);
+    d1 = k1 / 6.0f;
+    sSum = k2 / 3.0f;
+    d3 = k3 / 3.0f;
+    d4 = k4 / 6.0f;
+    sSum = d1 + sSum + d3 + d4;
+    m_cur = m_prev + sSum;
     m_velocity = vVelocity;
 }
 

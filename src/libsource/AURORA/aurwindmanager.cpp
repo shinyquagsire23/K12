@@ -60,7 +60,10 @@ WindManager::~WindManager()
 // edge down to 1, so the field is white noise summed over the 16, 8, 4, 2 and 1-step tile passes.
 void WindManager::fillNoiseField(float (*pafField)[16])
 {
-    memset(pafField, 0, 16 * 16 * sizeof(float));
+    for (int y = 0; y < 16; y++) {
+        for (int x = 0; x < 16; x++)
+            pafField[y][x] = 0.0f;
+    }
 
     int nStep = 16;
     while (nStep >= 1) {
@@ -112,10 +115,10 @@ void WindManager::AddPointSourceWind(Vector v, float fRadius, float fLife, float
     m_lPointSourceWinds.Add(PointSourceWind(v, fRadius, fLife, fStrength));
 }
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
     float x = q.x, y = q.y, z = q.z;
+    float w = q.w;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, wx = x * w;
     float yz = y * z, wy = y * w;

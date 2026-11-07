@@ -32,8 +32,8 @@ public:
     unsigned int Send(HWND__* hwnd, unsigned int nMsg, unsigned long long wParam, int64_t lParam,
                       bool bUnicode, bool bNoWait);
     void ProcessSendQ();
-    unsigned int GetNext(tagMSG* pMsg, HWND__* hwnd, unsigned int nMin, unsigned int nMax,
-                         bool bRemove);
+    bool GetNext(tagMSG* pMsg, HWND__* hwnd, unsigned int nMin, unsigned int nMax,
+                 bool bRemove);
     // Steps one of the per-class counters by one and updates the matching flag pair when the
     // counter reaches zero.
     void AdjustStatus(MSG_Mac_t const& sMsg, bool bRemove);
@@ -90,10 +90,10 @@ namespace MSG_Mac {
     void PurgeTimerFromQueue(void* hwnd, unsigned int nTimerId);
 }
 
-extern "C" uint64_t GetWindowLongW(void* hwnd, int nIndex) throw();
-extern "C" long long CallWindowProcA(void* pfn, void* hwnd, unsigned int msg,
-                                     unsigned long long wParam, long long lParam) throw();
-extern "C" long long CallWindowProcW(void* pfn, void* hwnd, unsigned int msg,
-                                     unsigned long long wParam, long long lParam) throw();
+extern "C" uint64_t GetWindowLongW(void* hwnd, int nIndex);
+extern "C" int64_t CallWindowProcA(void* pfn, void* hwnd, unsigned int msg,
+                                   unsigned long long wParam, int64_t lParam);
+extern "C" int64_t CallWindowProcW(void* pfn, void* hwnd, unsigned int msg,
+                                   unsigned long long wParam, int64_t lParam);
 
 #endif // MSG_MAC_H

@@ -14,7 +14,8 @@ enum {
 
 CSWInventory::CSWInventory()
 {
-    __builtin_memset(m_aItemOids, 0, sizeof(m_aItemOids));
+    for (unsigned int i = 0; i < sizeof(m_aItemOids) / sizeof(m_aItemOids[0]); i++)
+        m_aItemOids[i] = 0;
 }
 
 CSWInventory::~CSWInventory()

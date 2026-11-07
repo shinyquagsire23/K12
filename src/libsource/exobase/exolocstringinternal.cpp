@@ -17,39 +17,23 @@ CExoLocStringInternal::~CExoLocStringInternal()
 
 void CExoLocStringInternal::ClearLocString()
 {
-    CExoLinkedListInternal* pList = m_List.m_pInternal;
-    while (pList->m_pHead != 0)
-    {
-        void* pData = pList->RemoveHead();
-        if (pData != 0)
-        {
-            static_cast<ExoLocString_st*>(pData)->m_sString.~CExoString();
-            operator delete(pData);
-        }
-        pList = m_List.m_pInternal;
-    }
+    while (m_List.GetHeadPos() != 0)
+        delete m_List.RemoveHead();
     m_nCount = 0;
 }
 
 int CExoLocStringInternal::AddString(int nID, const CExoString& str)
 {
-    CExoLinkedListNode* pos = m_List.m_pInternal->m_pHead;
-    void* pData = m_List.m_pInternal->m_pHead ? m_List.m_pInternal->m_pHead->m_pData : 0;
-    if (pData != 0)
+    CExoLinkedListNode* pos = m_List.GetHeadPos();
+    ExoLocString_st* pNode = m_List.GetHead();
+    while (pNode != 0)
     {
-        ExoLocString_st* pNode = static_cast<ExoLocString_st*>(pData);
-        while (true)
+        if (pNode->m_nID == nID)
         {
-            if (pNode->m_nID == nID)
-            {
-                pNode->m_sString = str;
-                return 1;
-            }
-            pData = m_List.GetNext(pos);
-            if (pData == 0)
-                break;
-            pNode = static_cast<ExoLocString_st*>(pData);
+            pNode->m_sString = str;
+            return 1;
         }
+        pNode = m_List.GetNext(pos);
     }
 
     ExoLocString_st* pNew = new ExoLocString_st;
@@ -89,26 +73,19 @@ int CExoLocStringInternal::Compare(const CExoLocString& other) const
     CExoString* pB = new CExoString();
 
     int result = 1;
-    void* pData = m_List.m_pInternal->m_pHead ? m_List.m_pInternal->m_pHead->m_pData : 0;
-    CExoLinkedListNode* pos = m_List.m_pInternal->m_pHead;
-    if (pData != 0)
+    ExoLocString_st* pNode = m_List.GetHead();
+    CExoLinkedListNode* pos = m_List.GetHeadPos();
+    while (pNode != 0)
     {
-        ExoLocString_st* pNode = static_cast<ExoLocString_st*>(pData);
-        while (true)
+        int nID = pNode->m_nID;
+        *pA = pNode->m_sString;
+        other.GetString(nID, pB, 0);
+        if (*pA != *pB)
         {
-            int nID = pNode->m_nID;
-            *pA = pNode->m_sString;
-            other.GetString(nID, pB, 0);
-            if (*pA != *pB)
-            {
-                result = 0;
-                break;
-            }
-            pData = m_List.GetNext(pos);
-            if (pData == 0)
-                break;
-            pNode = static_cast<ExoLocString_st*>(pData);
+            result = 0;
+            break;
         }
+        pNode = m_List.GetNext(pos);
     }
 
     pA->~CExoString();
@@ -142,23 +119,16 @@ int CExoLocStringInternal::GetString(unsigned int nIndex, int* pID, CExoString* 
 
 int CExoLocStringInternal::GetString(int nID, CExoString* pStr) const
 {
-    CExoLinkedListNode* pos = m_List.m_pInternal->m_pHead;
-    void* pData = m_List.m_pInternal->m_pHead ? m_List.m_pInternal->m_pHead->m_pData : 0;
-    if (pData != 0)
+    CExoLinkedListNode* pos = m_List.GetHeadPos();
+    ExoLocString_st* pNode = m_List.GetHead();
+    while (pNode != 0)
     {
-        ExoLocString_st* pNode = static_cast<ExoLocString_st*>(pData);
-        while (true)
+        if (pNode->m_nID == nID)
         {
-            if (pNode->m_nID == nID)
-            {
-                *pStr = pNode->m_sString;
-                return 1;
-            }
-            pData = m_List.GetNext(pos);
-            if (pData == 0)
-                break;
-            pNode = static_cast<ExoLocString_st*>(pData);
+            *pStr = pNode->m_sString;
+            return 1;
         }
+        pNode = m_List.GetNext(pos);
     }
     return 0;
 }

@@ -4,6 +4,7 @@
 // The text engine behind them was cut and the class survives so its call sites link.
 
 #include "k2stdint.h"
+#include <string.h>
 #if KOTOR1
 #define K1_AURORA_LIST  // K1's AURORA library; List.h grows from 8
 #endif
@@ -53,11 +54,10 @@ void android_port_glPopAttrib();
 }
 
 // The same quaternion rotate as Part.cpp.
-static inline Vector RotateVector(const Quaternion& q, const Vector& v)
+static inline __attribute__((always_inline)) Vector RotateVector(const Quaternion& q, const Vector& v)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -160,7 +160,7 @@ void StringGob::Render(bool a)
     int bLighting;
     android_port_glGetIntegerv(GL_LIGHTING, &bLighting);
     android_port_glDisable(enableTranslationTable[5]);
-    *reinterpret_cast<SStringGobColor*>(&g_cSavedCol) = m_colors[0];
+    g_cSavedCol = m_colors[0];
     android_port_glColor4fv(&g_cSavedCol.r);
     android_port_glTranslatef(0.0f,
         m_displayInfo.m_fScrollOffset - (m_displayInfo.m_fMaxHeight - m_displayInfo.m_fVisibleHeight) * m_fAlignmentVertical + 0.001f, 0.0f);
@@ -186,7 +186,7 @@ void StringGob::Render(bool a)
                 m_pFont->m_pTexture.m_pObject->Bind();
             }
             if (pItem->m_nColor != nColor) {
-                *reinterpret_cast<SStringGobColor*>(&g_cSavedCol) = m_colors[pItem->m_nColor];
+                g_cSavedCol = m_colors[pItem->m_nColor];
                 android_port_glColor4fv(&g_cSavedCol.r);
                 nColor = pItem->m_nColor;
             }
@@ -515,11 +515,10 @@ int StringGob::AttachCornersToObjects(CAurObject* a, char* b, char* c)
 {
     Part* pCorner1 = a->GetPart(b);
     Part* pCorner2 = a->GetPart(c);
-    Quaternion qObject = a->GetOrientation();
-    Quaternion qFrame = qObject * -pCorner1->m_qLocalOrientation;
+    Quaternion qFrame = a->GetOrientation() * -pCorner1->m_qLocalOrientation;
+    Quaternion q;
     Vector v1;
     Vector v2;
-    Quaternion q;
     pCorner1->GetWorld(v1, q);
     pCorner2->GetWorld(v2, q);
     Vector vSize = RotateVector(qFrame, v2 - v1);
@@ -842,7 +841,7 @@ int StringGob::SetCaretLinePos(int nLine) { K2_UNUSED(nLine); return 0; }
 #endif
 
 #if KOTOR1
-int StringGob::SetCaretColumnPos(int nColumn)
+bool StringGob::SetCaretColumnPos(int nColumn)
 {
     int nLine = GetCaretLinePos();
     if (nColumn < 0) {
@@ -868,7 +867,7 @@ int StringGob::SetCaretColumnPos(int nColumn)
     return 1;
 }
 #else
-int StringGob::SetCaretColumnPos(int nColumn) { K2_UNUSED(nColumn); return 1; }
+bool StringGob::SetCaretColumnPos(int nColumn) { K2_UNUSED(nColumn); return 1; }
 #endif
 
 #if KOTOR1
@@ -992,37 +991,37 @@ void StringGob::SetMaxHeight(float f) { m_fMaxHeight = f; }
 #if KOTOR1
 int StringGob::GetTextLineCount() { return m_lines.m_count; }
 #else
-int StringGob::GetTextLineCount() { return m_lines.nCount; }
+int StringGob::GetTextLineCount() { return m_lines.m_count; }
 #endif
 
 #if KOTOR1
 int StringGob::GetLineState(int nLine) { return m_lines[nLine]->m_nState; }
 #else
-int StringGob::GetLineState(int nLine) { return m_lines.pa[nLine]->m_nState; }
+int StringGob::GetLineState(int nLine) { return m_lines.m_pData[nLine]->m_nState; }
 #endif
 
 #if KOTOR1
 void StringGob::SetLineState(int nLine, int nState) { m_lines[nLine]->m_nState = static_cast<short>(nState); }
 #else
-void StringGob::SetLineState(int nLine, int nState) { m_lines.pa[nLine]->m_nState = static_cast<short>(nState); }
+void StringGob::SetLineState(int nLine, int nState) { m_lines.m_pData[nLine]->m_nState = static_cast<short>(nState); }
 #endif
 
 #if KOTOR1
 void StringGob::SetLineColor(int nLine, int nColor) { m_lines[nLine]->m_nColor = static_cast<short>(nColor); }
 #else
-void StringGob::SetLineColor(int nLine, int nColor) { m_lines.pa[nLine]->m_nColor = static_cast<short>(nColor); }
+void StringGob::SetLineColor(int nLine, int nColor) { m_lines.m_pData[nLine]->m_nColor = static_cast<short>(nColor); }
 #endif
 
 #if KOTOR1
 int StringGob::GetLineColor(int nLine) { return m_lines[nLine]->m_nColor; }
 #else
-int StringGob::GetLineColor(int nLine) { return m_lines.pa[nLine]->m_nColor; }
+int StringGob::GetLineColor(int nLine) { return m_lines.m_pData[nLine]->m_nColor; }
 #endif
 
 #if KOTOR1
 int StringGob::GetNumColors() { return m_colors.m_count; }
 #else
-int StringGob::GetNumColors() { return m_colors.nCount; }
+int StringGob::GetNumColors() { return m_colors.m_count; }
 #endif
 
 SStringGobDisplayInfo* StringGob::GetDisplayInfo() { return &m_displayInfo; }
@@ -1036,7 +1035,7 @@ int StringGob::GetCaretColumnPos() { return m_caret.nColumn; }
 #if KOTOR1
 CStringItem** StringGob::GetStringsArray() { return m_lines.m_pData; }
 #else
-CStringItem** StringGob::GetStringsArray() { return m_lines.pa; }
+CStringItem** StringGob::GetStringsArray() { return m_lines.m_pData; }
 #endif
 
 void StringGob::SetCaretVisible(bool bVisible) { m_bCaretVisible = bVisible; }

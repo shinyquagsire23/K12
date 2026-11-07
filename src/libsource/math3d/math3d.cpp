@@ -115,40 +115,53 @@ Vector Orth(const Vector& v)
     Vector vOrth = cross(v, Vector(1.0f, 0.0f, 0.0f));
     if (magnitude(vOrth) < 0.01)
         vOrth = cross(v, Vector(0.0f, 1.0f, 0.0f));
-    return normalize(vOrth);
+    vOrth = normalize(vOrth);
+    return vOrth;
 }
 
 Vector Orth(const Vector& a, const Vector& b)
 {
-    return normalize(cross(a, b));
+    Vector vOrth = cross(a, b);
+    vOrth = normalize(vOrth);
+    return vOrth;
 }
 
-unsigned char bitcount(unsigned char v)
+int bitcount(unsigned char v)
 {
-    return (v & 1) + ((v >> 1) & 1) + ((v >> 2) & 1) + ((v >> 3) & 1) +
-           ((v >> 4) & 1) + ((v >> 5) & 1) + ((v >> 6) & 1) + ((v >> 7) & 1);
+    int i;
+    int n = 0;
+    for (i = 0; i < 8; i++)
+        if (v & (1 << i))
+            n++;
+    return n;
 }
 
 float BoxAbovePlane(const Vector& v1, const Vector& v2, const Plane& plane)
 {
     // One corner per sign of the plane's normal.
-    Vector vCorner(plane.a > 0.0f ? v1.x : v2.x,
-                   plane.b > 0.0f ? v1.y : v2.y,
-                   plane.c > 0.0f ? v1.z : v2.z);
-    return plane.d + (vCorner.x * plane.a + vCorner.y * plane.b + vCorner.z * plane.c);
+    Vector vCorner(plane.normal.x > 0.0f ? v1.x : v2.x,
+                   plane.normal.y > 0.0f ? v1.y : v2.y,
+                   plane.normal.z > 0.0f ? v1.z : v2.z);
+    return plane.d + (vCorner.x * plane.normal.x + vCorner.y * plane.normal.y + vCorner.z * plane.normal.z);
 }
 
 float SphereAbovePlane(const Vector& vSphere, float fRadius, const Plane& plane)
 {
-    return plane.d + plane.a * vSphere.x + plane.b * vSphere.y + plane.c * vSphere.z - fRadius;
+    return plane.d + plane.normal.x * vSphere.x + plane.normal.y * vSphere.y + plane.normal.z * vSphere.z - fRadius;
 }
 
 Vector VectorMax(List<Vector>& list)
 {
+#if defined(__arm__)  // the 32-bit body: a zeroed named result, element 0 compared too
+    Vector vMax(0.0f, 0.0f, 0.0f);
+    vMax = list.m_pData[0];
+    for (int i = 0; i < list.m_count; i++)
+#else
     Vector vMax = list.m_pData[0];
     // An empty list returns the seed element unchanged.
     if (list.m_count > 0)
     for (int64_t i = 1; i < list.m_count; i++)
+#endif
     {
         vMax.x = vMax.x > list.m_pData[i].x ? vMax.x : list.m_pData[i].x;
         vMax.y = vMax.y > list.m_pData[i].y ? vMax.y : list.m_pData[i].y;
@@ -176,10 +189,16 @@ int VectorMaxDir(List<Vector>& list, Vector vDir)
 
 Vector VectorMin(List<Vector>& list)
 {
+#if defined(__arm__)  // the 32-bit body: a zeroed named result, element 0 compared too
+    Vector vMin(0.0f, 0.0f, 0.0f);
+    vMin = list.m_pData[0];
+    for (int i = 0; i < list.m_count; i++)
+#else
     Vector vMin = list.m_pData[0];
     // An empty list returns the seed element unchanged.
     if (list.m_count > 0)
     for (int64_t i = 1; i < list.m_count; i++)
+#endif
     {
         vMin.x = vMin.x < list.m_pData[i].x ? vMin.x : list.m_pData[i].x;
         vMin.y = vMin.y < list.m_pData[i].y ? vMin.y : list.m_pData[i].y;
@@ -401,27 +420,21 @@ inline float fMaxAbs3(float a, float b, float c)
 }
 
 // Inclusive range test; the bounds may be given in either order.
-inline bool fInRange(float v, float lo, float hi)
+inline __attribute__((always_inline)) bool fInRange(float v, float lo, float hi)
 {
     return (hi >= lo && v >= lo && v <= hi) || (lo >= hi && v >= hi && v <= lo);
 }
 
 // True when v is outside [lo, hi] in either ordering; a NaN bound is never outside.
-inline bool fOutOfRange(float v, float lo, float hi)
+inline __attribute__((always_inline)) bool fOutOfRange(float v, float lo, float hi)
 {
     return (hi >= lo && !(v >= lo && v <= hi)) || (lo >= hi && !(v >= hi && v <= lo));
 }
 
 Matrix Transpose(const Matrix& m)
 {
-    Matrix r;
-    Vector v0(m.m_f[0], m.m_f[3], m.m_f[6]);
-    Vector v1(m.m_f[1], m.m_f[4], m.m_f[7]);
-    Vector v2(m.m_f[2], m.m_f[5], m.m_f[8]);
-    r.Rows()[0] = v0;
-    r.Rows()[1] = v1;
-    r.Rows()[2] = v2;
-    return r;
+    return Matrix(Vector(m.m_f[0], m.m_f[3], m.m_f[6]), Vector(m.m_f[1], m.m_f[4], m.m_f[7]),
+                  Vector(m.m_f[2], m.m_f[5], m.m_f[8]));
 }
 
 
@@ -442,19 +455,11 @@ Vector operator*(const Matrix& m, const Vector& v)
     return r;
 }
 
+// Each row of b transformed by m.
 Matrix operator*(const Matrix& m, const Matrix& b)
 {
-    Matrix r;
-    r.m_f[0] = m.m_f[0]*b.m_f[0] + m.m_f[3]*b.m_f[1] + m.m_f[6]*b.m_f[2];
-    r.m_f[1] = m.m_f[1]*b.m_f[0] + m.m_f[4]*b.m_f[1] + m.m_f[7]*b.m_f[2];
-    r.m_f[2] = m.m_f[2]*b.m_f[0] + m.m_f[5]*b.m_f[1] + m.m_f[8]*b.m_f[2];
-    r.m_f[3] = m.m_f[0]*b.m_f[3] + m.m_f[3]*b.m_f[4] + m.m_f[6]*b.m_f[5];
-    r.m_f[4] = m.m_f[1]*b.m_f[3] + m.m_f[4]*b.m_f[4] + m.m_f[7]*b.m_f[5];
-    r.m_f[5] = m.m_f[2]*b.m_f[3] + m.m_f[5]*b.m_f[4] + m.m_f[8]*b.m_f[5];
-    r.m_f[6] = m.m_f[0]*b.m_f[6] + m.m_f[3]*b.m_f[7] + m.m_f[6]*b.m_f[8];
-    r.m_f[7] = m.m_f[1]*b.m_f[6] + m.m_f[4]*b.m_f[7] + m.m_f[7]*b.m_f[8];
-    r.m_f[8] = m.m_f[2]*b.m_f[6] + m.m_f[5]*b.m_f[7] + m.m_f[8]*b.m_f[8];
-    return r;
+    const Vector* pRows = b.Rows();
+    return Matrix(m * pRows[0], m * pRows[1], m * pRows[2]);
 }
 
 float* Augment(const Matrix& m)
@@ -511,10 +516,10 @@ extern int quaternionidentityoptimization;
 
 // Rotates v by q. This is the inverse-rotation spelling: the scalar is negated first, which the
 // AURORA copies of this helper reach the other way round.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w, x = q.x, y = q.y, z = q.z;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         w = -w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, yz = y * z;
@@ -533,11 +538,9 @@ void Plane::Transform(const Vector& vPoint, const Quaternion& q)
     static Vector newnormal;
     static Vector origin;
 
-    newnormal = RotateVector(Vector(a, b, c), q);
-    origin = RotateVector(-(Vector(a, b, c) * d) - vPoint, q);
-    a = newnormal.x;
-    b = newnormal.y;
-    c = newnormal.z;
+    newnormal = RotateVector(normal, q);
+    origin = RotateVector(-(normal * d) - vPoint, q);
+    normal = newnormal;
     d = -dot(newnormal, origin);
 }
 
@@ -653,47 +656,10 @@ Quaternion YawPitchRoll(float yaw, float pitch, float roll)
     float fYawRad = DegToRad(yaw);
     float fPitchRad = DegToRad(pitch);
     float fRollRad = DegToRad(roll);
-
-    Quaternion qYaw;
-    if (fYawRad != 0.0f)
-    {
-        Vector vAxis = normalize(zaxis);
-        float fSin = sinf(fYawRad * 0.5f);
-        float fCos = cosf(fYawRad * 0.5f);
-        qYaw.w = fCos;
-        qYaw.x = fSin * vAxis.x;
-        qYaw.y = fSin * vAxis.y;
-        qYaw.z = fSin * vAxis.z;
-    }
-
-    Quaternion qPitch;
-    if (fPitchRad != 0.0f)
-    {
-        Vector vAxis = normalize(xaxis);
-        float fSin = sinf(fPitchRad * 0.5f);
-        float fCos = cosf(fPitchRad * 0.5f);
-        qPitch.w = fCos;
-        qPitch.x = fSin * vAxis.x;
-        qPitch.y = fSin * vAxis.y;
-        qPitch.z = fSin * vAxis.z;
-    }
-
-    Quaternion q = qYaw * qPitch;
-
-    Quaternion qRoll;
-    if (fRollRad != 0.0f)
-    {
-        Vector vAxis = normalize(yaxis);
-        float fSin = sinf(fRollRad * 0.5f);
-        float fCos = cosf(fRollRad * 0.5f);
-        qRoll.w = fCos;
-        qRoll.x = fSin * vAxis.x;
-        qRoll.y = fSin * vAxis.y;
-        qRoll.z = fSin * vAxis.z;
-    }
-
-    q = q * qRoll;
-    return q;
+    Quaternion qYaw(zaxis, fYawRad);
+    Quaternion qPitch(xaxis, fPitchRad);
+    Quaternion qRoll(yaxis, fRollRad);
+    return qYaw * qPitch * qRoll;
 }
 
 float Yaw(const Quaternion& q)
@@ -714,15 +680,12 @@ float Pitch(const Quaternion& q)
 
 float Roll(Quaternion q)
 {
-    Quaternion qYaw(zaxis, DegToRad(-Yaw(q)));
-    q = qYaw * q;
-
+    q = Quaternion(zaxis, DegToRad(-Yaw(q))) * q;
 #if KOTOR1
-    Quaternion qPitch(xaxis, -DegToRad(Pitch(q)));
+    q = Quaternion(xaxis, -DegToRad(Pitch(q))) * q;
 #else
-    Quaternion qPitch(xaxis, DegToRad(-Pitch(q)));
+    q = Quaternion(xaxis, DegToRad(-Pitch(q))) * q;
 #endif
-    q = qPitch * q;
 
     return atan2f(-q.xdir().z, q.xdir().x) * 57.295776f;
 }
@@ -751,13 +714,11 @@ Quaternion pointto(const Vector& n)
     float fCross = magnitude(a);
     if (fCross > 1.0f)
         fCross = 1.0f;
+    if (fCross < -1.0f)
+        fCross = -1.0f;
 
     if (fCross == 0.0f)
-    {
-        if (v.z > 0.0f)
-            return Quaternion(1.0f, 0.0f, 0.0f, 0.0f);
-        return Quaternion(xaxis, 3.1415927f);
-    }
+        return Quaternion(xaxis, v.z > 0.0f ? 0.0f : 3.1415927f);
 
     float fAngle = asinf(fCross);
     float fDot = vUp.x * v.x + vUp.y * v.y + vUp.z * v.z;
@@ -786,7 +747,7 @@ Quaternion RotationArc(Vector from, Vector to)
     return q;
 }
 
-bool polyhit(const Vector* pa, int nCount, const Vector& b, const float& fRadius,
+int polyhit(const Vector* pa, int nCount, const Vector& b, const float& fRadius,
               const Vector& c, const Vector& d, Vector* pOut)
 {
     float fDistC = dot(b, c) + fRadius;
@@ -1319,27 +1280,16 @@ uint64_t topMask[5] = {0xffff0000, 0xff00ff00, 0xf0f0f0f0, 0xcccccccc, 0xaaaaaaa
 uint64_t FloorLogBase2(uint64_t x)
 {
     uint64_t r = 0;
-
-    bool b0 = (x & topMask[0]) != 0;
-    if (b0) x &= topMask[0];
-    r |= static_cast<uint64_t>(b0) << 4;
-
-    bool b1 = (x & topMask[1]) != 0;
-    if (b1) x &= topMask[1];
-    r |= static_cast<uint64_t>(b1) << 3;
-
-    bool b2 = (x & topMask[2]) != 0;
-    if (b2) x &= topMask[2];
-    r |= static_cast<uint64_t>(b2) << 2;
-
-    bool b3 = (x & topMask[3]) != 0;
-    if (b3) x &= topMask[3];
-    r |= static_cast<uint64_t>(b3) << 1;
-
-    bool b4 = (x & topMask[4]) != 0;
-    if (b4) x &= topMask[4];
-    r |= static_cast<uint64_t>(b4);
-
+    int nShift = 16;
+    for (int i = 0; i < 5; i++)
+    {
+        if (x & topMask[i])
+        {
+            r += nShift;
+            x &= topMask[i];
+        }
+        nShift /= 2;
+    }
     return r;
 }
 

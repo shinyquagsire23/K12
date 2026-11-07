@@ -72,6 +72,9 @@ int g_bPazaakShowNPCSideDeck;
 
 // Formatter shared by both Pazaak panels' layout binds.
 
+#if defined(K2_NO_FORTIFY)
+#define FormatInto(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void FormatInto(char* pBuf, uint64_t nLen, const char* pszFmt, ...) {
     __builtin_va_list args;
     __builtin_va_start(args, pszFmt);
@@ -80,6 +83,7 @@ static void FormatInto(char* pBuf, uint64_t nLen, const char* pszFmt, ...) {
     __vsprintf_chk(pBuf, 0, nLen, pszFmt, args);
     __builtin_va_end(args);
 }
+#endif
 
 // Control-name templates, of which only the digit slot is rewritten in place; the trailing spaces
 // are layout-table padding.
@@ -311,19 +315,17 @@ CSWGuiPazaakGame::CSWGuiPazaakGame(CSWGuiManager* pManager, CSWPazaak* pPazaak,
 #ifndef K2_UI_XBOX
             CSWGuiPanel::InitControl(m_aCardButtonsA[n], achBtnFlip, 1, 1, 0, 0, 0);
 #if KOTOR1  // K1: on a phone the flip buttons double in size about their centre
-            {
-                int nScreenW, nScreenH;
-                if (IosIsIphone(nScreenW, nScreenH)) {
-                    CSWGuiExtent extent = m_aCardButtonsA[n].m_extent;
-                    int nSize = extent.w;
-                    extent.x -= nSize / 2;
-                    extent.y -= nSize / 2;
-                    extent.w = nSize * 2;
-                    extent.h = nSize * 2;
-                    m_aCardButtonsA[n].SetExtent(extent);
-                    if (n == 1)
-                        m_aPlrHand[1].m_border.m_params.m_flags.nFillStyle = 2;
-                }
+            int nScreenW, nScreenH;
+            if (IosIsIphone(nScreenW, nScreenH)) {
+                CSWGuiExtent extent = m_aCardButtonsA[n].m_extent;
+                int nSize = extent.w;
+                extent.x -= nSize / 2;
+                extent.y -= nSize / 2;
+                extent.w = nSize * 2;
+                extent.h = nSize * 2;
+                m_aCardButtonsA[n].SetExtent(extent);
+                if (n == 1)
+                    m_aPlrHand[1].m_border.m_params.m_flags.nFillStyle = 2;
             }
 #else
             CSWGuiPanel::InitControl(m_aCardButtonsB[n], achBtnChange, 1, 1, 0, 0, 0);
@@ -420,44 +422,45 @@ CSWGuiPazaakGame::CSWGuiPazaakGame(CSWGuiManager* pManager, CSWPazaak* pPazaak,
         CSWGuiPanel::InitControl(m_actbtn1, s, 1, 1, 0, 0, 0);
     }
 #endif
+#ifndef K2_UI_XBOX
+    CSWGuiText* pText;
+#endif
     CSWGuiPanel::StopLoadFromLayout();
 #if KOTOR1  // K1: rescale to the window, then hang the two side panels beside the 4:3 table
-    {
 #ifdef K2_UI_TOUCH
 #ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
-        float s_fScale = static_cast<float>(g_SDL_mode.h) / 720.0f;
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 720.0f;
 #else
-        static float s_fScale = static_cast<float>(g_SDL_mode.h) / 720.0f;
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 720.0f;
 #endif
 #else
-        // pc / xbox: the 640x480 layout fills the height, between the side panels
+    // pc / xbox: the 640x480 layout fills the height, between the side panels
 #ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
-        float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
 #else
-        static float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
 #endif
 #endif
-        ScaleExtentForResolution(s_fScale);
-        CSWGuiExtent extent;
-        extent.w = static_cast<int>(ceilf(static_cast<float>(g_SDL_mode.h) * 204.0f / 512.0f));
-        extent.h = g_SDL_mode.h;
-        extent.x = static_cast<int>((static_cast<float>(g_SDL_mode.w) - ceilf(static_cast<float>(g_SDL_mode.h) * 4.0f / 3.0f)) * 0.5f -
-                         static_cast<float>(extent.w));
-        extent.y = 0;
-        m_imgSideLeft.Initialize(extent, CSWGuiImageParams(CResRef("and_paz_left"), 0, 0, 0.0f, SWGUIALIGN_MIDDLE | SWGUIALIGN_CENTER,
+    ScaleExtentForResolution(s_fScale);
+    CSWGuiExtent extent;
+    extent.w = static_cast<int>(ceilf(static_cast<float>(g_SDL_mode.h) * 204.0f / 512.0f));
+    extent.h = g_SDL_mode.h;
+    extent.x = static_cast<int>((static_cast<float>(g_SDL_mode.w) - ceilf(static_cast<float>(g_SDL_mode.h) * 4.0f / 3.0f)) * 0.5f -
+                     static_cast<float>(extent.w));
+    extent.y = 0;
+    m_imgSideLeft.Initialize(extent, CSWGuiImageParams(CResRef("and_paz_left"), 0, 0, 0.0f, SWGUIALIGN_MIDDLE | SWGUIALIGN_CENTER,
 #ifdef K2_UI_TOUCH
-                                                           1.0f, Vector(1.0f, 1.0f, 1.0f)));
+                                                       1.0f, Vector(1.0f, 1.0f, 1.0f)));
 #else
-                                                           1.0f, K1PazaakSideColor("and_paz_left")));
+                                                       1.0f, K1PazaakSideColor("and_paz_left")));
 #endif
-        extent.x = g_SDL_mode.w - extent.x - extent.w;
-        m_imgSideRight.Initialize(extent, CSWGuiImageParams(CResRef("and_paz_right"), 0, 0, 0.0f, SWGUIALIGN_MIDDLE | SWGUIALIGN_CENTER,
+    extent.x = g_SDL_mode.w - extent.x - extent.w;
+    m_imgSideRight.Initialize(extent, CSWGuiImageParams(CResRef("and_paz_right"), 0, 0, 0.0f, SWGUIALIGN_MIDDLE | SWGUIALIGN_CENTER,
 #ifdef K2_UI_TOUCH
-                                                            1.0f, Vector(1.0f, 1.0f, 1.0f)));
+                                                        1.0f, Vector(1.0f, 1.0f, 1.0f)));
 #else
-                                                            1.0f, K1PazaakSideColor("and_paz_right")));
+                                                        1.0f, K1PazaakSideColor("and_paz_right")));
 #endif
-    }
 #endif
 #ifdef K2_UI_XBOX
     g_nGUIWidth  = nSavedGUIWidth;
@@ -522,7 +525,7 @@ CSWGuiPazaakGame::CSWGuiPazaakGame(CSWGuiManager* pManager, CSWPazaak* pPazaak,
 #endif
     // When a caption cannot fit its button's extent height, center it instead of top-aligning.
 #ifndef K2_UI_XBOX  // the console captions keep pazaakgame_x's own alignment
-    CSWGuiText* pText = &m_actbtn0.m_text;
+    pText = &m_actbtn0.m_text;
     if (pText->GetIdealHeight() > m_actbtn0.m_extent.h)
         m_actbtn0.m_text.m_params.SetAlignment(10);
     pText = &m_actbtn1.m_text;
@@ -1026,14 +1029,9 @@ void CSWGuiPazaakGame::SetHandEnabled(int bEnabled) {
 #endif
     RefreshDisplay();
 #else
-    if (m_aPlrHand[3].m_card.m_nCardType < 0)
-        m_aPlrHand[3].m_bEnabled = 0;
-    if (m_aPlrHand[2].m_card.m_nCardType < 0)
-        m_aPlrHand[2].m_bEnabled = 0;
-    if (m_aPlrHand[1].m_card.m_nCardType < 0)
-        m_aPlrHand[1].m_bEnabled = 0;
-    if (m_aPlrHand[0].m_card.m_nCardType < 0)
-        m_aPlrHand[0].m_bEnabled = 0;
+    for (int i = 3; i >= 0; i--)
+        if (m_aPlrHand[i].m_card.m_nCardType < 0)
+            m_aPlrHand[i].m_bEnabled = 0;
     int bDisabled = (bEnabled == 0);
     m_actbtn0.CSWGuiActivatedButton::SetEnabled(bDisabled);
     m_actbtn1.CSWGuiActivatedButton::SetEnabled(bDisabled);
@@ -1056,9 +1054,10 @@ static inline bool CardsDiffer(CPazaakCard a, CPazaakCard b)
 void CSWGuiPazaakGame::RefreshDisplay() {
     // The played rows are tinted full white once that side stands or setup is over, dim grey
     // otherwise.
-    const int bFull0 = (m_nGameState > GAME_STATE_SHOW_RESULT) | (m_pPazaak->m_players[0].m_bStanding == 0);
-    const int bFull1 = (m_nGameState > GAME_STATE_SHOW_RESULT) | (m_pPazaak->m_players[1].m_bStanding == 0);
+    const int bSetupOver = m_nGameState > GAME_STATE_SHOW_RESULT;
+    const int bFull0 = (m_pPazaak->m_players[0].m_bStanding == 0) | bSetupOver;
     const float fTint0 = bFull0 ? 1.0f : 0.667f;
+    const int bFull1 = (m_pPazaak->m_players[1].m_bStanding == 0) | bSetupOver;
     const float fTint1 = bFull1 ? 1.0f : 0.667f;
 
     // The played rows, the player's on m_aPlrBoard and the NPC's on m_aNpcBoard.
@@ -1070,24 +1069,22 @@ void CSWGuiPazaakGame::RefreshDisplay() {
         const CPazaakCard rPlayed0 = m_pPazaak->m_players[0].m_cardsPlayed[n];
         if (CardsDiffer(m_aPlrBoard[n].m_card, rPlayed0)) {
 #else
-        const CPazaakCard& rPlayed0 = m_pPazaak->m_players[0].m_cardsPlayed[n];
-        if (m_aPlrBoard[n].m_card.m_nCardType != rPlayed0.m_nCardType ||
-            m_aPlrBoard[n].m_card.m_bIsNegative != rPlayed0.m_bIsNegative
-            || m_aPlrBoard[n].m_card.m_nValue != rPlayed0.m_nValue
-            ) {
+        const CPazaakCard rPlayed0 = m_pPazaak->m_players[0].m_cardsPlayed[n];
+        if (m_aPlrBoard[n].GetCard() != rPlayed0 || rPlayed0.m_nValue != 0) {
 #endif
             m_aPlrBoard[n].SetCard(rPlayed0);
             bDirty0 = 1;
         }
         m_aPlrBoard[n].m_border.m_params.m_color = CSWGuiColor(fTint0, fTint0, fTint0);
+#if KOTOR1
         const CPazaakCard& rPlayed1 = m_pPazaak->m_players[1].m_cardsPlayed[n];
+#else
+        const CPazaakCard rPlayed1 = m_pPazaak->m_players[1].m_cardsPlayed[n];
+#endif
 #if KOTOR1
         if (CardsDiffer(m_aNpcBoard[n].m_card, rPlayed1)) {
 #else
-        if (m_aNpcBoard[n].m_card.m_nCardType != rPlayed1.m_nCardType ||
-            m_aNpcBoard[n].m_card.m_bIsNegative != rPlayed1.m_bIsNegative
-            || m_aNpcBoard[n].m_card.m_nValue != rPlayed1.m_nValue
-            ) {
+        if (m_aNpcBoard[n].GetCard() != rPlayed1) {
 #endif
             m_aNpcBoard[n].SetCard(rPlayed1);
             bDirty1 = 1;
@@ -1112,13 +1109,13 @@ void CSWGuiPazaakGame::RefreshDisplay() {
         const int bAction = static_cast<unsigned int>(rHand0.m_nCardType - PAZAAK_CARD_PLUS_MINUS_1) < 7 || rHand0.m_nCardType == PAZAAK_CARD_PLUS_MINUS_1_2;
 #endif
         bHandAction = (bHandAction != 0) | (bAction != 0);
+#if KOTOR1
         const CPazaakCard& rShown0 = m_aPlrHand[n].m_card;
         if (rShown0.m_nCardType != rHand0.m_nCardType ||
-            rShown0.m_bIsNegative != rHand0.m_bIsNegative
-#if !KOTOR1
-            || rShown0.m_nValue != rHand0.m_nValue
+            rShown0.m_bIsNegative != rHand0.m_bIsNegative) {
+#else
+        if (m_aPlrHand[n].GetCard() != rHand0) {
 #endif
-            ) {
             m_aPlrHand[n].SetCard(rHand0);
 #ifndef K2_UI_XBOX  // console: no flip/change button row ([7]/[8] are the Change caption + badge)
             m_aCardButtonsA[n].SetEnabled(bAction);
@@ -1137,13 +1134,13 @@ void CSWGuiPazaakGame::RefreshDisplay() {
 
         const CPazaakCard rHand1 = m_pPazaak->m_players[1].m_hand[n];
         if (g_bPazaakShowNPCSideDeck != 0) {
+#if KOTOR1
             const CPazaakCard& rShown1 = m_aNpcHand[n].m_card;
             if (rShown1.m_nCardType != rHand1.m_nCardType ||
-                rShown1.m_bIsNegative != rHand1.m_bIsNegative
-#if !KOTOR1
-                || rShown1.m_nValue != rHand1.m_nValue
+                rShown1.m_bIsNegative != rHand1.m_bIsNegative) {
+#else
+            if (m_aNpcHand[n].GetCard() != rHand1) {
 #endif
-                ) {
                 m_aNpcHand[n].SetCard(rHand1);
             }
         } else {
@@ -1154,13 +1151,13 @@ void CSWGuiPazaakGame::RefreshDisplay() {
 #if !KOTOR1
             cardShown.m_nValue = bHidden ? 0 : rHand1.m_nValue;
 #endif
+#if KOTOR1
             const CPazaakCard& rShown1b = m_aNpcHand[n].m_card;
             if (rShown1b.m_nCardType != cardShown.m_nCardType ||
-                rShown1b.m_bIsNegative != cardShown.m_bIsNegative
-#if !KOTOR1
-                || rShown1b.m_nValue != cardShown.m_nValue
+                rShown1b.m_bIsNegative != cardShown.m_bIsNegative) {
+#else
+            if (m_aNpcHand[n].GetCard() != cardShown) {
 #endif
-                ) {
                 m_aNpcHand[n].SetCard(cardShown);
             }
         }
@@ -2041,42 +2038,40 @@ CSWGuiPazaakStart::CSWGuiPazaakStart(CSWGuiManager* pManager, int nWager, int nO
 #endif
     StopLoadFromLayout();
 #if KOTOR1  // K1: rescale to the window, then hang the two side panels beside the 4:3 screen
-    {
 #ifdef K2_UI_TOUCH
 #ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
-        float s_fScale = static_cast<float>(g_SDL_mode.h) / 624.0f;
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 624.0f;
 #else
-        static float s_fScale = static_cast<float>(g_SDL_mode.h) / 624.0f;
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 624.0f;
 #endif
 #else
-        // pc / xbox: the 640x480 layout fills the height, between the side panels
+    // pc / xbox: the 640x480 layout fills the height, between the side panels
 #ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
-        float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
 #else
-        static float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
 #endif
 #endif
-        ScaleExtentForResolution(s_fScale);
-        CSWGuiExtent extent;
-        extent.w = static_cast<int>(ceilf(static_cast<float>(g_SDL_mode.h) * 204.0f / 512.0f));
-        extent.h = g_SDL_mode.h;
-        extent.x = static_cast<int>((static_cast<float>(g_SDL_mode.w) - ceilf(static_cast<float>(g_SDL_mode.h) * 4.0f / 3.0f)) * 0.5f -
-                         static_cast<float>(extent.w));
-        extent.y = 0;
-        m_imgSideLeft.Initialize(extent, CSWGuiImageParams(CResRef("and_paz01_left"), 0, 0, 0.0f, SWGUIALIGN_MIDDLE | SWGUIALIGN_CENTER,
+    ScaleExtentForResolution(s_fScale);
+    CSWGuiExtent extent;
+    extent.w = static_cast<int>(ceilf(static_cast<float>(g_SDL_mode.h) * 204.0f / 512.0f));
+    extent.h = g_SDL_mode.h;
+    extent.x = static_cast<int>((static_cast<float>(g_SDL_mode.w) - ceilf(static_cast<float>(g_SDL_mode.h) * 4.0f / 3.0f)) * 0.5f -
+                     static_cast<float>(extent.w));
+    extent.y = 0;
+    m_imgSideLeft.Initialize(extent, CSWGuiImageParams(CResRef("and_paz01_left"), 0, 0, 0.0f, SWGUIALIGN_MIDDLE | SWGUIALIGN_CENTER,
 #ifdef K2_UI_TOUCH
-                                                           1.0f, Vector(1.0f, 1.0f, 1.0f)));
+                                                       1.0f, Vector(1.0f, 1.0f, 1.0f)));
 #else
-                                                           1.0f, K1PazaakSideColor("and_paz01_left")));
+                                                       1.0f, K1PazaakSideColor("and_paz01_left")));
 #endif
-        extent.x = g_SDL_mode.w - extent.x - extent.w;
-        m_imgSideRight.Initialize(extent, CSWGuiImageParams(CResRef("and_paz01_right"), 0, 0, 0.0f, SWGUIALIGN_MIDDLE | SWGUIALIGN_CENTER,
+    extent.x = g_SDL_mode.w - extent.x - extent.w;
+    m_imgSideRight.Initialize(extent, CSWGuiImageParams(CResRef("and_paz01_right"), 0, 0, 0.0f, SWGUIALIGN_MIDDLE | SWGUIALIGN_CENTER,
 #ifdef K2_UI_TOUCH
-                                                            1.0f, Vector(1.0f, 1.0f, 1.0f)));
+                                                        1.0f, Vector(1.0f, 1.0f, 1.0f)));
 #else
-                                                            1.0f, K1PazaakSideColor("and_paz01_right")));
+                                                        1.0f, K1PazaakSideColor("and_paz01_right")));
 #endif
-    }
 #endif
 #ifdef K2_UI_XBOX
     g_nGUIWidth  = nSavedGUIWidth;
@@ -2822,37 +2817,23 @@ void CSWGuiPazaakStart::OnPanelAdded()
     m_btnAccept.SetMoveToControl(2, &m_aAvail[0]);
     m_btnAccept.SetMoveToControl(0, &m_aAvail[5]);
 #else
-    m_aAvail[0].SetMoveToControl(1, &m_aChosen[1]);
-    m_aChosen[1].SetMoveToControl(3, &m_aAvail[0]);
-    m_aAvail[5].SetMoveToControl(3, &m_aChosen[0]);
-    m_aChosen[0].SetMoveToControl(1, &m_aAvail[5]);
-    m_aAvail[6].SetMoveToControl(1, &m_aChosen[3]);
-    m_aChosen[3].SetMoveToControl(3, &m_aAvail[6]);
-    m_aAvail[11].SetMoveToControl(3, &m_aChosen[2]);
-    m_aChosen[2].SetMoveToControl(1, &m_aAvail[11]);
-    m_aAvail[12].SetMoveToControl(1, &m_aChosen[5]);
-    m_aChosen[5].SetMoveToControl(3, &m_aAvail[12]);
-    m_aAvail[17].SetMoveToControl(3, &m_aChosen[4]);
-    m_aChosen[4].SetMoveToControl(1, &m_aAvail[17]);
-    m_aAvail[18].SetMoveToControl(1, &m_aChosen[7]);
-    m_aChosen[7].SetMoveToControl(3, &m_aAvail[18]);
-    m_aAvail[22].SetMoveToControl(3, &m_aChosen[6]);
-    m_aChosen[6].SetMoveToControl(1, &m_aAvail[22]);
-    m_aAvail[0].SetMoveToControl(0, &m_btnAccept);
-    m_aAvail[22].SetMoveToControl(2, &m_btnAccept);
-    m_aAvail[1].SetMoveToControl(0, &m_btnAccept);
-    m_aAvail[21].SetMoveToControl(2, &m_btnAccept);
-    m_aAvail[2].SetMoveToControl(0, &m_btnAccept);
-    m_aAvail[20].SetMoveToControl(2, &m_btnAccept);
-    m_aAvail[3].SetMoveToControl(0, &m_btnAccept);
-    m_aAvail[19].SetMoveToControl(2, &m_btnAccept);
-    m_aAvail[4].SetMoveToControl(0, &m_btnAccept);
-    m_aAvail[18].SetMoveToControl(2, &m_btnAccept);
-    m_aAvail[5].SetMoveToControl(0, &m_btnAccept);
-    m_aChosen[0].SetMoveToControl(0, &m_btnAccept);
-    m_aChosen[8].SetMoveToControl(2, &m_btnAccept);
-    m_aChosen[1].SetMoveToControl(0, &m_btnAccept);
-    m_aChosen[9].SetMoveToControl(2, &m_btnAccept);
+    // The chosen column's rows link to each grid row's ends; row 3's last card is hidden.
+    for (int k = 0; k < 4; k++) {
+        m_aAvail[6 * k].SetMoveToControl(1, &m_aChosen[2 * k + 1]);
+        m_aChosen[2 * k + 1].SetMoveToControl(3, &m_aAvail[6 * k]);
+        CSWGuiPazaakCard* pEdge = &m_aAvail[k == 3 ? 6 * k + 4 : 6 * k + 5];
+        pEdge->SetMoveToControl(3, &m_aChosen[2 * k]);
+        m_aChosen[2 * k].SetMoveToControl(1, pEdge);
+    }
+    for (int i = 0; i < 6; i++) {
+        if (i != 0)
+            m_aAvail[23 - i].SetMoveToControl(2, &m_btnAccept);
+        m_aAvail[i].SetMoveToControl(0, &m_btnAccept);
+    }
+    for (int i = 0; i < 2; i++) {
+        m_aChosen[i].SetMoveToControl(0, &m_btnAccept);
+        m_aChosen[i + 8].SetMoveToControl(2, &m_btnAccept);
+    }
     m_aChosen[8].SetMoveToControl(1, &m_aChosen[9]);
     m_aChosen[9].SetMoveToControl(3, &m_aChosen[8]);
     m_btnAccept.SetMoveToControl(2, &m_aAvail[0]);
@@ -3374,24 +3355,22 @@ CSWGuiWagerPopup::CSWGuiWagerPopup(CSWGuiManager* pManager, CSWGuiPazaakStart* p
     StopLoadFromLayout();
 
     // K1: rescale, widen the panel to the window and shift every control by half the gain.
-    {
 #ifdef K2_QOL_FULLSCREEN   // desktop: the window can change size (swguioptions.cpp K1QolApplyDisplay)
-        float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
+    float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
 #else
-        static float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
+    static float s_fScale = static_cast<float>(g_SDL_mode.h) / 480.0f;
 #endif
-        ScaleExtentForResolution(s_fScale);
-        CSWGuiExtent extent = m_extent;
-        int nShift = (g_SDL_mode.w - extent.w) / 2;
-        extent.w = g_SDL_mode.w;
-        SetExtent(extent);
-        CSWGuiControl* apControls[8] = {&m_lblTitle, &m_lblMaximum, &m_lblWagerVal, &m_btnLess,
-                                        &m_btnMore,  &m_btnWager,   &m_btnQuit,     &m_lblBg};
-        for (int i = 0; i < 8; i++) {
-            CSWGuiExtent ext = apControls[i]->m_extent;
-            ext.x += nShift;
-            apControls[i]->SetExtent(ext);
-        }
+    ScaleExtentForResolution(s_fScale);
+    CSWGuiExtent extent = m_extent;
+    int nShift = (g_SDL_mode.w - extent.w) / 2;
+    extent.w = g_SDL_mode.w;
+    SetExtent(extent);
+    CSWGuiControl* apControls[8] = {&m_lblTitle, &m_lblMaximum, &m_lblWagerVal, &m_btnLess,
+                                    &m_btnMore,  &m_btnWager,   &m_btnQuit,     &m_lblBg};
+    for (int i = 0; i < 8; i++) {
+        CSWGuiExtent ext = apControls[i]->m_extent;
+        ext.x += nShift;
+        apControls[i]->SetExtent(ext);
     }
 #else
     StartLoadFromLayout(CResRef("pazaakwager_p"), 1, 1, 1);

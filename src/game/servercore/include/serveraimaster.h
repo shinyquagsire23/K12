@@ -85,7 +85,7 @@ public:
     int                      m_bRanGridPath;
     int                      m_bRanVisibilityUpdate;
     int                      m_bReserved1;
-    int                      m_fChallengeRating;
+    int                      m_bRanMineCheck;
     int                      m_nLastActionId;
     // One list per repadjust.2da row (Attack, Theft, Kill, Help), holding that row's eleven
     // reputation columns in column order.

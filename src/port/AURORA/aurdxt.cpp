@@ -310,32 +310,26 @@ void DecodeAlpha3BitLinear(unsigned int* pDst, DXTAlphaBlock3BitLinear* pBlock, 
     }
 }
 
-// The row loop does not advance through the image: the pixel pointer is re-derived from pData + 1 at
-// the top of every row, so the same nWidth pixels are rescanned nHeight times. The loop also tests
-// its counter before decrementing it.
+// The row loop does not advance through the image: the pixel pointer restarts at pData at the top
+// of every row, so the same nWidth pixels are rescanned nHeight times.
 void UnPremultiplyAlpha_8888(unsigned char* pData, int nWidth, int nHeight)
 {
-    if (nHeight == 0)
-        return;
-
-    int nRows = nHeight - 1;
-    do
+    while (nHeight--)
     {
+        unsigned char* p = pData;
         int n = nWidth;
-        unsigned char* p = pData + 1;
-        while (n != 0)
+        while (n--)
         {
-            unsigned int nAlpha = p[2];
-            n--;
+            unsigned int nAlpha = p[3];
             if (nAlpha != 0)
             {
-                p[-1] = static_cast<unsigned char>((static_cast<unsigned int>(p[-1]) << 8) / nAlpha);
                 p[0] = static_cast<unsigned char>((static_cast<unsigned int>(p[0]) << 8) / nAlpha);
                 p[1] = static_cast<unsigned char>((static_cast<unsigned int>(p[1]) << 8) / nAlpha);
+                p[2] = static_cast<unsigned char>((static_cast<unsigned int>(p[2]) << 8) / nAlpha);
             }
             p += 4;
         }
-    } while (nRows--);
+    }
 }
 
 // The switch on the four-character format tag. DXT4 has no case of its own: it falls to the same

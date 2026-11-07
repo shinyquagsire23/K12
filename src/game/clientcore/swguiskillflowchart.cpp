@@ -37,12 +37,7 @@ CSWGuiSkillFlowChart::CSWGuiSkillFlowChart() {
 }
 
 CSWGuiSkillFlowChart::~CSWGuiSkillFlowChart() {
-    for (int64_t i = 0; i < m_aFlows.m_count; i++) {
-        if (m_aFlows.m_pArray[i])
-            delete m_aFlows.m_pArray[i];
-        m_aFlows.m_pArray[i] = NULL;
-    }
-    m_aFlows.m_count = 0;
+    ClearChart();
 }
 
 void CSWGuiSkillFlowChart::ClearChart() {
@@ -57,7 +52,7 @@ void CSWGuiSkillFlowChart::ClearChart() {
 
 #define FEATPREREQS(ss) (static_cast<short>((ss)->m_nPrereqFeat1) == -1 ? 0 : static_cast<short>((ss)->m_nPrereqFeat2) == -1 ? 1 : 2)
 
-void CSWGuiSkillFlowChart::BuildSortedPowerList(CExoArrayList<unsigned>& list)
+void CSWGuiSkillFlowChart::BuildSortedPowerList(CExoArrayList<uint32_l_t>& list)
 {
 #if !KOTOR1  // K1: the sorted list is rebuilt every time (no CGuiInGame cache)
     CGuiInGame* pGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
@@ -113,7 +108,7 @@ void CSWGuiSkillFlowChart::BuildSortedPowerList(CExoArrayList<unsigned>& list)
 
 unsigned char CSWGuiSkillFlowChart::GetSkillStatus(unsigned int nId) {
     for (int64_t i = 0; i < m_aFlows.m_count; i++) {
-        CSWGuiSkillFlow* pFlow = m_aFlows.m_pArray[i];
+        CSWGuiSkillFlow* pFlow = static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[i]);
         int nSlot = pFlow->GetSkillIDIndex(nId);
         if (nSlot != -1)
             return pFlow->m_aSlots[nSlot].m_bStatus;
@@ -123,7 +118,7 @@ unsigned char CSWGuiSkillFlowChart::GetSkillStatus(unsigned int nId) {
 
 void CSWGuiSkillFlowChart::SetSkillStatus(unsigned int nId, unsigned char bStatus) {
     for (int64_t i = 0; i < m_aFlows.m_count; i++) {
-        CSWGuiSkillFlow* pFlow = m_aFlows.m_pArray[i];
+        CSWGuiSkillFlow* pFlow = static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[i]);
         int nSlot = pFlow->GetSkillIDIndex(nId);
         if (nSlot != -1) {
             pFlow->SetSkillStatus(static_cast<unsigned char>(nSlot), bStatus);
@@ -135,21 +130,21 @@ void CSWGuiSkillFlowChart::SetSkillStatus(unsigned int nId, unsigned char bStatu
 void CSWGuiSkillFlowChart::SetSkillStatusAll(unsigned char bStatus) {
     for (int64_t i = 0; i < m_aFlows.m_count; i++)
         for (int j = 0; j < 3; j++)
-            m_aFlows.m_pArray[i]->SetSkillStatus(static_cast<unsigned char>(j), bStatus);
+            static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[i])->SetSkillStatus(static_cast<unsigned char>(j), bStatus);
 }
 
 void CSWGuiSkillFlowChart::SetSelectedSkill(unsigned int nId) {
     for (int i = 0; i < m_aFlows.m_count; i++) {
-        int nSlot = m_aFlows.m_pArray[i]->GetSkillIDIndex(nId);
+        int nSlot = static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[i])->GetSkillIDIndex(nId);
         if (nSlot == -1)
             continue;
 
         if (nSlot != m_nSelectedSlot || i != m_nSelectedFlow) {
-            m_aFlows.m_pArray[m_nSelectedFlow]->SetSkillSelected(m_nSelectedSlot, 0);
+            static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow])->SetSkillSelected(m_nSelectedSlot, 0);
             m_nSelectedSlot = static_cast<unsigned char>(nSlot);
             m_nSelectedFlow = static_cast<unsigned char>(i);
         }
-        m_aFlows.m_pArray[m_nSelectedFlow]->SetSkillSelected(m_nSelectedSlot, 1);
+        static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow])->SetSkillSelected(m_nSelectedSlot, 1);
         return;
     }
 }
@@ -157,13 +152,13 @@ void CSWGuiSkillFlowChart::SetSelectedSkill(unsigned int nId) {
 int CSWGuiSkillFlowChart::SetTopLeft() {
     if (m_nSelectedSlot || m_nSelectedFlow) {
         if (m_nSelectedFlow < m_aFlows.m_count)
-            m_aFlows.m_pArray[m_nSelectedFlow]->SetSkillSelected(m_nSelectedSlot, 0);
+            static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow])->SetSkillSelected(m_nSelectedSlot, 0);
         m_nSelectedSlot = 0;
         m_nSelectedFlow = 0;
     }
     if (m_aFlows.m_count < 1) return -1;
-    m_aFlows.m_pArray[0]->SetSkillSelected(0, 1);
-    return m_aFlows.m_pArray[0]->m_aSlots[0].m_nId;
+    static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[0])->SetSkillSelected(0, 1);
+    return static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[0])->m_aSlots[0].m_nId;
 }
 
 void CSWGuiSkillFlowChart::BuildSortedFeatList(CExoArrayList<unsigned short>& list)
@@ -276,16 +271,11 @@ void CSWGuiSkillFlowChart::AddPowerSet(unsigned int nPowerA, unsigned int nPower
         pFlow->SetSkillInfo(static_cast<unsigned char>(i), anPowers[i], resRef);
     }
 
-    CSWGuiExtent extent;
-    extent.x = 0;
-    extent.y = 0;
-    extent.w = 242;
 #if !defined(K2_UI_TOUCH)
-    extent.h = K1FlowRowHeight();
+    pFlow->SetExtent(CSWGuiExtent(0, 0, 242, K1FlowRowHeight()));
 #else
-    extent.h = 40;
+    pFlow->SetExtent(CSWGuiExtent(0, 0, 242, 40));
 #endif
-    pFlow->SetExtent(extent);
 
     m_aFlows.Add(pFlow);
 }
@@ -418,16 +408,15 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
     CSWFeat* pChain;
     unsigned char nGrantedLevel;
     int bGrantable;
-    bool bChainGate;
     int nB;
     int nC;
-    CSWClass* pClass = &g_pRules->m_paClasses[pStats->GetClass(pStats->m_nNumClasses - 1)];
+    CSWClass* pClass = g_pRules->GetClass(pStats->GetClass(pStats->m_nNumClasses - 1));
 
     ClearChart();
 
+    int bGrant = 0;
     BuildSortedFeatList(feats);
 
-    int bGrant = 0;
     for (int64_t nIdx = 0, nNext = 1; nIdx < feats.m_count; nIdx++, nNext++) {
         pFeat = g_pRules->GetFeat(feats.m_pArray[nIdx]);
         if (feats.m_pArray[nIdx] == CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS)
@@ -491,6 +480,7 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
             if (nB != -1 && nC != -1)
                 break;
             pChain = g_pRules->GetFeat(feats.m_pArray[nChain]);
+            bool bChainGate;
             if (CExoString(pStats->m_sTag).CompareNoCase("baodur") != 0 &&
                 pChain->m_nBaodurGrantLevel == 0xff) {
                 bChainGate = true;
@@ -525,7 +515,7 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
 // chaining, and the %10 == 1 / %10 == 2 tail fills B/C. A not-known row still charts as a bare
 // secret icon when the creature is a player-made character and the power is a bonus-radial id.
 void CSWGuiSkillFlowChart::CreatePowerChart(CSWSCreatureStats* pStats, int bShowAvailable) {
-    CExoArrayList<unsigned int> powers;
+    CExoArrayList<uint32_l_t> powers;
     CSWSpell* pChain;
 #if !KOTOR1
     unsigned nPower;
@@ -619,7 +609,7 @@ int CSWGuiSkillFlowChart::HandleInput(int nKey) {
     case INPUTEVENT_GUI_DPAD_RIGHT:
     case INPUTEVENT_GUI_KEY_RIGHT:
         if (m_nSelectedSlot <= 1) {
-            CSWGuiSkillFlow* pFlow = m_aFlows.m_pArray[m_nSelectedFlow];
+            CSWGuiSkillFlow* pFlow = static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow]);
             if (pFlow->m_aSlots[static_cast<unsigned char>(m_nSelectedSlot + 1)].m_nId != -1) {
                 g_pAppManager->m_pClientExoApp->GetSWGuiManager()->PlayGuiSound(GUISOUND_ENTERED_DEFAULT);
                 ++m_nSelectedSlot;
@@ -629,7 +619,7 @@ int CSWGuiSkillFlowChart::HandleInput(int nKey) {
     case INPUTEVENT_GUI_DPAD_UP:
     case INPUTEVENT_GUI_KEY_UP: {
         m_nSelectedFlow = static_cast<unsigned char>((m_nSelectedFlow ? m_nSelectedFlow : m_aFlows.m_count) - 1);
-        CSWGuiSkillFlow* pFlow = m_aFlows.m_pArray[m_nSelectedFlow];
+        CSWGuiSkillFlow* pFlow = static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow]);
         if (pFlow->m_aSlots[m_nSelectedSlot].m_nId == -1)
             while (pFlow->m_aSlots[--m_nSelectedSlot].m_nId == -1);
         break;
@@ -637,17 +627,17 @@ int CSWGuiSkillFlowChart::HandleInput(int nKey) {
     case INPUTEVENT_GUI_DPAD_DOWN:
     case INPUTEVENT_GUI_KEY_DOWN: {
         m_nSelectedFlow = m_nSelectedFlow == m_aFlows.m_count - 1 ? 0 : m_nSelectedFlow + 1;
-        CSWGuiSkillFlow* pFlow = m_aFlows.m_pArray[m_nSelectedFlow];
+        CSWGuiSkillFlow* pFlow = static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow]);
         if (pFlow->m_aSlots[m_nSelectedSlot].m_nId == -1)
             while (pFlow->m_aSlots[--m_nSelectedSlot].m_nId == -1);
         break;
     }
     }
     if (bFlow != m_nSelectedFlow || bSel != m_nSelectedSlot) {
-        m_aFlows.m_pArray[bFlow]->SetSkillSelected(bSel, 0);
-        m_aFlows.m_pArray[m_nSelectedFlow]->SetSkillSelected(m_nSelectedSlot, 1);
+        static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[bFlow])->SetSkillSelected(bSel, 0);
+        static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow])->SetSkillSelected(m_nSelectedSlot, 1);
     }
-    return m_aFlows.m_pArray[m_nSelectedFlow]->m_aSlots[m_nSelectedSlot].m_nId;
+    return static_cast<CSWGuiSkillFlow*>(m_aFlows.m_pArray[m_nSelectedFlow])->m_aSlots[m_nSelectedSlot].m_nId;
 }
 
 // The in-game skill-check popup. Loads "skillinfo_p", binds the three widgets the layout carries,
@@ -745,7 +735,7 @@ void K2QolSizeSkillInfoRow(CSWGuiInGameSkillEntry& row, const CSWGuiListBox& lis
 
 #endif
 
-void CSWGuiSkillInfoBox::SetSkillList(const CExoArrayList<unsigned int>& skills, unsigned char nType)
+void CSWGuiSkillInfoBox::SetSkillList(const CExoArrayList<uint32_l_t>& skills, unsigned char nType)
 {
     CExoArrayList<CSWGuiControl*> aControls;
     if (static_cast<int>(skills.m_count) > 0)
@@ -782,10 +772,7 @@ void CSWGuiSkillInfoBox::HandleInputEvent(int type, int val)
             case INPUTEVENT_GUI_BACK:
             {
                 m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-                unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                    nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-                m_stateFlags = nFlags;
+                SetToBeRemoved(0);
                 break;
             }
 #else
@@ -796,16 +783,7 @@ void CSWGuiSkillInfoBox::HandleInputEvent(int type, int val)
                 m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
                 // Stamp the panel's state field: bit 8 set for state 1, which the manager's
                 // per-frame walk then pops and frees; a box already in state 2 only clears bit 7.
-#if KOTOR1  // K1: the panel state bits sit one higher (bit 3 inserted)
-                unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                    nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-                unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                    nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-                m_stateFlags = nFlags;
+                SetToBeRemoved(0);
                 m_pGuiManager->PopModalPanel();
                 if (m_pCallbackObj && m_pCallback)
                     (m_pCallbackObj->*m_pCallback)(0);
@@ -1023,7 +1001,7 @@ void CSWGuiSkillFlow::SetSkillSelected(unsigned char bSlot, int nSelected) {
 }
 
 void CSWGuiSkillFlow::SetSkillStatus(unsigned char bSlot, unsigned char bStatus) {
-    Slot& s = m_aSlots[bSlot];
+    CSWGuiFlowSkillStruct& s = m_aSlots[bSlot];
 #if KOTOR1
     // K1: the status is shown on the slot's frame (colour and alpha, pulsing while selected);
     // the background image keeps its colour.

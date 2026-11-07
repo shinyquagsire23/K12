@@ -607,6 +607,7 @@ void IosUpdateDisableInteractionCount()
 }
 bool IosIcloudAvailable() { return false; }
 void IosWriteCloud(const char*, const char*, unsigned int) {}
+void IosIcloudDelete() {}
 void IosSetNotificiation(const char* const*) {}
 
 // The walk stick is the drag since the finger went down (SDL_main keeps last_touch_* /

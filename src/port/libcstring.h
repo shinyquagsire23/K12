@@ -66,7 +66,7 @@ char*  __strchr_chk(const char* s, int c, size_t nObjSize) throw();
 
 #endif  // K2_HOST_BUILD
 
-#if !defined(K2_HOST_BUILD) && !defined(_FORTIFY_SOURCE)
+#if !defined(K2_HOST_BUILD) && (!defined(_FORTIFY_SOURCE) || (defined(__ANDROID_API__) && __ANDROID_API__ < 17))
 // port/libcbase.h's plain calls for the checked entry points.
 #include "port/libcbase.h"
 #endif

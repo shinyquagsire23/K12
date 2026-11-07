@@ -19,29 +19,27 @@ float CScriptCompilerInternal::ParseFloatFromTokenString()
     float fValue = 0.0f;
     float fSign = 1.0f;
 
-    if (m_nTokenLength >= 1) {
-        float fScale = 1.0f;
-        int bAfterDot = 0;
-        char* pText = m_szTokenText;
+    float fScale = 1.0f;
+    int bAfterDot = 0;
+    char* pText = m_szTokenText;
 
-        for (int64_t i = 0; i < m_nTokenLength; i++) {
-            char c = pText[i];
-            if (c == '-' && i == 0)
-                fSign = -1.0f;
+    for (int64_t i = 0; i < m_nTokenLength; i++) {
+        char c = pText[i];
+        if (c == '-' && i == 0)
+            fSign = -1.0f;
 
-            int nDigit = c - '0';
-            if (static_cast<unsigned int>(nDigit) <= 9) {
-                if (bAfterDot == 0) {
-                    fValue = fValue * 10.0f + static_cast<float>(nDigit);
-                } else if (bAfterDot == 1) {
-                    fScale /= 10.0f;
-                    fValue += fScale * static_cast<float>(nDigit);
-                }
+        int nDigit = c - '0';
+        if (static_cast<unsigned int>(nDigit) <= 9) {
+            if (bAfterDot == 0) {
+                fValue = fValue * 10.0f + static_cast<float>(nDigit);
+            } else if (bAfterDot == 1) {
+                fScale /= 10.0f;
+                fValue += fScale * static_cast<float>(nDigit);
             }
-
-            if (c == '.')
-                bAfterDot = 1;
         }
+
+        if (c == '.')
+            bAfterDot = 1;
     }
 
     return fSign < 0.0f ? fValue * fSign : fValue;
@@ -277,7 +275,7 @@ int CScriptCompilerInternal::ParseStringCharacter(int nChar, int nEscaped)
     if (m_nTokenType != TOKEN_STRING)
         return -SCRIPT_ERROR_UNEXPECTED_CHARACTER;
     if (nChar == '"')
-        return HandleToken();
+        return ParseCharacterQuotationMark();
     if (nChar == '\\') {
         if (nEscaped == 'n') {
             m_szTokenText[m_nTokenLength] = '\n';
@@ -608,8 +606,8 @@ int CScriptCompilerInternal::ParseCharacterEllipsis()
 {
     if (m_nTokenType != TOKEN_NONE)
         return -SCRIPT_ERROR_UNEXPECTED_CHARACTER;
-    m_szTokenText[0] = '#';
     m_nTokenType = TOKEN_IDENTIFIER;
+    m_szTokenText[0] = '#';
     m_nTokenLength = 1;
     return 0;
 }

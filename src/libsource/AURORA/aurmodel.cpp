@@ -104,12 +104,13 @@ void MaxTree::foobar(void* pTree)
     if (p->m_cType < 0) {
         p->FreeTheFreeList();
         Model* pModel = static_cast<Model*>(p);
+        Model* pAsModel;
         if (pModel->m_pSuperModel != 0) {
             pModel->m_pSuperModel->DelRef(pModel);
             pModel->m_pSuperModel = 0;
         }
         p->m_pfnDestructor(p);
-        Model* pAsModel = (p->m_cType & kTreeTypeMask) == kTreeModel ? pModel : 0;
+        pAsModel = (p->m_cType & kTreeTypeMask) == kTreeModel ? pModel : 0;
 #ifdef K2_FIX_ENGINE_BUGS
         if (pAsModel != 0 && pAsModel->m_pMdxResource != 0)
 #else
@@ -215,7 +216,11 @@ int g_nCountOfGobs;
 Scene* FindScene(char* pszName);
 
 
+#if defined(K2_NO_FORTIFY)
+#define snprintff(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...);
+#endif
 
 static int GobFindInsertIdx(char* pszName)
 {
@@ -484,7 +489,7 @@ inline void Gob::SetForcePoints(short a) { m_nForcePoints = a; }
 #endif // !KOTOR1
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
-inline unsigned short Gob::GetForcePoints() { return m_nForcePoints; }
+inline short Gob::GetForcePoints() { return m_nForcePoints; }
 #endif // !KOTOR1
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
@@ -492,7 +497,7 @@ inline void Gob::SetAlignmentValue(short a) { m_nAlignmentValue = a; }
 #endif // !KOTOR1
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
-inline unsigned short Gob::GetAlignmentValue() { return m_nAlignmentValue; }
+inline short Gob::GetAlignmentValue() { return m_nAlignmentValue; }
 #endif // !KOTOR1
 
 #if !KOTOR1  // K2-only (no K1 counterpart)
@@ -603,9 +608,9 @@ inline float Gob::GetMaxBlurLength() { return m_fMaxBlurLength; }
 
 void Gob::SetWind(bool a, float b, float c, float d)
 {
+    m_bWind = a;
     m_fWindStrength = b;
     m_fWindRadius = c;
-    m_bWind = a;
     m_fWindLife = d;
 }
 
@@ -636,9 +641,8 @@ void Gob::EnumParts(Part* pPart, int (*cb)(CAurPart*), List<CAurPart*>* parts)
         } else {
             parts->Add(static_cast<CAurPart*>(pPart));
         }
-        if (pPart->m_nChildren >= 1)
-            for (int i = 0; i < pPart->m_nChildren; i++)
-                EnumParts(pPart->m_paChildren[i], cb, parts);
+        for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+            EnumParts(pPart->m_aChildren.m_pData[i], cb, parts);
     }
 }
 
@@ -752,7 +756,7 @@ void Gob::SetUpImposters(int a, float* b)
 
 // Transforms world to local for the shadow-volume walkers. Subtracts the frame origin, then
 // rotates by the conjugate of the frame orientation.
-static inline Vector WorldToLocal(const Vector& v, const Quaternion& q, const Vector& vOrigin)
+static inline __attribute__((always_inline)) Vector WorldToLocal(const Vector& v, const Quaternion& q, const Vector& vOrigin)
 {
 #if KOTOR1  // K1 rotates through the out-of-line inverse operator
     Quaternion nq = -q;
@@ -771,10 +775,9 @@ static inline Vector WorldToLocal(const Vector& v, const Quaternion& q, const Ve
     }
     return p;
 #else
-    float w = q.w, x = q.x, y = q.y, z = q.z;
-    float nw = -w;
+    float nw = -q.w, x = q.x, y = q.y, z = q.z;
     Vector p = { v.x - vOrigin.x, v.y - vOrigin.y, v.z - vOrigin.z };
-    if (quaternionidentityoptimization == 0 || (w != -1.0f && w != 1.0f)) {
+    if (quaternionidentityoptimization == 0 || (nw != 1.0f && nw != -1.0f)) {
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * nw;
         float yz = y * z, wy = y * nw;
@@ -792,11 +795,11 @@ static inline Vector WorldToLocal(const Vector& v, const Quaternion& q, const Ve
 // The inverse of WorldToLocal rotates by the frame orientation (not its conjugate), then adds
 // the frame origin. LocalToWorldDir skips the add, which is a real operation under strict
 // floating point.
-static inline Vector LocalToWorldDir(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector LocalToWorldDir(const Vector& v, const Quaternion& q)
 {
-    float w = q.w, x = q.x, y = q.y, z = q.z;
     Vector r;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -810,7 +813,7 @@ static inline Vector LocalToWorldDir(const Vector& v, const Quaternion& q)
     return r;
 }
 
-static inline Vector LocalToWorld(const Vector& v, const Quaternion& q, const Vector& vOrigin)
+static inline __attribute__((always_inline)) Vector LocalToWorld(const Vector& v, const Quaternion& q, const Vector& vOrigin)
 {
     Vector r = LocalToWorldDir(v, q);
     r.x += vOrigin.x;
@@ -1025,8 +1028,8 @@ void Gob::EnableHologramRendering(Part* pPart, bool b)
 {
     m_bHologramEnabled = b;
     pPart->m_bHologramRendering = b;
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        EnableHologramRendering(pPart->m_paChildren[i], b);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        EnableHologramRendering(pPart->m_aChildren.m_pData[i], b);
 }
 #endif // !KOTOR1
 
@@ -1035,8 +1038,8 @@ void Gob::EnablePerObjectIllumination(Part* pPart, bool b)
 {
     pPart->m_bPerObjectIllumination = b;
     m_bIlluminationEnabled = b;
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        EnablePerObjectIllumination(pPart->m_paChildren[i], b);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        EnablePerObjectIllumination(pPart->m_aChildren.m_pData[i], b);
 }
 #endif // !KOTOR1
 
@@ -1071,7 +1074,7 @@ bool Gob::Append(char* pszModelName, char* pszPartName)
     m_listParts.Add(pNode);
 // The instanced part becomes a child of the part found above; the child container overlays
 // the modelled array as a List<Part*>.
-    List<Part*>& rChildren = *reinterpret_cast<List<Part*>*>(&pParent->m_paChildren);  // raw-offset: Part's child array is a List<Part*> the destructor frees by hand
+    List<Part*>& rChildren = pParent->m_aChildren;
     rChildren.Add(pNode);
 #if KOTOR1  // K1: the parent sphere memo is stale
     pParent->GetMinimumSphere_cache_GetData()->bValid = false;
@@ -1096,8 +1099,8 @@ bool Gob::Amputate(char* pszName)
     while (toProcess.m_count != 0)
     {
         Part* pNode = toProcess.m_pData[--toProcess.m_count];
-        for (int i = 0; i < pNode->m_nChildren; i++)
-            toProcess.Add(pNode->m_paChildren[i]);
+        for (int i = 0; i < pNode->m_aChildren.m_count; i++)
+            toProcess.Add(pNode->m_aChildren.m_pData[i]);
 
         if (m_listParts.Contains(pNode) != 0)
         {
@@ -1108,7 +1111,7 @@ bool Gob::Amputate(char* pszName)
         }
     }
 
-    reinterpret_cast<List<Part*>*>(&pRoot->m_pParent->m_paChildren)->Remove(pRoot);  // raw-offset: Part's child array is a List<Part*> the destructor frees by hand
+    pRoot->m_pParent->m_aChildren.Remove(pRoot);
 #if KOTOR1  // K1: the parent sphere memo is stale
     pRoot->m_pParent->GetMinimumSphere_cache_GetData()->bValid = false;
 #endif
@@ -1222,8 +1225,8 @@ void Gob::SetAllEmitterAsWeather(Part* pPart, bool b)
     if (pEmitter != 0)
         pEmitter->m_bWeather = b;
 #endif
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        SetAllEmitterAsWeather(pPart->m_paChildren[i], b);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        SetAllEmitterAsWeather(pPart->m_aChildren.m_pData[i], b);
 }
 
 char* Gob::GetModelName()
@@ -1356,14 +1359,13 @@ const char* behaviormessage(char* pszArgs)
 
 const char* setmirrorimage(char* pszArgs)
 {
-    char* pszCursor = pszArgs;
-    char* pszName = GetToken(&pszCursor);
+    char* pszName = GetToken(&pszArgs);
 
     Gob* pGob = FindGob(pszName);
     if (pGob == 0)
         return "FAILURE";
 
-    char* pszCount = GetToken(&pszCursor);
+    char* pszCount = GetToken(&pszArgs);
     int nImages = atoi(pszCount);
     float* paOffsets = new float[nImages * 3];
 
@@ -1424,9 +1426,9 @@ bool TreeHasSingleLightProperties(Part* pPart)
         }
     }
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
     {
-        if (!TreeHasSingleLightProperties(pPart->m_paChildren[i]))
+        if (!TreeHasSingleLightProperties(pPart->m_aChildren.m_pData[i]))
             return false;
     }
     return true;
@@ -1439,9 +1441,9 @@ bool TreeHasGeometry(Part* pPart)
     {
         if (pMesh != 0)
             return true;
-        for (int i = 0; i < pPart->m_nChildren; i++)
+        for (int i = 0; i < pPart->m_aChildren.m_count; i++)
         {
-            if (TreeHasGeometry(pPart->m_paChildren[i]))
+            if (TreeHasGeometry(pPart->m_aChildren.m_pData[i]))
                 return true;
         }
     }
@@ -1455,9 +1457,9 @@ bool TreeHasTransparency(Part* pPart)
     {
         if (pMesh != 0 && pMesh->m_fOpacity < 1.0f)
             return true;
-        for (int i = 0; i < pPart->m_nChildren; i++)
+        for (int i = 0; i < pPart->m_aChildren.m_count; i++)
         {
-            if (TreeHasTransparency(pPart->m_paChildren[i]))
+            if (TreeHasTransparency(pPart->m_aChildren.m_pData[i]))
                 return true;
         }
     }
@@ -1482,9 +1484,9 @@ bool TreeHasSingleTexture(Part* pPart)
         else if (pCached->Textures(0).m_pObject != pMesh->m_pMaterial->Textures(0).m_pObject)
             return false;
     }
-    for (int i = 0; i < pPart->m_nChildren; i++)
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
     {
-        if (!TreeHasSingleTexture(pPart->m_paChildren[i]))
+        if (!TreeHasSingleTexture(pPart->m_aChildren.m_pData[i]))
             return false;
     }
     return true;
@@ -1493,9 +1495,9 @@ bool TreeHasSingleTexture(Part* pPart)
 bool TreeSetGeometryFlags(Part* pPart)
 {
     pPart->m_bDrawEnabled = false;
-    for (int i = 0; i < pPart->m_nChildren; i++)
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
     {
-        if (TreeSetGeometryFlags(pPart->m_paChildren[i]))
+        if (TreeSetGeometryFlags(pPart->m_aChildren.m_pData[i]))
             pPart->m_bDrawEnabled = true;
     }
     if (pPart->AsPartTriMesh() != 0)
@@ -1516,8 +1518,8 @@ void GetAllNamedTextures(Part* pPart, List<CAurTexture*>& out, char* pszName)
             out.AddUnique(pTexture);
     }
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        GetAllNamedTextures(pPart->m_paChildren[i], out, pszName);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        GetAllNamedTextures(pPart->m_aChildren.m_pData[i], out, pszName);
 }
 
 void CreateReferenceObjects(Gob* pGob, Part* pPart)
@@ -1536,8 +1538,8 @@ void CreateReferenceObjects(Gob* pGob, Part* pPart)
         }
     }
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        CreateReferenceObjects(pGob, pPart->m_paChildren[i]);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        CreateReferenceObjects(pGob, pPart->m_aChildren.m_pData[i]);
 }
 
 void Gob::ReattachReference(CAurObject* a, char* b)
@@ -1565,8 +1567,8 @@ void Gob::ReattachReference(CAurObject* a, char* b)
 
         parts.DelIndex(0);
 
-        for (int i = 0; i < part->m_nChildren; i++)
-            parts.Add(part->m_paChildren[i]);
+        for (int i = 0; i < part->m_aChildren.m_count; i++)
+            parts.Add(part->m_aChildren.m_pData[i]);
     }
 }
 
@@ -1576,8 +1578,8 @@ void PartSetFog(Part* pPart, bool bFog)
     if (pMesh != 0)
         pMesh->m_bFog = bFog;
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        PartSetFog(pPart->m_paChildren[i], bFog);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        PartSetFog(pPart->m_aChildren.m_pData[i], bFog);
 }
 
 int PartSetCanDownSample(Part* pPart, char c)
@@ -1595,8 +1597,8 @@ int PartSetCanDownSample(Part* pPart, char c)
         nSet = 1;
     }
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        nSet += PartSetCanDownSample(pPart->m_paChildren[i], c);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        nSet += PartSetCanDownSample(pPart->m_aChildren.m_pData[i], c);
     return nSet;
 }
 
@@ -1605,27 +1607,12 @@ List<Gob*> gobs;
 
 Gob* FindGob(char* pszName)
 {
-    int nLow = 0;
-    int nHigh = gobs.m_count - 1;
-    while (nLow <= nHigh)
-    {
-        int nMid = (nHigh + nLow) >> 1;
-        int nCompare = _stricmp(gobs.m_pData[nMid]->m_szName, pszName);
-        if (nCompare > 0)
-            nHigh = nMid - 1;
-        else if (nCompare < 0)
-            nLow = nMid + 1;
-        else
-        {
-            nLow = nMid;
-            nHigh = nMid - 1;
-        }
-    }
-    if (nLow >= gobs.m_count)
+    int nIndex = GobFindInsertIdx(pszName);
+    if (nIndex >= gobs.m_count)
         return 0;
-    if (_stricmp(gobs.m_pData[nLow]->m_szName, pszName) != 0)
+    if (_stricmp(gobs.m_pData[nIndex]->m_szName, pszName) != 0)
         return 0;
-    return gobs.m_pData[nLow];
+    return gobs.m_pData[nIndex];
 }
 
 const char* gobdisablefog(char* pszArgs)
@@ -1736,23 +1723,43 @@ const char* amputate(char* pszArgs)
 
 // Must stay external. With internal linkage the optimizer specializes it for the fixed-size
 // call sites and drops the length argument.
+#if !defined(K2_NO_FORTIFY)
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
     __vsprintf_chk(buf, 0, n, fmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 
 static void findalltrimeshparts(Part* pPart, List<PartTriMesh*>& out)
 {
     PartTriMesh* pMesh = pPart->AsPartTriMesh();
     if (pMesh != 0)
         out.Add(pMesh);
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        findalltrimeshparts(pPart->m_paChildren[i], out);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        findalltrimeshparts(pPart->m_aChildren.m_pData[i], out);
 }
 
 static void findallmaterials(Part* pPart, List<Material*>& out);
+
+// MdlNode::TranslateNodeName() for exportparts and Gob::ReplaceTexture. K1 writes MaxTree::AsModel()
+// and AsAnimation() out here: both K1 images test the tag in these two, where every other caller in the
+// library calls the out-of-line AsModel().
+// EFFECTIVE (K1, all three lanes): the images add the string list's offset at the join and load
+// through it; ours folds the offset into the load.
+static inline char* PartNodeName(MdlNode* pNode)
+{
+#if KOTOR1
+    MaxTree* pTree = pNode->m_pTree;
+    int nTag = pTree->m_cType & MaxTree::kTreeTypeMask;
+    Model* pModel = nTag == MaxTree::kTreeModel ? static_cast<Model*>(pTree) : 0;
+    Animation* pAnimation = nTag == MaxTree::kTreeAnimation ? static_cast<Animation*>(pTree) : 0;
+    return (pModel ? pModel : pAnimation->m_pModel)->m_listStrings[pNode->m_nNameIndex];
+#else
+    return pNode->TranslateNodeName();
+#endif
+}
 
 int Gob::ReplaceTexture(char* pszPublicName, char* pszTexName)
 {
@@ -1780,12 +1787,9 @@ static void findallmaterials(Part* pPart, List<Material*>& out)
 {
     Material* pMaterial = pPart->m_pMaterial;
     if (pMaterial != 0)
-    {
-        if (out.Contains(pMaterial) == 0)
-            out.Add(pMaterial);
-    }
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        findallmaterials(pPart->m_paChildren[i], out);
+        out.AddUnique(pMaterial);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        findallmaterials(pPart->m_aChildren.m_pData[i], out);
 }
 
 int Gob::SetEnvironmentMap(char* pszName)
@@ -1851,7 +1855,7 @@ int Gob::ReplaceTexture(char* pszPublicName, char* pszTexName, int n, unsigned s
     {
         PartTriMesh* pMesh = parts.m_pData[i];
         pMesh->m_pMaterial->ReplaceTexture(pPublicName, pszTexName,
-            pMesh->m_pNode->TranslateNodeName(), paSizes, n);
+            PartNodeName(pMesh->m_pNode), paSizes, n);
         if (this->m_texWatch.m_pObject != 0)
             parts.m_pData[i]->m_pMaterial->Textures(0).m_pObject->SetIsEnvironmentMapped(true);
     }
@@ -1898,14 +1902,14 @@ void exportparts(Gob* pGob, Part* pPart)
     char szBuf[256];
     if (pGob == 0 || pPart == 0)
         return;
-    snprintff(szBuf, 256, "%s.%s.position", pGob->m_szName, pPart->m_pNode->TranslateNodeName());
+    snprintff(szBuf, 256, "%s.%s.position", pGob->m_szName, PartNodeName(pPart->m_pNode));
     new ConsoleFunc(szBuf, &pPart->m_vLocalPosition);
-    snprintff(szBuf, 256, "%s.%s.orientation", pGob->m_szName, pPart->m_pNode->TranslateNodeName());
+    snprintff(szBuf, 256, "%s.%s.orientation", pGob->m_szName, PartNodeName(pPart->m_pNode));
     new ConsoleFunc(szBuf, &pPart->m_qLocalOrientation);
-    snprintff(szBuf, 256, "%s.%s.controlmode", pGob->m_szName, pPart->m_pNode->TranslateNodeName());
+    snprintff(szBuf, 256, "%s.%s.controlmode", pGob->m_szName, PartNodeName(pPart->m_pNode));
     new ConsoleFunc(szBuf, static_cast<int*>(&pPart->m_nLocalPositionSet));
-    for (int64_t i = 0; i < pPart->m_nChildren; i++)
-        exportparts(pGob, pPart->m_paChildren[i]);
+    for (int64_t i = 0; i < pPart->m_aChildren.m_count; i++)
+        exportparts(pGob, pPart->m_aChildren.m_pData[i]);
 }
 
 const char* exposeparts(char* pszArgs)
@@ -1942,10 +1946,6 @@ const char* append(char* pszArgs)
     pGob->Append(szModelName, szPartName);
     return "OK";
 }
-
-// The explicit instantiation adds a non-discardable use of SafePointer<CAurTexture>::
-// operator=, which keeps that call out of line in SetEnvironmentMap.
-template class SafePointer<CAurTexture>;
 
 inline CAurObject* Gob::AsCAurObject() { return static_cast<CAurObject*>(this); }  // idiom-exempt: Gob.h does not model the CAurObject base (Camera.h precedent)
 
@@ -2204,7 +2204,7 @@ MdlNodeDanglyMesh::~MdlNodeDanglyMesh()
     if (m_nFlags != 0)
         DestructorDispatch();
     m_nFlags = 0;
-    delete[] static_cast<Vector*>(m_pVertexSource);
+    delete[] m_pVertexSource;
 }
 
 struct Bone {
@@ -2231,8 +2231,8 @@ MdlNodeTriMesh_PostProcess::MdlNodeTriMesh_PostProcess()
 
 void Gob::CollectLights(List<PartLight*>& lights)
 {
-    lights.m_count = 0;
     List<Part*> stackParts;
+    lights.m_count = 0;
     stackParts.Add(m_pPart);
     for (int i = 0; i < stackParts.m_count; i++)
     {
@@ -2240,14 +2240,14 @@ void Gob::CollectLights(List<PartLight*>& lights)
         PartLight* pLight = pPart->AsPartLight();
         if (pLight != 0)
             lights.Add(pLight);
-        for (int j = 0; j < pPart->m_nChildren; j++)
-            stackParts.Add(pPart->m_paChildren[j]);
+        for (int j = 0; j < pPart->m_aChildren.m_count; j++)
+            stackParts.Add(pPart->m_aChildren.m_pData[j]);
     }
 }
 
 int PartHasMaterial(CAurPart* pPart)
 {
-    return pPart->m_pMaterial != 0;
+    return static_cast<Part*>(pPart)->m_pMaterial != 0;
 }
 
 void Gob::EnableRenderBumpedOut(char* pszTexture, float fBumpDist)
@@ -2340,18 +2340,18 @@ void Gob::EnableRenderBumpedOut(char* pszTexture, float fBumpDist)
 
     for (int i = 0; i < listParts.m_count; i++)
     {
-        CAurTexture* pOld = listParts[i]->m_pMaterial->m_spr3;
+        CAurTexture* pOld = static_cast<Part*>(listParts[i])->m_pMaterial->m_spr3;
         if (pOld != 0)
         {
-            listParts[i]->m_pMaterial->m_spr3 = 0;
+            static_cast<Part*>(listParts[i])->m_pMaterial->m_spr3 = 0;
             AurTextureRelease(pOld);
         }
-        listParts[i]->m_pMaterial->m_spr3 = pTexture;
+        static_cast<Part*>(listParts[i])->m_pMaterial->m_spr3 = pTexture;
         nSize = 0;
-        listParts[i]->m_pMaterial->m_lstSrcBlend.SetSize(2);
-        listParts[i]->m_pMaterial->m_lstDstBlend.SetSize(2);
-        listParts[i]->m_pMaterial->m_lstSrcBlend.m_pData[1] = eBlendSrc;
-        listParts[i]->m_pMaterial->m_lstDstBlend.m_pData[1] = eBlendDst;
+        static_cast<Part*>(listParts[i])->m_pMaterial->m_lstSrcBlend.SetSize(2);
+        static_cast<Part*>(listParts[i])->m_pMaterial->m_lstDstBlend.SetSize(2);
+        static_cast<Part*>(listParts[i])->m_pMaterial->m_lstSrcBlend.m_pData[1] = eBlendSrc;
+        static_cast<Part*>(listParts[i])->m_pMaterial->m_lstDstBlend.m_pData[1] = eBlendDst;
     }
 
     m_fBumpOutDistance = fBumpDist;
@@ -2366,7 +2366,7 @@ void Gob::DisableRenderBumpedOut()
     EnumParts(&PartHasMaterial, &listParts);
     for (int i = 0; i < listParts.m_count; i++)
     {
-        Material* pMaterial = listParts[i]->m_pMaterial;
+        Material* pMaterial = static_cast<Part*>(listParts[i])->m_pMaterial;
         CAurTexture* pTexture = pMaterial->m_spr3;
         pMaterial->m_spr3 = 0;
         AurTextureRelease(pTexture);
@@ -2402,8 +2402,8 @@ static void CollectPartLights(Part* pPart, List<PartLight*>& lights)
     PartLight* pLight = pPart->AsPartLight();
     if (pLight != 0)
         lights.Add(pLight);
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        CollectPartLights(pPart->m_paChildren[i], lights);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        CollectPartLights(pPart->m_aChildren.m_pData[i], lights);
 }
 
 char* enablebumpout(char* pszArgs)
@@ -2771,10 +2771,7 @@ Part* MdlNodeCreateInstance(void* pv, Gob* pGob)
 Part* MdlNode::InternalCreateInstance(Gob* pGob)
 {
     K2_UNUSED(pGob);
-    Part* pPart = new Part;
-    pPart->m_pNode = this;
-    countpart++;
-    return pPart;
+    return new Part(this);
 }
 
 MdlNode* MdlNode::InternalConJoin()
@@ -2789,18 +2786,12 @@ MdlNode* MdlNode::InternalConJoin()
 MdlNode::MdlNode(char*)
     : m_listChildren(), m_listControllers(), m_listFloats()
 {
+    m_nFlags = 1;
     m_pParent = 0;
     m_nNodeID = 0;
-    m_nFlags = 1;
     countnode++;
     m_vPosition = Vector(0.0f, 0.0f, 0.0f);
     m_qOrientation = Quaternion();
-    {
-        // raw-offset: the three Lists cleared again as six words, in the original's order (typed
-        // stores schedule differently)
-        void** pq = reinterpret_cast<void**>(&m_listChildren);
-        pq[5] = 0; pq[4] = 0; pq[3] = 0; pq[2] = 0; pq[1] = 0; pq[0] = 0;  // raw-offset: see above
-    }
     countmodelnodes++;
 }
 
@@ -2885,40 +2876,29 @@ void MdlNodeDestructor(void* pv)
 void MdlNodeLight::InternalDestructor()
 {
     int n = FlareCount();
-    if (n) {
-        int i = n;
-        int64_t l = i;
-        do {
-            l--;
-            CAurTexture* pTexture = m_lFlareTextures.m_pData[l];
-            m_lFlareTextures.m_pData[l] = 0;
-            AurTextureRelease(pTexture);
-            m_lFlareTextures.m_count--;
-        } while (l);
+    while (n--) {
+        CAurTexture* pTexture = m_lFlareTextures.m_pData[n];
+        m_lFlareTextures.m_pData[n] = 0;
+        AurTextureRelease(pTexture);
+        m_lFlareTextures.m_count--;
     }
-    for (int64_t i = m_listChildren.m_count - 1; i != -1; i--)
-        m_listChildren.m_pData[i]->DestructorDispatch();
-    countnode--;
+    MdlNode::InternalDestructor();
 }
 
+// The mesh kinds add nothing to the base teardown, which they call (K2 armv7 keeps the call).
 #if KOTOR1  // K1: every tri-mesh node teardown first tells the port layer it is going away
 void IOS_MdlNodeTriMeshDestroyed(MdlNodeTriMesh* pNode);
 #define MDLNODE_PLAIN_INTERNAL_DTOR(classname)                                            \
     void classname::InternalDestructor()                                                   \
     {                                                                                      \
         IOS_MdlNodeTriMeshDestroyed(this);                                                 \
-        for (int64_t i = m_listChildren.m_count - 1; i != -1; i--)                             \
-            m_listChildren.m_pData[i]->DestructorDispatch();                               \
-        countnode--;                                                                        \
+        MdlNode::InternalDestructor();                                                     \
     }
 #else
 #define MDLNODE_PLAIN_INTERNAL_DTOR(classname)                                            \
-    /* see MdlNode::InternalDestructor for the shared body */                              \
     void classname::InternalDestructor()                                                   \
     {                                                                                      \
-        for (int64_t i = m_listChildren.m_count - 1; i != -1; i--)                             \
-            m_listChildren.m_pData[i]->DestructorDispatch();                               \
-        countnode--;                                                                        \
+        MdlNode::InternalDestructor();                                                     \
     }
 #endif
 
@@ -2952,9 +2932,7 @@ void MdlNodeLightsaber::InternalDestructor()
 #if KOTOR1  // K1 tells the port layer the mesh is going away
     IOS_MdlNodeTriMeshDestroyed(this);
 #endif
-    for (int64_t i = m_listChildren.m_count - 1; i != -1; i--)
-        m_listChildren.m_pData[i]->DestructorDispatch();
-    countnode--;
+    MdlNode::InternalDestructor();
 }
 
 
@@ -3087,7 +3065,14 @@ bool MdlNode::IsMdlNodeTriMesh()
     return (m_nFlags & NODE_TRIMESH) == NODE_TRIMESH;
 }
 
-__attribute__((flatten)) void MdlNode::DestructorDispatch()
+#if defined(__arm__)
+void* MaxTree::operator new(size_t nSize)
+{
+    return ::operator new(nSize);
+}
+#endif
+
+void MdlNode::DestructorDispatch()
 {
     switch (static_cast<short>(m_nFlags)) {
     case NODE_DUMMY:
@@ -3357,13 +3342,13 @@ MdlNode* MdlNodeCameraConJoinTwinMysLexia(void* pv)
 MdlNodeLight::MdlNodeLight(char* pszName) : MdlNode(pszName)
 {
     m_nFlags = MDLNODE_LIGHT_ID;
-    m_nFadingEnabled = 1;
-    m_bGenerateFlare = 0;
     m_bShadow = 1;
     m_bAffectDynamic = 1;
     m_bIsDynamic = 1;
     m_bAmbientOnly = 0;
+    m_bGenerateFlare = 0;
     m_fFlareRange = 0.0f;
+    m_nFadingEnabled = 1;
     m_nPriority = 5;
 }
 
@@ -3378,6 +3363,7 @@ MdlNodeLight* MdlNodeLight::InternalConJoin()
 
 Vector defaultdiffuse(0.8f, 0.8f, 0.8f);  // the engine default material colours
 Vector defaultambient(0.2f, 0.2f, 0.2f);
+Vector defaultspecular(0.0f, 0.0f, 0.0f);
 
 void MdlNodeSkinGenVertices(void* pv);
 void MdlNodeSkinRemoveTemporaryArrays(void* pv);
@@ -3408,20 +3394,8 @@ void MdlNodeTriMeshRemoveTemporaryArrays(void* pv)
 
 MdlNodeTriMesh::MdlNodeTriMesh(char* pszName) : MdlNode(pszName)
 {
-    __builtin_memset(static_cast<void*>(&m_faces), 0,
-                     sizeof(m_faces) + sizeof(m_vMin) + sizeof(float));
-    __builtin_memset(&m_vMax.y, 0, sizeof(m_vMax) - sizeof(float));
-    m_fRadius = 0.0f;
-    __builtin_memset(&m_vCentroid, 0,
-                     sizeof(float) + sizeof(float));
-    m_vCentroid.z = 0.0f;
-    m_szTexture[0] = 0;
-    m_szLightmap[0] = 0;
-    __builtin_memset(static_cast<void*>(&m_lVertexIndices), 0, 5 * (sizeof(void*) + 2 * sizeof(int)));
-    m_nLeftOverPool = static_cast<unsigned int>(-1);
-    m_nLeftOverIndexCount = 0;
-    m_pPostProcess = 0;
-    m_nAnimateUV = 0;
+    m_pfnGenVertices = MdlNodeTriMeshGenVertices;
+    m_pfnRemoveTemporaryArrays = MdlNodeTriMeshRemoveTemporaryArrays;
     m_nVertexStride = -1;
     m_uVertexFlags = 0;
 // Every unbound element offset is disabled, i.e. -1, so the fill is all ones rather than zero.
@@ -3429,32 +3403,37 @@ MdlNodeTriMesh::MdlNodeTriMesh(char* pszName) : MdlNode(pszName)
                      sizeof(m_nVertexOfs) + sizeof(m_nNormalOfs) + sizeof(int)
                      + 4 * sizeof(m_nTex0Ofs) + sizeof(m_nTangentOfs)
                      + 3 * sizeof(m_nReserved1));
+    m_fSurfaceArea = 0.0f;
+    m_fReserved4 = 0.0f;
     m_nTransparencyHint = 0;
-    m_bHasLightmap = 0;
-    m_bRotateTexture = 0;
-    m_bIsBackgroundGeometry = 0;
-    m_bShadow = 1;
-    m_fSurfaceArea = 0;
-    m_bBeaming = 0;
-    m_nReserved4 = 0;
-    m_vDiffuse = defaultdiffuse;
-    m_vAmbient = defaultambient;
+#if !KOTOR1  // K2-only fields
+    m_bHologramDoNotDraw = 0;
+    m_nDirtTexture = 1;
+    m_nDirtWorldspace = 1;
+#endif
     m_bRender = 1;
 #if !KOTOR1  // K2-only fields
     m_bDirtEnabled = 0;
 #endif
+    m_bHasLightmap = 0;
+    m_bIsBackgroundGeometry = 0;
+    m_bBeaming = 0;
+    m_bRotateTexture = 0;
+    m_bShadow = 1;
+    m_vDiffuse = defaultdiffuse;
+    m_vAmbient = defaultambient;
     m_nVertexCount = 0;
     m_nTexCoordSets = 0;
-#if !KOTOR1  // K2-only fields
-    m_nDirtTexture = 1;
-    m_nDirtWorldspace = 1;
-    m_bHologramDoNotDraw = 0;
-#endif
+    m_szLightmap[0] = 0;
+    m_szTexture[0] = 0;
+    m_fRadius = 0.0f;
+    m_nLeftOverPool = static_cast<unsigned int>(-1);
+    m_nLeftOverIndexCount = 0;
+    m_pPostProcess = 0;
+    m_nAnimateUV = 0;
     m_nGeomBase = 0;
     m_paVertices = 0;
     m_nFlags = MDLNODE_TRIMESH_ID;
-    m_pfnGenVertices = MdlNodeTriMeshGenVertices;
-    m_pfnRemoveTemporaryArrays = MdlNodeTriMeshRemoveTemporaryArrays;
 }
 
 MdlNodeTriMesh* MdlNodeTriMesh::InternalConJoin()
@@ -3468,15 +3447,13 @@ MdlNodeTriMesh* MdlNodeTriMesh::InternalConJoin()
 
 MdlNodeSkin::MdlNodeSkin(char* pszName) : MdlNodeTriMesh(pszName)
 {
-// A real seed, since PartSkin::PostProcess fills a slot only while it still reads -1.
-    m_nBoneWeightsOfs = 0xffffffff;
-    m_nBoneIndicesOfs = 0xffffffff;
-    __builtin_memset(static_cast<void*>(&m_lQBoneRefInv), 0,
-                     sizeof(m_lQBoneRefInv) + sizeof(m_lTBoneRefInv) + sizeof(m_lBoneConstantIndices));
-    m_paBoneMap = 0;
     m_pfnGenVertices = MdlNodeSkinGenVertices;
     m_pfnRemoveTemporaryArrays = MdlNodeSkinRemoveTemporaryArrays;
     m_nFlags = MDLNODE_SKIN_ID;
+    m_paBoneMap = 0;
+// A real seed, since PartSkin::PostProcess fills a slot only while it still reads -1.
+    m_nBoneWeightsOfs = 0xffffffff;
+    m_nBoneIndicesOfs = 0xffffffff;
 }
 
 MdlNodeSkin* MdlNodeSkin::InternalConJoin()
@@ -3490,14 +3467,16 @@ MdlNodeSkin* MdlNodeSkin::InternalConJoin()
 
 MdlNodeAnimMesh::MdlNodeAnimMesh(char* pszName) : MdlNodeTriMesh(pszName)
 {
+    m_pfnGenVertices = MdlNodeAnimMeshGenVertices;
+    m_pfnRemoveTemporaryArrays = MdlNodeAnimMeshRemoveTemporaryArrays;
+    m_nFlags = MDLNODE_ANIM_ID;
     m_fSamplePeriod = 0.0f;
     m_paVertexFrames = 0;
     m_paTexCoordFrames = 0;
     m_nVertexFrameCount = 0;
     m_nTexCoordFrameCount = 0;
-    m_pfnGenVertices = MdlNodeAnimMeshGenVertices;
-    m_pfnRemoveTemporaryArrays = MdlNodeAnimMeshRemoveTemporaryArrays;
-    m_nFlags = MDLNODE_ANIM_ID;
+    m_szTexture[0] = 0;
+    m_szLightmap[0] = 0;
 }
 
 MdlNodeAnimMesh* MdlNodeAnimMesh::InternalConJoin()
@@ -3511,10 +3490,9 @@ MdlNodeAnimMesh* MdlNodeAnimMesh::InternalConJoin()
 
 MdlNodeDanglyMesh::MdlNodeDanglyMesh(char* pszName) : MdlNodeTriMesh(pszName)
 {
-    __builtin_memset(static_cast<void*>(&m_lConstraints), 0, sizeof(m_lConstraints));
     m_nFlags = MDLNODE_DANGLY_ID;
-    m_pfnGenVertices = MdlNodeDanglyMeshGenVertices;
     m_pfnRemoveTemporaryArrays = MdlNodeDanglyMeshRemoveTemporaryArrays;
+    m_pfnGenVertices = MdlNodeDanglyMeshGenVertices;
 }
 
 MdlNodeAABB::MdlNodeAABB(char* pszName) : MdlNodeTriMesh(pszName)
@@ -3542,7 +3520,7 @@ const unsigned short MdlNodeLightsaber::NUM_SEGMENT_VERTS = 4;
 #if !KOTOR1  // K1 inlines this ctor into InternalConJoin
 __attribute__((noinline))
 #endif
-MdlNodeEmitter::MdlNodeEmitter(char* pszName) throw() : MdlNode(pszName)
+MdlNodeEmitter::MdlNodeEmitter(char* pszName) : MdlNode(pszName)
 {
     m_nFlags = MDLNODE_EMITTER_ID;
     m_nEmitterFlags = 0;
@@ -3554,10 +3532,7 @@ MdlNodeEmitter::MdlNodeEmitter(char* pszName) throw() : MdlNode(pszName)
                      sizeof(m_fDeadSpace) + sizeof(m_fBlastRadius) + sizeof(m_fBlastLength)
                      + sizeof(m_nNumBranches) + sizeof(m_bControlPtSmoothing) + sizeof(m_nXGrid)
                      + sizeof(m_nYGrid) + sizeof(m_nSpawnType));
-    m_anChunkName[0] = 0;
-    m_anChunkName[1] = 0;
-    m_anChunkName[2] = 0;
-    m_anChunkName[3] = 0;
+    __builtin_memset(static_cast<void*>(m_szChunkName), 0, sizeof(m_szChunkName));
     m_nTwoSidedTex = 0;
     m_nLoop = 0;
     m_nRenderOrder = 0;
@@ -3611,19 +3586,13 @@ Part* MdlNodeCameraCreateInstance(void* pv, Gob* pGob)
 PartCamera* MdlNodeCamera::InternalCreateInstance(Gob* pGob)
 {
     K2_UNUSED(pGob);
-    PartCamera* pPart = new PartCamera;
-    pPart->m_pNode = this;
-    countpart++;
-    return pPart;
+    return new PartCamera(this);
 }
 
 PartReference* MdlNodeReference::InternalCreateInstance(Gob* pGob)
 {
     K2_UNUSED(pGob);
-    PartReference* pPart = new PartReference;
-    pPart->m_pNode = this;
-    countpart++;
-    return pPart;
+    return new PartReference(this);
 }
 
 PartTriMesh* MdlNodeTriMesh::InternalCreateInstance(Gob* pGob)
@@ -3773,11 +3742,10 @@ Vector VectorMin(Vector a, Vector b);
 Vector VectorMax(Vector a, Vector b);
 
 // Quaternion-to-vector rotation, TU-local like the other copies of it.
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -3801,68 +3769,12 @@ static inline Vector RotateVector(const Vector& v, const Quaternion& q)
 }
 
 // The inverse rotation (transpose), for bringing a world-frame point back into local space.
-static inline Vector RotateByTranspose(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByTranspose(const Vector& v, const Quaternion& q)
 {
 #if KOTOR1  // K1 rotates through the out-of-line inverse operator
     return RotateVector(v, -q);
 #else
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float nw = -w;
-        float x = q.x, y = q.y, z = q.z;
-        float xx = x * x, yy = y * y, zz = z * z;
-        float xy = x * y, xz = x * z, wx = nw * x;
-        float yz = y * z, wy = nw * y;
-        float wz = nw * z;
-        Vector r;
-        float m00 = 1.0f - ((yy + zz) + (yy + zz));
-        float m01 = (xy - wz) + (xy - wz);
-        float m02 = (xz + wy) + (xz + wy);
-        float m10 = (xy + wz) + (xy + wz);
-        float m11 = 1.0f - ((xx + zz) + (xx + zz));
-        float m12 = (yz - wx) + (yz - wx);
-        float m20 = (xz - wy) + (xz - wy);
-        float m21 = (yz + wx) + (yz + wx);
-        float m22 = 1.0f - ((xx + yy) + (xx + yy));
-        r.x = v.x * m00 + v.y * m01 + v.z * m02;
-        r.y = v.x * m10 + v.y * m11 + v.z * m12;
-        r.z = v.x * m20 + v.y * m21 + v.z * m22;
-        return r;
-    }
-    return v;
-#endif
-}
-
-// A second transpose helper, since this class's copy orders its cross-products differently from
-// the one above.
-static inline Vector RotateByTransposeModel(const Vector& v, const Quaternion& q)
-{
-#if KOTOR1  // K1 rotates through the out-of-line inverse operator
-    return RotateVector(v, -q);
-#else
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != -1.0f && w != 1.0f)) {
-        float nw = -w;
-        float x = q.x, y = q.y, z = q.z;
-        float xx = x * x, yy = y * y, zz = z * z;
-        float xy = x * y, xz = x * z, yz = y * z;
-        float wx = nw * x, wy = nw * y, wz = nw * z;
-        Vector r;
-        float m00 = 1.0f - ((yy + zz) + (yy + zz));
-        float m01 = (xy - wz) + (xy - wz);
-        float m02 = (xz + wy) + (xz + wy);
-        float m10 = (xy + wz) + (xy + wz);
-        float m11 = 1.0f - ((xx + zz) + (xx + zz));
-        float m12 = (yz - wx) + (yz - wx);
-        float m20 = (xz - wy) + (xz - wy);
-        float m21 = (yz + wx) + (yz + wx);
-        float m22 = 1.0f - ((xx + yy) + (xx + yy));
-        r.x = v.x * m00 + v.y * m01 + v.z * m02;
-        r.y = v.x * m10 + v.y * m11 + v.z * m12;
-        r.z = v.x * m20 + v.y * m21 + v.z * m22;
-        return r;
-    }
-    return v;
+    return RotateVector(v, Quaternion(-q.w, q.x, q.y, q.z));
 #endif
 }
 
@@ -3870,6 +3782,12 @@ Part::Part(MdlNode* p)
 {
     m_pNode = p;
     countpart++;
+    m_nNodeID = 0;
+    m_bDrawEnabled = false;
+#if !KOTOR1
+    m_bHologramRendering = false;
+    m_bPerObjectIllumination = false;
+#endif
 }
 
 #if KOTOR1  // K1 keeps the sphere cache in a map
@@ -3881,15 +3799,14 @@ Part::~Part()
         delete it->second;
         GetMinimumSphere_cache_map.erase(it);
     }
-    for (int64_t i = m_nChildren - 1; i != -1; i--) {
-        if (m_paChildren[i])
-            delete m_paChildren[i];
-        m_nChildren = static_cast<int>(i);
+    for (int64_t i = m_aChildren.m_count - 1; i != -1; i--) {
+        if (m_aChildren.m_pData[i])
+            delete m_aChildren.m_pData[i];
+        m_aChildren.m_count = static_cast<int>(i);
     }
     if (m_pMaterial)
         delete m_pMaterial;
     countpart--;
-    delete[] m_paChildren;
 }
 #endif
 Vector Part::SetPartPosition(Vector)
@@ -3929,8 +3846,8 @@ bool Part::GetMinimumSphere_cache(GetMinimumSphere_cache_data* pData)
         return false;
     if (m_bDrawEnabled || alwaysdominspheres) {
         bool bOk = true;
-        for (int64_t i = 0; bOk && i < m_nChildren; i++)
-            bOk = m_paChildren[i]->GetMinimumSphere_cache(pData->lChildren.m_pData[i]);
+        for (int64_t i = 0; bOk && i < m_aChildren.m_count; i++)
+            bOk = m_aChildren.m_pData[i]->GetMinimumSphere_cache(pData->lChildren.m_pData[i]);
         return bOk;
     }
     return true;
@@ -3953,12 +3870,12 @@ void Part::GetMinimumSphere(Vector& outCentre, float& outRadius)
     pData->fLocalRadius = bestRadius;
 
     if (m_bDrawEnabled || alwaysdominspheres) {
-        for (int i = 0; i < m_nChildren; i++) {
+        for (int i = 0; i < m_aChildren.m_count; i++) {
             Vector v;
             float R = 0.0f;
-            m_paChildren[i]->GetMinimumSphere(v, R);
-            pData->lChildren.Add(m_paChildren[i]->GetMinimumSphere_cache_GetData());
-            v = RotateVector(v, m_paChildren[i]->m_qLocalOrientation) + m_paChildren[i]->m_vLocalPosition;
+            m_aChildren.m_pData[i]->GetMinimumSphere(v, R);
+            pData->lChildren.Add(m_aChildren.m_pData[i]->GetMinimumSphere_cache_GetData());
+            v = RotateVector(v, m_aChildren.m_pData[i]->m_qLocalOrientation) + m_aChildren.m_pData[i]->m_vLocalPosition;
             Vector dir = centre - v;
             bool bBigger = bestRadius < R;
             float hi, lo;
@@ -3992,11 +3909,11 @@ void Part::GetMinimumSphere(Vector& outCentre, float& outRadius)
     }
 
     if (m_bDrawEnabled || alwaysdominspheres) {
-        for (int i = 0; i < m_nChildren; i++) {
+        for (int i = 0; i < m_aChildren.m_count; i++) {
             Vector v;
             float R = 0.0f;
-            m_paChildren[i]->GetMinimumSphere(v, R);
-            v = RotateVector(v, m_paChildren[i]->m_qLocalOrientation) + m_paChildren[i]->m_vLocalPosition;
+            m_aChildren.m_pData[i]->GetMinimumSphere(v, R);
+            v = RotateVector(v, m_aChildren.m_pData[i]->m_qLocalOrientation) + m_aChildren.m_pData[i]->m_vLocalPosition;
             Vector dir = centre - v;
 // Ternary min/max, since the library calls would stay out of line.
             bool bBigger = bestRadius < R;
@@ -4067,8 +3984,8 @@ void Part::GetMinimumBoundingBox(Vector& outMin, Vector& outMax, float scale)
         scale *= m_scale.m_fScale;
     }
 
-    for (int i = 0; i < m_nChildren; i++)
-        m_paChildren[i]->GetMinimumBoundingBox(outMin, outMax, scale);
+    for (int i = 0; i < m_aChildren.m_count; i++)
+        m_aChildren.m_pData[i]->GetMinimumBoundingBox(outMin, outMax, scale);
 }
 
 int Part::HitCheckGeom(Vector const&, Vector&, Vector*, CHitInfo*, float)
@@ -4103,8 +4020,8 @@ void* Part::HitCheck(Vector a, Vector b, Vector* c, CHitInfo* d, float scale)
         d->m_pszHitPartName = Name();
         hit = this;
     }
-    for (int i = 0; i < m_nChildren; i++) {
-        void* cr = m_paChildren[i]->HitCheck(a, b, &b, d, s);
+    for (int i = 0; i < m_aChildren.m_count; i++) {
+        void* cr = m_aChildren.m_pData[i]->HitCheck(a, b, &b, d, s);
         if (cr) hit = cr;
     }
     if (hit) {
@@ -4224,8 +4141,8 @@ void PartInitMaterial(Gob* gob, Part* part, char* name)
         }
     }
 
-    for (int64_t i = 0; i < part->m_nChildren; i++)
-        PartInitMaterial(gob, part->m_paChildren[i], name);
+    for (int64_t i = 0; i < part->m_aChildren.m_count; i++)
+        PartInitMaterial(gob, part->m_aChildren.m_pData[i], name);
 }
 
 static inline char* ListStringAt(List<char*>* pList, int nIndex)
@@ -4265,8 +4182,8 @@ Part* FindPart(Part* pPart, char* pszName)
         return pPart;
 #endif
 
-    for (int64_t i = 0; i < pPart->m_nChildren; i++) {
-        Part* pFound = FindPart(pPart->m_paChildren[i], pszName);
+    for (int64_t i = 0; i < pPart->m_aChildren.m_count; i++) {
+        Part* pFound = FindPart(pPart->m_aChildren.m_pData[i], pszName);
         if (pFound)
             return pFound;
     }
@@ -4275,8 +4192,8 @@ Part* FindPart(Part* pPart, char* pszName)
 
 void Part::PostProcess(Part* part)
 {
-    for (int64_t i = 0; i < m_nChildren; i++)
-        m_paChildren[i]->PostProcess(part);
+    for (int64_t i = 0; i < m_aChildren.m_count; i++)
+        m_aChildren.m_pData[i]->PostProcess(part);
 }
 
 Part* CreateInstanceTreeR(MdlNode* pNode, Gob* pGob)
@@ -4289,7 +4206,7 @@ Part* CreateInstanceTreeR(MdlNode* pNode, Gob* pGob)
     position_scale_factor = 1.0f;
     pNode->ControlDispatch(pPart, -1.0f, 0.0f, 1.0f);
 
-    List<Part*>* pChildren = reinterpret_cast<List<Part*>*>(&pPart->m_paChildren);  // raw-offset: Part's child array is a List<Part*> the destructor frees by hand
+    List<Part*>* pChildren = &pPart->m_aChildren;
     pChildren->SetSize(pNode->m_listChildren.m_count);
 
     for (int64_t i = 0; i < pNode->m_listChildren.m_count; i++) {
@@ -4324,7 +4241,7 @@ char* Part::Name()
 
 List<Part*>* Part::GetChildren()
 {
-    return reinterpret_cast<List<Part*>*>(&m_paChildren);  // raw-offset: Part's child array is a List<Part*> the destructor frees by hand
+    return &m_aChildren;
 }
 
 Part* Part::GetParent()
@@ -4349,14 +4266,12 @@ void Part::GetWorld(Vector& outPos, Quaternion& outOrient)
         return;
     }
 
-    Part* p = this;
-    do {
+    for (Part* p = this; p != 0; p = p->m_pParent) {
         outPos = outPos * p->m_scale.m_fScale;
         outPos = RotateVector(outPos, p->m_qLocalOrientation);
         outPos = outPos + p->m_vLocalPosition;
         outOrient = p->m_qLocalOrientation * outOrient;
-        p = p->m_pParent;
-    } while (p != 0);
+    }
 
     if (pGob->m_fObjectScale != 1.0f)
         outPos = outPos * pGob->m_fObjectScale;
@@ -4381,7 +4296,7 @@ void Part::GetLocal(Vector& outPos, Quaternion& outOrient)
         outOrient = Quaternion(-m_pGob->m_qOrientation.w, m_pGob->m_qOrientation.x,
                                m_pGob->m_qOrientation.y, m_pGob->m_qOrientation.z)
                     * outOrient;
-        outPos = RotateByTransposeModel(outPos - m_pGob->m_vPosition, m_pGob->m_qOrientation);
+        outPos = RotateByTranspose(outPos - m_pGob->m_vPosition, m_pGob->m_qOrientation);
 #endif
         fScale = m_pGob->m_fObjectScale;
     }
@@ -4394,18 +4309,10 @@ void Part::GetLocal(Vector& outPos, Quaternion& outOrient)
     outOrient = Quaternion(-m_qLocalOrientation.w, m_qLocalOrientation.x, m_qLocalOrientation.y,
                            m_qLocalOrientation.z)
                 * outOrient;
-    outPos = RotateByTransposeModel(outPos - m_vLocalPosition, m_qLocalOrientation);
+    outPos = RotateByTranspose(outPos - m_vLocalPosition, m_qLocalOrientation);
 #endif
     outPos = outPos * (1.0f / fScale);
 }
-
-#if !KOTOR1  // K2-only (no K1 counterpart)
-int Part::printMemory()
-{
-    return printf("Part: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-                  8, 16, 28, 44, 48, 52, 53, 54, 56, 72, 80, 88, 96);
-}
-#endif // !KOTOR1
 
 
 Gob* FindGob(char* pszName);
@@ -4506,7 +4413,7 @@ int GetMaxID(MdlNode* pNode, int nID);
 void SynchronizeNodes(MdlNode* pDst, MdlNode* pSrc, int& rnMaxID);
 void UpdateAnimFootprint(MdlNode* pNode, int nDelta);
 
-int MaxTree::GetType()
+unsigned char MaxTree::GetType()
 {
     return static_cast<unsigned char>(m_cType) & kTreeTypeMask;
 }
@@ -4540,19 +4447,15 @@ void Model::InternalDestructor()
         m_pSuperModel->DelRef(this);
         m_pSuperModel = 0;
     }
-    animationfootprint -= m_animations.m_count * 8;
-    animationfootprint -= m_animations.m_count * 176;
-    if (m_animations.m_count != 0) {
-        int64_t i = m_animations.m_count - 1;
-        do {
-            animationfootprint -= 36 * m_animations.m_pData[i]->m_events.m_count;
-            UpdateAnimFootprint(m_animations.m_pData[i]->m_pMdlNode, -1);
-            Animation* pAnim = m_animations.m_pData[i];
-            pAnim->m_pfnDestructor(pAnim);
-        } while (i-- != 0);
+    animationfootprint -= m_animations.m_count * static_cast<int>(sizeof(Animation*));
+    animationfootprint -= m_animations.m_count * static_cast<int>(sizeof(Animation));
+    for (int64_t i = m_animations.m_count - 1; i != -1; i--) {
+        animationfootprint -= 36 * m_animations.m_pData[i]->m_events.m_count;
+        UpdateAnimFootprint(m_animations.m_pData[i]->m_pMdlNode, -1);
+        Animation* pAnim = m_animations.m_pData[i];
+        pAnim->m_pfnDestructor(pAnim);
     }
-    if (m_pMdlNode != 0)
-        m_pMdlNode->DestructorDispatch();
+    MaxTree::InternalDestructor();
 }
 
 Model::Model(char* pszName) : MaxTree(pszName)
@@ -4586,13 +4489,9 @@ Model::~Model()
 {
     if (m_cType) {
         m_cType = 0;
-        if (m_animations.m_count != 0) {
-            int64_t i = m_animations.m_count - 1;
-            do {
-                foobar(m_animations.m_pData[i]);
-                m_animations.m_count = static_cast<int>(i);
-                i--;
-            } while (i != -1);
+        for (int64_t i = m_animations.m_count - 1; i != -1; i--) {
+            foobar(m_animations.m_pData[i]);
+            m_animations.m_count = static_cast<int>(i);
         }
         GLRender::DeletePool(m_nPool);
         m_nPool = 0xffffffff;
@@ -4631,8 +4530,6 @@ int Model::AddRef(Model* pModel)
 extern Model* currentmodel;
 
 
-int FormatName(char* pszBuf, uint64_t nSize, const char* pszFmt, ...);
-
 Model* BinaryFindModel(char* pszName);
 
 extern int counttrimesh;
@@ -4643,16 +4540,9 @@ unsigned int BoxIntersect(const Vector& a, const Vector& b, const Vector& boxMin
                           const Vector& boxMax);
 unsigned int BoxIntersect(const Vector& a, const Vector& b, const Vector& boxMin,
                           const Vector& boxMax, Vector* out);
-// math3d.cpp defines this overload as `bool`, but the callers here were compiled against
-// `unsigned int` and read the whole result word, so it is kept wide on the target build.
-#ifdef K2_HOST_BUILD
-typedef bool PolyhitResult;
-#else
-typedef unsigned int PolyhitResult;
-#endif
-PolyhitResult polyhit(const Vector* verts, int vertCount, const Vector& node,
-                      const float& f, const Vector& a, const Vector& b,
-                      Vector* hit);
+int polyhit(const Vector* verts, int vertCount, const Vector& node,
+            const float& f, const Vector& a, const Vector& b,
+            Vector* hit);
 
 struct TriFace {
     Vector vNode;
@@ -4684,6 +4574,8 @@ PartTriMesh::PartTriMesh(MdlNode* node)
     MdlNodeTriMesh* pMesh = node->AsMdlNodeTriMesh();
     if (pMesh->m_nAnimateUV != 0)
     {
+        TriMeshPoolPair* pDst;
+        const int* pSrc;
         m_pafBaseUVs = reinterpret_cast<float*>(new TriMeshPoolPair[static_cast<short>(pMesh->m_nVertexCount)]);
 
 #if KOTOR1  // K1 inlines the downcast here
@@ -4692,8 +4584,8 @@ PartTriMesh::PartTriMesh(MdlNode* node)
         char* pPool = static_cast<char*>(GLRender::LockPool(pMesh->m_pTree->AsModel()->m_nPool, 0, 0, 8));
 #endif
 
-        TriMeshPoolPair* pDst = reinterpret_cast<TriMeshPoolPair*>(m_pafBaseUVs);
-        const int* pSrc = reinterpret_cast<const int*>(pPool + pMesh->m_nTex0Ofs + pMesh->m_nGeomBase);
+        pDst = reinterpret_cast<TriMeshPoolPair*>(m_pafBaseUVs);
+        pSrc = reinterpret_cast<const int*>(pPool + pMesh->m_nTex0Ofs + pMesh->m_nGeomBase);
         for (int64_t i = 0; i < static_cast<short>(pMesh->m_nVertexCount); i++)
         {
             pDst[i].a = static_cast<unsigned int>(pSrc[0]);
@@ -4769,10 +4661,22 @@ void PartTriMesh::GetMinimumSphere(Vector& outCentre, float& outRadius)
 #if !KOTOR1  // K2-only (no K1 counterpart)
 int PartTriMesh::printMemory()
 {
-    printf("Part: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-           8, 16, 28, 44, 48, 52, 53, 54, 56, 72, 80, 88, 96);
+    Part::printMemory();
     return printf(" -> PartTriMesh: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-                  100, 112, 124, 136, 144, 148, 152, 153, 160, 168, 172, 176, 184, 192);
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_vBBoxMin)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_vBBoxMax)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_vSelfIllumColor)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_pVertexPrimitive)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_nColorPool)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_nUVPool)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_bHasColorPool)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_bFog)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_pTileData)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_fOpacity)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, _padac)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_nPartID)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_pafBaseUVs)),
+                  static_cast<int>(K2_OFFSETOF(PartTriMesh, m_fTextureAngle)));
 }
 #endif // !KOTOR1
 
@@ -4832,7 +4736,7 @@ int PartTriMesh::HitCheckGeom(Vector const& a, Vector& b, Vector* c, CHitInfo* h
                 verts[k].y = pV[1];
                 verts[k].z = pV[2];
             }
-            result |= static_cast<int>(polyhit(verts, 3, face.vNode, face.fScale, a, b, &b));
+            result |= polyhit(verts, 3, face.vNode, face.fScale, a, b, &b);
         }
     } else {
         if (!BoxIntersect(a, b, node->m_vMin * f, node->m_vMax * f) || node->m_faces.m_count < 1)
@@ -4847,7 +4751,7 @@ int PartTriMesh::HitCheckGeom(Vector const& a, Vector& b, Vector* c, CHitInfo* h
                 verts[k].y = pV[1] * f;
                 verts[k].z = pV[2] * f;
             }
-            result |= static_cast<int>(polyhit(verts, 3, face.vNode, face.fScale, a, b, &b));
+            result |= polyhit(verts, 3, face.vNode, face.fScale, a, b, &b);
         }
     }
     if (c != 0 && result != 0) {
@@ -4878,8 +4782,8 @@ PartDanglyMesh::PartDanglyMesh(MdlNode* node)
     memcpy(m_paVertices, node->AsMdlNodeDanglyMesh()->m_pVertexSource, n * sizeof(DanglyVertex));
     GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0),
         static_cast<unsigned int>(static_cast<short>(node->AsMdlNodeTriMesh()->m_nVertexCount) * sizeof(DanglyVertex)),
-        2, 0, reinterpret_cast<unsigned int*>(&m_nVertexPool));
-    void* pLocked = GLRender::LockPool(m_nVertexPool, 0, 0, 1);
+        2, 0, reinterpret_cast<uint32_l_t*>(&m_nVertexPool));
+    Vector* pLocked = static_cast<Vector*>(GLRender::LockPool(m_nVertexPool, 0, 0, 1));
     memcpy(pLocked, m_paVertices, static_cast<short>(node->AsMdlNodeTriMesh()->m_nVertexCount) * sizeof(DanglyVertex));
     GLRender::UnlockPool(m_nVertexPool);
 }
@@ -4896,9 +4800,12 @@ PartDanglyMesh::~PartDanglyMesh()
 #if !KOTOR1  // K2-only (no K1 counterpart)
 int PartDanglyMesh::printMemory()  // returns the second printf result
 {
-    printf("Part: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n", 8, 16, 28, 44,
-           48, 52, 53, 54, 56, 72, 80, 88, 96);
-    return printf(" -> PartDanglyMesh: %d, %d, %d, %d\n", 196, 208, 224, 232);
+    Part::printMemory();
+    return printf(" -> PartDanglyMesh: %d, %d, %d, %d\n",
+                  static_cast<int>(K2_OFFSETOF(PartDanglyMesh, m_vLastPosition)),
+                  static_cast<int>(K2_OFFSETOF(PartDanglyMesh, m_qLastOrientation)),
+                  static_cast<int>(K2_OFFSETOF(PartDanglyMesh, m_paVertices)),
+                  static_cast<int>(K2_OFFSETOF(PartDanglyMesh, m_nVertexPool)));
 }
 #endif // !KOTOR1
 
@@ -4915,9 +4822,8 @@ extern List<Gob*> gobs;
 
 
 PartLight::PartLight(MdlNode* p)
+    : Part(p)
 {
-    m_pNode = p;
-    countpart++;
 }
 
 PartLight* MdlNodeLight::InternalCreateInstance(Gob* pGob)
@@ -4961,11 +4867,25 @@ PartLight::~PartLight()
 #if !KOTOR1  // K2-only (no K1 counterpart)
 int PartLight::printMemory()  // returns the second printf result
 {
-    printf("Part: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-           8, 16, 28, 44, 48, 52, 53, 54, 56, 72, 80, 88, 96);
+    Part::printMemory();
     return printf(" -> PartLight: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-           100, 112, 116, 120, 124, 128, 132, 136, 140, 144,
-           148, 152, 156, 160, 164, 168, 172);
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_vLightColour)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fLightRadius)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_nCastsShadows)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fShadowRadius)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fVerticalDisplacement)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_nAmbientOnly)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_nAffectDynamic)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_nIsDynamic)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_nLightPriority)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fEmitterScale)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fFadeWeightAlt)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fDistanceRatio)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fCullDistance)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fFlareFade)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fLightScale)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_fShadowFade)),
+                  static_cast<int>(K2_OFFSETOF(PartLight, m_vWorldPosition)));
 }
 #endif // !KOTOR1
 
@@ -5177,8 +5097,8 @@ int countboxes;
 
 unsigned int BoxIntersect(const Vector& a, const Vector& b,
                           const Vector& boxMin, const Vector& boxMax);
-PolyhitResult polyhit(const Vector* verts, int vertCount, const Vector& node,
-                      const float& f, const Vector& a, const Vector& b, Vector* hit);
+int polyhit(const Vector* verts, int vertCount, const Vector& node,
+            const float& f, const Vector& a, const Vector& b, Vector* hit);
 
 int HitCheckAABBnode(AABB* aabb, const Vector& a, Vector& b, float f)
 {
@@ -5200,9 +5120,9 @@ int HitCheckAABBnode(AABB* aabb, const Vector& a, Vector& b, float f)
         if (aabb_hitinfo->m_nMaterialMask & (1 << face->m_nMaterial)) {
             Vector verts[3];
             Vector* pVerts = reinterpret_cast<Vector*>(aabb_mesh->m_paVertices);
-            verts[0] = pVerts[face->m_nVIndex[0]];
-            verts[1] = pVerts[face->m_nVIndex[1]];
-            verts[2] = pVerts[face->m_nVIndex[2]];
+            verts[0] = pVerts[static_cast<short>(face->m_anVertIndices[0])];
+            verts[1] = pVerts[static_cast<short>(face->m_anVertIndices[1])];
+            verts[2] = pVerts[static_cast<short>(face->m_anVertIndices[2])];
             if (polyhit(verts, 3, face->Normal(), face->m_fPlaneDist, a, b, &b)) {
                 aabb_hitinfo->ClearOutput();
                 aabb_hitinfo->m_nHitFaceIndex = index;
@@ -5325,7 +5245,7 @@ int GetOffset64(int nOffset, int nType) {
         {4, K2_PART_OFFSET(Part, m_pNode)},
         {8, K2_PART_OFFSET(Part, m_vLocalPosition)}, {20, K2_PART_OFFSET(Part, m_qLocalOrientation)},
         {36, K2_PART_OFFSET(Part, m_scale)}, {40, K2_PART_OFFSET(Part, m_nNodeID)},
-        {44, K2_PART_OFFSET(Part, m_bDrawEnabled)}, {48, K2_PART_OFFSET(Part, m_paChildren)},
+        {44, K2_PART_OFFSET(Part, m_bDrawEnabled)}, {48, K2_PART_OFFSET(Part, m_aChildren)},
         {60, K2_PART_OFFSET(Part, m_pParent)}, {64, K2_PART_OFFSET(Part, m_pGob)},
         {68, K2_PART_OFFSET(Part, m_pMaterial)}, {72, K2_PART_OFFSET(Part, m_nLocalPositionSet)}
 #else
@@ -5333,7 +5253,7 @@ int GetOffset64(int nOffset, int nType) {
         {20, K2_PART_OFFSET(Part, m_qLocalOrientation)}, {36, K2_PART_OFFSET(Part, m_scale)},
         {40, K2_PART_OFFSET(Part, m_nNodeID)}, {44, K2_PART_OFFSET(Part, m_bDrawEnabled)},
         {45, K2_PART_OFFSET(Part, m_bHologramRendering)},
-        {46, K2_PART_OFFSET(Part, m_bPerObjectIllumination)}, {48, K2_PART_OFFSET(Part, m_paChildren)},
+        {46, K2_PART_OFFSET(Part, m_bPerObjectIllumination)}, {48, K2_PART_OFFSET(Part, m_aChildren)},
         {60, K2_PART_OFFSET(Part, m_pParent)}, {64, K2_PART_OFFSET(Part, m_pGob)},
         {68, K2_PART_OFFSET(Part, m_pMaterial)}
 #endif
@@ -5445,7 +5365,7 @@ MaxFace::MaxFace()
     m_nNormal[1] = 0;
     m_nNormal[2] = 0;
     countmaxfaces++;
-    m_nSurfaceMaterial = 0;
+    m_nMaterial = 0;
 }
 
 
@@ -5491,10 +5411,8 @@ int PartProjection::m_nNextProjectionID = 1;
 extern int countpart;
 
 PartProjection::PartProjection(PartTriMesh* pTriMesh, PartLight* pLight)
-    : m_pTriMesh(pTriMesh), m_pLight(pLight)
+    : Part(0), m_pTriMesh(pTriMesh), m_pLight(pLight)
 {
-    m_pNode = 0;
-    countpart++;
     m_nProjectionId = m_nNextProjectionID++;
 }
 

@@ -30,6 +30,7 @@ public:
 #define LOOKATANIMATION_H
 
 #include "SafePointer.h"
+#include "k2stdint.h"
 
 class CAurObject;
 class Gob;
@@ -143,25 +144,22 @@ public:
         kTargetOffsetMask = 0xf0ffffff,
     };
 
-    // Packed controller state, built by AddGenericControllerSingle (aurparse.cpp). The readers load
-    // the fields below rather than the raw words; the unions exist because the packer writes whole
-    // words.
-    union {
-        unsigned long long m_nTargetPacked;
-        struct {
-            int            m_nOffset;      // the target field's offset in the part (signed)
-            short          m_nDefaultOffset;        // -1 means "no second offset"
-            unsigned short m_nKeyCount;    // keys carried by this controller
-        } m_target;
-    };
-    union {
-        unsigned long long m_nKeysPacked;
-        struct {
-            unsigned short m_nTimeIndex;   // first key time in the node's float list
-            unsigned short m_nValueIndex;  // first key value (the times are m_nKeyCount floats)
-            unsigned char  m_nKind;        // low nibble is the kind; the high bit is the bezier arm
-            unsigned char  m_nReserved1;
-            unsigned short m_nReserved2;
-        } m_keys;
-    };
+    // Packed controller state, built by AddGenericControllerSingle (aurparse.cpp).
+    struct {
+        int            m_nOffset;      // the target field's offset in the part (signed)
+        short          m_nDefaultOffset;        // -1 means "no second offset"
+        unsigned short m_nKeyCount;    // keys carried by this controller
+    } m_target;
+    struct {
+        unsigned short m_nTimeIndex;   // first key time in the node's float list
+        unsigned short m_nValueIndex;  // first key value (the times are m_nKeyCount floats)
+        unsigned char  m_nKind;        // low nibble is the kind; the high bit is the bezier arm
+        unsigned char  m_nReserved1;
+        unsigned short m_nReserved2;
+    } m_keys;
 };
+#if KOTOR1 && defined(__arm__)
+// K1's 32-bit build calls the controller list's Add out of line at every site (List.cpp's copy);
+// its 64-bit build inlines it.
+extern template void List<NewController>::Add(NewController);
+#endif

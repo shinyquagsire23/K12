@@ -15,10 +15,7 @@ public:
 #if !KOTOR1  // K1 has no emissive triple
     Vector        m_vEmissive;
 #endif
-    float         m_fProbLL;
-    float         m_fProbLR;
-    float         m_fProbUL;
-    float         m_fProbUR;
+    float         m_fProb[4];  // the four uv-octant style weights: lower-left, lower-right, upper-left, upper-right
     unsigned char m_bInUse;
 
     CAurGrassInfo();

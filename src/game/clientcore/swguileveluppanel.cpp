@@ -309,7 +309,7 @@ void CSWGuiLevelUpPanel::OnSelectPowersButton(CSWGuiControl* pControl)
 void CSWGuiLevelUpPanel::ShowGrantedPowers(CSWGuiControl* pControl)
 {
     K2_UNUSED(pControl);
-    CExoArrayList<unsigned int> powers;
+    CExoArrayList<uint32_l_t> powers;
     static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedPowers(&powers);
     if (powers.m_count >= 1)
     {
@@ -343,7 +343,7 @@ void CSWGuiLevelUpPanel::OnPanelAdded()
 #if !KOTOR1
     if (m_bHasGrantedFeats != 0)
     {
-        CExoArrayList<unsigned int> feats;
+        CExoArrayList<uint32_l_t> feats;
         static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedFeats(&feats, 0);
         CSWGuiSkillInfoBox* pBox =
             g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSkillInfoBoxPanel;
@@ -357,7 +357,7 @@ void CSWGuiLevelUpPanel::OnPanelAdded()
 
     if (m_bHasGrantedPowers != 0 && m_bHasGrantedFeats == 0)
     {
-        CExoArrayList<unsigned int> powers;
+        CExoArrayList<uint32_l_t> powers;
         static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedPowers(&powers);
         CSWGuiSkillInfoBox* pBox =
             g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSkillInfoBoxPanel;
@@ -501,7 +501,7 @@ CSWGuiLevelUpPanel::CSWGuiLevelUpPanel(CSWGuiManager* pGuiManager, unsigned long
         m_aLabels[LEVELUP_STEP_FEATS].m_tail.bVisible = 0;
         m_anState[LEVELUP_STEP_FEATS] = 0;
 
-        CExoArrayList<unsigned int> feats;
+        CExoArrayList<uint32_l_t> feats;
 #if KOTOR1
         // K1 shows the granted feats here rather than deferring them to OnPanelAdded.
         static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedFeats(&feats);
@@ -532,8 +532,7 @@ CSWGuiLevelUpPanel::CSWGuiLevelUpPanel(CSWGuiManager* pGuiManager, unsigned long
 
     // Powers open only if a spell slot is left. The result is truncated to a byte, since only its
     // zero-ness matters.
-    unsigned char nSpellsLeft =
-        static_cast<unsigned char>(static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->ComputeNumberKnownSpellsLeft());
+    unsigned char nSpellsLeft = static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->ComputeNumberKnownSpellsLeft();
     if (nSpellsLeft != 0)
     {
         m_aButtons[LEVELUP_STEP_POWERS].AddEvent(INPUTEVENT_GUI_A, this,
@@ -552,7 +551,7 @@ CSWGuiLevelUpPanel::CSWGuiLevelUpPanel(CSWGuiManager* pGuiManager, unsigned long
         m_anState[LEVELUP_STEP_POWERS] = 0;
 
 #if !KOTOR1
-        CExoArrayList<unsigned int> powers;
+        CExoArrayList<uint32_l_t> powers;
         static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddGrantedPowers(&powers);
         if (powers.m_count >= 1)
             m_bHasGrantedPowers = 1;

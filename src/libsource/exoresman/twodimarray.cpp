@@ -971,10 +971,10 @@ C2DA::C2DA() {
     m_bEntryCacheBuilt = 0;
 #endif
     m_nRows = 0;
-    m_nColumns = 0;
     m_pasColumnLabels = 0;
     m_papasRows = 0;
     m_pasRowLabels = 0;
+    m_nColumns = 0;
 #if KOTOR1
     m_pabEntryParsed = 0;
     m_panEntryINT = 0;
@@ -1045,7 +1045,6 @@ int C2DA::SkipNewLines(char** ppData, unsigned int* pnSize) {
 
 // Skips leading tab/space (counting what it skipped), then copies either a "-quoted token or an
 // unquoted token up to the next NUL, tab, CR, LF or space.
-__attribute__((always_inline))
 int C2DA::GetNextToken(char** ppData, unsigned int* pnSize,
                        char* pToken, unsigned int* pnSkipped) {
     if (*pnSize == 0) {
@@ -1119,11 +1118,9 @@ int C2DA::SaveBinary2da(char* pFileName) {
 
         int nStringTableSize = 0;
         K2_ASSUME(nUniqueCount <= nCells);
-        if (nUniqueCount > 0) {
-            for (int i = 0; i < nUniqueCount; i++) {
-                pnStringOffsets[i] = nStringTableSize;
-                nStringTableSize += static_cast<int>(strlen(paUniqueStrings[i].CStr()) + 1);
-            }
+        for (int i = 0; i < nUniqueCount; i++) {
+            pnStringOffsets[i] = nStringTableSize;
+            nStringTableSize += static_cast<int>(strlen(paUniqueStrings[i].CStr()) + 1);
         }
 
         if (nStringTableSize < 65536) {
@@ -1244,11 +1241,8 @@ int C2DA::Load2DArray() {
     char* pCountPos = pData;
     unsigned int nCountRemaining = nLineLength;
     m_nColumns = 0;
-    if (GetNextToken(&pCountPos, &nCountRemaining, szToken, &nSkipped)) {
-        do {
-            m_nColumns++;
-        } while (GetNextToken(&pCountPos, &nCountRemaining, szToken, &nSkipped));
-    }
+    while (GetNextToken(&pCountPos, &nCountRemaining, szToken, &nSkipped))
+        m_nColumns++;
 
     if (m_nColumns <= 0) {
         m_bLoaded = 1;
@@ -1260,11 +1254,9 @@ int C2DA::Load2DArray() {
         m_pasColumnLabels = new CExoString[m_nColumns];
 
         int nColumn = 0;
-        if (GetNextToken(&pData, &nSize, szToken, &nSkipped)) {
-            do {
-                m_pasColumnLabels[nColumn] = _strlwr(szToken);
-                nColumn++;
-            } while (GetNextToken(&pData, &nSize, szToken, &nSkipped));
+        while (GetNextToken(&pData, &nSize, szToken, &nSkipped)) {
+            m_pasColumnLabels[nColumn] = _strlwr(szToken);
+            nColumn++;
         }
 
         SkipNewLines(&pData, &nSize);

@@ -5,6 +5,8 @@
 #include "exoresman.h"
 #include "nwspell.h"
 #include "nwitem.h"
+#include "nwclass.h"
+#include "nwrace.h"
 
 class CExoString;
 class CSWSkill;
@@ -126,12 +128,15 @@ public:
     CSWFeat* GetFeat(unsigned short nFeat);
     CSWSpell* GetSpell(unsigned int nSpellId) { return m_pSpellArray->GetSpell(nSpellId); }
     CSWBaseItem* GetBaseItem(unsigned int nBaseItem) { return m_pBaseItemArray->GetBaseItem(nBaseItem); }
+    // The images read g_pRules before the class index's call and m_paClasses after it.
+    CSWClass* GetClass(unsigned char nClass) { return &m_paClasses[nClass]; }
+    CSWRace* GetRace(unsigned short nRace) { return &m_paRaces[nRace]; }
     int     IsFeatUseable(unsigned char nWisdom, unsigned short nFeat);
     CExoString GetMasterFeatNameText(char nMasterFeat);
     CExoString GetMasterFeatDescriptionText(char nMasterFeat);
     CResRef GetMasterFeatIcon(char nMasterFeat);
     unsigned short RollDice(unsigned char nDice, unsigned char nSides);
-    int     GetMetaMagicLevelCost(unsigned char nMetaMagic);
+    unsigned char GetMetaMagicLevelCost(unsigned char nMetaMagic);
 
     int GetDifficultyOption(int nOption, int nDifficulty);
     int GetWeightedDamageAmount(int nBase, int nMax, int nFlagA, int nFlagB, int nPercent);

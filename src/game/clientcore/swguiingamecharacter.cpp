@@ -405,15 +405,15 @@ void CSWGuiInGameCharacter::SetStats()
 
     if (pStats->m_nNumClasses == 1) {
         m_lblClass1.m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(
-            g_pRules->m_paClasses[pStats->GetClass(0)].m_nNameStrRef));
+            g_pRules->GetClass(pStats->GetClass(0))->m_nNameStrRef));
         m_lblClass2.m_text.m_params.SetText(CExoString(""));
         m_lblLevel1.m_text.m_params.SetText(CExoString(static_cast<int>(pStats->GetClassLevel(0))));
         m_lblLevel2.m_text.m_params.SetText(CExoString(""));
     } else {
         m_lblClass1.m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(
-            g_pRules->m_paClasses[pStats->GetClass(1)].m_nNameStrRef));
+            g_pRules->GetClass(pStats->GetClass(1))->m_nNameStrRef));
         m_lblClass2.m_text.m_params.SetText(g_pAppManager->m_pClientExoApp->GetGUIString(
-            g_pRules->m_paClasses[pStats->GetClass(0)].m_nNameStrRef));
+            g_pRules->GetClass(pStats->GetClass(0))->m_nNameStrRef));
         m_lblLevel1.m_text.m_params.SetText(CExoString(static_cast<int>(pStats->GetClassLevel(1))));
         m_lblLevel2.m_text.m_params.SetText(CExoString(static_cast<int>(pStats->GetClassLevel(0))));
     }
@@ -428,8 +428,10 @@ void CSWGuiInGameCharacter::SetStats()
     SetLabelBonusPenaltyColour(m_lblDefenseStat,
                                pCreature->GetServerCreature()->GetTotalACEffectBonus());
 
+    int nCurForce;
     if (CSWClass::IsJedi(static_cast<unsigned char>(nClass))) {
-        sText.Format(const_cast<char*>("%d/%d"), static_cast<short>(pStats->m_nCurrentForcePoints + pStats->m_nTemporaryForcePoints),
+        nCurForce = pStats->m_nCurrentForcePoints + pStats->m_nTemporaryForcePoints;
+        sText.Format(const_cast<char*>("%d/%d"), static_cast<short>(nCurForce),
                      static_cast<short>(pStats->m_nMaxForcePoints));
         m_lblForceStat.m_text.m_params.SetText(sText);
         m_lblForce.m_tail.bVisible = 1;
@@ -440,61 +442,66 @@ void CSWGuiInGameCharacter::SetStats()
         m_lblForceStat.m_tail.bVisible = 0;
     }
 
+    unsigned char nOld;
+    unsigned char nNew;
+    int nDiff;
+    int nModDiff;
+    int nBonus;
     {
-        unsigned char nOld = pServerStats->m_nSTRBase;
-        unsigned char nNew = pServerStats->GetSTRStat();
+        nOld = pServerStats->m_nSTRBase;
+        nNew = pServerStats->GetSTRStat();
         m_lblStr.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblStrMod, static_cast<signed char>(pServerStats->m_nSTRMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblStr, nDiff);
         SetLabelBonusPenaltyColour(m_lblStrMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nWISBase;
-        unsigned char nNew = pServerStats->GetWISStat();
+        nOld = pServerStats->m_nWISBase;
+        nNew = pServerStats->GetWISStat();
         m_lblWis.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblWisMod, static_cast<signed char>(pServerStats->m_nWISMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblWis, nDiff);
         SetLabelBonusPenaltyColour(m_lblWisMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nCHABase;
-        unsigned char nNew = pServerStats->GetCHAStat();
+        nOld = pServerStats->m_nCHABase;
+        nNew = pServerStats->GetCHAStat();
         m_lblCha.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblChaMod, static_cast<signed char>(pServerStats->m_nCHAMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblCha, nDiff);
         SetLabelBonusPenaltyColour(m_lblChaMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nINTBase;
-        unsigned char nNew = pServerStats->GetINTStat();
+        nOld = pServerStats->m_nINTBase;
+        nNew = pServerStats->GetINTStat();
         m_lblInt.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblIntMod, static_cast<signed char>(pServerStats->m_nINTMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblInt, nDiff);
         SetLabelBonusPenaltyColour(m_lblIntMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nCONBase;
-        unsigned char nNew = pServerStats->GetCONStat();
+        nOld = pServerStats->m_nCONBase;
+        nNew = pServerStats->GetCONStat();
         m_lblCon.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblConMod, static_cast<signed char>(pServerStats->m_nCONMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblCon, nDiff);
         SetLabelBonusPenaltyColour(m_lblConMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nDEXBase;
-        unsigned char nNew = pServerStats->GetDEXStat();
+        nOld = pServerStats->m_nDEXBase;
+        nNew = pServerStats->GetDEXStat();
         m_lblDex.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblDexMod, static_cast<signed char>(pServerStats->GetDEXMod(1)));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblDex, nDiff);
 
         if (nOld == nNew) {
-            int nModDiff = static_cast<signed char>(pServerStats->GetDEXMod(1))
+            nModDiff = static_cast<signed char>(pServerStats->GetDEXMod(1))
                            - static_cast<signed char>(pServerStats->GetDEXMod(0));
             SetLabelBonusPenaltyColour(m_lblDexMod, nModDiff);
         } else {
@@ -502,27 +509,27 @@ void CSWGuiInGameCharacter::SetStats()
         }
     }
 
-    int nBonus = 0;
+    nBonus = 0;
     m_lblFortitudeStat.m_text.m_params.SetText(
         CExoString(static_cast<int>(pServerStats->GetFortSavingThrow(0))));
-    int nFortSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
+    int nSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
         CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nBonus, 0, 0, SAVING_THROW_FORT, 0,
         CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-    SetLabelBonusPenaltyColour(m_lblFortitudeStat, nFortSave);
+    SetLabelBonusPenaltyColour(m_lblFortitudeStat, nSave);
 
     m_lblReflexStat.m_text.m_params.SetText(
         CExoString(static_cast<int>(pServerStats->GetReflexSavingThrow(0))));
-    int nReflexSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
+    nSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
         CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nBonus, 0, 0, SAVING_THROW_REFLEX, 0,
         CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-    SetLabelBonusPenaltyColour(m_lblReflexStat, nReflexSave);
+    SetLabelBonusPenaltyColour(m_lblReflexStat, nSave);
 
     m_lblWillStat.m_text.m_params.SetText(
         CExoString(static_cast<int>(pServerStats->GetWillSavingThrow(0))));
-    int nWillSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
+    nSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
         CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nBonus, 0, 0, SAVING_THROW_WILL, 0,
         CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-    SetLabelBonusPenaltyColour(m_lblWillStat, nWillSave);
+    SetLabelBonusPenaltyColour(m_lblWillStat, nSave);
 
     m_lblExperienceStat.m_text.m_params.SetText(CExoString(pServerStats->m_nExperience));
     m_lblNeededXp.m_text.m_params.SetText(
@@ -565,10 +572,8 @@ void CSWGuiInGameCharacter::SetStats()
             pCreature->m_pStats->m_alignmentGoodEvil);
 
         m_pCreature->AttachToScene(m_view3DChar.m_scene.m_pScene);
-        Vector vDirection;
-        m_pCreature->SetPosition(vDirection);
-        vDirection = Vector(1.0f, 0.0f, 0.0f);
-        m_pCreature->SetOrientation(vDirection);
+        m_pCreature->SetPosition(Vector());
+        m_pCreature->SetOrientation(Vector(1.0f, 0.0f, 0.0f));
         m_pCreature->Setup3DScene(m_view3DChar, pCreature, 0, 1);
     }
 
@@ -597,9 +602,10 @@ void CSWGuiInGameCharacter::SetStats()
     m_lblDefenseStat.m_text.m_params.SetText(CExoString(static_cast<int>(static_cast<short>(pStats->GetArmorClass(1)))));
     m_lblDefenseStat.m_text.m_params.SetColor(CGuiInGame::COLOR_NEW_TEXT);
 
+    int nCurForce;
     if (CSWClass::IsJedi(static_cast<unsigned char>(nClass))) {
         short nMaxForce = static_cast<short>(pStats->m_nMaxForcePoints);
-        int nCurForce = pStats->m_nCurrentForcePoints + pStats->m_nTemporaryForcePoints;
+        nCurForce = pStats->m_nCurrentForcePoints + pStats->m_nTemporaryForcePoints;
         if (nMaxForce < 1)
             nCurForce = 0;
         sText.Format(const_cast<char*>("%d/%d"), static_cast<short>(nCurForce), nMaxForce);
@@ -612,61 +618,66 @@ void CSWGuiInGameCharacter::SetStats()
         m_lblForceStat.m_tail.bVisible = 0;
     }
 
+    unsigned char nOld;
+    unsigned char nNew;
+    int nDiff;
+    int nModDiff;
+    int nBonus;
     {
-        unsigned char nOld = pServerStats->m_nSTRBase;
-        unsigned char nNew = pServerStats->GetSTRStat();
+        nOld = pServerStats->m_nSTRBase;
+        nNew = pServerStats->GetSTRStat();
         m_lblStr.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblStrMod, static_cast<signed char>(pServerStats->m_nSTRMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblStr, nDiff);
         SetLabelBonusPenaltyColour(m_lblStrMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nWISBase;
-        unsigned char nNew = pServerStats->GetWISStat();
+        nOld = pServerStats->m_nWISBase;
+        nNew = pServerStats->GetWISStat();
         m_lblWis.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblWisMod, static_cast<signed char>(pServerStats->m_nWISMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblWis, nDiff);
         SetLabelBonusPenaltyColour(m_lblWisMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nCHABase;
-        unsigned char nNew = pServerStats->GetCHAStat();
+        nOld = pServerStats->m_nCHABase;
+        nNew = pServerStats->GetCHAStat();
         m_lblCha.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblChaMod, static_cast<signed char>(pServerStats->m_nCHAMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblCha, nDiff);
         SetLabelBonusPenaltyColour(m_lblChaMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nINTBase;
-        unsigned char nNew = pServerStats->GetINTStat();
+        nOld = pServerStats->m_nINTBase;
+        nNew = pServerStats->GetINTStat();
         m_lblInt.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblIntMod, static_cast<signed char>(pServerStats->m_nINTMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblInt, nDiff);
         SetLabelBonusPenaltyColour(m_lblIntMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nCONBase;
-        unsigned char nNew = pServerStats->GetCONStat();
+        nOld = pServerStats->m_nCONBase;
+        nNew = pServerStats->GetCONStat();
         m_lblCon.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblConMod, static_cast<signed char>(pServerStats->m_nCONMod));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblCon, nDiff);
         SetLabelBonusPenaltyColour(m_lblConMod, nDiff);
     }
     {
-        unsigned char nOld = pServerStats->m_nDEXBase;
-        unsigned char nNew = pServerStats->GetDEXStat();
+        nOld = pServerStats->m_nDEXBase;
+        nNew = pServerStats->GetDEXStat();
         m_lblDex.m_text.m_params.SetText(CExoString(static_cast<int>(nNew)));
         SetModText(m_lblDexMod, static_cast<signed char>(pServerStats->GetDEXMod(1)));
-        int nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
+        nDiff = static_cast<int>(nNew) - static_cast<int>(nOld);
         SetLabelBonusPenaltyColour(m_lblDex, nDiff);
 
         if (nOld == nNew) {
-            int nModDiff = static_cast<signed char>(pServerStats->GetDEXMod(1))
+            nModDiff = static_cast<signed char>(pServerStats->GetDEXMod(1))
                            - static_cast<signed char>(pServerStats->GetDEXMod(0));
             SetLabelBonusPenaltyColour(m_lblDexMod, nModDiff);
         } else {
@@ -674,27 +685,27 @@ void CSWGuiInGameCharacter::SetStats()
         }
     }
 
-    int nBonus = 0;
+    nBonus = 0;
     m_lblFortitudeStat.m_text.m_params.SetText(
         CExoString(static_cast<int>(pServerStats->GetFortSavingThrow(0))));
-    int nFortSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
+    int nSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
         CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nBonus, 0, 0, SAVING_THROW_FORT, 0,
         CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-    SetLabelBonusPenaltyColour(m_lblFortitudeStat, nFortSave);
+    SetLabelBonusPenaltyColour(m_lblFortitudeStat, nSave);
 
     m_lblReflexStat.m_text.m_params.SetText(
         CExoString(static_cast<int>(pServerStats->GetReflexSavingThrow(0))));
-    int nReflexSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
+    nSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
         CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nBonus, 0, 0, SAVING_THROW_REFLEX, 0,
         CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-    SetLabelBonusPenaltyColour(m_lblReflexStat, nReflexSave);
+    SetLabelBonusPenaltyColour(m_lblReflexStat, nSave);
 
     m_lblWillStat.m_text.m_params.SetText(
         CExoString(static_cast<int>(pServerStats->GetWillSavingThrow(0))));
-    int nWillSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
+    nSave = pCreature->GetServerCreature()->GetTotalEffectBonus(
         CSWSCreature::EFFECT_BONUS_SAVING_THROW, 0, nBonus, 0, 0, SAVING_THROW_WILL, 0,
         CSWSCreature::EFFECT_BONUS_ANY, CSWSCreature::EFFECT_BONUS_ANY, 0, 0);
-    SetLabelBonusPenaltyColour(m_lblWillStat, nWillSave);
+    SetLabelBonusPenaltyColour(m_lblWillStat, nSave);
 
     m_lblExperienceStat.m_text.m_params.SetText(CExoString(pServerStats->m_nExperience));
     m_lblNeededXp.m_text.m_params.SetText(
@@ -720,10 +731,8 @@ void CSWGuiInGameCharacter::SetStats()
             pStats->m_alignmentGoodEvil);
 
         m_pCreature->AttachToScene(m_view3DChar.m_scene.m_pScene);
-        Vector vDirection;
-        m_pCreature->SetPosition(vDirection);
-        vDirection = Vector(1.0f, 0.0f, 0.0f);
-        m_pCreature->SetOrientation(vDirection);
+        m_pCreature->SetPosition(Vector(0.0f, 0.0f, 0.0f));
+        m_pCreature->SetOrientation(Vector(1.0f, 0.0f, 0.0f));
         m_pCreature->Setup3DScene(m_view3DChar, pCreature, 0, 1);
     }
 
@@ -947,12 +956,11 @@ __attribute__((weak)) void CSWGuiInGameCharacter::SetModText(CSWGuiLabel& lbl, i
 extern int quaternionidentityoptimization;
 
 // Rotates a vector by a unit quaternion; the identity rotation is short-circuited.
-static inline Vector RotateVector(Quaternion q, const Vector& v)
+static inline __attribute__((always_inline)) Vector RotateVector(Quaternion q, const Vector& v)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
         return v;
-    float x = q.x, y = q.y, z = q.z;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, wx = x * w;
     float yz = y * z, wy = y * w;
@@ -1233,18 +1241,20 @@ void CSWGuiInGameCharacter::OnSwitchLeft(CSWGuiControl* pControl)
         m_btnChange1.m_borderHilight.m_params.m_fillImage);
     m_btnChange2.m_tail.m_nUserData = m_btnChange1.m_tail.m_nUserData;
 
-    CSWCCreature* pNPC;
-    int i;
-    for (i = nCur - 1; i >= 0; i--) {
+    for (int i = nCur - 1; i >= 0; i--) {
         if (i == m_nCurrentNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
+        CSWCCreature* pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pNPC)
-            goto found;
+        if (pNPC) {
+            m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange1.m_tail.m_nUserData = i;
+            return;
+        }
     }
     if (static_cast<unsigned char>(m_nCurrentNPC) != 0xff && static_cast<char>(m_btnChange2.m_tail.m_nUserData) != -1) {
         m_btnChange1.m_border.m_params.SetFillImage(
@@ -1254,22 +1264,21 @@ void CSWGuiInGameCharacter::OnSwitchLeft(CSWGuiControl* pControl)
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
-    for (i = 8; i > nCur; i--) {
+    for (int i = 8; i > nCur; i--) {
         if (i == m_nCurrentNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
+        CSWCCreature* pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pNPC)
-            goto found;
+        if (pNPC) {
+            m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange1.m_tail.m_nUserData = i;
+            return;
+        }
     }
-    return;
-found:
-    m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
-    m_btnChange1.m_tail.m_nUserData = i;
 }
 
 void CSWGuiInGameCharacter::OnSwitchRight(CSWGuiControl* pControl)
@@ -1284,18 +1293,20 @@ void CSWGuiInGameCharacter::OnSwitchRight(CSWGuiControl* pControl)
         m_btnChange2.m_borderHilight.m_params.m_fillImage);
     m_btnChange1.m_tail.m_nUserData = m_btnChange2.m_tail.m_nUserData;
 
-    CSWCCreature* pNPC;
-    int i;
-    for (i = nCur + 1; i < 9; i++) {
+    for (int i = nCur + 1; i < 9; i++) {
         if (i == m_nCurrentNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
+        CSWCCreature* pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pNPC)
-            goto found;
+        if (pNPC) {
+            m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_tail.m_nUserData = i;
+            return;
+        }
     }
     if (static_cast<unsigned char>(m_nCurrentNPC) != 0xff) {
         m_btnChange2.m_border.m_params.SetFillImage(
@@ -1305,22 +1316,21 @@ void CSWGuiInGameCharacter::OnSwitchRight(CSWGuiControl* pControl)
         m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
-    for (i = 0; i < nCur; i++) {
+    for (int i = 0; i < nCur; i++) {
         if (i == m_nCurrentNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
+        CSWCCreature* pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pNPC)
-            goto found;
+        if (pNPC) {
+            m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_tail.m_nUserData = i;
+            return;
+        }
     }
-    return;
-found:
-    m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
-    m_btnChange2.m_tail.m_nUserData = i;
 }
 
 void CSWGuiInGameCharacter::OnIosAutoButton(CSWGuiControl* pControl)

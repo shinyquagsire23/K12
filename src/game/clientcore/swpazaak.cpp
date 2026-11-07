@@ -189,10 +189,9 @@ void CSWPazaak::ShuffleDeck()
         nLeft--;
     }
 #else
-    CPazaakCard* pOut = m_deck;
     CPazaakCard* pTail = &localDeck[39];
-    int64_t remaining = 40;
-    do {
+    CPazaakCard* pOut = m_deck;
+    for (int64_t remaining = 40; remaining != 0; remaining--) {
         int idx = PazaakRand() % static_cast<int>(remaining);
         *pOut = localDeck[idx];
         pOut++;
@@ -201,8 +200,7 @@ void CSWPazaak::ShuffleDeck()
         pTail->m_bIsNegative = 0;
         pTail->m_nValue = 0;
         pTail--;
-        remaining--;
-    } while (remaining != 0);
+    }
 #endif
     m_nDeckIndex = 39;
 }

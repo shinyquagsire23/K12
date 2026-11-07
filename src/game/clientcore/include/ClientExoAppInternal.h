@@ -250,11 +250,23 @@ public:
     char                _padc8[0xcc-0xc8];
     unsigned long long  m_nReserved5;
     CCharacterGenerationPanel* m_pCharGenPanel;
-    int                 m_bPazaakIsRunning;
-    CExoString          m_sPazaakEndScript;
-    int                 m_pazaakResultB;
-    int                 m_pazaakResultA;
-    int                 m_nPazaakOpponentDeck;
+    // The pazaak game the client is running: StartPazaakGame arms it, EndPazaakGame records the
+    // result and runs the end script.
+    struct CPazaakData {
+        int        m_bIsRunning;
+        CExoString m_sEndScript;
+        int        m_nWager;
+        int        m_bWon;
+        int        m_nOpponentDeck;
+        CPazaakData()
+        {
+            m_bIsRunning = 0;
+            m_nWager = 0;
+            m_bWon = 0;
+            m_nOpponentDeck = 0;
+        }
+    };
+    CPazaakData         m_pazaak;
     CExoFile*           m_pCaptureEventFile;
     int                 m_captureEvents;
     int                 m_captureEventPlayBack;
@@ -487,7 +499,7 @@ public:
     void             RestoreMousePositionTo(int x, int y);
     int              GetPauseState(unsigned char mask);
     CSWGuiStore*  GetStorePanel();
-    int              GetActivePauseState();
+    unsigned char    GetActivePauseState();
     CAurCamera*   GetModuleCamera();
     void             UpdateMoviePlayer();
     void             PerformMButtonDownAction();
@@ -674,7 +686,11 @@ public:
     void PlayMovieQueue(int a);
     void StopSoundPlayingInDialog();
     void ResumeStreamMusicForMovie();
+#if !KOTOR1 || !defined(__arm__)  // K1 armv7 inlines it into SetInputClass
     void HideMouse(int a) __attribute__((noinline));
+#else
+    void HideMouse(int a);
+#endif
     void IndicateObject(CSWCObject* a, int b);
     void ClearCachedCreatures(CSWCCreature* a);
     void SetLoadScreenHint(uint64_t a);
@@ -702,7 +718,11 @@ public:
     void LookUpAndPerformRumbleWithCutOff(int a, unsigned char b, const Vector& c);
     int  CrownFutureLeader();
     void EnableMouseAtEndOfLoadModuleMovie();
+#if !KOTOR1 || !defined(__arm__)  // K1 armv7 inlines it into SetInputClass
     void ShowMouse(int a) __attribute__((noinline));
+#else
+    void ShowMouse(int a);
+#endif
     CExoString GetDisplayCharacterForKey(int a);
     void SetLastPartyMemberTempKilled(unsigned long long a);
     void ShutDownMoviePlayer();

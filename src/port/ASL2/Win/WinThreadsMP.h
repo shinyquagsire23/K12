@@ -44,14 +44,14 @@ public:
     int m_nRefCount;
 };
 
-// A recursive critical section that spins on a try-lock, then takes a blocking lock. Enter is
+// A recursive critical section that spins on a try-lock, then takes a blocking lock. Lock is
 // defined in the header because every constructor uses it.
 class ASLCriticalSection {
 public:
     ASLCriticalSection();
     ~ASLCriticalSection();
 
-    void Enter() {
+    void Lock() {
         int n = m_nSpinCount;
         while (n != 0 && pthread_mutex_trylock(&m_mutex) != 0)
             n--;
@@ -64,12 +64,12 @@ public:
     int             m_nSpinCount;
 };
 
-// Scoped enter/leave. The source spells the Enter and Leave pairs out at each site instead of using
+// Scoped lock/leave. The source spells the Lock and Leave pairs out at each site instead of using
 // this type.
 class ASLScopeLock {
     ASLCriticalSection* m_pLock;
 public:
-    explicit ASLScopeLock(ASLCriticalSection& lock) : m_pLock(&lock) { m_pLock->Enter(); }
+    explicit ASLScopeLock(ASLCriticalSection& lock) : m_pLock(&lock) { m_pLock->Lock(); }
     ~ASLScopeLock() { m_pLock->Leave(); }
 };
 

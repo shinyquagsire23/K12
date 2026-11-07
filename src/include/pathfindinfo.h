@@ -49,19 +49,23 @@ public:
         int    m_nHexPoint;
         Vector m_vPoint;
     };
-    HexTransit m_transit[2];
+    HexTransit m_transitEntry;
+    HexTransit m_transitExit;
 };
 
 inline void CAvoidCreature::Reset()
 {
     __builtin_memset(&m_vHexPoints, 0, sizeof(m_vHexPoints));
-    for (int i = 0; i < 2; i++) {
-        m_transit[i].m_nPathSegment = -1;
-        m_transit[i].m_nHexPoint = -1;
-        m_transit[i].m_vPoint.x = 0.0f;
-        m_transit[i].m_vPoint.y = 0.0f;
-        m_transit[i].m_vPoint.z = 0.0f;
-    }
+    m_transitEntry.m_nPathSegment = -1;
+    m_transitEntry.m_nHexPoint = -1;
+    m_transitEntry.m_vPoint.x = 0.0f;
+    m_transitEntry.m_vPoint.y = 0.0f;
+    m_transitEntry.m_vPoint.z = 0.0f;
+    m_transitExit.m_nPathSegment = -1;
+    m_transitExit.m_nHexPoint = -1;
+    m_transitExit.m_vPoint.x = 0.0f;
+    m_transitExit.m_vPoint.y = 0.0f;
+    m_transitExit.m_vPoint.z = 0.0f;
 }
 
 inline CAvoidCreature::CAvoidCreature()
@@ -124,17 +128,11 @@ public:
     void HandlePathfindError(int nCode, char* pszReason);
 
     int                m_bClientSidePath;
-    union {
-        int            m_nPersonalSpaceBits;
-        float          m_fPersonalSpace;
-    };
+    float              m_fPersonalSpace;
     float              m_fCrePersonalSpace;
     float              m_fDesiredOffset;
     float              m_fCameraSpace;
-    union {
-        float          m_fHeightAlias;
-        float          m_fHeight;
-    };
+    float              m_fHeight;
     float              m_fHitDistance;
     int                m_nPathType;
     int                m_nReserved1;

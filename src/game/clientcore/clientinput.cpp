@@ -49,6 +49,12 @@ unsigned char g_gameMenuCancelledActivateInGameGuiButton;
 #endif
 bool g_bFreeLook;
 void* g_pDialogIconModel;
+// The mouse-over highlight colours; HiliteAreaObjects spells its own.
+Vector g_vCreatureEnemyHighlight(1.0f, 0.1f, 0.1f);
+Vector g_vCreatureFriendHighlight(0.3f, 1.0f, 0.3f);
+Vector g_vCreatureNeutralHighlight(0.4f, 0.4f, 1.0f);
+Vector g_vItemHighlight(0.3f, 1.0f, 1.0f);
+Vector g_vDoorHighlight(0.3f, 1.0f, 1.0f);
 
 extern char* g_asMouseCursorNames[];
 
@@ -177,12 +183,11 @@ static long long g_lLastLButtonSnapshot;
 extern Quaternion YawPitchRoll(float, float, float);
 
 // Rotates a vector by a quaternion, with an early-out for the identity rotations.
-static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
         return v;
-    float x = q.x, y = q.y, z = q.z;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = x * w, wy = y * w, wz = z * w;
@@ -248,9 +253,6 @@ int GetGameobjectHit(CHitInfo& hit, CSWCObject** ppObject)
 // hit check, and the player and driving camera control.
 void CClientExoAppInternal::ProcessInput(float fDelta)
 {
-#if !KOTOR1
-    Vector hitPos = { 0.0f, 0.0f, 0.0f };
-#endif
     unsigned long long nMouseTarget = OBJECT_INVALID;
 
     // Consume the free-look latch before the pause gates.
@@ -287,12 +289,11 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
     float fMouseDelta = static_cast<float>(static_cast<int>(m_pPauseTimer->GetSnapshotTimeDifference())) / 1000000.0f;
     g_pExoInput->UpdateMouseDelta(fMouseDelta);
 
+#if !KOTOR1  // K1 has no 107PER gate
     // The "107PER" long-perk module forces the event walk and skips the hit check.
     bool b107per = false;
-#if !KOTOR1  // K1 has no 107PER gate
     if (g_pAppManager->m_pClientExoApp->GetModule() != 0) {
-        CSWCModule* pProbe = g_pAppManager->m_pClientExoApp->GetModule();
-        CExoString sProbeName(pProbe->m_sModuleDisplayName);
+        CExoString sProbeName(g_pAppManager->m_pClientExoApp->GetModule()->m_sModuleDisplayName);
         if (sProbeName.CompareNoCase("107PER") == 0)
             b107per = false;
         else
@@ -300,7 +301,11 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
     }
 #endif
 
+#if KOTOR1
+    if (g_pExoInput->GetActive() != 0) {
+#else
     if (g_pExoInput->GetActive() != 0 || b107per) {
+#endif
         int nEvents = 0;
         CExoArrayList<CExoInputEvent> events = g_pExoInput->GetEvents(nEvents, m_inputClass);
 
@@ -371,87 +376,89 @@ void CClientExoAppInternal::ProcessInput(float fDelta)
         }
 
         // Per-event playback and GUI dispatch.
-        if (nEvents > 0) {
-            unsigned int uEventIdx = 0;
-            int nHandled = 0;
-            for (int i = 0; i < nEvents; i++, uEventIdx++) {
-                if (g_pAppManager->m_pClientExoApp->GetCaptureEvents() != 0 &&
-                    g_pAppManager->m_pClientExoApp->GetCaptureEventFile() != 0) {
-                    CWorldTimer* pCapTimer = g_pAppManager->m_pClientExoApp->GetWorldTimer();
-                    unsigned int nCapTime = static_cast<unsigned int>(static_cast<uint64_ll_t>(pCapTimer->GetSnapshotTime()) / 1000);
-                    CExoFile* pCapFile = static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile());
-                    g_pExoInput->WriteEventToFile(nCapTime, static_cast<int>(uEventIdx & 0xffffffff), pCapFile);
-                }
+        unsigned int uEventIdx = 0;
+        int nHandled = 0;
+        for (int i = 0; i < nEvents; i++, uEventIdx++) {
+            CWorldTimer* pCapTimer;
+            unsigned int nCapTime;
+            CExoFile* pCapFile;
+            CGuiInGame* pGuiOpt;
+            if (g_pAppManager->m_pClientExoApp->GetCaptureEvents() != 0 &&
+                g_pAppManager->m_pClientExoApp->GetCaptureEventFile() != 0) {
+                pCapTimer = g_pAppManager->m_pClientExoApp->GetWorldTimer();
+                nCapTime = static_cast<unsigned int>(static_cast<uint64_ll_t>(pCapTimer->GetSnapshotTime()) / 1000);
+                pCapFile = static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile());
+                g_pExoInput->WriteEventToFile(nCapTime, static_cast<int>(uEventIdx & 0xffffffff), pCapFile);
+            }
 
-                CExoInputEvent& ev = events.m_pArray[i];
-                int nObj = ev.m_nValue;
-                int nId = ev.m_pEvent->m_nId;
+            CExoInputEvent& ev = events.m_pArray[i];
+            int nObj = ev.m_nValue;
+            int nId = ev.m_pEvent->m_nId;
 #if !KOTOR1
-                g_pAppManager->m_pClientExoApp->GetInGameGui();
+            g_pAppManager->m_pClientExoApp->GetInGameGui();
 #endif
 
-                if (static_cast<unsigned>(nId - INPUTEVENT_GUI_A) >= INPUTEVENT_MOUSE_X - INPUTEVENT_GUI_A) {
-                    CGuiInGame* pGuiOpt = g_pAppManager->m_pClientExoApp->GetInGameGui();
-                    if (pGuiOpt->m_swGuiToggleState != CGuiInGame::SWGUI_STATE_SHOWN) {
-                        switch (nId) {
-                            case INPUTEVENT_KEY_ESCAPE: case INPUTEVENT_KEY_RETURN:
-                            case INPUTEVENT_KEY_UP: case INPUTEVENT_KEY_DOWN:
-                            case INPUTEVENT_KEY_LEFT: case INPUTEVENT_KEY_RIGHT:
-                            case INPUTEVENT_KEY_SPACE: case INPUTEVENT_KEY_NUMPAD_ENTER:
-                            case INPUTEVENT_CHANGE_CHARACTER: case INPUTEVENT_GUI:
+            if (static_cast<unsigned>(nId - INPUTEVENT_GUI_A) >= INPUTEVENT_MOUSE_X - INPUTEVENT_GUI_A) {
+                pGuiOpt = g_pAppManager->m_pClientExoApp->GetInGameGui();
+                if (pGuiOpt->m_swGuiToggleState != CGuiInGame::SWGUI_STATE_SHOWN) {
+                    switch (nId) {
+                        case INPUTEVENT_KEY_ESCAPE: case INPUTEVENT_KEY_RETURN:
+                        case INPUTEVENT_KEY_UP: case INPUTEVENT_KEY_DOWN:
+                        case INPUTEVENT_KEY_LEFT: case INPUTEVENT_KEY_RIGHT:
+                        case INPUTEVENT_KEY_SPACE: case INPUTEVENT_KEY_NUMPAD_ENTER:
+                        case INPUTEVENT_CHANGE_CHARACTER: case INPUTEVENT_GUI:
 #if KOTOR1
-                            case INPUTEVENT_KEY_CAPSLOCK:
+                        case INPUTEVENT_KEY_CAPSLOCK:
 #endif
-                            case INPUTEVENT_PREV_MENU: case INPUTEVENT_NEXT_MENU:
-                                break;               // these always go to the GUI
-                            default:
-                                if (static_cast<unsigned>(nId - INPUTEVENT_DIALOG_1) > INPUTEVENT_DIALOG_9 - INPUTEVENT_DIALOG_1)
-                                    goto handle_input_event;
-                        }
-                        goto gui_rule;
+                        case INPUTEVENT_PREV_MENU: case INPUTEVENT_NEXT_MENU:
+                            break;               // these always go to the GUI
+                        default:
+                            if (static_cast<unsigned>(nId - INPUTEVENT_DIALOG_1) > INPUTEVENT_DIALOG_9 - INPUTEVENT_DIALOG_1)
+                                goto handle_input_event;
                     }
+                    goto gui_rule;
+                }
 handle_input_event:
-                    nHandled = HandleInputEvent(nId, nObj);
-                    goto cursor_reset;
-                }
-                // Ids outside the console action-bar range fall through to gui_rule, not past it.
+                nHandled = HandleInputEvent(nId, nObj);
+                goto cursor_reset;
+            }
+            // Ids outside the console action-bar range fall through to gui_rule, not past it.
 gui_rule:
-                // The GUI rule handles the action-bar, menu, panel and quick-key ids.
+            // The GUI rule handles the action-bar, menu, panel and quick-key ids.
 #if KOTOR1  // K1 restores the camera and still offers the event to the GUI
-                if (nObj != 0 && m_pClientOptions->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
-                    g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bControllerPauseActive == 0) {
-                    g_bShowIndicator = 1;
-                    GetModule()->RestoreCamera();
-                    SetInputClass(INPUTCLASS_GAME, 1);
-                }
+            if (nObj != 0 && m_pClientOptions->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK &&
+                g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bControllerPauseActive == 0) {
+                g_bShowIndicator = 1;
+                GetModule()->RestoreCamera();
+                SetInputClass(INPUTCLASS_GAME, 1);
+            }
+            if ((m_pInGameGui->m_swGuiToggleState == CGuiInGame::SWGUI_STATE_SHOWN) || ((m_inputClass & ~1u) == INPUTCLASS_GUI))
+                m_pSWGuiManager->HandleInputEvent(nId, nObj);
+#else
+            if ((nObj == 0) || (m_pClientOptions->m_nCameraMode != CClientOptions::CAMERA_MODE_FREE_LOOK) ||
+                (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bControllerPauseActive != 0)) {
                 if ((m_pInGameGui->m_swGuiToggleState == CGuiInGame::SWGUI_STATE_SHOWN) || ((m_inputClass & ~1u) == INPUTCLASS_GUI))
                     m_pSWGuiManager->HandleInputEvent(nId, nObj);
-#else
-                if ((nObj == 0) || (m_pClientOptions->m_nCameraMode != CClientOptions::CAMERA_MODE_FREE_LOOK) ||
-                    (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bControllerPauseActive != 0)) {
-                    if ((m_pInGameGui->m_swGuiToggleState == CGuiInGame::SWGUI_STATE_SHOWN) || ((m_inputClass & ~1u) == INPUTCLASS_GUI))
-                        m_pSWGuiManager->HandleInputEvent(nId, nObj);
-                } else {
-                    g_bShowIndicator = 1;
-                    GetModule()->RestoreCamera();
-                    SetInputClass(INPUTCLASS_GAME, 1);
-                }
+            } else {
+                g_bShowIndicator = 1;
+                GetModule()->RestoreCamera();
+                SetInputClass(INPUTCLASS_GAME, 1);
+            }
 #endif
 cursor_reset:
 #if !KOTOR1  // K1 moves the GUI cursor even when it is hidden
-                if (IsCursorCurrentlyVisible() == 0)
-                    goto cursor_hidden;
+            if (IsCursorCurrentlyVisible() == 0)
+                goto cursor_hidden;
 #endif
-                if (bMouseCamToggle == 0) {
-                    if (m_inputClass == INPUTCLASS_FREELOOK) goto cursor_hidden;
-                } else if (m_inputClass != INPUTCLASS_GUI) goto cursor_hidden;
-                m_pSWGuiManager->HandleMouseMove(m_restoreMouseX, m_restoreMouseY);
-                nHandled = 0;
-                continue;
+            if (bMouseCamToggle == 0) {
+                if (m_inputClass == INPUTCLASS_FREELOOK) goto cursor_hidden;
+            } else if (m_inputClass != INPUTCLASS_GUI) goto cursor_hidden;
+            m_pSWGuiManager->HandleMouseMove(m_restoreMouseX, m_restoreMouseY);
+            nHandled = 0;
+            continue;
 cursor_hidden:
-                if (nHandled != 0 && g_pGuiMan != 0)
-                    g_pGuiMan->ResetToolTipTimer();
-            }
+            if (nHandled != 0 && g_pGuiMan != 0)
+                g_pGuiMan->ResetToolTipTimer();
         }
 
         // Mouse-over and hit-check resolution. A missing module, the mouse-cam toggle or a missing
@@ -489,25 +496,26 @@ cursor_hidden:
             // The full hit check covers the ignore list, the ray-cast, the per-type gates and the
             // mouse-over target.
             CHitInfo chit(0, ~HITMATERIAL_TRIGGER, 0);
-#if KOTOR1
             Vector hitPos = { 0.0f, 0.0f, 0.0f };
-#endif
             int nGuiMX = g_pGuiMan->m_currentMousePos.x;
             int nGuiMY = g_pGuiMan->m_currentMousePos.y;
             short nGuiW = g_pGuiMan->m_nScreenHeight;
             EmptyHitcheckIgnoreList();
             AddObjectToHitcheckIgnoreList(m_playerCreatureId);
             CSWCObject* pLeash = 0;
+            CAurCamera* pCam;
+            CAurObject* pHitHead;
 hitcheck_retry:
             SetHitcheckIgnoreList(&chit.m_ignoreList);
-            CAurCamera* pCam = GetModule()->m_pCamera;
+            pCam = GetModule()->m_pCamera;
             pCam->HitCheck(nGuiMX, static_cast<int>(nGuiW) - nGuiMY, &hitPos, &chit);
             {
-                CAurObject* pHitHead = chit.m_hitObject.m_pObject;
+                pHitHead = chit.m_hitObject.m_pObject;
                 if (pHitHead == 0 || static_cast<Gob*>(pHitHead)->GetExternalData() == 0)
                     goto mouseover_scan;
                 // The type comes from the hit object, not from its external data.
-                switch (pHitHead->GetExternalDataType()) {
+                int nType = pHitHead->GetExternalDataType();
+                switch (nType) {
                     case GAME_OBJECT_TYPE_PLACEABLE:
                         pLeash = static_cast<CGameObject*>(static_cast<Gob*>(pHitHead)->GetExternalData())->AsSWCObject();
                         if (pLeash == 0)
@@ -561,41 +569,39 @@ hitcheck_retry:
                     default:
                         goto mouseover_scan;
                 }
-            }
-            // A creature leashes to the object it points at. With no leash it is rejected only
-            // as a corpse, which is also where a dead or 0-HP party member lands.
-            if (pLeash->AsSWCCreature() != 0) {
-                if (pLeash->AsSWCCreature()->m_oidBodyBag == OBJECT_INVALID) {
-                    if (pLeash->AsSWCCreature() != 0) {
-                        if (pLeash->AsSWCCreature()->GetServerCreature() != 0 &&
-                            pLeash->AsSWCCreature()->GetServerCreature()->GetDead() == 0) {
-                            CSWSCreature* pSrv = pLeash->AsSWCCreature()->GetServerCreature();
-                            if (pSrv->GetDeadTemp() == 0)
+                // A creature leashes to the object it points at. With no leash it is rejected only
+                // as a corpse, which is also where a dead or 0-HP party member lands.
+                if (pLeash->AsSWCCreature() != 0) {
+                    if (pLeash->AsSWCCreature()->m_oidBodyBag == OBJECT_INVALID) {
+                        if (pLeash->AsSWCCreature() != 0) {
+                            if (pLeash->AsSWCCreature()->GetServerCreature() != 0 &&
+                                pLeash->AsSWCCreature()->GetServerCreature()->GetDead() == 0 &&
+                                pLeash->AsSWCCreature()->GetServerCreature()->GetDeadTemp() == 0)
                                 goto leash_resolve;
+                            if (GetModule()->m_pArea->GetIsObjectCorpse(
+                                    pLeash->AsSWCCreature()->m_objectId) != 0)
+                                goto mouseover_scan;
                         }
-                        if (GetModule()->m_pArea->GetIsObjectCorpse(
-                                pLeash->AsSWCCreature()->m_objectId) != 0)
-                            goto mouseover_scan;
+                    } else {
+                        // An id that is not an object keeps the leash.
+                        CGameObject* pAtt = g_pAppManager->m_pClientExoApp->GetGameObject(
+                            pLeash->AsSWCCreature()->m_oidBodyBag);
+                        if (pAtt != 0 && pAtt->AsSWCObject() != 0) {
+                            pLeash = pAtt->AsSWCObject();
+                            if (pLeash == 0)
+                                goto mouseover_scan;
+                        }
                     }
-                } else {
-                    // An id that is not an object keeps the leash.
-                    CGameObject* pAtt = g_pAppManager->m_pClientExoApp->GetGameObject(
-                        pLeash->AsSWCCreature()->m_oidBodyBag);
-                    if (pAtt != 0 && pAtt->AsSWCObject() != 0) {
-                        pLeash = pAtt->AsSWCObject();
+                }
+leash_resolve:
+                // An equipped item leashes to its holder.
+                if (pLeash->AsSWCItem() != 0) {
+                    CSWCCreature* pHolder = pLeash->AsSWCItem()->GetEquippedBy();
+                    if (pHolder != 0) {
+                        pLeash = pHolder->AsSWCObject();
                         if (pLeash == 0)
                             goto mouseover_scan;
                     }
-                }
-            }
-leash_resolve:
-            // An equipped item leashes to its holder.
-            if (pLeash->AsSWCItem() != 0) {
-                CSWCCreature* pHolder = pLeash->AsSWCItem()->GetEquippedBy();
-                if (pHolder != 0) {
-                    pLeash = pHolder->AsSWCObject();
-                    if (pLeash == 0)
-                        goto mouseover_scan;
                 }
             }
             if (GetPlayerCreature() != 0) {
@@ -644,16 +650,17 @@ mouseover_scan:
                     CSWCObject* pBest = 0;
                     float fBest = 3.402823466e+38f;
                     CSWCCreature* pPC3 = GetPlayerCreature();
+                    Vector vO = { 0,0,0 };
+                    char cSee;
                     for (int k = 0; k < m_visibleTable.m_count; k++) {
                         CGameObject* pObj = GetGameObject(m_visibleTable.m_pArray[k].m_objectId);
                         if (pObj != 0 && pObj->AsSWCObject() != 0) {
-                            char cSee = m_visibleTable.m_pArray[k].m_canSee;
+                            cSee = m_visibleTable.m_pArray[k].m_canSee;
                             if (cSee == static_cast<char>(-1)) {
                                 cSee = static_cast<char>(pPC3->CanSee(pObj->AsSWCObject()));
                                 m_visibleTable.m_pArray[k].m_canSee = cSee;
                             }
                             if (cSee != 0) {
-                                Vector vO = { 0,0,0 };
                                 pObj->AsSWCObject()->GetReticlePoint(vO);
                                 Vector vCam = GetModule()->m_pCamera->GetPosition();
                                 float fPCx = pPC3->m_position.x;
@@ -667,14 +674,14 @@ mouseover_scan:
 #else
                                 float fR2 = pObj->AsSWCObject()->IsHostile() ? 900.0f : 100.0f;
 #endif
-                                float fRad = pObj->AsSWCObject()->GetStickyMouseThreshhold();
-                                float fDx = vO.x - fMouseX;
-                                float fDy = vO.y - fMouseY;
-                                float fD2 = fDx * fDx + fDy * fDy + vO.z * vO.z;
-                                float fFacing = (fPCx - vCam.x) * (fObjX - vCam.x)
-                                                + (fPCy - vCam.y) * (fObjY - vCam.y) + 0.0f;
-                                float fDist2 = (fObjX - fPCx) * (fObjX - fPCx)
-                                               + (fObjY - fPCy) * (fObjY - fPCy) + 0.0f;
+                                float fRad, fD2, fFacing, fDist2;
+                                fRad = pObj->AsSWCObject()->GetStickyMouseThreshhold();
+                                fD2 = (vO.x - fMouseX) * (vO.x - fMouseX) + (vO.y - fMouseY) * (vO.y - fMouseY) +
+                                      vO.z * vO.z;
+                                fFacing = (fPCx - vCam.x) * (fObjX - vCam.x)
+                                          + (fPCy - vCam.y) * (fObjY - vCam.y) + 0.0f;
+                                fDist2 = (fObjX - fPCx) * (fObjX - fPCx)
+                                         + (fObjY - fPCy) * (fObjY - fPCy) + 0.0f;
                                 if (fD2 <= fRad && fD2 < fBest && fFacing >= 0.0f &&
                                     !(fDist2 > fR2)) {
                                     fBest = fD2;
@@ -727,23 +734,40 @@ mouse_over_joint:
 
     // Log the player position to the capture log with a control-frame marker.
     CExoString sLog;
-    CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-    pApp->GetPlayerCreature();
-    if (pApp->GetCaptureEventFile() != 0) {
-        CSWCCreature* pPC = pApp->GetPlayerCreature();
+    g_pAppManager->m_pClientExoApp->GetPlayerCreature();
+    if (g_pAppManager->m_pClientExoApp->GetCaptureEventFile() != 0) {
+        float fPX, fPY, fPZ;
+        CSWCCreature* pPC = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
         if (pPC != 0) {
-            float fPX = pPC->m_position.x, fPY = pPC->m_position.y, fPZ = pPC->m_position.z;
-            CWorldTimer* pWT = pApp->GetWorldTimer();
-            sLog.Format(const_cast<char*>("%d %c %f %f %f\n"), static_cast<unsigned int>(static_cast<uint64_ll_t>(pWT->GetSnapshotTime()) / 1000),
+            fPX = pPC->m_position.x;
+            fPY = pPC->m_position.y;
+            fPZ = pPC->m_position.z;
+            sLog.Format(const_cast<char*>("%d %c %f %f %f\n"),
+                        static_cast<unsigned int>(static_cast<uint64_ll_t>(
+                            g_pAppManager->m_pClientExoApp->GetWorldTimer()->GetSnapshotTime()) / 1000),
                         'X', fPX, fPY, fPZ);
-            static_cast<CExoFile*>(pApp->GetCaptureEventFile())->Write(sLog);
+            static_cast<CExoFile*>(g_pAppManager->m_pClientExoApp->GetCaptureEventFile())->Write(sLog);
         }
     }
 
     // Player control and camera look, in the non-driving and driving variants.
     {
-        CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-        CSWCCreature* pChar = pParty->GetCharacter(0);
+        CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
+        float fA, fB, fC, fD, fE, fF;
+        float fCamAxisX, fCamAxisY;
+        CAurBehavior* pBeh;
+        float fMoveX, fMoveY;
+        CSWSCreature* pCS;
+        int nDead;
+        CSWCameraOnAStick* pCamStick;
+#if KOTOR1
+        float fSide;
+        float fWalk;
+        float fTimer;
+#else
+        float fPark;
+        float fSpeed;
+#endif
         int bCharDead = GetControlledCharacterDead();
 #ifdef K2_HOST_BUILD
         if (k2host_move_keys_held()) {
@@ -765,22 +789,22 @@ mouse_over_joint:
                  g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_NAVIGATE)) {
                 // When not driving, the navigate camera's pivot writes and the free-look AcclTilt
                 // run, with no player move.
-                CClientOptions* pOptsA = g_pAppManager->m_pClientExoApp->GetClientOptions();
-                if (pOptsA->m_nCameraMode == CClientOptions::CAMERA_MODE_NAVIGATE) {
-                    float fA = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_Y, INPUTCLASS_GAME));
-                    float fB = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_X, INPUTCLASS_GAME));
+                if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_NAVIGATE) {
+                    fA = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_Y, INPUTCLASS_GAME));
+                    fB = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_X, INPUTCLASS_GAME));
                     if (fA == 0.0f && fB == 0.0f) {
                         fB = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_LEFT_RIGHT, 0));
                         fA = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_UP_DOWN, 0));
                     }
 #if !KOTOR1  // K1's pivot camera ignores the fade
-                    int bFade = g_pAppManager->m_pClientExoApp->GetInGameGui()->GetGlobalFadeActive();
+                    int bFade;
+                    bFade = g_pAppManager->m_pClientExoApp->GetInGameGui()->GetGlobalFadeActive();
                     if (bFade != 0)
                         fA = 0.0f;
 #endif
-                    float fC = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_CAMERA_TILT, INPUTCLASS_GAME));
-                    float fD = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_CAMERA_TURN, INPUTCLASS_GAME));
-                    CAurBehavior* pBeh = g_pAppManager->m_pClientExoApp->GetModule()->m_pCamera->GetBehavior(BEHAVIOR_CURRENT);
+                    fC = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_CAMERA_TILT, INPUTCLASS_GAME));
+                    fD = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_CAMERA_TURN, INPUTCLASS_GAME));
+                    pBeh = g_pAppManager->m_pClientExoApp->GetModule()->m_pCamera->GetBehavior(BEHAVIOR_CURRENT);
                     if (pBeh != 0 && pBeh->GetType() == BEHAVIOR_CAMERA_NAVIGATE) {
 #if KOTOR1
                         CSWCameraNavigate* pNav = static_cast<CSWCameraNavigate*>(pBeh);
@@ -802,10 +826,9 @@ mouse_over_joint:
 #endif
                     }
                 }
-                CClientOptions* pOptsB = g_pAppManager->m_pClientExoApp->GetClientOptions();
-                if (pOptsB->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK) {
-                    float fE = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_Y, INPUTCLASS_GAME));
-                    float fF = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_X, INPUTCLASS_GAME));
+                if (g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK) {
+                    fE = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_Y, INPUTCLASS_GAME));
+                    fF = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_X, INPUTCLASS_GAME));
                     if (fE == 0.0f && fF == 0.0f) {
                         fF = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_LEFT_RIGHT, 4));
                         fE = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_UP_DOWN, 4));
@@ -822,13 +845,13 @@ mouse_over_joint:
                 // Driving uses the tilt and the iOS camera look.
 #if KOTOR1
                 // K1: stick or keys, the touch stick, and the walk key; no mouse-look tilt.
-                float fCamAxisX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_Y, INPUTCLASS_GAME));
-                float fCamAxisY = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_X, INPUTCLASS_GAME));
+                fCamAxisX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_Y, INPUTCLASS_GAME));
+                fCamAxisY = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_X, INPUTCLASS_GAME));
                 if (fCamAxisX == 0.0f && fCamAxisY == 0.0f) {
-                    fCamAxisY = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_LEFT_RIGHT, 0));
-                    fCamAxisX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_UP_DOWN, 0));
-                    fCamAxisY = fCamAxisY <= -1.0f ? -1.0f : fCamAxisY;
-                    fCamAxisX = fCamAxisX <= -1.0f ? -1.0f : fCamAxisX;
+                    float fLR = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_LEFT_RIGHT, 0));
+                    float fUD = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_UP_DOWN, 0));
+                    fCamAxisY = fLR <= -1.0f ? -1.0f : fLR;
+                    fCamAxisX = fUD <= -1.0f ? -1.0f : fUD;
                     fCamAxisY = fCamAxisY > 1.0f ? 1.0f : fCamAxisY;
                     fCamAxisX = fCamAxisX > 1.0f ? 1.0f : fCamAxisX;
                 }
@@ -841,9 +864,12 @@ mouse_over_joint:
                 float fSens = static_cast<float>(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nMouseSensitivity);
                 float fIos = GetIosControl(true, (fSens / 100.0f) * -110.0f + 150.0f, 0.3f - (fSens / 100.0f) * 0.3f);
                 IosTemporaryDisableInteraction(0);
-                if (m_pModule != 0 && m_pModule->m_pArea != 0 && s_minigameAreaId != static_cast<void*>(m_pModule->m_pArea)) {
-                    s_minigameAreaId = static_cast<void*>(m_pModule->m_pArea);
-                    ClearIosControl(true);
+                if (m_pModule != 0 && m_pModule->m_pArea != 0) {
+                    void* pArea = static_cast<void*>(m_pModule->m_pArea);
+                    if (s_minigameAreaId != pArea) {
+                        s_minigameAreaId = pArea;
+                        ClearIosControl(true);
+                    }
                 }
 #ifndef K2_UI_TOUCH
                 // pc and xbox UIs: the keyboard's forward/back axis (or both mouse buttons) drives
@@ -853,7 +879,7 @@ mouse_over_joint:
                 if (fInit <= 0.0f)
 #endif
                     fInit = fIos;
-                float fSide = fCamAxisY + ios_gamepad_analog0X;
+                fSide = fCamAxisY + ios_gamepad_analog0X;
                 if (ios_gamepad_analog0X == 0.0f)
                     fSide = fCamAxisY;
                 fCamAxisY = fSide;
@@ -864,29 +890,31 @@ mouse_over_joint:
                     fInit = 0.0f;
                 }
 #endif
-                float fWalk = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_WALK_MODIFY, INPUTCLASS_GAME));
+                fWalk = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_WALK_MODIFY, INPUTCLASS_GAME));
                 if (fWalk == 0.0f)
                     m_pPlayerControl->SetPlayerWalking(0);
                 else
                     m_pPlayerControl->SetPlayerWalking(1);
 
 #else
-                float fCamAxisX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_Y, INPUTCLASS_GAME));
-                float fCamAxisY = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_X, INPUTCLASS_GAME));
-                g_pExoInput->PollInput(INPUTEVENT_PAD_CAMERA_TURN, INPUTCLASS_GAME);
+                fCamAxisX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_Y, INPUTCLASS_GAME));
+                fCamAxisY = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_MOVE_X, INPUTCLASS_GAME));
+                float fTurn = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_PAD_CAMERA_TURN, INPUTCLASS_GAME));
+                (void)fTurn;
                 if (fCamAxisX == 0.0f && fCamAxisY == 0.0f) {
-                    fCamAxisY = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_LEFT_RIGHT, 0));
+                    float fLR = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_LEFT_RIGHT, 0));
+                    float fUD = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_UP_DOWN, 0));
 #ifdef K2_UI_TOUCH
-                    g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_UP_DOWN, 0);
+                    (void)fUD;
 #else
                     // The PC build keeps the keyboard/stick forward/back axis, clamped like the
                     // strafe one; the touch build polls it and discards it for the virtual stick
                     // below.
-                    fCamAxisX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ACTION_UP_DOWN, 0));
+                    fCamAxisX = fUD;
                     if (fCamAxisX < -1.0f) fCamAxisX = -1.0f;
                     if (fCamAxisX > 1.0f) fCamAxisX = 1.0f;
 #endif
-                    fCamAxisY = __builtin_fminf(__builtin_fmaxf(fCamAxisY, -1.0f), 1.0f);
+                    fCamAxisY = __builtin_fminf(__builtin_fmaxf(fLR, -1.0f), 1.0f);
                 }
 #ifdef K2_UI_TOUCH
                 float fSens = static_cast<float>(g_pAppManager->m_pClientExoApp->GetClientOptions()->m_nMouseSensitivity);
@@ -896,9 +924,12 @@ mouse_over_joint:
                 float fInit = fCamAxisX;
 #endif
                 IosTemporaryDisableInteraction(0);
-                if (m_pModule != 0 && m_pModule->m_pArea != 0 && s_minigameAreaId != static_cast<void*>(m_pModule->m_pArea)) {
-                    s_minigameAreaId = static_cast<void*>(m_pModule->m_pArea);
-                    ClearIosControl(true);
+                if (m_pModule != 0 && m_pModule->m_pArea != 0) {
+                    void* pArea = static_cast<void*>(m_pModule->m_pArea);
+                    if (s_minigameAreaId != pArea) {
+                        s_minigameAreaId = pArea;
+                        ClearIosControl(true);
+                    }
                 }
                 int bFade2 = g_pAppManager->m_pClientExoApp->GetInGameGui()->GetGlobalFadeActive();
 #ifndef K2_UI_TOUCH
@@ -1006,7 +1037,7 @@ mouse_over_joint:
                     fInit = -1.0f;
                 }
 #endif
-                float fPark = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_WALK_MODIFY, INPUTCLASS_GAME));
+                fPark = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_WALK_MODIFY, INPUTCLASS_GAME));
                 if (fPark == 0.0f)
                     m_pPlayerControl->SetPlayerWalking(0);
                 else
@@ -1014,7 +1045,8 @@ mouse_over_joint:
 
                 // Park or release the walk lock through the server dead and hit-point gates.
 #endif
-                float fMoveX = fInit, fMoveY = fCamAxisY;
+                fMoveX = fInit;
+                fMoveY = fCamAxisY;
                 if (pChar != 0 && pChar->IsDriveAnimationBlocked() == 1) {
                     if ((pChar->m_nStateFlags & 1) != 0) {
                         bool bGameplay5 = m_pClientOptions->m_bGameplay5 != 0;
@@ -1031,7 +1063,7 @@ mouse_over_joint:
 #if KOTOR1
                         // K1: a zero or stale timer restarts at 0.3 s; when it runs out the move
                         // goes through, and a slow walk re-arms it for 0.1 s.
-                        float fTimer = m_fDriveInterruptDelay;
+                        fTimer = m_fDriveInterruptDelay;
 #ifdef K2_FIX_ENGINE_BUGS
                         // The 0.3 s delay starts on a fresh press only; once it has run out the keys
                         // drive every frame, as K2 does.
@@ -1047,8 +1079,8 @@ mouse_over_joint:
                         }
                         m_fDriveInterruptDelay = fTimer - fDelta;
 #endif
-                        CSWSCreature* pCS = pChar->GetServerCreature();
-                        int nDead = pCS != 0 ? pCS->m_bCommandable : 1;
+                        pCS = pChar->GetServerCreature();
+                        nDead = pCS != 0 ? pCS->m_bCommandable : 1;
                         fCamAxisY = 0.0f;
                         fCamAxisX = 0.0f;
                         if (!(m_fDriveInterruptDelay > 0.0f)) {
@@ -1064,7 +1096,7 @@ mouse_over_joint:
                                     static_cast<CSWCObject*>(pChar)->AbortFireForgetAnimation(0);
                                     pChar->SetLockOrientationToObject(OBJECT_INVALID, 0);
                                     pChar->SetEngagedState(0);
-                                    CSWCameraOnAStick* pCamStick = static_cast<CSWCameraOnAStick*>(
+                                    pCamStick = static_cast<CSWCameraOnAStick*>(
                                         g_pAppManager->m_pClientExoApp->GetModule()->m_pCamera->GetBehavior(BEHAVIOR_CAMERA_ON_A_STICK));
                                     if (pCamStick != 0)
                                         pCamStick->ClearCombatCamera();
@@ -1077,8 +1109,8 @@ mouse_over_joint:
                             m_fDriveInterruptDelay = 0.3f;
                         if (m_fDriveInterruptDelay >= 0.0f) {
                             m_fDriveInterruptDelay = m_fDriveInterruptDelay - fDelta;
-                            CSWSCreature* pCS = pChar->GetServerCreature();
-                            int nDead = pCS != 0 ? pCS->m_bCommandable : 1;
+                            pCS = pChar->GetServerCreature();
+                            nDead = pCS != 0 ? pCS->m_bCommandable : 1;
                             fCamAxisY = 0.0f;
                             fCamAxisX = 0.0f;
                             if (m_fDriveInterruptDelay <= 0.0f) {
@@ -1088,7 +1120,7 @@ mouse_over_joint:
                                     fCamAxisY = fMoveX;
                                     fCamAxisX = fMoveY;
                                 } else {
-                                    float fSpeed = m_pPlayerControl->GetCurSpeed();
+                                    fSpeed = m_pPlayerControl->GetCurSpeed();
                                     fCamAxisY = fMoveX;
                                     fCamAxisX = fMoveY;
                                     if (0.25f < fSpeed) {
@@ -1097,7 +1129,7 @@ mouse_over_joint:
                                         static_cast<CSWCObject*>(pChar)->AbortFireForgetAnimation(0);
                                         pChar->SetLockOrientationToObject(OBJECT_INVALID, 0);
                                         pChar->SetEngagedState(0);
-                                        CSWCameraOnAStick* pCamStick = static_cast<CSWCameraOnAStick*>(
+                                        pCamStick = static_cast<CSWCameraOnAStick*>(
                                             g_pAppManager->m_pClientExoApp->GetModule()->m_pCamera->GetBehavior(BEHAVIOR_CAMERA_ON_A_STICK));
                                         if (pCamStick != 0)
                                             pCamStick->ClearCombatCamera();
@@ -1153,16 +1185,23 @@ mouse_over_joint:
 
     // Per-frame mini-game tick while not in normal player control.
     {
+        CSWMiniGame* pMG;
         if (GetPlayerCreature() == 0) {
             if (m_pModule != 0 && m_pModule->m_pArea != 0 &&
+#if KOTOR1
+                m_pModule->m_pArea->m_pMiniGame != 0) {
+#else
                 m_pModule->m_pArea->m_pMiniGame != 0 && !b107per) {
-                CSWMiniGame* pMG = m_pModule->m_pArea->m_pMiniGame;
+#endif
+                pMG = m_pModule->m_pArea->m_pMiniGame;
 #if KOTOR1
                 if (pMG->m_type == 1) {
                     // K1 polls the turn keys and drops them: the swoop steers by the touch stick only.
-                    g_pExoInput->PollInput(INPUTEVENT_AXIS_ARROW_LEFT_RIGHT, INPUTCLASS_MINIGAME);
-                    g_pExoInput->PollInput(INPUTEVENT_AXIS_MG_LEFT_RIGHT, INPUTCLASS_MINIGAME);
-                    Vector vAxis = { GetIosControl(false, s_fSwoopIosScale, s_iosType1Scaler), 0.0f, 0.0f };
+                    float fTurn = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ARROW_LEFT_RIGHT, INPUTCLASS_MINIGAME)) +
+                                  static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_MG_LEFT_RIGHT, INPUTCLASS_MINIGAME));
+                    (void)fTurn;
+                    float fSteer = GetIosControl(false, s_fSwoopIosScale, s_iosType1Scaler);
+                    Vector vAxis = { fSteer, 0.0f, 0.0f };
                     pMG->UpdateAxis(vAxis, fDelta);
                 } else if (pMG->m_type == 2) {
                     float fAmp = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ARROW_LEFT_RIGHT, INPUTCLASS_MINIGAME)) +
@@ -1175,20 +1214,22 @@ mouse_over_joint:
                         g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay3 != 0)
                         fAmp2 = -fAmp2;
                     fAmp = std::min(1.0f, std::max(-1.0f, fAmp));
-                    Vector vAxis = { fAmp, 0.0f, fAmp2 };
-                    pMG->UpdateAxis(vAxis, fDelta);
+                    {
+                        Vector vAxis = { fAmp, 0.0f, fAmp2 };
+                        pMG->UpdateAxis(vAxis, fDelta);
+                    }
                     g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_X, INPUTCLASS_MINIGAME);
                     g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_Y, INPUTCLASS_MINIGAME);
-                    float fMX = GetIosControl(false, s_iosCtrlAxisScale, s_iosType2Scaler);
-                    float fMY = GetIosControl(true, s_iosCtrlAxisScale, s_iosType2Scaler);
-                    if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-                        g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay3 != 0)
-                        fMY = -fMY;
-                    pMG->UpdateMouse(fMX, fMY, fDelta);
-                    if (GetPausedByCombat() == 0) {
-                        unsigned short uW = m_pSWGuiManager->m_nScreenWidth;
-                        unsigned short uH = m_pSWGuiManager->m_nScreenHeight;
-                        g_pExoInput->SetMousePos((uW * 65536 >> 17), (uH * 65536 >> 17));
+                    {
+                        float fMX = GetIosControl(false, s_iosCtrlAxisScale, s_iosType2Scaler);
+                        float fMY = GetIosControl(true, s_iosCtrlAxisScale, s_iosType2Scaler);
+                        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
+                            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay3 != 0)
+                            fMY = -fMY;
+                        pMG->UpdateMouse(fMX, fMY, fDelta);
+                        if (GetPausedByCombat() == 0)
+                            g_pExoInput->SetMousePos(static_cast<short>(m_pSWGuiManager->m_nScreenWidth / 2),
+                                                     static_cast<short>(m_pSWGuiManager->m_nScreenHeight / 2));
                     }
                 }
 #else
@@ -1207,11 +1248,9 @@ mouse_over_joint:
                     Vector vAxis = { GetIosControl(false, s_minigameScale, s_iosType1Scaler, false) + fJsX, 0.0f, 0.0f };
                     pMG->UpdateAxis(vAxis, fDelta);
                     if (GetPausedByCombat() == 0 &&
-                        g_pAppManager->m_pClientExoApp->GetInputClass() != INPUTCLASS_GAME) {
-                        unsigned short uW = m_pSWGuiManager->m_nScreenWidth;
-                        unsigned short uH = m_pSWGuiManager->m_nScreenHeight;
-                        g_pExoInput->SetMousePos((uW * 65536 >> 17), (uH * 65536 >> 17), true);
-                    }
+                        g_pAppManager->m_pClientExoApp->GetInputClass() != INPUTCLASS_GAME)
+                        g_pExoInput->SetMousePos(static_cast<short>(m_pSWGuiManager->m_nScreenWidth / 2),
+                                                 static_cast<short>(m_pSWGuiManager->m_nScreenHeight / 2), true);
                 } else if (pMG->m_type == 2) {
                     float fJsX = 0.0f, fJsY = 0.0f;
                     g_pExoInput->GetJoystickNStick(0, &fJsX, &fJsY);
@@ -1224,37 +1263,44 @@ mouse_over_joint:
                     float fAmp2 = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_ARROW_UP_DOWN, INPUTCLASS_MINIGAME)) +
                                   static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_AXIS_MG_UP_DOWN, INPUTCLASS_MINIGAME));
                     fAmp2 = std::min(1.0f, std::max(-1.0f, fAmp2));
-                    if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-                        g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay3 != 0)
+                    float fMX, fMY;
+                    CClientOptions* pOptsMG = g_pAppManager->m_pClientExoApp->GetClientOptions();
+                    if (pOptsMG != 0 && g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay3 != 0)
                         fAmp2 = -fAmp2;
-                    Vector vAxis = { fAmp, 0.0f, fAmp2 };
-                    pMG->UpdateAxis(vAxis, fDelta);
+                    {
+                        Vector vAxis = { fAmp, 0.0f, fAmp2 };
+                        pMG->UpdateAxis(vAxis, fDelta);
+                    }
 #ifdef K2_FIX_ENGINE_BUGS
-                    // The mouse pair is the frame's travel; taken as its rate at 60 fps, the turret
-                    // turns as far for the same travel at any frame rate.
-                    const float fMouseRate = fDelta > 0.0f ? (1.0f / 60.0f) / fDelta : 1.0f;
-                    float fMX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_X, INPUTCLASS_MINIGAME)) / g_fMouseSensitivity * fMouseRate;
-                    float fMY = -static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_Y, INPUTCLASS_MINIGAME)) / g_fMouseSensitivity * fMouseRate;
+                    {
+                        // The mouse pair is the frame's travel; taken as its rate at 60 fps, the
+                        // turret turns as far for the same travel at any frame rate.
+                        const float fMouseRate = fDelta > 0.0f ? (1.0f / 60.0f) / fDelta : 1.0f;
+                        fMX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_X, INPUTCLASS_MINIGAME)) / g_fMouseSensitivity * fMouseRate;
+                        fMY = -static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_Y, INPUTCLASS_MINIGAME)) / g_fMouseSensitivity * fMouseRate;
+                    }
 #else
-                    float fMX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_X, INPUTCLASS_MINIGAME)) / g_fMouseSensitivity;
-                    float fMY = -static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_Y, INPUTCLASS_MINIGAME)) / g_fMouseSensitivity;
+                    fMX = static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_X, INPUTCLASS_MINIGAME)) / g_fMouseSensitivity;
+                    fMY = -static_cast<float>(g_pExoInput->PollInput(INPUTEVENT_MINIGAME_MOUSE_Y, INPUTCLASS_MINIGAME)) / g_fMouseSensitivity;
 #endif
                     fMX = std::min(1.0f, std::max(-1.0f, fMX));
                     fMY = std::min(1.0f, std::max(-1.0f, fMY));
+                    {
 #ifdef K2_UI_TOUCH
-                    // The virtual stick replaces the mouse pair on the touch port.
-                    fMX = GetIosControl(false, s_iosCtrlAxisScale, s_iosType2Scaler, false);
-                    fMY = GetIosControl(true, s_iosCtrlAxisScale, s_iosType2Scaler, false);
+                        // The virtual stick replaces the mouse pair on the touch port.
+                        float fIosX = GetIosControl(false, s_iosCtrlAxisScale, s_iosType2Scaler, false);
+                        float fIosY = GetIosControl(true, s_iosCtrlAxisScale, s_iosType2Scaler, false);
+                        fMX = fIosX;
+                        fMY = fIosY;
 #endif
-                    if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
-                        g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay3 != 0)
-                        fMY = -fMY;
-                    pMG->UpdateMouse(fMX, fMY, fDelta);
-                    if (GetPausedByCombat() == 0 &&
-                        g_pAppManager->m_pClientExoApp->GetInputClass() != INPUTCLASS_GAME) {
-                        unsigned short uW = m_pSWGuiManager->m_nScreenWidth;
-                        unsigned short uH = m_pSWGuiManager->m_nScreenHeight;
-                        g_pExoInput->SetMousePos((uW * 65536 >> 17), (uH * 65536 >> 17), true);
+                        if (g_pAppManager->m_pClientExoApp->GetClientOptions() != 0 &&
+                            g_pAppManager->m_pClientExoApp->GetClientOptions()->m_bGameplay3 != 0)
+                            fMY = -fMY;
+                        pMG->UpdateMouse(fMX, fMY, fDelta);
+                        if (GetPausedByCombat() == 0 &&
+                            g_pAppManager->m_pClientExoApp->GetInputClass() != INPUTCLASS_GAME)
+                            g_pExoInput->SetMousePos(static_cast<short>(m_pSWGuiManager->m_nScreenWidth / 2),
+                                                     static_cast<short>(m_pSWGuiManager->m_nScreenHeight / 2), true);
                     }
                 }
 #endif
@@ -1269,9 +1315,6 @@ mouse_over_joint:
     }
 
 process_input_end:
-#if !KOTOR1
-    (void)hitPos;
-#endif
     (void)nMouseTarget;
     (void)&sModuleProbe;
     return;
@@ -1730,12 +1773,9 @@ int CClientExoAppInternal::HandleInputEvent(int nAction, int nParam)
         long long snapshot = g_pAppManager->m_pClientExoApp->m_pInternal->m_pPauseTimer
                                  ->GetSnapshotTime();
         if (nParam == 0) {
-            if ((static_cast<unsigned long long>(snapshot - g_lLastLButtonSnapshot) >> 6) <= 3124 &&
-                m_nGameOverReason == 0 && m_pClientOptions->m_nCameraMode == CClientOptions::CAMERA_MODE_FREE_LOOK) {
-                g_bShowIndicator = 1;
-                GetModule()->RestoreCamera();
-                SetInputClass(INPUTCLASS_GAME, 1);
-            }
+            // A double click leaves free look as a stick press would.
+            if ((static_cast<unsigned long long>(snapshot - g_lLastLButtonSnapshot) >> 6) <= 3124)
+                HandleInputEvent(INPUTEVENT_FREELOOK_STICK_X, 0x80);
             PerformLButtonUpAction();
 #ifdef K2_UI_TOUCH
             // A lifted finger hovers nothing, so the GUI cursor parks at (0,0). With a mouse the
@@ -2269,17 +2309,17 @@ void CClientExoAppInternal::UpdateDriveMode()
         bool bKeys = m_keyboardModalFlags[0] || m_keyboardModalFlags[1] || m_keyboardModalFlags[2] ||
                      m_keyboardModalFlags[3] || m_keyboardModalFlags[4] || m_keyboardModalFlags[5] ||
                      m_keyboardModalFlags[6];
-        int nWhy = !bKeys ? -1 : (*reinterpret_cast<const unsigned char*>(&pPlayer->m_nAIStateFlags) & 2) == 0 ? 1
+        int nWhy = !bKeys ? -1 : (pPlayer->m_nAIStateFlags & 2) == 0 ? 1
                  : pPlayer->m_bCommandable == 0 ? 2 : 0;
         if (nWhy >= 0 && nWhy != s_nLastWhy)
             fprintf(stderr, "k2: drive keys %s (0x404 %#x, 0x4dc %d, ai state %d)\n",
                     nWhy == 1 ? "ignored: 0x404 bit 2 clear" : nWhy == 2 ? "ignored: 0x4dc clear" : "sent",
-                    static_cast<unsigned int>(*reinterpret_cast<const unsigned char*>(&pPlayer->m_nAIStateFlags)), static_cast<int>(pPlayer->m_bCommandable),
+                    static_cast<unsigned int>(static_cast<unsigned char>(pPlayer->m_nAIStateFlags)), static_cast<int>(pPlayer->m_bCommandable),
                     static_cast<int>(pPlayer->m_nAIStateAction));
         if (nWhy >= 0) s_nLastWhy = nWhy;
     }
 #endif
-    if (pPlayer == 0 || (*reinterpret_cast<const unsigned char*>(&pPlayer->m_nAIStateFlags) & 2) == 0 || pPlayer->m_bCommandable == 0)
+    if (pPlayer == 0 || (pPlayer->m_nAIStateFlags & 2) == 0 || pPlayer->m_bCommandable == 0)
         return;
 
     long long nNow = g_pAppManager->m_pClientExoApp->m_pInternal->m_pPauseTimer->GetSnapshotTime();
@@ -2457,7 +2497,7 @@ exit_restore:
 bool CClientExoAppInternal::DrivePlayer(unsigned char nMoveBits)
 {
     CSWCCreature* pPlayer = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
-    if (pPlayer == 0 || (*reinterpret_cast<const unsigned char*>(&pPlayer->m_nAIStateFlags) & 2) == 0)
+    if (pPlayer == 0 || (pPlayer->m_nAIStateFlags & 2) == 0)
         return false;
 
     Vector vMove;
@@ -2998,26 +3038,27 @@ void CClientExoAppInternal::GetDefaultActions()
             CSWSPlaceable* pServerPlaceable = pObj->AsSWCPlaceable()->GetServerPlaceable();
             int nAreaMenuDisabled = pObj->AsSWCPlaceable()->m_pArea->GetServerArea()->m_nPlayerRestrictMode;
             CExoString sName;
+            int nEntry = 0;
+            CSWCPlaceable* pPlaceable;
             if (pServerPlaceable != 0 && pServerPlaceable->m_bHasInventory != 0) {
                 // An inventory placeable gets the "open/search" action from the placeables.2da
                 // UseSearch row, then bash. A party member who is dead greys the entry, so dead
                 // members cannot interact.
-                int nEntry = 0;
                 if (pObj->AsSWCPlaceable()->m_bIgnoreHitcheck != 0) {
                     m_actions.SetSize(1);
                     K2_ASSUME(m_actions.m_pArray != 0);   // SetSize allocated it
 #if KOTOR1  // K1 always says "Open"
-                    uint64_t nStrRef = STRREF_OPEN;
+                    m_actions.m_pArray[0].m_sName =
+                        g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_OPEN);
 #else
                     int nUseSearchRow;
+                    int nOK;
                     C2DA* pTable = g_pRules->m_p2DArrays->m_pPlaceables;
-                    int nOK = pTable->GetINTEntry(pObj->AsSWCPlaceable()->m_nAppearanceType,
-                                                  CExoString("UseSearch"), &nUseSearchRow);
-                    int nRow = nOK ? nUseSearchRow : pServerPlaceable->m_bIsBodyBag;
-                    uint64_t nStrRef = nRow ? STRREF_SEARCH : STRREF_OPEN;
+                    nOK = pTable->GetINTEntry(pObj->AsSWCPlaceable()->m_nAppearanceType,
+                                              CExoString("UseSearch"), &nUseSearchRow);
+                    m_actions.m_pArray[0].m_sName = g_pAppManager->m_pClientExoApp->GetGUIString(
+                        (nOK ? nUseSearchRow : pServerPlaceable->m_bIsBodyBag) ? STRREF_SEARCH : STRREF_OPEN);
 #endif
-                    m_actions.m_pArray[0].m_sName =
-                        g_pAppManager->m_pClientExoApp->GetGUIString(nStrRef);
                     m_actions.m_pArray[0].m_pfnAction =
                         reinterpret_cast<void (CSWCCreature::*)(unsigned int, CSWCCreature*)>(&CSWCPlaceable::UsePlaceable);
                     m_actions.m_pArray[0].m_nObjectId = pObj->m_objectId;
@@ -3030,29 +3071,31 @@ void CClientExoAppInternal::GetDefaultActions()
                         g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(nPlayerId);
                     unsigned long long nClientId =
                         g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
-                    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(nClientId);
-                    CSWCCreature* pPlayerCreature;
+                    CGameObject* pObject;
+                    pObject = g_pAppManager->m_pClientExoApp->GetGameObject(nClientId);
+                    if (pObject != 0 && pObject->AsSWCCreature() != 0) {
+                        CSWCCreature* pPlayerCreature;
 #if !KOTOR1
-                    CSWSCreature* pServerCreature;
+                        CSWSCreature* pServerCreature;
 #endif
-                    if (pObject != 0 && pObject->AsSWCCreature() != 0 &&
-                        (pPlayerCreature = static_cast<CSWCCreature*>(pObject->AsSWCCreature()),
-                         pPlayerChar->m_objectId != nClientId) &&
-                        pPlayerCreature->m_bInParty != 0 &&
-                        pPlayerCreature->GetServerCreature() != 0 &&
+                        if ((pPlayerCreature = static_cast<CSWCCreature*>(pObject->AsSWCCreature()),
+                             pPlayerChar->m_objectId != nClientId) &&
+                            pPlayerCreature->m_bInParty != 0 &&
+                            pPlayerCreature->GetServerCreature() != 0 &&
 #if KOTOR1  // K1 tests GetDeadTemp()
-                        pPlayerCreature->GetServerCreature()->GetDeadTemp() != 0) {
+                            pPlayerCreature->GetServerCreature()->GetDeadTemp() != 0) {
 #else
-                        (pServerCreature = pPlayerCreature->GetServerCreature(),
-                         pServerCreature->GetDeadTemp() != 0)) {
+                            (pServerCreature = pPlayerCreature->GetServerCreature(),
+                             pServerCreature->GetDeadTemp() != 0)) {
 #endif
-                        if (pObj->AsSWCPlaceable()->GetServerPlaceable() != 0 &&
-                            pObj->AsSWCPlaceable()->GetServerPlaceable()->m_bPartyInteract == 0) {
-                            unsigned char& cFlags = m_actions.m_pArray[0].m_nFlags;
-                            cFlags &= ~ACTIONFLAG_ENABLED;
-                            m_actions.m_pArray[0].m_nFlags =
-                                (m_actions.m_pArray[0].m_nFlags & ~ACTIONFLAG_REASON_MASK) |
-                                ACTIONFLAG_REASON_PARTY_MEMBER_DEAD;
+                            if (pObj->AsSWCPlaceable()->GetServerPlaceable() != 0 &&
+                                pObj->AsSWCPlaceable()->GetServerPlaceable()->m_bPartyInteract == 0) {
+                                unsigned char& cFlags = m_actions.m_pArray[0].m_nFlags;
+                                cFlags &= ~ACTIONFLAG_ENABLED;
+                                m_actions.m_pArray[0].m_nFlags =
+                                    (m_actions.m_pArray[0].m_nFlags & ~ACTIONFLAG_REASON_MASK) |
+                                    ACTIONFLAG_REASON_PARTY_MEMBER_DEAD;
+                            }
                         }
                     }
                     nEntry = 1;
@@ -3075,37 +3118,38 @@ void CClientExoAppInternal::GetDefaultActions()
                         g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(nPlayerId);
                     unsigned long long nClientId =
                         g_pAppManager->m_pClientExoApp->ServerToClientObjectId(pPlayer->m_gameObjectId);
-                    CGameObject* pObject = g_pAppManager->m_pClientExoApp->GetGameObject(nClientId);
-                    CSWCCreature* pPlayerCreature;
+                    CGameObject* pObject;
+                    pObject = g_pAppManager->m_pClientExoApp->GetGameObject(nClientId);
+                    if (pObject != 0 && pObject->AsSWCCreature() != 0) {
+                        CSWCCreature* pPlayerCreature;
 #if !KOTOR1
-                    CSWSCreature* pServerCreature;
+                        CSWSCreature* pServerCreature;
 #endif
-                    if (pObject != 0 && pObject->AsSWCCreature() != 0 &&
-                        (pPlayerCreature = static_cast<CSWCCreature*>(pObject->AsSWCCreature()),
-                         pPlayerChar->m_objectId != nClientId) &&
-                        pPlayerCreature->m_bInParty != 0 &&
-                        pPlayerCreature->GetServerCreature() != 0 &&
+                        if ((pPlayerCreature = static_cast<CSWCCreature*>(pObject->AsSWCCreature()),
+                             pPlayerChar->m_objectId != nClientId) &&
+                            pPlayerCreature->m_bInParty != 0 &&
+                            pPlayerCreature->GetServerCreature() != 0 &&
 #if KOTOR1  // K1 tests GetDeadTemp()
-                        pPlayerCreature->GetServerCreature()->GetDeadTemp() != 0) {
+                            pPlayerCreature->GetServerCreature()->GetDeadTemp() != 0) {
 #else
-                        (pServerCreature = pPlayerCreature->GetServerCreature(),
-                         pServerCreature->GetDeadTemp() != 0)) {
+                            (pServerCreature = pPlayerCreature->GetServerCreature(),
+                             pServerCreature->GetDeadTemp() != 0)) {
 #endif
-                        if (pObj->AsSWCPlaceable()->GetServerPlaceable() != 0 &&
-                            pObj->AsSWCPlaceable()->GetServerPlaceable()->m_bPartyInteract == 0) {
-                            unsigned char& cFlags = m_actions.m_pArray[nEntry].m_nFlags;
-                            cFlags &= ~ACTIONFLAG_ENABLED;
-                            m_actions.m_pArray[nEntry].m_nFlags =
-                                (m_actions.m_pArray[nEntry].m_nFlags & ~ACTIONFLAG_REASON_MASK) |
-                                ACTIONFLAG_REASON_PARTY_MEMBER_DEAD;
+                            if (pObj->AsSWCPlaceable()->GetServerPlaceable() != 0 &&
+                                pObj->AsSWCPlaceable()->GetServerPlaceable()->m_bPartyInteract == 0) {
+                                unsigned char& cFlags = m_actions.m_pArray[nEntry].m_nFlags;
+                                cFlags &= ~ACTIONFLAG_ENABLED;
+                                m_actions.m_pArray[nEntry].m_nFlags =
+                                    (m_actions.m_pArray[nEntry].m_nFlags & ~ACTIONFLAG_REASON_MASK) |
+                                    ACTIONFLAG_REASON_PARTY_MEMBER_DEAD;
+                            }
                         }
                     }
                 }
             } else {
                 // An inventoryless placeable gets UsePlaceable when the server placeable is not
                 // locked or ignored, then a bash entry at the resulting index.
-                int nCount = 0;
-                CSWCPlaceable* pPlaceable = pObj->AsSWCPlaceable();
+                pPlaceable = pObj->AsSWCPlaceable();
                 if (pServerPlaceable != 0 && pPlaceable->m_bIgnoreHitcheck != 0 &&
                     pServerPlaceable->m_corpse.m_bIsCorpse == 0) {
                     m_actions.SetSize(1);
@@ -3117,18 +3161,18 @@ void CClientExoAppInternal::GetDefaultActions()
                     m_actions.m_pArray[0].m_nObjectId = pObj->m_objectId;
                     m_actions.m_pArray[0].m_nActionId = INTERFACE_ACTION_USE_PLACEABLE;
                     m_actions.m_pArray[0].m_resRef = const_cast<char*>("i_useplace");
-                    nCount = 1;
+                    nEntry = 1;
                 }
                 if (pObj->AsSWCPlaceable()->m_bPlot == 0 && nAreaMenuDisabled == 0) {
-                    m_actions.SetSize(nCount + 1);
+                    m_actions.SetSize(nEntry + 1);
                     K2_ASSUME(m_actions.m_pArray != 0);   // SetSize allocated it
-                    m_actions.m_pArray[nCount].m_sName =
+                    m_actions.m_pArray[nEntry].m_sName =
                         g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_BASH);
-                    m_actions.m_pArray[nCount].m_pfnAction =
+                    m_actions.m_pArray[nEntry].m_pfnAction =
                         reinterpret_cast<void (CSWCCreature::*)(unsigned int, CSWCCreature*)>(&CSWCPlaceable::BashPlaceable);
-                    m_actions.m_pArray[nCount].m_nObjectId = pObj->m_objectId;
-                    m_actions.m_pArray[nCount].m_nActionId = INTERFACE_ACTION_BASH;
-                    m_actions.m_pArray[nCount].m_resRef = const_cast<char*>("i_attack");
+                    m_actions.m_pArray[nEntry].m_nObjectId = pObj->m_objectId;
+                    m_actions.m_pArray[nEntry].m_nActionId = INTERFACE_ACTION_BASH;
+                    m_actions.m_pArray[nEntry].m_resRef = const_cast<char*>("i_attack");
                 }
             }
             break;
@@ -3350,12 +3394,9 @@ int CClientExoAppInternal::ChangeControlType(int nType)
         if (nType == -1)
             nType = (m_controlType > 0) ? 0 : m_controlType + 1;
         m_controlType = nType;
-        if (m_pPlayerControl) {
-            // Destroyed through the base, whose destructor is not virtual (both subclasses add
-            // only trivially destructible members).
-            m_pPlayerControl->CSWPlayerControl::~CSWPlayerControl();
-            operator delete(m_pPlayerControl);
-        }
+        // Destroyed through the base, whose destructor is not virtual (both subclasses add only
+        // trivially destructible members).
+        delete m_pPlayerControl;
         if (m_controlType == 0) {
             m_pPlayerControl = new CSWPlayerControlDriving(m_playerCreatureId, GetModule()->m_pCamera);
         } else if (m_controlType == 1) {

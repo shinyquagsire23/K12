@@ -346,9 +346,9 @@ Vector CSWSArea::ComputeAwayVector(const Vector& pos, const Vector& target, floa
 
         int nResult;
         {
-            int nFraction = pPathInfo->m_nPersonalSpaceBits;
-            nResult = TestDirectLine(pos, vSample, *reinterpret_cast<const float*>(&nFraction),
-                                     pPathInfo->m_fHeightAlias, 0, 0);
+            float nFraction = pPathInfo->m_fPersonalSpace;
+            nResult = TestDirectLine(pos, vSample, nFraction,
+                                     pPathInfo->m_fHeight, 0, 0);
         }
 
         if (nResult != 1)
@@ -359,9 +359,9 @@ Vector CSWSArea::ComputeAwayVector(const Vector& pos, const Vector& target, floa
             {
                 vSample = pos + vOffset * fScale;
                 {
-                    int nFraction = pPathInfo->m_nPersonalSpaceBits;
-                    nResult = TestDirectLine(pos, vSample, *reinterpret_cast<const float*>(&nFraction),
-                                             pPathInfo->m_fHeightAlias, 0, 0);
+                    float nFraction = pPathInfo->m_fPersonalSpace;
+                    nResult = TestDirectLine(pos, vSample, nFraction,
+                                             pPathInfo->m_fHeight, 0, 0);
                 }
                 fScale = fScale * 0.5f;
             } while (nResult != 1 && fScale >= 0.005f);
@@ -531,7 +531,7 @@ int CSWSArea::TestSafeLocationPoint(const Vector& vPosition, CPathfindInformatio
 {
     m_pActivePathfindInfo = pPathInfo;
 
-    int nPersonalSpaceBits = pPathInfo->m_nPersonalSpaceBits;
+    float nPersonalSpaceBits = pPathInfo->m_fPersonalSpace;
 
     Vector rayLow(vPosition.x - 0.01f, vPosition.y - 0.01f, vPosition.z - 0.1f);
     Vector rayHigh(vPosition.x + 0.01f, vPosition.y + 0.01f, vPosition.z + 0.1f);
@@ -551,7 +551,7 @@ int CSWSArea::TestSafeLocationPoint(const Vector& vPosition, CPathfindInformatio
         int nClipped;
         pRoom->m_pSurfaceMesh->ComputeClippedLineSegment(rayLow, rayHigh, vClipLow, vClipHigh,
                                                          nClipped);
-        if (pRoom->NoNonWalkPolysOnRoom(vClipLow, vClipHigh, fZ1, fZ2, *reinterpret_cast<const float*>(&nPersonalSpaceBits),
+        if (pRoom->NoNonWalkPolysOnRoom(vClipLow, vClipHigh, fZ1, fZ2, nPersonalSpaceBits,
                                         0) == 0)
             return 0;
         if (vClipHigh.x >= rayHigh.x - CSWArea::EPSILON &&
@@ -575,7 +575,7 @@ int CSWSArea::TestSafeLocationPoint(const Vector& vPosition, CPathfindInformatio
     }
 
     unsigned long long oidIgnore = pPathInfo->m_oidIgnoreDoor;
-    if (NoNonWalkPolys(rayLow, rayHigh, fZ1, fZ2, *reinterpret_cast<const float*>(&nPersonalSpaceBits),
+    if (NoNonWalkPolys(rayLow, rayHigh, fZ1, fZ2, nPersonalSpaceBits,
                        oidIgnore, 0, 0) == 0)
         return 0;
     return NoCreaturesOnLine(rayLow, rayHigh, pPathInfo, 1, 0, 0, 0, 0) != 0;
@@ -808,7 +808,8 @@ int CSWSArea::PathPointDFSearch(int nPathIndex, float fCost, float fCostBound,
     if (RenderDFS != 0 && bInitnRenderDEFLines != 0 &&
         m_pActivePathfindInfo->m_oidCreature == static_cast<unsigned int>(LockRenderDev))
     {
-        memset(nRenderDEFLines, 0xff, sizeof(nRenderDEFLines));
+        for (int i = 0; i < 500; i++)
+            nRenderDEFLines[i] = 0xffffffff;
         bInitnRenderDEFLines = 0;
         nRenderDFSCount = 0;
     }
@@ -817,10 +818,10 @@ int CSWSArea::PathPointDFSearch(int nPathIndex, float fCost, float fCostBound,
     m_pActivePathfindInfo->m_nPathPointCount = nLen;
     m_pActivePathfindInfo->m_pPathPointList[nPathIndex] = nCurrent;
 
-    Vector vFrom = { m_paPathPoints[nCurrent].m_point.x,
-                     m_paPathPoints[nCurrent].m_point.y, 0.0f };
-    float fGap = magnitude(Vector(m_paPathPoints[nTarget].m_point.x - vFrom.x,
-                                  m_paPathPoints[nTarget].m_point.y - vFrom.y, 0.0f));
+    Vector vFrom = { m_paPathPoints[nCurrent].m_x,
+                     m_paPathPoints[nCurrent].m_y, 0.0f };
+    float fGap = magnitude(Vector(m_paPathPoints[nTarget].m_x - vFrom.x,
+                                  m_paPathPoints[nTarget].m_y - vFrom.y, 0.0f));
 
     if (m_pActivePathfindInfo->m_fMinGap > fGap)
     {
@@ -879,11 +880,11 @@ int CSWSArea::PathPointDFSearch(int nPathIndex, float fCost, float fCostBound,
                     vSquare[1].x = vFrom.x;
                     vSquare[1].y = vFrom.y;
                     vSquare[1].z = 0.0f;
-                    vSquare[2].x = m_paPathPoints[pSucc->m_nPoint].m_point.x;
-                    vSquare[2].y = m_paPathPoints[pSucc->m_nPoint].m_point.y;
+                    vSquare[2].x = m_paPathPoints[pSucc->m_nPoint].m_x;
+                    vSquare[2].y = m_paPathPoints[pSucc->m_nPoint].m_y;
                     vSquare[2].z = 0.0f;
-                    vSquare[3].x = m_paPathPoints[pSucc->m_nPoint].m_point.x;
-                    vSquare[3].y = m_paPathPoints[pSucc->m_nPoint].m_point.y;
+                    vSquare[3].x = m_paPathPoints[pSucc->m_nPoint].m_x;
+                    vSquare[3].y = m_paPathPoints[pSucc->m_nPoint].m_y;
                     vSquare[3].z = 0.0f;
                     CServerExoApp* pApp = g_pAppManager->m_pServerExoApp;
                     vSquare[0].z = pApp->ComputeHeight(pApp->GetModule()->GetArea()->m_resRef,
@@ -934,20 +935,20 @@ int CSWSArea::PathPointDFSGenerateSuccessors(float fGap, int nPathIndex, unsigne
                                              CSWSPathPointSuccessors** ppOut)
 {
     K2_UNUSED(fGap); K2_UNUSED(nPathIndex);
-    unsigned int nCount = m_paPathPoints[nCurrent].m_node.m_nNeighborCount;
+    unsigned int nCount = m_paPathPoints[nCurrent].m_nNeighborCount;
     unsigned int nStart = m_paPathPoints[nCurrent].m_nNeighborStart;
     float fPersonalSpace = m_pActivePathfindInfo->m_fPersonalSpace;
     *ppOut = new CSWSPathPointSuccessors[nCount];
 
-    Vector vFrom = { m_paPathPoints[nCurrent].m_point.x,
-                     m_paPathPoints[nCurrent].m_point.y, 0.0f };
+    Vector vFrom = { m_paPathPoints[nCurrent].m_x,
+                     m_paPathPoints[nCurrent].m_y, 0.0f };
     Vector vTo = { 0.0f, 0.0f, 0.0f };
     int nSucc = 0;
     for (unsigned int i = nStart; i < nStart + nCount; i++)
     {
         CSWSAreaPathPoint* pPt = &m_paPathPoints[m_paPathPointLinks[i]];
-        float fPtX = pPt->m_point.x;
-        float fPtY = pPt->m_point.y;
+        float fPtX = pPt->m_x;
+        float fPtY = pPt->m_y;
         vTo.x = fPtX;
         vTo.y = fPtY;
 
@@ -1009,8 +1010,8 @@ int CSWSArea::PathPointDFSGenerateSuccessors(float fGap, int nPathIndex, unsigne
         K2_ASSUME(static_cast<unsigned int>(nSucc) < nCount);
         (*ppOut)[nSucc].m_nPoint = m_paPathPointLinks[i];
         Vector vDest = {
-            m_paPathPoints[static_cast<unsigned int>(m_pActivePathfindInfo->m_nDestPathPoint)].m_point.x,
-            m_paPathPoints[static_cast<unsigned int>(m_pActivePathfindInfo->m_nDestPathPoint)].m_point.y, 0.0f };
+            m_paPathPoints[static_cast<unsigned int>(m_pActivePathfindInfo->m_nDestPathPoint)].m_x,
+            m_paPathPoints[static_cast<unsigned int>(m_pActivePathfindInfo->m_nDestPathPoint)].m_y, 0.0f };
         if (fCost != 0.0f)
             (*ppOut)[nSucc].m_fCost = fCost;
         else
@@ -1570,8 +1571,8 @@ int CSWSArea::ClosestPathPoint(const Vector& v, unsigned int& nOut)
         return 1;
     }
 
-    float fFirstX = m_paPathPoints[0].m_node.m_x;
-    float fLastX = m_paPathPoints[m_nPathPointCount - 1].m_node.m_x;
+    float fFirstX = m_paPathPoints[0].m_x;
+    float fLastX = m_paPathPoints[m_nPathPointCount - 1].m_x;
     float fHitFraction = m_pActivePathfindInfo->m_fPersonalSpace;
 
     float fMinX = v.x - 10.0f;
@@ -1601,14 +1602,14 @@ int CSWSArea::ClosestPathPoint(const Vector& v, unsigned int& nOut)
         nBest = -1;
 
     inner:
-        px = m_paPathPoints[j].m_node.m_x;
+        px = m_paPathPoints[j].m_x;
         if (px < fMinX)
             goto skip;
         if (!(px > fTinyXP))
             goto region;
         if (!(px < fTinyXN))
             goto region;
-        py = m_paPathPoints[j].m_node.m_y;
+        py = m_paPathPoints[j].m_y;
         if (!(py > fTinyYP))
             goto region;
         if (py < fTinyYN)
@@ -1617,7 +1618,7 @@ int CSWSArea::ClosestPathPoint(const Vector& v, unsigned int& nOut)
     region:
         if (px > fMaxX)
             goto done;
-        py = m_paPathPoints[j].m_node.m_y;
+        py = m_paPathPoints[j].m_y;
         if (py < fMinY)
             goto step;
         if (py > fMaxY)
@@ -1632,6 +1633,7 @@ int CSWSArea::ClosestPathPoint(const Vector& v, unsigned int& nOut)
             Vector v2 = {px, py, 0.0f};
             CWalkHitInfo hitInfo = {};
             hitInfo.m_hitObjectId = OBJECT_INVALID;
+            hitInfo.m_hitSubType = 0;
             float fHeight = m_pActivePathfindInfo->m_fHeight;
             int nRet = TestDirectLine(v1, v2, fHitFraction, fHeight,
                                      static_cast<int>(reinterpret_cast<uintptr_t>(&hitInfo)), &hitInfo);
@@ -1664,7 +1666,7 @@ int CSWSArea::ClosestPathPoint(const Vector& v, unsigned int& nOut)
         fTinyXP = (fTinyXP > fFirstX) ? fTinyXP : fFirstX;
         fTinyXN = (fTinyXN < fLastX) ? fTinyXN : fLastX;
         if (i >= 1) {
-            while (m_paPathPoints[i].m_node.m_x > fMinX) {
+            while (m_paPathPoints[i].m_x > fMinX) {
                 i--;
                 if (i == 0) break;
             }
@@ -1680,7 +1682,7 @@ found:
 }
 
 // Squared distance between two points, z included.
-static inline float d2(const Vector& a, const Vector& b)
+static inline __attribute__((always_inline)) float d2(const Vector& a, const Vector& b)
 {
     float x = a.x - b.x;
     float y = a.y - b.y;
@@ -1891,11 +1893,11 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
     // is retried here.
     if (nState == CPathfindInformation::PATH_POINT_GRIDSTART)
     {
-        const Vector vPathPoint(m_paPathPoints[nStartPathPoint].m_point.x,
-                                m_paPathPoints[nStartPathPoint].m_point.y, 0.0f);
-        int nHitFraction = pPathInfo->m_nPersonalSpaceBits;
+        const Vector vPathPoint(m_paPathPoints[nStartPathPoint].m_x,
+                                m_paPathPoints[nStartPathPoint].m_y, 0.0f);
+        float nHitFraction = pPathInfo->m_fPersonalSpace;
         pPathInfo->m_bIgnoreCrePath = (nStartPathPoint != nEndPathPoint);
-        int nGrid = TestDirectLine(vFrom, vPathPoint, *reinterpret_cast<const float*>(&nHitFraction),
+        int nGrid = TestDirectLine(vFrom, vPathPoint, nHitFraction,
                                    pPathInfo->m_fHeight, 0, 0);
         if (nGrid == 1)
         {
@@ -1912,8 +1914,8 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
         {
             pPathInfo->m_vSavedFrom = vFrom;
             pPathInfo->m_vSavedTo = vTo;
-            pPathInfo->m_goal.m_vPoint.x = m_paPathPoints[nStartPathPoint].m_node.m_x;
-            pPathInfo->m_goal.m_vPoint.y = m_paPathPoints[nStartPathPoint].m_node.m_y;
+            pPathInfo->m_goal.m_vPoint.x = m_paPathPoints[nStartPathPoint].m_x;
+            pPathInfo->m_goal.m_vPoint.y = m_paPathPoints[nStartPathPoint].m_y;
             pPathInfo->m_nPathType = 1;
             nGrid = PlotGridPath(pPathInfo, nTimeOut);
             pPathInfo->m_nPathType = 0;
@@ -1940,16 +1942,17 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
         }
         if (nGrid == CSWSObject::ACTION_FAILED)
         {
-            if (pPathInfo->m_nPathPointCount < 2)
+            int nCount = pPathInfo->m_nPathPointCount;
+            if (nCount < 2)
             {
                 pPathInfo->m_nPathState = CPathfindInformation::PATH_POINT_STARTPOINTS;
                 pPathInfo->HandlePathfindError(0, const_cast<char*>("    failed to grid based pathfind from the creatures position to the starting path point."));
                 return CSWSObject::ACTION_FAILED;
             }
             int* pList = pPathInfo->m_pPathPointList;
-            for (int i = 1; i < pPathInfo->m_nPathPointCount; i++)
+            for (int i = 1; i < nCount; i++)
                 pList[i - 1] = pList[i];
-            --pPathInfo->m_nPathPointCount;
+            pPathInfo->m_nPathPointCount = nCount - 1;
             pPathInfo->m_nSourcePathPoint = pList[0];
             nStartPathPoint = pList[0];
             pPathInfo->m_nPathState = CPathfindInformation::PATH_POINT_GRIDSTART;
@@ -1966,11 +1969,11 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
     // failure the destination path point rolls back one and the walk is retried here.
     if (nState == CPathfindInformation::PATH_POINT_GRIDEND)
     {
-        const Vector vPathPoint(m_paPathPoints[nEndPathPoint].m_point.x,
-                                m_paPathPoints[nEndPathPoint].m_point.y, 0.0f);
-        int nHitFraction = pPathInfo->m_nPersonalSpaceBits;
+        const Vector vPathPoint(m_paPathPoints[nEndPathPoint].m_x,
+                                m_paPathPoints[nEndPathPoint].m_y, 0.0f);
+        float nHitFraction = pPathInfo->m_fPersonalSpace;
         pPathInfo->m_bIgnoreCrePath = (nStartPathPoint != nEndPathPoint);
-        int nGrid = TestDirectLine(vTo, vPathPoint, *reinterpret_cast<const float*>(&nHitFraction),
+        int nGrid = TestDirectLine(vTo, vPathPoint, nHitFraction,
                                    pPathInfo->m_fHeight, 0, 0);
         if (nGrid == 1 || nGrid == -3)
         {
@@ -1987,8 +1990,8 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
         {
             pPathInfo->m_vSavedFrom = vFrom;
             pPathInfo->m_vSavedTo = vTo;
-            pPathInfo->m_vStartPoint.x = m_paPathPoints[nEndPathPoint].m_node.m_x;
-            pPathInfo->m_vStartPoint.y = m_paPathPoints[nEndPathPoint].m_node.m_y;
+            pPathInfo->m_vStartPoint.x = m_paPathPoints[nEndPathPoint].m_x;
+            pPathInfo->m_vStartPoint.y = m_paPathPoints[nEndPathPoint].m_y;
             pPathInfo->m_nPathType = 1;
             nGrid = PlotGridPath(pPathInfo, nTimeOut);
             pPathInfo->m_nPathType = 0;
@@ -2058,10 +2061,10 @@ int CSWSArea::PlotPathPointPath(CPathfindInformation* pPathInfo, uint64_ll_t nTi
             }
             for (int i = 0; i < nPPCount; i++, nOff += 2)
             {
-                const Vector& m = m_paPathPoints[pIdx[i]].m_point;
+                const CSWSAreaPathPoint& m = m_paPathPoints[pIdx[i]];
                 K2_ASSUME(nOff >= 0 && nOff + 1 < nTotal);
-                pNew[nOff] = m.x;
-                pNew[nOff + 1] = m.y;
+                pNew[nOff] = m.m_x;
+                pNew[nOff + 1] = m.m_y;
             }
             for (int j = 2; j < nSegB; j++)
             {
@@ -3017,24 +3020,20 @@ int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* p
 // the endpoint can put it back inside an earlier creature. Returns nonzero when `out` moved.
 int CSWSArea::ShrinkLineByCreatures(const Vector& from, const Vector& to, Vector& out)
 {
+    CExoArrayList<CSWSCreature*> creatures;
     int nIndex;
+    float fMinX = std::min(to.x, from.x) - 3.0f;
+    float fMaxX = std::max(to.x, from.x) + 3.0f;
     float fMinY = std::min(to.y, from.y) - 3.0f;
     float fMaxY = std::max(to.y, from.y) + 3.0f;
     int nFirst = 0;
     int nLast = m_aObjectsByX.m_count - 1;
-    if (GetFirstObjectIndiceByX(&nIndex, std::max(to.x, from.x) + 3.0f) != 0)
+    if (GetFirstObjectIndiceByX(&nIndex, fMaxX) != 0)
         nLast = nIndex;
-    if (GetFirstObjectIndiceByX(&nIndex, std::min(to.x, from.x) - 3.0f) != 0)
+    if (GetFirstObjectIndiceByX(&nIndex, fMinX) != 0)
         nFirst = nIndex;
 
     int nModified = 0;
-    if (nFirst > nLast)
-    {
-        out = to;
-        return 0;
-    }
-
-    CExoArrayList<CSWSCreature*> creatures;
     for (int i = nFirst; i <= nLast; i++)
     {
         CSWSCreature* pCreature =
@@ -3048,7 +3047,7 @@ int CSWSArea::ShrinkLineByCreatures(const Vector& from, const Vector& to, Vector
         float fDx = pCreature->m_position.x - from.x;
         float fDy = pCreature->m_position.y - from.y;
         float fSpace = pCreature->m_pPathfindInfo->m_fPersonalSpace;
-        if (!(fDx * fDx + fDy * fDy > fSpace * fSpace))
+        if (!(fDx * fDx + fDy * fDy + 0.0f > fSpace * fSpace))
             continue;
         creatures.Add(pCreature);
     }
@@ -3532,7 +3531,7 @@ int CSWSArea::SmoothPointsOnPathRestartable()
 int CSWSArea::GridDFSGenerateSuccessors(int nCost, int nCostBound, int nX, int nY, int nZ,
                                         CSWSAreaGridSuccessors** ppOut)
 {
-    const float fRadius = m_pActivePathfindInfo->m_fHeightAlias;
+    const float fRadius = m_pActivePathfindInfo->m_fHeight;
     Vector vTo;
     const float fHeight = m_pActivePathfindInfo->m_fPersonalSpace;  // TestDirectLine's hit fraction, by reference
     Vector vFrom;

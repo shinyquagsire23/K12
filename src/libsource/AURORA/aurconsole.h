@@ -19,8 +19,6 @@ public:
 
 extern unsigned char returnvalue[1024];
 
-extern "C" int FormatReturnValue(char* buf, uint64_t size, const char* fmt, ...);
-
 struct Quaternion;
 float Yaw(const Quaternion&);
 float Pitch(const Quaternion&);
@@ -28,6 +26,13 @@ float Roll(Quaternion);
 Quaternion YawPitchRoll(float, float, float);
 
 #include "port/libcbase.h"
+
+// The formatters' fortified sprintf; the build without checked entry points calls sprintf itself.
+#if defined(K2_NO_FORTIFY)
+#define FormatReturnValue(buf, size, ...) sprintf(buf, __VA_ARGS__)
+#else
+extern "C" int FormatReturnValue(char* buf, uint64_t size, const char* fmt, ...);
+#endif
 
 // Type-erased holder for one console command: the held callable plus the Engage/PreEngage pair the
 // console drives.

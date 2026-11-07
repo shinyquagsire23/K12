@@ -357,50 +357,48 @@ int CSWSTrigger::CalculateNearestPoint(const Vector& v, Vector* pOut) {
         fNearX = 0.0f;
         fNearY = 0.0f;
         fNearZ = 0.0f;
-        if (n >= 1) {
-            int* pIndices = m_pGeomIndices;
-            Vector* pVerts = m_pGeomVerts;
-            float px = v.x;
-            float py = v.y;
-            float pz = v.z;
-            float fBestDistSq = 1.0e8f;
-            unsigned last = m_nGeomIndexCount - 1;
-            for (int64_t i = 0; i < n; i++) {
-                int64_t idxCur = pIndices[i];
-                int64_t idxNext = pIndices[(i == last) ? 0 : i + 1];
-                float curX = pVerts[idxCur].x;
-                float curY = pVerts[idxCur].y;
-                float curZ = pVerts[idxCur].z;
-                float ex = pVerts[idxNext].x - curX;
-                float ey = pVerts[idxNext].y - curY;
-                float ez = pVerts[idxNext].z - curZ;
-                float fDot = (px - curX) * ex + (py - curY) * ey + (pz - curZ) * ez;
-                float fLenSq = ex * ex + ey * ey + ez * ez;
-                float t = fDot / fLenSq;
-                float ptX, ptY, ptZ;
-                if (t > 1.0f) {
-                    ptX = curX + ex;
-                    ptY = curY + ey;
-                    ptZ = curZ + ez;
-                } else if (t < 0.0f) {
-                    ptX = curX;
-                    ptY = curY;
-                    ptZ = curZ;
-                } else {
-                    ptX = curX + ex * t;
-                    ptY = curY + ey * t;
-                    ptZ = curZ + ez * t;
-                }
-                float dx = px - ptX;
-                float dy = py - ptY;
-                float dz = pz - ptZ;
-                float fDistSq = dx * dx + dy * dy + dz * dz;
-                if (fDistSq < fBestDistSq) {
-                    fNearX = ptX;
-                    fNearY = ptY;
-                    fNearZ = ptZ;
-                    fBestDistSq = fDistSq;
-                }
+        int* pIndices = m_pGeomIndices;
+        Vector* pVerts = m_pGeomVerts;
+        float px = v.x;
+        float py = v.y;
+        float pz = v.z;
+        float fBestDistSq = 1.0e8f;
+        unsigned last = m_nGeomIndexCount - 1;
+        for (int64_t i = 0; i < n; i++) {
+            int64_t idxCur = pIndices[i];
+            int64_t idxNext = pIndices[(i == last) ? 0 : i + 1];
+            float curX = pVerts[idxCur].x;
+            float curY = pVerts[idxCur].y;
+            float curZ = pVerts[idxCur].z;
+            float ex = pVerts[idxNext].x - curX;
+            float ey = pVerts[idxNext].y - curY;
+            float ez = pVerts[idxNext].z - curZ;
+            float fDot = (px - curX) * ex + (py - curY) * ey + (pz - curZ) * ez;
+            float fLenSq = ex * ex + ey * ey + ez * ez;
+            float t = fDot / fLenSq;
+            float ptX, ptY, ptZ;
+            if (t > 1.0f) {
+                ptX = curX + ex;
+                ptY = curY + ey;
+                ptZ = curZ + ez;
+            } else if (t < 0.0f) {
+                ptX = curX;
+                ptY = curY;
+                ptZ = curZ;
+            } else {
+                ptX = curX + ex * t;
+                ptY = curY + ey * t;
+                ptZ = curZ + ez * t;
+            }
+            float dx = px - ptX;
+            float dy = py - ptY;
+            float dz = pz - ptZ;
+            float fDistSq = dx * dx + dy * dy + dz * dz;
+            if (fDistSq < fBestDistSq) {
+                fNearX = ptX;
+                fNearY = ptY;
+                fNearZ = ptZ;
+                fBestDistSq = fDistSq;
             }
         }
     }

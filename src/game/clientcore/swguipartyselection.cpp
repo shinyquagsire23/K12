@@ -292,7 +292,7 @@ CSWGuiPartySelection::CSWGuiPartySelection(CSWGuiManager* pGuiManager)
     m_pActiveData = 0;
     m_btnDone.m_tail.bFocusOnHover = 0;
     m_bFromScript = 0;
-    m_fChallengeRating = 0;
+    m_bAllowCancel = 0;
     m_bCanChangeParty = 1;
     m_nCannotChangeStrRef = STRREF_CANNOT_CHANGE_PARTY_NOW;
 }
@@ -746,7 +746,7 @@ void CSWGuiPartySelection::OnPanelAdded()
 
     // The back button's caption goes grey while the roster is still free to be edited, otherwise
     // it takes the live text colour. The border colour is the opposite of the caption's.
-    if ((m_bHasForcedNPC == 0 && m_bFromScript == 0) || m_fChallengeRating != 0)
+    if ((m_bHasForcedNPC == 0 && m_bFromScript == 0) || m_bAllowCancel != 0)
     {
         m_btnBack.m_text.m_params.SetDefaultColor(CGuiInGame::COLOR_NEW_TEXT);
         m_btnBack.m_border.m_params.m_color = *reinterpret_cast<const CSWGuiColor*>(&CGuiInGame::COLOR_NEW_GREEN);
@@ -763,9 +763,8 @@ void CSWGuiPartySelection::OnPanelAdded()
     pTable->AddGameInProgress();
     UpdateVisibleCharacters();
 #if !KOTOR1
-    pTable->SavePuppet(0, 0);
-    pTable->SavePuppet(1, 0);
-    pTable->SavePuppet(2, 0);
+    for (int i = 0; i < 3; i++)
+        pTable->SavePuppet(i, 0);
 
     if (pTable->GetNumNPCAvailable() >= 10)
         Achievements::UnlockAchievement(Achievements::ACHIEVEMENT_TEN_PARTY_MEMBERS);
@@ -1004,7 +1003,7 @@ void CSWGuiPartySelection::OnDone(CSWGuiControl* pControl)
 }
 #endif
 
-#if KOTOR1  // K1: only ACCEPT is handled; no challenge rating, no DONE or next-member keys
+#if KOTOR1  // K1: only ACCEPT is handled; no allow-cancel flag, no DONE or next-member keys
 void CSWGuiPartySelection::HandleInputEvent(int type, int val)
 {
     if (val != 0 && (type == INPUTEVENT_GUI_BACK || type == INPUTEVENT_GUI_B))
@@ -1041,9 +1040,9 @@ void CSWGuiPartySelection::HandleInputEvent(int type, int val)
         case INPUTEVENT_GUI_BACK:
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
 
-            // With a sub-panel or a forced member and no challenge rating to settle, accept only
+            // With a sub-panel or a forced member and cancel not allowed, accept only
             // re-arms the confirmation box; otherwise it commits.
-            if ((m_bFromScript != 0 || m_bHasForcedNPC != 0) && m_fChallengeRating == 0)
+            if ((m_bFromScript != 0 || m_bHasForcedNPC != 0) && m_bAllowCancel == 0)
             {
                 CSWGuiMessageBox* pBox =
                     g_pAppManager->m_pClientExoApp->GetInGameGui()->m_pSoloModeQueryBox;
@@ -1077,12 +1076,11 @@ void CSWGuiPartySelection::HandleInputEvent(int type, int val)
 }
 #endif
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f))
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f))
     {
-        float x = q.x, y = q.y, z = q.z;
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -1179,9 +1177,9 @@ void CSWGuiPartySelection::AcceptParty()
         Vector vLeaderPos = pParty->GetCharacter(0)->m_position;
         CSWSArea* pArea = pServerApp->GetModule()->GetArea();
 
-        int nFraction = pNewCreature->m_pPathfindInfo->m_nPersonalSpaceBits;
-        int nLine = pArea->TestDirectLine(vPos, vLeaderPos, *reinterpret_cast<const float*>(&nFraction),
-                                          pNewCreature->m_pPathfindInfo->m_fHeightAlias, 1, 0);
+        float nFraction = pNewCreature->m_pPathfindInfo->m_fPersonalSpace;
+        int nLine = pArea->TestDirectLine(vPos, vLeaderPos, nFraction,
+                                          pNewCreature->m_pPathfindInfo->m_fHeight, 1, 0);
         if (nLine != -3 && nLine != 1)
         {
             vPos = pParty->m_followData.GetPathData(
@@ -1366,9 +1364,9 @@ void CSWGuiPartySelection::AcceptParty(int nSelected)
         Vector vLeaderPos = pParty->GetCharacter(0)->m_position;
         CSWSArea* pArea = pServerApp->GetModule()->GetArea();
 
-        int nFraction = pNewCreature->m_pPathfindInfo->m_nPersonalSpaceBits;
-        int nLine = pArea->TestDirectLine(vPos, vLeaderPos, *reinterpret_cast<const float*>(&nFraction),
-                                          pNewCreature->m_pPathfindInfo->m_fHeightAlias, 1, 0);
+        float nFraction = pNewCreature->m_pPathfindInfo->m_fPersonalSpace;
+        int nLine = pArea->TestDirectLine(vPos, vLeaderPos, nFraction,
+                                          pNewCreature->m_pPathfindInfo->m_fHeight, 1, 0);
         if (nLine != -3 && nLine != 1)
         {
             // When blocked (or creature-blocked), fall back to the recorded follow sample's own
@@ -1608,7 +1606,7 @@ void CSWGuiPartySelection::OnPanelRemoved()
 
     g_pAppManager->m_pClientExoApp->GetInGameGui()->EnableCharacterChangeButtons(1);
     m_bFromScript = 0;
-    m_fChallengeRating = 0;
+    m_bAllowCancel = 0;
 #endif
 
     CSWGuiPanel::OnPanelRemoved();

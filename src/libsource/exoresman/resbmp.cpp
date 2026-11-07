@@ -100,7 +100,7 @@ int CResBmp::GetPixelColor(int x, int y, tagRGBQUAD& rQuad)
 }
 
 // The paletted index behind GetPixelColor; 4-bit pixels are packed two per byte, high nibble first.
-int CResBmp::GetPixelValue(int x, int y)
+unsigned char CResBmp::GetPixelValue(int x, int y)
 {
     int nValue = 0;
     if (m_bLoaded)

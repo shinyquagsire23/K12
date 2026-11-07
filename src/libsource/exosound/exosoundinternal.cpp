@@ -119,26 +119,7 @@ void CExoSoundInternal::LoadPriorityGroups()
     unsigned char nRows = static_cast<unsigned char>(p2DA->m_nRows);
     m_maxGroup = nRows;
 
-    unsigned long long* pCounted =
-        static_cast<unsigned long long*>(operator new[](sizeof(CPriorityGroup) * nRows + 8));
-    *pCounted = nRows;
-    CPriorityGroup* pGroups = reinterpret_cast<CPriorityGroup*>(pCounted + 1);
-
-    CPriorityGroup* pEnd = pGroups + nRows;
-    for (CPriorityGroup* pGroup = pGroups; pGroup != pEnd; pGroup++)
-    {
-        pGroup->m_nInterrupt = 1;
-        pGroup->m_nMaxPlaying = PRIORITYGROUP_UNLIMITED;
-        pGroup->m_nPlayingCount = 0;
-        pGroup->m_nPriority = 0;
-        pGroup->m_nVolume = SOUND_FULL_VOLUME;
-        pGroup->m_fMaxDistance = 20.0f;
-        pGroup->m_fMinDistance = 10.0f;
-        pGroup->m_fPlaybackVariance = 0.0f;
-        pGroup->m_nFadeTime = 0;
-    }
-
-    m_paGroups = pGroups;
+    m_paGroups = new CPriorityGroup[nRows];
 
     for (unsigned int i = 0; i < m_maxGroup; i++)
     {
@@ -399,6 +380,8 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
         m_audioSystem.InitSystem(n3D + n2D);
     }
 
+    unsigned char n3D;
+    unsigned char n2D;
     if (!m_audioSystem.m_bInitialized)
     {
         m_audioSystem.ShutdownSystem();
@@ -407,39 +390,23 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
     }
     m_bInitialized = 1;
 
-    unsigned char n3D = n3DVoices;
+    n3D = n3DVoices;
     if (n3D > MAX_VOICES)
         n3D = MAX_VOICES;
     if (n3D < MIN_3D_VOICES)
         n3D = MIN_3D_VOICES;
     m_nNumber3DVoices = n3D;
 
-    C3DVoice* pa3DVoices = new C3DVoice[n3D];
-    for (uint64_t i = 0; i < n3D; i++)
-    {
-        pa3DVoices[i].m_pSource = 0;
-        pa3DVoices[i].m_nChannel = 0;
-        pa3DVoices[i].m_bInUse = 0;
-        pa3DVoices[i].m_nReserved1 = 0;
-    }
-    m_pa3DVoices = pa3DVoices;
+    m_pa3DVoices = new C3DVoice[n3D];
 
-    unsigned char n2D = n2DVoices;
+    n2D = n2DVoices;
     if (n2D > MAX_VOICES)
         n2D = MAX_VOICES;
     if (n2D < MIN_2D_VOICES)
         n2D = MIN_2D_VOICES;
     m_nNumber2DVoices = n2D;
 
-    C2DVoice* pa2DVoices = new C2DVoice[n2D];
-    for (uint64_t i = 0; i < n2D; i++)
-    {
-        pa2DVoices[i].m_pSource = 0;
-        pa2DVoices[i].m_nChannel = 0;
-        pa2DVoices[i].m_bInUse = 0;
-        pa2DVoices[i].m_nReserved1 = 0;
-    }
-    m_pa2DVoices = pa2DVoices;
+    m_pa2DVoices = new C2DVoice[n2D];
 
     unsigned char nMax = m_nNumber3DVoices > m_nNumber2DVoices ? m_nNumber3DVoices
                                                               : m_nNumber2DVoices;
@@ -619,16 +586,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
     if (m_pa3DVoices == 0)
     {
-        // Allocated uninitialised and filled field by field; value-initialising the array would zero
-        // it in one call instead.
         pa3DVoices = new C3DVoice[MAX_VOICES];
-        for (uint64_t i = 0; i < MAX_VOICES; i++)
-        {
-            pa3DVoices[i].m_pSource = 0;
-            pa3DVoices[i].m_nChannel = 0;
-            pa3DVoices[i].m_bInUse = 0;
-            pa3DVoices[i].m_nReserved1 = 0;
-        }
         m_pa3DVoices = pa3DVoices;
     }
 
@@ -642,13 +600,6 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
     if (m_pa2DVoices == 0)
     {
         pa2DVoices = new C2DVoice[MAX_VOICES];
-        for (uint64_t i = 0; i < MAX_VOICES; i++)
-        {
-            pa2DVoices[i].m_pSource = 0;
-            pa2DVoices[i].m_nChannel = 0;
-            pa2DVoices[i].m_bInUse = 0;
-            pa2DVoices[i].m_nReserved1 = 0;
-        }
         m_pa2DVoices = pa2DVoices;
     }
 
@@ -1194,7 +1145,7 @@ void CExoSoundInternal::Enumerate3DProviders() {}
 
 void CExoSoundInternal::LoadProviderPreferences() {}
 
-int CExoSoundInternal::GetSpeakerType() { return SPEAKER_TYPE_UNKNOWN; }
+unsigned char CExoSoundInternal::GetSpeakerType() { return SPEAKER_TYPE_UNKNOWN; }
 
 int CExoSoundInternal::GetMutable(CExoStreamingSoundSourceInternal* pSource) { K2_UNUSED(pSource); return 1; }
 
@@ -2502,4 +2453,21 @@ void CExoSoundInternal::InterruptPlayingSound(unsigned char nGroup)
 
         pSource = m_lPlaying.GetNext(pNode);
     }
+}
+
+CPriorityGroup::CPriorityGroup()
+{
+    m_nPriority = 0;
+    m_nVolume = SOUND_FULL_VOLUME;
+    m_nMaxPlaying = PRIORITYGROUP_UNLIMITED;
+    m_nInterrupt = 1;
+    m_fMinDistance = 10.0f;
+    m_fMaxDistance = 20.0f;
+    m_nFadeTime = 0;
+    m_nPlayingCount = 0;
+    m_fPlaybackVariance = 0.0f;
+}
+
+CPriorityGroup::~CPriorityGroup()
+{
 }

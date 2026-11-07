@@ -128,7 +128,7 @@ extern List<Gob*> gobs;
 
 
 // Rotates a world-space point into the part's local frame (conjugate orientation).
-static inline Vector WorldToLocal(const Vector& v, const Quaternion& q, const Vector& vOrigin)
+static inline __attribute__((always_inline)) Vector WorldToLocal(const Vector& v, const Quaternion& q, const Vector& vOrigin)
 {
 #if KOTOR1  // K1: the forward rotate through the out-of-line inverse
     Quaternion nq = -q;
@@ -147,10 +147,9 @@ static inline Vector WorldToLocal(const Vector& v, const Quaternion& q, const Ve
     }
     return p;
 #else
-    float w = q.w, x = q.x, y = q.y, z = q.z;
-    float nw = -w;
+    float nw = -q.w, x = q.x, y = q.y, z = q.z;
     Vector p = { v.x - vOrigin.x, v.y - vOrigin.y, v.z - vOrigin.z };
-    if (quaternionidentityoptimization == 0 || (w != -1.0f && w != 1.0f)) {
+    if (quaternionidentityoptimization == 0 || (nw != 1.0f && nw != -1.0f)) {
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * nw;
         float yz = y * z, wy = y * nw;
@@ -221,7 +220,11 @@ Vector VectorMax(Vector a, Vector b);
 
 
 Gob* FindGob(char* pszName);
+#if defined(K2_NO_FORTIFY)
+#define snprintff(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...);
+#endif
 
 
 
@@ -1022,14 +1025,12 @@ void PartTriMesh::Draw(bool)
         if (g_ForceSight)
             SetupForceSightShader(m_pGob, GLRender::kPSFGlow, GLRender::kPSDesat, 0, 0, 0, 0, false);
 
-        if (pDrawMesh->m_lVertexIndicesCount.m_count >= 1) {
-            for (int64_t i = 0; i < pDrawMesh->m_lVertexIndicesCount.m_count; i++) {
-                int nCount = pDrawMesh->m_lVertexIndicesCount.m_pData[i];
-                GLRender::DrawElements(static_cast<Aurora::AuroraPrimitiveTypes>(pDrawMesh->m_nPrimitiveType),
-                                       nCount, 0,
-                                       pDrawMesh->m_lIndexPools.m_pData[i]);
-                countfaces += nCount / 3;
-            }
+        for (int64_t i = 0; i < pDrawMesh->m_lVertexIndicesCount.m_count; i++) {
+            int nCount = pDrawMesh->m_lVertexIndicesCount.m_pData[i];
+            GLRender::DrawElements(static_cast<Aurora::AuroraPrimitiveTypes>(pDrawMesh->m_nPrimitiveType),
+                                   nCount, 0,
+                                   pDrawMesh->m_lIndexPools.m_pData[i]);
+            countfaces += nCount / 3;
         }
         if (pDrawMesh->m_nPrimitiveType == 4 && pDrawMesh->m_nLeftOverIndexCount != 0)
             GLRender::DrawElements(static_cast<Aurora::AuroraPrimitiveTypes>(3),
@@ -1072,7 +1073,7 @@ struct CAurShadowData {
     ~CAurShadowData() { delete[] m_pVertices; }
 };
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
     float w = q.w;
     float x = q.x, y = q.y, z = q.z;
@@ -1185,7 +1186,7 @@ void PartProjection::Init()
         {
             unsigned int nSize = data.m_nCount * 12;
             GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(1), nSize, 2, 0,
-                                  reinterpret_cast<unsigned int*>(&m_nIndexPool));
+                                  reinterpret_cast<uint32_l_t*>(&m_nIndexPool));
             Vector* pDst = static_cast<Vector*>(GLRender::LockPool(m_nIndexPool, 0, 0, 1));
             void* pSrc = GLRender::LockPool(data.m_nPool, 0, 0, 8);
             memcpy(pDst, pSrc, nSize);  // idiom-exempt: nSize is the pool size requested above (12 per Vector)
@@ -1195,7 +1196,7 @@ void PartProjection::Init()
 
         if (data.m_nVertexCount > 0) {
             GLRender::RequestPool(static_cast<Aurora::AuroraBufferRequestType>(0), data.m_nVertexCount * 12,
-                                  0x42, 0, reinterpret_cast<unsigned int*>(&m_nVertexPool));
+                                  0x42, 0, reinterpret_cast<uint32_l_t*>(&m_nVertexPool));
             nPoolSize = GLRender::GetPoolSize(m_nIndexPool);
             m_nVertexCount = data.m_nVertexCount;
             m_nQuadCount = nPoolSize / 12;
@@ -1224,7 +1225,7 @@ inline void PartProjection::SetupVertexArrays()
 
 static float ShadowPlaneCornerDist(float x, float y, float z, const Plane& plane)
 {
-    return plane.d + (plane.a * x + plane.b * y + plane.c * z);
+    return plane.d + (plane.normal.x * x + plane.normal.y * y + plane.normal.z * z);
 }
 
 // Draws the shadow volume in two stencil passes, one per face winding.
@@ -1921,6 +1922,7 @@ const char* setenvironmentmap(char* pszParams)
     return szBuf;
 }
 
+#if !defined(K2_NO_FORTIFY)
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...)
 {
     K2_UNUSED(n);
@@ -1929,6 +1931,7 @@ static void snprintff(char* buf, uint64_t n, const char* fmt, ...)
     __vsprintf_chk(buf, 0, 256, fmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 
 const char* turnoffshadows(char* pszParams)
 {
@@ -1992,7 +1995,8 @@ int enablebumpyshiny = 1;
 extern int usevertexprograms;
 int AurVertexProgramsAvailable();
 
-struct CAurMaterialContainer
+// Word-aligned: its clear stores the first and middle 16 bytes aligned.
+struct alignas(4) CAurMaterialContainer
 {
     unsigned char m_abData[41];
 
@@ -2006,7 +2010,7 @@ bool IosAntiAliasOn();
 #endif
 // A static part needs the material pass unless it is a plain white, opaque, unlit, undecaled
 // mesh; a tiled part always does, and reports it through bTiled.
-static bool StaticPartNeedsMat(PartTriMesh* part, MdlNodeTriMesh* pNode, bool& bTileMode, bool& bTiled)
+inline bool StaticPartNeedsMat(PartTriMesh* part, MdlNodeTriMesh* pNode, bool& bTileMode, bool& bTiled)
 {
     if (!part->m_bHasColorPool)
     {
@@ -2018,17 +2022,17 @@ static bool StaticPartNeedsMat(PartTriMesh* part, MdlNodeTriMesh* pNode, bool& b
             return true;
         }
     }
-    if (!equal(pNode->m_vDiffuse, g_vOne))
+    if (pNode->m_vDiffuse != g_vOne)
         return true;
     if (part->m_fOpacity != 1.0f)
         return true;
-    if (!equal(part->m_vSelfIllumColor, g_vZero))
+    if (part->m_vSelfIllumColor != g_vZero)
         return true;
     return part->m_pMaterial->m_bDecal;
 }
 
 // The gob's colour shift, fade and illumination applied to a dynamic part's material.
-static void DynamicPartCalculateMaterial(Gob* pGob, Vector& vDiffuse, Vector& vEnv, float& fAlpha)
+inline void DynamicPartCalculateMaterial(Gob* pGob, Vector& vDiffuse, Vector& vEnv, float& fAlpha)
 {
     if (pGob->m_nColorShifting != 0)
     {
@@ -2056,8 +2060,7 @@ void PartTriMesh::Mat()
 
     bool bTileMode = false;
     bool bTiled = false;
-    unsigned int nAlpha = *reinterpret_cast<const unsigned int*>(&m_fOpacity);
-    float& fAlpha = *reinterpret_cast<float*>(&nAlpha);
+    float fAlpha = m_fOpacity;
 
     if (currentscene != 0 && currentscene->m_bFogEnabled != 0)
     {
@@ -2242,8 +2245,8 @@ void Gob::PartDraw(Part* pPart, bool b)
     if (rendermaxdepth != 0)
     {
         rendermaxdepth--;
-        for (int i = 0; i < pPart->m_nChildren; i++)
-            PartDraw(pPart->m_paChildren[i], b);
+        for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+            PartDraw(pPart->m_aChildren.m_pData[i], b);
         rendermaxdepth++;
     }
 
@@ -2259,7 +2262,7 @@ extern Vector planelineintersection(const Vector& vNormal, float fDist, const Ve
 // Pushes a shadow-volume point back onto the projection plane.
 void ClipProjection(Vector& v, const Vector& vOrigin, const Plane& plane)
 {
-    const Vector& vNormal = *reinterpret_cast<const Vector*>(&plane);
+    const Vector& vNormal = plane.normal;
     if (dot(v, vNormal) + plane.d > 0.0f)
         v = planelineintersection(vNormal, plane.d, vOrigin, v);
 }
@@ -2276,7 +2279,7 @@ static ShadowInfo g_aShadowFaces[2048];
 // False when the sink is behind a plane that faces away from the origin: nothing to cast.
 static inline bool ClipProjectionCaps(Vector& vCap, Vector& vSink, const Plane& plane)
 {
-    const Vector& vNormal = *reinterpret_cast<const Vector*>(&plane);
+    const Vector& vNormal = plane.normal;
     if (dot(vSink, vNormal) + plane.d > 0.0f)
     {
         if (plane.d > 0.0f)
@@ -2289,18 +2292,14 @@ static inline bool ClipProjectionCaps(Vector& vCap, Vector& vSink, const Plane& 
 }
 
 // Each face's signed distance to the light, with its neighbour and vertex indices.
-static void ProcessFaces(const Vector& light, ShadowInfo* pInfo, MdlNodeTriMesh* node)
+inline void ProcessFaces(const Vector& light, ShadowInfo* pInfo, MdlNodeTriMesh* node)
 {
     for (int i = 0; i < node->m_faces.m_count; i++)
     {
         MaxFace& face = node->m_faces.m_pData[i];
         pInfo[i].m_fDist = dot(face.Normal(), light) + face.m_fPlaneDist;
-        pInfo[i].m_anNeighbors[0] = face.m_anNeighbors[0];
-        pInfo[i].m_anNeighbors[1] = face.m_anNeighbors[1];
-        pInfo[i].m_anNeighbors[2] = face.m_anNeighbors[2];
-        pInfo[i].m_anVertIndices[0] = face.m_anVertIndices[0];
-        pInfo[i].m_anVertIndices[1] = face.m_anVertIndices[1];
-        pInfo[i].m_anVertIndices[2] = face.m_anVertIndices[2];
+        // The neighbour and vertex index triples are adjacent in both records.
+        memcpy(pInfo[i].m_anNeighbors, face.m_anNeighbors, 6 * sizeof(short));
     }
 }
 
@@ -2666,7 +2665,7 @@ void Gob::PartVolumeProject(Part* pPart, Vector v, float f, Plane p)
     if (!systemmemoryshadows)
     {
         v = WorldToLocal(v, pPart->m_qLocalOrientation, pPart->m_vLocalPosition);
-        planeLocal = p;
+        planeLocal = Plane(p.normal.x, p.normal.y, p.normal.z, p.d);
         planeLocal.Transform(pPart->m_vLocalPosition, pPart->m_qLocalOrientation);
     }
 
@@ -2684,8 +2683,8 @@ void Gob::PartVolumeProject(Part* pPart, Vector v, float f, Plane p)
         pPart->Project(v, f, planeLocal, 0);
     }
 
-    for (int i = 0; i < pPart->m_nChildren; i++)
-        PartVolumeProject(pPart->m_paChildren[i], v, f, planeLocal);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        PartVolumeProject(pPart->m_aChildren.m_pData[i], v, f, planeLocal);
 
     ASLgl::glPopMatrix();
 }
@@ -2782,9 +2781,8 @@ static void SetAlphaRecursive(Part* pPart, float fAlpha)
 {
     if (pPart->AsPartTriMesh() != 0)
         pPart->AsPartTriMesh()->m_fOpacity = fAlpha;
-    if (pPart->m_nChildren >= 1)
-        for (int i = 0; i < pPart->m_nChildren; i++)
-            SetAlphaRecursive(pPart->m_paChildren[i], fAlpha);
+    for (int i = 0; i < pPart->m_aChildren.m_count; i++)
+        SetAlphaRecursive(pPart->m_aChildren.m_pData[i], fAlpha);
 }
 
 char* setalpha(char* pszArgs)
@@ -2977,9 +2975,6 @@ extern unsigned char g_useDistortionOutput;
 float specularintensity = 1.0f;
 extern Camera* CurrentCamera;
 
-#if !KOTOR1  // K1: inlines the copy at every call site
-extern template List<PartLight*>::List(List<PartLight*>&);
-#endif
 int AurCubeMapAvailable();
 int AurOnePassEnvMapAvailable();
 bool AurATIValidate();
@@ -5364,8 +5359,8 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
             GLRender::SetBlendFunc(Aurora::kBlendSrcAlpha, Aurora::kBlendInvSrcAlpha);
         }
         else
-#endif
         {
+#endif
 // Mode 6 takes the bump map, the cube map (as texture and previous unit), then material slot 0.
             GLRender::pfuncEnablePixelShaders(GLRender::kPSBumpmap, part->m_pMaterial->Textures(4).m_pObject,
                                               currentscene->m_pNormalizationCubeMap.m_pObject,
@@ -5474,36 +5469,36 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
                 }
 #endif
 
+                // One colour local carries the diffuse light colour and then the specular one.
                 Vector vFallback;
+                float fDiffuseIntensity = diffuseintensity;
+                float fBumpIntensity =
+                    part->m_pMaterial->Textures(4).m_pObject->GetDiffuseBumpIntensity();
+                Vector vColor(
+                    vDiffuse.x * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.x,
+                    vDiffuse.y * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.y,
+                    vDiffuse.z * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.z);
+                if (usebumpdiffuse != 0)
                 {
-                    float fDiffuseIntensity = diffuseintensity;
-                    float fBumpIntensity =
-                        part->m_pMaterial->Textures(4).m_pObject->GetDiffuseBumpIntensity();
-                    Vector vColor(
-                        vDiffuse.x * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.x,
-                        vDiffuse.y * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.y,
-                        vDiffuse.z * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.z);
-                    if (usebumpdiffuse != 0)
-                    {
-                        GLRender::pfuncSetBumpLightColor(vColor, 1.0f);
-                    }
-                    else
-                    {
-                        vFallback = Vector(1.0f, 0.0f, 0.0f);
-                        GLRender::pfuncSetBumpLightColor(vFallback, 1.0f);
-                    }
+                    GLRender::pfuncSetBumpLightColor(vColor, 1.0f);
                 }
-
-                float fSpecularIntensity = specularintensity;
-                float fSpecBumpIntensity =
-                    part->m_pMaterial->Textures(4).m_pObject->GetSpecularBumpIntensity();
-                Vector vSpecColor(
-                    vSpec.x * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.x,
-                    vSpec.y * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.y,
-                    vSpec.z * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.z);
+                else
+                {
+                    vFallback = Vector(1.0f, 0.0f, 0.0f);
+                    GLRender::pfuncSetBumpLightColor(vFallback, 1.0f);
+                }
+                {
+                    float fSpecularIntensity = specularintensity;
+                    float fSpecBumpIntensity =
+                        part->m_pMaterial->Textures(4).m_pObject->GetSpecularBumpIntensity();
+                    vColor = Vector(
+                        vSpec.x * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.x,
+                        vSpec.y * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.y,
+                        vSpec.z * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.z);
+                }
                 if (usebumpspecular != 0)
                 {
-                    GLRender::pfuncSetPixelShaderAmbientColor(vSpecColor, 1.0f);
+                    GLRender::pfuncSetPixelShaderAmbientColor(vColor, 1.0f);
                 }
                 else
                 {
@@ -5525,7 +5520,9 @@ void RenderBumpMapped(VertexPrimitiveFlat* vertices)
                 (currentscene->m_pLightManager)
                     ->EnableBumpMapLights();
             }
+#if !KOTOR1
         }
+#endif
 
         GLRender::DisableClientState(Aurora::kClientStateAttrib12);
         GLRender::DisableClientState(Aurora::kClientStateAttrib13);
@@ -5723,6 +5720,7 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
         Vector vFallbackDiffuse(1.0f, 0.0f, 0.0f);
         Vector vFallbackSpecular(0.0f, 1.0f, 0.0f);
 
+        float fR;
         for (int k = 0; k < bumpLights.m_count; k++)
         {
             (currentscene->m_pLightManager)
@@ -5770,35 +5768,36 @@ void RenderNormalMapped(VertexPrimitiveFlat* vertices)
             }
 #endif
 
-            {
-                float fDiffuseIntensity = diffuseintensity;
-                float fBumpIntensity =
-                    part->m_pMaterial->Textures(4).m_pObject->GetDiffuseBumpIntensity();
-                Vector vColor(
-                    vDiffuse.x * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.x,
-                    vDiffuse.y * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.y,
-                    vDiffuse.z * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.z);
-                if (usebumpdiffuse != 0)
-                    GLRender::pfuncSetBumpLightColor(vColor, 1.0f);
-                else
-                    GLRender::pfuncSetBumpLightColor(vFallbackDiffuse, 1.0f);
-            }
+            // One colour local carries the diffuse light colour and then the specular one.
+            float fDiffuseIntensity = diffuseintensity;
+            float fBumpIntensity =
+                part->m_pMaterial->Textures(4).m_pObject->GetDiffuseBumpIntensity();
+            Vector vColor(
+                vDiffuse.x * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.x,
+                vDiffuse.y * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.y,
+                vDiffuse.z * fDiffuseIntensity * fBumpIntensity * pLight->m_vLightColour.z);
+            if (usebumpdiffuse != 0)
+                GLRender::pfuncSetBumpLightColor(vColor, 1.0f);
+            else
+                GLRender::pfuncSetBumpLightColor(vFallbackDiffuse, 1.0f);
 
-            float fSpecularIntensity = specularintensity;
-            float fSpecBumpIntensity =
-                part->m_pMaterial->Textures(4).m_pObject->GetSpecularBumpIntensity();
-            Vector vSpecColor(
-                vSpec.x * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.x,
-                vSpec.y * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.y,
-                vSpec.z * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.z);
+            {
+                float fSpecularIntensity = specularintensity;
+                float fSpecBumpIntensity =
+                    part->m_pMaterial->Textures(4).m_pObject->GetSpecularBumpIntensity();
+                vColor = Vector(
+                    vSpec.x * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.x,
+                    vSpec.y * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.y,
+                    vSpec.z * fSpecularIntensity * fSpecBumpIntensity * pLight->m_vLightColour.z);
+            }
             if (usebumpspecular != 0)
-                GLRender::pfuncSetPixelShaderAmbientColor(vSpecColor, 1.0f);
+                GLRender::pfuncSetPixelShaderAmbientColor(vColor, 1.0f);
             else
                 GLRender::pfuncSetPixelShaderAmbientColor(vFallbackSpecular, 1.0f);
 
             GLRender::SetVertexShaderConstant(12, lx, ly, lz, 1.0f);
             GLRender::SetVertexShaderConstant(13, cx, cy, cz, 1.0f);
-            float fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
+            fR = pLight->m_fLightRadius * pLight->m_fLightRadius;
             GLRender::SetVertexShaderConstant(14, 1.0f, 0.0f, 9.0f / (fR + fR), 1.0f);
 
 // The texture-coord client array is bound on unit 1, per light.

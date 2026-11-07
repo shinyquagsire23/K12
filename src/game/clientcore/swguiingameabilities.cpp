@@ -587,18 +587,20 @@ void CSWGuiInGameAbilities::OnSwitchLeft(CSWGuiControl* pControl)
         m_btnChange1.m_borderHilight.m_params.m_fillImage);
     m_btnChange2.m_tail.m_nUserData = m_btnChange1.m_tail.m_nUserData;
 
-    CSWCCreature* pNPC;
-    int i;
-    for (i = nCur - 1; i >= 0; i--) {
+    for (int i = nCur - 1; i >= 0; i--) {
         if (i == m_nNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
+        CSWCCreature* pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pNPC)
-            goto found;
+        if (pNPC) {
+            m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange1.m_tail.m_nUserData = i;
+            return;
+        }
     }
     if (static_cast<unsigned char>(m_nNPC) != 0xff && static_cast<char>(m_btnChange2.m_tail.m_nUserData) != -1) {
         m_btnChange1.m_border.m_params.SetFillImage(
@@ -608,22 +610,21 @@ void CSWGuiInGameAbilities::OnSwitchLeft(CSWGuiControl* pControl)
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
-    for (i = 8; i > nCur; i--) {
+    for (int i = 8; i > nCur; i--) {
         if (i == m_nNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
+        CSWCCreature* pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pNPC)
-            goto found;
+        if (pNPC) {
+            m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange1.m_tail.m_nUserData = i;
+            return;
+        }
     }
-    return;
-found:
-    m_btnChange1.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
-    m_btnChange1.m_tail.m_nUserData = i;
 }
 
 // K1: BTN_CHARRIGHT steps the right portrait up to the next available NPC (or the PC), wrapping.
@@ -639,18 +640,20 @@ void CSWGuiInGameAbilities::OnSwitchRight(CSWGuiControl* pControl)
         m_btnChange2.m_borderHilight.m_params.m_fillImage);
     m_btnChange1.m_tail.m_nUserData = m_btnChange2.m_tail.m_nUserData;
 
-    CSWCCreature* pNPC;
-    int i;
-    for (i = nCur + 1; i < 9; i++) {
+    for (int i = nCur + 1; i < 9; i++) {
         if (i == m_nNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
+        CSWCCreature* pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pNPC)
-            goto found;
+        if (pNPC) {
+            m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_tail.m_nUserData = i;
+            return;
+        }
     }
     if (static_cast<unsigned char>(m_nNPC) != 0xff) {
         m_btnChange2.m_border.m_params.SetFillImage(
@@ -660,22 +663,21 @@ void CSWGuiInGameAbilities::OnSwitchRight(CSWGuiControl* pControl)
         m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
-    for (i = 0; i < nCur; i++) {
+    for (int i = 0; i < nCur; i++) {
         if (i == m_nNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
         CClientExoApp* pApp = g_pAppManager->m_pClientExoApp;
-        pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
+        CSWCCreature* pNPC = pApp->GetCreatureByGameObjectID(pApp->ServerToClientObjectId(
             g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pNPC)
-            goto found;
+        if (pNPC) {
+            m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
+            m_btnChange2.m_tail.m_nUserData = i;
+            return;
+        }
     }
-    return;
-found:
-    m_btnChange2.m_border.m_params.SetFillImage(pNPC->GetPortrait(1));
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(pNPC->GetPortrait(1));
-    m_btnChange2.m_tail.m_nUserData = i;
 }
 #endif
 
@@ -706,9 +708,9 @@ void CSWGuiInGameAbilities::UpdateView()
 #ifndef K2_UI_TOUCH
         // pc / xbox: the list hands the rows back at the height they were added with (it
         // stretches its visible rows into the leftover height)
-        m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_featChart.m_aFlows), 0, 1, 0);
+        m_lbAbility.AddControls(m_featChart.m_aFlows, 0, 1, 0);
 #else
-        m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_featChart.m_aFlows), 0, 0, 0);
+        m_lbAbility.AddControls(m_featChart.m_aFlows, 0, 0, 0);
 #endif
         m_lbAbility.SetSelectedControl(static_cast<unsigned int>(m_featChart.m_nSelectedFlow), 0);
         OnEnterFeat(static_cast<unsigned short>(m_featChart.GetSelected()));
@@ -730,9 +732,9 @@ void CSWGuiInGameAbilities::UpdateView()
         m_labelTotalVal.m_tail.bVisible = 1;
 
 #ifndef K2_UI_TOUCH
-        m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_powerChart.m_aFlows), 0, 1, 0);
+        m_lbAbility.AddControls(m_powerChart.m_aFlows, 0, 1, 0);
 #else
-        m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_powerChart.m_aFlows), 0, 0, 0);
+        m_lbAbility.AddControls(m_powerChart.m_aFlows, 0, 0, 0);
 #endif
         m_lbAbility.SetSelectedControl(static_cast<unsigned int>(m_powerChart.m_nSelectedFlow), 0);
         OnEnterPower(static_cast<unsigned int>(m_powerChart.GetSelected()));
@@ -792,7 +794,7 @@ void CSWGuiInGameAbilities::UpdateView()
         m_lbFeats.m_tail.bVisible = 1;
         m_lbDesc.m_tail.bVisible = 0;
 
-        m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_featChart.m_aFlows), 0, 0, 0);
+        m_lbAbility.AddControls(m_featChart.m_aFlows, 0, 0, 0);
         m_lbAbility.SetSelectedControl(static_cast<unsigned int>(m_featChart.m_nSelectedFlow), 0);
         OnEnterFeat(static_cast<unsigned short>(m_featChart.GetSelected()));
         g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_ENTER_FEAT_SCREEN, OBJECT_INVALID, OBJECT_INVALID, 0);
@@ -820,7 +822,7 @@ void CSWGuiInGameAbilities::UpdateView()
         m_lbFeats.m_tail.bVisible = 0;
         m_lbDesc.m_tail.bVisible = 1;
 
-        m_lbAbility.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_powerChart.m_aFlows), 0, 0, 0);
+        m_lbAbility.AddControls(m_powerChart.m_aFlows, 0, 0, 0);
         m_lbAbility.SetSelectedControl(static_cast<unsigned int>(m_powerChart.m_nSelectedFlow), 0);
         OnEnterPower(static_cast<unsigned int>(m_powerChart.GetSelected()));
         g_pAppManager->m_pClientExoApp->ShowTutorialWindow(TUTORIAL_ENTER_FORCE_POWER_SCREEN, OBJECT_INVALID, OBJECT_INVALID, 0);
@@ -1011,19 +1013,24 @@ void CSWGuiInGameAbilities::OnEnterPower(unsigned int nPower)
 
 #if KOTOR1  // K1: no room force rating; alignment and in-party only
     int nCost = pSpell->GetAdjustedForcePoints(static_cast<unsigned char>(nAlignment / 10) * 10, 1);
+    int nDelta;
 #else
-    CSWSArea* pArea = static_cast<CSWSArea*>(m_pCreature->GetServerCreature()->GetArea());
-    int nRoomForce = 0;
+    CSWSArea* pArea;
+    int nRoomForce;
+    pArea = static_cast<CSWSArea*>(m_pCreature->GetServerCreature()->GetArea());
+    nRoomForce = 0;
     if (pArea != 0)
         nRoomForce = pArea->GetRoomForceRating(m_pCreature->GetServerCreature()->m_position);
 
-    int nCost = pSpell->GetAdjustedForcePoints(
+    int nCost;
+    int nDelta;
+    nCost = pSpell->GetAdjustedForcePoints(
         static_cast<unsigned char>(nAlignment / 10) * 10, 1, nRoomForce,
         m_pCreature->GetServerCreature()->m_stanceId,
         m_pCreature->GetServerCreature()->m_pStats->m_nCHAMod);
 #endif
 
-    int nDelta = nCost - pSpell->m_nBaseForcePoints;
+    nDelta = nCost - pSpell->m_nBaseForcePoints;
     if (nDelta < 0) {
         sCostValue.Format(const_cast<char*>("%d"), nDelta);
         color = *reinterpret_cast<const Vector*>(&CGuiInGame::COLOR_NEW_BONUS);

@@ -11,7 +11,7 @@ VertexCache::VertexCache() {
 VertexCache::VertexCache(int size) {
     m_nSize = size;
     m_pEntries = new int[size];
-    for (int64_t i = 0; i < size; i++)
+    for (int i = 0; i < m_nSize; i++)
         m_pEntries[i] = -1;
 }
 

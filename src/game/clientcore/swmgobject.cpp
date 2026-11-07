@@ -16,7 +16,8 @@ extern CExoSound* g_pExoSound;
 
 CSWMiniGameObjectArray::CSWMiniGameObjectArray()
 {
-    memset(m_apObjects, 0, sizeof(m_apObjects));
+    for (int i = 0; i < 255; i++)
+        m_apObjects[i] = 0;
     m_nNextId = 0;
 }
 

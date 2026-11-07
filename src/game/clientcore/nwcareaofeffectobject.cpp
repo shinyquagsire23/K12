@@ -29,11 +29,10 @@ extern CExoSound* g_pExoSound;
 
 extern int quaternionidentityoptimization;
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -55,6 +54,8 @@ static inline float RandomScaled(float fMax)
 
 bool QueryPointInFrustrum(Vector& vPoint, float fRadius);
 
+// EFFECTIVE (K2 armv7): the store order and the band loop match; the loop counter and the address
+// register swap (r1/r2), and the vptr store does not post-increment to &m_position.
 CSWCAreaOfEffectObject::CSWCAreaOfEffectObject()
     : CSWCObject(11)
 {
@@ -67,33 +68,28 @@ CSWCAreaOfEffectObject::CSWCAreaOfEffectObject()
     m_nLastAIUpdateDay = nDay;
     m_nLastAIUpdateTod = nTimeOfDay;
 
-    m_panInstanceDelay  = 0;
-    m_panInstanceTimer  = 0;
-    m_panInstanceLength = 0;
-    m_anBandDuration[0] = 0;
-    m_anBandDuration[1] = 0;
-    m_anBandDuration[2] = 0;
-    m_anBandCount[0]    = 0;
-    m_anBandCount[1]    = 0;
-    m_anBandCount[2]    = 0;
-    m_nInstances        = 0;
+    m_cShape            = 0;
     m_fRadius           = 0.0f;
     m_fWidth            = 0.0f;
     m_fLength           = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        m_anBandChance[i]   = 0;
+        m_anBandCount[i]    = 0;
+        m_anBandDuration[i] = 0;
+    }
     m_nCessationTimer   = 0;
     m_bAllInstancesDone = 0;
     m_bStopping         = 0;
-    m_anBandChance[0]   = 0;
-    m_anBandChance[1]   = 0;
-    m_anBandChance[2]   = 0;
-    m_cShape            = 0;
+    m_nInstances        = 0;
+    m_panInstanceDelay  = 0;
+    m_panInstanceTimer  = 0;
+    m_panInstanceLength = 0;
+    m_bVisualEffectAttached            = 0;
+    m_pSoundSource      = 0;
     m_panInstanceDone   = 0;
     m_pScene            = 0;
     m_panInstanceState  = 0;
     m_pVisualEffect     = 0;
-    m_bVisualEffectAttached            = 0;
-    m_pSoundSource      = 0;
-
     m_sHitSound         = const_cast<char*>("");
     m_nHitSoundChance   = 0;
     m_bOrientWithGround            = 0;
@@ -132,17 +128,14 @@ void CSWCAreaOfEffectObject::ResetTimer(int nInstance) {
         return;
 
     int nBand;
-    if (m_anBandCount[0] > nInstance) {
-        nBand = 0;
-    } else if (m_anBandCount[0] + m_anBandCount[1] > nInstance) {
-        nBand = 1;
-    } else if (m_anBandCount[0] + m_anBandCount[1] + m_anBandCount[2] > nInstance) {
-        nBand = 2;
-    } else {
-        return;
+    int nCount = 0;
+    for (nBand = 0; nBand < 3; nBand++) {
+        nCount += m_anBandCount[nBand];
+        if (nCount > nInstance) {
+            m_panInstanceDelay[nInstance] = static_cast<unsigned int>(m_anBandDuration[nBand]);
+            return;
+        }
     }
-
-    m_panInstanceDelay[nInstance] = static_cast<unsigned int>(m_anBandDuration[nBand]);
 }
 
 void CSWCAreaOfEffectObject::AIUpdate() {
@@ -440,7 +433,7 @@ void CSWCAreaOfEffectObject::SetPosition(const Vector& v)
         }
     }
 
-    if (m_pModel && m_nInstances > 0) {
+    if (m_pModel) {
         Vector vDelta(v.x - m_position.x, v.y - m_position.y, v.z - m_position.z);
         for (int i = 0; i < m_nInstances; i++) {
             CAurObject* pObject;
@@ -476,6 +469,9 @@ int CSWCAreaOfEffectObject::LoadEffect(unsigned int nEffect) {
     float fBandWeight[3];
 
     int nOrientWithGround;
+    CClientOptions* pOptions;
+    float fSoundOneShotChance;
+    int nInstances;
     if (!g_pRules->m_p2DArrays->m_pPersistentVisualEffect->GetINTEntry(
         nEffect, g_pRules->m_p2DArrays->COL2DA_PERSISTENTVISUALEFFECT_ORIENTWITHGROUND,
         &nOrientWithGround))
@@ -488,6 +484,7 @@ int CSWCAreaOfEffectObject::LoadEffect(unsigned int nEffect) {
             nEffect, g_pRules->m_p2DArrays->COL2DA_PERSISTENTVISUALEFFECT_DURATIONVFX,
             &sDurationVFX)) {
         CExoString sVFXModel;
+        CSWCVisualEffect* pVFX;
         if (!g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
                 sDurationVFX, g_pRules->m_p2DArrays->COL2DA_VISUALEFFECT_IMP_HEADCON_NODE, &sVFXModel) &&
             !g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
@@ -502,7 +499,7 @@ int CSWCAreaOfEffectObject::LoadEffect(unsigned int nEffect) {
                 sDurationVFX, g_pRules->m_p2DArrays->COL2DA_VISUALEFFECT_IMP_ROOT_H_NODE, &sVFXModel))
             return 0;
 
-        CSWCVisualEffect* pVFX = new CSWCVisualEffect(0);
+        pVFX = new CSWCVisualEffect(0);
         if (pVFX->LoadModel(CResRef(sVFXModel), ANIM_MODEL_BODY, 8)) {
             m_bVisualEffectAttached = 0;
             pVFX->m_bImpactOnly = 0;
@@ -534,7 +531,7 @@ int CSWCAreaOfEffectObject::LoadEffect(unsigned int nEffect) {
 
 // Bit 0 of m_bFlags0Hi selects the full Model01/02/03 columns; otherwise ModelMin01/02/03
 // are tried first with Model01/02/03 as the fallback.
-    CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
+    pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
     if ((pOptions->m_bFlags0Hi & 1) == 0) {
         if (!g_pRules->m_p2DArrays->m_pPersistentVisualEffect->GetCExoStringEntry(
                 nEffect, g_pRules->m_p2DArrays->COL2DA_PERSISTENTVISUALEFFECT_MODELMIN01, &sModel[0]))
@@ -617,7 +614,6 @@ int CSWCAreaOfEffectObject::LoadEffect(unsigned int nEffect) {
             &sSoundOneShot))
         m_sHitSound = sSoundOneShot;
 
-    float fSoundOneShotChance;
     if (!g_pRules->m_p2DArrays->m_pPersistentVisualEffect->GetFLOATEntry(
             nEffect, g_pRules->m_p2DArrays->COL2DA_PERSISTENTVISUALEFFECT_SOUNDONESHOTPERCENTAGE,
             &fSoundOneShotChance))
@@ -630,24 +626,19 @@ int CSWCAreaOfEffectObject::LoadEffect(unsigned int nEffect) {
 
     m_pModel = new CSWCAnimBaseVisualEffect[m_nInstances];
 
-    int nInstances = m_nInstances;
-    unsigned int*   panDelay;
-    unsigned int*   panTimer;
-    unsigned int*   panDone;
-    unsigned int*   panLength;
-    unsigned short* panState;
-    m_panInstanceDelay  = panDelay  = new unsigned int[nInstances];
-    m_panInstanceTimer  = panTimer  = new unsigned int[nInstances];
-    m_panInstanceDone   = panDone   = new unsigned int[nInstances];
-    m_panInstanceLength = panLength = new unsigned int[nInstances];
-    m_panInstanceState  = panState  = new unsigned short[nInstances];
+    nInstances = m_nInstances;
+    m_panInstanceDelay  = new unsigned int[nInstances];
+    m_panInstanceTimer  = new unsigned int[nInstances];
+    m_panInstanceDone   = new unsigned int[nInstances];
+    m_panInstanceLength = new unsigned int[nInstances];
+    m_panInstanceState  = new unsigned short[nInstances];
 
     for (int i = 0; i < nInstances; i++) {
-        panState[i]  = 0;
-        panDone[i]   = 0;
-        panTimer[i]  = 0;
-        panDelay[i]  = 0;
-        panLength[i] = 0;
+        m_panInstanceState[i]  = 0;
+        m_panInstanceDone[i]   = 0;
+        m_panInstanceTimer[i]  = 0;
+        m_panInstanceDelay[i]  = 0;
+        m_panInstanceLength[i] = 0;
     }
 
 // One pass per band loads the band's model into its instances and staggers their re-randomise

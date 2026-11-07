@@ -233,7 +233,7 @@ int AurVertexBufferObjectARBAvailable()
 
 int AurVertexProgramsAvailable()
 {
-    return (AurVertexProgramsARBAvailable() & usearbvertexprograms) != 0;
+    return AurVertexProgramsARBAvailable() && usearbvertexprograms;
 }
 
 // Stub: always unavailable.

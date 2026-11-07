@@ -616,18 +616,20 @@ void CSWGuiInGameInventory::OnSwitchLeft(CSWGuiControl* pControl)
     m_btnChange2.m_borderHilight.m_params.SetFillImage(m_btnChange1.m_borderHilight.m_params.m_fillImage);
     m_btnChange2.m_tail.m_nUserData = m_btnChange1.m_tail.m_nUserData;
 
-    CSWCCreature* pCreature;
-    int i;
-    for (i = nCur - 1; i >= 0; i--) {
+    for (int i = nCur - 1; i >= 0; i--) {
         if (i == m_nNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
+        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pCreature != 0)
-            goto found;
+        if (pCreature != 0) {
+            m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_tail.m_nUserData = i;
+            return;
+        }
     }
     if (m_nNPC != -1 && static_cast<signed char>(m_btnChange2.m_tail.m_nUserData) != -1) {
         m_btnChange1.m_border.m_params.SetFillImage(
@@ -637,23 +639,21 @@ void CSWGuiInGameInventory::OnSwitchLeft(CSWGuiControl* pControl)
         m_btnChange1.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
-    for (i = 8; i > nCur; i--) {
+    for (int i = 8; i > nCur; i--) {
         if (i == m_nNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
+        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pCreature != 0)
-            goto found;
+        if (pCreature != 0) {
+            m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange1.m_tail.m_nUserData = i;
+            return;
+        }
     }
-    return;
-
-found:
-    m_btnChange1.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
-    m_btnChange1.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
-    m_btnChange1.m_tail.m_nUserData = i;
 }
 
 void CSWGuiInGameInventory::OnSwitchRight(CSWGuiControl* pControl)
@@ -668,18 +668,20 @@ void CSWGuiInGameInventory::OnSwitchRight(CSWGuiControl* pControl)
     m_btnChange1.m_borderHilight.m_params.SetFillImage(m_btnChange2.m_borderHilight.m_params.m_fillImage);
     m_btnChange1.m_tail.m_nUserData = m_btnChange2.m_tail.m_nUserData;
 
-    CSWCCreature* pCreature;
-    int i;
-    for (i = nCur + 1; i < 9; i++) {
+    for (int i = nCur + 1; i < 9; i++) {
         if (i == m_nNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
+        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pCreature != 0)
-            goto found;
+        if (pCreature != 0) {
+            m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_tail.m_nUserData = i;
+            return;
+        }
     }
     if (m_nNPC != -1) {
         m_btnChange2.m_border.m_params.SetFillImage(
@@ -689,23 +691,21 @@ void CSWGuiInGameInventory::OnSwitchRight(CSWGuiControl* pControl)
         m_btnChange2.m_tail.m_nUserData = static_cast<uint64_t>(-1);
         return;
     }
-    for (i = 0; i < nCur; i++) {
+    for (int i = 0; i < nCur; i++) {
         if (i == m_nNPC)
             continue;
         if (!g_pAppManager->m_pServerExoApp->GetPartyTable()->GetIsNPCAvailable(i))
             continue;
-        pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
+        CSWCCreature* pCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(
             g_pAppManager->m_pClientExoApp->ServerToClientObjectId(
                 g_pAppManager->m_pServerExoApp->GetPartyTable()->GetNPCObject(i, 0, 1)));
-        if (pCreature != 0)
-            goto found;
+        if (pCreature != 0) {
+            m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
+            m_btnChange2.m_tail.m_nUserData = i;
+            return;
+        }
     }
-    return;
-
-found:
-    m_btnChange2.m_border.m_params.SetFillImage(pCreature->GetPortrait(1));
-    m_btnChange2.m_borderHilight.m_params.SetFillImage(pCreature->GetPortrait(1));
-    m_btnChange2.m_tail.m_nUserData = i;
 }
 #else
 void CSWGuiInGameInventory::OnChangeCharacter(CSWGuiControl* pControl) { K2_UNUSED(pControl); }

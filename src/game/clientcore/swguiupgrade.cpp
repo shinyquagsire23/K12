@@ -429,9 +429,7 @@ void CSWGuiUpgrade::OnAssemble(CSWGuiControl* pControl)
     else if (pControl->m_tail.nCurrentEventType == INPUTEVENT_GUI_X)
         m_pGuiManager->PlayGuiSound(GUISOUND_UPGRADE);
     m_pItemSelect->FinishUpgrading();
-    m_stateFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+    SetToBeRemoved(0);
     m_pGuiManager->PopModalPanel();
 }
 #else
@@ -445,9 +443,7 @@ void CSWGuiUpgrade::OnAssemble(CSWGuiControl* pControl)
             m_pGuiManager->PlayGuiSound(pControl->m_tail.m_nClickSound);
     }
     m_pItemSelect->FinishUpgrading();
-    m_stateFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        m_stateFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+    SetToBeRemoved(0);
     m_pGuiManager->PopModalPanel();
 }
 #endif
@@ -584,6 +580,7 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
             goto FINALIZE;
         CExoString sOut;
         CExoString sKey;
+        CSWSItem* pNew;
         CSWBaseItem* pBase = m_pItem->GetBaseItem();
         switch (pBase->m_nItemType)
         {
@@ -598,7 +595,7 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
             break;
         }
         m_pUpgradeC2DA2->GetCExoStringEntry(pRow->m_nUpgradeRow, sKey, &sOut);
-        CSWSItem* pNew = new CSWSItem(OBJECT_INVALID);
+        pNew = new CSWSItem(OBJECT_INVALID);
         {
             CResRef rr(sOut);
             pNew->LoadFromTemplate(rr);
@@ -606,16 +603,15 @@ void CSWGuiUpgrade::OnUpgradeSelected(CSWGuiControl* pControl)
         pNew->SetPossessor(pApp->GetPlayerCreatureId(), 0, 0, OBJECT_INVALID);
         pNew->SetIdentified(1);
         pNew->m_nUpgrades = m_pItem->m_nUpgrades;
-        pNew->AddUpgrade(m_apaItems[0], 0);
-        pNew->m_anUpgVars[0] = m_pItem->m_anUpgVars[0];
-        pNew->AddUpgrade(m_apaItems[2], 2);
-        pNew->m_anUpgVars[2] = m_pItem->m_anUpgVars[2];
-        pNew->AddUpgrade(m_apaItems[3], 3);
-        pNew->m_anUpgVars[3] = m_pItem->m_anUpgVars[3];
-        pNew->AddUpgrade(m_apaItems[4], 4);
-        pNew->m_anUpgVars[4] = m_pItem->m_anUpgVars[4];
-        pNew->AddUpgrade(m_apaItems[5], 5);
-        pNew->m_anUpgVars[5] = m_pItem->m_anUpgVars[5];
+        // Every slot but the crystal this rebuild replaces.
+        for (int i = 0; i < 6; i++)
+        {
+            if (i != 1)
+            {
+                pNew->AddUpgrade(m_apaItems[i], i);
+                pNew->m_anUpgVars[i] = m_pItem->m_anUpgVars[i];
+            }
+        }
         pNew->m_bits.m_bStolen = m_pItem->m_bits.m_bStolen;
         delete m_pItem;
         m_pItem = pNew;
@@ -1263,24 +1259,16 @@ void CSWGuiUpgrade::ShowItems(int bShow)
         m_lblProperty.m_tail.bVisible = 0;
         m_btnAssemble.m_tail.bVisible = 0;
         m_btnOk.m_tail.bVisible = 1;
-        m_abtnSlot[0].m_tail.bVisible = 0;
-        m_aslotLbl[0].m_tail.bVisible = 0;
-        m_abtnSlot[1].m_tail.bVisible = 0;
-        m_aslotLbl[1].m_tail.bVisible = 0;
-        m_abtnSlot[2].m_tail.bVisible = 0;
-        m_aslotLbl[2].m_tail.bVisible = 0;
-        m_abtnRow[0].m_tail.bVisible = 0;
-        m_apRows[0].m_tail.bVisible = 0;
-        m_abtnRow[1].m_tail.bVisible = 0;
-        m_apRows[1].m_tail.bVisible = 0;
-        m_abtnRow[2].m_tail.bVisible = 0;
-        m_apRows[2].m_tail.bVisible = 0;
-        m_abtnRow[3].m_tail.bVisible = 0;
-        m_apRows[3].m_tail.bVisible = 0;
-        m_abtnRow[4].m_tail.bVisible = 0;
-        m_apRows[4].m_tail.bVisible = 0;
-        m_abtnRow[5].m_tail.bVisible = 0;
-        m_apRows[5].m_tail.bVisible = 0;
+        for (int i = 0; i < 3; i++)
+        {
+            m_abtnSlot[i].m_tail.bVisible = 0;
+            m_aslotLbl[i].m_tail.bVisible = 0;
+        }
+        for (int i = 0; i < 6; i++)
+        {
+            m_abtnRow[i].m_tail.bVisible = 0;
+            m_apRows[i].m_tail.bVisible = 0;
+        }
         m_lbItems.m_tail.bVisible = 1;
         return;
     }
@@ -1312,24 +1300,16 @@ void CSWGuiUpgrade::ShowItems(int bShow)
         static_cast<CSWGuiNavigable*>(&m_abtnRow[4])->SetMoveToControl(2, &m_abtnRow[5]);
         static_cast<CSWGuiNavigable*>(&m_abtnRow[5])->SetMoveToControl(0, &m_abtnRow[4]);
 
-        m_abtnRow[0].m_tail.bVisible = 1;
-        m_apRows[0].m_tail.bVisible = 1;
-        m_abtnRow[1].m_tail.bVisible = 1;
-        m_apRows[1].m_tail.bVisible = 1;
-        m_abtnRow[2].m_tail.bVisible = 1;
-        m_apRows[2].m_tail.bVisible = 1;
-        m_abtnRow[3].m_tail.bVisible = 1;
-        m_apRows[3].m_tail.bVisible = 1;
-        m_abtnRow[4].m_tail.bVisible = 1;
-        m_apRows[4].m_tail.bVisible = 1;
-        m_abtnRow[5].m_tail.bVisible = 1;
-        m_apRows[5].m_tail.bVisible = 1;
-        m_abtnSlot[0].m_tail.bVisible = 0;
-        m_aslotLbl[0].m_tail.bVisible = 0;
-        m_abtnSlot[1].m_tail.bVisible = 0;
-        m_aslotLbl[1].m_tail.bVisible = 0;
-        m_abtnSlot[2].m_tail.bVisible = 0;
-        m_aslotLbl[2].m_tail.bVisible = 0;
+        for (int i = 0; i < 6; i++)
+        {
+            m_abtnRow[i].m_tail.bVisible = 1;
+            m_apRows[i].m_tail.bVisible = 1;
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            m_abtnSlot[i].m_tail.bVisible = 0;
+            m_aslotLbl[i].m_tail.bVisible = 0;
+        }
 
         if (IsJoystickConnected())
             SetActiveControl(&m_abtnRow[0], 0);
@@ -1347,25 +1327,17 @@ void CSWGuiUpgrade::ShowItems(int bShow)
         m_lblDescBgLS.m_tail.bVisible = 0;
 
         bool bSlots = (static_cast<unsigned>(nMenuType - CSWSItem::UPGRADABLE_TYPE_RANGED) < 3);
-        m_abtnSlot[0].m_tail.bVisible = bSlots;
-        m_aslotLbl[0].m_tail.bVisible = bSlots;
-        m_abtnSlot[1].m_tail.bVisible = bSlots;
-        m_aslotLbl[1].m_tail.bVisible = bSlots;
-        m_abtnSlot[2].m_tail.bVisible = bSlots;
-        m_aslotLbl[2].m_tail.bVisible = bSlots;
+        for (int i = 0; i < 3; i++)
+        {
+            m_abtnSlot[i].m_tail.bVisible = bSlots;
+            m_aslotLbl[i].m_tail.bVisible = bSlots;
+        }
 
-        m_abtnRow[0].m_tail.bVisible = 0;
-        m_apRows[0].m_tail.bVisible = 0;
-        m_abtnRow[1].m_tail.bVisible = 0;
-        m_apRows[1].m_tail.bVisible = 0;
-        m_abtnRow[2].m_tail.bVisible = 0;
-        m_apRows[2].m_tail.bVisible = 0;
-        m_abtnRow[3].m_tail.bVisible = 0;
-        m_apRows[3].m_tail.bVisible = 0;
-        m_abtnRow[4].m_tail.bVisible = 0;
-        m_apRows[4].m_tail.bVisible = 0;
-        m_abtnRow[5].m_tail.bVisible = 0;
-        m_apRows[5].m_tail.bVisible = 0;
+        for (int i = 0; i < 6; i++)
+        {
+            m_abtnRow[i].m_tail.bVisible = 0;
+            m_apRows[i].m_tail.bVisible = 0;
+        }
 
         if (IsJoystickConnected())
             SetActiveControl(&m_abtnSlot[0], 0);
@@ -1375,10 +1347,8 @@ void CSWGuiUpgrade::ShowItems(int bShow)
     {
         m_aslotLbl[2].m_tail.bVisible = 0;
         m_abtnSlot[2].m_tail.bVisible = 0;
-        CSWGuiButton* pSlotA = &m_abtnSlot[0];
-        CSWGuiButton* pSlotB = &m_abtnSlot[1];
-        static_cast<CSWGuiNavigable*>(pSlotA)->SetMoveToControl(3, pSlotB);
-        static_cast<CSWGuiNavigable*>(pSlotB)->SetMoveToControl(1, pSlotA);
+        static_cast<CSWGuiNavigable*>(&m_abtnSlot[0])->SetMoveToControl(3, &m_abtnSlot[1]);
+        static_cast<CSWGuiNavigable*>(&m_abtnSlot[1])->SetMoveToControl(1, &m_abtnSlot[0]);
     }
     else
     {
@@ -1424,32 +1394,13 @@ void CSWGuiUpgrade::OnPanelRemoved()
         m_pItemSlot = 0;
     }
 
-    if (m_apaItems[0]) {
-        delete m_apaItems[0];
-        m_apaItems[0] = 0;
+    for (unsigned int i = 0; i < sizeof(m_apaItems) / sizeof(m_apaItems[0]); i++)
+    {
+        if (m_apaItems[i]) {
+            delete m_apaItems[i];
+            m_apaItems[i] = 0;
+        }
     }
-    if (m_apaItems[1]) {
-        delete m_apaItems[1];
-        m_apaItems[1] = 0;
-    }
-    if (m_apaItems[2]) {
-        delete m_apaItems[2];
-        m_apaItems[2] = 0;
-    }
-    if (m_apaItems[3]) {
-        delete m_apaItems[3];
-        m_apaItems[3] = 0;
-    }
-#if !KOTOR1  // K1 has four slots
-    if (m_apaItems[4]) {
-        delete m_apaItems[4];
-        m_apaItems[4] = 0;
-    }
-    if (m_apaItems[5]) {
-        delete m_apaItems[5];
-        m_apaItems[5] = 0;
-    }
-#endif
     m_lstItemsAddedToRepo.m_count = 0;
     m_lstItemsTakenFromRepo.m_count = 0;
     CSWGuiPanel::OnPanelRemoved();
@@ -1463,9 +1414,7 @@ static const int s_anDimCounts[4] = { 6, 3, 3, 2 };  // border-dim run length pe
 void CSWGuiUpgrade::OnPanelAdded()
 {
     if (m_pItem == NULL) {
-        m_stateFlags = (m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE
-                           ? (m_stateFlags & ~PANEL_REMOVE_DEFERRED)
-                           : (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+        SetToBeRemoved(0);
         return;
     }
 
@@ -1489,9 +1438,7 @@ void CSWGuiUpgrade::OnPanelAdded()
             sCol = "LongMdlVar";
             break;
         default:
-            m_stateFlags = (m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE
-                               ? (m_stateFlags & ~PANEL_REMOVE_DEFERRED)
-                               : (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+            SetToBeRemoved(0);
             return;
         }
         for (int nRow = 0; nRow < m_pUpgradeC2DA2->m_nRows; nRow++) {
@@ -1509,9 +1456,7 @@ void CSWGuiUpgrade::OnPanelAdded()
             m_apaItems[1]->LoadFromTemplate(CResRef(sTmp));
         }
         if (m_apaItems[1] == NULL) {
-            m_stateFlags = (m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE
-                               ? (m_stateFlags & ~PANEL_REMOVE_DEFERRED)
-                               : (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+            SetToBeRemoved(0);
             return;
         }
         pRow = m_aslotLbl;
@@ -1532,9 +1477,7 @@ void CSWGuiUpgrade::OnPanelAdded()
         pRow = m_apRows;
         break;
     default:
-        m_stateFlags = (m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE
-                           ? (m_stateFlags & ~PANEL_REMOVE_DEFERRED)
-                           : (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+        SetToBeRemoved(0);
         return;
     }
 
@@ -1584,9 +1527,7 @@ void CSWGuiUpgrade::OnPanelAdded()
 void CSWGuiUpgrade::OnPanelAdded()
 {
     if (m_pItem == NULL) {
-        m_stateFlags = (m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE
-                           ? (m_stateFlags & ~PANEL_REMOVE_DEFERRED)
-                           : (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+        SetToBeRemoved(0);
         return;
     }
 
@@ -1626,9 +1567,7 @@ void CSWGuiUpgrade::OnPanelAdded()
             sCol = "LongMdlVar";
             break;
         default:
-            m_stateFlags = (m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE
-                               ? (m_stateFlags & ~PANEL_REMOVE_DEFERRED)
-                               : (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+            SetToBeRemoved(0);
             bKeep = false;
             break;
         }
@@ -1659,9 +1598,7 @@ void CSWGuiUpgrade::OnPanelAdded()
         break;
     }
     default:
-        m_stateFlags = (m_stateFlags & PANEL_REMOVE_MASK) == PANEL_REMOVE_AND_DELETE
-                           ? (m_stateFlags & ~PANEL_REMOVE_DEFERRED)
-                           : (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
+        SetToBeRemoved(0);
         return;
     }
 
@@ -1724,14 +1661,12 @@ void CSWGuiUpgrade::OnPanelAdded()
     }
     CSWGuiLabel* pLabel2 = pRow;
     CSWSItem** ppItem = m_apaItems;
-    if (nDim != 0) {
-        for (int i = 0; i < nDim; i++) {
-            if (*ppItem != NULL) {
-                pLabel2->m_border.m_params.m_fAlpha = 1.0f;
-            }
-            ++ppItem;
-            ++pLabel2;
+    for (int i = 0; i < nDim; i++) {
+        if (*ppItem != NULL) {
+            pLabel2->m_border.m_params.m_fAlpha = 1.0f;
         }
+        ++ppItem;
+        ++pLabel2;
     }
     if (m_nMenuType == CSWSItem::UPGRADABLE_TYPE_LIGHTSABER) {
         pRow[1].m_border.m_params.m_fAlpha = 1.0f;
@@ -2023,18 +1958,7 @@ void CSWGuiUpgrade::CancelPanel()
     }
 
     m_pItemSelect->FinishUpgrading();
-    {
-#if KOTOR1  // K1: the panel state bits sit one higher
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-        m_stateFlags = nFlags;
-    }
+    SetToBeRemoved(0);
     m_pGuiManager->PopModalPanel();
 }
 
@@ -2884,16 +2808,7 @@ void CSWGuiCreateItem::CloseCreateItem(CSWGuiControl* pControl)
     else
         m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
 
-#if KOTOR1  // K1: the panel state bits sit one higher
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-    m_stateFlags = nFlags;
+    SetToBeRemoved(0);
 
     m_pGuiManager->PopModalPanel();
 }
@@ -3085,10 +3000,10 @@ void CSWGuiCreateItem::OnPanelAdded()
     if (g_pAppManager->m_pServerExoApp->GetPartyTable()->m_nItemComponent < 0)
         g_pAppManager->m_pServerExoApp->GetPartyTable()->m_nItemComponent = 0;
 
-    uint64_t nStrRef = STRREF_BACK;
     if (m_pUpgradeSelection != NULL && m_pUpgradeSelection->m_bParam4 != 0)
-        nStrRef = STRREF_CLOSE;
-    m_btnCancel.m_text.m_params.SetStrRef(nStrRef);
+        m_btnCancel.m_text.m_params.SetStrRef(STRREF_CLOSE);
+    else
+        m_btnCancel.m_text.m_params.SetStrRef(STRREF_BACK);
 
     m_nCreateFilter = CREATE_FILTER_MISC;
     UpdateCreateFilters();
@@ -3867,7 +3782,7 @@ void CSWGuiCreateItem::OnControlEntered(CSWGuiControl* pControl)
             }
             else
             {
-                if ((pItem->m_nFlagsLow & 4) != 0)
+                if ((pItem->m_flags & 4) != 0)
                     m_lblStockValue.m_text.m_params.SetStrRef(STRREF_INFINITE);
                 else
                     m_lblStockValue.m_text.m_params.SetText(CExoString(pItem->m_stackCount));
@@ -4601,54 +4516,51 @@ void CSWGuiCreateMedicalItem::PopulateInventoryItemListBox()
             nValid++;
     }
 
-    if (nValid != 0)
+    unsigned nDone = 0;
+    int nGroup = 0;
+    while (nDone < nValid)
     {
-        unsigned nDone = 0;
-        int nGroup = 0;
-        while (nDone < nValid)
+        int nNext = nGroup;
+        for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
         {
-            int nNext = nGroup;
-            for (unsigned i = 0; i < pRepo->ItemListGetCount(); i++)
+            int nMatch = 0;
+            int nSize;
+            CSWSItem* pItem = pRepo->ItemListGetItem(i);
+
+            for (int j = 0; j < pArray->m_nRows; j++)
             {
-                int nMatch = 0;
-                int nSize;
-                CSWSItem* pItem = pRepo->ItemListGetItem(i);
+                pArray->GetCExoStringEntry(j, CExoString("label"), &sValue);
 
-                for (int j = 0; j < pArray->m_nRows; j++)
+                CExoString sTag;
+                sTag = pItem->m_sTag.CStr();
+                if (sTag == sValue)
                 {
-                    pArray->GetCExoStringEntry(j, CExoString("label"), &sValue);
-
-                    CExoString sTag;
-                    sTag = pItem->m_sTag.CStr();
-                    if (sTag == sValue)
-                    {
-                        int nRowGroup = 0;
-                        pArray->GetINTEntry(j, CExoString("group"), &nRowGroup);
-                        nMatch = (nRowGroup != 5);
-                        break;
-                    }
-                }
-
-                if (pItem == NULL)
-                    continue;
-                if (pItem->m_bPlot)
-                    continue;
-
-                nSize = pItem->GetBaseItem()->m_nStorePanelSort;
-                if (nSize == nGroup)
-                {
-                    if (nMatch && pItem->GetCost() != 0)
-                        CreateItemEntry(nIndex, aControls, pItem->m_objectId, 1, CExoString(""));
-                    nDone++;
-                }
-                else if (nSize > nGroup)
-                {
-                    if (nNext == nGroup || nSize < nNext)
-                        nNext = nSize;
+                    int nRowGroup = 0;
+                    pArray->GetINTEntry(j, CExoString("group"), &nRowGroup);
+                    nMatch = (nRowGroup != 5);
+                    break;
                 }
             }
-            nGroup = nNext;
+
+            if (pItem == NULL)
+                continue;
+            if (pItem->m_bPlot)
+                continue;
+
+            nSize = pItem->GetBaseItem()->m_nStorePanelSort;
+            if (nSize == nGroup)
+            {
+                if (nMatch && pItem->GetCost() != 0)
+                    CreateItemEntry(nIndex, aControls, pItem->m_objectId, 1, CExoString(""));
+                nDone++;
+            }
+            else if (nSize > nGroup)
+            {
+                if (nNext == nGroup || nSize < nNext)
+                    nNext = nSize;
+            }
         }
+        nGroup = nNext;
     }
 
     m_lbInvItems.AddControls(aControls, 0, 1, 0);
@@ -4796,25 +4708,23 @@ int CSWGuiCreateMedicalItem::CreateItemEntry(int& nIndex, CExoArrayList<CSWGuiCo
         aEntries.Add(pEntry);
         pEntry->m_tail.m_nClickSound = GUISOUND_NONE;
 
-        void (CSWGuiObject::*pfnHandler)(CSWGuiControl*);
-
         if (bInventory)
         {
             CSWGuiButton* pProto = m_lbInvItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbInvItems.m_innerExtent.w - 2 * m_lbInvItems.m_nPadding);
-            pfnHandler = static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlInvAButton);
+            pEntry->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlInvAButton));
+            pEntry->AddEvent(INPUTEVENT_GUI_START, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlInvAButton));
         }
         else
         {
             CSWGuiButton* pProto = m_lbShopItems.m_pProtoItem->AsButton();
             pEntry->Initialize(pProto->m_text, pProto->m_border, pProto->m_borderHilight,
                                m_lbShopItems.m_innerExtent.w - 2 * m_lbShopItems.m_nPadding);
-            pfnHandler = static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlStoreAButton);
+            pEntry->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlStoreAButton));
+            pEntry->AddEvent(INPUTEVENT_GUI_START, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlStoreAButton));
         }
 
-        pEntry->AddEvent(INPUTEVENT_GUI_A, this, pfnHandler);
-        pEntry->AddEvent(INPUTEVENT_GUI_START, this, pfnHandler);
         pEntry->AddEvent(SWGUIEVENT_FOCUS, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiCreateMedicalItem::OnControlEntered));
     }
 
@@ -4947,7 +4857,7 @@ void CSWGuiCreateMedicalItem::OnControlEntered(CSWGuiControl* pControl)
             }
             else
             {
-                if ((pItem->m_nFlagsLow & 4) == 0)
+                if ((pItem->m_flags & 4) == 0)
                     m_lblStockValue.m_text.m_params.SetText(CExoString(pItem->m_stackCount));
                 else
                     m_lblStockValue.m_text.m_params.SetStrRef(STRREF_INFINITE);
@@ -5399,7 +5309,7 @@ CSWGuiSwoopUpgrade::~CSWGuiSwoopUpgrade()
     }
 }
 
-int CSWGuiSwoopUpgrade::GetNumUpgrades()
+unsigned char CSWGuiSwoopUpgrade::GetNumUpgrades()
 {
     return 3;
 }
@@ -5516,8 +5426,9 @@ void CSWGuiSwoopUpgrade::OnPanelAdded()
     m_pItemSlot = new CSWSItem(OBJECT_INVALID);
     m_pItemSlot->CopyItem(m_pItem);
 
-    for (int i = 0; i < 3; i++)
-        m_abtnSlot[i].SetMoveToControl(0, &m_abtnSlot[i]);
+    m_abtnSlot[0].SetMoveToControl(0, &m_abtnSlot[0]);
+    m_abtnSlot[1].SetMoveToControl(0, &m_abtnSlot[1]);
+    m_abtnSlot[2].SetMoveToControl(0, &m_abtnSlot[2]);
 
     ShowItems(0);
 
@@ -5582,29 +5493,12 @@ void CSWGuiSwoopUpgrade::OnPanelRemoved()
         delete m_pItemSlot;
         m_pItemSlot = 0;
     }
-    if (m_apaItems[0]) {
-        delete m_apaItems[0];
-        m_apaItems[0] = 0;
-    }
-    if (m_apaItems[1]) {
-        delete m_apaItems[1];
-        m_apaItems[1] = 0;
-    }
-    if (m_apaItems[2]) {
-        delete m_apaItems[2];
-        m_apaItems[2] = 0;
-    }
-    if (m_apaItems[3]) {
-        delete m_apaItems[3];
-        m_apaItems[3] = 0;
-    }
-    if (m_apaItems[4]) {
-        delete m_apaItems[4];
-        m_apaItems[4] = 0;
-    }
-    if (m_apaItems[5]) {
-        delete m_apaItems[5];
-        m_apaItems[5] = 0;
+    for (unsigned int i = 0; i < sizeof(m_apaItems) / sizeof(m_apaItems[0]); i++)
+    {
+        if (m_apaItems[i]) {
+            delete m_apaItems[i];
+            m_apaItems[i] = 0;
+        }
     }
     m_lstItemsAddedToRepo.m_count = 0;
     m_lstItemsTakenFromRepo.m_count = 0;
@@ -6691,10 +6585,7 @@ void CSWGuiUpgradeItemSelect::HandleInputEvent(int type, int val)
             case INPUTEVENT_GUI_BACK:
             {
                 m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
-                unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                    nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-                m_stateFlags = nFlags;
+                SetToBeRemoved(0);
                 m_pGuiManager->PopModalPanel();
                 break;
             }
@@ -6728,16 +6619,7 @@ void CSWGuiUpgradeItemSelect::HandleInputEvent(int type, int val)
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
 // Drops the panel out of its opening state.
 
-#if KOTOR1  // K1: the panel state bits sit one higher
-            unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-            if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-            unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-            if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-            m_stateFlags = nFlags;
+            SetToBeRemoved(0);
             m_pGuiManager->PopModalPanel();
         }
         else if (type == INPUTEVENT_GUI_SCROLL_UP)
@@ -6877,12 +6759,10 @@ void CSWGuiUpgradeItemSelect::OnPanelAdded()
         return;
     }
 
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-    m_stateFlags = nFlags;
+    SetToBeRemoved(0);
 }
 #else
+// EFFECTIVE: the type range test narrows to a byte here (`(t - 1) > 3`); the image compares it as an int (`< 4`).
 void CSWGuiUpgradeItemSelect::OnPanelAdded()
 {
     if (m_nUpgradableType >= CSWSItem::UPGRADABLE_TYPE_LIGHTSABER && m_nUpgradableType <= CSWSItem::UPGRADABLE_TYPE_ARMOR)
@@ -6907,7 +6787,10 @@ void CSWGuiUpgradeItemSelect::OnPanelAdded()
     {
         pEntry->SetItem(m_pItem->m_objectId, 1, pCreature->m_objectId, static_cast<unsigned int>(nSlot));
 
-        if (m_pActive->m_nEquippedSlot == CSWInventory::SLOT_RIGHTWEAPON2 || m_pActive->m_nEquippedSlot == CSWInventory::SLOT_LEFTWEAPON2)
+        switch (m_pActive->m_nEquippedSlot)
+        {
+        case CSWInventory::SLOT_RIGHTWEAPON2:
+        case CSWInventory::SLOT_LEFTWEAPON2:
         {
             CSWSItem* pLow = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON2));
             CSWSItem* pHigh = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON2));
@@ -6918,7 +6801,7 @@ void CSWGuiUpgradeItemSelect::OnPanelAdded()
                     m_nUnequipFlags = (m_nUnequipFlags & ~7u) | 5u;
                     m_otherItemObjId = pHigh->m_objectId;
                     pCreature->UnequipItem(pHigh);
-                    pCreature->UnequipItem(m_pItem);
+                    pCreature->UnequipItem(pLow);
                 }
                 else if (pHigh == m_pItem)
                 {
@@ -6934,8 +6817,10 @@ void CSWGuiUpgradeItemSelect::OnPanelAdded()
                 m_otherItemObjId = OBJECT_INVALID;
                 pCreature->UnequipItem(pLow);
             }
+            break;
         }
-        else if (m_pActive->m_nEquippedSlot == CSWInventory::SLOT_RIGHTWEAPON || m_pActive->m_nEquippedSlot == CSWInventory::SLOT_LEFTWEAPON)
+        case CSWInventory::SLOT_RIGHTWEAPON:
+        case CSWInventory::SLOT_LEFTWEAPON:
         {
             CSWSItem* pSlot10 = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(CSWInventory::SLOT_RIGHTWEAPON));
             CSWSItem* pSlot20 = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(CSWInventory::SLOT_LEFTWEAPON));
@@ -6946,7 +6831,7 @@ void CSWGuiUpgradeItemSelect::OnPanelAdded()
                     m_nUnequipFlags = (m_nUnequipFlags & ~7u) | 1u;
                     m_otherItemObjId = pSlot20->m_objectId;
                     pCreature->UnequipItem(pSlot20);
-                    pCreature->UnequipItem(m_pItem);
+                    pCreature->UnequipItem(pSlot10);
                 }
                 else if (pSlot20 == m_pItem)
                 {
@@ -6962,11 +6847,12 @@ void CSWGuiUpgradeItemSelect::OnPanelAdded()
                 m_otherItemObjId = OBJECT_INVALID;
                 pCreature->UnequipItem(pSlot10);
             }
+            break;
         }
-        else
-        {
+        default:
             m_nUnequipFlags &= ~7u;
             pCreature->UnequipItem(m_pItem);
+            break;
         }
     }
     else if (m_pItem->m_stackCount > 1)
@@ -6984,16 +6870,7 @@ void CSWGuiUpgradeItemSelect::OnPanelAdded()
         return;
     }
 
-#if KOTOR1  // K1: the panel state bits sit one higher
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-    m_stateFlags = nFlags;
+    SetToBeRemoved(0);
 }
 #endif
 
@@ -7172,10 +7049,7 @@ void CSWGuiUpgradeItemSelect::FinishUpgrading()
         return;
     }
 
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-    m_stateFlags = nFlags;
+    SetToBeRemoved(0);
     m_pGuiManager->PopModalPanel();
     g_pAppManager->m_pClientExoApp->GetInGameGui()->HideUpgradeScreen();
     m_pItem = NULL;
@@ -7282,16 +7156,7 @@ void CSWGuiUpgradeItemSelect::FinishUpgrading()
         return;
     }
 
-#if KOTOR1  // K1: the panel state bits sit one higher
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-    m_stateFlags = nFlags;
+    SetToBeRemoved(0);
 
     int nHadItem = m_bOpenedForItem;
     m_pGuiManager->PopModalPanel();

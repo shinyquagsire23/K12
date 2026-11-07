@@ -56,6 +56,7 @@ extern void AurSaveGameSnapshot(char* path, int value, bool flag);
 // The save/load progress and error record the app manager and the server share.
 
 #include "exostring.h"
+#include "k2stdint.h"
 
 struct CSWReentrantServerStats {
     // m_nStallEvent: the long operation the load bar is stalled on, as the StartStallEvent message
@@ -73,10 +74,7 @@ struct CSWReentrantServerStats {
 
     int          m_flag;
     int          m_nStallEvent;
-    union {
-        unsigned long long m_nLoadBarPair;
-        struct { int m_total; int m_progress; } m_loadBar;
-    };
+    struct { int m_total; int m_progress; } m_loadBar;
     int          m_bStallFirstFrame;
     int          m_bStallFinished;
     CExoString   m_saveDirectory;

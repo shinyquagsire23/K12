@@ -163,9 +163,8 @@ void CSWGuiBarkBubble::SetBark(unsigned long long objId, const CExoString& text,
 
     if (objId != OBJECT_INVALID)
     {
-        CSWCObject* pObject =
-            static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(objId)->AsSWCObject());
-        Vector vPos = pObject->m_position;
+        Vector vPos =
+            static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(objId)->AsSWCObject())->m_position;
         m_pSoundBark->Set3D(1);
         m_pSoundBark->SetReverbEnabled(0);
         m_pSoundBark->SetPosition(vPos);
@@ -307,16 +306,7 @@ void CSWGuiBarkBubble::Pause()
     {
         if (m_pSoundBark)
             m_pSoundBark->Pause();
-#if KOTOR1  // K1: the panel state bits sit one higher (bit 3 inserted)
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-        m_stateFlags = nFlags;
+        SetToBeRemoved(0);
     }
 }
 
@@ -339,16 +329,7 @@ void CSWGuiBarkBubble::StopBark(int a)
         m_pSoundBark = 0;
     }
     m_fBarkTime = 0.0f;
-#if KOTOR1  // K1: the panel state bits sit one higher (bit 3 inserted)
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-        nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-    m_stateFlags = nFlags;
+    SetToBeRemoved(0);
 }
 
 // The bubble fades while it is still up, and the panel-state handling below runs only on the
@@ -589,18 +570,7 @@ void CSWGuiBarkBubble::Draw(float fAlpha)
             m_fBarkTime -= fDelta;
     }
     else
-    {
-#if KOTOR1  // K1: the panel state bits sit one higher (bit 3 inserted)
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#else
-        unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-        if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-            nFlags = (m_stateFlags & ~PANEL_REMOVE_STATE_MASK) | PANEL_REMOVE;
-#endif
-        m_stateFlags = nFlags;
-    }
+        SetToBeRemoved(0);
 
     // The bubble tracks the action bar's vertical offset while it is up.
     if (g_pAppManager->m_pClientExoApp->GetCombatMode() != 0)

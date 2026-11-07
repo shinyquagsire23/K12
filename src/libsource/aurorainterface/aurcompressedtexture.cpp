@@ -74,14 +74,12 @@ int CAuroraCompressedTexture::ReadTextureHeader(int* pnWidth, int* pnHeight, int
     ByteSwap(reinterpret_cast<int*>(&header.m_height));
     ByteSwap(reinterpret_cast<int*>(&header.m_nBytesPerPixel));
     ByteSwap(reinterpret_cast<int*>(&header.m_nDataSize));
-    ByteSwap(reinterpret_cast<float*>(&header.m_fAlphaTest));
+    ByteSwap(&header.m_fAlphaTest);
     *pnWidth = header.m_width;
     *pnHeight = header.m_height;
     *pnBytesPerPixel = header.m_nBytesPerPixel;
     *pnDataSize = header.m_nDataSize;
-    // Raw-copies the bits: m_fAlphaTest is an unsigned int, so assigning the value would convert it to
-    // float instead of reinterpreting it.
-    *reinterpret_cast<unsigned int*>(pfAlphaTest) = header.m_fAlphaTest;
+    *pfAlphaTest = header.m_fAlphaTest;
     return 1;
 }
 

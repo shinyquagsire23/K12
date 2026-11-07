@@ -126,7 +126,7 @@ public:
     virtual void SetAlignmentHorizontal(unsigned char horizontal);
     virtual unsigned char GetAlignmentHorizontal();
     virtual void SetCursorIndex(short index);
-    virtual unsigned short GetCursorIndex();
+    virtual short GetCursorIndex();
     virtual void DisableCursor();
     virtual char* GetFontTexture();
     virtual void SetFontTexture(char*);

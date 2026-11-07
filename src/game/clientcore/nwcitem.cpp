@@ -339,16 +339,18 @@ CSWCItem::~CSWCItem()
 // properties.
 int CSWCItem::BuildUseSubmenu()
 {
-    if (m_nNumActiveProperties < 2)
-        return 0;
-    int nSpellProperties = 0;    for (int i = 0; i < m_nNumActiveProperties; i++)
+    if (m_nNumActiveProperties >= 2)
     {
-        if (m_paActiveProperties[i].m_type == ITEM_PROPERTY_ACTIVATE_ITEM)
-            nSpellProperties++;
+        int nSpellProperties = 0;
+        for (int i = 0; i < m_nNumActiveProperties; i++)
+        {
+            if (m_paActiveProperties[i].m_type == ITEM_PROPERTY_ACTIVATE_ITEM)
+                nSpellProperties++;
+        }
+        if (nSpellProperties > 1)
+            return 1;
     }
-    if (nSpellProperties <= 1)
-        return 0;
-    return 1;
+    return 0;
 }
 
 void CSWCItem::PlayPickupSound()
@@ -535,12 +537,13 @@ CExoString CSWCItem::GetName(int nForm)
 {
     STR_RES strRes;
     CExoString sName;
+    unsigned int nNameStrRef;
     if (nForm == 0)
         return m_sDisplayName;
     if (m_sDisplayName.GetLength() > 0
         && m_bIdentified != 0)
         return m_sDisplayName;
-    unsigned int nNameStrRef = static_cast<unsigned int>(g_pRules->GetBaseItem(m_baseItem)->m_nNameStrRef);
+    nNameStrRef = static_cast<unsigned int>(g_pRules->GetBaseItem(m_baseItem)->m_nNameStrRef);
     g_pTlkTable->Fetch(nNameStrRef, strRes, CTlkTable::GENDER_MALE);
     sName = strRes.text;
     if (m_bIdentified == 0)

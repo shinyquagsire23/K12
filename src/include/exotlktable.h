@@ -11,8 +11,16 @@ struct STR_RES;
 
 class CExoString;
 
-// One opened .tlk file, an aliased CExoFile plus the 20-byte on-disk header it reads just past the
-// base.
+// The 20-byte on-disk .tlk header.
+struct CTlkHeader {
+    unsigned int m_nFileType;
+    unsigned int m_nVersion;
+    unsigned int m_nLanguageID;
+    unsigned int m_nStringCount;
+    unsigned int m_nStringTableOffset;
+};
+
+// One opened .tlk file, an aliased CExoFile plus the on-disk header it reads just past the base.
 class CTlkFile : public CExoFile {
 public:
     CTlkFile(const CExoString& resRef);
@@ -21,11 +29,7 @@ public:
     // The accepted header version.
     static const char* TLK_FILE_VERSION;
 
-    unsigned int m_nFileType;
-    unsigned int m_nVersion;
-    unsigned int m_nLanguageID;
-    unsigned int m_nStringCount;
-    unsigned int m_nStringTableOffset;
+    CTlkHeader m_header;
 };
 // The substitution record handed to GetTokenValue, built by the dialogue GUI from the current
 // node.
@@ -63,7 +67,7 @@ public:
     // files: set 0 for the touch and gamepad-selected strings, set 1 for the other.
 #if !KOTOR1  // K1 has no override tables and the files start earlier
     CExoArrayList<int>   m_overrideStrRefs[2];
-    CExoArrayList<char*> m_overrideStrings[2];
+    CExoArrayList<const char*> m_overrideStrings[2];
 #endif
 
     // The opened .tlk files by [index][gender], where [i][0] is the male and base file and [i][1]

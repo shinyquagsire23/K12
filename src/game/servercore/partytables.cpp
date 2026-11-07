@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "Achievements.h"
 #include "nwccreature.h"
 #include "nwscreature.h"
@@ -161,23 +162,26 @@ void CSWPartyTable::ClearTable()
         m_pJournal = 0;
     }
 #else
-    __builtin_memset(m_planets.m_aAvailable, 0, sizeof(m_planets.m_aAvailable));
-    __builtin_memset(m_planets.m_aSelectable, 0, sizeof(m_planets.m_aSelectable));
-    m_nLeaderIndex = -1;
+    m_nItemChemical = 0;
+    m_nItemComponent = 0;
+    m_nControlledNPC = -1;
     m_gameInProgressRefCount = 0;
     m_nXPPool = 0;
     m_nGold = 0;
-    m_nItemComponent = 0;
-    m_nItemChemical = 0;
     m_bShowReturn = 1;
     m_nReturnStrref = STRREF_RETURN_TO_SPACEPORT;
     m_nReturnQueryStrref = STRREF_RETURN_TO_EBON_HAWK;
-    m_bKeepSavedPositions = 0;
     m_nTotalPlayedSecondsAccum = 0;
+    m_bKeepSavedPositions = 0;
     m_nCurrentPCIndex = 0;
-    m_selectedPlanet = -1;
+    for (int i = 0; i < NUM_PLANETS; i++)
+    {
+        m_planets.m_aAvailable[i] = 0;
+        m_planets.m_aSelectable[i] = 0;
+    }
     m_soloMode = 0;
     m_cheatUsedFlags = 0;
+    m_selectedPlanet = -1;
 
     CItemRepository* pItemRepo = m_pItemRepository;
     if (pItemRepo)
@@ -187,70 +191,33 @@ void CSWPartyTable::ClearTable()
         m_pItemRepository = 0;
     }
 
-    m_nControlledNPC = -1;
+    m_nLeaderIndex = -1;
     m_bPartyCreated = 0;
-    m_npcAvailable[2] = 0;
+    m_aiState = 0;
     m_nNumPartyMembers = 0;
     m_nNumPuppets = 0;
-    m_aiState = 0;
     m_followState = 0;
-    m_npcSelectability[0] = 1;
-    m_npcSelectability[1] = 1;
-    m_npcAvailable[0] = 0;
-    m_npcAvailable[1] = 0;
-    m_influence[0] = -1;
-    m_influence[1] = -1;
-    m_npcSelectability[2] = 1;
-    m_npcSelectability[3] = 1;
-    m_npcSelectability[4] = 1;
-    m_npcSelectability[5] = 1;
-    ClearMembers();
-    m_influence[2] = -1;
-    m_influence[3] = -1;
-    m_influence[4] = -1;
-    m_influence[5] = -1;
-    m_influence[6] = -1;
-    m_influence[7] = -1;
-    m_influence[8] = -1;
-    m_influence[9] = -1;
-    m_npcSelectability[6] = 1;
-    m_npcSelectability[7] = 1;
-    m_npcSelectability[8] = 1;
-    m_npcSelectability[9] = 1;
-    m_npcAvailable[3] = 0;
-    m_npcAvailable[4] = 0;
-    m_npcAvailable[5] = 0;
-    m_npcAvailable[6] = 0;
-    m_npcAvailable[7] = 0;
-    m_npcAvailable[8] = 0;
-    m_npcAvailable[9] = 0;
-    m_npcAvailable[10] = 0;
-    m_npcSelectability[10] = 1;
-    m_npcSelectability[11] = 1;
-    m_npcAvailable[11] = 0;
-    m_influence[10] = -1;
-    m_influence[11] = -1;
-    m_pupSelectability[0] = 1;
-    m_pupAvailable[0] = 0;
-    m_pupAvailable[1] = 0;
-    m_pupSelectability[1] = 1;
-    m_pupSelectability[2] = 1;
-    ClearPuppets();
-    m_pupAvailable[2] = 0;
-    m_puppetIndex[0] = -1;
-    m_puppetIndex[1] = -1;
-    m_nThirdPuppetIndex = -1;
-    for (int i = 1; i < 5; i++)
+    for (int i = 0; i < NUM_NPCS; i++)
+    {
+        m_npcAvailable[i] = 0;
+        m_npcSelectability[i] = 1;
+        m_partyMemberID[i] = OBJECT_INVALID;
+        m_influence[i] = -1;
+    }
+    for (int i = 0; i < NUM_PUPPETS; i++)
+    {
+        m_pupAvailable[i] = 0;
+        m_pupSelectability[i] = 1;
+        m_puppetID[i] = OBJECT_INVALID;
+    }
+    for (int i = 0; i < 3; i++)
+        m_puppetIndex[i] = -1;
+    for (int i = 0; i < 10; i++)
         m_pazaakCards[i] = 1;
-    for (int i = 5; i < 9; i++)
-        m_pazaakCards[i] = 1;
-    m_pazaakCards[0] = 1;
-    m_pazaakCards[9] = 1;
-    __builtin_memset(&m_pazaakCards[10], 0, 8 * sizeof(m_pazaakCards[0]));
-    for (int i = 18; i < 22; i++)
+    for (int i = 10; i < 23; i++)
         m_pazaakCards[i] = 0;
-    m_pazaakCards[22] = 0;
-    __builtin_memset(m_pazaakSideDeck, 0xff, sizeof(m_pazaakSideDeck));
+    for (int i = 0; i < 10; i++)
+        m_pazaakSideDeck[i] = -1;
 
     CSWSJournal* pJournal = m_pJournal;
     if (pJournal)
@@ -260,38 +227,25 @@ void CSWPartyTable::ClearTable()
         m_pJournal = 0;
     }
 
-    m_forfeitConditions = 0;
-    m_saveNumber = 0;
-    m_forfeitViolations = 0;
     m_disableMap = 0;
     m_disableRegen = 0;
+    m_saveNumber = 0;
+    m_forfeitViolations = 0;
+    m_forfeitConditions = 0;
 #endif
 }
 
 void CSWPartyTable::ClearMembers()
 {
-    m_partyMemberID[0] = OBJECT_INVALID;
-    m_partyMemberID[1] = OBJECT_INVALID;
-    m_partyMemberID[2] = OBJECT_INVALID;
-    m_partyMemberID[3] = OBJECT_INVALID;
-    m_partyMemberID[4] = OBJECT_INVALID;
-    m_partyMemberID[5] = OBJECT_INVALID;
-    m_partyMemberID[6] = OBJECT_INVALID;
-    m_partyMemberID[7] = OBJECT_INVALID;
-    m_partyMemberID[8] = OBJECT_INVALID;
-#if !KOTOR1
-    m_partyMemberID[9] = OBJECT_INVALID;
-    m_partyMemberID[10] = OBJECT_INVALID;
-    m_partyMemberID[11] = OBJECT_INVALID;
-#endif
+    for (int i = 0; i < NUM_NPCS; i++)
+        m_partyMemberID[i] = OBJECT_INVALID;
 }
 
 #if !KOTOR1
 void CSWPartyTable::ClearPuppets()
 {
-    m_puppetID[0] = OBJECT_INVALID;
-    m_puppetID[1] = OBJECT_INVALID;
-    m_puppetID[2] = OBJECT_INVALID;
+    for (int i = 0; i < NUM_PUPPETS; i++)
+        m_puppetID[i] = OBJECT_INVALID;
 }
 #endif
 
@@ -584,11 +538,10 @@ int CSWPartyTable::GetPUPID(unsigned long long id)
 {
     if (id == OBJECT_INVALID)
         return -1;
-    if (m_puppetID[0] == id)
-        return 0;
-    if (m_puppetID[1] == id)
-        return 1;
-    return (m_puppetID[2] == id) ? 2 : -1;
+    for (int i = 0; i < NUM_PUPPETS; i++)
+        if (m_puppetID[i] == id)
+            return i;
+    return -1;
 }
 #endif
 
@@ -608,12 +561,9 @@ CItemRepository* CSWPartyTable::GetPartyItems()
 
 unsigned char CSWPartyTable::GetNumNPCAvailable()
 {
+    int i;
     int count = 0;
-#if KOTOR1
-    for (int i = 0; i < 9; i++)
-#else
-    for (int i = 0; i < 12; i++)
-#endif
+    for (i = 0; i < NUM_NPCS; i++)
         if (m_npcAvailable[i] != 0)
             count++;
     return static_cast<unsigned char>(count);
@@ -723,24 +673,11 @@ int CSWPartyTable::KillPUPObject(int pupIndex, int notify)
 int CSWPartyTable::GetIsMember(unsigned long long id)
 {
     int index;
-    if (m_partyMemberID[0] == id) index = 0;
-    else if (m_partyMemberID[1] == id) index = 1;
-    else if (m_partyMemberID[2] == id) index = 2;
-    else if (m_partyMemberID[3] == id) index = 3;
-    else if (m_partyMemberID[4] == id) index = 4;
-    else if (m_partyMemberID[5] == id) index = 5;
-    else if (m_partyMemberID[6] == id) index = 6;
-    else if (m_partyMemberID[7] == id) index = 7;
-#if KOTOR1
-    else if (m_partyMemberID[8] == id) index = 8;
-    else return 0;
-#else
-    else if (m_partyMemberID[8] == id) index = 8;
-    else if (m_partyMemberID[9] == id) index = 9;
-    else if (m_partyMemberID[10] == id) index = 10;
-    else if (m_partyMemberID[11] == id) index = 11;
-    else return 0;
-#endif
+    for (index = 0; index < NUM_NPCS; index++)
+        if (m_partyMemberID[index] == id)
+            break;
+    if (index == NUM_NPCS)
+        return 0;
 
     for (int i = 0; i < m_nNumPartyMembers; i++)
         if (m_partyMemberIndex[i] == index)
@@ -922,13 +859,13 @@ void CSWPartyTable::SaveTableInfo(const CExoString& name)
         g_pExoResMan->CreateSignatureFile(saveName, 0, 0, 0);
     delete pGff;
 #else
-    CExoString saveName;
     CResGFF* pGff;
     CResStruct topStruct;
     CResStruct struct1;
+    int i;
     CResList list1;
     unsigned int planetMask;
-    int i;
+    CExoString saveName;
     int created;
 
     pGff = new CResGFF();
@@ -1446,22 +1383,9 @@ void CSWPartyTable::Save(const CExoString& name, int refresh)
 int CSWPartyTable::GetNPCID(unsigned long long id)
 {
     if (id == OBJECT_INVALID) return -1;
-    if (m_partyMemberID[0] == id) return 0;
-    if (m_partyMemberID[1] == id) return 1;
-    if (m_partyMemberID[2] == id) return 2;
-    if (m_partyMemberID[3] == id) return 3;
-    if (m_partyMemberID[4] == id) return 4;
-    if (m_partyMemberID[5] == id) return 5;
-    if (m_partyMemberID[6] == id) return 6;
-    if (m_partyMemberID[7] == id) return 7;
-#if KOTOR1
-    return (m_partyMemberID[8] == id) ? 8 : -1;
-#else
-    if (m_partyMemberID[8] == id) return 8;
-    if (m_partyMemberID[9] == id) return 9;
-    if (m_partyMemberID[10] == id) return 10;
-    return (m_partyMemberID[11] == id) ? 11 : -1;
-#endif
+    for (int i = 0; i < NUM_NPCS; i++)
+        if (m_partyMemberID[i] == id) return i;
+    return -1;
 }
 
 void CSWPartyTable::SetLeader(unsigned long long id)
@@ -1469,51 +1393,20 @@ void CSWPartyTable::SetLeader(unsigned long long id)
     m_nLeaderIndex = -1;
     if (id == OBJECT_INVALID)
         return;
-    int index;
-    if (m_partyMemberID[0] == id) index = 0;
-    else if (m_partyMemberID[1] == id) index = 1;
-    else if (m_partyMemberID[2] == id) index = 2;
-    else if (m_partyMemberID[3] == id) index = 3;
-    else if (m_partyMemberID[4] == id) index = 4;
-    else if (m_partyMemberID[5] == id) index = 5;
-    else if (m_partyMemberID[6] == id) index = 6;
-    else if (m_partyMemberID[7] == id) index = 7;
-#if KOTOR1
-    else if (m_partyMemberID[8] != id) return;
-    else index = 8;
-#else
-    else if (m_partyMemberID[8] == id) index = 8;
-    else if (m_partyMemberID[9] == id) index = 9;
-    else if (m_partyMemberID[10] == id) index = 10;
-    else if (m_partyMemberID[11] != id) return;
-    else index = 11;
-#endif
-    m_nLeaderIndex = index;
+    for (int i = 0; i < NUM_NPCS; i++) {
+        if (m_partyMemberID[i] == id) {
+            m_nLeaderIndex = i;
+            return;
+        }
+    }
 }
 
 int CSWPartyTable::GetIsLeader(unsigned long long id)
 {
-    int index;
     if (id == OBJECT_INVALID) return 0;
-    else if (m_partyMemberID[0] == id) index = 0;
-    else if (m_partyMemberID[1] == id) index = 1;
-    else if (m_partyMemberID[2] == id) index = 2;
-    else if (m_partyMemberID[3] == id) index = 3;
-    else if (m_partyMemberID[4] == id) index = 4;
-    else if (m_partyMemberID[5] == id) index = 5;
-    else if (m_partyMemberID[6] == id) index = 6;
-    else if (m_partyMemberID[7] == id) index = 7;
-#if KOTOR1
-    else if (m_partyMemberID[8] != id) return 0;
-    else index = 8;
-#else
-    else if (m_partyMemberID[8] == id) index = 8;
-    else if (m_partyMemberID[9] == id) index = 9;
-    else if (m_partyMemberID[10] == id) index = 10;
-    else if (m_partyMemberID[11] != id) return 0;
-    else index = 11;
-#endif
-    return m_nLeaderIndex == index;
+    for (int i = 0; i < NUM_NPCS; i++)
+        if (m_partyMemberID[i] == id) return m_nLeaderIndex == i;
+    return 0;
 }
 
 void CSWPartyTable::SaveMember(int index, int value)
@@ -1528,8 +1421,8 @@ void CSWPartyTable::SaveMember(int index, int value)
     if (value != 0)
         pCreature->ClearAllActions(1);
 
-    CResStruct topStruct;
     CExoString name = GetFilename(index);
+    CResStruct topStruct;
 
     CResGFF* pGff = new CResGFF();
     {
@@ -1588,8 +1481,8 @@ void CSWPartyTable::SaveMemberByObject(int index, unsigned long long id)
 
     pCreature->ClearAllActions(1);
 
-    CResStruct topStruct;
     CExoString name = GetFilename(index);
+    CResStruct topStruct;
 
     CResGFF* pGff = new CResGFF();
     {
@@ -1618,8 +1511,8 @@ void CSWPartyTable::SavePuppetByObject(int index, unsigned long long id)
 
     pCreature->ClearAllActions(1);
 
-    CResStruct topStruct;
     CExoString name = GetPupFilename(index);
+    CResStruct topStruct;
 
     CResGFF* pGff = new CResGFF();
     {
@@ -1648,16 +1541,11 @@ void CSWPartyTable::UpdateInventory(int value)
     pGff->CreateGFFFile(&topStruct, CExoString("INV "), CExoString("V2.0"));
     pGff->AddList(&itemList, &topStruct, const_cast<char*>("ItemList"));
 
-    if (m_pItemRepository->ItemListGetCount() != 0)
+    for (unsigned int i = 0; i < m_pItemRepository->ItemListGetCount(); i++)
     {
-        unsigned int i = 0;
-        do
-        {
-            CSWSItem* pItem = m_pItemRepository->ItemListGetItem(i);
-            if (pItem != 0 && pGff->AddListElement(&elemStruct, &itemList, 0))
-                pItem->SaveItem(pGff, &elemStruct);
-            i++;
-        } while (i < m_pItemRepository->ItemListGetCount());
+        CSWSItem* pItem = m_pItemRepository->ItemListGetItem(i);
+        if (pItem != 0 && pGff->AddListElement(&elemStruct, &itemList, 0))
+            pItem->SaveItem(pGff, &elemStruct);
     }
 
     CExoString gameInProgressPath("GAMEINPROGRESS:INVENTORY");
@@ -1671,22 +1559,11 @@ void CSWPartyTable::UpdateInventory(int value)
 
 void CSWPartyTable::UpdateMembers(int value)
 {
-    SaveMember(0, value);
-    SaveMember(1, value);
-    SaveMember(2, value);
-    SaveMember(3, value);
-    SaveMember(4, value);
-    SaveMember(5, value);
-    SaveMember(6, value);
-    SaveMember(7, value);
-    SaveMember(8, value);
+    for (int i = 0; i < NUM_NPCS; i++)
+        SaveMember(i, value);
 #if !KOTOR1
-    SaveMember(9, value);
-    SaveMember(10, value);
-    SaveMember(11, value);
-    SavePuppet(0, value);
-    SavePuppet(1, value);
-    SavePuppet(2, value);
+    for (int i = 0; i < NUM_PUPPETS; i++)
+        SavePuppet(i, value);
 #endif
 }
 
@@ -2737,7 +2614,7 @@ int CSWPartyTable::SwitchPlayerCharacter(int index)
     pNewPC->m_bPlayerCharacter = 1;
     m_nLeaderIndex = -1;
     CItemRepository* pRepo = pNewPC->GetItemRepository(1);
-    if (pRepo != 0 && pRepo->ItemListGetCount() != 0)
+    if (pRepo != 0)
     {
         for (unsigned int i = 0; i < pRepo->ItemListGetCount(); i++)
         {

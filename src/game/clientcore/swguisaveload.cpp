@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "port/sdlapi.h"
 #define ASPYR_FLOATINGICON_CTOR_OUT_OF_LINE
 
@@ -39,6 +40,7 @@ void IosCloudWrite(const char* sPath, const char* sName, unsigned int nSize);
 void IosCloudDelete();
 #if KOTOR1
 void IosWriteCloud(const char* sPath, const char* sName, unsigned int nSize);
+void IosIcloudDelete();
 void GameMouseMove(bool bAbsolute, int nX, int nY);
 void GameClick(int nX, int nY);
 #endif
@@ -313,7 +315,8 @@ void CSWGuiSaveLoad::PopulateGameList()
     CSWGuiSaveLoadEntry* pTemplate = static_cast<CSWGuiSaveLoadEntry*>(m_saveList.m_pProtoItem);
     CExoArrayList<CExoString> fileList;
     CExoArrayList<CSWGuiControl*> aEntries;
-    CSWGuiExtent extent(0, 0, 0, 42);
+    CSWGuiExtent extent;
+    extent.h = 42;
     CExoString unused;
     CSWGuiSaveLoadEntry* pCloud = 0;
 
@@ -473,11 +476,12 @@ void CSWGuiSaveLoad::PopulateGameList()
 #else
 void CSWGuiSaveLoad::PopulateGameList()
 {
+    pCloudSave = 0;
     CSWGuiSaveLoadEntry* pTemplate = static_cast<CSWGuiSaveLoadEntry*>(m_saveList.m_pProtoItem);
     CExoArrayList<CExoString> fileList;
-    CSWGuiExtent extent(0, 0, 0, 36);
+    CSWGuiExtent extent;
+    extent.h = 36;
     CExoArrayList<CSWGuiControl*> aEntries;
-    pCloudSave = 0;
     CExoString unused;
 
     g_pExoBase->GetDirectoryList(&fileList, CExoString("SAVES:"), RESTYPE_INVALID, 1, 1);
@@ -666,7 +670,7 @@ void CSWGuiSaveLoad::PopulateGameList()
 
     m_entries.m_count = 0;
     for (int64_t i = 0; i < aEntries.m_count; i++)
-        m_entries.Add(static_cast<CSWGuiSaveLoadEntry*>(aEntries.m_pArray[i]));
+        m_entries.Add(aEntries.m_pArray[i]);
 
     PopulateGameLB();
     m_nNextSaveSlot = nNextSlot;
@@ -703,7 +707,7 @@ void CSWGuiSaveLoad::PopulateGameLB()
     CSWGuiSaveLoadEntry* pEntry;
     for (i = 0; i < m_entries.m_count; i++)
     {
-        pEntry = new CSWGuiSaveLoadEntry(m_entries.m_pArray[i]);
+        pEntry = new CSWGuiSaveLoadEntry(static_cast<CSWGuiSaveLoadEntry*>(m_entries.m_pArray[i]));
         if (m_filterNames.m_count > 0
             && !(CExoString(pEntry->m_pcName) == m_filterNames[m_nFilterIndex])
             && !SaveNameIsEmpty(CExoString(pEntry->m_pcName)))
@@ -826,7 +830,7 @@ void KOTOR_AUTOSAVE_PARAMS::LoadFromGFF(CResGFF* pGff, CResStruct& pStruct)
         m_statusSummary.LoadFromGFF(pGff, statusStruct);
 }
 
-#if KOTOR1  // K1's ctor calls Reset out of line
+#if KOTOR1 && !defined(__arm__)  // K1's arm64 ctor calls Reset out of line; its armv7 one inlines it
 __attribute__((noinline))
 #endif
 void KOTOR_AUTOSAVE_PARAMS::Reset()
@@ -1200,7 +1204,11 @@ void CSWGuiSaveLoad::RemoveGame(CSWGuiControl* pControl)
 
     // A cloud-backed save gets its cloud copy dropped too.
     if (pEntry->m_nSaveSlot & CSWGuiSaveLoadEntry::SAVESLOT_CLOUD)
+#if KOTOR1
+        IosIcloudDelete();
+#else
         IosCloudDelete();
+#endif
 
     g_pExoResMan->NukeDirectory(pEntry->GetGameDirectory(), 1, 1);
 
@@ -1553,8 +1561,9 @@ CSWGuiSaveLoadEntry::CSWGuiSaveLoadEntry(CSWGuiSaveLoadEntry* pOther)
     m_sTitle = pOther->m_sTitle;
     m_screenshot = pOther->m_screenshot;
 
-    for (int i = 0; i < 3; i++)
-        m_aPlayerPortrait[i] = CResRef(pOther->m_aPlayerPortrait[i]);
+    m_aPlayerPortrait[0] = CResRef(pOther->m_aPlayerPortrait[0]);
+    m_aPlayerPortrait[1] = CResRef(pOther->m_aPlayerPortrait[1]);
+    m_aPlayerPortrait[2] = CResRef(pOther->m_aPlayerPortrait[2]);
 
     m_timeStamp = pOther->m_timeStamp;
     m_pcName = CExoString(pOther->m_pcName);
@@ -2279,16 +2288,8 @@ void CSWGuiSaveLoad::LoadGame(CSWGuiControl* pControl)
 #if KOTOR1  // K1: one story hint
         pClient->SetStoryHint(pEntry->m_storyHints[0]);
 #else
-        pClient->SetStoryHint(pEntry->m_storyHints[0], 0);
-        pClient->SetStoryHint(pEntry->m_storyHints[1], 1);
-        pClient->SetStoryHint(pEntry->m_storyHints[2], 2);
-        pClient->SetStoryHint(pEntry->m_storyHints[3], 3);
-        pClient->SetStoryHint(pEntry->m_storyHints[4], 4);
-        pClient->SetStoryHint(pEntry->m_storyHints[5], 5);
-        pClient->SetStoryHint(pEntry->m_storyHints[6], 6);
-        pClient->SetStoryHint(pEntry->m_storyHints[7], 7);
-        pClient->SetStoryHint(pEntry->m_storyHints[8], 8);
-        pClient->SetStoryHint(pEntry->m_storyHints[9], 9);
+        for (int i = 0; i < 10; i++)
+            pClient->SetStoryHint(pEntry->m_storyHints[i], static_cast<unsigned char>(i));
 #endif
 #if KOTOR1  // K1: the hint is drawn from the generic pool, not the save's module
         pClient->SetLoadScreenHint(pClient->GetNextLoadScreenHintSTRREF(CExoString(""), 2));
@@ -2335,16 +2336,8 @@ void CSWGuiSaveLoad::LoadGame(CSWGuiControl* pControl)
 #if KOTOR1  // K1: one story hint
         pClient->SetStoryHint(pEntry->m_storyHints[0]);
 #else
-        pClient->SetStoryHint(pEntry->m_storyHints[0], 0);
-        pClient->SetStoryHint(pEntry->m_storyHints[1], 1);
-        pClient->SetStoryHint(pEntry->m_storyHints[2], 2);
-        pClient->SetStoryHint(pEntry->m_storyHints[3], 3);
-        pClient->SetStoryHint(pEntry->m_storyHints[4], 4);
-        pClient->SetStoryHint(pEntry->m_storyHints[5], 5);
-        pClient->SetStoryHint(pEntry->m_storyHints[6], 6);
-        pClient->SetStoryHint(pEntry->m_storyHints[7], 7);
-        pClient->SetStoryHint(pEntry->m_storyHints[8], 8);
-        pClient->SetStoryHint(pEntry->m_storyHints[9], 9);
+        for (int i = 0; i < 10; i++)
+            pClient->SetStoryHint(pEntry->m_storyHints[i], static_cast<unsigned char>(i));
 #endif
 #if KOTOR1  // K1: the hint is drawn from the generic pool, not the save's module
         pClient->SetLoadScreenHint(pClient->GetNextLoadScreenHintSTRREF(CExoString(""), 2));

@@ -149,7 +149,7 @@ public:
 #if !KOTOR1  // K1 has no filter button, PC-name / time-played labels, entry list or cloud state
     CSWGuiButton m_btnFilter;
     CSWGuiLabel m_aBarLabels[4];
-    CExoArrayList<CSWGuiSaveLoadEntry*> m_entries;
+    CExoArrayList<CSWGuiControl*> m_entries;
     int  m_nFilterIndex;
     CExoArrayList<CExoString> m_filterNames;
     int  m_nReserved1;

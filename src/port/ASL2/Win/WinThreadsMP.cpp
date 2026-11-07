@@ -84,7 +84,10 @@ ThreadHANDLE::ThreadHANDLE(unsigned int (*pfn)(void*), void* pArg, unsigned int 
         pthread_attr_t attr;
         if (pthread_attr_init(&attr) == 0) {
             if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE) == 0) {
-                pthread_attr_setstacksize(&attr, nStackSize > MIN_THREAD_STACK_SIZE ? static_cast<size_t>(nStackSize) : MIN_THREAD_STACK_SIZE);
+                size_t nSize = nStackSize;
+                if (nSize <= MIN_THREAD_STACK_SIZE)
+                    nSize = MIN_THREAD_STACK_SIZE;
+                pthread_attr_setstacksize(&attr, nSize);
                 pthread_create(&h, &attr, reinterpret_cast<void* (*)(void*)>(reinterpret_cast<void (*)()>(ThreadProc)), this);  // pthread's exit value is never read
                 m_hThread = h;
                 pthread_attr_destroy(&attr);
@@ -94,7 +97,7 @@ ThreadHANDLE::ThreadHANDLE(unsigned int (*pfn)(void*), void* pArg, unsigned int 
         m_hThread = pthread_self();
     }
 
-    GetThreadRegistry().m_lock.Enter();
+    GetThreadRegistry().m_lock.Lock();
     GetThreadRegistry().m_threadsByHandle[(int64_t)m_hThread] = this;  // idiom-exempt: pthread_t is an integer on Android and a pointer on macOS; no one named cast converts both
     GetThreadRegistry().m_threadsById[m_nId] = this;
     GetThreadRegistry().m_lock.Leave();
@@ -124,7 +127,7 @@ unsigned int ThreadHANDLE::ThreadProc(void* pArg)
     pThis->m_nExitCode = nResult;
 
     if (pThis->m_nId >= 2) {
-        GetThreadRegistry().m_lock.Enter();
+        GetThreadRegistry().m_lock.Lock();
         std::map<int64_t, ThreadHANDLE*>::iterator it = GetThreadRegistry().m_threadsByHandle.find((int64_t)pThis->m_hThread);  // idiom-exempt: as above (pthread_t)
         std::map<int64_t, ThreadHANDLE*>::iterator itEnd = GetThreadRegistry().m_threadsByHandle.end();
         if (it != itEnd)
@@ -165,11 +168,11 @@ unsigned int ThreadHANDLE::WaitForSingleObject(unsigned int dwMilliseconds)
     if (dwMilliseconds != INFINITE) {
         unsigned int nDeadline = GetTickCount() + dwMilliseconds;
         while (m_hThread != 0 && GetTickCount() < nDeadline)
-            SleepEx(0, 0);
+            Sleep(0);
         return m_hThread == 0 ? 0 : WAIT_TIMEOUT;
     }
     while (m_hThread != 0)
-        SleepEx(0, 0);
+        Sleep(0);
     return 0;
 }
 
@@ -224,7 +227,7 @@ EventHANDLE::EventHANDLE(_SECURITY_ATTRIBUTES* pSec, int bManualReset, int bInit
                          K2WChar const* pszName)
 {
     K2_UNUSED(pSec);
-    GetThreadRegistry().m_syncLock.Enter();
+    GetThreadRegistry().m_syncLock.Lock();
     GetThreadRegistry().m_syncPrimitives.insert(this);
     if (pszName != 0)
         wcscpy(m_szName, pszName);
@@ -257,7 +260,7 @@ EventHANDLE::EventHANDLE(_SECURITY_ATTRIBUTES* pSec, int bManualReset, int bInit
 // waiter list.
 EventHANDLE::~EventHANDLE()
 {
-    GetThreadRegistry().m_syncLock.Enter();
+    GetThreadRegistry().m_syncLock.Lock();
     std::set<SyncPrimitive*>::iterator itEnd = GetThreadRegistry().m_syncPrimitives.end();
     std::set<SyncPrimitive*>::iterator it = GetThreadRegistry().m_syncPrimitives.find(this);
     if (it != itEnd)
@@ -384,7 +387,7 @@ unsigned int EventHANDLE::SetEvent()
 SemaphoreHANDLE::SemaphoreHANDLE(int nInitial, int nMax, K2WChar const* pszName)
 {
     K2_UNUSED(nInitial); K2_UNUSED(nMax);
-    GetThreadRegistry().m_syncLock.Enter();
+    GetThreadRegistry().m_syncLock.Lock();
     GetThreadRegistry().m_syncPrimitives.insert(this);
     if (pszName != 0)
         wcscpy(m_szName, pszName);
@@ -396,7 +399,7 @@ SemaphoreHANDLE::SemaphoreHANDLE(int nInitial, int nMax, K2WChar const* pszName)
 
 SemaphoreHANDLE::~SemaphoreHANDLE()
 {
-    GetThreadRegistry().m_syncLock.Enter();
+    GetThreadRegistry().m_syncLock.Lock();
     std::set<SyncPrimitive*>::iterator itEnd = GetThreadRegistry().m_syncPrimitives.end();
     std::set<SyncPrimitive*>::iterator it = GetThreadRegistry().m_syncPrimitives.find(this);
     if (it != itEnd)
@@ -430,7 +433,7 @@ unsigned int SemaphoreHANDLE::Release()
 
 MutexHANDLE::MutexHANDLE(bool bInitialOwner, K2WChar const* pszName)
 {
-    GetThreadRegistry().m_syncLock.Enter();
+    GetThreadRegistry().m_syncLock.Lock();
     GetThreadRegistry().m_syncPrimitives.insert(this);
     if (pszName != 0) {
         wcsncpy(m_szName, pszName, 259);
@@ -447,7 +450,7 @@ MutexHANDLE::MutexHANDLE(bool bInitialOwner, K2WChar const* pszName)
 
 MutexHANDLE::~MutexHANDLE()
 {
-    GetThreadRegistry().m_syncLock.Enter();
+    GetThreadRegistry().m_syncLock.Lock();
     std::set<SyncPrimitive*>::iterator itEnd = GetThreadRegistry().m_syncPrimitives.end();
     std::set<SyncPrimitive*>::iterator it = GetThreadRegistry().m_syncPrimitives.find(this);
     if (it != itEnd)
@@ -487,7 +490,7 @@ WaitableTimerHANDLE::WaitableTimerHANDLE(_SECURITY_ATTRIBUTES* pSec, int bManual
                                          K2WChar const* pszName)
 {
     K2_UNUSED(pSec); K2_UNUSED(bManualReset);
-    GetThreadRegistry().m_syncLock.Enter();
+    GetThreadRegistry().m_syncLock.Lock();
     GetThreadRegistry().m_syncPrimitives.insert(this);
     if (pszName != 0)
         wcscpy(m_szName, pszName);
@@ -499,7 +502,7 @@ WaitableTimerHANDLE::WaitableTimerHANDLE(_SECURITY_ATTRIBUTES* pSec, int bManual
 
 WaitableTimerHANDLE::~WaitableTimerHANDLE()
 {
-    GetThreadRegistry().m_syncLock.Enter();
+    GetThreadRegistry().m_syncLock.Lock();
     std::set<SyncPrimitive*>::iterator itEnd = GetThreadRegistry().m_syncPrimitives.end();
     std::set<SyncPrimitive*>::iterator it = GetThreadRegistry().m_syncPrimitives.find(this);
     if (it != itEnd)

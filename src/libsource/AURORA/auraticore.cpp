@@ -445,6 +445,7 @@ bool AuroraUseARBShaders();
 int AurMultiTextureAvailable();
 CAurTexture* AurTextureGetNormalizationCubeMap();
 int AurTextureGetTID(CAurTexture* pTexture);
+void LoadShader(int nLen, const char* szSource);
 
 extern int envmapon;
 extern int tex1on;
@@ -1153,117 +1154,79 @@ void sInitializeARBFragmentShaders()
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &FGlowFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, FGlowFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cFGlowFragmentShader, sizeof(cFGlowFragmentShader))),
-                              cFGlowFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cFGlowFragmentShader, sizeof(cFGlowFragmentShader))), cFGlowFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &FGlowEMFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, FGlowEMFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cFGlowEMFragmentShader, sizeof(cFGlowEMFragmentShader))),
-                              cFGlowEMFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cFGlowEMFragmentShader, sizeof(cFGlowEMFragmentShader))), cFGlowEMFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &FGlowBumpyShinyFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, FGlowBumpyShinyFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cFGlowBumpyShinyFragmentShader, sizeof(cFGlowBumpyShinyFragmentShader))),
-                              cFGlowBumpyShinyFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cFGlowBumpyShinyFragmentShader, sizeof(cFGlowBumpyShinyFragmentShader))), cFGlowBumpyShinyFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &DesatFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, DesatFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cDesatFragmentShader, sizeof(cDesatFragmentShader))),
-                              cDesatFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cDesatFragmentShader, sizeof(cDesatFragmentShader))), cDesatFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &DesatLMFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, DesatLMFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cDesatLMFragmentShader, sizeof(cDesatLMFragmentShader))),
-                              cDesatLMFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cDesatLMFragmentShader, sizeof(cDesatLMFragmentShader))), cDesatLMFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &DesatEMFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, DesatEMFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cDesatEMFragmentShader, sizeof(cDesatEMFragmentShader))),
-                              cDesatEMFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cDesatEMFragmentShader, sizeof(cDesatEMFragmentShader))), cDesatEMFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &DesatEMLMFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, DesatEMLMFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cDesatEMLMFragmentShader, sizeof(cDesatEMLMFragmentShader))),
-                              cDesatEMLMFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cDesatEMLMFragmentShader, sizeof(cDesatEMLMFragmentShader))), cDesatEMLMFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &DesatNoiseSubLMFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, DesatNoiseSubLMFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cDesatNoiseSubLMFragmentShader, sizeof(cDesatNoiseSubLMFragmentShader))),
-                              cDesatNoiseSubLMFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cDesatNoiseSubLMFragmentShader, sizeof(cDesatNoiseSubLMFragmentShader))), cDesatNoiseSubLMFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &DesatNoiseSubEMLMFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, DesatNoiseSubEMLMFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cDesatNoiseSubEMLMFragmentShader, sizeof(cDesatNoiseSubEMLMFragmentShader))),
-                              cDesatNoiseSubEMLMFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cDesatNoiseSubEMLMFragmentShader, sizeof(cDesatNoiseSubEMLMFragmentShader))), cDesatNoiseSubEMLMFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &HoloFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, HoloFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cHoloFragmentShader, sizeof(cHoloFragmentShader))),
-                              cHoloFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cHoloFragmentShader, sizeof(cHoloFragmentShader))), cHoloFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &HoloDesatFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, HoloDesatFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cHoloDesatFragmentShader, sizeof(cHoloDesatFragmentShader))),
-                              cHoloDesatFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cHoloDesatFragmentShader, sizeof(cHoloDesatFragmentShader))), cHoloDesatFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &IllumFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, IllumFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cIllumFragmentShader, sizeof(cIllumFragmentShader))),
-                              cIllumFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cIllumFragmentShader, sizeof(cIllumFragmentShader))), cIllumFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &IllumEnvFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, IllumEnvFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cIllumEnvFragmentShader, sizeof(cIllumEnvFragmentShader))),
-                              cIllumEnvFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cIllumEnvFragmentShader, sizeof(cIllumEnvFragmentShader))), cIllumEnvFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &NoiseSubtractFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, NoiseSubtractFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cNoiseSubtractFragmentShader, sizeof(cNoiseSubtractFragmentShader))),
-                              cNoiseSubtractFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cNoiseSubtractFragmentShader, sizeof(cNoiseSubtractFragmentShader))), cNoiseSubtractFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &NoiseLMSubtractFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, NoiseLMSubtractFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cNoiseLMSubtractFragmentShader, sizeof(cNoiseLMSubtractFragmentShader))),
-                              cNoiseLMSubtractFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cNoiseLMSubtractFragmentShader, sizeof(cNoiseLMSubtractFragmentShader))), cNoiseLMSubtractFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &NoiseLMAddFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, NoiseLMAddFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cNoiseLMAddFragmentShader, sizeof(cNoiseLMAddFragmentShader))),
-                              cNoiseLMAddFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cNoiseLMAddFragmentShader, sizeof(cNoiseLMAddFragmentShader))), cNoiseLMAddFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &NoiseEMLMSubtractFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, NoiseEMLMSubtractFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cNoiseEMLMSubtractFragmentShader, sizeof(cNoiseEMLMSubtractFragmentShader))),
-                              cNoiseEMLMSubtractFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cNoiseEMLMSubtractFragmentShader, sizeof(cNoiseEMLMSubtractFragmentShader))), cNoiseEMLMSubtractFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &NoiseEMLMAddFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, NoiseEMLMAddFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cNoiseEMLMAddFragmentShader, sizeof(cNoiseEMLMAddFragmentShader))),
-                              cNoiseEMLMAddFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cNoiseEMLMAddFragmentShader, sizeof(cNoiseEMLMAddFragmentShader))), cNoiseEMLMAddFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glGenProgramsARB(1, &IllumDesatFragmentShaderID);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, IllumDesatFragmentShaderID);
-    ASLgl::glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
-                              static_cast<int>(__strlen_chk(cIllumDesatFragmentShader, sizeof(cIllumDesatFragmentShader))),
-                              cIllumDesatFragmentShader);
+    LoadShader(static_cast<int>(__strlen_chk(cIllumDesatFragmentShader, sizeof(cIllumDesatFragmentShader))), cIllumDesatFragmentShader);
     ASLgl::glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, 0);
     ASLgl::glDisable(GL_FRAGMENT_PROGRAM_ARB);
 }

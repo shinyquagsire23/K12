@@ -1,4 +1,5 @@
 #include "nwrules.h"
+#include <string.h>
 #include "exostring.h"
 #include "exolocstringinternal.h"
 #include "nwspell.h"
@@ -66,8 +67,8 @@ CSWRules::~CSWRules()
 
 CSWRules::CSWRules()
     : m_pBaseItemArray(0)
-    , m_aExpTable()
 {
+    memset(m_aExpTable, 0, sizeof(m_aExpTable));
     m_paSkills = 0;
     m_paRaces = 0;
     m_paClasses = 0;
@@ -81,9 +82,6 @@ CSWRules::CSWRules()
     m_paMasterFeatNameStrRefs = 0;
     m_paFeats = 0;
     m_pSpellArray = 0;
-
-    // m_aExpTable is value-initialized in the initializer list above; its zero run merges with
-    // m_pBaseItemArray's.
 
     // For the spell ranges, rows 0..4 of ranges.2da fill the first five, row 19 the sixth (the
     // wizard range).
@@ -246,7 +244,7 @@ int CSWRules::GetWeightedDamageAmount(int nDamage, int nMaxDamage, int nFlagA, i
     return nDamage;
 }
 
-int CSWRules::GetMetaMagicLevelCost(unsigned char nMetaMagic)
+unsigned char CSWRules::GetMetaMagicLevelCost(unsigned char nMetaMagic)
 {
     // A single-bit metamagic flag, so the cases are the powers of two from 1 to 32, and any other
     // value costs nothing.
@@ -656,18 +654,16 @@ void CSWRules::LoadFeatInfo()
     m_paMasterFeatIcons = new CResRef[nMasterFeatCount];
 
     CExoString sIcon;
-    if (m_nNumMasterFeats > 0) {
-        for (int i = 0; i < m_nNumMasterFeats; i++) {
-            int nMasterValue;
-            pMasterFeats->GetINTEntry(i, CExoString("STRREF"), &nMasterValue);
-            m_paMasterFeatNameStrRefs[i] = nMasterValue;
-            pMasterFeats->GetINTEntry(i, CExoString("DESCRIPTION"), &nMasterValue);
-            m_paMasterFeatDescriptionStrRefs[i] = nMasterValue;
+    for (int i = 0; i < m_nNumMasterFeats; i++) {
+        int nMasterValue;
+        pMasterFeats->GetINTEntry(i, CExoString("STRREF"), &nMasterValue);
+        m_paMasterFeatNameStrRefs[i] = nMasterValue;
+        pMasterFeats->GetINTEntry(i, CExoString("DESCRIPTION"), &nMasterValue);
+        m_paMasterFeatDescriptionStrRefs[i] = nMasterValue;
 
-            // sic: the icon read's result is ignored.
-            pMasterFeats->GetCExoStringEntry(i, CExoString("ICON"), &sIcon);
-            m_paMasterFeatIcons[i] = sIcon.CStr();
-        }
+        // sic: the icon read's result is ignored.
+        pMasterFeats->GetCExoStringEntry(i, CExoString("ICON"), &sIcon);
+        m_paMasterFeatIcons[i] = sIcon.CStr();
     }
 
     delete pMasterFeats;

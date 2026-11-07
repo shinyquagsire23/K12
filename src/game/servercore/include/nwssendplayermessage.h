@@ -170,7 +170,7 @@ public:
                                                    CSWSPlayerLastUpdateObject* pLast);
     // Packs the party/associate GUI state byte: bit 0 detect mode, bit 1 the m_stealthMode solo
     // latch, bits 2-7 the six reported combat modes.
-    char ComputeLastUpdate_AssociateState(CSWSCreature* pCreature);
+    unsigned char ComputeLastUpdate_AssociateState(CSWSCreature* pCreature);
     // Diffs all three feat lists against the snapshot. The two id lists are searched while the
     // remaining-uses list is compared index by index.
     int  ComputeLastUpdate_GuiFeats(CSWSCreature* pCreature,

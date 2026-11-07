@@ -805,7 +805,11 @@ extern void (*AurReleaseRaster)(void*, int, int, int, int, int, int, int);
 extern int (*AurGetRasterHeader)(char*, int*, int*, int*);
 extern int (*AurGetProcessedRasterHeader)(char*, int*, int*, char*, int*, int*, float*, char*);
 int ImageRead16bitHeader(char*, int*, int*, float*, int*);
+#if defined(K2_NO_FORTIFY)
+#define AurTextureSprintf(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 int AurTextureSprintf(char* pszBuffer, uint64_t nSize, const char* pszFormat, ...);
+#endif
 int AurGetImageHeaderWrapper(char*, int*, int*, int*, int*, Aurora::AuroraTextureFormats*,
                              float*, int);
 
@@ -826,7 +830,7 @@ extern List<CAurTextureBasic*> RefreshTextures;
 #if KOTOR1
 SafePointer<CAurTexture> CAurTexture::m_pNullTexture;
 #else
-SafePointer<CAurTexture> CAurTextureBasic::m_pNullTexture;
+SafePointer<CAurTexture> CAurTextureBasic::m_pNullTexture(0);
 #endif
 Vector                   CAurTextureBasic::m_vLowEndEnvMapColor;
 List<CAurTextureBasic*>  CAurTextureBasic::m_OrderedTextureList;
@@ -853,12 +857,7 @@ CAurTexture* AurTextureGetNULL()
 {
     if (!CAurTextureBasic::m_pNullTexture)
     {
-#if KOTOR1  // K1 keeps a plain pointer
         CAurTextureBasic::m_pNullTexture = new CAurTexture();
-#else
-        CAurTextureBasic::m_pNullTexture.m_pObject = new CAurTexture();
-        CAurTextureBasic::m_pNullTexture.m_pObject->AddPointer(&CAurTextureBasic::m_pNullTexture);
-#endif
     }
     return CAurTextureBasic::m_pNullTexture;
 }
@@ -888,7 +887,12 @@ void AurTextureFreeAll()
 
 CAurFontInfo::CAurFontInfo()
 {
-    __builtin_memset(static_cast<void*>(this), 0, sizeof(CAurFontInfo));
+    m_nCharCount = 0;
+    m_fBottom = 0.0f;
+    m_fTop = 0.0f;
+    m_fWidthScale = 0.0f;
+    m_fSpacing = 0.0f;
+    m_fSpacingB = 0.0f;
 }
 
 // Reads a vector list. A leading count selects the packed-blob form, otherwise the list is
@@ -1041,7 +1045,7 @@ CAurTextureBasic::CAurTextureBasic(char* pName, char* pResRef)
     m_panTIDIndex = 0;
     m_pImage = 0;
     m_pTxiData = 0;
-    m_nHashID = AurTextureCalculateHashID(m_szResRef, 0, 0);
+    CalculateHashID();
     AddToOrderedLists();
     countbasictextures++;
     m_nMemoryUsage = -1;
@@ -1263,6 +1267,7 @@ void CAurTextureBasic::LoadImageHeader()
     m_nHeight = (nHeight > 2) ? nHeight : 2;
 }
 
+#if !defined(K2_NO_FORTIFY)
 int AurTextureSprintf(char* pszBuffer, uint64_t nSize, const char* pszFormat, ...)
 {
     __builtin_va_list ap;
@@ -1271,6 +1276,7 @@ int AurTextureSprintf(char* pszBuffer, uint64_t nSize, const char* pszFormat, ..
     __builtin_va_end(ap);
     return n;
 }
+#endif
 
 #ifdef K2_QOL_FACE_CUBEMAPS
 // A cube map with no texture of its own whose six faces are textures <name>0..<name>5 (what a
@@ -1457,11 +1463,11 @@ void CAurTextureBasic::BuildAndStoreTexture()
 // Bakes the shared 256 x 1536 normalization cube map and leaves it bound.
 void CAurTextureBasic::AsNormalizeVectorCubeMap()
 {
-    m_nBPP = 3;
     m_nDownSampleLevel = 0;
     m_nMaxDownSampleLevel = 0;
     m_nDefaultDownSampleLevel = 0;
     m_bNormalizationCubeMap = 1;
+    m_nBPP = 3;
     m_bFilter = 1;
     m_bCubeMap = 1;
     m_bMipMap = 1;
@@ -1618,15 +1624,15 @@ void CAurTextureBasic::ParseField(char* pszLine)
         }
 #if !KOTOR1  // K1 has no dirty texture controllers
         if (!memcmp(szValue, "dirty", sizeof("dirty"))) {
-            m_pController = new DirtyTextureController(this, 0);
+            m_pController = new DirtyTextureController(0, this);
             m_bTexture3D = 1;
         }
         if (!memcmp(szValue, "dirty2", sizeof("dirty2"))) {
-            m_pController = new DirtyTextureController(this, 1);
+            m_pController = new DirtyTextureController(1, this);
             m_bTexture3D = 1;
         }
         if (!memcmp(szValue, "dirty3", sizeof("dirty3"))) {
-            m_pController = new DirtyTextureController(this, 2);
+            m_pController = new DirtyTextureController(2, this);
             m_bTexture3D = 1;
         }
 #endif
@@ -2712,7 +2718,9 @@ int  AurSetPalette(int nIndex, char* pszName);
 int  AurTextureSetMem(int nMem);
 
 
+#if !defined(K2_NO_FORTIFY)
 int AurTextureSprintf(char* pszBuffer, uint64_t nSize, const char* pszFormat, ...);
+#endif
 void ImageFlipY(unsigned char* pData, int nWidth, int nHeight, int nBpp);
 #if KOTOR1
 void ImageWriteTGA(char* pszName, int nWidth, int nHeight, int nBpp, unsigned char* pData);
@@ -3112,7 +3120,8 @@ const char* replacetexture(char* pszArg)
     char szTexture[64];
     szTexture[0] = 0;
     char* pszSpace = strchr(pszArg, ' ');
-    memset(aValues, 0, sizeof(aValues));
+    for (int i = 0; i < 256; i++)
+        aValues[i] = 0;
     AurTextureSprintf(szResult, 256, "Failure");
     if (!pszSpace)
         return szResult;

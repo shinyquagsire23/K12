@@ -54,17 +54,57 @@ int PlayBinkMovieGL(const char* pszMovie, float fVolume, unsigned int a, unsigne
 
 // Bink 1.x ships statically linked and stripped of its dynamic symbols, so its prototypes are
 // declared here.
+// The summary is filled by the library and never read. K1's library leads it with five 64-bit
+// fields, so it is 8-byte aligned on both ABIs; K2's library keeps every field pointer-width.
 #if KOTOR1
-struct BinkSummary { unsigned char _bytes[0x90]; };
+struct BinkSummary {
+    uint64_ll_t m_nUnk0x00, m_nUnk0x08, m_nUnk0x10, m_nUnk0x18, m_nUnk0x20;
+    unsigned int m_nWidth, m_nHeight, m_nUnk0x30, m_nUnk0x34, m_nUnk0x38, m_nUnk0x3c, m_nUnk0x40, m_nUnk0x44,
+        m_nUnk0x48, m_nUnk0x4c, m_nUnk0x50, m_nUnk0x54, m_nUnk0x58, m_nUnk0x5c, m_nUnk0x60, m_nUnk0x64, m_nUnk0x68,
+        m_nUnk0x6c, m_nUnk0x70, m_nUnk0x74, m_nUnk0x78, m_nUnk0x7c, m_nUnk0x80, m_nUnk0x84, m_nUnk0x88, m_nUnk0x8c;
+};
 #else
-struct BinkSummary { unsigned char _bytes[0xf8]; };
+struct BinkSummary {
+    uintptr_t m_nWidth;
+    uintptr_t m_nHeight;
+    uintptr_t m_nTotalTime;
+    uintptr_t m_nFileFrameRate;
+    uintptr_t m_nFileFrameRateDiv;
+    uintptr_t m_nFrameRate;
+    uintptr_t m_nFrameRateDiv;
+    uintptr_t m_nTotalOpenTime;
+    uintptr_t m_nTotalFrames;
+    uintptr_t m_nTotalPlayedFrames;
+    uintptr_t m_nSkippedFrames;
+    uintptr_t m_nSkippedBlits;
+    uintptr_t m_nSoundSkips;
+    uintptr_t m_nTotalBlitTime;
+    uintptr_t m_nTotalReadTime;
+    uintptr_t m_nTotalVideoDecompTime;
+    uintptr_t m_nTotalAudioDecompTime;
+    uintptr_t m_nTotalIdleReadTime;
+    uintptr_t m_nTotalBackReadTime;
+    uintptr_t m_nTotalReadSpeed;
+    uintptr_t m_nSlowestFrameTime;
+    uintptr_t m_nSlowest2FrameTime;
+    uintptr_t m_nSlowestFrameNum;
+    uintptr_t m_nSlowest2FrameNum;
+    uintptr_t m_nAverageDataRate;
+    uintptr_t m_nAverageFrameSize;
+    uintptr_t m_nHighestMemAmount;
+    uintptr_t m_nTotalIOMemory;
+    uintptr_t m_nHighestIOUsed;
+    uintptr_t m_nHighest1SecRate;
+    uintptr_t m_nHighest1SecFrame;
+};
 #endif
 
 // An opaque decoder handle; only the two frame counters are ever read, by the render loop's gate.
+// K2's decoder keeps them pointer-width, after two pointer-width words.
 #if KOTOR1
 struct BinkHandle { char _pad00[8]; int m_nFrames; int m_nFrameNum; };
 #else
-struct BinkHandle { char _pad00[0x10]; void* m_nFrames; void* m_nFrameNum; };
+struct BinkHandle { intptr_t _pad00[2]; intptr_t m_nFrames; intptr_t m_nFrameNum; };
 #endif
 
 #include "port/win32api.h"
@@ -204,7 +244,8 @@ int CExoMoviePlayerInternal::RenderFrame(int)
 {
     if (m_pBink == 0)
         return 0;
-    UnpauseMovie();
+    if (m_bPaused)
+        UnpauseMovie();
 
     while (true)
     {
@@ -267,71 +308,51 @@ void AsyncPlayThreadProc(void* pArg)
     }
 
     CExoMoviePlayerInternal* pPlayer = static_cast<CExoMoviePlayerInternal*>(pArg);
-#if !KOTOR1
-    WaitForSingleObject(pPlayer->m_hThread, INFINITE);
-    if (pPlayer->m_bStopThread != 0)
-    {
-        ExitThread(0);
-    }
-#endif
-
     while (true)
     {
-#if KOTOR1  // K1: ExitThread returns, so the wait stays at the top of the loop
         WaitForSingleObject(pPlayer->m_hThread, INFINITE);
         if (pPlayer->m_bStopThread != 0)
         {
             ExitThread(0);
         }
-#endif
-        if (pPlayer->m_aMovies.m_count >= 1)
+        for (int i = 0; i < pPlayer->m_aMovies.m_count; i++)
         {
-            for (int i = 0; i < pPlayer->m_aMovies.m_count; i++)
-            {
-                (void)(pPlayer->m_aMovies.m_pArray[i] != "");
-            }
-            pPlayer->m_bSkippable = 1;
-
-            if (pPlayer->m_aMovies.m_count >= 1)
-            {
-                for (int i = 0; i < pPlayer->m_aMovies.m_count; i++)
-                {
-                    CExoString& sMovie = pPlayer->m_aMovies.m_pArray[i];
-                    if (!(sMovie != ""))
-                        continue;
-
-                    if (pPlayer->m_aInts.m_count > 0)
-                    {
-                        if (i < pPlayer->m_aInts.m_count)
-                            pPlayer->m_bSkippable = pPlayer->m_aInts.m_pArray[i];
-                        else
-                            pPlayer->m_bSkippable = 1;
-                    }
-
-                    pPlayer->StartMovie(sMovie);
-
-                    if (pPlayer->m_bDeactivated == 0)
-                        pPlayer->m_aMovies.m_pArray[i] = "";
-
-                    if (pPlayer->m_bSkippable == 0)
-                    {
-                        pPlayer->m_bSkipped = 0;
-                        continue;
-                    }
-
-                    if (pPlayer->m_bSkipped != 1)
-                        continue;
-
-                    if (pPlayer->m_bCancelAll != 0)
-                        break;
-
-                    pPlayer->m_bSkipped = 0;
-                }
-            }
+            (void)(pPlayer->m_aMovies.m_pArray[i] != "");
         }
-        else
+        pPlayer->m_bSkippable = 1;
+
+        for (int i = 0; i < pPlayer->m_aMovies.m_count; i++)
         {
-            pPlayer->m_bSkippable = 1;
+            CExoString& sMovie = pPlayer->m_aMovies.m_pArray[i];
+            if (!(sMovie != ""))
+                continue;
+
+            if (pPlayer->m_aInts.m_count > 0)
+            {
+                if (i < pPlayer->m_aInts.m_count)
+                    pPlayer->m_bSkippable = pPlayer->m_aInts.m_pArray[i];
+                else
+                    pPlayer->m_bSkippable = 1;
+            }
+
+            pPlayer->StartMovie(sMovie);
+
+            if (pPlayer->m_bDeactivated == 0)
+                pPlayer->m_aMovies.m_pArray[i] = "";
+
+            if (pPlayer->m_bSkippable == 0)
+            {
+                pPlayer->m_bSkipped = 0;
+                continue;
+            }
+
+            if (pPlayer->m_bSkipped != 1)
+                continue;
+
+            if (pPlayer->m_bCancelAll != 0)
+                break;
+
+            pPlayer->m_bSkipped = 0;
         }
 
         if (pPlayer->m_bDeactivated == 0)
@@ -340,14 +361,6 @@ void AsyncPlayThreadProc(void* pArg)
         pPlayer->m_bSkipped = 0;
         pPlayer->m_bCancelAll = 0;
         pPlayer->m_bMoviePlaying = 0;
-#if !KOTOR1
-        WaitForSingleObject(pPlayer->m_hThread, INFINITE);
-
-        if (pPlayer->m_bStopThread != 0)
-        {
-            ExitThread(0);
-        }
-#endif
     }
 }
 

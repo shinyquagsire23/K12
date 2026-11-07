@@ -11,9 +11,12 @@ class CSWCCreature;
 class CResGFF;
 struct CResStruct;
 class CSWGuiInterfaceAction;
+class CSWCStats_Spell;
 
 struct CSWCCreatureStats_ClassInfo {
-    CExoArrayList<unsigned int> m_spellLevels[2];
+    // Per spell level, of which KOTOR keeps level 0 (see CSWSCreatureStats_ClassInfo).
+    CExoArrayList<uint32_l_t>       m_spellLevels[1];
+    CExoArrayList<CSWCStats_Spell*> m_memorizedSpells[1];
     unsigned char m_nSpellsPerDayLeft;
     unsigned char m_nReserved1;
     unsigned short m_nReserved2;
@@ -135,11 +138,7 @@ public:
     void UpdateAbilityModifiedSkillRanks();
     void ClearKnownSpells();
     void ClearKnownSpells(unsigned char nClassPos);
-#if KOTOR1
     short GetMaxHitPoints();
-#else
-    unsigned short GetMaxHitPoints();
-#endif
     signed char CalcStatModifier(unsigned char nStat);
     signed char GetSTRMod() { return CalcStatModifier(m_abScores[0]); }
     signed char GetDEXMod() { return static_cast<signed char>(CalcStatModifier(m_abScores[1]) + m_nDEXArmorAdjust); }
@@ -290,28 +289,28 @@ public:
     int  FeatRequirementsMet(unsigned short nFeat, CExoArrayList<unsigned short>* pFeats);
     char GetBaseAttackBonus();
     int  HasFeatPrereq(CSWFeat* pFeat, CExoArrayList<unsigned short>* pFeats);
-    int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<unsigned int>* pSpells);
+    int  HasSpellPrereq(CSWSpell* pSpell, CExoArrayList<uint32_l_t>* pSpells);
     int  FeatAcquired(unsigned short nFeat, CExoArrayList<unsigned short>* pFeats);
 #if KOTOR1  // K1's AddGrantedFeats takes no bool and K1 has no AddGrantedPowers
-    void AddGrantedFeats(CExoArrayList<unsigned int>* pFeats);
+    void AddGrantedFeats(CExoArrayList<uint32_l_t>* pFeats);
 #else
-    void AddGrantedFeats(CExoArrayList<unsigned int>* pFeats, bool bIsPC);
-    void AddGrantedPowers(CExoArrayList<unsigned int>* pPowers);
+    void AddGrantedFeats(CExoArrayList<uint32_l_t>* pFeats, bool bIsPC);
+    void AddGrantedPowers(CExoArrayList<uint32_l_t>* pPowers);
 #endif
     void CalcNumberFeats(unsigned char& nNormal, unsigned char& nBonus);
     void ClearPackage();
-    unsigned int ComputeNumberKnownSpellsLeft();
+    unsigned char ComputeNumberKnownSpellsLeft();
     int  CanChooseFeat(unsigned short nFeat, unsigned char nNormalLeft,
                        unsigned char nBonusLeft, CExoArrayList<unsigned short>* pChosen);
     void SetNormalBonusFlags(unsigned short nFeat, int& nNormal, int& nBonus);
     int CanChooseSpell(unsigned int nSpell, unsigned char nLeft,
-                        CExoArrayList<unsigned int>* pChosen);
+                        CExoArrayList<uint32_l_t>* pChosen);
     void AddDefaultPackageSkills(int nPackage, int bSkipFlagCheck);
     // nClassId is a raw class row id, not a class slot, and the two flags gate whether the initial
     // normal and bonus budget counts at all.
     unsigned char AddDefaultPackageFeats(int nClassId, CExoArrayList<unsigned short>* pFeats,
                                 int bAllowNormal, int bAllowBonus);
-    unsigned int AddDefaultPackageSpells(CExoArrayList<unsigned int>* pSpells);
+    unsigned char AddDefaultPackageSpells(CExoArrayList<uint32_l_t>* pSpells);
 };
 
 // idiom-exempt: canonical

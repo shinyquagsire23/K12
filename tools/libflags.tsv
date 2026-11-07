@@ -28,6 +28,11 @@
 *	src/libsource/exomovieplayer	-fbuiltin
 # K1's exoresman (CExoResMan::RemoveFile builds its path with std::string).
 k1	src/libsource/exoresman	-fbuiltin
+# K2 CClientExoAppInternal::BeginIntro @0x469a5c (Aspyr's copyright-language block): `sLang = "fre"`
+# reaches assign(p, 3) with no strlen in arm64, and assign(const char*) in K2 armv7. With strlen
+# opaque, arm64 calls strlen 8 times; a noinline assign(p, n) wrapper matched arm64 but called a
+# function neither image has. The flag changes no other function of the TU in either game.
+*	src/game/clientcore/clientexoappinternal.cpp	-fbuiltin
 
 # --- Single-TU libraries. --------------------------------------------------------------------------
 # pathfindinfo: FindPath_Left/Right @0x7fc0a8/@0x7fc288 zero `new Vector[n]` with a real memset
@@ -38,8 +43,7 @@ k1	src/libsource/exoresman	-fbuiltin
 # LLVM's MemCpyOpt runs only when memset AND memcpy are both available. These TUs' originals keep
 # runs of adjacent zero stores that the pass merges into one memset: CSWCAnimBase() @0x35f548
 # (+0x18..+0x2d), CSWCAnimBaseHead(), CSWCPlaceable, CRIMRes() @0x7cadb8 (+0x14..+0x28),
-# CObjectLookupTable::GetUpdate, CSWGuiTutorial(), AddPowerSet; K1's CSWGlobalVariableTable
-# ClearValues/ClearIdentifiers. Reordering the stores reorders the expanded memset instead
+# CObjectLookupTable::GetUpdate, CSWGuiTutorial(), AddPowerSet. Reordering the stores reorders the expanded memset instead
 # (CRIMRes: six orders tried, every one DIFF). Other TUs of the same libraries need the pass.
 *	src/game/clientcore/ObjectLookupTable_ring.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
 *	src/game/clientcore/nwcanimbase.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
@@ -48,24 +52,19 @@ k1	src/libsource/exoresman	-fbuiltin
 *	src/game/clientcore/swguipazaak.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
 *	src/game/clientcore/swguiskillflowchart.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
 *	src/libsource/exoresman/rimfile.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
-k1	src/game/servercore/globalvartables.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memcpy
-# CGameEffect::CopyEffect @0x5ac684: the inlined SetNumIntegers' memset is a call that may write
-# anything, so the copy loop re-reads m_pIntegers and m_numIntegers; a builtin memset lets both forward.
-*	src/game/servercore/nwseffect.cpp	-fbuiltin -fno-builtin-strlen -fno-builtin-memset
 
 # --- Exceptions: inlining and tail-merge tuning. ---------------------------------------------------
-# CExoRandInternal: the ctor inlines GenSeed's seed collection while GenSeed refuses Add (cost 165),
-# and GenSeed copies an uninitialised 128-byte buffer that MemCpyOpt deletes. A noinline Add was
-# tried: the ctor and Rand match, GenSeed loses its copy (172 -> 120 B). Window [161,165].
-*	src/libsource/exobase/exorandinternal.cpp	-mllvm -inline-threshold=165
-# CExoEncrypt::EncryptString @0x79d7c0 inlines MD5Init, refuses MD5Final and keeps the 16-call hex
-# loop rolled; MD5Init @0x79d8dc keeps its two memsets apart. Tried: noinline MD5Final plus
-# `#pragma nounroll`, and all 24 statement orders of MD5Init (best DIFF(8): the expanded memset's
-# stores come out in the reverse order).
-*	src/libsource/exobase/exoencrypt.cpp	-mllvm -inline-threshold=119
-# CERFFile: AddResource @0x7b858c's 16-byte name copy is one vector move (builtin memcpy); two rows
-# need the 160 threshold's inlining decisions.
-*	src/libsource/exoresman/nwerffile.cpp	-fbuiltin -mllvm -inline-threshold=160
+# CExoRandInternal: builtins off, like exoencrypt. GenSeed @0x7a3ae8 copies an uninitialised 128-byte
+# buffer that MemCpyOpt deletes under the library's -fbuiltin (172 -> 120 B). Add stays out of line
+# at all six sites by its own cost: its memcpy is bionic's fortified one (<string.h>); the
+# -mllvm -inline-threshold=165 this row carried stood in for that cost.
+*	src/libsource/exobase/exorandinternal.cpp	-fno-builtin
+# CExoEncrypt (RSA's md5.c): builtins off. MD5Init @0x79d8dc keeps its two memsets apart, and with
+# the library's -fbuiltin MemCpyOpt merges them in every statement order (all 24 tried; best DIFF(8):
+# the expanded memset's stores come out in the reverse order). EncryptString @0x79d7c0 inlines
+# MD5Init and calls MD5Final at the default threshold: MD5Final's byte-wise decode/encode loops cost
+# what keeps it out of line (all six rows MATCH in all four configs).
+*	src/libsource/exobase/exoencrypt.cpp	-fno-builtin
 # FModAudioSystem::InitChannels @0x345728: the inlined libc++ tree walk's exit block is
 # tail-merged one way at the default and the original's way at 2 (436 B against 440 without it).
 *	src/port/fmod/FModAudioSystem.cpp	-fbuiltin -mllvm -tail-merge-size=2

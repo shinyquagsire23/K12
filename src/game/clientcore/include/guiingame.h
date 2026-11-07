@@ -133,7 +133,7 @@ public:
     unsigned int            m_messageBufferSize;
     int                     m_dialogMessageBufferSize;
 #if !KOTOR1
-    int                     m_combatMessageBufferSize;
+    unsigned int            m_combatMessageBufferSize;
 #endif
     int                     m_bInitialized;
     int                     m_levelUpMode;
@@ -250,7 +250,7 @@ public:
     CExoArrayList<CExoLocString>   m_aReceivedItemNames;
     void AddReceivedItemToList(const CExoLocString& sName) { m_aReceivedItemNames.Add(sName); }
     CExoArrayList<unsigned short>  m_aSortedFeats;
-    CExoArrayList<unsigned int>    m_aSortedPowers;
+    CExoArrayList<uint32_l_t>    m_aSortedPowers;
 #endif
 
     // This model is truncated; nothing allocates or array-indexes this class, so its real size is
@@ -375,9 +375,7 @@ public:
     static const Vector DISABLED_ICON_COLOR;
     static const Vector ENABLED_ICON_COLOR;
     static const Vector COLOR_PAZAAK_GOLD;
-#if KOTOR1
     static const Vector STANDARD_BLUE;
-#endif
     static Vector COLOR_NEW_GREEN;
     void SetDeferredFOVCallForAnimatedCutscenes(float fov);
     void SetLevelUpMode(int mode);
@@ -577,7 +575,7 @@ public:
     bool CopyQuickSaveGameToFutureGame(unsigned int a, const CExoString& b);
     void ResetInterfaceForSize();
 #if !KOTOR1  // K1's variant takes no extra flag
-    void ShowPartySelection(const CExoString& text, int a, int forceNpc1, int forceNpc2, int d);
+    void ShowPartySelection(const CExoString& text, int a, int forceNpc1, int forceNpc2, int bAllowCancel);
 #else
     void ShowPartySelection(const CExoString& text, int a, int forceNpc1, int forceNpc2);
     int  GetPartyAccessPanelUp(int bEquipOnly);

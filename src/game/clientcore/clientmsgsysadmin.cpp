@@ -112,7 +112,7 @@ int CClientMsgSysAdmin::GetTokenPair(unsigned char* pMessage, unsigned int nSize
 
 // Prefixes the message with an 's' byte and ships it to the server. The buffer holds the payload
 // plus that byte and is never freed.
-#if KOTOR1  // K1 reaches this through a call, not an inline
+#if KOTOR1 && !defined(__arm__)  // K1 arm64 reaches this through a call; K1 armv7 inlines it
 __attribute__((noinline))
 #endif
 int CClientMsgSysAdmin::SendSysAdminToServerMessage(const CExoString& sMessage)

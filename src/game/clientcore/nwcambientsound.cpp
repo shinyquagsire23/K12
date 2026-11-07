@@ -17,10 +17,12 @@ extern CExoSound* g_pExoSound;
 #include "port/crtapi.h"
 #include "port/libcbase.h"
 
+#if !KOTOR1  // K1 has no weather thunder
 const CExoString CSWCAmbientSound::THUNDER1("as_wt_thundercl1");
 const CExoString CSWCAmbientSound::THUNDER2("as_wt_thundercl2");
 const CExoString CSWCAmbientSound::THUNDER_ROLLING1("as_wt_thunderds1");
 const CExoString CSWCAmbientSound::THUNDER_ROLLING2("as_wt_thunderds2");
+#endif
 
 CSWCAmbientSound::CSWCAmbientSound(CSWCArea* pArea)
 {
@@ -654,6 +656,7 @@ void CSWCAmbientSound::UpdateTimeOfDay()
     }
 }
 
+#if !KOTOR1
 void CSWCAmbientSound::Thunder(int bClose)
 {
     if (!m_bAmbientPlaying)
@@ -676,6 +679,7 @@ void CSWCAmbientSound::Thunder(int bClose)
             g_pExoSound->PlayOneShotSound(CResRef(THUNDER2), 21, 0, 0, 0.0f, 0.0f);
     }
 }
+#endif
 
 void CSWCAmbientSound::Update()
 {

@@ -40,9 +40,9 @@ public:
     unsigned char       m_nWeaponAttackType;
     char                _pad39[0x3c - 0x39];
     struct {
-        unsigned int    m_fCastTargetX;
-        unsigned int    m_fCastTargetY;
-        unsigned int    m_fCastTargetZ;
+        float           m_fCastTargetX;
+        float           m_fCastTargetY;
+        float           m_fCastTargetZ;
     }                   m_castTargetGroup;
     struct {
         unsigned int    m_nSpellId;
@@ -51,8 +51,8 @@ public:
     CSWCCombatAttackData* m_pNext;
     float               m_fAnimationSpeed;
 
-    // Scalar members copy one at a time, the grouped runs as whole aggregates, in this order.
-    CSWCCombatAttackData& operator=(const CSWCCombatAttackData& o) {
+    // Members copy one at a time in this order; the cast-target and the two flag groups copy as whole aggregates.
+    __attribute__((always_inline)) CSWCCombatAttackData& operator=(const CSWCCombatAttackData& o) {
         m_nDataType = o.m_nDataType;
         m_nCastTargetType = o.m_nCastTargetType;
         m_attackerObjectId = o.m_attackerObjectId;
@@ -61,9 +61,13 @@ public:
         m_nTotalDamage = o.m_nTotalDamage;
         m_nAttackResult = o.m_nAttackResult;
         m_nReserved1 = o.m_nReserved1;
-        m_reaxnGroup = o.m_reaxnGroup;
+        m_reaxnGroup.m_nFeatId = o.m_reaxnGroup.m_nFeatId;
+        m_reaxnGroup.m_nReaxnDelay = o.m_reaxnGroup.m_nReaxnDelay;
+        m_reaxnGroup.m_nReaxnAnimation = o.m_reaxnGroup.m_nReaxnAnimation;
+        m_reaxnGroup.m_nReaxnAnimLength = o.m_reaxnGroup.m_nReaxnAnimLength;
         m_castTargetGroup = o.m_castTargetGroup;
-        m_spellGroup = o.m_spellGroup;
+        m_spellGroup.m_nSpellId = o.m_spellGroup.m_nSpellId;
+        m_spellGroup.m_nCastLevel = o.m_spellGroup.m_nCastLevel;
         m_fAnimationSpeed = o.m_fAnimationSpeed;
         m_rangedAttackGroup = o.m_rangedAttackGroup;
         m_killingBlowGroup = o.m_killingBlowGroup;
@@ -293,7 +297,7 @@ public:
     int            m_nReserved7;
     float          m_swAnimationSpeed;
     float          m_fSWStrafeSpeed;
-    int            m_fTurnAngle;
+    float          m_fTurnAngle;
     int            m_nSWAnimation;
     int            m_attackIndex;
     int            m_lastAttackIndex;
@@ -457,7 +461,7 @@ public:
     void SetCombatState(int bCombat);
     int  GetSpellLikeAbilityUsesLeft(unsigned int spellId, unsigned char nClass);
     int  GetMenuPoint(Vector& vOut);
-    int  CanDualWield(CSWCItem* pItem);
+    unsigned char CanDualWield(CSWCItem* pItem);
     void ActionMenuSetMine(unsigned int itemId, CSWCCreature* pTarget);
     int  HasUsableItems(CSWCCreature* pOther);
     int  UpdateAttackData(unsigned short* pOutAnim, CSWCCombatAttackData* pData);

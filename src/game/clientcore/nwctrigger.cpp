@@ -761,8 +761,7 @@ char CSWCTrigger::GetReticlePoint(Vector& v)
             CAurCamera* pCamera = g_pAppManager->m_pClientExoApp->GetModuleCamera();
             Vector vDir = -pCamera->GetOrientation().zdir();
             float fPoint = dot(v, vDir);
-            Vector vCamPos = pCamera->GetPosition();
-            float fCam = dot(vDir, vCamPos);
+            float fCam = dot(vDir, pCamera->GetPosition());
             char nRet = !(fPoint > fCam) ? 2 : 1;
 
             v = g_pAppManager->m_pClientExoApp->GetModuleCamera()->MapToScreen(v, true);

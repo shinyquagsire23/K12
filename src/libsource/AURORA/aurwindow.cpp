@@ -143,12 +143,16 @@ void Reshape(int nWidth, int nHeight)
 // varargs wrapper.
 #include "port/libcbase.h"
 #include "port/libcstring.h"
+#if defined(K2_NO_FORTIFY)
+#define snprintff(pszBuf, nSize, ...) sprintf(pszBuf, __VA_ARGS__)
+#else
 static void snprintff(char* buf, uint64_t n, const char* fmt, ...) {
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
     __vsprintf_chk(buf, 0, n, fmt, ap);
     __builtin_va_end(ap);
 }
+#endif
 const char* reshape(char* pszArgs)
 {
     K2_UNUSED(pszArgs);
@@ -191,8 +195,9 @@ void doconsole(char c)
     }
     case '\t': {
         List<char*> matches;
+        char* pMatch = CommandCompletion(comstring, matches);
         char* pCom = comstring;
-        __strcpy_chk(pCom, CommandCompletion(pCom, matches), 512);
+        __strcpy_chk(pCom, pMatch, 512);
         AurPostString(FuncPreInterp(pCom), 0, 1, 1.0f);
         if (matches.m_count >= 2) {
             float fSize = 1.0f;

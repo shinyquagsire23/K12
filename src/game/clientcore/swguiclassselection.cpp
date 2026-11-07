@@ -1,7 +1,9 @@
 
 #include "k2stdint.h"
+#include <string.h>
 #include "port/sdlapi.h"
 #include "swguiclassselection.h"
+#include "CExoArrayListImpl.h"
 #include "swguiingameareatransition.h"
 #include "swgui.h"
 #include "swguicontrol.h"

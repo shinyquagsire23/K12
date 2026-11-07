@@ -554,11 +554,11 @@ void CSWGuiInGameMenu::Draw(float f)
     {
         m_lblTopClass1.m_text.m_params.SetText(
             g_pAppManager->m_pClientExoApp->GetGUIString(
-                g_pRules->m_paClasses[pStats->GetClass(0)].m_nNameStrRef));
+                g_pRules->GetClass(pStats->GetClass(0))->m_nNameStrRef));
         m_lblTopClass1Level.m_text.m_params.SetText(CExoString(pStats->GetClassLevel(0, 0)));
         m_lblTopClass2.m_text.m_params.SetText(
             g_pAppManager->m_pClientExoApp->GetGUIString(
-                g_pRules->m_paClasses[pStats->GetClass(1)].m_nNameStrRef));
+                g_pRules->GetClass(pStats->GetClass(1))->m_nNameStrRef));
         m_lblTopClass2Level.m_text.m_params.SetText(CExoString(pStats->GetClassLevel(1, 0)));
     }
 
@@ -1099,12 +1099,7 @@ void CSWGuiMessageBox::HandleInputEvent(int nType, int nValue)
                 m_bAllowCancel = 1;
                 m_bAllowDismissal = 1;
                 ResetButtonMessage();
-                {
-                    unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                    if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                        nFlags = (m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-                    m_stateFlags = nFlags;
-                }
+                SetToBeRemoved(0);
                 m_pGuiManager->PopModalPanel();
                 m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
                 if (m_pCallbackObject && m_pfnCallback)
@@ -1140,12 +1135,7 @@ void CSWGuiMessageBox::HandleInputEvent(int nType, int nValue)
                 m_bAllowCancel = 1;
                 m_bAllowDismissal = 1;
                 ResetButtonMessage();
-                // Request the panel's removal: one already marked for remove-and-delete only drops
-                // its DEFERRED bit, anything else becomes a plain remove.
-                unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                    nFlags = (m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-                m_stateFlags = nFlags;
+                SetToBeRemoved(0);
                 m_pGuiManager->PopModalPanel();
                 m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
                 if (m_pCallbackObject && m_pfnCallback)
@@ -2367,13 +2357,7 @@ void CSWGuiInGameMessages::HandleInputEvent(int nType, int nValue)
             case INPUTEVENT_GUI_BACK:
             case INPUTEVENT_GUI:
             {
-                // Request the panel's removal: one already marked for remove-and-delete only drops
-                // its DEFERRED bit, anything else becomes a plain remove. Both arms fold into one
-                // select, so the test reads the already-masked local.
-                unsigned short nFlags = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-                if ((nFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                    nFlags = (m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-                m_stateFlags = nFlags;
+                SetToBeRemoved(0);
                 break;
             }
             case INPUTEVENT_GUI_DPAD_RIGHT:
@@ -2405,9 +2389,11 @@ void CSWGuiInGameMessages::HandleInputEvent(int nType, int nValue)
         {
             if (++s_nEasterEggProgress == 4)
             {
-                // alignas(16) is load-bearing: the constant load depends on it.
-                alignas(16) char szMessage[] = "Punch it, Chewie!";
+                // The message is stored obfuscated: character i is shifted up by i & 3.
+                char szMessage[] = "Pvpfh!kw,!Ekexkh!";
                 s_nEasterEggProgress = 0;
+                for (int i = 0; i < 17; i++)
+                    szMessage[i] -= i & 3;
                 CGuiInGame* pInGameGui = g_pAppManager->m_pClientExoApp->GetInGameGui();
                 pInGameGui->AppendToMsgBuffer(CExoString(szMessage), MSG_CHANNEL_FEEDBACK, 0);
                 g_nHSMode = 1;
@@ -2506,12 +2492,7 @@ CSWGuiStatusSummary::CSWGuiStatusSummary(CSWGuiManager* pGuiManager)
     m_btnAck.AddEvent(INPUTEVENT_GUI_A, this,
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiStatusSummary::OnAButtonPressed));
 
-    m_credits = 0;
-    m_lightShift = 0;
-    m_darkShift = 0;
-    m_flags &= ~SUMMARY_ALL;
-    m_nXP = 0;
-    m_nStealthXP = 0;
+    Clear();
     m_suppressFlag = 0;
     m_stateFlags |= 1;
 #else
@@ -2558,18 +2539,9 @@ CSWGuiStatusSummary::CSWGuiStatusSummary(CSWGuiManager* pGuiManager)
     m_btnAck.AddEvent(INPUTEVENT_GUI_A, this,
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiStatusSummary::OnAButtonPressed));
 
-    m_credits = 0;
-    m_lightShift = 0;
-    m_darkShift = 0;
+    Clear();
     m_nAlignmentChanged = 0;
-    m_flags &= ~SUMMARY_ALL;
     m_suppressFlag = 0;
-    m_influenceGainedMask = 0;
-    m_influenceLostMask = 0;
-    m_maxFPGained = 0;
-    m_nXP = 0;
-    m_nStealthXP = 0;
-    m_maxFPLost = 0;
     m_stateFlags |= 1;
 #endif
 }
@@ -2590,11 +2562,14 @@ void CSWGuiStatusSummary::OnPanelAdded()
     CExoString sToken;
     CSWGuiExtent extent;
     int bShowJournal = 0;
+    int nMaxWidth;
+    int nRowY;
+    int nButtonY;
 
     PlayPendingSounds();
 
-    int nMaxWidth = static_cast<int>(fScale * 150.0f);
-    int nRowY = static_cast<int>(fScale * 10.0f);
+    nMaxWidth = static_cast<int>(fScale * 150.0f);
+    nRowY = static_cast<int>(fScale * 10.0f);
 
     for (int i = 0; i < 9; i++)
     {
@@ -2696,6 +2671,7 @@ void CSWGuiStatusSummary::OnPanelAdded()
 
         if (bShow)
         {
+            CSWGuiText* pText;
             m_aValueLabels[i].m_tail.bVisible = 1;
             m_aDescLabels[i].m_tail.bVisible = 1;
 
@@ -2709,7 +2685,7 @@ void CSWGuiStatusSummary::OnPanelAdded()
             extent.y = nRowY;
             m_aValueLabels[i].SetExtent(extent);
 
-            CSWGuiText* pText = &m_aDescLabels[i].m_text;
+            pText = &m_aDescLabels[i].m_text;
 
             extent = m_aDescLabels[i].m_extent;
             extent.y = nRowY - static_cast<int>(s_fScale);
@@ -2758,7 +2734,7 @@ void CSWGuiStatusSummary::OnPanelAdded()
         }
     }
 
-    int nButtonY = static_cast<int>(nRowY - s_fScale * 7.0f);
+    nButtonY = static_cast<int>(nRowY - s_fScale * 7.0f);
     extent.w = static_cast<int>(s_fScale * 10.0f + (m_aDescLabels[0].m_extent.x + nMaxWidth));
     extent.h = static_cast<int>(s_fScale * 62.0f + nButtonY);
     extent.y = (m_pGuiManager->m_nScreenHeight - extent.h) / 2;
@@ -2960,7 +2936,8 @@ void CSWGuiStatusSummary::OnPanelAdded()
             CExoString sAccum;
             int nMask = (i == SUMMARY_ROW_INFLUENCE_GAINED) ? *paInfluenceGained : *paInfluenceLost;
             g_pAppManager->m_pServerExoApp->GetPartyTable();
-            for (int j = 0; j < 12; j++)
+            int j;
+            for (j = 0; j < 12; j++)
             {
                 if (nMask & (1 << j))
                 {
@@ -3172,20 +3149,13 @@ void CSWGuiStatusSummary::OnPanelRemoved()
 }
 
 void CSWGuiStatusSummary::Clear() {
-#if KOTOR1  // K1: nine flag bits, no influence or max-FP accumulators
-    m_lightShift = 0;
-    m_darkShift = 0;
-    m_flags &= ~SUMMARY_ALL;
     m_credits = 0;
+    m_lightShift = 0;
+    m_flags &= ~SUMMARY_ALL;
+    m_darkShift = 0;
     m_nXP = 0;
     m_nStealthXP = 0;
-#else
-    m_lightShift = 0;
-    m_darkShift = 0;
-    m_credits = 0;
-    m_flags &= ~SUMMARY_ALL;
-    m_nXP = 0;
-    m_nStealthXP = 0;
+#if !KOTOR1  // K1: nine flag bits, no influence or max-FP accumulators
     m_influenceGainedMask = 0;
     m_influenceLostMask = 0;
     m_maxFPGained = 0;
@@ -3375,10 +3345,7 @@ void CSWGuiStatusSummary::HandleInputEvent(int type, int val) {
         case INPUTEVENT_GUI_B:
         case INPUTEVENT_GUI_START:
         case INPUTEVENT_GUI_BACK:
-            unsigned short nNewState = m_stateFlags & ~PANEL_REMOVE_DEFERRED;
-            if ((m_stateFlags & PANEL_REMOVE_MASK) != PANEL_REMOVE_AND_DELETE)
-                nNewState = (m_stateFlags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-            m_stateFlags = nNewState;
+            SetToBeRemoved(0);
             g_pAppManager->m_pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
             m_pGuiManager->PlayGuiSound(GUISOUND_CLICKED_DEFAULT);
 #if !KOTOR1  // K1: no alignment movie, level-up dialog or received-item list

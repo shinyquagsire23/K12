@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "port/Mac/MacMain.h"
 #include "swguiexamine.h"
 #include "serverexoappinternal.h"
@@ -77,14 +78,10 @@ bool HasTouchScreen();
 void IosTemporaryDisableInteraction(int nDisable);
 #endif
 
-#if KOTOR1
 const Vector CGuiInGame::ENABLED_ICON_COLOR(1.0f, 1.0f, 1.0f);
-#endif
 const Vector CGuiInGame::DISABLED_ICON_COLOR(0.35f, 0.35f, 0.35f);
 Vector CGuiInGame::COLOR_TRANSPARENT(-1.0f, -1.0f, -1.0f);
-#if KOTOR1
 const Vector CGuiInGame::STANDARD_BLUE(0.0f, 0.64f, 0.96f);
-#endif
 Vector CGuiInGame::COLOR_BLACK(0.0f, 0.0f, 0.0f);
 Vector CGuiInGame::COLOR_WHITE(1.0f, 1.0f, 1.0f);
 Vector CGuiInGame::COLOR_BLUE(0.0f, 0.66f, 0.98f);
@@ -168,7 +165,8 @@ char* ShowGUI(char* pszName)
 
 CGuiInGame::CGuiInGame()
 {
-    g_pAppManager->m_pClientExoApp->GetClientOptions()->SetCameraMode(CClientOptions::CAMERA_MODE_ON_A_STICK);
+    CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
+    pOptions->SetCameraMode(CClientOptions::CAMERA_MODE_ON_A_STICK);
 
     m_pMessageBuffer = new CGuiInGameMessage[MESSAGE_BUFFER_SIZE];
     m_pDialogMessageBuffer = new CGuiInGameDialogMessage[MESSAGE_BUFFER_SIZE];
@@ -432,18 +430,13 @@ void CGuiInGame::ShutDown()
     if (m_pStorePanel != 0)                  { delete m_pStorePanel; m_pStorePanel = 0; }
     if (m_pMainInterface != 0)               { delete m_pMainInterface; m_pMainInterface = 0; }
 
+    for (int i = 0; i < 8; i++) {
 #if !KOTOR1  // K1 has no CSWGuiInGameEquip::ShutdownCleanup
-    static_cast<CSWGuiInGameEquip*>(m_apScreenPanels[SCREEN_EQUIP])->ShutdownCleanup();
+        if (i == SCREEN_EQUIP)
+            static_cast<CSWGuiInGameEquip*>(m_apScreenPanels[SCREEN_EQUIP])->ShutdownCleanup();
 #endif
-
-    if (m_apScreenPanels[0] != 0) { delete m_apScreenPanels[0]; m_apScreenPanels[0] = 0; }
-    if (m_apScreenPanels[1] != 0) { delete m_apScreenPanels[1]; m_apScreenPanels[1] = 0; }
-    if (m_apScreenPanels[2] != 0) { delete m_apScreenPanels[2]; m_apScreenPanels[2] = 0; }
-    if (m_apScreenPanels[3] != 0) { delete m_apScreenPanels[3]; m_apScreenPanels[3] = 0; }
-    if (m_apScreenPanels[4] != 0) { delete m_apScreenPanels[4]; m_apScreenPanels[4] = 0; }
-    if (m_apScreenPanels[5] != 0) { delete m_apScreenPanels[5]; m_apScreenPanels[5] = 0; }
-    if (m_apScreenPanels[6] != 0) { delete m_apScreenPanels[6]; m_apScreenPanels[6] = 0; }
-    if (m_apScreenPanels[7] != 0) { delete m_apScreenPanels[7]; m_apScreenPanels[7] = 0; }
+        if (m_apScreenPanels[i] != 0) { delete m_apScreenPanels[i]; m_apScreenPanels[i] = 0; }
+    }
 
     if (m_pGalaxyMapPanel != 0) { delete m_pGalaxyMapPanel; m_pGalaxyMapPanel = 0; }
 
@@ -464,9 +457,10 @@ void CGuiInGame::ShutDown()
         m_paDialogAnimFlags = 0;
     }
     if (m_paLastDialogAnimData != 0) {
-        if (m_paDialogAnimData != 0) {
+#if KOTOR1 || !defined(__arm__)  // the K2 32-bit source deletes it without the null test
+        if (m_paDialogAnimData != 0)
+#endif
             operator delete[](m_paDialogAnimData);
-        }
         m_paDialogAnimData = 0;
     }
     if (m_paLastDialogAnimFlags != 0) {
@@ -931,19 +925,15 @@ void CGuiInGame::UpdateDialog()
         if ((pGameObjA != 0) && (pGameObjA->AsSWCObject() != 0) &&
             ((pGameObjA = g_pAppManager->m_pClientExoApp->GetGameObject(speakerObjId)), pGameObjA != 0) &&
             (pGameObjA->AsSWCObject() != 0)) {
-            if (0 < static_cast<int>(m_paReplyFlags[index])) {
-                int i = 0;
-                do {
-                    CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(
-                        static_cast<unsigned long long*>(m_paReplyAnimObjectIds[index])[i]);
-                    if (pGameObj == 0) {
-                        return;
-                    }
-                    if (pGameObj->AsSWCObject() == 0) {
-                        return;
-                    }
-                    i = i + 1;
-                } while (i < static_cast<int>(m_paReplyFlags[index]));
+            for (int i = 0; i < static_cast<int>(m_paReplyFlags[index]); i++) {
+                CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(
+                    static_cast<unsigned long long*>(m_paReplyAnimObjectIds[index])[i]);
+                if (pGameObj == 0) {
+                    return;
+                }
+                if (pGameObj->AsSWCObject() == 0) {
+                    return;
+                }
             }
             AppendToDialogBuffer(m_paReplyText[m_dialogSelectionA], speakerObjId);
             int replySelection = m_dialogSelectionA;
@@ -966,13 +956,10 @@ void CGuiInGame::UpdateDialog()
             CGameObject* pServerObj = g_pAppManager->m_pServerExoApp->GetGameObject(ownerServerId);
             if (m_bAnimatedCut == 0) {
                 unsigned int animCount = m_paReplyFlags[index];
-                if (InitializeDialogAnimationData(animCount)) {
-                    unsigned long long* paSrcData = static_cast<unsigned long long*>(m_paReplyAnimObjectIds[index]);
-                    unsigned short* paSrcFlags = static_cast<unsigned short*>(m_paReplyAnimations[index]);
-                    for (int j = 0; j < static_cast<int>(animCount); j++) {
-                        SetDialogAnimationData(j, paSrcData[j], paSrcFlags[j]);
-                    }
-                }
+                InitializeDialogAnimationData(animCount);
+                for (int j = 0; j < static_cast<int>(animCount); j++)
+                    SetDialogAnimationData(j, static_cast<unsigned long long*>(m_paReplyAnimObjectIds[index])[j],
+                                           static_cast<unsigned short*>(m_paReplyAnimations[index])[j]);
                 SetDialogAnimations();
             }
             if ((pServerObj != 0) && (pServerObj->AsSWSObject() != 0)) {
@@ -1033,7 +1020,7 @@ void CGuiInGame::ResumeBarkBubble()
 
 int CGuiInGame::IsCameraAnimationPlayingInDialog()
 {
-    return static_cast<unsigned>(m_nCameraAnimation - STUNT_ANIM_FIREFORGET_FIRST) < STUNT_ANIM_SPAN;
+    return static_cast<unsigned short>(m_nCameraAnimation - STUNT_ANIM_FIREFORGET_FIRST) < STUNT_ANIM_SPAN;
 }
 
 int CGuiInGame::IsInDialog(unsigned long long objId)
@@ -1083,7 +1070,7 @@ int CGuiInGame::HandleDialogSound(unsigned long long objId, const CResRef& resRe
             if (m_pDialogSound->Play(resRef, 8, 1, 0, 0) == 0) {
 #if !KOTOR1  // K1 has no VO debug trace
                 if (g_bVODebugEnabled) {
-                    char buf[20];
+                    char buf[17];
                     resRef.CopyToString(buf);
                     g_pExoSound->GetSoundMode();
                 }
@@ -1091,7 +1078,7 @@ int CGuiInGame::HandleDialogSound(unsigned long long objId, const CResRef& resRe
                 if (m_pDialogSound->Play(resRef, 4, 1, 0, 0) == 0) {
 #if !KOTOR1
                     if (g_bVODebugEnabled) {
-                        char buf[20];
+                        char buf[17];
                         resRef.CopyToString(buf);
                         g_pExoSound->GetSoundMode();
                     }
@@ -1672,7 +1659,8 @@ void CGuiInGame::EnableCharacterChangeButtons(int flag)
 #if !KOTOR1  // K2-only (no K1 counterpart)
 void CGuiInGame::ResetTutorialWindowTracker()
 {
-    __builtin_memset(m_tutorialWindowShown, 0, sizeof(m_tutorialWindowShown));
+    for (unsigned int i = 0; i < sizeof(m_tutorialWindowShown); i++)
+        m_tutorialWindowShown[i] = 0;
 }
 #endif // !KOTOR1
 
@@ -1722,55 +1710,46 @@ void CGuiInGame::SetDialogAnimations()
         }
     }
 
-    bool bFoundParticipantB = false;
-    bool bFoundParticipantA = false;
-    if (static_cast<int>(m_lastDialogAnimCount) < 1) {
-        bFoundParticipantA = false;
-    } else {
-        bFoundParticipantB = false;
-        bFoundParticipantA = false;
-        for (int i = 0; i < static_cast<int>(m_lastDialogAnimCount); i++) {
-            unsigned long long objId = m_paLastDialogAnimData[i];
-            CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(objId);
-            if (pGameObj == 0) continue;
+    int bFoundParticipantB = 0;
+    int bFoundParticipantA = 0;
+    for (int i = 0; i < static_cast<int>(m_lastDialogAnimCount); i++) {
+        unsigned long long objId = m_paLastDialogAnimData[i];
+        CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(objId);
+        if (pGameObj == 0) continue;
 
-            bool bStillAnimating = false;
-            if (0 < static_cast<int>(m_dialogAnimCount)) {
-                for (int j = 0; j < static_cast<int>(m_dialogAnimCount); j++) {
-                    if (objId == m_paDialogAnimData[j]) {
-                        bStillAnimating = true;
-                        break;
-                    }
-                }
-            }
-            if (objId == m_oidPrevDialogParticipantB) bFoundParticipantB = true;
-            if (objId == m_oidPrevDialogParticipantA) bFoundParticipantA = true;
-            if (bStillAnimating) continue;
-
-            if (pGameObj->AsSWCCreature() != 0) {
-                CSWCCreature* pCreature = static_cast<CSWCCreature*>(pGameObj->AsSWCCreature());
-                int bCanPlay = CanPlayDialogAnimations(pCreature->m_objectId);
-                if (pCreature != 0 && bCanPlay != 0) {
-                    pCreature->m_bPlayingCutsceneAnimation = 0;
-                    if (static_cast<CSWCObject*>(pCreature)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
-                        static_cast<CSWCObject*>(pCreature)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
-                    }
-                    static_cast<CSWCObject*>(pCreature)->m_pModel->SetInCutscene(0);
-                }
-            }
-            if (pGameObj->AsSWCPlaceable() != 0) {
-                CSWCPlaceable* pPlaceable = static_cast<CSWCPlaceable*>(pGameObj->AsSWCPlaceable());
-                CSWSPlaceable* pServerPlaceable = pPlaceable->GetServerPlaceable();
-                if (pPlaceable != 0) {
-                    pPlaceable->m_bPlayingCutsceneAnimation = 0;
-                    static_cast<CSWCObject*>(pPlaceable)->SetAnimation(static_cast<unsigned short>(pServerPlaceable->m_nAnimation), 0, 0);
-                    static_cast<CSWCObject*>(pPlaceable)->m_pModel->SetInCutscene(0);
-                }
+        bool bStillAnimating = false;
+        for (int j = 0; j < static_cast<int>(m_dialogAnimCount); j++) {
+            if (objId == m_paDialogAnimData[j]) {
+                bStillAnimating = true;
+                break;
             }
         }
-        if (bFoundParticipantB) goto skipParticipantB;
+        if (objId == m_oidPrevDialogParticipantB) bFoundParticipantB = 1;
+        if (objId == m_oidPrevDialogParticipantA) bFoundParticipantA = 1;
+        if (bStillAnimating) continue;
+
+        if (pGameObj->AsSWCCreature() != 0) {
+            CSWCCreature* pCreature = static_cast<CSWCCreature*>(pGameObj->AsSWCCreature());
+            int bCanPlay = CanPlayDialogAnimations(pCreature->m_objectId);
+            if (pCreature != 0 && bCanPlay != 0) {
+                pCreature->m_bPlayingCutsceneAnimation = 0;
+                if (static_cast<CSWCObject*>(pCreature)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
+                    static_cast<CSWCObject*>(pCreature)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
+                }
+                static_cast<CSWCObject*>(pCreature)->m_pModel->SetInCutscene(0);
+            }
+        }
+        if (pGameObj->AsSWCPlaceable() != 0) {
+            CSWCPlaceable* pPlaceable = static_cast<CSWCPlaceable*>(pGameObj->AsSWCPlaceable());
+            CSWSPlaceable* pServerPlaceable = pPlaceable->GetServerPlaceable();
+            if (pPlaceable != 0) {
+                pPlaceable->m_bPlayingCutsceneAnimation = 0;
+                static_cast<CSWCObject*>(pPlaceable)->SetAnimation(static_cast<unsigned short>(pServerPlaceable->m_nAnimation), 0, 0);
+                static_cast<CSWCObject*>(pPlaceable)->m_pModel->SetInCutscene(0);
+            }
+        }
     }
-    {
+    if (!bFoundParticipantB) {
         CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_oidPrevDialogParticipantB);
         if (pObj != 0 && pObj->AsSWCObject() != 0) {
 #if KOTOR1  // K1: no door exemption
@@ -1806,8 +1785,6 @@ void CGuiInGame::SetDialogAnimations()
 #endif
         }
     }
-skipParticipantB:;
-
     if (!bFoundParticipantA) {
         CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_oidPrevDialogParticipantA);
         if (pObj != 0 && pObj->AsSWCObject() != 0) {
@@ -1845,94 +1822,89 @@ skipParticipantB:;
         }
     }
 
-    bool bFoundDialogB = false;
-    bool bFoundDialogA = false;
-    if (0 < static_cast<int>(m_dialogAnimCount)) {
-        for (int i = 0; i < static_cast<int>(m_dialogAnimCount); i++) {
-            unsigned long long objId = m_paDialogAnimData[i];
-            unsigned short flags = m_paDialogAnimFlags[i];
-            CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(objId);
-            if (pGameObj == 0) continue;
+    int bFoundDialogB = 0;
+    int bFoundDialogA = 0;
+    for (int i = 0; i < static_cast<int>(m_dialogAnimCount); i++) {
+        unsigned long long objId = m_paDialogAnimData[i];
+        unsigned short flags = m_paDialogAnimFlags[i];
+        CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(objId);
+        if (pGameObj == 0) continue;
 
-            bool bFoundLast = false;
-            unsigned short lastFlags = 0;
-            if (0 < static_cast<int>(m_lastDialogAnimCount)) {
-                for (int j = 0; j < static_cast<int>(m_lastDialogAnimCount); j++) {
-                    if (objId == m_paLastDialogAnimData[j]) {
-                        lastFlags = m_paLastDialogAnimFlags[j];
-                        bFoundLast = true;
-                        break;
+        bool bFoundLast = false;
+        unsigned short lastFlags = 0;
+        for (int j = 0; j < static_cast<int>(m_lastDialogAnimCount); j++) {
+            if (objId == m_paLastDialogAnimData[j]) {
+                lastFlags = m_paLastDialogAnimFlags[j];
+                bFoundLast = true;
+                break;
+            }
+        }
+
+        if (objId == m_dialogParticipantIdB) bFoundDialogB = 1;
+        if (objId == m_dialogParticipantIdA) bFoundDialogA = 1;
+
+        if (!bFoundLast || flags != lastFlags) {
+            if (pGameObj->AsSWCCreature() != 0) {
+                CSWCCreature* pCreature = static_cast<CSWCCreature*>(pGameObj->AsSWCCreature());
+                if (pCreature != 0 && CanPlayDialogAnimations(pCreature->m_objectId) != 0) {
+                    if (IsLoopingDialogAnimation(flags) != 0) {
+                        pCreature->m_bPlayingCutsceneAnimation = 0;
+                        static_cast<CSWCObject*>(pCreature)->m_pModel->SetInCutscene(1);
+                        pCreature->LookAt(OBJECT_INVALID, 0.0f);
+                        if (static_cast<CSWCObject*>(pCreature)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
+                            if (IsOverlayDialogAnimation(flags)) {
+                                static_cast<CSWCObject*>(pCreature)->AbortFireForgetAnimation(0);
+                            }
+                            static_cast<CSWCObject*>(pCreature)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
+                        }
+                        static_cast<CSWCObject*>(pCreature)->SetAnimation(flags, 0, 0);
+                    }
+                    if (IsFireForgetDialogAnimation(flags) != 0) {
+                        pCreature->m_bPlayingCutsceneAnimation = 0;
+                        static_cast<CSWCObject*>(pCreature)->m_pModel->SetInCutscene(1);
+                        pCreature->LookAt(OBJECT_INVALID, 0.0f);
+                        if (static_cast<CSWCObject*>(pCreature)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
+                            static_cast<CSWCObject*>(pCreature)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
+                        }
+                        if (static_cast<unsigned short>(flags - STUNT_ANIM_FIREFORGET_FIRST) < STUNT_ANIM_COUNT) {
+                            static_cast<CSWCObject*>(pCreature)->AbortFireForgetAnimation(0);
+                            static_cast<CSWCObject*>(pCreature)->RemoveAllFireForgetAnimations();
+                            static_cast<CSWCObject*>(pCreature)->AddFireForgetAnimation(flags, 0);
+                            pCreature->AnimateFireAndForget();
+                        } else {
+                            static_cast<CSWCObject*>(pCreature)->AddFireForgetAnimation(flags, 0);
+                        }
                     }
                 }
             }
-
-            if (objId == m_dialogParticipantIdB) bFoundDialogB = true;
-            if (objId == m_dialogParticipantIdA) bFoundDialogA = true;
-
-            if (!bFoundLast || flags != lastFlags) {
-                if (pGameObj->AsSWCCreature() != 0) {
-                    CSWCCreature* pCreature = static_cast<CSWCCreature*>(pGameObj->AsSWCCreature());
-                    if (pCreature != 0 && CanPlayDialogAnimations(pCreature->m_objectId) != 0) {
-                        if (IsLoopingDialogAnimation(flags) != 0) {
-                            pCreature->m_bPlayingCutsceneAnimation = 0;
-                            static_cast<CSWCObject*>(pCreature)->m_pModel->SetInCutscene(1);
-                            pCreature->LookAt(OBJECT_INVALID, 0.0f);
-                            if (static_cast<CSWCObject*>(pCreature)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
-                                if (IsOverlayDialogAnimation(flags)) {
-                                    static_cast<CSWCObject*>(pCreature)->AbortFireForgetAnimation(0);
-                                }
-                                static_cast<CSWCObject*>(pCreature)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
-                            }
-                            static_cast<CSWCObject*>(pCreature)->SetAnimation(flags, 0, 0);
+            if (pGameObj->AsSWCPlaceable() != 0) {
+                CSWCPlaceable* pPlaceable = static_cast<CSWCPlaceable*>(pGameObj->AsSWCPlaceable());
+                if (pPlaceable != 0) {
+                    if (IsLoopingDialogAnimation(flags) != 0) {
+                        pPlaceable->m_bPlayingCutsceneAnimation = 0;
+                        static_cast<CSWCObject*>(pPlaceable)->m_pModel->SetInCutscene(1);
+                        if (static_cast<CSWCObject*>(pPlaceable)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
+                            static_cast<CSWCObject*>(pPlaceable)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 0);
                         }
-                        if (IsFireForgetDialogAnimation(flags) != 0) {
-                            pCreature->m_bPlayingCutsceneAnimation = 0;
-                            static_cast<CSWCObject*>(pCreature)->m_pModel->SetInCutscene(1);
-                            pCreature->LookAt(OBJECT_INVALID, 0.0f);
-                            if (static_cast<CSWCObject*>(pCreature)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
-                                static_cast<CSWCObject*>(pCreature)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
-                            }
-                            if (static_cast<unsigned short>(flags - STUNT_ANIM_FIREFORGET_FIRST) < STUNT_ANIM_COUNT) {
-                                static_cast<CSWCObject*>(pCreature)->AbortFireForgetAnimation(0);
-                                static_cast<CSWCObject*>(pCreature)->RemoveAllFireForgetAnimations();
-                                static_cast<CSWCObject*>(pCreature)->AddFireForgetAnimation(flags, 0);
-                                pCreature->AnimateFireAndForget();
-                            } else {
-                                static_cast<CSWCObject*>(pCreature)->AddFireForgetAnimation(flags, 0);
-                            }
-                        }
+                        static_cast<CSWCObject*>(pPlaceable)->SetAnimation(flags, 0, 0);
                     }
-                }
-                if (pGameObj->AsSWCPlaceable() != 0) {
-                    CSWCPlaceable* pPlaceable = static_cast<CSWCPlaceable*>(pGameObj->AsSWCPlaceable());
-                    if (pPlaceable != 0) {
-                        if (IsLoopingDialogAnimation(flags) != 0) {
-                            pPlaceable->m_bPlayingCutsceneAnimation = 0;
-                            static_cast<CSWCObject*>(pPlaceable)->m_pModel->SetInCutscene(1);
-                            if (static_cast<CSWCObject*>(pPlaceable)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
-                                static_cast<CSWCObject*>(pPlaceable)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 0);
-                            }
-                            static_cast<CSWCObject*>(pPlaceable)->SetAnimation(flags, 0, 0);
+                    if (IsFireForgetDialogAnimation(flags) != 0) {
+                        pPlaceable->m_bPlayingCutsceneAnimation = 0;
+                        static_cast<CSWCObject*>(pPlaceable)->m_pModel->SetInCutscene(1);
+                        if (static_cast<CSWCObject*>(pPlaceable)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
+                            static_cast<CSWCObject*>(pPlaceable)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 0);
                         }
-                        if (IsFireForgetDialogAnimation(flags) != 0) {
-                            pPlaceable->m_bPlayingCutsceneAnimation = 0;
-                            static_cast<CSWCObject*>(pPlaceable)->m_pModel->SetInCutscene(1);
-                            if (static_cast<CSWCObject*>(pPlaceable)->GetCurrentAnimation() != SERVER_ANIMATION_PAUSE) {
-                                static_cast<CSWCObject*>(pPlaceable)->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 0);
-                            }
-                            if (static_cast<unsigned short>(flags - STUNT_ANIM_FIREFORGET_FIRST) < STUNT_ANIM_COUNT) {
-                                static_cast<CSWCObject*>(pPlaceable)->AbortFireForgetAnimation(0);
-                                static_cast<CSWCObject*>(pPlaceable)->RemoveAllFireForgetAnimations();
-                            }
-                            static_cast<CSWCObject*>(pPlaceable)->AddFireForgetAnimation(flags, 0);
+                        if (static_cast<unsigned short>(flags - STUNT_ANIM_FIREFORGET_FIRST) < STUNT_ANIM_COUNT) {
+                            static_cast<CSWCObject*>(pPlaceable)->AbortFireForgetAnimation(0);
+                            static_cast<CSWCObject*>(pPlaceable)->RemoveAllFireForgetAnimations();
                         }
+                        static_cast<CSWCObject*>(pPlaceable)->AddFireForgetAnimation(flags, 0);
                     }
                 }
             }
         }
-        if (bFoundDialogB) goto skipDialogB;
     }
-    {
+    if (!bFoundDialogB) {
         CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_dialogParticipantIdB);
         if (pObj != 0 && pObj->AsSWCObject() != 0 && pObj->AsSWCCreature() != 0) {
             CSWCCreature* pCreature = static_cast<CSWCCreature*>(pObj->AsSWCCreature());
@@ -1943,13 +1915,14 @@ skipParticipantB:;
                     static_cast<CSWCObject*>(pObj->AsSWCObject())->AbortFireForgetAnimation(0);
                     static_cast<CSWCObject*>(pObj->AsSWCObject())->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
                 }
-                unsigned int nAnimation = static_cast<CSWCCreature*>(pObj->AsSWCCreature())->IsInjured() == 0 ? SERVER_ANIMATION_LISTEN : SERVER_ANIMATION_LISTEN_INJURED;
-                static_cast<CSWCObject*>(pObj->AsSWCObject())->SetAnimation(static_cast<unsigned short>(nAnimation), 0, 0);
+                if (static_cast<CSWCCreature*>(pObj->AsSWCCreature())->IsInjured() == 0) {
+                    static_cast<CSWCObject*>(pObj->AsSWCObject())->SetAnimation(SERVER_ANIMATION_LISTEN, 0, 0);
+                } else {
+                    static_cast<CSWCObject*>(pObj->AsSWCObject())->SetAnimation(SERVER_ANIMATION_LISTEN_INJURED, 0, 0);
+                }
             }
         }
     }
-skipDialogB:;
-
     if (!bFoundDialogA) {
         CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_dialogParticipantIdA);
         if (pObj != 0 && pObj->AsSWCObject() != 0 && pObj->AsSWCCreature() != 0) {
@@ -1961,34 +1934,23 @@ skipDialogB:;
                     static_cast<CSWCObject*>(pObj->AsSWCObject())->AbortFireForgetAnimation(0);
                     static_cast<CSWCObject*>(pObj->AsSWCObject())->SetAnimation(SERVER_ANIMATION_PAUSE, 0, 1);
                 }
-                unsigned int nAnimation = static_cast<CSWCCreature*>(pObj->AsSWCCreature())->IsInjured() == 0 ? SERVER_ANIMATION_TALK_NORMAL : SERVER_ANIMATION_TALK_INJURED;
-                static_cast<CSWCObject*>(pObj->AsSWCObject())->SetAnimation(static_cast<unsigned short>(nAnimation), 0, 0);
+                if (static_cast<CSWCCreature*>(pObj->AsSWCCreature())->IsInjured() == 0) {
+                    static_cast<CSWCObject*>(pObj->AsSWCObject())->SetAnimation(SERVER_ANIMATION_TALK_NORMAL, 0, 0);
+                } else {
+                    static_cast<CSWCObject*>(pObj->AsSWCObject())->SetAnimation(SERVER_ANIMATION_TALK_INJURED, 0, 0);
+                }
             }
         }
     }
 
-    CSWCCreature* pChar0 = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
-    if (pChar0 == 0) {
-        m_paLastPartyCharacterIds[0] = OBJECT_INVALID;
-    } else {
-        static_cast<CSWCObject*>(pChar0)->m_pModel->SetInCutscene(1);
-        m_paLastPartyCharacterIds[0] = pChar0->m_objectId;
-    }
-
-    CSWCCreature* pChar1 = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(1);
-    if (pChar1 == 0) {
-        m_paLastPartyCharacterIds[1] = OBJECT_INVALID;
-    } else {
-        static_cast<CSWCObject*>(pChar1)->m_pModel->SetInCutscene(1);
-        m_paLastPartyCharacterIds[1] = pChar1->m_objectId;
-    }
-
-    CSWCCreature* pChar2 = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(2);
-    if (pChar2 == 0) {
-        m_paLastPartyCharacterIds[2] = OBJECT_INVALID;
-    } else {
-        static_cast<CSWCObject*>(pChar2)->m_pModel->SetInCutscene(1);
-        m_paLastPartyCharacterIds[2] = pChar2->m_objectId;
+    for (int i = 0; i < 3; i++) {
+        CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(i);
+        if (pChar == 0) {
+            m_paLastPartyCharacterIds[i] = OBJECT_INVALID;
+        } else {
+            static_cast<CSWCObject*>(pChar)->m_pModel->SetInCutscene(1);
+            m_paLastPartyCharacterIds[i] = pChar->m_objectId;
+        }
     }
 }
 
@@ -2105,51 +2067,40 @@ void CGuiInGame::UpdateAreaTransitionGUI()
     if (m_bInitialized == 0 || m_pGuiManager == 0 || m_pAreaTransitionPanel == 0) return;
 
     CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
-    if (pModule == 0) {
-        goto doHide;
+    if (pModule != 0) {
+        pModule = g_pAppManager->m_pClientExoApp->GetModule();
+        if (pModule->m_pArea != 0) {
+            CSWSArea* pServerArea = pModule->m_pArea->GetServerArea();
+            if (pServerArea != 0 && m_swGuiToggleState == SWGUI_STATE_SHOWN) {
+                unsigned long long objId = m_areaTransitionObjId;
+                if (static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->m_objId == objId) {
+                    Vector pos1 = static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->m_position;
+                    Vector pos2 = m_areaTransitionPosition;
+                    Vector delta;
+                    delta.x = pos1.x - pos2.x;
+                    delta.y = pos1.y - pos2.y;
+                    delta.z = pos1.z - pos2.z;
+                    if (magnitude(delta) < 0.0001f) return;
+                    objId = m_areaTransitionObjId;
+                }
+
+                if (objId == OBJECT_INVALID) {
+                    HideAreaTransition();
+                    return;
+                }
+
+                if (pServerArea->m_bTransitionPending != 0) {
+                    if (m_pGuiManager->PanelExists(m_pAreaTransitionPanel) == 0) return;
+                } else {
+                    static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->SetTransitionObject(objId, m_areaTransitionPosition);
+                    if (m_pGuiManager->PanelExists(m_pAreaTransitionPanel) != 0) return;
+                    m_pGuiManager->AddPanel(m_pAreaTransitionPanel, 4, 1);
+                }
+                m_pGuiManager->SendPanelToBack(m_pAreaTransitionPanel);
+                return;
+            }
+        }
     }
-    pModule = g_pAppManager->m_pClientExoApp->GetModule();
-    if (pModule->m_pArea == 0) {
-        goto doHide;
-    }
-    {
-        CSWSArea* pServerArea = pModule->m_pArea->GetServerArea();
-        if (pServerArea == 0) {
-            goto doHide;
-        }
-        if (m_swGuiToggleState != SWGUI_STATE_SHOWN) {
-            goto doHide;
-        }
-
-        unsigned long long objId = m_areaTransitionObjId;
-        if (static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->m_objId == objId) {
-            Vector pos1 = static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->m_position;
-            Vector pos2 = m_areaTransitionPosition;
-            Vector delta;
-            delta.x = pos1.x - pos2.x;
-            delta.y = pos1.y - pos2.y;
-            delta.z = pos1.z - pos2.z;
-            if (magnitude(delta) < 0.0001f) return;
-            objId = m_areaTransitionObjId;
-        }
-
-        if (objId == OBJECT_INVALID) {
-            goto doHide;
-        }
-
-        if (pServerArea->m_bTransitionPending != 0) {
-            if (m_pGuiManager->PanelExists(m_pAreaTransitionPanel) != 0) goto sendToBack;
-            return;
-        }
-        static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->SetTransitionObject(objId, m_areaTransitionPosition);
-        if (m_pGuiManager->PanelExists(m_pAreaTransitionPanel) != 0) return;
-        m_pGuiManager->AddPanel(m_pAreaTransitionPanel, 4, 1);
-sendToBack:
-        m_pGuiManager->SendPanelToBack(m_pAreaTransitionPanel);
-        return;
-    }
-
-doHide:
     HideAreaTransition();
 }
 
@@ -2237,20 +2188,13 @@ int CGuiInGame::CloseDialog()
 #else
         if (!m_pGuiManager->PanelExists(m_apScreenPanels[SCREEN_PARTY_SELECTION])) {
 #endif
-            CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-            if (pParty->m_nCharacterCount >= 1) {
-                int i = 0;
-                do {
-                    pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-                    CSWCCreature* pChar = pParty->GetCharacter(0);
-                    if (pChar != 0 &&
-                        g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pChar->m_objectId) == m_oidPostDialogCharacterSwitch) {
-                        break;
-                    }
-                    g_pAppManager->m_pClientExoApp->ChangeCharacter(-2, 0);
-                    i = i + 1;
-                    pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-                } while (i < pParty->m_nCharacterCount);
+            for (int i = 0; i < g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount; i++) {
+                CSWCCreature* pChar = g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
+                if (pChar != 0 &&
+                    g_pAppManager->m_pServerExoApp->ClientToServerObjectId(pChar->m_objectId) == m_oidPostDialogCharacterSwitch) {
+                    break;
+                }
+                g_pAppManager->m_pClientExoApp->ChangeCharacter(-2, 0);
             }
         }
         m_oidPostDialogCharacterSwitch = OBJECT_INVALID;
@@ -2298,12 +2242,9 @@ int CGuiInGame::CloseDialog()
             m_pGuiManager->RemovePanel(static_cast<CSWGuiPanel*>(m_pBottomLetterbox));
             m_pGuiManager->RemovePanel(static_cast<CSWGuiPanel*>(m_pDialogLetterbox));
         }
-        m_pTopLetterbox->m_bScrollDone = 0;
-        m_pTopLetterbox->ResetFade();
-        m_pBottomLetterbox->m_bScrollDone = 0;
-        m_pBottomLetterbox->ResetFade();
-        m_pDialogLetterbox->m_bScrollDone = 0;
-        m_pDialogLetterbox->ResetFade();
+        m_pTopLetterbox->Close();
+        m_pBottomLetterbox->Close();
+        m_pDialogLetterbox->Close();
         pActiveCam2 = m_pActiveDialogPanel;
     }
     static_cast<CSWGuiDialog*>(pActiveCam2)->EndDialog();
@@ -2400,19 +2341,19 @@ bool CGuiInGame::InitializeStuntModelData(unsigned int count)
 {
     if (count == 0) return false;
     if (m_paStuntModelObjIds != 0) {
-        operator delete[](m_paStuntModelObjIds);
+        delete[] m_paStuntModelObjIds;
         m_paStuntModelObjIds = 0;
     }
     if (m_paStuntModelResRefs != 0) {
-        operator delete[](m_paStuntModelResRefs);
+        delete[] m_paStuntModelResRefs;
         m_paStuntModelResRefs = 0;
     }
     m_stuntModelCount = count;
-    m_paStuntModelObjIds = static_cast<unsigned long long*>(operator new[](static_cast<uint64_t>(count) << 3));
+    m_paStuntModelObjIds = new unsigned long long[count];
     m_paStuntModelResRefs = new CResRef[count];
     if (m_paStuntModelObjIds == 0) {
         m_paStuntModelObjIds = 0;
-        operator delete[](m_paStuntModelResRefs);
+        delete[] m_paStuntModelResRefs;
         m_paStuntModelResRefs = 0;
         m_stuntModelCount = 0;
         return false;
@@ -2422,22 +2363,20 @@ bool CGuiInGame::InitializeStuntModelData(unsigned int count)
 
 int CGuiInGame::LoadStuntModelsForDialog()
 {
-    if (m_stuntModelCount != 0) {
-        for (uint64_t i = 0; i < m_stuntModelCount; i++) {
-            CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_paStuntModelObjIds[i]);
-            if (pObj != 0) {
-                CSWCObject* pSWCObj = static_cast<CSWCObject*>(pObj->AsSWCObject());
-                if (pSWCObj != 0) {
-                    char buf[20];
-                    m_paStuntModelResRefs[i].CopyToString(buf);
-                    if (buf[0] != '\0') {
-                        Gob* pModel = pSWCObj->GetModel(ANIMBASE_MODEL_BODY, 0);
-                        if (pModel == 0) return false;
-                        pModel->LoadAddInAnimations(buf);
-                        Gob* pModel2 = pSWCObj->GetModel(ANIMBASE_MODEL_HEAD, 0);
-                        if (pModel2 != 0) {
-                            pModel2->LoadAddInAnimations(buf);
-                        }
+    for (uint64_t i = 0; i < m_stuntModelCount; i++) {
+        CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_paStuntModelObjIds[i]);
+        if (pObj != 0) {
+            CSWCObject* pSWCObj = static_cast<CSWCObject*>(pObj->AsSWCObject());
+            if (pSWCObj != 0) {
+                char buf[20];
+                m_paStuntModelResRefs[i].CopyToString(buf);
+                if (buf[0] != '\0') {
+                    Gob* pModel = pSWCObj->GetModel(ANIMBASE_MODEL_BODY, 0);
+                    if (pModel == 0) return false;
+                    pModel->LoadAddInAnimations(buf);
+                    Gob* pModel2 = pSWCObj->GetModel(ANIMBASE_MODEL_HEAD, 0);
+                    if (pModel2 != 0) {
+                        pModel2->LoadAddInAnimations(buf);
                     }
                 }
             }
@@ -2449,57 +2388,55 @@ int CGuiInGame::LoadStuntModelsForDialog()
 // Stops the stunt models' add-in animations and restores their idle animation.
 void CGuiInGame::UnloadStuntModelsForDialog()
 {
-    if (m_stuntModelCount != 0) {
-        unsigned int animId K2_UNSET;
-        for (uint64_t i = 0; i < m_stuntModelCount; i++) {
-            CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_paStuntModelObjIds[i]);
-            if (pGameObj == 0) continue;
+    unsigned int animId K2_UNSET;
+    for (uint64_t i = 0; i < m_stuntModelCount; i++) {
+        CGameObject* pGameObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_paStuntModelObjIds[i]);
+        if (pGameObj == 0) continue;
 
-            CSWCObject* pObj = static_cast<CSWCObject*>(pGameObj->AsSWCObject());
-            if (pObj == 0) continue;
+        CSWCObject* pObj = static_cast<CSWCObject*>(pGameObj->AsSWCObject());
+        if (pObj == 0) continue;
 
-            Gob* pModelA = pObj->GetModel(ANIMBASE_MODEL_BODY, 0);
-            if (pModelA != 0) {
-                pModelA->PlayAnimation(0, 1.0f, 0, 0.0f);
-                pModelA->RemoveAddInAnimations();
-            }
-            Gob* pModelB = pObj->GetModel(ANIMBASE_MODEL_HEAD, 0);
-            if (pModelB != 0) {
-                pModelB->PlayAnimation(0, 1.0f, 0, 0.0f);
-                pModelB->RemoveAddInAnimations();
-            }
+        Gob* pModelA = pObj->GetModel(ANIMBASE_MODEL_BODY, 0);
+        if (pModelA != 0) {
+            pModelA->PlayAnimation(0, 1.0f, 0, 0.0f);
+            pModelA->RemoveAddInAnimations();
+        }
+        Gob* pModelB = pObj->GetModel(ANIMBASE_MODEL_HEAD, 0);
+        if (pModelB != 0) {
+            pModelB->PlayAnimation(0, 1.0f, 0, 0.0f);
+            pModelB->RemoveAddInAnimations();
+        }
 
-            CExoString animName;
-            if (pObj->AsSWCCreature() != 0) {
-                animName = pObj->GetAnimationBase()->GetAnimationName(SERVER_ANIMATION_PAUSE);
+        CExoString animName;
+        if (pObj->AsSWCCreature() != 0) {
+            animName = pObj->GetAnimationBase()->GetAnimationName(SERVER_ANIMATION_PAUSE);
+            animId = SERVER_ANIMATION_PAUSE;
+        }
+        if (pObj->AsSWCPlaceable() != 0) {
+            CSWSPlaceable* pServerPlaceable = pObj->AsSWCPlaceable()->GetServerPlaceable();
+            if (pServerPlaceable == 0) {
+                animName = static_cast<CSWCObject*>(pObj->AsSWCPlaceable())->GetAnimationBase()
+                               ->GetAnimationName(SERVER_ANIMATION_PAUSE);
                 animId = SERVER_ANIMATION_PAUSE;
+            } else {
+                animId = pServerPlaceable->m_nAnimation;
+                animName = static_cast<CSWCObject*>(pObj->AsSWCPlaceable())->GetAnimationBase()
+                               ->GetAnimationName(static_cast<unsigned short>(animId));
             }
-            if (pObj->AsSWCPlaceable() != 0) {
-                CSWSPlaceable* pServerPlaceable = pObj->AsSWCPlaceable()->GetServerPlaceable();
-                if (pServerPlaceable == 0) {
-                    animName = static_cast<CSWCObject*>(pObj->AsSWCPlaceable())->GetAnimationBase()
-                                   ->GetAnimationName(SERVER_ANIMATION_PAUSE);
-                    animId = SERVER_ANIMATION_PAUSE;
-                } else {
-                    animId = pServerPlaceable->m_nAnimation;
-                    animName = static_cast<CSWCObject*>(pObj->AsSWCPlaceable())->GetAnimationBase()
-                                   ->GetAnimationName(static_cast<unsigned short>(animId));
-                }
-            }
+        }
 
-            if (pModelA != 0) {
-                pModelA->PlayAnimation(static_cast<char*>(animName.CStr()), 1.0f, 2, 0.0f);
-            }
-            if (pModelB != 0) {
-                pModelB->PlayAnimation(static_cast<char*>(animName.CStr()), 1.0f, 2, 0.0f);
-            }
+        if (pModelA != 0) {
+            pModelA->PlayAnimation(static_cast<char*>(animName.CStr()), 1.0f, 2, 0.0f);
+        }
+        if (pModelB != 0) {
+            pModelB->PlayAnimation(static_cast<char*>(animName.CStr()), 1.0f, 2, 0.0f);
+        }
 
-            if (pObj->AsSWCCreature() != 0) {
-                pObj->SetAnimation(static_cast<unsigned short>(animId), 0, 0);
-            }
-            if (pObj->AsSWCPlaceable() != 0) {
-                static_cast<CSWCObject*>(pObj->AsSWCPlaceable())->SetAnimation(static_cast<unsigned short>(animId), 0, 0);
-            }
+        if (pObj->AsSWCCreature() != 0) {
+            pObj->SetAnimation(static_cast<unsigned short>(animId), 0, 0);
+        }
+        if (pObj->AsSWCPlaceable() != 0) {
+            static_cast<CSWCObject*>(pObj->AsSWCPlaceable())->SetAnimation(static_cast<unsigned short>(animId), 0, 0);
         }
     }
 
@@ -3037,14 +2974,13 @@ int CGuiInGame::GetCanClick()
 
 void CGuiInGame::ClearDialogNonDependantList()
 {
-    if (m_dialogNonDependantList.m_pInternal->m_pHead == 0) return;
-    do {
+    while (m_dialogNonDependantList.m_pInternal->m_pHead != 0) {
         void* data = m_dialogNonDependantList.RemoveHead();
         if (data != 0) {
             static_cast<CExoString*>(data)->~CExoString();
             operator delete(data);
         }
-    } while (m_dialogNonDependantList.m_pInternal->m_pHead != 0);
+    }
 }
 
 #if KOTOR1
@@ -3164,8 +3100,8 @@ void CGuiInGame::EndDialogCamera()
 {
     g_pAppManager->m_pClientExoApp->GetModule()->RestoreCamera();
     __builtin_memset(&m_bDialogCameraSet, 0, offsetof(CGuiInGame, _pad1060) - offsetof(CGuiInGame, m_bDialogCameraSet));
-    m_startConversationCount = 0;
     m_nCameraAnimation = CAMERA_ANIMATION_NONE;
+    m_startConversationCount = 0;
     m_oidDialogPlayer = OBJECT_INVALID;
     m_dialogParticipantIdB = OBJECT_INVALID;
     m_dialogParticipantIdA = OBJECT_INVALID;
@@ -3234,46 +3170,34 @@ void CGuiInGame::RemoveDeathMessage(bool removePanel)
 }
 #endif // !KOTOR1
 
+// EFFECTIVE: armv7 has the same instructions at the original's length in both games, but the
+// original places the epilogue after the two remove-stamp tails; arm64 is 4 bytes short.
 void CGuiInGame::SetPaused(int pause, unsigned char reason)
 {
     if (m_bInitialized == 0) return;
 
-    int result;
-    if (pause == 0) {
-        if (m_pPauseGuiPanel == 0) {
-            result = 0;
-            goto done;
-        }
-        result = 0;
-        if (!m_pGuiManager->PanelExists(m_pPauseGuiPanel)) goto done;
-    } else {
-        result = 0;
-        if (reason > CClientExoAppInternal::PAUSE_MODE_MINE_SIGHTED || ((1 << reason) & PAUSE_REASONS_WITH_BANNER) == 0) goto done;
-        if (static_cast<CSWGuiInGamePause*>(m_pPauseGuiPanel) != 0) {
-            static_cast<CSWGuiInGamePause*>(m_pPauseGuiPanel)->SetPauseReason(reason);
-        }
-        if (m_swGuiToggleState == SWGUI_STATE_SHOWN || g_pAppManager->m_pClientExoApp->GetMiniGame() != 0) {
-            if (m_pPauseGuiPanel != 0 &&
-                (m_pGuiManager->PanelExists(m_pPauseGuiPanel) == 0 && g_bInScreenshotMode == 0)) {
-                result = 1;
-                m_pGuiManager->AddPanel(m_pPauseGuiPanel, 4, 1);
-#if KOTOR1  // K1: the pause panel goes to the back
-                m_pGuiManager->SendPanelToBack(m_pPauseGuiPanel);
-#endif
-                goto done;
+    int result = 0;
+    if (pause != 0) {
+        if (reason <= CClientExoAppInternal::PAUSE_MODE_MINE_SIGHTED && ((1 << reason) & PAUSE_REASONS_WITH_BANNER) != 0) {
+            if (static_cast<CSWGuiInGamePause*>(m_pPauseGuiPanel) != 0) {
+                static_cast<CSWGuiInGamePause*>(m_pPauseGuiPanel)->SetPauseReason(reason);
             }
-        } else if (m_pPauseGuiPanel != 0 && m_pGuiManager->PanelExists(m_pPauseGuiPanel) != 0) {
+            if (m_swGuiToggleState == SWGUI_STATE_SHOWN || g_pAppManager->m_pClientExoApp->GetMiniGame() != 0) {
+                if (m_pPauseGuiPanel != 0 &&
+                    (m_pGuiManager->PanelExists(m_pPauseGuiPanel) == 0 && g_bInScreenshotMode == 0)) {
+                    m_pGuiManager->AddPanel(m_pPauseGuiPanel, 4, 1);
+#if KOTOR1  // K1: the pause panel goes to the back
+                    m_pGuiManager->SendPanelToBack(m_pPauseGuiPanel);
+#endif
+                }
+            } else if (m_pPauseGuiPanel != 0 && m_pGuiManager->PanelExists(m_pPauseGuiPanel) != 0) {
+                m_pPauseGuiPanel->SetToBeRemoved(0);
+            }
             result = 1;
-            goto toggle;
         }
-        result = 1;
-        goto done;
-    }
-toggle:
-    {
+    } else if (m_pPauseGuiPanel != 0 && m_pGuiManager->PanelExists(m_pPauseGuiPanel) != 0) {
         m_pPauseGuiPanel->SetToBeRemoved(0);
     }
-done:
     m_bPauseGuiShown = result;
     m_bPaused = pause;
 #if !KOTOR1  // K1 has no Ios_minigamePaused
@@ -3668,14 +3592,8 @@ void CGuiInGame::HideDemoScreen()
 void CGuiInGame::ResetInterfaceFont()
 {
     if (m_pMainInterface != 0) static_cast<CSWGuiPanel*>(m_pMainInterface)->ResetFont();
-    if (m_apScreenPanels[0] != 0) m_apScreenPanels[0]->ResetFont();
-    if (m_apScreenPanels[1] != 0) m_apScreenPanels[1]->ResetFont();
-    if (m_apScreenPanels[2] != 0) m_apScreenPanels[2]->ResetFont();
-    if (m_apScreenPanels[3] != 0) m_apScreenPanels[3]->ResetFont();
-    if (m_apScreenPanels[4] != 0) m_apScreenPanels[4]->ResetFont();
-    if (m_apScreenPanels[5] != 0) m_apScreenPanels[5]->ResetFont();
-    if (m_apScreenPanels[6] != 0) m_apScreenPanels[6]->ResetFont();
-    if (m_apScreenPanels[7] != 0) m_apScreenPanels[7]->ResetFont();
+    for (int i = 0; i < 8; i++)
+        if (m_apScreenPanels[i] != 0) m_apScreenPanels[i]->ResetFont();
 }
 
 void CGuiInGame::RemoveGUIPopUps()
@@ -3713,11 +3631,7 @@ void CGuiInGame::HideSoloMode()
 #endif
         }
         m_pGuiManager->PopModalPanel();
-        unsigned short flags = m_pSoloModePanel->m_stateFlags;
-        unsigned short a = flags & ~PANEL_REMOVE_DEFERRED;
-        unsigned short cond = flags & PANEL_REMOVE_MASK;
-        unsigned short b = (flags & ~(PANEL_REMOVE_MASK | PANEL_REMOVE_DEFERRED)) | PANEL_REMOVE;
-        m_pSoloModePanel->m_stateFlags = (cond == PANEL_REMOVE_AND_DELETE) ? a : b;
+        m_pSoloModePanel->SetToBeRemoved(0);
         g_pAppManager->m_pClientExoApp->SetInputClass(INPUTCLASS_GAME, 1);
     }
 }
@@ -3758,28 +3672,17 @@ int CGuiInGame::IsAnimationPlayingInDialog()
     }
     return false;
 #else
-    unsigned int i, count;
-    int found;
-    if (m_dialogAnimCount == 0) {
-        found = 0;
-        i = 0;
-        count = 0;
-    } else {
-        found = 0;
-        i = 0;
-        do {
-            CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_paDialogAnimData[i]);
-            CSWCObject* pSWC = static_cast<CSWCObject*>(pObj->AsSWCCreature());
-            if (pSWC != 0) {
-                int result = pSWC->IsDoingDialogAnimation();
-                if (result == 0) return false;
-                found = result;
-            }
-            count = m_dialogAnimCount;
-            i = i + 1;
-        } while (i < count);
+    unsigned int i;
+    int found = 0;
+    for (i = 0; i < m_dialogAnimCount; i++) {
+        CGameObject* pObj = g_pAppManager->m_pClientExoApp->GetGameObject(m_paDialogAnimData[i]);
+        CSWCObject* pSWC = static_cast<CSWCObject*>(pObj->AsSWCCreature());
+        if (pSWC != 0) {
+            found = pSWC->IsDoingDialogAnimation();
+            if (found == 0) return false;
+        }
     }
-    return (i != count) ? found : 1;
+    return (i != m_dialogAnimCount) ? found : 1;
 #endif
 }
 
@@ -4157,21 +4060,14 @@ void CGuiInGame::AppendToDialogBuffer(const CExoString& text, unsigned long long
 void CGuiInGame::AppendToCombatBuffer(const CExoString& text, unsigned int a, unsigned char b)
 {
     if (text != "") {
-        unsigned int size = m_combatMessageBufferSize;
-        if (size > MESSAGE_BUFFER_SIZE - 1) {
+        if (m_combatMessageBufferSize >= MESSAGE_BUFFER_SIZE) {
             m_combatMessageBufferSize = MESSAGE_BUFFER_SIZE - 1;
-            uint64_t i = 0;
-            do {
-                CGuiInGameMessage* dest = &m_pCombatMessageBuffer[i];
-                CGuiInGameMessage* src = &m_pCombatMessageBuffer[i + 1];
-                *dest = *src;
-                i++;
-                size = m_combatMessageBufferSize;
-            } while (i < size);
+            for (uint64_t i = 0; i < m_combatMessageBufferSize; i++)
+                m_pCombatMessageBuffer[i] = m_pCombatMessageBuffer[i + 1];
         }
-        m_pCombatMessageBuffer[size].m_text = text;
-        m_pCombatMessageBuffer[static_cast<unsigned int>(m_combatMessageBufferSize)].m_param3 = a;
-        m_pCombatMessageBuffer[static_cast<unsigned int>(m_combatMessageBufferSize)].m_param4 = b;
+        m_pCombatMessageBuffer[m_combatMessageBufferSize].m_text = text;
+        m_pCombatMessageBuffer[m_combatMessageBufferSize].m_param3 = a;
+        m_pCombatMessageBuffer[m_combatMessageBufferSize].m_param4 = b;
         m_combatMessageBufferSize = m_combatMessageBufferSize + 1;
     }
 }
@@ -4591,46 +4487,17 @@ void CGuiInGame::SwitchToSWInGameGui(int newPanel)
 
 void CGuiInGame::ToggleSWGui()
 {
-    int state = m_swGuiToggleState;
-#if KOTOR1  // K1: the same states, spelled as a switch
-    switch (state) {
+    switch (m_swGuiToggleState) {
     case SWGUI_STATE_SHOWN:
-        m_swGuiToggleState = SWGUI_STATE_TOGGLED_OFF;
-        if (m_bInitialized != 0 && m_pGuiManager != 0) {
-            if (m_pGuiManager->PanelExists(static_cast<CSWGuiPanel*>(m_pMainInterface))) {
-                m_pGuiManager->RemovePanel(m_pMainInterface);
-            }
-            if (m_pGuiManager->PanelExists(m_pPauseGuiPanel)) {
-                m_pPauseGuiPanel->SetToBeRemoved(0);
-            }
-        }
-        return;
-    case SWGUI_STATE_TOGGLED_OFF:
-        state = SWGUI_TOGGLE_ON;
-        break;
-    case SWGUI_STATE_COVERED:
-        state = SWGUI_UNCOVER;
-        break;
-    default:
-        return;
-    }
-    SetSWGuiStatus(state, 1);
-#else
-    switch (state) {
-    case SWGUI_STATE_SHOWN:
-        state = SWGUI_TOGGLE_OFF;
+        SetSWGuiStatus(SWGUI_TOGGLE_OFF, 1);
         break;
     case SWGUI_STATE_TOGGLED_OFF:
-        state = SWGUI_TOGGLE_ON;
+        SetSWGuiStatus(SWGUI_TOGGLE_ON, 1);
         break;
     case SWGUI_STATE_COVERED:
-        state = SWGUI_UNCOVER;
+        SetSWGuiStatus(SWGUI_UNCOVER, 1);
         break;
-    default:
-        return;
     }
-    SetSWGuiStatus(state, 1);
-#endif
 }
 
 int CGuiInGame::IsLoopingDialogStuntAnimation(unsigned short anim)
@@ -5068,24 +4935,15 @@ void CGuiInGame::DoQuickLoad()
 #if KOTOR1  // K1: one story hint
             pClientExoApp->SetStoryHint(pEntry->m_storyHints[0]);
 #else
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[0], 0);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[1], 1);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[2], 2);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[3], 3);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[4], 4);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[5], 5);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[6], 6);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[7], 7);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[8], 8);
-            pClientExoApp->SetStoryHint(pEntry->m_storyHints[9], 9);
+            for (int i = 0; i < 10; i++)
+                pClientExoApp->SetStoryHint(pEntry->m_storyHints[i], static_cast<unsigned char>(i));
 #endif
 #if KOTOR1  // K1: the hint is drawn for an empty module name
             pClientExoApp->SetLoadScreenHint(
                 pClientExoApp->GetNextLoadScreenHintSTRREF(CExoString(""), 2));
 #else
-            uint64_t hintStrRef =
-                pClientExoApp->GetNextLoadScreenHintSTRREF(pEntry->m_moduleName, 2);
-            pClientExoApp->SetLoadScreenHint(hintStrRef);
+            pClientExoApp->SetLoadScreenHint(
+                pClientExoApp->GetNextLoadScreenHintSTRREF(pEntry->m_moduleName, 2));
 #endif
             pClientExoApp->SetLoadScreenHintUpdateTimer(0);
             UnpackQuickSaveGame(pEntry->m_nSaveSlot, pEntry->m_saveName);
@@ -5298,7 +5156,7 @@ int CGuiInGame::GetCurrentEquipScreenNPC()
 #endif // KOTOR1
 
 #if !KOTOR1  // K1: the 4-argument body above
-void CGuiInGame::ShowPartySelection(const CExoString& text, int a, int forceNpc1, int forceNpc2, int d)
+void CGuiInGame::ShowPartySelection(const CExoString& text, int a, int forceNpc1, int forceNpc2, int bAllowCancel)
 {
     if (m_bInitialized == 0) {
         return;
@@ -5347,7 +5205,7 @@ void CGuiInGame::ShowPartySelection(const CExoString& text, int a, int forceNpc1
     pPanel->m_sExitScript = text;
     pPanel->m_bFromScript = a;
     pPanel->SetForcedNPC(forceNpc1, forceNpc2);
-    pPanel->m_fChallengeRating = d;
+    pPanel->m_bAllowCancel = bAllowCancel;
     pPanel->m_nReturnInputClass = 0;
     m_pGuiManager->AddPanel(pPanel, 3, 1);
     g_pAppManager->m_pClientExoApp->SetInputClass(INPUTCLASS_GUI, 1);

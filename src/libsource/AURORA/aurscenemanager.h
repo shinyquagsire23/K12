@@ -6,34 +6,14 @@
 
 class PartTriMesh;
 
+#include "List.h"
+
 // Value of the renderer's three per-texture bucket maps (mesh, fade and cap).
 class Bucket {
 public:
-    __attribute__((used)) ~Bucket() { delete[] m_paParts; }
+    __attribute__((used)) ~Bucket() {}
 
-    void allocate(int nNewCapacity) {
-        PartTriMesh** paOld = m_paParts;
-        m_nCapacity = nNewCapacity;
-        m_paParts = new PartTriMesh*[nNewCapacity];
-        K2_ASSUME(m_nCount <= nNewCapacity);   // Add grows a full bucket to twice its count
-        for (int64_t i = 0; i < m_nCount; i++)
-            m_paParts[i] = paOld[i];
-        delete[] paOld;
-    }
-
-    void Add(PartTriMesh* pPart) {
-        if (m_nCount == m_nCapacity)
-#if KOTOR1 && defined(K1_AURORA_LIST)  // K1 grows an empty bucket to 8
-            allocate(m_nCount ? m_nCount * 2 : 8);
-#else
-            allocate(m_nCount ? m_nCount * 2 : 16);
-#endif
-        m_paParts[m_nCount++] = pPart;
-    }
-
-    PartTriMesh** m_paParts;
-    int m_nCount;
-    int m_nCapacity;
+    List<PartTriMesh*> m_parts;
 };
 
 #endif

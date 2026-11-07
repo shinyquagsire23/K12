@@ -20,13 +20,12 @@ extern float AspyrHackCameraDistance;
 extern float AspyrHackCameraYaw;
 
 // Rotates a vector by a quaternion, skipping the work when the rotation is the identity.
-static inline Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateByQuaternion(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization != 0 && (w == 1.0f || w == -1.0f))
+    if (quaternionidentityoptimization != 0 && (q.w == 1.0f || q.w == -1.0f))
         return v;
+    float x = q.x, y = q.y, z = q.z, w = q.w;
 
-    float x = q.x, y = q.y, z = q.z;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = x * w, wy = y * w, wz = z * w;
@@ -59,7 +58,7 @@ CSWBehaviorCameraDialog::~CSWBehaviorCameraDialog()
 CSWBehaviorCameraDialog::CSWBehaviorCameraDialog(CAurObject* pTarget, int nParam)
     : CAurBehavior(pTarget)
     , m_fHookHeadHeight(0.0f), m_fTargetHeadHeight(0.0f)
-    , m_fCamHeightOffset(0), m_fTarHeightOffset(0), m_fPullBackRange(0.0f)
+    , m_fCamHeightOffset(0.0f), m_fTarHeightOffset(0.0f), m_fPullBackRange(0.0f)
     , m_fShakeYaw(0.0f), m_fShakePitch(0.0f)
     , m_bShotObstructed(0), m_nParam(nParam), m_bRunBaseControl(1)
     , m_vShotPos(0.0f, 0.0f, 0.0f)
@@ -226,7 +225,7 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
             Vector vN = normalize(Vector(vA.x - vB.x, vA.y - vB.y, vA.z - vB.z));
             vBase.x = vA.x + vN.x * -0.2f;
             vBase.y = vA.y + vN.y * -0.2f;
-            fBaseZ = (vA.z + vN.z * -0.2f) - 0.04f + *reinterpret_cast<float*>(&m_fTarHeightOffset);
+            fBaseZ = (vA.z + vN.z * -0.2f) - 0.04f + m_fTarHeightOffset;
             Quaternion q = YawPitchRoll(fAngle, 0.0f, 0.0f);
             Vector vR = RotateByQuaternion(Vector(vA.x - vB.x, vA.y - vB.y, vA.z - vB.z), q);
             vDir = normalize(vR);
@@ -239,7 +238,7 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
             float fScale = fZOff + 0.5f;
             vOut.x = vBase.x - vDir.x * fScale;
             vOut.y = vBase.y - vDir.y * fScale;
-            vOut.z = (fBaseZ - vDir.z * fScale) + 0.0f + *reinterpret_cast<float*>(&m_fCamHeightOffset);
+            vOut.z = (fBaseZ - vDir.z * fScale) + 0.0f + m_fCamHeightOffset;
             vOut.z = fZAdj + vOut.z;
         } else {
             Vector vDelta(vB.x - vA.x, vB.y - vA.y, vB.z - vA.z);
@@ -248,8 +247,8 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
             float fTargetM = fTargetZMag * fMag;
             float fExtraM = fExtraZMag * fMag;
             float fOutM = fOutZMag * fMag;
-            float fCamHeightOffset = *reinterpret_cast<float*>(&m_fCamHeightOffset);
-            float fTarHeightOffset = *reinterpret_cast<float*>(&m_fTarHeightOffset);
+            float fCamHeightOffset = m_fCamHeightOffset;
+            float fTarHeightOffset = m_fTarHeightOffset;
             float fExtraZ = fExtraM + fTarHeightOffset;
             float fVbZ = fTargetM + vB.z;
             vA.z = fHookM + vA.z;
@@ -295,14 +294,14 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
             Vector vN = normalize(Vector(vA.x - vB.x, vA.y - vB.y, vA.z - vB.z));
             vBase.x = vA.x + vN.x * -0.2f;
             vBase.y = vA.y + vN.y * -0.2f;
-            fBaseZ = (vA.z + vN.z * -0.2f) - 0.04f + *reinterpret_cast<float*>(&m_fTarHeightOffset);
+            fBaseZ = (vA.z + vN.z * -0.2f) - 0.04f + m_fTarHeightOffset;
             Quaternion q = YawPitchRoll(fAngle, 0.0f, 0.0f);
             Vector vR = RotateByQuaternion(Vector(vA.x - vB.x, vA.y - vB.y, vA.z - vB.z), q);
             vDir = normalize(vR);
             vDir = normalize(vDir);
             vOut.x = vBase.x + vDir.x * -0.5f;
             vOut.y = vBase.y + vDir.y * -0.5f;
-            vOut.z = (fBaseZ + vDir.z * -0.5f) + 0.0f + *reinterpret_cast<float*>(&m_fCamHeightOffset);
+            vOut.z = (fBaseZ + vDir.z * -0.5f) + 0.0f + m_fCamHeightOffset;
         } else {
             Vector vDelta(vB.x - vA.x, vB.y - vA.y, vB.z - vA.z);
             float fMag = magnitude(vDelta);
@@ -310,8 +309,8 @@ void CSWBehaviorCameraDialog::GetCameraParameters(unsigned int nType, unsigned i
             float fTargetM = fTargetZMag * fMag;
             float fExtraM = fExtraZMag * fMag;
             float fOutM = fOutZMag * fMag;
-            float fCamHeightOffset = *reinterpret_cast<float*>(&m_fCamHeightOffset);
-            float fTarHeightOffset = *reinterpret_cast<float*>(&m_fTarHeightOffset);
+            float fCamHeightOffset = m_fCamHeightOffset;
+            float fTarHeightOffset = m_fTarHeightOffset;
             float fExtraZ = fExtraM + fTarHeightOffset;
             float fVbZ = fTargetM + (fTargetZ + vB.z);
             vA.z = fHookM + (fHookZ + vA.z);
@@ -571,8 +570,8 @@ void CSWBehaviorCameraDialog::SetShot(unsigned long long a, unsigned long long b
 
     m_nLineOfActionA = a;
     m_nLineOfActionB = b;
-    m_fCamHeightOffset = *reinterpret_cast<const int*>(&c);
-    m_fTarHeightOffset = *reinterpret_cast<const int*>(&d);
+    m_fCamHeightOffset = c;
+    m_fTarHeightOffset = d;
     m_fPullBackRange = (range < 0.001f && range > -0.001f) ? 0.0f : range;
     int nSide = AddCalculatedLineOfAction(a, b);
 

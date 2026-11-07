@@ -58,11 +58,10 @@ extern int quaternionidentityoptimization;
 
 #include "aurglcore.h"
 
-static inline Vector RotateVector(const Vector& v, const Quaternion& q)
+static inline __attribute__((always_inline)) Vector RotateVector(const Vector& v, const Quaternion& q)
 {
-    float w = q.w;
-    if (quaternionidentityoptimization == 0 || (w != 1.0f && w != -1.0f)) {
-        float x = q.x, y = q.y, z = q.z;
+    if (quaternionidentityoptimization == 0 || (q.w != 1.0f && q.w != -1.0f)) {
+        float x = q.x, y = q.y, z = q.z, w = q.w;
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, wx = x * w;
         float yz = y * z, wy = y * w;
@@ -232,25 +231,25 @@ void Camera::RenderScene()
                 Vector n = NormalOf(Vector(0.0f, 0.0f, 0.0f), Vector(fLeft, fTop, -1.0f),
                                     Vector(fLeft, fBottom, -1.0f));
                 Plane& q = m_viewState.m_aViewVolumes[2];
-                q.a = n.x; q.b = n.y; q.c = n.z; q.d = 0.0f;
+                q.normal = n; q.d = 0.0f;
             }
             {
                 Vector n = NormalOf(Vector(0.0f, 0.0f, 0.0f), Vector(fRight, fBottom, -1.0f),
                                     Vector(fRight, fTop, -1.0f));
                 Plane& q = m_viewState.m_aViewVolumes[3];
-                q.a = n.x; q.b = n.y; q.c = n.z; q.d = 0.0f;
+                q.normal = n; q.d = 0.0f;
             }
             {
                 Vector n = NormalOf(Vector(0.0f, 0.0f, 0.0f), Vector(fRight, fTop, -1.0f),
                                     Vector(fLeft, fTop, -1.0f));
                 Plane& q = m_viewState.m_aViewVolumes[4];
-                q.a = n.x; q.b = n.y; q.c = n.z; q.d = 0.0f;
+                q.normal = n; q.d = 0.0f;
             }
             {
                 Vector n = NormalOf(Vector(0.0f, 0.0f, 0.0f), Vector(fLeft, fBottom, -1.0f),
                                     Vector(fRight, fBottom, -1.0f));
                 Plane& q = m_viewState.m_aViewVolumes[5];
-                q.a = n.x; q.b = n.y; q.c = n.z; q.d = 0.0f;
+                q.normal = n; q.d = 0.0f;
             }
         } else {
             ASLgl::glOrtho(0.0, static_cast<double>(fAspect * m_fViewAnimDefault), 0.0, static_cast<double>(m_fViewAnimDefault),
@@ -271,13 +270,12 @@ void Camera::RenderScene()
 #endif
         for (int iVolume = 0; iVolume < 6; iVolume++) {
             Plane& q = m_viewState.m_aViewVolumes[iVolume];
-                        Vector r = RotateVector(Vector(q.a, q.b, q.c), m_qOrientation);
-            q.a = r.x; q.b = r.y; q.c = r.z;
-            q.d = q.d - dot(r, m_vPosition);
+            q.normal = RotateVector(q.normal, m_qOrientation);
+            q.d = q.d - dot(q.normal, m_vPosition);
         }
 
         Plane& qPick = m_viewState.m_aViewVolumes[frustumpick];
-        frustumn = Vector(qPick.a, qPick.b, qPick.c);
+        frustumn = qPick.normal;
         frustumd = qPick.d;
 
         m_nViewVolumeSet = 1;
@@ -430,9 +428,8 @@ int Camera::HitCheck(int nX, int nY, Vector* pResult, CHitInfo* pInfo)
     vFrac.y /= static_cast<float>(nView[3]);
     vFrac.x *= fScale;
     vFrac.y *= fScale;
-    Vector vNear = m_vPosition + Vector(vFrac.x, vFrac.y, -m_fClipNear);
     Vector vFar  = m_vPosition + Vector(vFrac.x, vFrac.y, -m_fClipNear - m_fClipFar);
-    return m_pScene->HitCheck(vNear, vFar, pResult, pInfo);
+    return m_pScene->HitCheck(m_vPosition + Vector(vFrac.x, vFrac.y, -m_fClipNear), vFar, pResult, pInfo);
 }
 
 // Nearest plane-line intersection inside the frustum, else the far clip distance.
@@ -444,15 +441,15 @@ float Camera::HitCheckViewVolumeNearest(const Vector& vStart, const Vector& vEnd
     if (pIndex)
         *pIndex = 0;
     for (int i = 2; i < 6; i++) {
-        res = planelineintersection(*reinterpret_cast<const Vector*>(&m_viewState.m_aViewVolumes[i]),
+        res = planelineintersection(m_viewState.m_aViewVolumes[i].normal,
                                     m_viewState.m_aViewVolumes[i].d, vStart, vEnd);
         if (equal(res, vZero))
             continue;
         bool bInside = true;
         for (int j = 0; j < 6; j++) {
             if (j != i &&
-                res.x * m_viewState.m_aViewVolumes[j].a + res.y * m_viewState.m_aViewVolumes[j].b +
-                    res.z * m_viewState.m_aViewVolumes[j].c + m_viewState.m_aViewVolumes[j].d > 0.0f) {
+                res.x * m_viewState.m_aViewVolumes[j].normal.x + res.y * m_viewState.m_aViewVolumes[j].normal.y +
+                    res.z * m_viewState.m_aViewVolumes[j].normal.z + m_viewState.m_aViewVolumes[j].d > 0.0f) {
                 bInside = false;
                 break;
             }
@@ -462,8 +459,8 @@ float Camera::HitCheckViewVolumeNearest(const Vector& vStart, const Vector& vEnd
         res.x -= m_vPosition.x;
         res.y -= m_vPosition.y;
         res.z -= m_vPosition.z;
-        float fDist = res.x * m_viewState.m_aViewVolumes[1].a + res.y * m_viewState.m_aViewVolumes[1].b +
-                      res.z * m_viewState.m_aViewVolumes[1].c;
+        float fDist = res.x * m_viewState.m_aViewVolumes[1].normal.x + res.y * m_viewState.m_aViewVolumes[1].normal.y +
+                      res.z * m_viewState.m_aViewVolumes[1].normal.z;
         if (fDist < fBest && fDist > 0.0f) {
             if (pResult)
                 *pResult = res;
@@ -487,16 +484,16 @@ bool Camera::SceneBoundaryCheck(const Vector& vStart, const Vector& vEnd, const 
     for (int i = 0; i < 4; i++) {
         const Plane& qA = m_viewState.m_aViewVolumes[i + 2];
         const Plane& qB = m_viewState.m_aViewVolumes[knBoundaryPartner[i]];
-        Vector vA = Vector(qA.a, qA.b, qA.c);
-        Vector vB = Vector(qB.a, qB.b, qB.c);
+        Vector vA = qA.normal;
+        Vector vB = qB.normal;
         Vector vCross;
         vCross.x = vA.y * vB.z - vA.z * vB.y;
         vCross.y = vA.z * vB.x - vA.x * vB.z;
         vCross.z = vA.x * vB.y - vA.y * vB.x;
-        Vector vRes = planelineintersection(*reinterpret_cast<const Vector*>(&cGround), cGround.d,
+        Vector vRes = planelineintersection(cGround.normal, cGround.d,
                                             m_vPosition, m_vPosition + vCross);
         aResults[i] = vRes;
-        float fDist = vRes.x * cPlane.a + vRes.y * cPlane.b + vRes.z * cPlane.c + cPlane.d;
+        float fDist = dot(aResults[i], cPlane.normal) + cPlane.d;
         if (fDist > fBest) {
             fBest = fDist;
             nBest = i;
@@ -519,11 +516,9 @@ bool Camera::SceneBoundaryCheck(const Vector& vStart, const Vector& vEnd, const 
                                     vDiff.x * vDelta.y - vDiff.y * vDelta.x));
     float fDot = dot(vNorm, vStart);
     Plane cPlane2(vNorm.x, vNorm.y, vNorm.z, -fDot);
-    Vector vOut = planelineintersection(*reinterpret_cast<const Vector*>(&cPlane2), cPlane2.d,
+    Vector vOut = planelineintersection(cPlane2.normal, cPlane2.d,
                                         m_vPosition,
-                                        m_vPosition + Vector(m_viewState.m_aViewVolumes[1].a,
-                                                             m_viewState.m_aViewVolumes[1].b,
-                                                             m_viewState.m_aViewVolumes[1].c));
+                                        m_vPosition + m_viewState.m_aViewVolumes[1].normal);
     *pResult = vOut;
     return true;
 }

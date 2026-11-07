@@ -95,8 +95,8 @@ public:
     int        m_nSelectedCount;
     int        m_bHasForcedNPC;
     int        m_bFromScript;
-#if !KOTOR1  // K1 has no challenge-rating argument
-    int        m_fChallengeRating;
+#if !KOTOR1  // K1 has no allow-cancel argument
+    int        m_bAllowCancel;
 #endif
 #if !KOTOR1
 #endif

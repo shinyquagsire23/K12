@@ -113,11 +113,7 @@ public:
     void AddToSig(void* pSig);
     int  Read(CExoFile& file);
     int  Write(CExoFile& file);
-#if KOTOR1
-    void SetName(CExoString& name);  // K1 defines this in the class
-#else
-    __attribute__((noinline)) void SetName(CExoString& name);
-#endif
+    void SetName(CExoString& name);
 
     char           m_sName[16];
     unsigned int   m_nID;
@@ -145,7 +141,6 @@ public:
     int  Read(CExoFile& file);
     int  ReadData(CExoFile& file);
     int  Write(CExoFile& file, unsigned int nHeaderOffset);
-    __attribute__((always_inline))
     int  CopyToFile(CExoFile* pSource, CExoFile* pDest, void* pBuffer);
 
     unsigned int   m_nOffset;

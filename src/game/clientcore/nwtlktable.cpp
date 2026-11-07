@@ -18,6 +18,7 @@
 #include "gameobjectarray.h"
 #include "exoinput.h"
 #include "exoinputinternal.h"
+#include "exolocstringinternal.h"
 #include "worldtimer.h"
 #if KOTOR1
 #include "ClientExoAppInternal.h"
@@ -47,8 +48,7 @@ static const uint64_t arACStrRefs[4] = {
 // codes need the speaker and its stats.
 void CSWTlkTable::GetTokenValue(const CTlkTableToken& pToken, CExoString& sValue)
 {
-    CResRef    cResRef;
-    CExoString sString;
+    STR_RES    strRes;   // never read
     unsigned int nStartDay;
     unsigned int nEndDay;
     unsigned int nCurrDay;
@@ -102,6 +102,10 @@ void CSWTlkTable::GetTokenValue(const CTlkTableToken& pToken, CExoString& sValue
         // them.
         {
             unsigned char nGender = m_gender;
+#if KOTOR1
+            short nAlign;
+            unsigned int nIdx;
+#endif
 
             switch (pToken.m_nLanguage)
             {
@@ -133,19 +137,19 @@ void CSWTlkTable::GetTokenValue(const CTlkTableToken& pToken, CExoString& sValue
                 break;
 #endif
             case TOKEN_ACTION_RACE:
-                sValue = g_pRules->m_paRaces[m_pSpeakerObj->AsSWCCreature()->m_pStats->m_nRace].GetConverNameText();
+                sValue = g_pRules->GetRace(m_pSpeakerObj->AsSWCCreature()->m_pStats->m_nRace)->GetConverNameText();
                 break;
             case TOKEN_ACTION_RACE_LOWER:
-                sValue = g_pRules->m_paRaces[m_pSpeakerObj->AsSWCCreature()->m_pStats->m_nRace].GetConverNameLowerText();
+                sValue = g_pRules->GetRace(m_pSpeakerObj->AsSWCCreature()->m_pStats->m_nRace)->GetConverNameLowerText();
                 break;
             case TOKEN_ACTION_SUBRACE:
                 sValue = m_pSpeakerObj->AsSWCCreature()->m_pStats->GetRaceString();
                 break;
             case TOKEN_ACTION_CLASS:
-                sValue = g_pRules->m_paClasses[m_pSpeakerObj->AsSWCCreature()->m_pStats->GetClass(0)].GetNameText();
+                sValue = g_pRules->GetClass(m_pSpeakerObj->AsSWCCreature()->m_pStats->GetClass(0))->GetNameText();
                 break;
             case TOKEN_ACTION_CLASS_LOWER:
-                sValue = g_pRules->m_paClasses[m_pSpeakerObj->AsSWCCreature()->m_pStats->GetClass(0)].GetNameLowerText();
+                sValue = g_pRules->GetClass(m_pSpeakerObj->AsSWCCreature()->m_pStats->GetClass(0))->GetNameLowerText();
                 break;
             case TOKEN_ACTION_LEVEL:
                 sValue = CExoString(static_cast<int>(m_pSpeakerObj->AsSWCCreature()->m_pStats->GetClassLevel(0)));
@@ -159,8 +163,13 @@ void CSWTlkTable::GetTokenValue(const CTlkTableToken& pToken, CExoString& sValue
             case TOKEN_ACTION_GOOD_EVIL:
                 // Picks one of three alignment strings, 0 above the band, 1 inside it, 2 below.
                 {
+#if KOTOR1
+                    nAlign = m_pSpeakerObj->AsSWCCreature()->m_pStats->m_alignmentGoodEvil;
+                    nIdx = 1;
+#else
                     short nAlign = m_pSpeakerObj->AsSWCCreature()->m_pStats->m_alignmentGoodEvil;
                     unsigned int nIdx = 1;
+#endif
                     if (nAlign < ALIGNMENT_NEUTRAL_LOWEST)
                         nIdx = 2;
                     else if (nAlign > ALIGNMENT_NEUTRAL_HIGHEST)

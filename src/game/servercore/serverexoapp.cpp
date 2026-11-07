@@ -487,7 +487,7 @@ void CServerExoApp::SetApplicationIdsMatch(int a)
     K2_UNUSED(a);
 }
 
-unsigned short CServerExoApp::GetServerMode()
+short CServerExoApp::GetServerMode()
 {
     return m_pInternal->m_serverMode;
 }

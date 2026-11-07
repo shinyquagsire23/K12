@@ -19,6 +19,14 @@
 
 extern CExoString g_sBuildNumber;
 
+// The tag of the rows that pick no member. The 32-bit image builds it from the int 0 (NULL is an int
+// there), so it reads "0"; the arm64 image passes a null string.
+#if defined(__arm__)
+#define NO_TAG CExoString(0)
+#else
+#define NO_TAG CExoString(static_cast<const char*>(0))
+#endif
+
 CSWGuiDebugPartyMenu::CSWGuiDebugPartyMenu(CSWGuiManager* pGuiManager)
     : CSWGuiPanel(pGuiManager)
 {
@@ -36,7 +44,7 @@ CSWGuiDebugPartyMenu::CSWGuiDebugPartyMenu(CSWGuiManager* pGuiManager)
 
     m_aOptionButtons.Add(CreateOption(CExoString("Add all except Mututally Exclusives"),
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDebugPartyMenu::OnAddAll), pTemplate, 0,
-        CExoString(static_cast<const char*>(0))));
+        NO_TAG));
     m_aOptionButtons.Add(CreateOption(CExoString("Atton"),
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDebugPartyMenu::OnMemberPicked), pTemplate, 0,
         CExoString("p_atton")));
@@ -45,7 +53,7 @@ CSWGuiDebugPartyMenu::CSWGuiDebugPartyMenu(CSWGuiManager* pGuiManager)
         CExoString("p_baodur")));
     m_aOptionButtons.Add(CreateOption(CExoString("Bao Dur with Remote"),
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDebugPartyMenu::OnAddRemote), pTemplate, 0,
-        CExoString(static_cast<const char*>(0))));
+        NO_TAG));
     m_aOptionButtons.Add(CreateOption(CExoString("Mandalore"),
         static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiDebugPartyMenu::OnMemberPicked), pTemplate, 2,
         CExoString("p_mand")));

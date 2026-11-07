@@ -67,12 +67,12 @@ extern int g_bShowIndicator;
 
 CSWSObjectActionNode::CSWSObjectActionNode()
 {
-    m_nNumParameters = 0;
     for (int i = 0; i < 13; i++)
     {
         m_paramTypes[i] = 0;
         m_params[i].m_n = 0;
     }
+    m_nNumParameters = 0;
 }
 
 CSWSObjectActionNode::~CSWSObjectActionNode()
@@ -327,10 +327,10 @@ void CSWSObject::SaveObjectState(CResGFF* pGff, CResStruct* pStruct)
 
 void CSWSObject::SaveListenData(CResGFF* pGff, CResStruct* pStruct)
 {
+    CResList expressionList;
     if (m_listenExpressions.m_count < 1)
         return;
 
-    CResList expressionList;
     pGff->AddList(&expressionList, pStruct, const_cast<char*>("ExpressionList"));
 
     for (int i = 0; i < m_listenExpressions.m_count; i++)
@@ -621,15 +621,15 @@ void CSWSObject::SetOrientation(const Vector& dir) {
 }
 
 void CSWSObject::SetDirtyFlag(unsigned int nFlag) {
-    m_updateFlags[nFlag >> 5] |= 1u << nFlag;
+    m_updateFlags[nFlag >> 5] |= 1u << (nFlag % 32);
 }
 
 int CSWSObject::IsDirtyFlagSet(unsigned int nFlag) {
-    return (m_updateFlags[nFlag >> 5] & (1u << nFlag)) != 0;
+    return (m_updateFlags[nFlag >> 5] & (1u << (nFlag % 32))) != 0;
 }
 
 void CSWSObject::ClearDirtyFlag(unsigned int nFlag) {
-    m_updateFlags[nFlag >> 5] &= ~(1u << nFlag);
+    m_updateFlags[nFlag >> 5] &= ~(1u << (nFlag % 32));
 }
 
 void CSWSObject::SetCurrentHitPoints(int nHitPoints) {
@@ -740,35 +740,7 @@ int CLoopingVisualEffect::GetIsBeam(unsigned short nVisualEffectId) {
 }
 
 int CLoopingVisualEffect::GetIsBeam() {
-    switch (m_nVisualEffectId) {
-    case VFX_BEAM_DEATH_FIELD_TENTACLE:
-    case VFX_BEAM_DROID_DISABLE:
-    case VFX_BEAM_DROID_DESTROY:
-    case VFX_BEAM_DRAIN_LIFE:
-    case VFX_BEAM_LIGHTNING_DARK_S:
-    case VFX_BEAM_LIGHTNING_DARK_L:
-    case VFX_BEAM_ION_RAY_01:
-    case VFX_BEAM_ION_RAY_02:
-    case VFX_BEAM_COLD_RAY:
-    case VFX_BEAM_STUN_RAY:
-    case VFX_BEAM_FLAME_SPRAY:
-    case VFX_BEAM_FORCE_STORM_ARC:
-    case VFX_BEAM_DROID_STUN:
-#if KOTOR1  // K1: the beam family ends at 2066
-    case VFX_COM_FORCE_RESISTED:
-    case VFX_IMP_MIRV:
-        return 1;
-    }
-    return m_nVisualEffectId == VFX_BEAM_SHOCK;
-#else
-    case VFX_BEAM_SHOCK:
-    case VFX_BEAM_POISON_SPRAY:
-    case VFX_COM_FORCE_RESISTED:
-    case VFX_IMP_MIRV:
-        return 1;
-    }
-    return m_nVisualEffectId == VFX_BEAM_PLASMA_SPRAY;
-#endif
+    return GetIsBeam(m_nVisualEffectId);
 }
 
 CScriptTalent::CScriptTalent() {
@@ -1022,14 +994,14 @@ unsigned char CSWSObject::GetGender() {
     return CTlkTable::GENDER_MALE;
 }
 
-int CSWSObject::GetDamageImmunity(unsigned char nDamageType) {
+char CSWSObject::GetDamageImmunity(unsigned char nDamageType) {
     int nImmunity = m_paDamageImmunity[nDamageType];
-#if KOTOR1  // K1 clamps to [-100, 100]; K2 keeps the low clamp as an unsigned byte
+#if KOTOR1  // K1 clamps to [-100, 100] with two selects; K2 tests the low bound first
     nImmunity = nImmunity < 100 ? nImmunity : 100;
     return nImmunity > -100 ? nImmunity : -100;
 #else
     if (nImmunity < -100)
-        nImmunity = static_cast<unsigned char>(-100);
+        nImmunity = -100;
     else if (nImmunity >= 100)
         nImmunity = 100;
     return nImmunity;
@@ -1771,55 +1743,51 @@ CSWSObjectActionNode* CSWSObject::GetNodeById(unsigned short nId) {
         return 0;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
     CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
-    while (1) {
+    while (pNode != 0) {
         if (pAction->m_nActionId == nId)
             return pAction;
         pAction = m_actionList.GetNext(pNode);
-        if (pNode == 0)
-            return 0;
     }
+    return 0;
 }
 
 CSWSObjectActionNode* CSWSObject::GetNodeById(unsigned short nId, unsigned short nGroupId) {
-    if (m_actionList.m_pInternal->m_pHead == 0)
+    if (m_actionList.GetHeadPos() == 0)
         return 0;
-    CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
+    CExoLinkedListNode* pNode = m_actionList.GetHeadPos();
     CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
-    while (1) {
+    while (pNode != 0) {
         if (pAction->m_nActionId == nId && pAction->m_nGroupId == nGroupId)
             return pAction;
         pAction = m_actionList.GetNext(pNode);
-        if (pNode == 0)
-            return 0;
     }
+    return 0;
 }
 
 int CSWSObject::GetNumActionGroups() {
-    if (m_actionList.m_pInternal->m_pHead == 0)
+    if (m_actionList.GetHeadPos() == 0)
         return 0;
-    CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
+    CExoLinkedListNode* pNode = m_actionList.GetHeadPos();
     CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
-    // The head's group id is read before the head is tested for null.
-    unsigned short nPrevGroup = pAction->m_nGroupId;
     int nGroups = (pAction != 0);
-    while (1) {
-        pAction = m_actionList.GetNext(pNode);
-        if (pNode == 0)
-            break;
+    // The head's group id is read whether or not the head is null.
+    unsigned short nPrevGroup = pAction->m_nGroupId;
+    while (pNode != 0) {
         if (pAction->m_nGroupId != nPrevGroup)
             nGroups++;
         nPrevGroup = pAction->m_nGroupId;
+        pAction = m_actionList.GetNext(pNode);
     }
     return nGroups;
 }
 
 CExoLinkedListNode* CSWSObject::GetPositionByGroupIndex(int nIndex) {
-    int nGroups = 0;
     if (m_actionList.m_pInternal->m_pHead == 0)
         return 0;
     CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
     CSWSObjectActionNode* pAction = static_cast<CSWSObjectActionNode*>(m_actionList.GetAtPos(pNode));
     unsigned short nPrevGroup = pAction->m_nGroupId;
+    int nGroups = 0;
     if (nGroups == nIndex)
         return pNode;
     while (pAction) {
@@ -2588,11 +2556,11 @@ void CSWSObject::ClearAllEffects(int bKeepOwn) {
 }
 
 void CSWSObject::RemoveGroup(unsigned short nGroupId) {
-    if (m_actionList.m_pInternal->m_pHead == 0)
+    if (m_actionList.GetHeadPos() == 0)
         return;
-    CExoLinkedListNode* pNode = m_actionList.m_pInternal->m_pHead;
+    CExoLinkedListNode* pNode = m_actionList.GetHeadPos();
     CSWSObjectActionNode* pAction = m_actionList.GetAtPos(pNode);
-    while (1) {
+    while (pNode != 0) {
         CExoLinkedListNode* pCurrentPos = pNode;
         CSWSObjectActionNode* pCurrent = pAction;
         unsigned short nId = pCurrent->m_nGroupId;
@@ -2602,8 +2570,6 @@ void CSWSObject::RemoveGroup(unsigned short nGroupId) {
             pCurrent->~CSWSObjectActionNode();
             operator delete(pCurrent);
         }
-        if (pNode == 0)
-            return;
     }
 }
 
@@ -3259,7 +3225,7 @@ void CSWSObject::ReportOverflow(int nStrRef, int nAmount, int nLimit, int nUnuse
                     pData->SetInteger(3, pAIMaster->m_bRanInterAreaPath + pAIMaster->m_bRanGridPath * 2
                                              + pAIMaster->m_bRanVisibilityUpdate * 4
                                              + pAIMaster->m_bReserved1 * 8
-                                             + pAIMaster->m_fChallengeRating * 16);
+                                             + pAIMaster->m_bRanMineCheck * 16);
                 }
                 pCreature->SendFeedbackMessage(static_cast<unsigned short>(nStrRef), pData);
             }

@@ -113,7 +113,7 @@ public:
 
     // Per-(level, spell level) force-power slot count from classes.2da SpellGainTable; nMinLevel
     // gates a minimum caster level.
-    int GetSpellGain(unsigned char nLevel, unsigned char nMinLevel);
+    unsigned char GetSpellGain(unsigned char nLevel, unsigned char nMinLevel);
     unsigned int GetRecommendedSkill(int nOrder);
     unsigned int GetRecommendedSpell(int bGoodAligned, int nOrder);
     unsigned int GetRecommendedFeat(int nOrder);
@@ -142,20 +142,17 @@ public:
 #else
     unsigned char  m_aSpellGainMinLevel[50];
 #endif
-    // The featgain.2da per-level counts follow the spell-gain table. Both are indexed with the class
-    // level itself, 1 to the cap, so each one's unused entry 0 is the byte before it: the last
-    // spell-gain entry for the bonus table, and the bonus table's last entry for the normal one.
-    union {
+    // The featgain.2da per-level counts follow the spell-gain table, one entry per class level
+    // (level 1 at index 0).
 #if KOTOR1
-        unsigned char m_aSpellGain[20];
-        struct { unsigned char _pad[19]; unsigned char _bonus[20]; unsigned char m_aByLevel[21]; } m_normalFeats;
-        struct { unsigned char _pad[19]; unsigned char m_aByLevel[21]; } m_bonusFeats;
+    unsigned char  m_aSpellGain[20];
+    unsigned char  m_aBonusFeatGain[20];
+    unsigned char  m_aNormalFeatGain[20];
 #else
-        unsigned char m_aSpellGain[50];
-        struct { unsigned char _pad[49]; unsigned char _bonus[50]; unsigned char m_aByLevel[51]; } m_normalFeats;
-        struct { unsigned char _pad[49]; unsigned char m_aByLevel[51]; } m_bonusFeats;
+    unsigned char  m_aSpellGain[50];
+    unsigned char  m_aBonusFeatGain[50];
+    unsigned char  m_aNormalFeatGain[50];
 #endif
-    };
     CSWClassSkill* m_paClassSkills;
     unsigned short m_nNumClassSkills;
     CSWClassGrantedFeat* m_paGrantedFeats;

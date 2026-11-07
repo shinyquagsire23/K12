@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "swguipowerslvlup.h"
 #include "swgui.h"
 #include "swguicontrol.h"
@@ -256,7 +257,7 @@ void CSWGuiPowersLevelUp::InitiatePowers()
 #if !KOTOR1
     m_bGrantedPushed = static_cast<unsigned char>(m_bGrantedPushed & ~POWERS_GRANTED_BOX_PUSHED);
 
-    CExoArrayList<unsigned int> aGranted;
+    CExoArrayList<uint32_l_t> aGranted;
     pStats->AddGrantedPowers(&aGranted);
 
     if (aGranted.m_count > 0)
@@ -284,7 +285,7 @@ void CSWGuiPowersLevelUp::InitiatePowers()
     }
 #endif
 
-    m_nSelectionsLeft = static_cast<unsigned char>(pStats->ComputeNumberKnownSpellsLeft());
+    m_nSelectionsLeft = pStats->ComputeNumberKnownSpellsLeft();
     m_nSelectionsMax = static_cast<unsigned char>(m_nSelectionsLeft + 1);
 
     BuildAvailableList();
@@ -376,7 +377,7 @@ void CSWGuiPowersLevelUp::BuildButtons()
 
     if (m_nSelectedPower == 0xffffffff)
     {
-        m_listBoxPowers.AddControls(reinterpret_cast<CExoArrayList<CSWGuiControl*>&>(m_powerChart.m_aFlows), 0, 1, 0);
+        m_listBoxPowers.AddControls(m_powerChart.m_aFlows, 0, 1, 0);
         m_nSelectedPower = static_cast<unsigned int>(m_powerChart.SetTopLeft());
     }
 
@@ -472,12 +473,9 @@ void CSWGuiPowersLevelUp::OnAcceptButton()
         return;
     }
 
-    if (m_aChosenPowers.m_count > 0)
-    {
-        unsigned char nClass = static_cast<unsigned char>(m_pCreature->m_pStats->m_nNumClasses - 1);
-        for (int i = 0; i < m_aChosenPowers.m_count; i++)
-            m_pCreature->m_pStats->AddKnownSpell(nClass, m_aChosenPowers.m_pArray[i]);
-    }
+    unsigned char nClass = static_cast<unsigned char>(m_pCreature->m_pStats->m_nNumClasses - 1);
+    for (int i = 0; i < m_aChosenPowers.m_count; i++)
+        m_pCreature->m_pStats->AddKnownSpell(nClass, m_aChosenPowers.m_pArray[i]);
 
     m_pGuiManager->PopModalPanel();
     m_pParentPanel->SetVisible(1);
@@ -547,7 +545,7 @@ void CSWGuiPowersLevelUp::OnPowerPicked(unsigned int nPower)
 // its powers, adds each one, then repaints.
 void CSWGuiPowersLevelUp::OnRecommendButton()
 {
-    CExoArrayList<unsigned int> aGranted;
+    CExoArrayList<uint32_l_t> aGranted;
 
     static_cast<CSWCLevelUpStats*>(m_pCreature->m_pStats)->AddDefaultPackageSpells(&aGranted);
 

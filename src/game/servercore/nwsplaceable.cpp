@@ -118,7 +118,8 @@ CSWSPlaceable::CSWSPlaceable(unsigned long long objectId)
     m_bIsBodyBag = 0;
     m_bIsBodyBagVisible = 1;
     m_bPlaceholder = (objectId == OBJECT_INVALID);
-    m_nCorpseFlags = 0;
+    m_corpse.m_bIsCorpse = 0;
+    m_corpse.m_bUseAnimationPending = 0;
 #if !KOTOR1
     m_pOwnedTrigger = 0;
 #endif
@@ -317,7 +318,7 @@ int CSWSPlaceable::AcquireItemsFromObject(unsigned long long oidOwner, int flag)
         for (int i = 0; i < 16; i++) {
 #endif
             pItem = static_cast<CSWSItem*>(pCreature->m_pInventory->GetItemInSlot(1 << i));
-            if (pItem != 0 && (flag == 0 || (pItem->m_nFlagsLow & 8)))
+            if (pItem != 0 && (flag == 0 || (pItem->m_flags & 8)))
                 list.Add(pItem);
         }
     } else {
@@ -325,7 +326,7 @@ int CSWSPlaceable::AcquireItemsFromObject(unsigned long long oidOwner, int flag)
     }
     for (unsigned int i = 0; i < pRepository->ItemListGetCount(); i++) {
         pItem = pRepository->ItemListGetItem(i);
-        if (pItem != 0 && (flag == 0 || (pItem->m_nFlagsLow & 8)))
+        if (pItem != 0 && (flag == 0 || (pItem->m_flags & 8)))
             list.Add(pItem);
     }
 
@@ -351,18 +352,15 @@ int CSWSPlaceable::GetItemCount(int flag) {
     if (m_bHasInventory == 0) return 0;
     CItemRepository* repo = m_pItemRepository;
     if (repo == 0) return 0;
-    if (repo->ItemListGetCount() == 0) return 0;
-    int i = 0;
     int count = 0;
-    do {
+    for (unsigned int i = 0; i < repo->ItemListGetCount(); i++) {
         CSWSItem* pItem = repo->ItemListGetItem(i);
 #if KOTOR1  // K1 reads the 16-bit flags word
         if (pItem != 0 && (flag == 0 || (pItem->m_flags & 8))) count++;
 #else
-        if (pItem != 0 && (flag == 0 || (pItem->m_nFlagsLow & 8))) count++;
+        if (pItem != 0 && (flag == 0 || (pItem->m_flags & 8))) count++;
 #endif
-        i++;
-    } while (static_cast<unsigned>(i) < repo->ItemListGetCount());
+    }
     return count;
 }
 
@@ -549,17 +547,15 @@ void CSWSPlaceable::CloseInventory(unsigned long long playerId, int flag) {
 void CSWSPlaceable::ClosePlaceableForAllPlayers() {
     CExoLinkedList<CSWSClient>* pList = g_pAppManager->m_pServerExoApp->GetPlayerList();
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-    if (pNode != 0) {
-        do {
-            CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-            if (pPlayer != 0) {
-                CGameObject* pGameObj = pPlayer->GetGameObject();
-                if (pGameObj != 0 && pPlayer->m_pContainerGUI->m_objectId == m_objectId) {
-                    CloseInventory(pGameObj->m_objectId, 1);
-                }
+    while (pNode != 0) {
+        CSWSPlayer* pPlayer = static_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
+        if (pPlayer != 0) {
+            CGameObject* pGameObj = pPlayer->GetGameObject();
+            if (pGameObj != 0 && pPlayer->m_pContainerGUI->m_objectId == m_objectId) {
+                CloseInventory(pGameObj->m_objectId, 1);
             }
-            pList->GetNext(pNode);
-        } while (pNode != 0);
+        }
+        pList->GetNext(pNode);
     }
 }
 
@@ -567,19 +563,15 @@ void CSWSPlaceable::DropItemsIntoArea() {
     if (m_bHasInventory == 0) return;
     CItemRepository* repo = m_pItemRepository;
     if (repo == 0) return;
-    if (repo->ItemListGetCount() == 0) return;
     float x = m_position.x;
     float y = m_position.y;
     float z = m_position.z;
-    unsigned int i = 0;
-    do {
-        CSWSItem* pItem = repo->ItemListGetItem(i);
+    for (unsigned int i = 0; i < m_pItemRepository->ItemListGetCount(); i++) {
+        CSWSItem* pItem = m_pItemRepository->ItemListGetItem(i);
         RemoveItem(pItem);
         CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
         pItem->AddToArea(pArea, x, y, z, 1);
-        repo = m_pItemRepository;
-        i++;
-    } while (i < repo->ItemListGetCount());
+    }
 }
 
 void CSWSPlaceable::OpenInventory(unsigned long long playerId, int flag) {

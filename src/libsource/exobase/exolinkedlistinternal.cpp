@@ -219,14 +219,10 @@ void* CExoLinkedListInternal::RemoveTail()
 
 int CExoLinkedListInternal::Contains(void* data) const
 {
-    CExoLinkedListNode* p = m_pHead;
-    if (p == 0)
-        return 0;
-    do
+    for (CExoLinkedListNode* p = m_pHead; p != 0; p = p->m_pNext)
     {
         if (p->m_pData == data)
             return 1;
-        p = p->m_pNext;
-    } while (p != 0);
+    }
     return 0;
 }

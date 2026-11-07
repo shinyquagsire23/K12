@@ -1,5 +1,6 @@
 
 #include "k2stdint.h"
+#include <string.h>
 #include "nwsdialog.h"
 #include "appmanager.h"
 #include "serverexoapp.h"
@@ -105,7 +106,7 @@ static const int s_aPCControlStrRefs[] = {
     STRREF_TUTORIAL_PLOT_COURSE,
 };
 
-int StringContainsPCControls(int nStrRef)
+bool StringContainsPCControls(int nStrRef)
 {
     for (int i = 0; i < 16; i++) {
         if (s_aPCControlStrRefs[i] == nStrRef)
@@ -276,8 +277,8 @@ const char* vodebug(char* pszArgs)
 void CSWSDialog::InitializePsuedoRandomCameraAngles(CResGFF* pGff)
 {
     CResRef resRef;
-    CExoString sResRef;
     unsigned short nResType;
+    CExoString sResRef;
     pGff->GetResRef(resRef, nResType);
     resRef.CopyToString(sResRef);
 
@@ -1056,7 +1057,7 @@ int CSWSDialog::LoadDialog(CResGFF* pGff, int a)
     {
         pGff->GetListElement(&sEntryStruct, &list, static_cast<unsigned int>(i));
         LoadDialogBase(m_paEntries[i], pGff, sEntryStruct, nDefaultDelay, nReadOk);
-        LoadDialogCamera(m_paEntries[i].m_camera, pGff, sEntryStruct, nReadOk);
+        LoadDialogCamera(m_paEntries[i], pGff, sEntryStruct, nReadOk);
 
         pGff->GetList(&subList, &sEntryStruct, const_cast<char*>("RepliesList"));
         m_paEntries[i].m_nReplyCount = pGff->GetListCount(&subList);
@@ -1070,7 +1071,7 @@ int CSWSDialog::LoadDialog(CResGFF* pGff, int a)
         {
             if (m_paEntries[i].m_nReplyCount != 0)
                 m_paEntries[i].m_paReplies
-                    = new CSWSDialogReplyLink[m_paEntries[i].m_nReplyCount];
+                    = new CSWSDialogLinkReply[m_paEntries[i].m_nReplyCount];
 
             if (nReadOk == 0)
                 goto fail;
@@ -1102,7 +1103,7 @@ int CSWSDialog::LoadDialog(CResGFF* pGff, int a)
         {
             pGff->GetListElement(&sEntryStruct, &list, static_cast<unsigned int>(j));
             LoadDialogBase(m_paReplies[j], pGff, sEntryStruct, nDefaultDelay, nReadOk);
-            LoadDialogCamera(m_paReplies[j].m_camera, pGff, sEntryStruct, nReadOk);
+            LoadDialogCamera(m_paReplies[j], pGff, sEntryStruct, nReadOk);
 
             pGff->GetList(&subList, &sEntryStruct, const_cast<char*>("EntriesList"));
             m_paReplies[j].m_nEntryCount = pGff->GetListCount(&subList);
@@ -2104,16 +2105,16 @@ int CSWSDialog::SendDialogEntryNode(unsigned int nEntry, unsigned long long objI
     // A zero camera angle means the DLG picked none; the delay flag raised by SetDialogDelay then
     // forces the stock camera instead of the randomized angle.
     int nCameraAngle = AssignPseudoRandomCameraAngle();
-    if (entry.m_camera.m_nCameraAngle == 0)
+    if (entry.m_nCameraAngle == 0)
     {
         if (m_bFirstEntryLine != 0)
-            entry.m_camera.m_nCameraAngle = 2;
+            entry.m_nCameraAngle = 2;
         else
-            entry.m_camera.m_nCameraAngle = nCameraAngle;
+            entry.m_nCameraAngle = nCameraAngle;
     }
     m_bFirstEntryLine = 0;
 #if !KOTOR1
-    entry.m_camera.m_nAlienVOVariation = AssignPseudoRandomAlienVOVariation();
+    entry.m_nAlienVOVariation = AssignPseudoRandomAlienVOVariation();
 #endif
 
     CExoString sText = GetExoStringFromLocString(entry.m_sText, gender);
@@ -2158,10 +2159,10 @@ int CSWSDialog::SendDialogEntryNode(unsigned int nEntry, unsigned long long objI
         pClientExoApp->ServerToClientObjectId(objIdB),
         pClientExoApp->ServerToClientObjectId(objIdD),
         gender, sText, nAnimCount, paClientIds, paAnims,
-        entry.m_camera.m_nCameraAngle, entry.m_camera.m_nCameraID,
-        entry.m_camera.m_fHeightOffset, entry.m_camera.m_fTargetHeightOffset,
-        entry.m_nWaitFlags, entry.m_camera.m_nCameraAnimation,
-        entry.m_camera.m_fFieldOfView, entry.m_camera.m_nCamVidEffect,
+        entry.m_nCameraAngle, entry.m_nCameraID,
+        entry.m_fHeightOffset, entry.m_fTargetHeightOffset,
+        entry.m_nWaitFlags, entry.m_nCameraAnimation,
+        entry.m_fFieldOfView, entry.m_nCamVidEffect,
         entry.m_nFadeType, entry.m_vFadeColor,
         entry.m_fFadeDelay, entry.m_fFadeLength, bPlaySound);
 
@@ -2390,7 +2391,7 @@ int CSWSDialog::SendDialogReplies(CSWSObject* pObj, unsigned int nPlayerId)
             unsigned long long nObjectId = m_oidCurrentPlayer;
             CExoString sListener(
                 m_paReplies[m_paEntries[m_nCurrentEntry].m_paReplies[m_nHandledReply].m_nIndex]
-                    .m_camera.m_sListener);
+                    .m_sListener);
             if (sListener != "")
             {
                 // CompareNoCase returns 1 on equal, so each arm here runs on a mismatch.
@@ -2495,20 +2496,20 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
         // conversation. A player listener resolves the player and discards it, leaving the invalid
         // object id.
         unsigned long long listenerId = OBJECT_INVALID;
-        if (pOwner != 0 && pReplies[i].m_camera.m_sListener != "")
+        if (pOwner != 0 && pReplies[i].m_sListener != "")
         {
-            if (pReplies[i].m_camera.m_sListener.CompareNoCase("OWNER"))
+            if (pReplies[i].m_sListener.CompareNoCase("OWNER"))
             {
                 listenerId = pClientApp->ServerToClientObjectId(m_ownerId);
             }
-            else if (pReplies[i].m_camera.m_sListener.CompareNoCase("PLAYER"))
+            else if (pReplies[i].m_sListener.CompareNoCase("PLAYER"))
             {
                 uint64_t playerId = g_pAppManager->m_pServerExoApp->GetPlayerCreatureId();
                 g_pAppManager->m_pServerExoApp->GetClientObjectByObjectId(playerId);
             }
             else
             {
-                CSWSObject* pSpeaker = GetSpeaker(pOwner, pReplies[i].m_camera.m_sListener);
+                CSWSObject* pSpeaker = GetSpeaker(pOwner, pReplies[i].m_sListener);
                 if (pSpeaker != 0)
                     listenerId = pClientApp->ServerToClientObjectId(
                         pSpeaker->m_objectId);
@@ -2575,21 +2576,21 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
         paB[i] = listenerId;
 
         // Commit this line's camera angle; a zero angle means the DLG picked none.
-        if (pReplies[i].m_camera.m_nCameraAngle == 0)
+        if (pReplies[i].m_nCameraAngle == 0)
         {
             if (m_bFirstReplyLine == 0)
-                pReplies[i].m_camera.m_nCameraAngle = nAssignedAngle;
+                pReplies[i].m_nCameraAngle = nAssignedAngle;
             else
-                pReplies[i].m_camera.m_nCameraAngle = 2;
+                pReplies[i].m_nCameraAngle = 2;
         }
-        paC[i] = pReplies[i].m_camera.m_nCameraAngle;
-        paD[i] = pReplies[i].m_camera.m_nCameraID;
-        paE[i] = pReplies[i].m_camera.m_fHeightOffset;
-        paF[i] = pReplies[i].m_camera.m_fTargetHeightOffset;
+        paC[i] = pReplies[i].m_nCameraAngle;
+        paD[i] = pReplies[i].m_nCameraID;
+        paE[i] = pReplies[i].m_fHeightOffset;
+        paF[i] = pReplies[i].m_fTargetHeightOffset;
         paG[i] = pReplies[i].m_nWaitFlags;
-        paH[i] = pReplies[i].m_camera.m_nCameraAnimation;
-        paI[i] = pReplies[i].m_camera.m_fFieldOfView;
-        paJ[i] = pReplies[i].m_camera.m_nCamVidEffect;
+        paH[i] = pReplies[i].m_nCameraAnimation;
+        paI[i] = pReplies[i].m_fFieldOfView;
+        paJ[i] = pReplies[i].m_nCamVidEffect;
         paK[i] = pReplies[i].m_nFadeType;
         paPos[i] = pReplies[i].m_vFadeColor;
         paM[i] = pReplies[i].m_fFadeDelay;
@@ -2722,7 +2723,7 @@ located:
                     = m_paReplies[m_paEntries[m_nCurrentEntry]
                                       .m_paReplies[m_nHandledReply]
                                       .m_nIndex]
-                          .m_camera.m_sListener;
+                          .m_sListener;
                 if (sListener != "" && !sListener.CompareNoCase("OWNER"))
                 {
                     if (sListener.CompareNoCase("PLAYER"))
@@ -2888,8 +2889,10 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
 {
     if (a != PLAYER_ID_ALL)
     {
-        CExoString sListener(m_paEntries[m_nCurrentEntry].m_camera.m_sListener);
+        CExoString sListener(m_paEntries[m_nCurrentEntry].m_sListener);
         unsigned long long nListenerId;
+        int nResult;
+        CSWSObject* pSpeaker = pObj;
         if (sListener != "")
         {
             if (sListener.CompareNoCase("OWNER"))
@@ -2905,8 +2908,6 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
         else
             nListenerId = OBJECT_INVALID;
 
-        int nResult;
-        CSWSObject* pSpeaker = pObj;
         if (m_paEntries[m_nCurrentEntry].m_sSpeaker != ""
             && pObj->m_sTag.CompareNoCase(m_paEntries[m_nCurrentEntry].m_sSpeaker) == 0
             && (pSpeaker = GetSpeaker(pObj, m_paEntries[m_nCurrentEntry].m_sSpeaker)) == 0)
@@ -2935,8 +2936,9 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
         && (pSpeaker = GetSpeaker(pObj, m_paEntries[nEntry].m_sSpeaker)) == 0)
         return 0;
 
-    CExoString sListener(m_paEntries[nEntry].m_camera.m_sListener);
+    CExoString sListener(m_paEntries[nEntry].m_sListener);
     unsigned long long nListenerId;
+    unsigned int* paPlayerIds = 0;
     if (sListener != "")
     {
         if (sListener.CompareNoCase("OWNER"))
@@ -2952,29 +2954,30 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
     else
         nListenerId = OBJECT_INVALID;
 
-    unsigned int* paPlayerIds = 0;
     m_bRepliesPending = 0;
     if (m_lstParticipants.m_pInternal->m_pHead != 0)
     {
-        CExoLinkedListNode* pNode = m_lstParticipants.m_pInternal->m_pHead;
-        CSWSDialogPlayer* pPlayer = 0;
-        if (m_lstParticipants.m_pInternal->m_pHead != 0)
-            pPlayer = static_cast<CSWSDialogPlayer*>(pNode->m_pData);
-        while (pPlayer != 0)
         {
-            SendDialogEntryNode(pPlayer->m_nPlayerId, pObj->m_objectId, pSpeaker->m_objectId,
-                                nListenerId, m_oidCurrentPlayer, m_nPlayerGender, pObj,
-                                m_paEntries[nEntry], nStatus);
-            if (nStatus == 10)
-                return 1;
-            AddJournalEntry(m_paEntries[nEntry].m_sQuest, m_paEntries[nEntry].m_nQuestEntry,
-                            pPlayer->m_nPlayerId);
-            pPlayer = static_cast<CSWSDialogPlayer*>(m_lstParticipants.GetNext(pNode));
+            CExoLinkedListNode* pNode = m_lstParticipants.m_pInternal->m_pHead;
+            CSWSDialogPlayer* pPlayer = 0;
+            if (m_lstParticipants.m_pInternal->m_pHead != 0)
+                pPlayer = static_cast<CSWSDialogPlayer*>(pNode->m_pData);
+            while (pPlayer != 0)
+            {
+                SendDialogEntryNode(pPlayer->m_nPlayerId, pObj->m_objectId, pSpeaker->m_objectId,
+                                    nListenerId, m_oidCurrentPlayer, m_nPlayerGender, pObj,
+                                    m_paEntries[nEntry], nStatus);
+                if (nStatus == 10)
+                    return 1;
+                AddJournalEntry(m_paEntries[nEntry].m_sQuest, m_paEntries[nEntry].m_nQuestEntry,
+                                pPlayer->m_nPlayerId);
+                pPlayer = static_cast<CSWSDialogPlayer*>(m_lstParticipants.GetNext(pNode));
+            }
         }
 
         paPlayerIds = new unsigned int[m_lstParticipants.m_pInternal->m_nCount];
-        pNode = m_lstParticipants.m_pInternal->m_pHead;
-        pPlayer = 0;
+        CExoLinkedListNode* pNode = m_lstParticipants.m_pInternal->m_pHead;
+        CSWSDialogPlayer* pPlayer = 0;
         if (m_lstParticipants.m_pInternal->m_pHead != 0)
             pPlayer = static_cast<CSWSDialogPlayer*>(pNode->m_pData);
         for (unsigned int i = 0; pPlayer != 0; i++)
@@ -3016,6 +3019,7 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
         && m_paEntries[nEntry].m_sText.m_nStrRef == STRREF_CARTH_ESCAPE_POD)
         QueueHelpGui(7);
 
+    CClientOptions* pOptions;
     int bPlaySound = g_pAppManager->m_pClientExoApp->GetInGameGui()->HandleDialogSound(
         pClientExoApp->ServerToClientObjectId(pSpeaker->m_objectId),
         m_paEntries[nEntry].m_rVO_ResRef);
@@ -3049,8 +3053,9 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
                 szSpeaker[4] = sSound[10];
                 szSpeaker[5] = sSound[11];
                 szSpeaker[6] = 0;
+                char* szSound = sSound.CStr();
                 sSound.Format(const_cast<char*>("HD0:STREAMWAVES\\%s\\%s\\%s"), szModule, szSpeaker,
-                              sSound.CStr());
+                              szSound);
             }
             else
                 sSound.Format(const_cast<char*>("HD0:STREAMWAVES\\%s"), sSound.CStr());
@@ -3078,7 +3083,7 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
 
         if (bPlaySound == 0)
         {
-            CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
+            pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
             if ((nVORejected | pOptions->m_bFeedback2) == 0)
             {
                 if (g_pAppManager->m_pClientExoApp->GetInGameGui()->IsCameraDialog() != 0)
@@ -3133,8 +3138,10 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
     if (a != PLAYER_ID_ALL)
     {
         // The current entry, to one participant.
-        CExoString sListener(m_paEntries[m_nCurrentEntry].m_camera.m_sListener);
+        CExoString sListener(m_paEntries[m_nCurrentEntry].m_sListener);
         unsigned long long nListenerId;
+        int nResult;
+        CSWSObject* pSpeaker;
         if (sListener != "")
         {
             if (sListener.CompareNoCase("OWNER"))
@@ -3151,8 +3158,7 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
         else
             nListenerId = OBJECT_INVALID;
 
-        int nResult;
-        CSWSObject* pSpeaker = pObj;
+        pSpeaker = pObj;
         if (m_paEntries[m_nCurrentEntry].m_sSpeaker != ""
             && pObj->m_sTag.CompareNoCase(m_paEntries[m_nCurrentEntry].m_sSpeaker) == 0
             && (pSpeaker = GetSpeaker(pObj, m_paEntries[m_nCurrentEntry].m_sSpeaker)) == 0)
@@ -3183,8 +3189,10 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
         && (pSpeaker = GetSpeaker(pObj, m_paEntries[nEntry].m_sSpeaker)) == 0)
         return 0;
 
-    CExoString sListener(m_paEntries[nEntry].m_camera.m_sListener);
+    CExoString sListener(m_paEntries[nEntry].m_sListener);
     unsigned long long nListenerId;
+    unsigned int* paPlayerIds;
+    CExoLinkedListNode* pNode;
     if (sListener != "")
     {
         if (sListener.CompareNoCase("OWNER"))
@@ -3202,15 +3210,14 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
 
     // Push the entry node to every participant, then snapshot their player ids. The snapshot is what the
     // script parameters below are staged with.
-    unsigned int* paPlayerIds = 0;
+    paPlayerIds = 0;
     m_bRepliesPending = 0;
     if (m_lstParticipants.m_pInternal->m_pHead != 0)
     {
-        CExoLinkedListNode* pNode = m_lstParticipants.m_pInternal->m_pHead;
-        CSWSDialogPlayer* pPlayer = 0;
-        if (m_lstParticipants.m_pInternal->m_pHead != 0)
-            pPlayer = static_cast<CSWSDialogPlayer*>(pNode->m_pData);
-        while (pPlayer != 0)
+        pNode = m_lstParticipants.m_pInternal->m_pHead;
+        for (CSWSDialogPlayer* pPlayer = (m_lstParticipants.m_pInternal->m_pHead != 0)
+                 ? static_cast<CSWSDialogPlayer*>(pNode->m_pData) : 0;
+             pPlayer != 0;)
         {
             SendDialogEntryNode(pPlayer->m_nPlayerId, pObj->m_objectId, pSpeaker->m_objectId,
                                 nListenerId, m_oidCurrentPlayer, m_nPlayerGender, pObj,
@@ -3224,7 +3231,7 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
 
         paPlayerIds = new unsigned int[m_lstParticipants.m_pInternal->m_nCount];
         pNode = m_lstParticipants.m_pInternal->m_pHead;
-        pPlayer = 0;
+        CSWSDialogPlayer* pPlayer = 0;
         if (m_lstParticipants.m_pInternal->m_pHead != 0)
             pPlayer = static_cast<CSWSDialogPlayer*>(pNode->m_pData);
         for (unsigned int i = 0; pPlayer != 0; i++)
@@ -3241,7 +3248,7 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
     if ((m_paEntries[nEntry].m_nSoundExists & 6) == 2)
     {
         CExoString sVariation;
-        sVariation.Format(const_cast<char*>("%d"), m_paEntries[nEntry].m_camera.m_nAlienVOVariation);
+        sVariation.Format(const_cast<char*>("%d"), m_paEntries[nEntry].m_nAlienVOVariation);
         m_paEntries[nEntry].m_rVO_ResRef += sVariation;
         m_paEntries[nEntry].m_nSoundExists |= 4;
     }
@@ -3270,6 +3277,7 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
     CExoString aPaths[MAX_OVERRIDE_PATHS];
 
     int bPlaySound = 0;
+    CClientOptions* pOptions;
     if (g_pAppManager->m_pClientExoApp->GetModuleResourceLoaded(8) == 1)
     {
         if (g_bDisableSound == 0)
@@ -3371,7 +3379,7 @@ int CSWSDialog::SendDialogEntry(CSWSObject* pObj, unsigned int a, unsigned int n
         textOnly:
             // No VO will play: hand the client the line as text-only, unless the user asked for no feedback
             // and the camera is not the dialog's own.
-            CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
+            pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
             if ((nVORejected | pOptions->m_bFeedback2) == 0)
             {
                 if (g_pAppManager->m_pClientExoApp->GetInGameGui()->IsCameraDialog() != 0)

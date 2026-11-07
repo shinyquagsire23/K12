@@ -38,7 +38,7 @@ Quaternion operator*(const Quaternion& q, float f);
 Quaternion operator+(const Quaternion& a, const Quaternion& b);
 float dot(const Quaternion& a, const Quaternion& b);
 #else
-inline Quaternion operator*(const Quaternion& a, const Quaternion& b) {
+__attribute__((always_inline)) inline Quaternion operator*(const Quaternion& a, const Quaternion& b) {
     Quaternion r;
     r.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
     r.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;

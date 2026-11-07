@@ -1,9 +1,10 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "nwerffile.h"
 
 CERFFile::CERFFile()
 {
-    __builtin_memset(&m_header, 0, sizeof(m_header));
+    memset(&m_header, 0, sizeof(m_header));
     m_pFile = 0;
     m_nEntryCount = 0;
     m_nNextEntry = 0;
@@ -53,7 +54,7 @@ enum : unsigned int {
 
 int CERFFile::Reset()
 {
-    __builtin_memset(&m_header, 0, sizeof(m_header));
+    memset(&m_header, 0, sizeof(m_header));
 
     // Each list owns its element records, so every node's payload is freed here.
     while (m_lstStrings.m_pInternal->m_pHead) {
@@ -208,10 +209,7 @@ int CERFFile::ReadData(const CExoString& path)
     if (file.FileOpened() != 0) {
         CExoLinkedListNode* pNode = m_lstRes.m_pInternal->m_pHead;
         while (pNode != 0) {
-            CERFRes* pRes = m_lstRes.GetAtPos(pNode);
-            pRes->m_pData = new unsigned char[pRes->m_nSize];
-            file.Seek(pRes->m_nOffset, 0);
-            file.Read(pRes->m_pData, pRes->m_nSize, 1);
+            m_lstRes.GetAtPos(pNode)->ReadData(file);
             m_lstRes.GetNext(pNode);
         }
     }
@@ -313,6 +311,7 @@ int CERFFile::WriteResource(char* sName, unsigned short nType, CRes* pRes, int n
     K2_UNUSED(pExtra);
     CERFKey key;
     CERFRes res;
+    unsigned char* pData;
 
     if (m_nNextEntry >= m_nEntryCount) {
         return 0;
@@ -338,7 +337,7 @@ int CERFFile::WriteResource(char* sName, unsigned short nType, CRes* pRes, int n
         m_pFile->Write(&nGffSize, 4, 1);
     } else {
         res.m_nSize = pRes->GetSize();
-        unsigned char* pData = new unsigned char[pRes->GetSize()];
+        pData = new unsigned char[pRes->GetSize()];
         memcpy(pData, pRes->GetData(), pRes->GetSize());  // idiom-exempt: a runtime byte count, not a sizeof
         res.m_pData = pData;
         res.Write(*m_pFile, m_nResTableOffset + m_nNextEntry * 8);
@@ -708,9 +707,9 @@ int CERFFile::ReadModuleDescription(const CExoString& path, unsigned short nType
         pFile->Read(&nLength, 4, 1);
         char* pText = new char[nLength];
         pFile->Read(pText, 1, nLength);
-        pStrings[i].m_pString = pText;
         pStrings[i].m_nLanguageId = nID;
         pStrings[i].m_nLength = nLength;
+        pStrings[i].m_pString = pText;
     }
 
     if (nCount == 1) {
@@ -745,7 +744,7 @@ int CERFFile::ReadModuleDescription(const CExoString& path, unsigned short nType
 
 CERFKey::CERFKey()
 {
-    __builtin_memset(m_sName, 0, sizeof(m_sName));
+    memset(m_sName, 0, sizeof(m_sName));
     m_nID = 0;
     m_nType = RESTYPE_INVALID;
     m_nReserved1 = 0;
@@ -760,7 +759,7 @@ int CERFKey::Reset()
 {
     m_nID = 0;
     m_nType = RESTYPE_INVALID;
-    __builtin_memset(m_sName, 0, sizeof(m_sName));
+    memset(m_sName, 0, sizeof(m_sName));
     return 1;
 }
 
@@ -797,7 +796,7 @@ int CERFKey::Write(CExoFile& file)
 
 void CERFKey::SetName(CExoString& name)
 {
-    __builtin_memset(m_sName, 0, sizeof(m_sName));
+    memset(m_sName, 0, sizeof(m_sName));
 #if KOTOR1  // K1 calls GetLength() out of line, so the copy keeps a runtime length
     char* pszName = name.CStr();
     int nLength = name.GetLength();

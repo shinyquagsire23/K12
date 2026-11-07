@@ -131,14 +131,14 @@ void CExoSound::SetRollOffFactor(float f)
         m_pInternal->SetRollOffFactor(f);
 }
 
-int CExoSound::GetNumber2DVoices()
+unsigned char CExoSound::GetNumber2DVoices()
 {
     if (m_pInternal)
         return m_pInternal->m_nNumber2DVoices;
     return 24;
 }
 
-int CExoSound::GetNumber3DVoices()
+unsigned char CExoSound::GetNumber3DVoices()
 {
     if (m_pInternal)
         return m_pInternal->m_nNumber3DVoices;
@@ -203,7 +203,7 @@ void CExoSound::StopAllOneShots()
         m_pInternal->StopAllOneShots();
 }
 
-int CExoSound::GetSpeakerType()
+unsigned char CExoSound::GetSpeakerType()
 {
     if (m_pInternal)
         return m_pInternal->GetSpeakerType();
@@ -721,7 +721,7 @@ void CExoSoundSource::GetDistance(float* pfMinDistance, float* pfMaxDistance)
 void CExoSoundSource::SetResRef(const CResRef& resRef, int bRequest)
 {
     if (m_pInternal) {
-        m_pInternal->Stop();
+        Stop();
         m_pInternal->m_nSoundLength = 0;
         m_pInternal->m_pSound->Render();
         m_pInternal->SetResRef(resRef, bRequest);

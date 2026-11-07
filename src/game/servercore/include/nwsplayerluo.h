@@ -105,10 +105,8 @@ public:
     struct {
         unsigned long long m_objectId;
         unsigned char      m_nReserved1;
-        char               _pad9[0xc-0x9];
         int                m_nReserved2;
         unsigned short     m_nReserved3;
-        char               _pad12[0x18-0x12];
     } m_aReserved1[36];
 
     CLastUpdateObject();
@@ -216,9 +214,9 @@ public:
 
     CExoArrayList<CSWVisibilityNode*> m_visibilityList;
 
-    CExoArrayList<unsigned int> m_knownSpells[2][1];
-    CExoArrayList<unsigned int> m_spellDeleteList[2][1];
-    CExoArrayList<unsigned int> m_spellAddList[2][1];
+    CExoArrayList<uint32_l_t> m_knownSpells[2][1];
+    CExoArrayList<uint32_l_t> m_spellDeleteList[2][1];
+    CExoArrayList<uint32_l_t> m_spellAddList[2][1];
 
     unsigned char m_knownSpellUsesLeft[2];
 

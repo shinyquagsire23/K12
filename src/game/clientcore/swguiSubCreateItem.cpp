@@ -125,54 +125,52 @@ void CSWGuiCreateItemSubMenu::LoadItems(int nBaseItem)
     CExoStringList* pList = g_pExoResMan->GetResOfType(RESTYPE_UTI, 0);
     if (pList != 0) {
         int nListCount = pList->GetCount();
-        if (nListCount >= 1) {
-            int i = 0;
-            int bNewGff = 0;
-            for (; i < nListCount; i++) {
-                CExoString* pName = pList->GetString(i);
+        int i = 0;
+        int bNewGff = 0;
+        for (; i < nListCount; i++) {
+            CExoString* pName = pList->GetString(i);
 
-                CResGFF* pGFF = static_cast<CResGFF*>(g_pExoResMan->GetResObject(CResRef(pName->CStr()), RESTYPE_UTI));
-                if (pGFF == 0) {
-                    pGFF = new CResGFF();
-                    pGFF->SetFileType("UTI ");
-                    g_pExoResMan->SetResObject(CResRef(pName->CStr()), RESTYPE_UTI, pGFF);
-                    bNewGff = 1;
-                }
+            CResGFF* pGFF = static_cast<CResGFF*>(g_pExoResMan->GetResObject(CResRef(pName->CStr()), RESTYPE_UTI));
+            if (pGFF == 0) {
+                pGFF = new CResGFF();
+                pGFF->SetFileType(const_cast<char*>("UTI "));
+                g_pExoResMan->SetResObject(CResRef(pName->CStr()), RESTYPE_UTI, pGFF);
+                bNewGff = 1;
+            }
 
-                if (pGFF->Demand() != 0) {
-                    CResRef templateRef;
-                    CResStruct sTop;
-                    pGFF->GetTopLevelStruct(&sTop);
+            if (pGFF->Demand() != 0) {
+                CResRef templateRef;
+                CResStruct sTop;
+                pGFF->GetTopLevelStruct(&sTop);
 
-                    int bOk;
-                    templateRef = pGFF->ReadFieldCResRef(&sTop, const_cast<char*>("TemplateResRef"), bOk,
-                                                         CResRef("BAD_BLUEPRINT"));
-                    int nBase = pGFF->ReadFieldINT(&sTop, const_cast<char*>("BaseItem"), bOk, 0);
+                int bOk;
+                templateRef = pGFF->ReadFieldCResRef(&sTop, const_cast<char*>("TemplateResRef"), bOk,
+                                                     CResRef("BAD_BLUEPRINT"));
+                int nBase = pGFF->ReadFieldINT(&sTop, const_cast<char*>("BaseItem"), bOk, 0);
 
-                    if (nBase == nBaseItem && bOk != 0) {
-                        CExoString sName;
-                        templateRef.CopyToString(sName);
+                if (nBase == nBaseItem && bOk != 0) {
+                    CExoString sName;
+                    templateRef.CopyToString(sName);
 #if !KOTOR1  // K1 lists the bare template resref (no localized name)
 
-                        CExoString sLocalized;
-                        CExoLocString sLocString = pGFF->ReadFieldCExoLocString(
-                            &sTop, const_cast<char*>("LocalizedName"), bOk, CExoLocString());
-                        sLocString.GetString(
-                            g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sLocalized, 0);
+                    CExoString sLocalized;
+                    CExoLocString sLocString = pGFF->ReadFieldCExoLocString(
+                        &sTop, const_cast<char*>("LocalizedName"), bOk, CExoLocString());
+                    sLocString.GetString(
+                        g_pAppManager->m_pClientExoApp->GetClientLanguage(), &sLocalized, 0);
 
-                        sName = sLocalized + CExoString(" (") + sName + CExoString(")");
+                    sName = sLocalized + CExoString(" (") + sName + CExoString(")");
 #endif
 
-                        m_listItems.Add(new CExoString(sName));
-                        m_listRefs.Add(new CExoString(*pName));
-                    }
-
-                    pGFF->Release();
-                    g_pExoResMan->ReleaseResObject(pGFF);
-                    if (bNewGff)
-                        delete pGFF;
-                    bNewGff = false;
+                    m_listItems.Add(new CExoString(sName));
+                    m_listRefs.Add(new CExoString(*pName));
                 }
+
+                pGFF->Release();
+                g_pExoResMan->ReleaseResObject(pGFF);
+                if (bNewGff)
+                    delete pGFF;
+                bNewGff = false;
             }
         }
         delete pList;

@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "SWCollisionMesh.h"
 
 #include "exostring.h"
@@ -1007,8 +1008,7 @@ void CSWCollisionMesh::GetVertex(int idx, Vector* out)
 {
     if (m_paVertices && idx < m_nVertexCount) {
 #if KOTOR1
-        Vector v = m_paVertices.Get(idx);
-        *out = LocalToWorld(v);
+        *out = LocalToWorld(m_paVertices.Get(idx));
 #else
         *out = LocalToWorld(m_paVertices[idx]);
 #endif
@@ -1019,8 +1019,7 @@ void CSWCollisionMesh::GetVertex(int idx, float* x, float* y, float* z)
 {
     if (m_paVertices && idx < m_nVertexCount) {
 #if KOTOR1
-        Vector local = m_paVertices.Get(idx);
-        Vector v = LocalToWorld(local);
+        Vector v = LocalToWorld(m_paVertices.Get(idx));
 #else
         Vector v = LocalToWorld(m_paVertices[idx]);
 #endif
@@ -1071,10 +1070,8 @@ Vector CSWCollisionMesh::WorldToLocal(const Vector& v)
         float nw = w;
 #else
     Vector p = { v.x - m_translation.x, v.y - m_translation.y, v.z - m_translation.z };
-    float w = m_rotation.w;
-    if (quaternionidentityoptimization == 0 || (w != -1.0f && w != 1.0f)) {
-        float x = m_rotation.x, y = m_rotation.y, z = m_rotation.z;
-        float nw = -w;
+    float nw = -m_rotation.w, x = m_rotation.x, y = m_rotation.y, z = m_rotation.z;
+    if (quaternionidentityoptimization == 0 || (nw != 1.0f && nw != -1.0f)) {
 #endif
         float xx = x * x, yy = y * y, zz = z * z;
         float xy = x * y, xz = x * z, yz = y * z;
@@ -1127,20 +1124,17 @@ Vector CSWCollisionMesh::NormalWorldToLocal(const Vector& v)
     float x = q.x, y = q.y, z = q.z;
     float nw = w;
 #else
-    float w = m_rotation.w;
-    if (quaternionidentityoptimization != 0 && (w == -1.0f || w == 1.0f))
+    float nw = -m_rotation.w, x = m_rotation.x, y = m_rotation.y, z = m_rotation.z;
+    if (quaternionidentityoptimization != 0 && (nw == 1.0f || nw == -1.0f))
         return v;
-
-    float x = m_rotation.x, y = m_rotation.y, z = m_rotation.z;
-    float nw = -w;
 #endif
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = nw * x, wy = nw * y, wz = nw * z;
     Vector r;
-    r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
-    r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
-    r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
+    r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + ((xz + wy) + (xz + wy)) * v.z;
+    r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + ((yz - wx) + (yz - wx)) * v.z;
+    r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + (1.0f - ((xx + yy) + (xx + yy))) * v.z;
     return r;
 }
 
@@ -1165,7 +1159,7 @@ void CSWCollisionMesh::TransformToWorld(const Vector& offset)
 // Computes each triangle's normal and plane distance, plus the plane-D table the edge tests use.
 void CSWCollisionMesh::ComputeMeshNormals()
 {
-    if (m_bBinaryBacked == 0 && m_nTriangleCount > 0) {
+    if (m_bBinaryBacked == 0) {
         unsigned int idx3 = 0;
         for (int tri = 0; tri < m_nTriangleCount; tri++) {
 #if KOTOR1

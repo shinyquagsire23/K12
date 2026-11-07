@@ -15,7 +15,6 @@ struct MovieWinPos {
     void*        hwndInsertAfter;  // 0
     RECT         rc;
     unsigned int flags;            // 0
-    int          m_nReserved1;         // never written; the allocation size covers it
 };
 
 // The private messages (WM_USER + 7 and + 8) that carry a MovieWinPos to the movie window.

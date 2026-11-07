@@ -22,18 +22,36 @@ public:
     int m_nDevice;
     int m_nKeyCode;
 
-    CExoInputEventDesc() {}
-
-    CExoInputEventDesc(unsigned int nId, int nEventClass, int nDevice)
+    // CreateNewEvent fills in the binding itself.
+    CExoInputEventDesc()
     {
         m_nState = 0;
         m_nClassCount = 0;
         m_nCooldown = 0;
-        m_nId = static_cast<int>(nId);
-        m_nEventClass = nEventClass;
-        m_nDevice = nDevice;
+    }
+
+    // A copy of another descriptor's binding and state, for ScaleEvent's promotion to an axis.
+    CExoInputEventDesc(CExoInputEventDesc* pDesc)
+    {
+        m_nState = pDesc->m_nState;
+        m_nClassCount = pDesc->m_nClassCount;
+        m_nCooldown = pDesc->m_nCooldown;
+        m_nId = pDesc->m_nId;
+        m_nEventClass = pDesc->m_nEventClass;
+        m_nDevice = pDesc->m_nDevice;
+        m_nKeyCode = pDesc->m_nKeyCode;
     }
 };
+
+inline int CExoInputEventDesc::IsDetailed()
+{
+    return 0;
+}
+
+inline int CExoInputEventDesc::Is2Button()
+{
+    return 0;
+}
 
 #endif // CEXOINPUTEVENTDESC_H
 
@@ -62,8 +80,9 @@ public:
         m_fScaleY = 1.0f;
     }
 
-    CExoInputEventDescDetailed(unsigned int nId, int nEventClass, int nDevice)
-        : CExoInputEventDesc(nId, nEventClass, nDevice)
+    // An unscaled axis with pDesc's binding and state.
+    CExoInputEventDescDetailed(CExoInputEventDesc* pDesc)
+        : CExoInputEventDesc(pDesc)
     {
         m_bScaled = 0;
         m_nAxisState = 0;
@@ -71,6 +90,11 @@ public:
         m_fScaleY = 1.0f;
     }
 };
+
+inline int CExoInputEventDescDetailed::IsDetailed()
+{
+    return 1;
+}
 
 #endif // CEXOINPUTEVENTDESCDETAILED_H
 
@@ -91,14 +115,16 @@ public:
     int m_nKeyCode2;
     int m_nAxisState2;
 
-    CExoInputeventDesc2ButtonAxis(unsigned int nId, int nEventClass, int nDevice,
-                                  unsigned int nKeyCode2)
-        : CExoInputEventDescDetailed(nId, nEventClass, nDevice)
+    CExoInputeventDesc2ButtonAxis()
     {
-        m_nKeyCode2 = static_cast<int>(nKeyCode2);
         m_nAxisState2 = 0;
     }
 };
+
+inline int CExoInputeventDesc2ButtonAxis::Is2Button()
+{
+    return 1;
+}
 
 #endif // CEXOINPUTEVENTDESC2BUTTONAXIS_H
 
@@ -121,19 +147,16 @@ extern HWND__*      g_hRenderWnd;
 #include "port/win32api.h"
 extern int g_cursorShouldBeVisible;
 
-// One entry in a keyboard or device buffer; the high bit of m_flags marks a captured key-down.
+// One entry in a keyboard or device buffer; INPUTKEY_DOWN in m_nValue marks a captured key-down.
 struct CExoInputKeyEvent {
     int           m_nKeyCode;
-    union {
-        int           m_nValue;   // the key's state: the axis value for a stick
-        unsigned char m_flags;    // ... whose low byte's bit 7 is "down" for a key
-    };
+    int           m_nValue;   // the key's state: the axis value for a stick, INPUTKEY_DOWN for a key
     int           m_nTimeStamp;
     int           m_nSequence;
 #if KOTOR1
     int           m_nAppData;
 #else
-    long long     m_nAppData;
+    intptr_t      m_nAppData;  // DirectInput's pointer-width uAppData
 #endif
 };
 
@@ -160,9 +183,9 @@ struct CExoInputClass {
     CExoInputClass();
     ~CExoInputClass();
     CExoString                     m_sName;
-    CExoLinkedList<uint32_t>       m_unboundList;
-    CExoLinkedList<uint32_t>       m_apDeviceLists[6];
-    CExoArrayList<unsigned int>   m_aEventBits;
+    CExoLinkedList<uint32_l_t>       m_unboundList;
+    CExoLinkedList<uint32_l_t>       m_apDeviceLists[6];
+    CExoArrayList<uint32_l_t>   m_aEventBits;
 };
 
 // A repeat-timer record in the repeat list, keyed by event index.

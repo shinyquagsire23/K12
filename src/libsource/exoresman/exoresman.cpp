@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include "port/sdlapi.h"
 #include "exoresmaninternal.h"
 #include <stddef.h>
@@ -86,19 +87,9 @@ int CRes::GetFixedResourceDataOffset() { return 0; }
 int CRes::OnResourceFreed() { return 1; }
 int CRes::OnResourceServiced() { return 1; }
 
-void CRes::Dump(int)
+void CRes::Dump(int a)
 {
-    const void* pSelf = this;
-    if (pSelf == 0) {
-        return;
-    }
-    if (m_nDemandCount != 0) {
-        m_dwFlags |= CRes::RESFLAG_FREE_PENDING;
-        return;
-    }
-    if ((m_dwFlags & CRes::RESFLAG_HAS_DATA) != 0 && m_pFileData != 0) {
-        g_pExoResMan->Free(this);
-    }
+    g_pExoResMan->Dump(this, a);
 }
 
 int CRes::Request()
@@ -134,7 +125,7 @@ void CRes::GetResRef(CResRef& resRef, unsigned short& resType)
 
 void CRes::SetID(unsigned int dwResID)
 {
-    Dump(0);
+    g_pExoResMan->Dump(this, 0);
     m_dwResID = dwResID;
 }
 
@@ -200,7 +191,7 @@ CExoResMan::~CExoResMan()
 #if KOTOR1
     if (m_hAsyncThread != 0) {
 #else
-    if (static_cast<long long>(m_hAsyncThread) != -1) {
+    if (static_cast<int64_t>(m_hAsyncThread) != -1) {
 #endif
         WaitForSingleObject(reinterpret_cast<void*>(m_hAsyncThread), INFINITE);
         CloseHandle(reinterpret_cast<void*>(m_hAsyncThread));
@@ -294,76 +285,48 @@ bool CExoResMan::Free(CRes* pRes)
     if (pRes == 0 || pRes->m_pFileData == 0)
         return false;
 
-    CExoLinkedListNode* pNode = m_freeResources.m_pInternal->m_pHead;
-    if (m_freeResources.m_pInternal->m_pHead == 0)
-        return false;
+    CExoLinkedListNode* pNode = m_freeResources.GetHeadPos();
+    CRes* pData = m_freeResources.GetHead();
+    while (pData != 0) {
+        if (pData == pRes) {
+            pRes->OnResourceFreed();
+            if (pRes->m_dwFlags & CRes::RESFLAG_LOADING)
+                return false;
 
-    void* pData = m_freeResources.m_pInternal->m_pHead->m_pData;
-    if (pData == 0)
-        return false;
-
-    while (pData != pRes) {
+            m_freeResources.Remove(pNode);
+            FreeResourceData(pRes);
+            pRes->m_dwFlags &= ~(CRes::RESFLAG_HAS_DATA | CRes::RESFLAG_FREE_PENDING);
+            return true;
+        }
         pData = m_freeResources.GetNext(pNode);
-        if (pData == 0)
-            return false;
     }
-
-    pRes->OnResourceFreed();
-    if (pRes->m_dwFlags & CRes::RESFLAG_LOADING)
-        return false;
-
-    m_freeResources.Remove(pNode);
-    FreeResourceData(pRes);
-    pRes->m_dwFlags &= ~(CRes::RESFLAG_HAS_DATA | CRes::RESFLAG_FREE_PENDING);
-    return true;
+    return false;
 }
 
 int CExoResMan::FreeChunk()
 {
-    unsigned int totalFreed;
-    CRes* pRes;
-
+    unsigned int totalFreed = 0;
     CExoLinkedListNode* pNode = m_freeResources.GetHeadPos();
-    pRes = m_freeResources.GetHead();
-    if (pRes == 0) {
-        totalFreed = 0;
-        goto ret;
+    CRes* pRes = m_freeResources.GetHead();
+    while (pRes != 0 && (totalFreed >> 20) == 0 && m_freeResources.GetHeadPos() != 0) {
+        if (pRes->m_dwFlags & CRes::RESFLAG_LOADING) {
+            pRes = static_cast<CRes*>(m_freeResources.GetNext(pNode));
+        } else if (pRes->m_nDemandCount != 0) {
+            pRes->m_dwFlags &= ~CRes::RESFLAG_FREE_PENDING;
+            CExoLinkedListNode* pOldNode = pNode;
+            pRes = static_cast<CRes*>(m_freeResources.GetNext(pNode));
+            m_freeResources.Remove(pOldNode);
+        } else {
+            pRes->OnResourceFreed();
+            totalFreed -= m_nAvailableResourceMemory;
+            FreeResourceData(pRes);
+            totalFreed += m_nAvailableResourceMemory;
+            pRes->m_dwFlags &= ~(CRes::RESFLAG_HAS_DATA | CRes::RESFLAG_FREE_PENDING);
+            CExoLinkedListNode* pOldNode = pNode;
+            pRes = static_cast<CRes*>(m_freeResources.GetNext(pNode));
+            m_freeResources.Remove(pOldNode);
+        }
     }
-
-    totalFreed = 0;
-
-check:
-    if (pRes->m_dwFlags & CRes::RESFLAG_LOADING) {
-        pRes = static_cast<CRes*>(m_freeResources.GetNext(pNode));
-        goto afterAdvance;
-    }
-
-    if (pRes->m_nDemandCount != 0) {
-        pRes->m_dwFlags &= ~CRes::RESFLAG_FREE_PENDING;
-        CExoLinkedListNode* pOldNode = pNode;
-        pRes = static_cast<CRes*>(m_freeResources.GetNext(pNode));
-        m_freeResources.Remove(pOldNode);
-    } else {
-        pRes->OnResourceFreed();
-        totalFreed -= m_nAvailableResourceMemory;
-        FreeResourceData(pRes);
-        totalFreed += m_nAvailableResourceMemory;
-        pRes->m_dwFlags &= ~(CRes::RESFLAG_HAS_DATA | CRes::RESFLAG_FREE_PENDING);
-        CExoLinkedListNode* pOldNode = pNode;
-        pRes = static_cast<CRes*>(m_freeResources.GetNext(pNode));
-        m_freeResources.Remove(pOldNode);
-    }
-
-afterAdvance:
-    if (pRes == 0)
-        goto ret;
-    if ((totalFreed >> 20) != 0)
-        goto ret;
-    if (m_freeResources.m_pInternal->m_pHead == 0)
-        goto ret;
-    goto check;
-
-ret:
     return totalFreed != 0;
 }
 
@@ -487,20 +450,18 @@ int CExoResMan::RemoveKeyTable(const CExoString& path, unsigned int sourceType)
     }
 
     CExoLinkedListNode* pNode = pList->GetHeadPos();
-    if (pNode == 0) {
-        return false;
-    }
-    CExoKeyTable* pTable = pList->GetAtPos(pNode);
-    while (pTable == 0 || !(pTable->m_sFileName == path)) {
+    CExoKeyTable* pTable = pNode ? pList->GetAtPos(pNode) : 0;
+    while (pNode != 0) {
+        if (pTable != 0 && pTable->m_sFileName == path) {
+            pTable->DestroyTable();
+            pList->Remove(pNode);
+            pTable->~CExoKeyTable();
+            operator delete(pTable);
+            return true;
+        }
         pTable = pList->GetNext(pNode);
-        if (pNode == 0) return false;
     }
-
-    pTable->DestroyTable();
-    pList->Remove(pNode);
-    pTable->~CExoKeyTable();
-    operator delete(pTable);
-    return true;
+    return false;
 }
 
 // Mirrors RemoveKeyTable's by-name scan, but a miss builds a new CExoKeyTable instead of destroying
@@ -522,57 +483,48 @@ int CExoResMan::AddKeyTable(const CExoString& path, unsigned int sourceType, uns
 
     unsigned int aUsedProbeSlots[2] = {0, 0};
     CExoLinkedListNode* pNode = pList->GetHeadPos();
-    CExoKeyTable* pTable;
-    if (pNode == 0) goto notFound;
-
-    pTable = pList->GetAtPos(pNode);
-    while (1) {
+    CExoKeyTable* pTable = pNode ? pList->GetAtPos(pNode) : 0;
+    while (pNode != 0) {
         if (pTable != 0) {
-            if (pTable->m_sFileName == path) goto found;
-            {
-                unsigned int nWord = (pTable->m_nRoutingTag >> 5) & (ROUTINGTAG_SLOT_MASK >> 5);
-                K2_ASSUME(nWord < 2);   // every tag is a slot below 64 | a category in bits 29-31 (see notFound)
-                aUsedProbeSlots[nWord] = (1u << (pTable->m_nRoutingTag & 31)) | aUsedProbeSlots[nWord];
+            if (pTable->m_sFileName == path) {
+                CExoString sMsg;
+                if (sourceType == 4) {
+                    sMsg.Format(const_cast<char*>("Table being rebuilt, this RIM is being leaked: %s"), path.CStr());
+                    // sic: formatted but never logged or used
+                }
+                pTable->RebuildTable();
+                return true;
             }
+            unsigned int nWord = (pTable->m_nRoutingTag >> 5) & (ROUTINGTAG_SLOT_MASK >> 5);
+            K2_ASSUME(nWord < 2);   // every tag is a slot below 64 | a category in bits 29-31 (see below)
+            aUsedProbeSlots[nWord] = (1u << (pTable->m_nRoutingTag & 31)) | aUsedProbeSlots[nWord];
         }
         pTable = pList->GetNext(pNode);
-        if (pNode == 0) goto notFound;
     }
 
-found:
-    {
-        CExoString sMsg;
-        if (sourceType == 4) {
-            sMsg.Format(const_cast<char*>("Table being rebuilt, this RIM is being leaked: %s"), path.CStr());
-            // sic: formatted but never logged or used
+    unsigned int nProbeSlot = 1;
+    while (true) {
+        if (nProbeSlot == 64) {
+            nProbeSlot = 0;
+            break;
         }
-        pTable->RebuildTable();
+        if ((aUsedProbeSlots[nProbeSlot >> 5] & static_cast<uint32_t>(static_cast<uint64_t>(1) << (nProbeSlot & 31))) == 0)
+            break;
+        nProbeSlot++;
     }
-    return true;
 
-notFound:
-    {
-        unsigned int nProbeSlot = 1;
-        while ((aUsedProbeSlots[nProbeSlot >> 5] & static_cast<uint32_t>(static_cast<uint64_t>(1) << (nProbeSlot & 31))) != 0) {
-            if (++nProbeSlot == 64) {
-                nProbeSlot = 0;
-                break;
-            }
-        }
-
-        unsigned int nRoutingTag = nProbeSlot | nCategoryTag;
-        CExoKeyTable* pNew = new CExoKeyTable();
-        CExoLinkedListNode* pAdded = pList->AddHead(pNew);
-        int bOk = pNew->BuildNewTable(sourceType, path, nRoutingTag, 1);
-        pNew->m_nInternalSubtype = arg;
-        if (bOk != 0) {
-            return bOk;
-        }
-        pList->Remove(pAdded);
-        pNew->~CExoKeyTable();
-        operator delete(pNew);
-        return false;
+    unsigned int nRoutingTag = nProbeSlot | nCategoryTag;
+    CExoKeyTable* pNew = new CExoKeyTable();
+    CExoLinkedListNode* pAdded = pList->AddHead(pNew);
+    int bOk = pNew->BuildNewTable(sourceType, path, nRoutingTag, 1);
+    pNew->m_nInternalSubtype = arg;
+    if (bOk != 0) {
+        return bOk;
     }
+    pList->Remove(pAdded);
+    pNew->~CExoKeyTable();
+    operator delete(pNew);
+    return false;
 }
 
 bool CExoResMan::UpdateKeyTable(const CExoString& path, unsigned int sourceType)
@@ -587,17 +539,15 @@ bool CExoResMan::UpdateKeyTable(const CExoString& path, unsigned int sourceType)
     }
 
     CExoLinkedListNode* pNode = pList->GetHeadPos();
-    if (pNode == 0) {
-        return false;
-    }
-    CExoKeyTable* pTable = pList->GetAtPos(pNode);
-    while (pTable == 0 || !path.CompareNoCase(pTable->m_sFileName)) {
+    CExoKeyTable* pTable = pNode ? pList->GetAtPos(pNode) : 0;
+    while (pNode != 0) {
+        if (pTable != 0 && path.CompareNoCase(pTable->m_sFileName)) {
+            pTable->RebuildTable();
+            return true;
+        }
         pTable = pList->GetNext(pNode);
-        if (pNode == 0) return false;
     }
-
-    pTable->RebuildTable();
-    return true;
+    return false;
 }
 
 bool CExoResMan::UpdateFixedKeyTableFile(const CExoString& path)
@@ -729,7 +679,7 @@ int CExoResMan::GetFreeDiskSpace(const CExoString& path, uint64_ll_t* pFreeBytes
     *pFreeBytes = K1_REPORTED_FREE_DISK_SPACE;
     return true;
 #else
-    unsigned long long freeBytesAvailable, totalBytes, totalFreeBytes;
+    uint64_ll_t freeBytesAvailable, totalBytes, totalFreeBytes;
     GetDiskFreeSpaceExA(resolved.CStr(), &freeBytesAvailable, &totalBytes, &totalFreeBytes);
     *pFreeBytes = freeBytesAvailable;
     return true;
@@ -752,7 +702,7 @@ bool CExoResMan::FileCopy(const CExoString& srcPath, const CExoString& dstPath,
         return false;
 
     // Kept at the top so both locals share one cleanup scope.
-    long long nSize;
+    int64_t nSize;
     char* pBuffer;
     nSize = srcFile.GetSize();
 #if KOTOR1
@@ -822,7 +772,7 @@ CExoStringList* CExoResMan::GetResOfTypeFromTable(CExoLinkedList<CExoKeyTable>& 
 
     CExoKeyTable* pTable = list.GetAtPos(pNode);
     CExoStringList* pResult = 0;
-    do {
+    while (pNode != 0) {
         CExoStringList* pAccum = pResult;
         if (pTable != 0 && pTable->m_bLookupDisabled == 0) {
             CExoStringList* pNew = pTable->GetKeysOfType(resType);
@@ -838,7 +788,7 @@ CExoStringList* CExoResMan::GetResOfTypeFromTable(CExoLinkedList<CExoKeyTable>& 
             }
         }
         pTable = list.GetNext(pNode);
-    } while (pNode != 0);
+    }
 
     return pResult;
 }
@@ -951,15 +901,20 @@ int CExoResMan::WipeDirectory(const CExoString& path, int a, int b, int c, int d
         g_pExoBase->GetDirectoryList(&fileList, path, RESTYPE_INVALID, 0, 0);
 #endif
         for (int i = 0; i < static_cast<int>(fileList.m_count); i++) {
+            unsigned short resType;
+#if !KOTOR1
+            char c0;
+#endif
+            int len;
             name = fileList.m_pArray[i];
-            unsigned short resType = GetResTypeFromFile(name);
+            resType = GetResTypeFromFile(name);
 #if KOTOR1  // K1 removes only files whose resource type is known; no dot-file case
             if (resType != RESTYPE_INVALID) {
-                int len = name.Find('.', 0);
+                len = name.Find('.', 0);
 #else
-            char c0 = name[0];
+            c0 = name[0];
             if (resType != RESTYPE_INVALID || c0 == '.') {
-                int len = name.Find('.', 0);
+                len = name.Find('.', 0);
                 if (len == 0) {
                     len = name.GetLength();
                 }
@@ -1184,21 +1139,17 @@ int CExoResMan::CancelRequest(CRes* pRes)
         m_pAsyncReadFile = 0;
     }
 
-    CExoLinkedListNode* pNode = m_demandQueue.m_pInternal->m_pHead;
-    CRes* pQueued = 0;
-    if (m_demandQueue.m_pInternal->m_pHead != 0) {
-        pQueued = static_cast<CRes*>(m_demandQueue.m_pInternal->m_pHead->m_pData);
-    }
-    if (pNode != 0) {
-        while (pQueued != pRes) {
-            pQueued = m_demandQueue.GetNext(pNode);
-            if (pNode == 0) goto done;
+    CExoLinkedListNode* pNode = m_demandQueue.GetHeadPos();
+    CRes* pQueued = m_demandQueue.GetHead();
+    while (pNode != 0) {
+        if (pQueued == pRes) {
+            if (pRes->m_nRequestCount == 0) {
+                m_demandQueue.Remove(pNode);
+            }
+            break;
         }
-        if (pRes->m_nRequestCount == 0) {
-            m_demandQueue.Remove(pNode);
-        }
+        pQueued = m_demandQueue.GetNext(pNode);
     }
-done:
     return pRes->m_nRequestCount;
 }
 
@@ -1261,10 +1212,7 @@ int CExoResMan::ServiceFromDirectory(CRes* pRes, int bAsync)
         return 0;
     }
     CExoLinkedListNode* pNode = m_resourceDirectories.GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = m_resourceDirectories.GetAtPos(pNode);
+    CExoKeyTable* pTable = pNode ? m_resourceDirectories.GetAtPos(pNode) : 0;
     while (pNode != 0) {
         if (pTable != 0 && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK))
             goto found;
@@ -1340,10 +1288,7 @@ int CExoResMan::ServiceFromResFile(CRes* pRes, int bAsync)
     unsigned int nFileIdx = (pRes->m_dwResID >> RESID_FILE_SHIFT) & RESID_FILE_MASK;
 
     CExoLinkedListNode* pNode = m_fixedKeyTables.GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = m_fixedKeyTables.GetAtPos(pNode);
+    CExoKeyTable* pTable = pNode ? m_fixedKeyTables.GetAtPos(pNode) : 0;
     while (pNode) {
         if (pTable && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) {
             if (bAsync != 0) {
@@ -1390,10 +1335,7 @@ int CExoResMan::ServiceFromEncapsulated(CRes* pRes, int bAsync)
         return 0;
     }
     CExoLinkedListNode* pNode = m_encapsulatedFiles.GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = m_encapsulatedFiles.GetAtPos(pNode);
+    CExoKeyTable* pTable = pNode ? m_encapsulatedFiles.GetAtPos(pNode) : 0;
     while (pNode) {
         if (pTable && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) {
             if (bAsync != 0) {
@@ -1438,10 +1380,7 @@ int CExoResMan::ServiceFromImage(CRes* pRes, int nOffset)
         return 0;
     }
     CExoLinkedListNode* pNode = m_resourceImageFiles.GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = m_resourceImageFiles.GetAtPos(pNode);
+    CExoKeyTable* pTable = pNode ? m_resourceImageFiles.GetAtPos(pNode) : 0;
     while (pNode) {
         if (pTable && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) {
             unsigned int nResId = pRes->m_dwResID & RESID_INDEX_MASK;
@@ -1518,10 +1457,7 @@ int CExoResMan::ServiceFromResFileRaw(CRes* pRes, int nSize, char* pBuf)
     unsigned int nFileIdx = (pRes->m_dwResID >> RESID_FILE_SHIFT) & RESID_FILE_MASK;
 
     CExoLinkedListNode* pNode = m_fixedKeyTables.GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = m_fixedKeyTables.GetAtPos(pNode);
+    CExoKeyTable* pTable = pNode ? m_fixedKeyTables.GetAtPos(pNode) : 0;
     while (pNode) {
         if (pTable && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) {
             static_cast<CExoPackedFile*>(pTable->m_paDependentFiles[nFileIdx])->AddRefCount();
@@ -1551,10 +1487,7 @@ int CExoResMan::ServiceFromEncapsulatedRaw(CRes* pRes, int nSize, char* pBuf)
         return 0;
     }
     CExoLinkedListNode* pNode = m_encapsulatedFiles.GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = m_encapsulatedFiles.GetAtPos(pNode);
+    CExoKeyTable* pTable = pNode ? m_encapsulatedFiles.GetAtPos(pNode) : 0;
     while (pNode) {
         if (pTable && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) {
             static_cast<CExoPackedFile*>(pTable->m_paDependentFiles[0])->AddRefCount();
@@ -1581,10 +1514,7 @@ int CExoResMan::ServiceFromDirectoryRaw(CRes* pRes, int nSize, char* pBuf)
         return 0;
     }
     CExoLinkedListNode* pNode = m_resourceDirectories.GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = m_resourceDirectories.GetAtPos(pNode);
+    CExoKeyTable* pTable = pNode ? m_resourceDirectories.GetAtPos(pNode) : 0;
     while (pNode != 0) {
         if (pTable != 0 && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK))
             goto found;
@@ -1619,10 +1549,7 @@ int CExoResMan::ServiceFromImageRaw(CRes* pRes, int nSize, char* pBuf)
         return 0;
     }
     CExoLinkedListNode* pNode = m_resourceImageFiles.GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = m_resourceImageFiles.GetAtPos(pNode);
+    CExoKeyTable* pTable = pNode ? m_resourceImageFiles.GetAtPos(pNode) : 0;
     while (pNode) {
         if (pTable && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) {
             static_cast<CExoPackedFile*>(pTable->m_paDependentFiles[0])->GetResourceSize(pRes->m_dwResID & RESID_INDEX_MASK);
@@ -2295,11 +2222,7 @@ CExoKeyTable* CExoResMan::GetTable(CRes* pRes)
     K2_ASSUME(pList != 0);   // m_dwResID >> 30 is 0..3, and every value has a case
 
     CExoLinkedListNode* pNode = pList->GetHeadPos();
-    if (pNode == 0) {
-        return 0;
-    }
-    CExoKeyTable* pTable = pList->GetAtPos(pNode);
-#if KOTOR1
+    CExoKeyTable* pTable = pNode ? pList->GetAtPos(pNode) : 0;
     while (pNode != 0) {
         if (pTable != 0 && (pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) == ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) {
             return pTable;
@@ -2307,17 +2230,6 @@ CExoKeyTable* CExoResMan::GetTable(CRes* pRes)
         pTable = pList->GetNext(pNode);
     }
     return 0;
-#else
-    if (pTable != 0) goto check;
-next:
-    pTable = pList->GetNext(pNode);
-    if (pNode == 0) return 0;
-    if (pTable == 0) goto next;
-check:
-    if ((pTable->m_nRoutingTag & ROUTINGTAG_SLOT_MASK) != ((pRes->m_dwResID >> RESID_SLOT_SHIFT) & RESID_SLOT_MASK)) goto next;
-
-    return pTable;
-#endif
 }
 
 CRes* CExoResMan::GetResObject(const CResRef& resRef, unsigned short resType)
@@ -2384,12 +2296,12 @@ int CExoResMan::Exists(const CResRef& resRef, unsigned short resType, unsigned i
 }
 void CExoResMan::DumpTable(CExoLinkedList<CExoKeyTable>& list)
 {
-    CExoLinkedListNode* pNode = list.m_pInternal->m_pHead;
+    CExoLinkedListNode* pNode = list.GetHeadPos();
     if (pNode == 0)
         return;
 
     CExoKeyTable* pTable = list.GetAtPos(pNode);
-    while (1) {
+    while (pNode != 0) {
         if (pTable != 0) {
             for (unsigned int i = 0; i < pTable->m_nTableSize; i++) {
                 CKeyTableEntry* pEntry = &pTable->m_paEntries[i];
@@ -2398,8 +2310,6 @@ void CExoResMan::DumpTable(CExoLinkedList<CExoKeyTable>& list)
             }
         }
         pTable = list.GetNext(pNode);
-        if (pNode == 0)
-            return;
     }
 }
 
@@ -2518,7 +2428,9 @@ CResRef::CResRef(const CExoString& s)
 // to 16, copying that many bytes and lower-casing them. A null source takes the all-zero spelling
 // and returns early, so the copy only ever sees a live pointer. The ternary in nLength's
 // initialiser is what puts one zero-store on each arm of the length test.
+#if KOTOR1 && !defined(__arm__)  // K1 arm64 only: K2 keeps it out of line unaided, K1 armv7 inlines it
 __attribute__((noinline))
+#endif
 CResRef CResRef::operator=(const CExoString& s)
 {
     unsigned int nLength = s.GetLength();
@@ -2594,7 +2506,7 @@ int CResRef::operator==(const CResRef& other) const
 
 int CResRef::operator!=(const CResRef& other) const
 {
-    return memcmp(other.m_sResRef, m_sResRef, 16) != 0;
+    return !(*this == other);
 }
 
 // Case-insensitive comparison against a C string, bounded by the 16-byte key: both sides are folded
@@ -2653,7 +2565,7 @@ int CResRef::operator!=(char* s) const
 // Compares the string's bytes, including its NUL, against the key, clamped to the buffer; a null
 // or empty string therefore compares just the one NUL byte. The length is open-coded here rather
 // than taken from the string class.
-bool CResRef::operator==(const CExoString& s) const
+int CResRef::operator==(const CExoString& s) const
 {
 #if KOTOR1  // K1: an IsEmpty() call whose result is unused
     s.IsEmpty();
@@ -2668,14 +2580,7 @@ bool CResRef::operator==(const CExoString& s) const
 // int rather than bool: the engine's only call site normalizes the result.
 int CResRef::operator!=(const CExoString& s) const
 {
-#if KOTOR1  // K1: an IsEmpty() call whose result is unused
-    s.IsEmpty();
-#endif
-    char* pStr = s.CStr();
-    size_t nLength = static_cast<unsigned int>(s.GetLength() + 1);
-    if (nLength > 15)
-        nLength = 16;
-    return memcmp(pStr, m_sResRef, nLength) != 0;
+    return !(*this == s);
 }
 
 // Unlike the trivial memberwise copy, this lower-cases every byte on the way in, which keeps the

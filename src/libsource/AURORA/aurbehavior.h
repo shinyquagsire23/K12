@@ -228,9 +228,11 @@ public:
     SafePointer<CAurObject> m_pTarget;
     int   m_nReserved1;
     Vector m_vPos;
-    int   m_fYaw;
+    float m_fYaw;
     float m_fDist;
     float m_fSpeed;
+    // The image stores 100.0f here as an integer constant: it does not merge with the float stores on
+    // either side.
     int   m_fMaxDist;
     float m_fPitch;
     float m_fHeight;

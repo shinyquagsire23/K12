@@ -38,7 +38,7 @@ public:
     void         LogMemTrackOutputFree(int a, int b, int nFileIndex, int nCommentIndex);
 
     void*         m_pReserved1;
-    unsigned char m_aReserved2[0x400];
+    unsigned int  m_aReserved2[0x100];
     unsigned char m_aTypeStack[1024];
     unsigned int  m_nTypeStackDepth;
     const char*   m_pLastFile;

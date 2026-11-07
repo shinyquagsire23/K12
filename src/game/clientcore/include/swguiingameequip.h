@@ -81,9 +81,8 @@ public:
         unsigned int m_nSlotFlag;   // the INVENTORY_SLOT_* bit this row fills
         const char*  m_pName;       // "INV_WEAP_L": the ctor's BTN_/LBL_ stem
         const char*  m_pModelName;  // the body-model part name the slot renders
-        int          m_nStrRef;     // TLK strref of the slot's display name
-        char         _pad1c[4];
-        int          m_nDroidStrRef;  // TLK strref (== m_nStrRef for the four weapon rows)
+        int64_t      m_nStrRef;     // TLK strref of the slot's display name
+        int64_t      m_nDroidStrRef;  // TLK strref (== m_nStrRef for the four weapon rows)
     };
 #if KOTOR1  // 9 rows: no second weapon set
     static const SlotInfo SLOT_INFO[9];
@@ -173,7 +172,7 @@ public:
     CSWCCreature* m_pCreature;
     CSWGuiButton  m_abtnSlot[9];
     CSWGuiLabel   m_apSlotLabels[9];
-    CExoArrayList<void*> m_lstItemEntries;
+    CExoArrayList<CSWGuiInGameItemEntry*> m_lstItemEntries;
     CSWGuiLabel   m_lblAtkL;           // LBL_ATKL
     CSWGuiLabel   m_lblToHitL;           // LBL_TOHITL
     CSWGuiLabel   m_lblAtkR;           // LBL_ATKR
@@ -224,7 +223,7 @@ public:
     CSWGuiButton  m_abtnSlot[11];
     CSWGuiLabel   m_apSlotLabels[11];
     int           m_abSlotLocked[11];       // per-slot flags, all zeroed by the ctor
-    CExoArrayList<void*> m_lstItemEntries;
+    CExoArrayList<CSWGuiInGameItemEntry*> m_lstItemEntries;
     CSWGuiLabel   m_lblAtkL;           // LBL_ATKL      (SetText("") after the wall)
     CSWGuiLabel   m_lblToHitL;           // LBL_TOHITL    (SetText(""))
     CSWGuiLabel   m_lblAtkR;           // LBL_ATKR      (SetText(""))

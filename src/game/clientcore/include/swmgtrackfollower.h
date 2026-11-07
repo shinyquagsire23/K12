@@ -228,7 +228,6 @@ public:
     virtual int TargetType() { return 2; }
 
     unsigned char m_bTrigger;
-    char _pad209[0x210 - 0x209];
 
     CSWMGTargettingGunBank* CreateGunBank(int nBankId, const CResRef& resBulletModel,
                                            const CResRef& resGunModel, const CSWMGBullet& bullet,
@@ -284,7 +283,8 @@ public:
     Quaternion m_qStartHookOrientation;
 #else
     float  m_fStartHookOrientationW;
-    unsigned long long m_nStartHookOrientationXY;
+    int    m_nStartHookOrientationX;
+    int    m_nStartHookOrientationY;
     int    m_nStartHookOrientationZ;
 #endif
 
@@ -309,7 +309,7 @@ public:
     // Vehicle-versus-vehicle collision pass over the given object ids: the list is swept backwards
     // and compacted in place, and bApply gates every side effect. Returns the hit count. Nothing in
     // the shipped engine calls it.
-    int DoFollowerHitCheck(CExoArrayList<unsigned int>& list, int bApply);
+    int DoFollowerHitCheck(CExoArrayList<uint32_l_t>& list, int bApply);
     // Replays the bank animation for the signed bank index nAmount, clamped to +-10. With bAdd
     // zero the cached bank is set and an unchanged index returns early; non-zero accumulates.
     void AdjustPosition(int nAmount, int bAdd);

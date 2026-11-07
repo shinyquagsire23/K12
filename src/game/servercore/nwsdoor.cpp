@@ -555,7 +555,7 @@ void CSWSDoor::DoDamage(int amount) {
 }
 
 int CSWSDoor::GetIsLinked() {
-    return static_cast<unsigned>(m_linkedToFlags - 1) < 2;
+    return static_cast<unsigned char>(m_linkedToFlags - 1) < 2;
 }
 
 int CSWSDoor::GetDead() {
@@ -1317,10 +1317,8 @@ void CSWSDoor::AddToArea(CSWSArea* pArea, float x, float y, float z, int n) {
     if (GetMeshBoundingBox(m_position, m_position, m_budgeVecA, m_budgeVecB) != 0) {
         // CSWArea, not CSWSArea, because both bounding-box members live on the shared area base.
         static_cast<CSWArea*>(pArea)->AddStaticBoundingBox(m_objectId, m_budgeVecA, m_budgeVecB);
-        m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->m_translation = m_position;
-        m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->m_rotation = m_orientation;
-        m_meshVariants[CSWDoorSurfaceMesh::DOOR_STATE_CLOSED]->GetMeshOutline(
-            m_meshOutline[0], m_meshOutline[1], m_meshOutline[2], m_meshOutline[3]);
+        GetMeshOutline(m_position, m_position, m_meshOutline[0], m_meshOutline[1], m_meshOutline[2],
+                       m_meshOutline[3]);
         m_nMeshOutlinePoints = 4;
     }
 }

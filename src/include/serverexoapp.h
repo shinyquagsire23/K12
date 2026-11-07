@@ -162,7 +162,7 @@ public:
     void ExecuteLoadModule(const CExoString& a);
     uint64_ll_t GetSystemTimeAsDWORD64();
     void DebugValidatePath_Point(CSWSArea* a, const Vector& b);
-    unsigned short GetServerMode();
+    short GetServerMode();
     CSWSMessage* GetSWSMessage();
     CServerAIMaster* GetServerAIMaster();
     CWorldTimer* GetWorldTimer();

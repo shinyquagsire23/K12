@@ -79,21 +79,24 @@ CExoString CSWNameGen::GetRandomName(unsigned char nLength)
             break;
         if (bFirst) {
             for (;;) {
-                float f1 = static_cast<float>(rand_wincompatible()) / kRandMax;
+                float f1;
+                float f2;
+                float f3;
+                f1 = static_cast<float>(rand_wincompatible()) / kRandMax;
                 for (i1 = 0; i1 < nCodes; i1++)
                     if (f1 < m_pRes->m_pUnigram[0][i1])
                         break;
                 if (i1 == nCodes)
                     continue;
 
-                float f2 = static_cast<float>(rand_wincompatible()) / kRandMax;
+                f2 = static_cast<float>(rand_wincompatible()) / kRandMax;
                 for (i2 = 0; i2 < nCodes; i2++)
                     if (f2 < m_pRes->m_pBigram[0][i1][i2])
                         break;
                 if (i2 == nCodes)
                     continue;
 
-                float f3 = static_cast<float>(rand_wincompatible()) / kRandMax;
+                f3 = static_cast<float>(rand_wincompatible()) / kRandMax;
                 for (i3 = 0; i3 < nCodes; i3++)
                     if (f3 < m_pRes->m_pTrigram[0][i1][i2][i3])
                         break;
@@ -111,11 +114,15 @@ CExoString CSWNameGen::GetRandomName(unsigned char nLength)
             i1 = i2;
             i2 = i3;
         }
+        bool bHasLength;
+        bool bAtTarget;
+        int nMod;
+        float f;
         int nDraw = rand_wincompatible();
-        bool bHasLength = (nLength & 0xff) != 0;
-        bool bAtTarget = (nLen == nLength - 1);
-        int nMod = rand_wincompatible() % 12;
-        float f = static_cast<float>(nDraw) / kRandMax;
+        bHasLength = (nLength & 0xff) != 0;
+        bAtTarget = (nLen == nLength - 1);
+        nMod = rand_wincompatible() % 12;
+        f = static_cast<float>(nDraw) / kRandMax;
         if (nMod <= nLen || (bHasLength && bAtTarget)) {
             for (i3 = 0; i3 < nCodes; i3++)
                 if (f < m_pRes->m_pTrigram[2][i1][i2][i3])
@@ -155,9 +162,10 @@ CExoString CSWNameGen::GetRandomName(unsigned char nLength)
     sName = szName;
     {
         CExoString sEntry;
+        int bOK;
         C2DA* p2da = new C2DA(CResRef("NameFilter"), 0);
         if (p2da->Load2DArray()) {
-            int bOK = 1;
+            bOK = 1;
             for (int i = 0; i < p2da->m_nRows; i++) {
                 int bFound = p2da->GetCExoStringEntry(i, CExoString("Name"), &sEntry);
                 if (bFound && sEntry.CompareNoCase(sName) != 0) {

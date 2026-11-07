@@ -630,8 +630,8 @@ int CSWVirtualMachineCommands::ExecuteCommandIntToHexString(int nCommand, int nA
 int CSWVirtualMachineCommands::ExecuteCommandIntToString(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sNumber;
     int nValue;
+    CExoString sNumber;
     if (!g_pVirtualMachine->StackPopInteger(&nValue))
         return VM_ERROR_POP_FAILED;
     sNumber = CExoString(nValue);
@@ -1560,9 +1560,9 @@ int CSWVirtualMachineCommands::ExecuteCommandGetSubScreenID(int nCommand, int nA
 int CSWVirtualMachineCommands::ExecuteCommandGetTag(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sTag;
     CGameObject* pObject;
     unsigned long long oidObject;
+    CExoString sTag;
     if (!g_pVirtualMachine->StackPopObject(&oidObject))
         return VM_ERROR_POP_FAILED;
     if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(oidObject, &pObject)
@@ -2082,9 +2082,9 @@ int CSWVirtualMachineCommands::ExecuteCommandSetAreaFogColor(int nCommand, int n
 int CSWVirtualMachineCommands::ExecuteCommandSetAreaTransitionBMP(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sBMP;
     int nTransition;
     CSWSPlayer* pPlayer;
+    CExoString sBMP;
     if (!g_pVirtualMachine->StackPopInteger(&nTransition))
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopString(&sBMP))
@@ -2180,10 +2180,10 @@ int CSWVirtualMachineCommands::ExecuteCommandDisplayFeedBackText(int nCommand, i
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
     unsigned long long oidObject;
+    int nStrRef;
     if (!g_pVirtualMachine->StackPopObject(&oidObject))
         return VM_ERROR_POP_FAILED;
     oidObject = g_pAppManager->m_pClientExoApp->ServerToClientObjectId(oidObject);
-    int nStrRef;
     if (!g_pVirtualMachine->StackPopInteger(&nStrRef))
         return VM_ERROR_POP_FAILED;
     CGameObject* pGameObject = g_pAppManager->m_pClientExoApp->GetGameObject(oidObject);
@@ -2471,9 +2471,9 @@ int CSWVirtualMachineCommands::ExecuteCommandGetIsLinkImmune(int nCommand, int n
 int CSWVirtualMachineCommands::ExecuteCommandSendMessageToPC(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand);
-    CExoString sMessage;
     unsigned long long oidPC;
     CSWCCMessageData* pMsg;
+    CExoString sMessage;
     if (nArgCount != 2)
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopObject(&oidPC))
@@ -2555,7 +2555,7 @@ int CSWVirtualMachineCommands::ExecuteCommandShowPartySelection(int nCommand, in
     CExoString sText;
     int nForceNpc1 = -1;
     int nForceNpc2 = -1;
-    int nD = 0;
+    int nAllowCancel = 0;
     if (!g_pVirtualMachine->StackPopString(&sText))
         return VM_ERROR_POP_FAILED;
     if (nArgCount >= 3) {
@@ -2565,11 +2565,11 @@ int CSWVirtualMachineCommands::ExecuteCommandShowPartySelection(int nCommand, in
             return VM_ERROR_POP_FAILED;
     }
     if (nArgCount >= 4) {
-        if (!g_pVirtualMachine->StackPopInteger(&nD))
+        if (!g_pVirtualMachine->StackPopInteger(&nAllowCancel))
             return VM_ERROR_POP_FAILED;
     }
     g_pAppManager->m_pClientExoApp->GetInGameGui()->ShowPartySelection(sText, 1, nForceNpc1,
-                                                                      nForceNpc2, nD);
+                                                                      nForceNpc2, nAllowCancel);
     return 0;
 #endif
 }
@@ -2577,10 +2577,10 @@ int CSWVirtualMachineCommands::ExecuteCommandShowPartySelection(int nCommand, in
 int CSWVirtualMachineCommands::ExecuteCommandGetIsLiveContentAvailable(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sAlias;
     int nIndex;
     int nValue;
     const CExoString* pRet;
+    CExoString sAlias;
     if (!g_pVirtualMachine->StackPopInteger(&nIndex))
         return VM_ERROR_POP_FAILED;
 #if KOTOR1  // K1 treats content 1 as always available
@@ -2744,69 +2744,80 @@ int CSWVirtualMachineCommands::ExecuteCommandGetLockInfo(int nCommand, int nArgC
         return VM_ERROR_POP_FAILED;
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oidLockable);
 #if KOTOR1
-    int bPushed;
     switch (nCommand) {
     case CMD_GetLockKeyRequired:
         if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
             CSWSDoor* pDoor = pObject->AsSWSDoor();
-            bPushed = g_pVirtualMachine->StackPushInteger(pDoor->m_bKeyRequired);
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->m_bKeyRequired))
+                return VM_ERROR_PUSH_FAILED;
         } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
             CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
-            bPushed = g_pVirtualMachine->StackPushInteger(pPlaceable->m_bKeyRequired);
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->m_bKeyRequired))
+                return VM_ERROR_PUSH_FAILED;
         } else {
-            bPushed = g_pVirtualMachine->StackPushInteger(0);
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
         }
-        break;
+        return 0;
     case CMD_GetLockKeyTag:
         if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
             CSWSDoor* pDoor = pObject->AsSWSDoor();
-            bPushed = g_pVirtualMachine->StackPushString(pDoor->m_keyName);
+            if (!g_pVirtualMachine->StackPushString(pDoor->m_keyName))
+                return VM_ERROR_PUSH_FAILED;
         } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
             CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
-            bPushed = g_pVirtualMachine->StackPushString(pPlaceable->m_keyName);
+            if (!g_pVirtualMachine->StackPushString(pPlaceable->m_keyName))
+                return VM_ERROR_PUSH_FAILED;
         } else {
-            bPushed = g_pVirtualMachine->StackPushString(CExoString(""));
+            if (!g_pVirtualMachine->StackPushString(CExoString("")))
+                return VM_ERROR_PUSH_FAILED;
         }
-        break;
+        return 0;
     case CMD_GetLockLockable:
         if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
             CSWSDoor* pDoor = pObject->AsSWSDoor();
-            bPushed = g_pVirtualMachine->StackPushInteger(pDoor->m_bLockable);
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->m_bLockable))
+                return VM_ERROR_PUSH_FAILED;
         } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
             CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
-            bPushed = g_pVirtualMachine->StackPushInteger(pPlaceable->m_bLockable);
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->m_bLockable))
+                return VM_ERROR_PUSH_FAILED;
         } else {
-            bPushed = g_pVirtualMachine->StackPushInteger(0);
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
         }
-        break;
+        return 0;
     case CMD_GetLockUnlockDC:
         if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
             CSWSDoor* pDoor = pObject->AsSWSDoor();
-            bPushed = g_pVirtualMachine->StackPushInteger(pDoor->GetOpenLockDC());
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->GetOpenLockDC()))
+                return VM_ERROR_PUSH_FAILED;
         } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
             CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
-            bPushed = g_pVirtualMachine->StackPushInteger(pPlaceable->GetOpenLockDC());
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->GetOpenLockDC()))
+                return VM_ERROR_PUSH_FAILED;
         } else {
-            bPushed = g_pVirtualMachine->StackPushInteger(0);
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
         }
-        break;
+        return 0;
     case CMD_GetLockLockDC:
         if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
             CSWSDoor* pDoor = pObject->AsSWSDoor();
-            bPushed = g_pVirtualMachine->StackPushInteger(pDoor->m_closeLockDC);
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->m_closeLockDC))
+                return VM_ERROR_PUSH_FAILED;
         } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
             CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
-            bPushed = g_pVirtualMachine->StackPushInteger(pPlaceable->m_closeLockDC);
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->m_closeLockDC))
+                return VM_ERROR_PUSH_FAILED;
         } else {
-            bPushed = g_pVirtualMachine->StackPushInteger(0);
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
         }
-        break;
+        return 0;
     default:
         return 0;
     }
-    if (!bPushed)
-        return VM_ERROR_PUSH_FAILED;
-    return 0;
 #else
     int nRet = 0;
     switch (nCommand) {
@@ -3017,7 +3028,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetRandomDestination(int nCommand, 
     vDir = normalize(vDir);
     pArea->m_pActivePathfindInfo = pCreature->m_pPathfindInfo;
     if (pArea->TestDirectLine(vPos, vCand, static_cast<float>(pCreature->m_pPathfindInfo->m_fPersonalSpace),
-                pCreature->m_pPathfindInfo->m_fHeightAlias, 0, 0) == 1) {
+                pCreature->m_pPathfindInfo->m_fHeight, 0, 0) == 1) {
         if (!g_pVirtualMachine->StackPushVector(vCand))
             return VM_ERROR_PUSH_FAILED;
         return 0;
@@ -3057,7 +3068,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetRandomDestination(int nCommand, 
             break;
         }
         if (pArea->TestDirectLine(vPos, vCand, static_cast<float>(pCreature->m_pPathfindInfo->m_fPersonalSpace),
-                    pCreature->m_pPathfindInfo->m_fHeightAlias, 0, 0) == 1)
+                    pCreature->m_pPathfindInfo->m_fHeight, 0, 0) == 1)
             break;
     }
     if (!g_pVirtualMachine->StackPushVector(vCand))
@@ -3941,6 +3952,255 @@ int CSWVirtualMachineCommands::ExecuteCommandGetMineInfo(int nCommand, int nArgC
     if (!g_pVirtualMachine->StackPopObject(&oidTrap))
         return VM_ERROR_POP_FAILED;
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oidTrap);
+#if KOTOR1  // K1 pushes and tests each answer in its arm; K2 collects it in nValue and pushes once
+    unsigned long long oidDetectedBy;
+    switch (nCommand) {
+    case CMD_GetTrapDisarmable:
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushInteger(pTrigger->m_bTrapDisarmable))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->m_bTrapDisarmable))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->m_bTrapDisarmable))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapDetectable:
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushInteger(pTrigger->m_bTrapDetectable))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->m_bTrapDetectable))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->m_bTrapDetectable))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapDetectedBy:  // Contains() returns the match count, which is the answer
+        if (!g_pVirtualMachine->StackPopObject(&oidDetectedBy))
+            return VM_ERROR_POP_FAILED;
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushInteger(pTrigger->m_objectsInTrigger.Contains(oidDetectedBy)))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->m_objectsOnPlaceable.Contains(oidDetectedBy)))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->m_objectsAtDoor.Contains(oidDetectedBy)))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapFlagged:  // the trigger keeps the flag as an int, the other two as a byte
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushInteger(pTrigger->m_bMineFlagged))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushInteger(static_cast<unsigned char>(pPlaceable->m_bMineFlagged)))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushInteger(static_cast<unsigned char>(pDoor->m_bMineFlagged)))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapBaseType:  // the only command whose "not a trap" answer is -1
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushInteger(pTrigger->m_trapType))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->m_trapType))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->m_trapType))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(-1))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapOneShot:
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushInteger(pTrigger->m_bTrapOneShot))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->m_bTrapOneShot))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->m_bTrapOneShot))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapCreator:  // only the trigger records one
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            if (!g_pVirtualMachine->StackPushObject(pObject->AsSWSTrigger()->m_creatorId))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushObject(OBJECT_INVALID))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapKeyTag:
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushString(pTrigger->m_keyName))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushString(pPlaceable->m_keyName))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushString(pDoor->m_keyName))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushString(CExoString("")))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapDisarmDC:  // the trigger's accessor returns int, the other two a byte
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushInteger(pTrigger->GetDisarmDC()))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->GetDisarmDC()))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->GetDisarmDC()))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_GetTrapDetectDC:
+        if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            CSWSTrigger* pTrigger = pObject->AsSWSTrigger();
+            if (!g_pVirtualMachine->StackPushInteger(pTrigger->GetDetectDC()))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CSWSPlaceable* pPlaceable = pObject->AsSWSPlaceable();
+            if (!g_pVirtualMachine->StackPushInteger(pPlaceable->GetDetectDC()))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            CSWSDoor* pDoor = pObject->AsSWSDoor();
+            if (!g_pVirtualMachine->StackPushInteger(pDoor->GetDetectDC()))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+
+    case CMD_SetTrapDetectedBy: {  // returns whether the detector was recorded
+        unsigned long long oidDetector;
+        if (!g_pVirtualMachine->StackPopObject(&oidDetector))
+            return VM_ERROR_POP_FAILED;
+        CSWSCreature* pDetector =
+                g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidDetector);
+        if (pObject != 0 && pDetector != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+            pObject->AsSWSTrigger()->m_objectsInTrigger.AddUnique(oidDetector);
+            if (!g_pVirtualMachine->StackPushInteger(1))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pDetector != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+            CExoArrayList<unsigned long long>* pList =
+                &pObject->AsSWSPlaceable()->m_objectsOnPlaceable;
+            pList->AddUnique(oidDetector);
+            if (!g_pVirtualMachine->StackPushInteger(1))
+                return VM_ERROR_PUSH_FAILED;
+        } else if (pObject != 0 && pDetector != 0 && pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+            pObject->AsSWSDoor()->m_objectsAtDoor.AddUnique(oidDetector);
+            if (!g_pVirtualMachine->StackPushInteger(1))
+                return VM_ERROR_PUSH_FAILED;
+        } else {
+            if (!g_pVirtualMachine->StackPushInteger(0))
+                return VM_ERROR_PUSH_FAILED;
+        }
+        return 0;
+    }
+
+    default:
+        // Spring the trap by signalling the OnDisarm/OnTrapTriggered event. Only the trigger also
+        // queues its own destruction.
+        if (nCommand == CMD_SetTrapDisabled && pObject != 0) {
+            if (pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
+                if (pObject->AsSWSTrigger()->m_bTrap == 1) {
+                    CScriptEvent* pEvent = new CScriptEvent;
+                    pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_DISARM;
+                    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                            0, 0, m_oidSelf, pObject->m_objectId,
+                            CServerAIMaster::EVENT_SIGNAL_EVENT, pEvent);
+                    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                            0, 1, m_oidSelf, pObject->m_objectId,
+                            CServerAIMaster::EVENT_DESTROY_OBJECT, 0);
+                }
+            } else if (pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
+                if (pObject->AsSWSPlaceable()->m_bTrapFlag == 1) {
+                    CScriptEvent* pEvent = new CScriptEvent;
+                    pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_DISARM;
+                    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                            0, 0, m_oidSelf, pObject->m_objectId,
+                            CServerAIMaster::EVENT_SIGNAL_EVENT, pEvent);
+                }
+            } else if (pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
+                if (pObject->AsSWSDoor()->m_bTrapFlag == 1) {
+                    CScriptEvent* pEvent = new CScriptEvent;
+                    pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_DISARM;
+                    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                            0, 0, m_oidSelf, pObject->m_objectId,
+                            CServerAIMaster::EVENT_SIGNAL_EVENT, pEvent);
+                }
+            }
+        }
+        return 0;
+    }
+#else
     int nValue = 0;
     unsigned long long oidDetectedBy;
     switch (nCommand) {
@@ -4127,6 +4387,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetMineInfo(int nCommand, int nArgC
     if (!g_pVirtualMachine->StackPushInteger(nValue))
         return VM_ERROR_PUSH_FAILED;
     return 0;
+#endif
 }
 
 // The nearest-creature and nearest-object queries behind five NWScript entry points. All five seed
@@ -4269,17 +4530,19 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestObject(int nCommand, int 
                 switch (nCommand) {
                 case CMD_GetNearestObject:
                 case CMD_GetNearestObjectToLocation: {
-                    bMatch = (pCandidate->m_objectType == GAME_OBJECT_TYPE_CREATURE && (nObjectFilter & OBJECT_TYPE_CREATURE) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_ITEM && (nObjectFilter & OBJECT_TYPE_ITEM) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_TRIGGER && (nObjectFilter & OBJECT_TYPE_TRIGGER) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_DOOR && (nObjectFilter & OBJECT_TYPE_DOOR) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_AREA_OF_EFFECT && (nObjectFilter & OBJECT_TYPE_AREA_OF_EFFECT) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_WAYPOINT && (nObjectFilter & OBJECT_TYPE_WAYPOINT) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_PLACEABLE && (nObjectFilter & OBJECT_TYPE_PLACEABLE) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_STORE && (nObjectFilter & OBJECT_TYPE_STORE) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_ENCOUNTER && (nObjectFilter & OBJECT_TYPE_ENCOUNTER) != 0) ||
-                             (pCandidate->m_objectType == GAME_OBJECT_TYPE_SOUND && (nObjectFilter & OBJECT_TYPE_SOUND) != 0) ||
-                             (nObjectFilter & OBJECT_TYPE_ALL) == OBJECT_TYPE_ALL;
+                    unsigned char nType = pCandidate->m_objectType;
+                    int nFilter = nObjectFilter;
+                    bMatch = (nType == GAME_OBJECT_TYPE_CREATURE && (nFilter & OBJECT_TYPE_CREATURE) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_ITEM && (nFilter & OBJECT_TYPE_ITEM) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_TRIGGER && (nFilter & OBJECT_TYPE_TRIGGER) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_DOOR && (nFilter & OBJECT_TYPE_DOOR) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_AREA_OF_EFFECT && (nFilter & OBJECT_TYPE_AREA_OF_EFFECT) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_WAYPOINT && (nFilter & OBJECT_TYPE_WAYPOINT) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_PLACEABLE && (nFilter & OBJECT_TYPE_PLACEABLE) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_STORE && (nFilter & OBJECT_TYPE_STORE) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_ENCOUNTER && (nFilter & OBJECT_TYPE_ENCOUNTER) != 0) ||
+                             (nType == GAME_OBJECT_TYPE_SOUND && (nFilter & OBJECT_TYPE_SOUND) != 0) ||
+                             (nFilter & OBJECT_TYPE_ALL) == OBJECT_TYPE_ALL;
                     break;
                 }
                 case CMD_GetNearestCreature:
@@ -4499,38 +4762,36 @@ int CSWVirtualMachineCommands::ExecuteCommandGetNearestMine(int nCommand, int nA
         CSWSObject* pSelf = pObject->AsSWSObject();
         if (pSelf->GetArea() != 0) {
             CSWSArea* pArea = static_cast<CSWSArea*>(pObject->AsSWSObject()->GetArea());
-            if (pArea->m_mineObjects.m_count > 0) {
-                fBest = 100000000.0f;
-                for (int64_t i = 0; i < pArea->m_mineObjects.m_count; i++) {
-                    CGameObject* pMine =
-                        g_pAppManager->m_pServerExoApp->GetGameObject(pArea->m_mineObjects.m_pArray[i]);
-                    if (pMine == 0)
-                        continue;
-                    if (bTrapDetected == 1) {
-                        // Contains() returns the match count; zero means this object has not
-                        // spotted the trap.
-                        if (pMine->AsSWSTrigger() != 0) {
-                            if (pMine->AsSWSTrigger()->m_objectsInTrigger.Contains(oidTarget) == 0)
-                                continue;
-                        } else if (pMine->AsSWSDoor() != 0) {
-                            if (pMine->AsSWSDoor()->m_objectsAtDoor.Contains(oidTarget) == 0)
-                                continue;
-                        } else if (pMine->AsSWSPlaceable() != 0) {
-                            if (pMine->AsSWSPlaceable()->m_objectsOnPlaceable.Contains(oidTarget) == 0)
-                                continue;
-                        } else {
+            fBest = 100000000.0f;
+            for (int64_t i = 0; i < pArea->m_mineObjects.m_count; i++) {
+                CGameObject* pMine =
+                    g_pAppManager->m_pServerExoApp->GetGameObject(pArea->m_mineObjects.m_pArray[i]);
+                if (pMine == 0)
+                    continue;
+                if (bTrapDetected == 1) {
+                    // Contains() returns the match count; zero means this object has not
+                    // spotted the trap.
+                    if (pMine->AsSWSTrigger() != 0) {
+                        if (pMine->AsSWSTrigger()->m_objectsInTrigger.Contains(oidTarget) == 0)
                             continue;
-                        }
+                    } else if (pMine->AsSWSDoor() != 0) {
+                        if (pMine->AsSWSDoor()->m_objectsAtDoor.Contains(oidTarget) == 0)
+                            continue;
+                    } else if (pMine->AsSWSPlaceable() != 0) {
+                        if (pMine->AsSWSPlaceable()->m_objectsOnPlaceable.Contains(oidTarget) == 0)
+                            continue;
+                    } else {
+                        continue;
                     }
-                    CSWSObject* pMineObject = pMine->AsSWSObject();
-                    float fdx = pSelf->m_position.x - pMineObject->m_position.x;
-                    float fdy = pSelf->m_position.y - pMineObject->m_position.y;
-                    float fdz = pSelf->m_position.z - pMineObject->m_position.z;
-                    float fDistSq = fdx * fdx + fdy * fdy + fdz * fdz;
-                    if (fDistSq < fBest) {
-                        oidResult = pArea->m_mineObjects.m_pArray[i];
-                        fBest = fDistSq;
-                    }
+                }
+                CSWSObject* pMineObject = pMine->AsSWSObject();
+                float fdx = pSelf->m_position.x - pMineObject->m_position.x;
+                float fdy = pSelf->m_position.y - pMineObject->m_position.y;
+                float fdz = pSelf->m_position.z - pMineObject->m_position.z;
+                float fDistSq = fdx * fdx + fdy * fdy + fdz * fdz;
+                if (fDistSq < fBest) {
+                    oidResult = pArea->m_mineObjects.m_pArray[i];
+                    fBest = fDistSq;
                 }
             }
         }
@@ -4850,9 +5111,9 @@ int CSWVirtualMachineCommands::ExecuteCommandGetObjectType(int nCommand, int nAr
 int CSWVirtualMachineCommands::ExecuteCommandGetObjectByTag(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sTag;
     int nOrdinal;
     unsigned long long oidResult;
+    CExoString sTag;
 
     if (!g_pVirtualMachine->StackPopString(&sTag))
         return VM_ERROR_POP_FAILED;
@@ -7971,10 +8232,10 @@ int CSWVirtualMachineCommands::ExecuteCommandEffectSavingThrowIncrease(int nComm
 // operands, each landing in a SetString slot with three zero floats in the matching SetFloat slots.
 int CSWVirtualMachineCommands::ExecuteCommandEffectAreaEffect(int nCommand, int nArgCount) {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
+    int nType;
     CExoString s0;
     CExoString s1;
     CExoString s2;
-    int nType;
     if (!g_pVirtualMachine->StackPopInteger(&nType))
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopString(&s0))
@@ -9950,9 +10211,8 @@ int CSWVirtualMachineCommands::ExecuteCommandVectorNormalize(int nCommand, int n
     Vector vVector;
     if (!g_pVirtualMachine->StackPopVector(&vVector))
         return VM_ERROR_POP_FAILED;
-    Vector vZero;
     Vector vResult;
-    if (vVector != vZero)
+    if (vVector != Vector())
         vResult = normalize(vVector);
     if (!g_pVirtualMachine->StackPushVector(vResult))
         return VM_ERROR_PUSH_FAILED;
@@ -10350,8 +10610,8 @@ int CSWVirtualMachineCommands::ExecuteCommandCancelCombat(int nCommand, int nArg
 int CSWVirtualMachineCommands::ExecuteCommandQueueMovie(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    int nFlags;
     CExoString sMovie;
+    int nFlags;
     if (!g_pVirtualMachine->StackPopString(&sMovie))
         return VM_ERROR_POP_FAILED;
     if (!g_pVirtualMachine->StackPopInteger(&nFlags))
@@ -10821,10 +11081,10 @@ int CSWVirtualMachineCommands::ExecuteCommandGetJournalEntry(int nCommand, int n
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
     CExoLinkedList<CSWSClient>* ppPlayers;
-    CExoLinkedListNode* pNodePos;
     CSWSCreature* pCreature;
-    int nState;
     CExoString sPlotId;
+    CExoLinkedListNode* pNodePos;
+    int nState;
     if (!g_pVirtualMachine->StackPopString(&sPlotId))
         return VM_ERROR_POP_FAILED;
     ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
@@ -10854,9 +11114,9 @@ int CSWVirtualMachineCommands::ExecuteCommandRemoveJournalQuestEntry(int nComman
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
     CExoLinkedList<CSWSClient>* ppPlayers;
-    CExoLinkedListNode* pNodePos;
-    CSWSCreature* pCreature;
     CExoString sPlotId;
+    CSWSCreature* pCreature;
+    CExoLinkedListNode* pNodePos;
     if (!g_pVirtualMachine->StackPopString(&sPlotId))
         return VM_ERROR_POP_FAILED;
     ppPlayers = g_pAppManager->m_pServerExoApp->GetPlayerList();
@@ -11754,10 +12014,10 @@ int CSWVirtualMachineCommands::ExecuteCommandCloseDoor(int nCommand, int nArgCou
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
     unsigned long long oidDoor;
-    CGameObject* pObject;
     if (!g_pVirtualMachine->StackPopObject(&oidDoor))
         return VM_ERROR_POP_FAILED;
     if (m_nScriptRunArg == 1) {
+        CGameObject* pObject;
         if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(m_oidSelf, &pObject)
                 == CGameObjectArray::SUCCESS
             && static_cast<CSWSObject*>(pObject)->GetArea() != 0)
@@ -12116,9 +12376,10 @@ int CSWVirtualMachineCommands::ExecuteCommandChangeByFaction(int nCommand, int n
     if (pFactionManager == 0 || pArea == 0)
         return 0;
     CSWSFaction* pFaction = pFactionManager->GetFaction(nNewFaction);
-    if (pArea->GetFirstObjectInArea(oidEach) != 1)
+    int nFound = pArea->GetFirstObjectInArea(oidEach);
+    if (nFound != 1)
         return 0;
-    do {
+    while (nFound == 1) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oidEach);
         if (pCreature != 0) {
@@ -12139,7 +12400,8 @@ int CSWVirtualMachineCommands::ExecuteCommandChangeByFaction(int nCommand, int n
                 }
             }
         }
-    } while (pArea->GetNextObjectInArea(oidEach) == 1);
+        nFound = pArea->GetNextObjectInArea(oidEach);
+    }
     return 0;
 }
 
@@ -13352,8 +13614,8 @@ int CSWVirtualMachineCommands::ExecuteCommandIsFormActive(int nCommand, int nArg
 int CSWVirtualMachineCommands::ExecuteCommandAddAvailableNPCByTemplate(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sTemplate;
     int nNPC;
+    CExoString sTemplate;
     int nResult;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
     if (!g_pVirtualMachine->StackPopInteger(&nNPC))
@@ -13407,8 +13669,8 @@ int CSWVirtualMachineCommands::ExecuteCommandSetCommandable(int nCommand, int nA
 int CSWVirtualMachineCommands::ExecuteCommandStartCreditSequence(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand);
-    CExoString sText;
     int bTransparentBackground;
+    CExoString sText;
 #if !KOTOR1
     K2_UNUSED(nArgCount);
     CClientExoApp* pClient;
@@ -13533,8 +13795,8 @@ int CSWVirtualMachineCommands::ExecuteCommandSetFadeOut(int nCommand, int nArgCo
 int CSWVirtualMachineCommands::ExecuteCommandAddAvailablePUPByTemplate(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sTemplate;
     int nPUP;
+    CExoString sTemplate;
     int nResult;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
     if (!g_pVirtualMachine->StackPopInteger(&nPUP))
@@ -14001,8 +14263,8 @@ int CSWVirtualMachineCommands::ExecuteCommandSetFakeCombatState(int nCommand, in
 int CSWVirtualMachineCommands::ExecuteCommandSetListenString(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
-    CExoString sPattern;
     unsigned long long oidObject;
+    CExoString sPattern;
     CGameObject* pObject;
     int nIndex;
     if (!g_pVirtualMachine->StackPopObject(&oidObject))
@@ -14565,24 +14827,11 @@ int CSWVirtualMachineCommands::ExecuteCommandActionStartConversation(int nComman
     bIgnoreStartRange = 1;
     CExoString sObjectToIgnore;
     if (nArgCount >= 6) {
-        if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
-            return VM_ERROR_PUSH_FAILED;
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->AddToDialogNonDependantList(sObjectToIgnore);
-        if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
-            return VM_ERROR_PUSH_FAILED;
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->AddToDialogNonDependantList(sObjectToIgnore);
-        if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
-            return VM_ERROR_PUSH_FAILED;
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->AddToDialogNonDependantList(sObjectToIgnore);
-        if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
-            return VM_ERROR_PUSH_FAILED;
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->AddToDialogNonDependantList(sObjectToIgnore);
-        if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
-            return VM_ERROR_PUSH_FAILED;
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->AddToDialogNonDependantList(sObjectToIgnore);
-        if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
-            return VM_ERROR_PUSH_FAILED;
-        g_pAppManager->m_pClientExoApp->GetInGameGui()->AddToDialogNonDependantList(sObjectToIgnore);
+        for (int i = 0; i < 6; i++) {
+            if (!g_pVirtualMachine->StackPopString(&sObjectToIgnore))
+                return VM_ERROR_PUSH_FAILED;
+            g_pAppManager->m_pClientExoApp->GetInGameGui()->AddToDialogNonDependantList(sObjectToIgnore);
+        }
     }
     int bUseLeader = 0;
     if (nArgCount > 11 && !g_pVirtualMachine->StackPopInteger(&bUseLeader))
@@ -15848,6 +16097,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetAlignment(int nCommand, int nArg
 int CSWVirtualMachineCommands::ExecuteCommandGetDamageDealtByType(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand); K2_UNUSED(nArgCount);
+    int nDamageFlag;
 #if KOTOR1 && !defined(K2_FIX_ENGINE_BUGS)  // K1 leaves this uninitialised when the self object is not a CSWSObject
     CSWSObject* pObject;
 #else
@@ -15856,7 +16106,6 @@ int CSWVirtualMachineCommands::ExecuteCommandGetDamageDealtByType(int nCommand, 
     CGameObject* pGameObject = g_pAppManager->m_pServerExoApp->GetGameObject(m_oidSelf);
     if (pGameObject != 0 && pGameObject->AsSWSObject() != 0)
         pObject = pGameObject->AsSWSObject();
-    int nDamageFlag;
     if (!g_pVirtualMachine->StackPopInteger(&nDamageFlag))
         return VM_ERROR_POP_FAILED;
     int nDamage = 0;
@@ -17915,8 +18164,8 @@ int CSWVirtualMachineCommands::ExecuteCommandPrintFloat(int nCommand, int nArgCo
 int CSWVirtualMachineCommands::ExecuteCommandPrintString(int nCommand, int nArgCount)
 {
     K2_UNUSED(nCommand);
-    CExoString sString;
     int nDestination;
+    CExoString sString;
     if (!g_pVirtualMachine->StackPopString(&sString))
         return VM_ERROR_POP_FAILED;
     if (nArgCount >= 2) {

@@ -1,4 +1,5 @@
 #include "k2stdint.h"
+#include <string.h>
 #include <stddef.h>
 #include "nwcspellvisual.h"
 #include "AURORA/aurmodel.h"

@@ -122,7 +122,10 @@ CSWCModule::~CSWCModule() {
         delete m_pCamera;
         m_pCamera = 0;
     }
-    UnloadAnimatedCamera();
+    if (m_pAnimatedCameraModel != 0) {
+        delete m_pAnimatedCameraModel;
+        m_pAnimatedCameraModel = 0;
+    }
 }
 
 CSWCModule* CSWCModule::AsSWCModule() {
@@ -284,8 +287,11 @@ void CSWCModule::AdjustCameraClipRange(float fNearAdjust, float fFarAdjust) {
 void CSWCModule::ScrollCamera(Vector vDelta) {
     float fLenSq = vDelta.x * vDelta.x + vDelta.y * vDelta.y + vDelta.z * vDelta.z;
     if (!(fLenSq <= 1e-05f)) {
-        Vector vCur = m_pCamera->GetPosition();
-        Vector vNew = { vDelta.x + vCur.x, vDelta.y + vCur.y, vDelta.z + vCur.z };
+        Vector vNew;
+        {
+            Vector vCur = m_pCamera->GetPosition();
+            vNew = Vector(vDelta.x + vCur.x, vDelta.y + vCur.y, vDelta.z + vCur.z);
+        }
         m_pCamera->SetPosition(vNew);
         m_bCameraMoved = 1;
     }
@@ -617,10 +623,7 @@ void CSWCModule::SetCameraFollow(unsigned long long oid, int bFindClearView) {
             m_pCamera->SetBehavior(pOnAStick);
         }
 
-        Vector vPos = {0.0f, 0.0f, 0.0f};
-        if (pOnAStick->m_pCameraObject != 0) {
-            vPos = pOnAStick->m_pCameraObject->GetPosition();
-        }
+        Vector vPos = pOnAStick->GetPosition();
 
         pOnAStick->m_nFollowingBody = pCreature->GetFollowingBody();
         pOnAStick->m_fCameraOffset =
@@ -630,9 +633,7 @@ void CSWCModule::SetCameraFollow(unsigned long long oid, int bFindClearView) {
         m_oidCameraFollow = oid;
 
         if (bFindClearView == 0) {
-            if (pOnAStick->m_pCameraObject != 0) {
-                pOnAStick->m_pCameraObject->SetPosition(vPos);
-            }
+            pOnAStick->SetPosition(vPos);
             pOnAStick->m_vLastCameraPosition.x = vPos.x;
             pOnAStick->m_vLastCameraPosition.y = vPos.y;
             pOnAStick->m_vLastCameraPosition.z = vPos.z;
@@ -746,11 +747,8 @@ int CSWCModule::LoadModule() {
 #else
     g_pAppManager->m_pClientExoApp->ShowLoadScreen(1, 1, 0, 1);
 #endif
-    {
-        int nStep1 = g_pAppManager->m_pClientExoApp->GetLoadStep(1);
-        int nStep0 = g_pAppManager->m_pClientExoApp->GetLoadStep(0);
-        g_pAppManager->m_pClientExoApp->SetLoadBarProgress(nStep1 + nStep0, 1);
-    }
+    g_pAppManager->m_pClientExoApp->SetLoadBarProgress(
+        g_pAppManager->m_pClientExoApp->GetLoadStep(1) + g_pAppManager->m_pClientExoApp->GetLoadStep(0), 1);
     UpdateScreen(0.033333335f, 0, 0);
     return 1;
 
@@ -837,48 +835,65 @@ float CSWCModule::UpdateNormalCameraCollision(float fDeltaTime, float fDistDelta
 
     static Vector vLastPos;
     static float fOldDist;
-    if (vLastPos.x == 0.0f && vLastPos.y == 0.0f && vLastPos.z == 0.0f)
-        vLastPos = pPlayer->m_position;
-
-    float fYaw = m_pCamera->GetYaw() + m_fYawVel * fDeltaTime;
-    float fPitch = m_pCamera->GetPitch() + m_fPitchVelCache * fDeltaTime;
-    float fCamDist = m_pCamera->GetDist();
-    float fDecay = exp2f(fDistDelta * fDeltaTime * -0.5f);
-    float fPitchClamped = max(min(fPitch, g_fMaxPitch), g_fMinPitch);
-    float fDist = fCamDist * fDecay;
-    fDist = min(fDist, g_fMaxDist);
-    float fBlend = 1.0f - exp2f(fDeltaTime * -750.0f);
-    float fInvBlend = 1.0f - fBlend;
-
-    Quaternion q = YawPitchRoll(fYaw, fPitchClamped, 0.0f);
-    Quaternion qCam = m_pCamera->GetOrientation();
-    q = normalize(slerp(qCam, q, fBlend));
-
-    Vector vDir2 = q.zdir();
-
-    Vector vPos = pPlayer->m_position;
-    Vector vNew = (vPos + Vector(0.0f, 0.0f, 1.0f)) * fBlend + vLastPos * fInvBlend;
-    vLastPos = vNew;
-
-    float fEndDist = max(fDist, g_fMinDist);
-    Vector vCamEnd = vNew + vDir2 * fEndDist;
+    Quaternion q;
+    Quaternion qBlend;
+    float fYaw;
+    float fPitch;
+    float fCamDist;
+    float fDecay;
+    float fPitchClamped;
+    float fDist;
+    float fBlend;
+    float fInvBlend;
+    Vector vDir2;
+    Vector vPos;
+    Vector vNew;
+    float fEndDist;
+    Vector vCamEnd;
     Vector vHit1 = Vector{0.0f, 0.0f, 0.0f};
     Vector vHit2 = Vector{0.0f, 0.0f, 0.0f};
     float fHit = 0.0f;          // the collision-limit distance
     float fRet = fDistDelta;    // the return accumulator
     bool bIsPush = false;       // set when the push arm produced the result
     bool bMoved = false;
+    bool bPushHit;
+    Vector vBack;
+    float fMask;
+    if (vLastPos.x == 0.0f && vLastPos.y == 0.0f && vLastPos.z == 0.0f)
+        vLastPos = pPlayer->m_position;
+
+    fYaw = m_pCamera->GetYaw() + m_fYawVel * fDeltaTime;
+    fPitch = m_pCamera->GetPitch() + m_fPitchVelCache * fDeltaTime;
+    fCamDist = m_pCamera->GetDist();
+    fDecay = exp2f(fDistDelta * fDeltaTime * -0.5f);
+    fPitchClamped = max(min(fPitch, g_fMaxPitch), g_fMinPitch);
+    fDist = fCamDist * fDecay;
+    fDist = min(fDist, g_fMaxDist);
+    fBlend = 1.0f - exp2f(fDeltaTime * -750.0f);
+    fInvBlend = 1.0f - fBlend;
+
+    q = YawPitchRoll(fYaw, fPitchClamped, 0.0f);
+    qBlend = normalize(slerp(m_pCamera->GetOrientation(), q, fBlend));
+
+    vDir2 = qBlend.zdir();
+
+    vPos = pPlayer->m_position;
+    vNew = (vPos + Vector(0.0f, 0.0f, 1.0f)) * fBlend + vLastPos * fInvBlend;
+    vLastPos = vNew;
+
+    fEndDist = max(fDist, g_fMinDist);
+    vCamEnd = vNew + vDir2 * fEndDist;
 
     // A negative delta casts from the destination outward first; the normal cast below runs only
     // when nothing blocks it.
     if (fDistDelta < 0.0f) {
-        bool bPushHit;
         cHitInfo.Reset(0, ~CHitInfo::kMaterialTrigger, 0);
         cHitInfo.m_bSkipObjects = 1;
-        if (pScene->HitCheck(vCamEnd, vStart - vDir * fPushDist, &vHit1, &cHitInfo) == 0) {
+        vBack = vStart - vDir * fPushDist;
+        if (pScene->HitCheck(vCamEnd, vBack, &vHit1, &cHitInfo) == 0) {
             cHitInfo.Reset(0, ~CHitInfo::kMaterialTrigger, 0);
             cHitInfo.m_bSkipObjects = 1;
-            bPushHit = (pScene->HitCheck(vStart - vDir * fPushDist, vCamEnd, &vHit2, &cHitInfo) != 0);
+            bPushHit = (pScene->HitCheck(vBack, vCamEnd, &vHit2, &cHitInfo) != 0);
         } else {
             vHit1 = vHit1 + vDir * 0.001f;
             cHitInfo.Reset(0, ~CHitInfo::kMaterialTrigger, 0);
@@ -898,9 +913,12 @@ float CSWCModule::UpdateNormalCameraCollision(float fDeltaTime, float fDistDelta
     }
 
 SHOT:
+    {
     // The camera is inside the clip, so push it out along the direction, or fall back to the
     // persisted distance window.
     bool bSecond;
+    bool bR;
+    float fOld;
     cHitInfo.Reset(0, ~CHitInfo::kMaterialTrigger, 0);
     cHitInfo.m_bSkipObjects = 1;
     if (pScene->HitCheck(vCamEnd, vStart, &vHit1, &cHitInfo) == 0) {
@@ -927,29 +945,25 @@ SHOT:
             bMoved = false;
             fHit = 0.0f;
         } else {
-            bool bR;
             cHitInfo.Reset(0, ~CHitInfo::kMaterialTrigger, 0);
             cHitInfo.m_bSkipObjects = 1;
+            vBack = vStart - vDir * fOldDist;
             if (m_pCamera->GetDist() < fOldDist) {
-                bR = (pScene->HitCheck(vCamEnd, vStart - vDir * fOldDist, &vHit1, &cHitInfo) != 0);
+                bR = (pScene->HitCheck(vCamEnd, vBack, &vHit1, &cHitInfo) != 0);
             } else {
-                bR = (pScene->HitCheck(vStart - vDir * fOldDist, vCamEnd, &vHit1, &cHitInfo) != 0);
+                bR = (pScene->HitCheck(vBack, vCamEnd, &vHit1, &cHitInfo) != 0);
             }
             if (bR != 0) {
                 vHit1 = vHit1 + vDir * 0.001f;
-                float fA = m_pCamera->GetDist();
-                float fB = fOldDist;
-                float fC = m_pCamera->GetDist();
-                fHit = fA + (fB - fC) * 3.5f * fDeltaTime;
+                fOld = fOldDist;
+                fHit = m_pCamera->GetDist() + (fOld - m_pCamera->GetDist()) * 3.5f * fDeltaTime;
                 bMoved = false;
                 Vector vD = vHit1 - vStart;
                 float fHitSq = vD.x * vD.x + vD.y * vD.y + vD.z * vD.z;
                 if (fHit * fHit >= fHitSq) fHit = __builtin_sqrtf(fHitSq);
             } else {
-                float fA = m_pCamera->GetDist();
-                float fB = fOldDist;
-                float fC = m_pCamera->GetDist();
-                fHit = fA + (fB - fC) * 3.5f * fDeltaTime;
+                fOld = fOldDist;
+                fHit = m_pCamera->GetDist() + (fOld - m_pCamera->GetDist()) * 3.5f * fDeltaTime;
                 if (fHit - fOldDist >= -0.0001f) {
                     bMoved = true;
                     fHit = fOldDist;
@@ -971,6 +985,7 @@ SHOT:
     } else {
         bIsPush = true;
     }
+    }
 
 JOINOUT:
     // Report the clip distance to the follow behaviour while the camera is locked, then gate the
@@ -982,10 +997,8 @@ JOINOUT:
             pFollow->m_fDist = fHit;
             this->m_bCameraMoved = 1;
         }
-        float fNear = m_pCamera->GetDist();
-        float fMask = (fNear <= g_fMinDist && fRet > 0.0f) ? 0.0f : fRet;
-        float fFar = m_pCamera->GetDist();
-        fDistDelta = (fFar >= g_fMaxDist && fMask < 0.0f) ? 0.0f : fMask;
+        fMask = (m_pCamera->GetDist() <= g_fMinDist && fRet > 0.0f) ? 0.0f : fRet;
+        fDistDelta = (m_pCamera->GetDist() >= g_fMaxDist && fMask < 0.0f) ? 0.0f : fMask;
     }
     return fDistDelta;
 }
@@ -1141,35 +1154,52 @@ float CSWCModule::UpdatePushCameraCollision(float fDeltaTime, float fDistDelta) 
     Vector vDir = normalize(vDelta);
     static Vector vLastPos;         // Vector's default constructor is non-trivial: dynamic init
     static float fOldDist;          // no initialiser, so zero at load time
-
-    if (vLastPos.x == 0.0f && vLastPos.y == 0.0f && vLastPos.z == 0.0f)
-        vLastPos = pPlayer->m_position;
-
-    float fYaw = m_pCamera->GetYaw() + m_fYawVel * fDeltaTime;
-    float fPitch = m_pCamera->GetPitch() + m_fPitchVelCache * fDeltaTime;
-    float fCamDist = m_pCamera->GetDist();
-    float fDecay = exp2f(fDistDelta * fDeltaTime * -0.5f);
-    float fPitchClamped = max(min(fPitch, g_fMaxPitch), g_fMinPitch);
-    float fDist = fCamDist * fDecay;
-    fDist = min(fDist, g_fMaxDist);
-    float fBlend = 1.0f - exp2f(fDeltaTime * -750.0f);
-
-    Quaternion q = YawPitchRoll(fYaw, fPitchClamped, 0.0f);
-    Quaternion qCam = m_pCamera->GetOrientation();
-    q = normalize(slerp(qCam, q, fBlend));
-
-    Vector vDir2 = q.zdir();
-
-    Vector vPos = pPlayer->m_position;
-    Vector vNew = (vPos + Vector(0.0f, 0.0f, 1.0f)) * fBlend + vLastPos * (1.0f - fBlend);
-    vLastPos = vNew;
-
-    float fEndDist = max(fDist, g_fMinDist);
-    Vector vCamEnd = vNew + vDir2 * fEndDist;
+    Quaternion q;
+    Quaternion qBlend;
+    float fYaw;
+    float fPitch;
+    float fCamDist;
+    float fDecay;
+    float fPitchClamped;
+    float fDist;
+    float fBlend;
+    Vector vDir2;
+    Vector vPos;
+    Vector vNew;
+    float fEndDist;
+    Vector vCamEnd;
     float fHit = 0.0f;          // the collision-limit distance
     float fRet = fDistDelta;    // the return accumulator
     bool bIsPush = false;
     bool bMoved = false;
+    bool bR;
+    Vector vBack;
+    float fOld;
+    float fMask;
+
+    if (vLastPos.x == 0.0f && vLastPos.y == 0.0f && vLastPos.z == 0.0f)
+        vLastPos = pPlayer->m_position;
+
+    fYaw = m_pCamera->GetYaw() + m_fYawVel * fDeltaTime;
+    fPitch = m_pCamera->GetPitch() + m_fPitchVelCache * fDeltaTime;
+    fCamDist = m_pCamera->GetDist();
+    fDecay = exp2f(fDistDelta * fDeltaTime * -0.5f);
+    fPitchClamped = max(min(fPitch, g_fMaxPitch), g_fMinPitch);
+    fDist = fCamDist * fDecay;
+    fDist = min(fDist, g_fMaxDist);
+    fBlend = 1.0f - exp2f(fDeltaTime * -750.0f);
+
+    q = YawPitchRoll(fYaw, fPitchClamped, 0.0f);
+    qBlend = normalize(slerp(m_pCamera->GetOrientation(), q, fBlend));
+
+    vDir2 = qBlend.zdir();
+
+    vPos = pPlayer->m_position;
+    vNew = (vPos + Vector(0.0f, 0.0f, 1.0f)) * fBlend + vLastPos * (1.0f - fBlend);
+    vLastPos = vNew;
+
+    fEndDist = max(fDist, g_fMinDist);
+    vCamEnd = vNew + vDir2 * fEndDist;
 
     // Casts from the destination outward; if the cast resolves, the clip distance is final.
     cHitInfo.Reset(0, ~CHitInfo::kMaterialTrigger, 0);
@@ -1190,33 +1220,28 @@ float CSWCModule::UpdatePushCameraCollision(float fDeltaTime, float fDistDelta) 
             bMoved = false;
             fHit = 0.0f;
         } else {
-            bool bR;
             cHitInfo.Reset(0, ~CHitInfo::kMaterialTrigger, 0);
             cHitInfo.m_bSkipObjects = 1;
+            vBack = vStart - vDir * fOldDist;
             if (m_pCamera->GetDist() < fOldDist) {
-                bR = (pScene->HitCheck(vCamEnd, vStart - vDir * fOldDist, &vHit, &cHitInfo) != 0);
+                bR = (pScene->HitCheck(vCamEnd, vBack, &vHit, &cHitInfo) != 0);
             } else {
-                bR = (pScene->HitCheck(vStart - vDir * fOldDist, vCamEnd, &vHit, &cHitInfo) != 0);
+                bR = (pScene->HitCheck(vBack, vCamEnd, &vHit, &cHitInfo) != 0);
             }
             if (bR != 0) {
                 vHit = vHit + vDir * 0.001f;
-                float fA = m_pCamera->GetDist();
-                float fB = fOldDist;
-                float fC = m_pCamera->GetDist();
-                fHit = fA + (fB - fC) * 3.5f * fDeltaTime;
+                fHit = m_pCamera->GetDist() + (fOldDist - m_pCamera->GetDist()) * 3.5f * fDeltaTime;
                 bMoved = false;
                 Vector vD = vHit - vStart;
                 float fHitSq = vD.x * vD.x + vD.y * vD.y + vD.z * vD.z;
                 if (fHitSq <= fHit * fHit) fHit = __builtin_sqrtf(fHitSq);
             } else {
-                float fA = m_pCamera->GetDist();
-                float fB = fOldDist;
-                float fC = m_pCamera->GetDist();
-                fHit = fA + (fB - fC) * 3.5f * fDeltaTime;
+                fOld = fOldDist;
+                fHit = m_pCamera->GetDist() + (fOld - m_pCamera->GetDist()) * 3.5f * fDeltaTime;
                 if (fHit >= fOldDist) {
                     bMoved = true;
                     fOldDist = 0.0f;
-                    fHit = fB;
+                    fHit = fOld;
                 } else {
                     bMoved = true;
                 }
@@ -1244,10 +1269,8 @@ float CSWCModule::UpdatePushCameraCollision(float fDeltaTime, float fDistDelta) 
             pFollow->m_fDist = fHit;
             this->m_bCameraMoved = 1;
         }
-        float fNear = m_pCamera->GetDist();
-        float fMask = (fNear <= g_fMinDist && fRet > 0.0f) ? 0.0f : fRet;
-        float fFar = m_pCamera->GetDist();
-        fDistDelta = (fFar >= g_fMaxDist && fMask < 0.0f) ? 0.0f : fMask;
+        fMask = (m_pCamera->GetDist() <= g_fMinDist && fRet > 0.0f) ? 0.0f : fRet;
+        fDistDelta = (m_pCamera->GetDist() >= g_fMaxDist && fMask < 0.0f) ? 0.0f : fMask;
     }
     return fDistDelta;
 }
@@ -1412,10 +1435,7 @@ bool CSWCModule::SetFreeLookCamera(unsigned long long oid) {
         CSWCameraOnAStick* pOnAStick = static_cast<CSWCameraOnAStick*>(m_pCamera->GetBehavior(BEHAVIOR_CAMERA_ON_A_STICK));
         if (pOnAStick != 0) {
             pOnAStick->SaveCameraSettings(m_cSavedCameraSettings);
-            Vector vCameraPos = { 0.0f, 0.0f, 0.0f };
-            if (pOnAStick->m_pCameraObject != 0) {
-                vCameraPos = pOnAStick->m_pCameraObject->GetPosition();
-            }
+            Vector vCameraPos = pOnAStick->GetPosition();
             Vector vFacing;
             vFacing.x = pCreature->m_position.x - vCameraPos.x;
             vFacing.y = pCreature->m_position.y - vCameraPos.y;

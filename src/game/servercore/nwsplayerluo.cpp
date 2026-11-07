@@ -249,7 +249,7 @@ CSWSItem* CSWSPlayerLUOInventory::ItemListGetItem(CExoLinkedListNode* pNode, uns
 
 // CSWSPlayerLastUpdateObject leaf accessors, over the KnownSpellUsesLeft snapshot slots.
 //
-// AddKnownSpell needs CExoArrayList<unsigned int>::Allocate, which this unit defines.
+// AddKnownSpell needs CExoArrayList<uint32_l_t>::Allocate, which this unit defines.
 //
 // The spell-like-ability list's delete[] needs the element type complete, so the header's forward
 // declaration does not suffice in this unit.
@@ -353,8 +353,8 @@ void CSWSPlayerLastUpdateObject::ClearSpellAddDeleteLists()
 
 void CSWSPlayerLastUpdateObject::ClearKnownSpellUsesLeft()
 {
-    m_knownSpellUsesLeft[0] = 0;
-    m_knownSpellUsesLeft[1] = 0;
+    for (int i = 0; i < 2; i++)
+        m_knownSpellUsesLeft[i] = 0;
 }
 
 unsigned char CSWSPlayerLastUpdateObject::GetKnownSpellUsesLeft(unsigned char nClass,

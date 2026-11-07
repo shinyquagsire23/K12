@@ -188,8 +188,10 @@ void CExoStreamingSoundSourceInternal::SetPriorityGroup(unsigned char nGroup)
     m_pAudioSystem->SetChannelPriority(m_nChannel, pGroup->m_nPriority);
     m_nGroupVolume = pGroup->m_nVolume;
     SetVolume(m_nVolume, 0, 1.0f);
-    m_fMinDistance = pGroup->m_fMinDistance;
-    m_fMaxDistance = pGroup->m_fMaxDistance;
+    float fMinDistance = pGroup->m_fMinDistance;
+    float fMaxDistance = pGroup->m_fMaxDistance;
+    m_fMinDistance = fMinDistance;
+    m_fMaxDistance = fMaxDistance;
 }
 
 // Tests range, answering 1 while the source is not 3D, otherwise whether the listener is within the
@@ -361,19 +363,12 @@ int CExoStreamingSoundSourceInternal::Play(const CResRef& resRef, unsigned short
                 && m_sStreamPath[1] != '_')
             {
                 char szArea[6];
-                szArea[0] = m_sStreamPath[1];
-                szArea[1] = m_sStreamPath[2];
-                szArea[2] = m_sStreamPath[3];
-                szArea[3] = m_sStreamPath[4];
-                szArea[4] = m_sStreamPath[5];
+                for (int i = 0; i < 5; i++)
+                    szArea[i] = m_sStreamPath[i + 1];
                 szArea[5] = 0;
                 char szSpeaker[7];
-                szSpeaker[0] = m_sStreamPath[6];
-                szSpeaker[1] = m_sStreamPath[7];
-                szSpeaker[2] = m_sStreamPath[8];
-                szSpeaker[3] = m_sStreamPath[9];
-                szSpeaker[4] = m_sStreamPath[10];
-                szSpeaker[5] = m_sStreamPath[11];
+                for (int i = 0; i < 6; i++)
+                    szSpeaker[i] = m_sStreamPath[i + 6];
                 szSpeaker[6] = 0;
                 m_sStreamPath.Format(const_cast<char*>("HD0:STREAMWAVES\\%s\\%s\\%s"), szArea, szSpeaker, m_sStreamPath.CStr());
             }
@@ -515,9 +510,8 @@ int CExoStreamingSoundSourceInternal::Play(const CResRef& resRef, unsigned short
                 if (nLen != 0)
                 {
                     char szFirst[4];
-                    szFirst[0] = m_sStreamPath[0];
-                    szFirst[1] = m_sStreamPath[1];
-                    szFirst[2] = m_sStreamPath[2];
+                    for (int i = 0; i < 3; i++)
+                        szFirst[i] = m_sStreamPath[i];
                     szFirst[3] = 0;
 
                     int nNum = atoi(szFirst);
@@ -942,9 +936,9 @@ void CExoStreamingSoundSourceInternal::InitializeSource()
 
         std::string sWav(sBase.CStr());
         std::replace(sWav.begin(), sWav.end(), '\\', '/');
+        int nSkip = 1;
         m_pFile = g_mainObb->RWFromFile(sWav.c_str());
 
-        int nSkip = 1;
         if (m_pFile)
         {
             int nMagic;
@@ -953,8 +947,9 @@ void CExoStreamingSoundSourceInternal::InitializeSource()
             {
                 int nChunk;
                 SDL_RWread(m_pFile, &nChunk, 4, 1);
+                int nFileSize;
                 SDL_RWseek(m_pFile, 0, RW_SEEK_END);
-                int nFileSize = static_cast<int>(SDL_RWtell(m_pFile));
+                nFileSize = static_cast<int>(SDL_RWtell(m_pFile));
                 if (nChunk + 8 != nFileSize)
                 {
                     SDL_RWseek(m_pFile, nChunk + 8, RW_SEEK_SET);
@@ -1111,6 +1106,7 @@ void CExoStreamingSoundSourceInternal::InitializeSource()
         std::string sWav(sBase.CStr());
         std::replace(sWav.begin(), sWav.end(), '\\', '/');
 
+        int nSkip;
         char szPath[1024];   // the DOS2MacPath destination
         DOS2MacPath(sBase.CStr(), szPath);
 
@@ -1124,7 +1120,7 @@ void CExoStreamingSoundSourceInternal::InitializeSource()
 
         // 1 when the candidate list fails and 1 again for the chunked stream; 0 once a candidate
         // opened cleanly.
-        int nSkip = 1;
+        nSkip = 1;
         if (m_pFile)
         {
             int nMagic;

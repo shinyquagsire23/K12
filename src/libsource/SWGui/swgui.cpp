@@ -70,12 +70,12 @@ int g_bDrawSafeRegion;
 CExoString CSWGuiManager::FULLSCREEN_BGS[5] = {
     "back", "store", "pazaak", "map", "comp",
 };
-#if KOTOR1  // K1's disabled-text colour differs, and COLOR_YELLOW exists only there
+#if KOTOR1  // K1's disabled-text colour differs
 const Vector CSWGuiManager::DISABLED_TEXT(0.0f, 0.33f, 0.49f);
-Vector CSWGuiManager::COLOR_YELLOW(0.98f, 1.0f, 0.0f);
 #else
 const Vector CSWGuiManager::DISABLED_TEXT(0.13f, 0.9f, 0.7f);
 #endif
+Vector CSWGuiManager::COLOR_YELLOW(0.98f, 1.0f, 0.0f);
 
 extern int g_scaleMipc;
 
@@ -237,6 +237,7 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef)
         CExoString sName;
         resRef.CopyToString(sName);
 
+        char szName[256];
 #ifdef K2_UI_TOUCH
         int nScreenWidth;
         int nScreenHeight;
@@ -246,19 +247,15 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef)
         if (false)
 #endif
         {
-            char szName[256];
             sprintf(szName, "x%s", sName.CStr());
             CResRef iphoneRes(szName);
             if (g_pExoResMan->Exists(iphoneRes, RESTYPE_GUI))
                 m_pLayoutRes = new CResGFF(RESTYPE_GUI, const_cast<char*>("GUI "), iphoneRes);
         }
 
+        if (!m_pLayoutRes)
+            m_pLayoutRes = new CResGFF(RESTYPE_GUI, const_cast<char*>("GUI "), resRef);
         CResGFF* pResGFF = m_pLayoutRes;
-        if (!pResGFF)
-        {
-            pResGFF = new CResGFF(RESTYPE_GUI, const_cast<char*>("GUI "), resRef);
-            m_pLayoutRes = pResGFF;
-        }
 #ifndef K2_UI_TOUCH
         K1LayoutScaleRegister(pResGFF, resRef);
 #endif
@@ -266,22 +263,20 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef)
         if (pResGFF->Demand())
         {
             CResStruct resStruct;
-            int bSuccess;
             pResGFF->GetTopLevelStruct(&resStruct);
-            m_extent.Load(pResGFF, resStruct);
-            Vector vColor(-1.0f, -1.0f, -1.0f);
-            m_vColor = pResGFF->ReadFieldVector(&resStruct, const_cast<char*>("COLOR"), bSuccess, vColor);
-
             CResStruct borderStruct;
+            int bSuccess;
+            float fAlpha;
+            CSWGuiExtent extent = m_extent;
+            extent.Load(pResGFF, resStruct);
+            m_extent = extent;
+            m_vColor = pResGFF->ReadFieldVector(&resStruct, const_cast<char*>("COLOR"), bSuccess,
+                                                Vector(-1.0f, -1.0f, -1.0f));
+
             if (pResGFF->GetStructFromStruct(&borderStruct, &resStruct, const_cast<char*>("BORDER")))
             {
                 m_pBackground->Load(pResGFF, resStruct, CExoString("BORDER"));
-                CSWGuiExtent borderExtent;
-                borderExtent.x = 0;
-                borderExtent.y = 0;
-                borderExtent.w = m_extent.w;
-                borderExtent.h = m_extent.h;
-                m_pBackground->SetExtent(borderExtent);
+                m_pBackground->SetExtent(CSWGuiExtent(0, 0, m_extent.w, m_extent.h));
             }
             else
             {
@@ -289,7 +284,7 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef)
                     pResGFF->ReadFieldCResRef(&resStruct, const_cast<char*>("BACKGROUND"), bSuccess, CResRef("")));
             }
 
-            float fAlpha = pResGFF->ReadFieldFLOAT(&resStruct, const_cast<char*>("ALPHA"), bSuccess, 1.0f);
+            fAlpha = pResGFF->ReadFieldFLOAT(&resStruct, const_cast<char*>("ALPHA"), bSuccess, 1.0f);
             fAlpha = fAlpha < 1.0f ? fAlpha : 1.0f;
             fAlpha = fAlpha > 0.0f ? fAlpha : 0.0f;
             m_fAlpha = fAlpha;
@@ -1097,23 +1092,9 @@ void CSWGuiPanel::ResetFont()
 // When a modal panel is up only its top entry is tested and the normal stack is never consulted.
 void CSWGuiManager::UpdateMouseOverControl()
 {
-    int x = m_currentMousePos.x;
-    int y = m_currentMousePos.y;
-
-    CSWGuiControl* pControl = 0;
-    if (m_modalPanels.m_count)
-    {
-        pControl = m_modalPanels.m_pArray[m_modalPanels.m_count - 1]->HitCheckMouse(x, y);
-    }
-    else
-    {
-        for (int i = m_panels.m_count - 1; i >= 0; i--)
-        {
-            pControl = m_panels.m_pArray[i]->HitCheckMouse(x, y);
-            if (pControl)
-                break;
-        }
-    }
+    CSWGuiPanel* pPanel;
+    CSWGuiControl* pControl;
+    HitCheckMouse(m_currentMousePos.x, m_currentMousePos.y, &pPanel, &pControl, 0);
 
     if (m_pMouseOverControl != pControl)
     {

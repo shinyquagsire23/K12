@@ -52,7 +52,7 @@ public:
     static unsigned short GetHighestPriorityTextureFormat(CResRef resRef, int bProcessed,
                                                           int bCompressed, int b16Bit,
                                                           int bTGA);
-    static int  GetVideoModes(CExoArrayList<CExoString>& lst, CExoArrayList<unsigned int>& lst2,
+    static int  GetVideoModes(CExoArrayList<CExoString>& lst, CExoArrayList<uint32_l_t>& lst2,
                              unsigned char n);
     static void GetDesktopResolution(int& nWidth, int& nHeight);
     static int  SetTexturePack(unsigned char nPack, const CExoString& sPack);
