@@ -521,13 +521,11 @@ int CSWCollisionMesh::NoNonWalkPolys(const Vector& a, const Vector& b, float c, 
     float maxX = quad[(idx + 1) & 3].x + 0.01f;
     float maxY = quad[idx].y + 0.01f;
 
-    Vector e01 = {quad[0].x - quad[1].x, quad[0].y - quad[1].y, quad[0].z - quad[1].z};
-    Vector n01 = normalize(e01);
+    Vector n01 = normalize(Vector(quad[0].x - quad[1].x, quad[0].y - quad[1].y, quad[0].z - quad[1].z));
     quad[1].x += n01.x * e;
     quad[1].y += n01.y * e;
     quad[1].z += n01.z * e;
-    Vector e32 = {quad[3].x - quad[2].x, quad[3].y - quad[2].y, quad[3].z - quad[2].z};
-    Vector n32 = normalize(e32);
+    Vector n32 = normalize(Vector(quad[3].x - quad[2].x, quad[3].y - quad[2].y, quad[3].z - quad[2].z));
     quad[2].x += n32.x * e;
     quad[2].y += n32.y * e;
     quad[2].z += n32.z * e;
@@ -738,19 +736,14 @@ int CSWCollisionMesh::NoNonWalkPolys(const Vector& a, const Vector& b, float c, 
         if (edgeStyleFill) {
             // vertex hit (or degenerate edge): average the two adjacent edge normals
             Vector e1 = {v0.x - v1.x, v0.y - v1.y, v0.z - v1.z};
-            Vector n0;
-            n0.x = zaxis.y * e1.z - e1.y * zaxis.z;
-            n0.y = e1.x * zaxis.z - e1.z * zaxis.x;
-            n0.z = e1.y * zaxis.x - e1.x * zaxis.y;
-            Vector n0n = normalize(n0);
+            Vector n0n = normalize(Vector(zaxis.y * e1.z - e1.y * zaxis.z,
+                                          e1.x * zaxis.z - e1.z * zaxis.x,
+                                          e1.y * zaxis.x - e1.x * zaxis.y));
             Vector e2 = {v2.x - v0.x, v2.y - v0.y, v2.z - v0.z};
-            Vector n1;
-            n1.x = zaxis.y * e2.z - e2.y * zaxis.z;
-            n1.y = e2.x * zaxis.z - e2.z * zaxis.x;
-            n1.z = e2.y * zaxis.x - e2.x * zaxis.y;
-            Vector n1n = normalize(n1);
-            Vector bis = {n0n.x + n1n.x, n0n.y + n1n.y, n0n.z + n1n.z};
-            Vector bisn = normalize(bis);
+            Vector n1n = normalize(Vector(zaxis.y * e2.z - e2.y * zaxis.z,
+                                          e2.x * zaxis.z - e2.z * zaxis.x,
+                                          e2.y * zaxis.x - e2.x * zaxis.y));
+            Vector bisn = normalize(Vector(n0n.x + n1n.x, n0n.y + n1n.y, n0n.z + n1n.z));
             const Vector& triN = m_paTriNormals[bestTri];
             if (triN.x * zaxis.x + triN.y * zaxis.y + triN.z * zaxis.z <= 0.0f &&
                 bisn.x * triN.x + bisn.y * triN.y + bisn.z * triN.z < 0.0f) {
@@ -761,11 +754,7 @@ int CSWCollisionMesh::NoNonWalkPolys(const Vector& a, const Vector& b, float c, 
             float t = dir.x * (bestHit.x - start.x) + dir.y * (bestHit.y - start.y) +
                       dir.z * (bestHit.z - start.z);
             t = t + 0.001f - e;
-            Vector hp;
-            hp.x = dir.x * t + start.x;
-            hp.y = dir.y * t + start.y;
-            hp.z = dir.z * t + start.z;
-            Vector hpw = LocalToWorld(hp);
+            Vector hpw = LocalToWorld(Vector(dir.x * t + start.x, dir.y * t + start.y, dir.z * t + start.z));
             Vector nw = NormalLocalToWorld(bisn);
             Vector bhw = LocalToWorld(bestHit);
             pInfo->m_hitType = 1;

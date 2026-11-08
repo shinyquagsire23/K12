@@ -190,12 +190,12 @@ CExoString CExoAliasListInternal::ResolveFileName(const CExoString& path, unsign
     if (g_pExoBase->GetResourceExtension(resType).GetLength() != 0)
     {
         sResult.Format(const_cast<char*>("%s%s.%s"), g_pExoBase->m_pAliasList->GetAliasPath(path, nPos).CStr(),
-                       path.CStr() + nSkip + 1, g_pExoBase->GetResourceExtension(resType).CStr());
+                       path.CStr() + (nSkip + 1), g_pExoBase->GetResourceExtension(resType).CStr());
     }
     else
     {
         sResult.Format(const_cast<char*>("%s%s"), g_pExoBase->m_pAliasList->GetAliasPath(path, nPos).CStr(),
-                       path.CStr() + nSkip + 1);
+                       path.CStr() + (nSkip + 1));
     }
     return sResult;
 }

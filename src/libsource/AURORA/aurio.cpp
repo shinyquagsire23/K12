@@ -1072,7 +1072,7 @@ static void MDLWriteCollect(MDLWriteContext* pCtx, MdlNode* pNode)
         pLevel->Add(pAABB->m_pAABB);
         int nBoxes = 0;
         do {
-            for (int64_t i = 0; i < pLevel->m_count; i++) {
+            for (int i = 0; i < pLevel->m_count; i++) {
                 if (pLevel->m_pData[i]->pChild0)
                     pNext->Add(pLevel->m_pData[i]->pChild0);
                 if (pLevel->m_pData[i]->pChild1)
@@ -1113,7 +1113,7 @@ static void MDLWriteCollect(MDLWriteContext* pCtx, MdlNode* pNode)
         MdlNodeLight* pLight = static_cast<MdlNodeLight*>(pNode);
         int nNames = pLight->m_lFlareNames.m_count;
         pCtx->m_nMdlSize += sizeof(MdlNodeLight) + nNames * sizeof(char*);
-        for (int64_t i = 0; i < nNames; i++)
+        for (int i = 0; i < nNames; i++)
             pCtx->m_nMdlSize += static_cast<unsigned int>(strlen(pLight->m_lFlareNames.m_pData[i]) + 1);
         pCtx->m_nMdlSize += pLight->m_lFlareSizes.m_count * sizeof(float)
                           + pLight->m_lFlarePositions.m_count * sizeof(float)

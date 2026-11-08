@@ -330,10 +330,11 @@ int CSWCAreaOfEffectObject::SetInstanceRandomPosition(unsigned char nInstance)
             int nFlip = rand_wincompatible();
             int nSign = rand_wincompatible();
             int nRand = rand_wincompatible();
+            bool bPositive = (nSign & 1) != 0;
             if ((nFlip & 1) == 0) {
 // Random along the length axis, pinned to the +/-width/2 edge.
                 float fValue = static_cast<float>(nRand % static_cast<unsigned int>(m_fLength * 50.0f)) / 100.0f;
-                if (nSign & 1)
+                if (bPositive)
                     vOffset.y = fValue;
                 else
                     vOffset.y = -fValue;
@@ -344,7 +345,7 @@ int CSWCAreaOfEffectObject::SetInstanceRandomPosition(unsigned char nInstance)
             } else {
 // Random along the width axis, pinned to the +/-length/2 edge.
                 float fValue = static_cast<float>(nRand % static_cast<unsigned int>(m_fWidth * 50.0f)) / 100.0f;
-                if (nSign & 1)
+                if (bPositive)
                     vOffset.x = fValue;
                 else
                     vOffset.x = -fValue;

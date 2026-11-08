@@ -1187,19 +1187,19 @@ void CSWGuiPazaakGame::RefreshDisplay() {
         if (static_cast<unsigned int>(nW0 - 1) < 3) {
 #if KOTOR1
             CResRef resOn("lbl_winmark02");
-#else
-            CResRef resOn("pz_rounds_on");
-#endif
             m_aPlrScore[nW0 - 1].m_border.m_params.SetFillImage(resOn);
+#else
+            m_aPlrScore[nW0 - 1].m_border.m_params.SetFillImage(CResRef("pz_rounds_on"));
+#endif
         }
         const int nW1 = m_pPazaak->m_players[1].m_nRoundsWon;
         if (static_cast<unsigned int>(nW1 - 1) < 3) {
 #if KOTOR1
             CResRef resOn2("lbl_winmark02");
-#else
-            CResRef resOn2("pz_rounds_on");
-#endif
             m_aNpcScore[nW1 - 1].m_border.m_params.SetFillImage(resOn2);
+#else
+            m_aNpcScore[nW1 - 1].m_border.m_params.SetFillImage(CResRef("pz_rounds_on"));
+#endif
         }
     }
 
@@ -1704,13 +1704,9 @@ int CSWGuiPazaakGame::DoGameSequence()
             m_nGameState = GAME_STATE_SET_OVER;
             return 1;
         }
-        {
-            CResRef resOff("pz_playerliteoff");
-            m_lbl6.m_border.m_params.SetFillImage(resOff);
-            CResRef resOn("pz_playerliteon");
-            m_lbl7.m_border.m_params.SetFillImage(resOn);
-            g_pExoSound->PlayOneShotSound(CResRef(m_apszCueSounds[0]), PRIORITY_GROUP_GUI, 0, 0, 0.0f, 0.0f);
-        }
+        m_lbl6.m_border.m_params.SetFillImage(CResRef("pz_playerliteoff"));
+        m_lbl7.m_border.m_params.SetFillImage(CResRef("pz_playerliteon"));
+        g_pExoSound->PlayOneShotSound(CResRef(m_apszCueSounds[0]), PRIORITY_GROUP_GUI, 0, 0, 0.0f, 0.0f);
         m_nGameState = GAME_STATE_OPPONENT_PLAY;
         m_fSequenceDelay = 0.1f;
         if ((m_anTutorialState[0] & TUTORIAL_SHOWN_OPPONENT_RULES) == 0) {
@@ -2300,27 +2296,11 @@ int CSWGuiPazaakStart::AddChosenCard(int nCard, int nSlotPref)
         return false;
     int nSlot = nSlotPref;
     if (nSlot < 0) {
-        if (m_aSidedeck[0].m_nCardType < 0)
-            nSlot = 0;
-        else if (m_aSidedeck[1].m_nCardType < 0)
-            nSlot = 1;
-        else if (m_aSidedeck[2].m_nCardType < 0)
-            nSlot = 2;
-        else if (m_aSidedeck[3].m_nCardType < 0)
-            nSlot = 3;
-        else if (m_aSidedeck[4].m_nCardType < 0)
-            nSlot = 4;
-        else if (m_aSidedeck[5].m_nCardType < 0)
-            nSlot = 5;
-        else if (m_aSidedeck[6].m_nCardType < 0)
-            nSlot = 6;
-        else if (m_aSidedeck[7].m_nCardType < 0)
-            nSlot = 7;
-        else if (m_aSidedeck[8].m_nCardType < 0)
-            nSlot = 8;
-        else if (m_aSidedeck[9].m_nCardType < 0)
-            nSlot = 9;
-        else
+        for (nSlot = 0; nSlot < 10; nSlot++) {
+            if (m_aSidedeck[nSlot].m_nCardType < 0)
+                break;
+        }
+        if (nSlot == 10)
             return false;
     } else if (nSlot > 9) {
         return false;

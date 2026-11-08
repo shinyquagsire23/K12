@@ -263,13 +263,8 @@ void CSWCAnimBase::SetGroundTilt(Vector const& vTilt, Vector const& vFacing)
     Quaternion qTilt(cross(zaxis, vTilt), fComplement * 0.017453292f);
     Quaternion qBlended = slerp(qTilt, m_quatFc, 0.5f);
     m_quatFc = qTilt;
-#if KOTOR1  // K1: the multiplication precedes the m_pModel read
     Quaternion qOrientation = qBlended * YawPitchRoll(Yaw(vFacing), 0.0f, 0.0f);
     m_pModel->SetOrientation(qOrientation);
-#else
-    Quaternion qFacing = YawPitchRoll(Yaw(vFacing), 0.0f, 0.0f);
-    m_pModel->SetOrientation(qBlended * qFacing);
-#endif
 }
 
 void CSWCAnimBase::SetAlwaysRender(int bAlwaysRender)

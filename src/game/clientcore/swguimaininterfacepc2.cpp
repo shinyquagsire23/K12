@@ -1591,7 +1591,7 @@ CSWGuiMainInterface::CSWGuiMainInterface(CSWGuiManager* pGuiManager)
         SendControlToBack(&m_actionMenuCloseButtons[i]);
         m_actionMenuCloseButtons[i].AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiMainInterface::HandleButtonActionX));
     }
-    for (int64_t i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; i++) {
         CSWGuiButton& slot = m_actionSlots[i];
         CSWGuiBorder* pBorder;
         CSWGuiBorder* pHilight;
@@ -4185,8 +4185,6 @@ int CSWGuiMainInterface::GetActiveActionIdx(int nIndex) {
     if (nActionId == -1)
         return 0;
     int nCount = m_personalActions[nIndex].m_count;
-    if (nCount < 1)
-        return 0;
     CSWGuiInterfaceAction* pActions = m_personalActions[nIndex].m_pArray;
     for (int64_t i = 0; i < nCount; i++) {
         if (static_cast<int>(pActions[i].m_nActionId) == nActionId)
@@ -4211,18 +4209,15 @@ void CSWGuiMainInterface::InitializeMap() {
 #else
         m_miniMapImage.m_border.m_params.m_flags.nFillStyle = 2;
 #endif
-        CSWGuiExtent extent;
 #if KOTOR1 && defined(K2_FIX_ENGINE_BUGS)
         // The 512x256 map art stretched by the HUD scale, as the window around it is.
-        extent.w = static_cast<int>(512.0f * K1MiniMapZoom() * fScale);
-        extent.h = static_cast<int>(256.0f * K1MiniMapZoom() * fScale);
+        int nWidth = static_cast<int>(512.0f * K1MiniMapZoom() * fScale);
+        int nHeight = static_cast<int>(256.0f * K1MiniMapZoom() * fScale);
 #else
-        extent.w = static_cast<int>(m_nMapWidth * fScale);
-        extent.h = static_cast<int>(m_nMapHeight * fScale);
+        int nWidth = static_cast<int>(m_nMapWidth * fScale);
+        int nHeight = static_cast<int>(m_nMapHeight * fScale);
 #endif
-        extent.x = 0;
-        extent.y = 0;
-        m_miniMapImage.SetExtent(extent);
+        m_miniMapImage.SetExtent(CSWGuiExtent(0, 0, nWidth, nHeight));
         bHasMap = 1;
     } else {
         bHasMap = 0;
@@ -4772,8 +4767,8 @@ void CSWGuiMainInterface::UpdateAndDrawFogOfWar(const CSWGuiExtent& rExtent) {
                 nRow = 0;
                 fY = fSY * nCellY + fY;
             }
-            int nRowEnd = nYEnd < nResY ? nYEnd : nResY;
-            int nColEnd = nXEnd < nResX ? nXEnd : nResX;
+            int nRowEnd = nYEnd > nResY ? nResY : nYEnd;
+            int nColEnd = nXEnd > nResX ? nResX : nXEnd;
             if (nRow <= nRowEnd) {
                 int nColStart = -nCellX;
                 nColStart = nColStart < 0 ? 0 : nColStart;
@@ -4788,13 +4783,12 @@ void CSWGuiMainInterface::UpdateAndDrawFogOfWar(const CSWGuiExtent& rExtent) {
                             int nBit = nRowBase + nCol;
                             int nWord = nBit / 32;
                             if (!(pExploredBits[nWord] & (1 << (nBit & 31)))) {
-                                Vector vColor(-1.0f, -1.0f, -1.0f);
                                 static_cast<CAurGUIImageInternal*>(m_pFogOfWarImage)->DrawBuffered(
                                     (fXCell - fHalfCellW) / static_cast<float>(m_mapViewExtent.w),
                                     (fY - fHalfCellH) / static_cast<float>(m_mapViewExtent.h),
                                     fCellW / static_cast<float>(m_mapViewExtent.w),
                                     fCellH / static_cast<float>(m_mapViewExtent.h),
-                                    0, 0.0f, vColor, 1.0f);
+                                    0, 0.0f, Vector(-1.0f, -1.0f, -1.0f), 1.0f);
                             }
                             fXCell = fSX + fXCell;
                         } while (nCol++ < nColEnd);
@@ -4935,7 +4929,7 @@ void CSWGuiMainInterface::SelectPrevPersonalAction(int nIndex) {
     g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
     CSWGuiInterfaceAction* pPrev = 0;
     int nActionId = m_personalActionIds[nIndex];
-    int64_t nCount = m_personalActions[nIndex].m_count;
+    int nCount = m_personalActions[nIndex].m_count;
     if (nActionId != -1) {
         for (int i = 0; i < nCount; i++) {
             if (m_personalActions[nIndex].m_pArray[i].m_nActionId == static_cast<unsigned int>(nActionId)) {
@@ -6988,40 +6982,34 @@ void CSWGuiTargetActionMenu::PopulateMenus(CSWCCreature* pPC, int bDimmed, CSWCO
 #endif
 
     for (int64_t i = 0; i < 3; i++) {
-        CSWGuiMainInterfaceAction& widget = m_widgets[i];
         int64_t nCount = m_actions[i].m_count;
-        if (nCount >= 1) {
-            CSWGuiInterfaceAction* pAction = 0;
 #ifdef K2_UI_XBOX
-            // console HUD: column 0 is never empty here (the "No Action" placeholder), so this
-            // search also runs with no target, where m_actionRow is the -1 "none" row; read no
-            // sticky id then rather than m_actionIds[-1].
-            const int nWant = m_actionRow >= 0 ? m_actionIds[static_cast<int>(m_actionRow)][i] : -1;
+        // console HUD: column 0 is never empty here (the "No Action" placeholder), so this
+        // search also runs with no target, where m_actionRow is the -1 "none" row; read no
+        // sticky id then rather than m_actionIds[-1].
+        const int nWant = m_actionRow >= 0 ? m_actionIds[static_cast<int>(m_actionRow)][i] : -1;
 #endif
-            for (int64_t k = 0; k < nCount; k++) {
-                if (m_actions[i].m_pArray[k].m_nActionId ==
+        for (int64_t k = 0; k < nCount; k++) {
+            if (m_actions[i].m_pArray[k].m_nActionId ==
 #ifdef K2_UI_XBOX
-                    static_cast<unsigned int>(nWant)) {
+                static_cast<unsigned int>(nWant)) {
 #else
-                    static_cast<unsigned int>(m_actionIds[static_cast<signed char>(m_actionRow)][i])) {
+                static_cast<unsigned int>(m_actionIds[static_cast<signed char>(m_actionRow)][i])) {
 #endif
-                    pAction = &m_actions[i].m_pArray[k];
-                    break;
-                }
+                m_widgets[i].Show(0, nCount > 1);
+                CSWGuiInterfaceAction& action = m_actions[i].m_pArray[k];
+                m_widgets[i].SetIcon(action.m_resRef, action.m_sName, (action.m_nFlags & 1) != 0 && !bDimmed, 0);
+                goto nextWidget;
             }
-            if (pAction) {
-                widget.Show(0, nCount > 1);
-                widget.SetIcon(pAction->m_resRef, pAction->m_sName,
-                               (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
-            } else {
-                pAction = &m_actions[i].m_pArray[0];
-                widget.Show(0, nCount > 1);
-                widget.SetIcon(pAction->m_resRef, pAction->m_sName,
-                               (pAction->m_nFlags & 1) != 0 && !bDimmed, 0);
-            }
-        } else {
-            widget.Show(1, 0);
         }
+        if (nCount >= 1) {
+            m_widgets[i].Show(0, nCount > 1);
+            CSWGuiInterfaceAction& action = m_actions[i].m_pArray[0];
+            m_widgets[i].SetIcon(action.m_resRef, action.m_sName, (action.m_nFlags & 1) != 0 && !bDimmed, 0);
+        } else {
+            m_widgets[i].Show(1, 0);
+        }
+    nextWidget:;
     }
     UpdateNameLabel(pTarget);
     PositionMenu(pPC, pTarget);
@@ -7290,10 +7278,12 @@ void CSWGuiMainInterface::PopupActionMenu(int nIndex) {
         }
         m_actionSlots[i].SetActive(false);
     }
-    m_actionMenuHalves[0].m_tail.bVisible = nIndex < 4;
-    m_actionMenuHalves[1].m_tail.bVisible = nIndex > 3;
-    m_actionMenuCloseButtons[0].m_tail.bVisible = nIndex < 4;
-    m_actionMenuCloseButtons[1].m_tail.bVisible = nIndex > 3;
+    // Action indices 4 and up open the second half of the menu.
+    bool bSecondHalf = nIndex > 3;
+    m_actionMenuHalves[0].m_tail.bVisible = !bSecondHalf;
+    m_actionMenuHalves[1].m_tail.bVisible = bSecondHalf;
+    m_actionMenuCloseButtons[0].m_tail.bVisible = !bSecondHalf;
+    m_actionMenuCloseButtons[1].m_tail.bVisible = bSecondHalf;
     IosActionMenuUp = 1;
     if (ASLPlat_IsControllerPlugged())
         UpdateActionMenuSelected(1);
@@ -8477,12 +8467,10 @@ void CSWGuiMainInterface::AddHelpPanel(int nPage, bool bGamepad) {
         m_btnGamepadHelp.SetExtent(sExtent);
     } else {
         {
-            CResRef res(szImage);
-            m_btnHelpPage.m_border.m_params.SetFillImage(res);
+            m_btnHelpPage.m_border.m_params.SetFillImage(CResRef(szImage));
         }
         {
-            CResRef res2(szImage);
-            m_btnHelpPage.m_borderHilight.m_params.SetFillImage(res2);
+            m_btnHelpPage.m_borderHilight.m_params.SetFillImage(CResRef(szImage));
         }
         m_btnHelpPage.m_border.m_params.m_flags.nFillStyle = 2;
         m_btnHelpPage.m_borderHilight.m_params.m_flags.nFillStyle = 2;

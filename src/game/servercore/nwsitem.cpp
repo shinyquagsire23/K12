@@ -764,10 +764,7 @@ void CItemRepository::ClearNewItems(CExoArrayList<unsigned long long>& list)
 
 void CItemRepository::SetParentId(unsigned long long objectId)
 {
-    int nCount = m_aItems.m_count;
     m_objectId = objectId;
-    if (nCount < 1)
-        return;
     for (int64_t i = 0; i < m_aItems.m_count; i++)
     {
         CSWSItem* pItem =
@@ -779,10 +776,8 @@ void CItemRepository::SetParentId(unsigned long long objectId)
 
 unsigned long long CItemRepository::FindItemWithBaseItemType(unsigned char baseItemType, int nSkip)
 {
-    if (m_aItems.m_count < 1)
-        return OBJECT_INVALID;
     int nFound = 0;
-    for (int64_t i = 0; i < m_aItems.m_count; i++)
+    for (int i = 0; i < m_aItems.m_count; i++)
     {
         unsigned long long oid = m_aItems.m_pArray[i];
         CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oid);
@@ -806,8 +801,6 @@ unsigned long long CItemRepository::FindItemWithBaseItemType(unsigned char baseI
 
 unsigned long long CItemRepository::FindItemWithTag(const CExoString& tag)
 {
-    if (m_aItems.m_count < 1)
-        return OBJECT_INVALID;
     for (int64_t i = 0; i < m_aItems.m_count; i++)
     {
         CSWSItem* pItem =
@@ -828,8 +821,6 @@ unsigned long long CItemRepository::FindItemWithTag(const CExoString& tag)
 
 int CItemRepository::GetMatchingItemCount(CSWSItem* pItem)
 {
-    if (m_aItems.m_count < 1)
-        return 0;
     for (int64_t i = 0; i < m_aItems.m_count; i++)
     {
         unsigned int nId = static_cast<unsigned int>(m_aItems.m_pArray[i]);
@@ -851,10 +842,8 @@ int CItemRepository::GetMatchingItemCount(CSWSItem* pItem)
 
 int CItemRepository::CalculateContentsWeight()
 {
-    if (m_aItems.m_count < 1)
-        return 0;
     int nTotal = 0;
-    for (int64_t i = 0; i < m_aItems.m_count; i++)
+    for (int i = 0; i < m_aItems.m_count; i++)
     {
         CSWSItem* pItem = ItemListGetItem(static_cast<int>(i));
         if (pItem == 0)

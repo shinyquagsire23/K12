@@ -851,9 +851,6 @@ CExoString CSWGuiMapHider::GetPrevMapNote()
         m_mapNotes.GetPrev(pNote);
     if (pNote == 0)
         pNote = m_mapNotes.m_pInternal->m_pTail;
-    if (pNote == 0)
-        return sResult;
-
     while (pNote != 0 && m_pCurrentMapNote != 0 && pNote != m_pCurrentMapNote)
     {
         unsigned long long nPrevId =
@@ -908,9 +905,6 @@ CExoString CSWGuiMapHider::GetNextMapNote()
         m_mapNotes.GetNext(pNote);
     if (pNote == 0)
         pNote = m_mapNotes.m_pInternal->m_pHead;
-    if (pNote == 0)
-        return sResult;
-
     while (pNote != 0 && m_pCurrentMapNote != 0 && pNote != m_pCurrentMapNote)
     {
         unsigned long long nNextId =
@@ -1715,27 +1709,22 @@ void CSWGuiInGameGalaxyMap::PrevPlanet()
     CSWGuiButton* pButton = &m_aPlanetButtons[pPartyTable->m_selectedPlanet];
     pButton->SetActive(0);
 
-    int nIndex = pPartyTable->m_selectedPlanet;
-    for (;;)
+    for (int i = pPartyTable->m_selectedPlanet - 1; i != pPartyTable->m_selectedPlanet; i--)
     {
-        nIndex = (nIndex > 0) ? nIndex - 1 : GALAXY_MAP_PLANET_COUNT - 1;
+        if (i < 0)
+            i = GALAXY_MAP_PLANET_COUNT - 1;
 #if KOTOR1  // K1 also skips planets that are shown but not selectable
-        if (pPartyTable->GetPlanetAvailable(nIndex) != 0 &&
-            pPartyTable->GetPlanetSelectable(nIndex) != 0)
-            break;
+        if (pPartyTable->GetPlanetAvailable(i) != 0 && pPartyTable->GetPlanetSelectable(i) != 0)
 #else
-        if (pPartyTable->GetPlanetAvailable(nIndex) != 0)
-            break;
+        if (pPartyTable->GetPlanetAvailable(i) != 0)
 #endif
-        if (nIndex - 1 == pPartyTable->m_selectedPlanet)
-            goto found;
+        {
+            pPartyTable->SetSelectedPlanet(i);
+            break;
+        }
     }
-    pPartyTable->SetSelectedPlanet(nIndex);
-found:
-    {
-        CSWGuiButton* pNew = &m_aPlanetButtons[pPartyTable->m_selectedPlanet];
-        pNew->SetActive(1);
-    }
+    CSWGuiButton* pNew = &m_aPlanetButtons[pPartyTable->m_selectedPlanet];
+    pNew->SetActive(1);
     DisplayPlanet(pPartyTable->m_selectedPlanet, 1);
 }
 

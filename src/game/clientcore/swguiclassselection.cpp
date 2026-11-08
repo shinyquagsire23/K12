@@ -632,21 +632,9 @@ void CSWGuiClassSelection::OnSelectButton(CSWGuiControl* pControl)
         if (pControl->m_tail.nCurrentEventType == INPUTEVENT_GUI_START)
             m_pGuiManager->PlayGuiSound(pControl->m_tail.m_nClickSound);
 
-        int nIndex;
-        if (&m_aOptions[0].m_button == pControl)
-            nIndex = 0;
-        else if (&m_aOptions[1].m_button == pControl)
-            nIndex = 1;
-        else if (&m_aOptions[2].m_button == pControl)
-            nIndex = 2;
-        else if (&m_aOptions[3].m_button == pControl)
-            nIndex = 3;
-        else if (&m_aOptions[4].m_button == pControl)
-            nIndex = 4;
-        else if (&m_aOptions[5].m_button == pControl)
-            nIndex = 5;
-        else
-            nIndex = 6;
+        int nIndex = 0;
+        while (nIndex <= 5 && &m_aOptions[nIndex].m_button != pControl)
+            nIndex++;
 
         m_pSelectedCreature = m_aOptions[nIndex].m_pCreature;
 

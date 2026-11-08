@@ -817,29 +817,29 @@ int CSWSEffectListHandler::OnApplyNegativeLevel(CSWSObject* pObject, CGameEffect
     pDrain3->SetInteger(1, pEffect->GetInteger(0));
     pDrain3->SetInteger(2, g_pRules->m_nNumRaces);
     pCreature->ApplyEffect(pDrain3, a, 0);
-    if (pCreature->m_pStats->m_numClasses != 0) {
-        int nBestClass = 0;
-        int nBestLevel = 0;
+    int nBestClass = 0;
+    int nBestLevel = 0;
+    if (pCreature->m_pStats->m_numClasses > 0) {
         for (unsigned char i = 0; i < pCreature->m_pStats->m_numClasses; i++) {
             if (nBestLevel < pCreature->m_pStats->GetClassLevel(i, 0)) {
                 nBestLevel = pCreature->m_pStats->GetClassLevel(i, 0);
                 nBestClass = i;
             }
         }
-        if (nBestLevel > 0) {
-            unsigned char nOld = pCreature->m_pStats->GetClassNegativeLevels(static_cast<unsigned char>(nBestClass));
-            pCreature->m_pStats->SetClassNegativeLevels(static_cast<unsigned char>(nBestClass), static_cast<unsigned char>(nOld + pEffect->GetInteger(0)));
-            pEffect->SetInteger(1, nBestClass);
-            if (pCreature->m_pStats->GetLevel(1) == 0) {
-                CGameEffect* pDeath = new CGameEffect(1);
-                pDeath->m_durationTypeBits = CGameEffect::DURATION_TYPE_INSTANTANEOUS |
-                                             (pDeath->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK);
-                pDeath->m_subType = GAME_EFFECT_DEATH;
-                pDeath->SetInteger(0, 1);
-                pDeath->SetInteger(1, 1);
-                pDeath->SetCreator(pEffect->m_creatorId);
-                pCreature->ApplyEffect(pDeath, a, 0);
-            }
+    }
+    if (nBestLevel > 0) {
+        unsigned char nOld = pCreature->m_pStats->GetClassNegativeLevels(static_cast<unsigned char>(nBestClass));
+        pCreature->m_pStats->SetClassNegativeLevels(static_cast<unsigned char>(nBestClass), static_cast<unsigned char>(nOld + pEffect->GetInteger(0)));
+        pEffect->SetInteger(1, nBestClass);
+        if (pCreature->m_pStats->GetLevel(1) == 0) {
+            CGameEffect* pDeath = new CGameEffect(1);
+            pDeath->m_durationTypeBits = CGameEffect::DURATION_TYPE_INSTANTANEOUS |
+                                         (pDeath->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK);
+            pDeath->m_subType = GAME_EFFECT_DEATH;
+            pDeath->SetInteger(0, 1);
+            pDeath->SetInteger(1, 1);
+            pDeath->SetCreator(pEffect->m_creatorId);
+            pCreature->ApplyEffect(pDeath, a, 0);
         }
     }
     if (pCreator != 0) {
@@ -1535,7 +1535,7 @@ int CSWSEffectListHandler::OnApplyAbilityDecrease(CSWSObject* pObject, CGameEffe
     if (pStats->GetEffectImmunity(::IMMUNITY_TYPE_ABILITY_DECREASE, pCreator) != 0)
         return 1;
     int nAmount = pEffect->GetInteger(1);
-    int bDown = 0;
+    bool bDown = false;
     if (a == 0) {
         if (pCreature->GetDead() != 0)
             return 1;
@@ -1703,19 +1703,23 @@ int CSWSEffectListHandler::OnRemoveSetAIState(CSWSObject* pObject, CGameEffect* 
 }
 
 // Rebuilds the byte by totalling every other live effect of the same kind.
+// EFFECTIVE (armv7): `i` and `nTotal` are zeroed in the other order; declaring `nTotal` first fixes both armv7 lanes
+// and swaps the arm64 pair instead.
 int CSWSEffectListHandler::OnRemoveEnemyAttackBonus(CSWSObject* pObject, CGameEffect* pEffect) {
     if (pObject->AsSWSCreature() != 0) {
         CSWSCreature* pCreature = pObject->AsSWSCreature();
         int64_t i = 0;
         int nTotal = 0;
         if (pEffect != 0) {
-            while (i < pCreature->m_effects.m_count) {
-                CGameEffect* pOther = pCreature->m_effects.m_pArray[i];
-                if (pOther->m_subType > GAME_EFFECT_ENEMY_ATTACK_BONUS)
-                    break;
-                if (pOther != pEffect && pOther->m_subType == GAME_EFFECT_ENEMY_ATTACK_BONUS)
-                    nTotal = pOther->GetInteger(0) + nTotal;
-                i++;
+            if (pCreature->m_effects.m_count > 0) {
+                while (i < pCreature->m_effects.m_count) {
+                    CGameEffect* pOther = pCreature->m_effects.m_pArray[i];
+                    if (pOther->m_subType > GAME_EFFECT_ENEMY_ATTACK_BONUS)
+                        break;
+                    if (pOther != pEffect && pOther->m_subType == GAME_EFFECT_ENEMY_ATTACK_BONUS)
+                        nTotal = pOther->GetInteger(0) + nTotal;
+                    i++;
+                }
             }
         }
         pCreature->m_pStats->m_nEnemyAttackBonus = static_cast<unsigned char>(nTotal);
@@ -1966,15 +1970,18 @@ int CSWSEffectListHandler::OnRemoveSpecialWalkAnimation(CSWSObject* pObject, CGa
     if (pObject != 0 && pObject->AsSWSCreature() != 0) {
         CSWSCreature* pCreature = pObject->AsSWSCreature();
         unsigned char nAnimation = 0;
-        for (int i = 0; i < pCreature->m_effects.m_count; i++) {
-            CGameEffect* pOther = pCreature->m_effects.m_pArray[i];
-            if (pOther != pEffect) {
-                if (pOther->m_subType == GAME_EFFECT_SETWALKANIMATION) {
-                    nAnimation = static_cast<unsigned char>(pOther->GetInteger(0));
-                    break;
+        int nCount = pCreature->m_effects.m_count;
+        if (nCount > 0) {
+            for (int i = 0; i < nCount; i++) {
+                CGameEffect* pOther = pCreature->m_effects.m_pArray[i];
+                if (pOther != pEffect) {
+                    if (pOther->m_subType == GAME_EFFECT_SETWALKANIMATION) {
+                        nAnimation = static_cast<unsigned char>(pOther->GetInteger(0));
+                        break;
+                    }
+                    if (pOther->m_subType > GAME_EFFECT_SETWALKANIMATION)
+                        break;
                 }
-                if (pOther->m_subType > GAME_EFFECT_SETWALKANIMATION)
-                    break;
             }
         }
         pCreature->m_nSpecialWalkAnimation = nAnimation;
@@ -2005,13 +2012,18 @@ int CSWSEffectListHandler::OnRemoveLimitMovementSpeed(CSWSObject* pObject, CGame
     if (pObject->AsSWSCreature() != 0) {
         CSWSCreature* pCreature = pObject->AsSWSCreature();
         int bStillLimited = 0;
-        for (int i = 0; i < pCreature->m_effects.m_count; i++) {
-            CGameEffect* pOther = pCreature->m_effects.m_pArray[i];
-            if (pOther->m_subType > GAME_EFFECT_LIMIT_MOVEMENT_SPEED)
-                break;
-            if (pOther != pEffect && pOther->m_subType == GAME_EFFECT_LIMIT_MOVEMENT_SPEED) {
-                bStillLimited = 1;
-                break;
+        int nCount = pCreature->m_effects.m_count;
+        if (nCount > 0) {
+            for (int i = 0; i < nCount; i++) {
+                CGameEffect* pOther = pCreature->m_effects.m_pArray[i];
+                if (pOther->m_subType > GAME_EFFECT_LIMIT_MOVEMENT_SPEED)
+                    break;
+                if (pOther == pEffect)
+                    continue;
+                if (pOther->m_subType == GAME_EFFECT_LIMIT_MOVEMENT_SPEED) {
+                    bStillLimited = 1;
+                    break;
+                }
             }
         }
         pObject->AsSWSCreature()->m_bMovementSpeedLimited = bStillLimited;
@@ -2523,19 +2535,23 @@ int CSWSEffectListHandler::OnApplyVampiricRegeneration(CSWSObject* pObject, CGam
 
 // Rebuilds the total from every other live effect of the same kind and re-arms the
 // damage-table flag.
+// EFFECTIVE (armv7): `i` and `nTotal` are zeroed in the other order; declaring `nTotal` first fixes both armv7 lanes
+// and swaps the arm64 pair instead.
 int CSWSEffectListHandler::OnRemoveArcaneSpellFailure(CSWSObject* pObject, CGameEffect* pEffect) {
     if (pObject->AsSWSCreature() != 0) {
         CSWSCreature* pCreature = pObject->AsSWSCreature();
         int64_t i = 0;
         int nTotal = 0;
         if (pEffect != 0) {
-            while (i < pCreature->m_effects.m_count) {
-                CGameEffect* pOther = pCreature->m_effects.m_pArray[i];
-                if (pOther->m_subType > GAME_EFFECT_ARCANE_SPELL_FAILURE)
-                    break;
-                if (pOther != pEffect && pOther->m_subType == GAME_EFFECT_ARCANE_SPELL_FAILURE)
-                    nTotal = pOther->GetInteger(0) + nTotal;
-                i++;
+            if (pCreature->m_effects.m_count > 0) {
+                while (i < pCreature->m_effects.m_count) {
+                    CGameEffect* pOther = pCreature->m_effects.m_pArray[i];
+                    if (pOther->m_subType > GAME_EFFECT_ARCANE_SPELL_FAILURE)
+                        break;
+                    if (pOther != pEffect && pOther->m_subType == GAME_EFFECT_ARCANE_SPELL_FAILURE)
+                        nTotal = pOther->GetInteger(0) + nTotal;
+                    i++;
+                }
             }
         }
         if (pObject->AsSWSCreature() != 0)
@@ -3660,7 +3676,7 @@ int CSWSEffectListHandler::OnRemoveSanctuary(CSWSObject* pObject, CGameEffect* p
         CSWSArea* pArea = static_cast<CSWSArea*>(pCreature->GetArea());
         if (pArea != 0) {
             CExoArrayList<unsigned long long> seenIds;
-            for (int64_t i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
+            for (int i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
                 CSWSCreature* pCur;
                 CSWVisibilityNode* pNode;
                 pCur = g_pAppManager->m_pServerExoApp
@@ -3695,8 +3711,8 @@ int CSWSEffectListHandler::OnRemoveSanctuary(CSWSObject* pObject, CGameEffect* p
                 if (pModule->m_playerList.Contains(pCreature->m_objectId) != 0)
                     pModule->m_playerList.Remove(pCreature->m_objectId);
             }
-            if (bOtherSanctuary == 0 && seenIds.m_count >= 1) {
-                for (int64_t i = 0; i < seenIds.m_count; i++) {
+            if (bOtherSanctuary == 0) {
+                for (int i = 0; i < seenIds.m_count; i++) {
                     CSWSCreature* pCur = g_pAppManager->m_pServerExoApp
                         ->GetCreatureByGameObjectID(seenIds.m_pArray[i]);
                     if (pCur != 0)
@@ -3890,12 +3906,14 @@ int CSWSEffectListHandler::OnApplySetState(CSWSObject* pObject, CGameEffect* pEf
         return 0;
     pCreature->m_nState = static_cast<unsigned char>(nState);
     int i = 0;
-    while (i < pObject->m_effects.m_count) {
-        if (pObject->m_effects.m_pArray[i]->m_subType > GAME_EFFECT_SETSTATE_INTERNAL)
-            break;
-        if (pObject->m_effects.m_pArray[i]->m_subType == GAME_EFFECT_SETSTATE_INTERNAL)
-            pCreature->RemoveEffectById(pObject->m_effects.m_pArray[i]->m_effectId);
-        i++;
+    if (pObject->m_effects.m_count > 0) {
+        while (i < pObject->m_effects.m_count) {
+            if (pObject->m_effects.m_pArray[i]->m_subType > GAME_EFFECT_SETSTATE_INTERNAL)
+                break;
+            if (pObject->m_effects.m_pArray[i]->m_subType == GAME_EFFECT_SETSTATE_INTERNAL)
+                pCreature->RemoveEffectById(pObject->m_effects.m_pArray[i]->m_effectId);
+            i++;
+        }
     }
     CGameEffect* pState = new CGameEffect(1);
     pState->SetCreator(pEffect->m_creatorId);
@@ -3918,36 +3936,38 @@ int CSWSEffectListHandler::OnRemoveSetState(CSWSObject* pObject, CGameEffect* pE
         int nBest = 0;
         unsigned long long idCreator = OBJECT_INVALID;
         int i = 0;
-        while (i < pObject->m_effects.m_count) {
-            if (pObject->m_effects.m_pArray[i]->m_subType > GAME_EFFECT_SETSTATE)
-                break;
-            if (pObject->m_effects.m_pArray[i] != pEffect &&
-                pObject->m_effects.m_pArray[i]->m_subType == GAME_EFFECT_SETSTATE &&
-                pObject->m_effects.m_pArray[i]->GetInteger(0) > nBest) {
-                nBest = pObject->m_effects.m_pArray[i]->GetInteger(0);
-                idCreator = pObject->m_effects.m_pArray[i]->m_creatorId;
-            }
-            i++;
-        }
-        while (i < pObject->m_effects.m_count) {
-            if (pObject->m_effects.m_pArray[i]->m_subType > GAME_EFFECT_SETSTATE_INTERNAL)
-                break;
-            if (pObject->m_effects.m_pArray[i]->m_subType == GAME_EFFECT_SETSTATE_INTERNAL)
-                pCreature->RemoveEffectById(pObject->m_effects.m_pArray[i]->m_effectId);
-            else
+        if (pObject->m_effects.m_count > 0) {
+            while (i < pObject->m_effects.m_count) {
+                if (pObject->m_effects.m_pArray[i]->m_subType > GAME_EFFECT_SETSTATE)
+                    break;
+                if (pObject->m_effects.m_pArray[i] != pEffect &&
+                    pObject->m_effects.m_pArray[i]->m_subType == GAME_EFFECT_SETSTATE &&
+                    pObject->m_effects.m_pArray[i]->GetInteger(0) > nBest) {
+                    nBest = pObject->m_effects.m_pArray[i]->GetInteger(0);
+                    idCreator = pObject->m_effects.m_pArray[i]->m_creatorId;
+                }
                 i++;
-        }
-        if (nBest != 0) {
-            pCreature->m_nState = static_cast<unsigned char>(nBest);
-            pObject->m_bCommandable = 0;
-            CGameEffect* pState = new CGameEffect(1);
-            pState->SetCreator(idCreator);
-            pState->m_bIsExposed = 0;
-            pState->m_durationTypeBits =
-                CGameEffect::DURATION_TYPE_PERMANENT | (pState->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK);
-            pState->m_subType = GAME_EFFECT_SETSTATE_INTERNAL;
-            pState->SetInteger(0, nBest);
-            pCreature->ApplyEffect(pState, 0, 0);
+            }
+            while (i < pObject->m_effects.m_count) {
+                if (pObject->m_effects.m_pArray[i]->m_subType > GAME_EFFECT_SETSTATE_INTERNAL)
+                    break;
+                if (pObject->m_effects.m_pArray[i]->m_subType == GAME_EFFECT_SETSTATE_INTERNAL)
+                    pCreature->RemoveEffectById(pObject->m_effects.m_pArray[i]->m_effectId);
+                else
+                    i++;
+            }
+            if (nBest != 0) {
+                pCreature->m_nState = static_cast<unsigned char>(nBest);
+                pObject->m_bCommandable = 0;
+                CGameEffect* pState = new CGameEffect(1);
+                pState->SetCreator(idCreator);
+                pState->m_bIsExposed = 0;
+                pState->m_durationTypeBits =
+                    CGameEffect::DURATION_TYPE_PERMANENT | (pState->m_durationTypeBits & CGameEffect::DURATION_TYPE_CLEAR_MASK);
+                pState->m_subType = GAME_EFFECT_SETSTATE_INTERNAL;
+                pState->SetInteger(0, nBest);
+                pCreature->ApplyEffect(pState, 0, 0);
+            }
         }
     }
     return 1;
@@ -4707,8 +4727,8 @@ int CSWSEffectListHandler::OnApplyVisualEffect(CSWSObject* pObject, CGameEffect*
     CExoString sRow(nVisualEffect);
     int bFound = p2DA->GetCExoStringEntry(sRow, CExoString("Type_FD"), &sType);
     bool bFireAndForget = bFound == 1 && sType == "F";
-    if (!bFireAndForget && nMode != 1 &&
-        (pEffect->m_durationTypeBits & 7) != CGameEffect::DURATION_TYPE_INSTANTANEOUS) {
+    if (!(bFireAndForget || nMode == 1 ||
+          (pEffect->m_durationTypeBits & 7) == CGameEffect::DURATION_TYPE_INSTANTANEOUS)) {
         pObject->AddLoopingVisualEffect(static_cast<unsigned short>(nVisualEffect), oidTarget, static_cast<unsigned char>(nBodyPart));
         return 0;
     }
@@ -6172,7 +6192,7 @@ int CSWSEffectListHandler::OnApplyEffectIcon(CSWSObject* pObject, CGameEffect* p
             int nRet = 1;
             int nGood;
             int nPriority K2_UNSET;
-            int64_t i;
+            int i;
 #if KOTOR1  // icon and priority are required; no name strref
             if (g_pRules->m_p2DArrays->m_pEffectIcon->GetCExoStringEntry(
                     nIcon, CExoString("IconResRef"), &sResRef)

@@ -816,32 +816,26 @@ int CCombatInformation::SaveData(CResGFF* pGFF, CResStruct* pStruct)
 
     CResList list;
     pGFF->AddList(&list, &sub, const_cast<char*>("AttackList"));
-    if (m_attackBonusMods.m_count >= 1)
+    for (int i = 0; i < m_attackBonusMods.m_count; i++)
     {
-        for (int i = 0; i < m_attackBonusMods.m_count; i++)
-        {
-            CResStruct st;
-            pGFF->AddListElement(&st, &list, GFF_STRUCT_ID_ATTACK_BONUS);
-            pGFF->WriteFieldCHAR(&st, m_attackBonusMods.m_pArray[i]->m_cValue, const_cast<char*>("Modifier"));
-            pGFF->WriteFieldBYTE(&st, m_attackBonusMods.m_pArray[i]->m_nType, const_cast<char*>("WeaponWield"));
-            pGFF->WriteFieldBYTE(&st, m_attackBonusMods.m_pArray[i]->m_nFlag, const_cast<char*>("VersusGoodEvil"));
-            pGFF->WriteFieldBYTE(&st, m_attackBonusMods.m_pArray[i]->m_nClassReq, const_cast<char*>("VersusRace"));
-        }
+        CResStruct st;
+        pGFF->AddListElement(&st, &list, GFF_STRUCT_ID_ATTACK_BONUS);
+        pGFF->WriteFieldCHAR(&st, m_attackBonusMods.m_pArray[i]->m_cValue, const_cast<char*>("Modifier"));
+        pGFF->WriteFieldBYTE(&st, m_attackBonusMods.m_pArray[i]->m_nType, const_cast<char*>("WeaponWield"));
+        pGFF->WriteFieldBYTE(&st, m_attackBonusMods.m_pArray[i]->m_nFlag, const_cast<char*>("VersusGoodEvil"));
+        pGFF->WriteFieldBYTE(&st, m_attackBonusMods.m_pArray[i]->m_nClassReq, const_cast<char*>("VersusRace"));
     }
 
     pGFF->AddList(&list, &sub, const_cast<char*>("DamageList"));
-    if (m_damageBonusMods.m_count >= 1)
+    for (int i = 0; i < m_damageBonusMods.m_count; i++)
     {
-        for (int i = 0; i < m_damageBonusMods.m_count; i++)
-        {
-            CResStruct st;
-            pGFF->AddListElement(&st, &list, GFF_STRUCT_ID_DAMAGE_BONUS);
-            pGFF->WriteFieldCHAR(&st, m_damageBonusMods.m_pArray[i]->m_cValue, const_cast<char*>("Modifier"));
-            pGFF->WriteFieldBYTE(&st, m_damageBonusMods.m_pArray[i]->m_nModifierType, const_cast<char*>("ModifierType"));
-            pGFF->WriteFieldBYTE(&st, m_damageBonusMods.m_pArray[i]->m_nType, const_cast<char*>("WeaponWield"));
-            pGFF->WriteFieldBYTE(&st, m_damageBonusMods.m_pArray[i]->m_nFlag, const_cast<char*>("VersusGoodEvil"));
-            pGFF->WriteFieldBYTE(&st, m_damageBonusMods.m_pArray[i]->m_nClassReq, const_cast<char*>("VersusRace"));
-        }
+        CResStruct st;
+        pGFF->AddListElement(&st, &list, GFF_STRUCT_ID_DAMAGE_BONUS);
+        pGFF->WriteFieldCHAR(&st, m_damageBonusMods.m_pArray[i]->m_cValue, const_cast<char*>("Modifier"));
+        pGFF->WriteFieldBYTE(&st, m_damageBonusMods.m_pArray[i]->m_nModifierType, const_cast<char*>("ModifierType"));
+        pGFF->WriteFieldBYTE(&st, m_damageBonusMods.m_pArray[i]->m_nType, const_cast<char*>("WeaponWield"));
+        pGFF->WriteFieldBYTE(&st, m_damageBonusMods.m_pArray[i]->m_nFlag, const_cast<char*>("VersusGoodEvil"));
+        pGFF->WriteFieldBYTE(&st, m_damageBonusMods.m_pArray[i]->m_nClassReq, const_cast<char*>("VersusRace"));
     }
     return 1;
 }

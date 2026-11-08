@@ -497,8 +497,6 @@ unsigned int CSWSDialog::GetStartEntry(CSWSObject* pObj)
 unsigned int CSWSDialog::GetStartEntry(CSWSObject* pObj)
 {
     int nResult = -1;
-    if (m_nStartCount == 0)
-        return nResult;
 
     for (unsigned long long i = 0; i < m_nStartCount; i++)
     {
@@ -1025,6 +1023,8 @@ int CSWSDialog::LoadDialog(CResGFF* pGff, int a)
 
     // Only the computer conversation skips the stealth release below; it and the normal arm rejoin at
     // the unpauseable-state test.
+    if (nConversationType == 2)
+        m_bNeverBark = 1;
     if (nConversationType == 1)
     {
         m_bComputerConversation = 1;
@@ -1032,8 +1032,6 @@ int CSWSDialog::LoadDialog(CResGFF* pGff, int a)
     }
     else
     {
-        if (nConversationType == 2)
-            m_bNeverBark = 1;
         g_pAppManager->m_pClientExoApp->GetInGameGui()->SetConversationType(0, 0);
 
         if (g_pAppManager->m_pClientExoApp->GetInGameGui()->m_bKeepStealthInDialog == 0)
@@ -2525,7 +2523,7 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
         {
             paU[i] = new unsigned long long[nAnimCount];
             paT[i] = new unsigned short[nAnimCount];
-            for (int64_t j = 0; j < static_cast<int>(nAnimCount); j++)
+            for (int j = 0; j < static_cast<int>(nAnimCount); j++)
             {
                 unsigned long long animObjectId;
                 if (pReplies[i].m_paAnimList[j].m_sParticipant == "PLAYER")
@@ -2604,7 +2602,7 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
         for (int i = 0; i < nReplyCount; i++)
         {
             UnequipItemsForDialog(paB[i]);
-            for (int64_t j = 0; j < static_cast<int>(paCount[i]); j++)
+            for (int j = 0; j < static_cast<int>(paCount[i]); j++)
                 UnequipItemsForDialog(paU[i][j]);
         }
     }
@@ -2613,7 +2611,7 @@ int CSWSDialog::SendDialogReplyNode(unsigned int nPlayerId, unsigned long long o
         for (int i = 0; i < nReplyCount; i++)
         {
             UnequipHItemForDialog(paB[i]);
-            for (int64_t j = 0; j < static_cast<int>(paCount[i]); j++)
+            for (int j = 0; j < static_cast<int>(paCount[i]); j++)
                 UnequipHItemForDialog(paU[i][j]);
         }
     }

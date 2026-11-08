@@ -122,7 +122,7 @@ void CSWGuiPowersFeatsSkillsDebugMenu::CreateSkillsSubMenu()
     int64_t nCount = g_pRules->m_nNumSkills;
     CSWGuiButton* pTemplate = static_cast<CSWGuiButton*>(m_listBox.m_pProtoItem);
     list.SetSize(static_cast<int>(nCount));
-    int64_t i;
+    int i;
     for (i = 0; i < nCount; i++) {
         CExoString s("Add ");
         s = s + g_pRules->m_paSkills[i].GetNameText();

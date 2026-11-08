@@ -943,6 +943,7 @@ int CSWGuiSlider::HandleMouseCapturedMovement(int x, int y)
 
 void CSWGuiSlider::SetExtent(const CSWGuiExtent& extent)
 {
+    CSWGuiExtent extThumb;
 #if KOTOR1  // K1: CSWGuiObject::SetExtent is out of line, so the copies after it re-read the member
     CSWGuiObject::SetExtent(extent);
     m_border.m_extent = m_extent;
@@ -953,7 +954,7 @@ void CSWGuiSlider::SetExtent(const CSWGuiExtent& extent)
     m_borderHilight.m_extent = m_extent;
 #endif
 
-    CSWGuiExtent extThumb = m_imageThumb.GetImageExtent();
+    extThumb = m_imageThumb.GetImageExtent();
 #ifndef K2_UI_TOUCH
     // pc / xbox: the thumb's own length is in the layout's pixels, as the trough it slides in was
     // before the layout was scaled to the screen (K1's 640x480 layouts, KOTOR II's g_nGUIHeight
@@ -1550,9 +1551,10 @@ void CSWGuiScrollBar::SetVisibleValue(int nVisibleValue)
     if (m_nVisibleValue != nVisibleValue)
     {
         // A zero visible span is only legal on an empty bar; anything else is clamped up to 1.
-        m_nVisibleValue = nVisibleValue;
         if (nVisibleValue < 0 || (nVisibleValue == 0 && m_nMaxValue != 0))
             m_nVisibleValue = 1;
+        else
+            m_nVisibleValue = nVisibleValue;
     }
     SetExtent(m_extent);
 }
@@ -1717,11 +1719,11 @@ void CSWGuiScrollBar::Initialize(const CSWGuiExtent& extent, CSWGuiScrollBar* pO
 
 void CSWGuiScrollBar::Load(CResGFF* pGFF, CResStruct& rStruct)
 {
+    int bSuccess;
     m_border.Load(pGFF, rStruct, "BORDER");
     m_imageDir.Load(pGFF, rStruct, "DIR");
     m_imageThumb.Load(pGFF, rStruct, "THUMB");
 
-    int bSuccess;
     SetMaxValue(pGFF->ReadFieldINT(&rStruct, const_cast<char*>("MAXVALUE"), bSuccess, 0), 0);
     SetCurValue(pGFF->ReadFieldINT(&rStruct, const_cast<char*>("CURVALUE"), bSuccess, 0));
     SetVisibleValue(pGFF->ReadFieldINT(&rStruct, const_cast<char*>("VISIBLEVALUE"), bSuccess, 0));
@@ -1986,14 +1988,17 @@ CSWGuiControl* CSWGuiListBox::HitCheckMouseLocal(int* pnIndex)
     m_nHitLocalX = nLocalX;
     m_nHitLocalY = nLocalY;
 
-    for (int i = 0; i < m_aControls.m_count; i++)
+    if (m_aControls.m_count > 0)
     {
-        CSWGuiControl* pHit = m_aControls.m_pArray[i]->HitCheckMouse(nLocalX, nLocalY);
-        if (pHit)
+        for (int i = 0; i < m_aControls.m_count; i++)
         {
-            if (pnIndex)
-                *pnIndex = i;
-            return pHit;
+            CSWGuiControl* pHit = m_aControls.m_pArray[i]->HitCheckMouse(nLocalX, nLocalY);
+            if (pHit)
+            {
+                if (pnIndex)
+                    *pnIndex = i;
+                return pHit;
+            }
         }
     }
     return 0;
@@ -2429,8 +2434,14 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
             {
                 if (bNoSelection)
                 {
+#if KOTOR1
+                    int nOldTopRow = m_nTopRow;
+                    bMoved = (nOldTopRow != 0);
+                    m_nTopRow = static_cast<short>((nOldTopRow - 1 > 0) ? nOldTopRow - 1 : 0);
+#else
                     bMoved = (m_nTopRow != 0);
                     m_nTopRow = (m_nTopRow - 1 > 0) ? m_nTopRow - 1 : 0;
+#endif
                     OrganizeControls();
                 }
                 else
@@ -2443,9 +2454,14 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
             }
             else if (IsOversized())
             {
+#if KOTOR1
                 int nOldStep = m_nOversizedStep;
                 bMoved = (nOldStep != 1);
                 m_nOversizedStep = static_cast<short>((nOldStep - 1 < 1) ? 1 : nOldStep - 1);
+#else
+                bMoved = (m_nOversizedStep != 1);
+                m_nOversizedStep = static_cast<short>((m_nOversizedStep - 1 < 1) ? 1 : m_nOversizedStep - 1);
+#endif
                 OrganizeOversized();
             }
             else if (m_nSelectedIndex - 1 >= 0)
@@ -2471,12 +2487,12 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
             {
                 if (bNoSelection)
                 {
-                    int nMaxTopRow = 0;
-                    if (m_aControls.m_count > m_nVisibleRows)
-                        nMaxTopRow = m_aControls.m_count - m_nVisibleRows;
+                    int nMaxTopRow = m_aControls.m_count - m_nVisibleRows;
+                    if (nMaxTopRow < 0)
+                        nMaxTopRow = 0;
                     int nOldTopRow = m_nTopRow;
                     bMoved = (nOldTopRow != nMaxTopRow);
-                    m_nTopRow = static_cast<short>((nOldTopRow + 1 > nMaxTopRow) ? nMaxTopRow : nOldTopRow + 1);
+                    m_nTopRow = static_cast<short>((nOldTopRow + 1 >= nMaxTopRow) ? nMaxTopRow : nOldTopRow + 1);
                     OrganizeControls();
                 }
                 else
@@ -2514,7 +2530,12 @@ void CSWGuiListBox::HandleInputEvent(int nType, int nVal)
         case SWGUIEVENT_SCROLL_LINE_UP:
             if (IsOversized())
             {
+#if KOTOR1
+                int nStep = m_nOversizedStep;
+                m_nOversizedStep = static_cast<short>((nStep - 1 < 1) ? 1 : nStep - 1);
+#else
                 m_nOversizedStep = (m_nOversizedStep - 1 < 1) ? 1 : m_nOversizedStep - 1;
+#endif
                 OrganizeOversized();
             }
             else if (m_nTopRow > 0)
@@ -2628,16 +2649,17 @@ void CSWGuiListBox::SetPadding(int nPadding)
     int nScreenWidth;
     int nScreenHeight;
     bool bIsIphone = IosIsIphone(nScreenWidth, nScreenHeight);
+    bool bDefaultPadding = nPadding == 0 && bIsIphone;
 
     if (m_nPadding > m_innerExtent.w / 2 || m_nPadding > m_innerExtent.h / 2)
         return;
 
 #if KOTOR1 && !defined(K2_UI_TOUCH)
     // pc / xbox: the 6-unit gap is the phone default; the PC lineage keeps the layout's padding.
-    (void)bIsIphone;
+    (void)bDefaultPadding;
     m_nPadding = static_cast<unsigned char>(nPadding);
 #else
-    m_nPadding = static_cast<unsigned char>((nPadding == 0 && bIsIphone) ? 6 : nPadding);
+    m_nPadding = static_cast<unsigned char>(bDefaultPadding ? 6 : nPadding);
 #endif
     bLayoutDirty = 1;
     OrganizeControls();
@@ -2778,14 +2800,17 @@ void CSWGuiListBox::SetExtent(const CSWGuiExtent& extent)
 
 void CSWGuiListBox::SetScrollBarExtent(int nWidth, int bReapplyExtent)
 {
-    CSWGuiExtent scrollBarExtent;
     if (m_extent.w == 0)
         return;
 
+    CSWGuiExtent scrollBarExtent;
     scrollBarExtent.w = m_extent.w < nWidth ? m_extent.w : nWidth;
     scrollBarExtent.y = m_extent.y;
     scrollBarExtent.h = m_extent.h;
-    scrollBarExtent.x = m_extent.x + (bScrollBarOnLeft ? 0 : m_extent.w - scrollBarExtent.w);
+    if (bScrollBarOnLeft)
+        scrollBarExtent.x = m_extent.x;
+    else
+        scrollBarExtent.x = m_extent.x + m_extent.w - scrollBarExtent.w;  // EFFECTIVE: K2 armv7 sums x + w first
     m_scrollBar.SetExtent(scrollBarExtent);
 
     if (bReapplyExtent)
@@ -2820,12 +2845,10 @@ void CSWGuiListBox::UpdateArrowPulsing(float fElapsed)
     m_fArrowAlpha = fAlpha + fRange * ((0.75f - m_fArrowAlphaPulseTime) / 0.75f);
 }
 
+// EFFECTIVE: the orig jump-threads the nCurValue = 0 arm into its own copy of the inlined SetCurValue clamp.
 void CSWGuiListBox::OrganizeOversized()
 {
-    CSWGuiExtent extent;
-    extent.x = m_nPadding;
-    extent.h = m_nRowHeight;
-    extent.w = m_innerExtent.w - 2 * m_nPadding;
+    CSWGuiExtent extent(m_nPadding, 0, m_innerExtent.w - 2 * m_nPadding, m_nRowHeight);
 
     int nSteps = GetNumSegments();
 
@@ -2962,7 +2985,7 @@ void CSWGuiListBox::OrganizeControls()
         else if (m_nSelectedIndex >= m_nTopRow + m_nVisibleRows)
         {
             int nTop = m_nSelectedIndex - m_nVisibleRows + 1;
-            m_nTopRow = static_cast<short>(nTop >= 0 ? nTop : 0);
+            m_nTopRow = static_cast<short>(nTop > 0 ? nTop : 0);
         }
     }
 
@@ -3070,9 +3093,7 @@ void CSWGuiListBox::OrganizeUnequal()
         }
     }
 
-    CSWGuiExtent extent;
-    extent.x = m_nPadding;
-    extent.w = m_innerExtent.w - 2 * m_nPadding;
+    CSWGuiExtent extent(m_nPadding, 0, m_innerExtent.w - 2 * m_nPadding, 0);
 
     int nAnchor;
     int y;

@@ -3985,73 +3985,69 @@ int CSWSMessage::SendServerToPlayerExamineGui_MineData(CSWSPlayer* pPlayer,
     WriteOBJECTIDServer(objectId);
     WriteBOOL(bDetected);
 
-    int nDifficulty;
     if (pObject->m_objectType == CGameObject::OBJECT_TYPE_TRIGGER) {
         int nDisarmDC = pObject->AsSWSTrigger()->GetDisarmDC();
         WriteBYTE(pObject->AsSWSTrigger()->m_trapType, 8);
         if (pObject->AsSWSTrigger()->m_bTrapDisarmable == 0)
-            nDifficulty = 4;
+            WriteBYTE(4, 8);
 #if KOTOR1  // K1: the rating gives up above DC 35
         else if (nDisarmDC > 35)
 #else
         else if (nDisarmDC > 65)
 #endif
-            nDifficulty = 4;
+            WriteBYTE(4, 8);
         else if (nDisarmDC <= nRank + 5)
-            nDifficulty = 0;
+            WriteBYTE(0, 8);
         else if (nDisarmDC <= nRank + 10)
-            nDifficulty = 1;
+            WriteBYTE(1, 8);
         else if (nDisarmDC <= nRank + 15)
-            nDifficulty = 2;
+            WriteBYTE(2, 8);
         else if (nDisarmDC <= nRankMax)
-            nDifficulty = 3;
+            WriteBYTE(3, 8);
         else
-            nDifficulty = 4;
-        WriteBYTE(static_cast<unsigned char>(nDifficulty), 8);
+            WriteBYTE(4, 8);
     } else if (pObject->m_objectType == CGameObject::OBJECT_TYPE_DOOR) {
         unsigned char nDisarmDC = pObject->AsSWSDoor()->GetDisarmDC();
         WriteBYTE(pObject->AsSWSDoor()->m_trapType, 8);
         if (pObject->AsSWSDoor()->m_bTrapDisarmable == 0)
-            nDifficulty = 4;
+            WriteBYTE(4, 8);
 #if KOTOR1
         else if (nDisarmDC > 35)
 #else
         else if (nDisarmDC > 65)
 #endif
-            nDifficulty = 4;
+            WriteBYTE(4, 8);
         else if (nDisarmDC <= nRank + 5)
-            nDifficulty = 0;
+            WriteBYTE(0, 8);
         else if (nDisarmDC <= nRank + 10)
-            nDifficulty = 1;
+            WriteBYTE(1, 8);
         else if (nDisarmDC <= nRank + 15)
-            nDifficulty = 2;
+            WriteBYTE(2, 8);
         else if (nDisarmDC <= nRankMax)
-            nDifficulty = 3;
+            WriteBYTE(3, 8);
         else
-            nDifficulty = 4;
-        WriteBYTE(static_cast<unsigned char>(nDifficulty), 8);
+            WriteBYTE(4, 8);
     } else if (pObject->m_objectType == CGameObject::OBJECT_TYPE_PLACEABLE) {
         unsigned char nDisarmDC = pObject->AsSWSPlaceable()->GetDisarmDC();
         WriteBYTE(pObject->AsSWSPlaceable()->m_trapType, 8);
         if (pObject->AsSWSPlaceable()->m_bTrapDisarmable == 0)
-            nDifficulty = 4;
+            WriteBYTE(4, 8);
 #if KOTOR1
         else if (nDisarmDC > 35)
 #else
         else if (nDisarmDC > 65)
 #endif
-            nDifficulty = 4;
+            WriteBYTE(4, 8);
         else if (nDisarmDC <= nRank + 5)
-            nDifficulty = 0;
+            WriteBYTE(0, 8);
         else if (nDisarmDC <= nRank + 10)
-            nDifficulty = 1;
+            WriteBYTE(1, 8);
         else if (nDisarmDC <= nRank + 15)
-            nDifficulty = 2;
+            WriteBYTE(2, 8);
         else if (nDisarmDC <= nRankMax)
-            nDifficulty = 3;
+            WriteBYTE(3, 8);
         else
-            nDifficulty = 4;
-        WriteBYTE(static_cast<unsigned char>(nDifficulty), 8);
+            WriteBYTE(4, 8);
     }
 
     unsigned char* pMsg;
@@ -4393,74 +4389,70 @@ int CSWSMessage::SendServerToPlayerPlayerList_All(CSWSPlayer* pPlayer)
 
     unsigned char nCount = 0;
     CExoLinkedListNode* pNode = pList->m_pInternal->m_pHead;
-    if (pNode != 0) {
-        do {
-            CSWSPlayer* pOther = reinterpret_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-            if (pOther->GetGameObject() != 0)
-                nCount++;
-            pList->GetNext(pNode);
-        } while (pNode != 0);
+    while (pNode != 0) {
+        CSWSPlayer* pOther = reinterpret_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
+        if (pOther->GetGameObject() != 0)
+            nCount++;
+        pList->GetNext(pNode);
     }
 
     WriteBYTE(nCount, 8);
 
     pNode = pList->m_pInternal->m_pHead;
-    if (pNode != 0) {
-        do {
-            CSWSPlayer* pOther = reinterpret_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
-            unsigned int nSubjectId = pOther->m_nPlayerId;
-            CGameObject* pGameObject = pOther->GetGameObject();
-            if (pGameObject != 0)
+    while (pNode != 0) {
+        CSWSPlayer* pOther = reinterpret_cast<CSWSPlayer*>(pList->GetAtPos(pNode));
+        unsigned int nSubjectId = pOther->m_nPlayerId;
+        CGameObject* pGameObject = pOther->GetGameObject();
+        if (pGameObject != 0)
+        {
+            unsigned long long objectId = pGameObject->m_objectId;
+
+            CExoString sPlayerName(
+                g_pAppManager->m_pServerExoApp->GetNetLayer()
+                    ->GetPlayerInfo(nSubjectId)->m_sName);
+
+            unsigned long long characterId;
+            CSWSCreature* pDriven = pOther->GetGameObject()->AsSWSCreature();
+            if (pDriven != 0 && pDriven->m_pStats->m_bIsPC == 1)
+                characterId = pDriven->m_objectId;
+            else
+                characterId = OBJECT_INVALID;
+
+            CExoLocString locFirstName;
+            CExoLocString locLastName;
+            CResRef resPortrait;
+
+            unsigned short nPortraitId;
+            int bFound = 0;
+            CSWSCreature* pCreature =
+                g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(characterId);
+            if (pCreature != 0)
             {
-                unsigned long long objectId = pGameObject->m_objectId;
-
-                CExoString sPlayerName(
-                    g_pAppManager->m_pServerExoApp->GetNetLayer()
-                        ->GetPlayerInfo(nSubjectId)->m_sName);
-
-                unsigned long long characterId;
-                CSWSCreature* pDriven = pOther->GetGameObject()->AsSWSCreature();
-                if (pDriven != 0 && pDriven->m_pStats->m_bIsPC == 1)
-                    characterId = pDriven->m_objectId;
-                else
-                    characterId = OBJECT_INVALID;
-
-                CExoLocString locFirstName;
-                CExoLocString locLastName;
-                CResRef resPortrait;
-
-                unsigned short nPortraitId;
-                int bFound = 0;
-                CSWSCreature* pCreature =
-                    g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(characterId);
-                if (pCreature != 0)
-                {
-                    locFirstName = pCreature->m_pStats->m_firstName;
-                    locLastName = pCreature->m_pStats->m_lastName;
-                    CResRef resStatsPortrait = pCreature->m_pStats->m_portrait;
-                    resPortrait = resStatsPortrait;
-                    bFound = 1;
-                }
-
-                WriteDWORD(nSubjectId, 32);
-                WriteOBJECTIDServer(objectId);
-                WriteCExoString(sPlayerName, 32);
-                WriteBOOL(bFound);
-
-                if (bFound != 0)
-                {
-                    WriteOBJECTIDServer(characterId);
-                    WriteCExoLocStringServer(locFirstName, 0);
-                    WriteCExoLocStringServer(locLastName, 0);
-
-                    nPortraitId = pCreature->GetPortraitId();
-                    WriteWORD(nPortraitId, 16);
-                    if (nPortraitId >= MSG_PORTRAIT_ID_CUSTOM)
-                        WriteCResRef(resPortrait, 16);
-                }
+                locFirstName = pCreature->m_pStats->m_firstName;
+                locLastName = pCreature->m_pStats->m_lastName;
+                CResRef resStatsPortrait = pCreature->m_pStats->m_portrait;
+                resPortrait = resStatsPortrait;
+                bFound = 1;
             }
-            pList->GetNext(pNode);
-        } while (pNode != 0);
+
+            WriteDWORD(nSubjectId, 32);
+            WriteOBJECTIDServer(objectId);
+            WriteCExoString(sPlayerName, 32);
+            WriteBOOL(bFound);
+
+            if (bFound != 0)
+            {
+                WriteOBJECTIDServer(characterId);
+                WriteCExoLocStringServer(locFirstName, 0);
+                WriteCExoLocStringServer(locLastName, 0);
+
+                nPortraitId = pCreature->GetPortraitId();
+                WriteWORD(nPortraitId, 16);
+                if (nPortraitId >= MSG_PORTRAIT_ID_CUSTOM)
+                    WriteCResRef(resPortrait, 16);
+            }
+        }
+        pList->GetNext(pNode);
     }
 
     if (nCount == 0)
@@ -5501,57 +5493,60 @@ int CSWSMessage::SendServerToPlayerCharList(CSWSPlayer* pPlayer)
     g_pExoBase->GetDirectoryList(&vaultFiles, CExoString("SERVERVAULT:"), kResTypeBic, 0, 0);
 #endif
 
-    for (int64_t i = 0; i < vaultFiles.m_count; i++)
+    if (vaultFiles.m_count != 0)
     {
-        sCharName = vaultFiles.m_pArray[i];
-        sCharName = sCharName.SubString(
-            0, sCharName.GetLength() - 4);
-
-        NWPlayerCharacterList_st* pEntry;
-        unsigned int nClasses;
-        CResGFF* pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "), CResRef(sCharName));
-        if (pGff->m_nValid != 0)
+        for (int64_t i = 0; i < vaultFiles.m_count; i++)
         {
-            pGff->GetTopLevelStruct(&topStruct);
+            sCharName = vaultFiles.m_pArray[i];
+            sCharName = sCharName.SubString(
+                0, sCharName.GetLength() - 4);
 
-            pEntry = new NWPlayerCharacterList_st;
-            pEntry->m_firstName = pGff->ReadFieldCExoLocString(&topStruct, const_cast<char*>("FirstName"),
-                                                              bSuccess, CExoLocString());
-            pEntry->m_lastName = pGff->ReadFieldCExoLocString(&topStruct, const_cast<char*>("LastName"),
-                                                             bSuccess, CExoLocString());
-            pEntry->m_resRef = sCharName;
-            pEntry->m_nLocation = MSG_LOGIN_SERVER_CHARACTER;
-            pEntry->m_nPortraitId =
-                pGff->ReadFieldWORD(&topStruct, const_cast<char*>("PortraitId"), bSuccess, 0xffff);
-            pEntry->m_portrait =
-                pGff->ReadFieldCResRef(&topStruct, const_cast<char*>("Portrait"), bSuccess, CResRef(""));
-
-            if (pGff->GetList(&classList, &topStruct, const_cast<char*>("ClassList")))
+            NWPlayerCharacterList_st* pEntry;
+            unsigned int nClasses;
+            CResGFF* pGff = new CResGFF(kResTypeBic, const_cast<char*>("BIC "), CResRef(sCharName));
+            if (pGff->m_nValid != 0)
             {
-                nClasses = pGff->GetListCount(&classList);
-                if (nClasses != 0)
+                pGff->GetTopLevelStruct(&topStruct);
+
+                pEntry = new NWPlayerCharacterList_st;
+                pEntry->m_firstName = pGff->ReadFieldCExoLocString(&topStruct, const_cast<char*>("FirstName"),
+                                                                  bSuccess, CExoLocString());
+                pEntry->m_lastName = pGff->ReadFieldCExoLocString(&topStruct, const_cast<char*>("LastName"),
+                                                                 bSuccess, CExoLocString());
+                pEntry->m_resRef = sCharName;
+                pEntry->m_nLocation = MSG_LOGIN_SERVER_CHARACTER;
+                pEntry->m_nPortraitId =
+                    pGff->ReadFieldWORD(&topStruct, const_cast<char*>("PortraitId"), bSuccess, 0xffff);
+                pEntry->m_portrait =
+                    pGff->ReadFieldCResRef(&topStruct, const_cast<char*>("Portrait"), bSuccess, CResRef(""));
+
+                if (pGff->GetList(&classList, &topStruct, const_cast<char*>("ClassList")))
                 {
-                    for (unsigned int j = 0; j < nClasses; j++)
+                    nClasses = pGff->GetListCount(&classList);
+                    if (nClasses != 0)
                     {
-                        NWPlayerCharacterListClass_st cls;
-                        if (pGff->GetListElement(&classStruct, &classList, j))
+                        for (unsigned int j = 0; j < nClasses; j++)
                         {
-                            cls.m_nClass =
-                                pGff->ReadFieldINT(&classStruct, const_cast<char*>("Class"), bSuccess, -1);
-                            cls.m_nLevel = static_cast<unsigned char>(pGff->ReadFieldSHORT(&classStruct, const_cast<char*>("ClassLevel"),
-                                                                bSuccess, 0));
-                            pEntry->m_classList.Add(cls);
+                            NWPlayerCharacterListClass_st cls;
+                            if (pGff->GetListElement(&classStruct, &classList, j))
+                            {
+                                cls.m_nClass =
+                                    pGff->ReadFieldINT(&classStruct, const_cast<char*>("Class"), bSuccess, -1);
+                                cls.m_nLevel = static_cast<unsigned char>(pGff->ReadFieldSHORT(&classStruct, const_cast<char*>("ClassLevel"),
+                                                                    bSuccess, 0));
+                                pEntry->m_classList.Add(cls);
+                            }
                         }
                     }
                 }
-            }
 
-            if (charList.DerefContains(pEntry))
-                delete pEntry;
-            else
-                charList.AddUnique(pEntry);
+                if (charList.DerefContains(pEntry))
+                    delete pEntry;
+                else
+                    charList.AddUnique(pEntry);
+            }
+            delete pGff;
         }
-        delete pGff;
     }
 
     if (g_pAppManager->m_pServerExoApp->GetModule()->m_bIsSaveGame != 0)
@@ -6041,11 +6036,14 @@ int CSWSMessage::ComputeLastUpdate_ActionQueue(CSWSCreature* pCreature,
 void CSWSMessage::UpdateLastUpdateVisibilityList(CSWSCreature* pCreature,
                                                  CSWSPlayerLastUpdateObject* pLast)
 {
-    for (int i = pLast->m_visibilityList.m_count - 1; i >= 0; i--)
+    if (pLast->m_visibilityList.m_count > 0)
     {
-        CSWVisibilityNode* pNode = pLast->m_visibilityList.m_pArray[i];
-        pLast->m_visibilityList.DelIndex(i);
-        delete pNode;
+        for (int i = pLast->m_visibilityList.m_count - 1; i >= 0; i--)
+        {
+            CSWVisibilityNode* pNode = pLast->m_visibilityList.m_pArray[i];
+            pLast->m_visibilityList.DelIndex(i);
+            delete pNode;
+        }
     }
 
     for (int i = 0; i < pCreature->m_visibilityList.m_count; i++)

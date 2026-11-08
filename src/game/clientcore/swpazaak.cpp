@@ -411,12 +411,9 @@ int CSWPazaak::FindPotentialFlipTotal(CPazaakPlayer& player, int nTarget)
         val2 = (player.m_hand[nTarget].m_nCardType != PAZAAK_CARD_FLIP_3_6) ? 0 : 6;
     }
     CPazaakCard temp[9];
+    CPazaakCard card;
     for (int i = 0; i < 9; i++) {
-        temp[i].m_bIsNegative = 0;
-        temp[i].m_nValue = 0;
-    }
-    for (int i = 0; i < 9; i++) {
-        CPazaakCard card = player.m_cardsPlayed[i];
+        card = player.m_cardsPlayed[i];
         if (card.GetCardValue() == val1 || card.GetCardValue() == val2)
             card.m_nValue = -card.GetCardValue();
         temp[i] = card;

@@ -3787,10 +3787,9 @@ void GLRender::InitAttenuationTexture()
             if (nX == 0 || nX == 63 || nY == 0 || nY == 63)
                 nValue = 0;
 #else
-            unsigned char nValue =
-                (nX == 0 || nX == 63 || nY == 0 || nY == 63)
-                    ? 0
-                    : static_cast<unsigned char>((1.0f / ((fX * fX + fY * fY) * 4.5f + 1.0f)) * 255.0f);
+            unsigned char nValue = static_cast<unsigned char>((1.0f / ((fX * fX + fY * fY) * 4.5f + 1.0f)) * 255.0f);
+            if (nX == 0 || nY == 0 || nX == 63 || nY == 63)
+                nValue = 0;
 #endif
             anAttenuation[nY][nX][0] = nValue;
             anAttenuation[nY][nX][1] = nValue;
@@ -4716,7 +4715,8 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
     ASLgl::glPushMatrix();
     ASLgl::glLoadIdentity();
 
-    if (!cm_bFirstFrameBufferFrame && (nFlags & kFBPassSpeedBlur) && visualizepass6 && m_bSpeedBlurEnabled
+    bool bPass = (nFlags & kFBPassSpeedBlur) != 0;
+    if (!cm_bFirstFrameBufferFrame && bPass && visualizepass6 && m_bSpeedBlurEnabled
         && s_bSpeedBlurApplied == 1)
     {
 #ifdef K2_FIX_ENGINE_BUGS
@@ -4733,7 +4733,7 @@ void GLRender::FrameBufferModificationsARB(uint64_t nFlags)
     }
 
     bool bBlurred = false;
-    if ((nFlags & kFBPassSpeedBlur) && visualizepass6 && m_bSpeedBlurEnabled)
+    if (bPass && visualizepass6 && m_bSpeedBlurEnabled)
     {
         ASLgl::glEnable(GL_TEXTURE_RECTANGLE);
         ASLgl::glBindTexture(GL_TEXTURE_RECTANGLE, cm_nTargetTexture);
@@ -10564,7 +10564,11 @@ void AurBuild2DMipMaps(int nWidth, int nHeight, int nBPP, unsigned char* pData, 
     }
     else
     {
+#if KOTOR1
+        int nDimension = (nWidth < nHeight) ? nHeight : nWidth;
+#else
         int nDimension = (nWidth > nHeight) ? nWidth : nHeight;
+#endif
         pImage = ImageScale(pData, nWidth, nHeight, nBPP, nDimension, nDimension);
         nWidth = nDimension;
         nSrcSize = nDimension * nDimension * nBPP;
@@ -10595,43 +10599,40 @@ void AurBuild2DMipMaps(int nWidth, int nHeight, int nBPP, unsigned char* pData, 
         int nDstSize = nHalfHeight * nBPP * nHalfWidth;
         pDst = new unsigned char[nDstSize];
 
-        if (nHeight >= 2)
+        for (int y = 0; y < nHalfHeight; y++)
         {
-            for (int y = 0; y < nHalfHeight; y++)
+            int nRow0 = 2 * y * nWidth;
+            int nRow1 = (2 * y + 1) * nWidth;
+            int nDstRow = y * nHalfWidth;
+            for (int x = 0; x < nHalfWidth; x++)
             {
-                int nRow0 = 2 * y * nWidth;
-                int nRow1 = nRow0 + nWidth;
-                int nDstRow = y * nHalfWidth;
-                for (int x = 0; x < nHalfWidth; x++)
+                int nSrcIdx0 = (nRow0 + 2 * x) * nBPP;
+                int nSrcIdx1 = (nRow0 + (2 * x + 1)) * nBPP;
+                int nSrcIdx2 = (nRow1 + 2 * x) * nBPP;
+                int nSrcIdx3 = (nRow1 + (2 * x + 1)) * nBPP;
+                int nDstIdx = (nDstRow + x) * nBPP;
+                // 2y + 1 < nHeight and 2x + 1 < nWidth: the four taps and the texel stay in their levels.
+                K2_ASSUME(nSrcIdx0 >= 0 && nSrcIdx3 + nBPP <= nSrcSize && nDstIdx >= 0 && nDstIdx + nBPP <= nDstSize);
+                if (nBPP == 2)
                 {
-                    int nSrcIdx0 = (nRow0 + 2 * x) * nBPP;
-                    int nSrcIdx1 = (nRow0 + 2 * x + 1) * nBPP;
-                    int nSrcIdx2 = (nRow1 + 2 * x) * nBPP;
-                    int nSrcIdx3 = (nRow1 + 2 * x + 1) * nBPP;
-                    int nDstIdx = (nDstRow + x) * nBPP;
-                    // 2y + 1 < nHeight and 2x + 1 < nWidth: the four taps and the texel stay in their levels.
-                    K2_ASSUME(nSrcIdx0 >= 0 && nSrcIdx3 + nBPP <= nSrcSize && nDstIdx >= 0 && nDstIdx + nBPP <= nDstSize);
-                    if (nBPP == 2)
+                    int nLo = (pSrc[nSrcIdx0] & 0xF) + (pSrc[nSrcIdx1] & 0xF)
+                            + (pSrc[nSrcIdx2] & 0xF) + (pSrc[nSrcIdx3] & 0xF);
+                    int nHi = (pSrc[nSrcIdx0] >> 4) + (pSrc[nSrcIdx1] >> 4)
+                            + (pSrc[nSrcIdx2] >> 4) + (pSrc[nSrcIdx3] >> 4);
+                    pDst[nDstIdx] = static_cast<unsigned char>(((nHi << 2) & 0xF0) | (nLo >> 2));
+                    nLo = (pSrc[nSrcIdx0 + 1] & 0xF) + (pSrc[nSrcIdx1 + 1] & 0xF)
+                        + (pSrc[nSrcIdx2 + 1] & 0xF) + (pSrc[nSrcIdx3 + 1] & 0xF);
+                    nHi = (pSrc[nSrcIdx0 + 1] >> 4) + (pSrc[nSrcIdx1 + 1] >> 4)
+                        + (pSrc[nSrcIdx2 + 1] >> 4) + (pSrc[nSrcIdx3 + 1] >> 4);
+                    pDst[nDstIdx + 1] = static_cast<unsigned char>(((nHi << 2) & 0xF0) | (nLo >> 2));
+                }
+                else
+                {
+                    for (int k = 0; k < nBPP; k++)
                     {
-                        int nLo = (pSrc[nSrcIdx0] & 0xF) + (pSrc[nSrcIdx1] & 0xF)
-                                + (pSrc[nSrcIdx2] & 0xF) + (pSrc[nSrcIdx3] & 0xF);
-                        int nHi = (pSrc[nSrcIdx0] >> 4) + (pSrc[nSrcIdx1] >> 4)
-                                + (pSrc[nSrcIdx2] >> 4) + (pSrc[nSrcIdx3] >> 4);
-                        pDst[nDstIdx] = static_cast<unsigned char>(((nHi << 2) & 0xF0) | (nLo >> 2));
-                        nLo = (pSrc[nSrcIdx0 + 1] & 0xF) + (pSrc[nSrcIdx1 + 1] & 0xF)
-                            + (pSrc[nSrcIdx2 + 1] & 0xF) + (pSrc[nSrcIdx3 + 1] & 0xF);
-                        nHi = (pSrc[nSrcIdx0 + 1] >> 4) + (pSrc[nSrcIdx1 + 1] >> 4)
-                            + (pSrc[nSrcIdx2 + 1] >> 4) + (pSrc[nSrcIdx3 + 1] >> 4);
-                        pDst[nDstIdx + 1] = static_cast<unsigned char>(((nHi << 2) & 0xF0) | (nLo >> 2));
-                    }
-                    else
-                    {
-                        for (int k = 0; k < nBPP; k++)
-                        {
-                            K2_ASSUME(nDstIdx + k < nDstSize);
-                            pDst[nDstIdx + k] = (pSrc[nSrcIdx0 + k] + pSrc[nSrcIdx1 + k]
-                                               + pSrc[nSrcIdx2 + k] + pSrc[nSrcIdx3 + k]) >> 2;
-                        }
+                        K2_ASSUME(nDstIdx + k < nDstSize);
+                        pDst[nDstIdx + k] = (pSrc[nSrcIdx0 + k] + pSrc[nSrcIdx1 + k]
+                                           + pSrc[nSrcIdx2 + k] + pSrc[nSrcIdx3 + k]) >> 2;
                     }
                 }
             }
@@ -10645,10 +10646,10 @@ void AurBuild2DMipMaps(int nWidth, int nHeight, int nBPP, unsigned char* pData, 
         nLevel++;
         nWidth = nHalfWidth;
         nHeight = nHalfHeight;
-        if (bSubImage)
-            ASLgl::glTexSubImage2D(GL_TEXTURE_2D, nLevel, 0, 0, nWidth, nHeight, eFormat, nType, pDst);
-        else
+        if (!bSubImage)
             ASLgl::glTexImage2D(GL_TEXTURE_2D, nLevel, nBPP, nWidth, nHeight, 0, eFormat, nType, pDst);
+        else
+            ASLgl::glTexSubImage2D(GL_TEXTURE_2D, nLevel, 0, 0, nWidth, nHeight, eFormat, nType, pDst);
         pSrc = pDst;
         nSrcSize = nDstSize;
     }

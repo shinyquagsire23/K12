@@ -130,10 +130,16 @@ void CSWGuiLevelUpPanel::ChangeState(int nState)
         return;
     }
 
-    int nDir = (nState == 0) ? 1 : -1;
-    int i = m_nCurrentPage + nDir;
-    while (static_cast<unsigned>(i) < 5 && m_anState[i] != 1)
-        i += nDir;
+    int i = m_nCurrentPage + ((nState != 0) ? -1 : 1);
+    int bSearching = 1;
+    while (bSearching && static_cast<unsigned>(i) < 5) {
+        if (m_anState[i] == 1)
+            bSearching = 0;
+        else if (nState != 0)
+            i--;
+        else
+            i++;
+    }
 
     if (static_cast<unsigned>(i) < 5)
     {

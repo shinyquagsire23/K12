@@ -261,7 +261,7 @@ void KotorProgram::Use()
         __strcat_chk(szSource, (nFlags & ProgramType::SHADER_FORCEGLOW) ? "#define USE_FORCEGLOW 1\n" : "#define USE_FORCEGLOW 0\n", sizeof(szSource));
         __strcat_chk(szSource, (nFlags & ProgramType::SHADER_ILLUM) ? "#define USE_ILLUM 1\n" : "#define USE_ILLUM 0\n", sizeof(szSource));
         __strcat_chk(szSource, (nFlags & ProgramType::SHADER_DISTORTION_INPUT) ? "#define USE_DISTORTION_INPUT 1\n" : "#define USE_DISTORTION_INPUT 0\n", sizeof(szSource));
-        __strcat_chk(szSource, (nFlags & ProgramType::SHADER_POST2) ? "#define USE_POST2 1\n" : "#define USE_POST2 0\n", sizeof(szSource));
+        __strcat_chk(szSource, (m_nFlags & ProgramType::SHADER_POST2) ? "#define USE_POST2 1\n" : "#define USE_POST2 0\n", sizeof(szSource));
         __strcat_chk(szSource, "#define USE_ANDROID 1\n", sizeof(szSource));
 #ifdef K2_QOL_BUMPMAPS
         {
@@ -275,12 +275,23 @@ void KotorProgram::Use()
         }
 #endif
 
+        const char* pszVertexPath = "kotor.vert";
+        const char* pszFragmentPath = "kotor.frag";
 #ifdef K2_QOL_SOFT_SHADOWS
-        const char* pszVertexPath = (nFlags & ProgramType::SHADER_BLOOM) ? "kotorbloom.vert" : (nFlags & (ProgramType::SHADER_POST1 | ProgramType::SHADER_SOFT_SHADOW_COPY | ProgramType::SHADER_SOFT_SHADOW_BLUR)) ? "kotorpost1.vert" : "kotor.vert";
+        if (nFlags & (ProgramType::SHADER_POST1 | ProgramType::SHADER_SOFT_SHADOW_COPY | ProgramType::SHADER_SOFT_SHADOW_BLUR))
+            pszVertexPath = "kotorpost1.vert";
+        if (nFlags & ProgramType::SHADER_POST1)
+            pszFragmentPath = "kotorpost1.frag";
 #else
-        const char* pszVertexPath = (nFlags & ProgramType::SHADER_BLOOM) ? "kotorbloom.vert" : (nFlags & ProgramType::SHADER_POST1) ? "kotorpost1.vert" : "kotor.vert";
+        if (nFlags & ProgramType::SHADER_POST1)
+            pszVertexPath = "kotorpost1.vert";
+        if (nFlags & ProgramType::SHADER_POST1)
+            pszFragmentPath = "kotorpost1.frag";
 #endif
-        const char* pszFragmentPath = (nFlags & ProgramType::SHADER_BLOOM) ? "kotorbloom.frag" : (nFlags & ProgramType::SHADER_POST1) ? "kotorpost1.frag" : "kotor.frag";
+        if (nFlags & ProgramType::SHADER_BLOOM)
+            pszVertexPath = "kotorbloom.vert";
+        if (nFlags & ProgramType::SHADER_BLOOM)
+            pszFragmentPath = "kotorbloom.frag";
 #ifdef K2_QOL_BUMPMAPS
         if (nFlags & (ProgramType::SHADER_QOL_BUMP | ProgramType::SHADER_QOL_BUMPYSHINY | ProgramType::SHADER_QOL_FOG)) {
             pszVertexPath = "kotorbump.vert";

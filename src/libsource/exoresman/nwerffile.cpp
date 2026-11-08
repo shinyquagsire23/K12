@@ -384,6 +384,7 @@ int CERFFile::WriteResource(const CExoString& filePath, void* pExtra)
     }
 
     CERFKey key;
+    CERFRes res;
     CExoFile* pFile = new CExoFile(filePath, RESTYPE_INVALID, CExoString("rb"));
 
     int nColon = filePath.Find(CExoString(":"), 0);

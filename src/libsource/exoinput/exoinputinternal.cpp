@@ -451,18 +451,19 @@ int CExoInputInternal::GetLastCapturedKeyboardKey()
 {
     CExoDeviceBuffer buffer;
     int nResult = 0;
-    if (m_pMainDevice != 0 && m_bCaptureKeyboardKeys != 0) {
-        m_pMainDevice->GetKeyboardBuffer(buffer);
-        int nKbStart = CExoInput::KEYBOARD_START;
-        int nJoyStart = CExoInput::JOYSTICK_START;
-        for (uint64_t i = 0; i < buffer.m_nCount; i++) {
-            if (buffer.m_pEntries[i].m_nValue & INPUTKEY_DOWN) {
-                int nKeyCode = buffer.m_pEntries[i].m_nKeyCode;
-                for (int j = nKbStart; j < nJoyStart; j++) {
-                    if (nKeyCode == m_keyArray[j]) {
-                        nResult = j;
-                        break;
-                    }
+    if (m_pMainDevice == 0 || m_bCaptureKeyboardKeys == 0) {
+        return nResult;
+    }
+    m_pMainDevice->GetKeyboardBuffer(buffer);
+    int nKbStart = CExoInput::KEYBOARD_START;
+    int nJoyStart = CExoInput::JOYSTICK_START;
+    for (unsigned int i = 0; i < buffer.m_nCount; i++) {
+        if (buffer.m_pEntries[i].m_nValue & INPUTKEY_DOWN) {
+            int nKeyCode = buffer.m_pEntries[i].m_nKeyCode;
+            for (int j = nKbStart; j < nJoyStart; j++) {
+                if (nKeyCode == m_keyArray[j]) {
+                    nResult = j;
+                    break;
                 }
             }
         }
@@ -555,25 +556,20 @@ void CExoInputInternal::ClearEventRepeat(unsigned int nEvent)
     }
 }
 
-// Walks the repeat list for this event's record and unlinks it. The null-skipping inner loop keeps
-// the entry lookup out of the loop header.
+// Walks the repeat list for this event's record and unlinks it.
 void CExoInputInternal::SetEventNonRepeatable(unsigned int nEvent)
 {
-    if (m_aEvents.m_pArray[static_cast<int>(nEvent)] != 0 && m_aEvents.m_pArray[static_cast<int>(nEvent)]->m_nEventClass == INPUTKIND_BUTTON) {
-        CExoLinkedListNode* pNode = m_repeatList.GetHeadPos();
-        if (pNode != 0) {
-            CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
-            while (pRec == 0 || static_cast<unsigned int>(pRec->m_nEventIndex) != nEvent) {
-                do {
-                    m_repeatList.GetNext(pNode);
-                    if (pNode == 0)
-                        return;
-                    pRec = m_repeatList.GetAtPos(pNode);
-                } while (pRec == 0);
-            }
+    if (m_aEvents.m_pArray[static_cast<int>(nEvent)] == 0 || m_aEvents.m_pArray[static_cast<int>(nEvent)]->m_nEventClass != INPUTKIND_BUTTON)
+        return;
+    CExoLinkedListNode* pNode = m_repeatList.GetHeadPos();
+    while (pNode != 0) {
+        CExoInputRepeatEvent* pRec = m_repeatList.GetAtPos(pNode);
+        if (pRec != 0 && static_cast<unsigned int>(pRec->m_nEventIndex) == nEvent) {
             m_repeatList.Remove(pNode);
             ::operator delete(pRec);
+            return;
         }
+        m_repeatList.GetNext(pNode);
     }
 }
 
@@ -1088,6 +1084,14 @@ float CExoInputInternal::ScaledValue(CExoInputEventDesc* pDesc, unsigned int nCo
     if (static_cast<unsigned int>(CExoInput::MOUSE_XAXIS) == nControl ||
         static_cast<unsigned int>(CExoInput::MOUSE_YAXIS) == nControl) {
         float fScaled = fValue / 100.0f;
+#if KOTOR1  // K1: the mouse delta is whole steps only
+        if (fScaled > 1.0f)
+            fScaled = 1.0f;
+        int nSteps = static_cast<int>(fScaled);
+        if (nSteps < -1)
+            nSteps = -1;
+        return static_cast<float>(nSteps);
+#else
         float fClamped;
         if (fScaled > 1.0f)
             fClamped = 1.0f;
@@ -1095,9 +1099,6 @@ float CExoInputInternal::ScaledValue(CExoInputEventDesc* pDesc, unsigned int nCo
             fClamped = -1.0f;
         else
             fClamped = fScaled;
-#if KOTOR1  // K1: the mouse delta is whole steps only
-        return static_cast<float>(static_cast<int>(fClamped));
-#else
         return fClamped;
 #endif
     }
@@ -2161,7 +2162,9 @@ CExoArrayList<CExoInputEvent> CExoInputInternal::GetEvents(int& nCount, int nInp
             nHeld &= ~nBit;
         }
 #else
-        int aKeys[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+        int aKeys[10];
+        for (int i = 0; i < 10; i++)
+            aKeys[i] = -1;
         if (aBuffers[2].m_nCount != 0) {
             for (int i = 0; i < static_cast<int>(aBuffers[2].m_nCount); i++) {
                 CExoInputKeyEvent* pEntry = &aBuffers[2].m_pEntries[i];

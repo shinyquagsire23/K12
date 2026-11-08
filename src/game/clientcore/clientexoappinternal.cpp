@@ -878,26 +878,24 @@ void CClientExoAppInternal::UpdateRumble(float fRumble)
         if (GetLoadScreenVisible() == 0) {
             int nCount = m_rumblePatterns.m_count;
             fHigh = 0.0f;
-            if (nCount > 0) {
-                fLow = 0.0f;
-                for (int i = nCount - 1; i >= 0; --i) {
-                    CSWRumbleInstance& r = m_rumblePatterns.m_pArray[i];
-                    float fPos;
-                    if (r.nState != 0) {
-                        r.nState = 0;
-                        fPos = r.fPhase;
-                    } else {
-                        r.fPhase += fRumble;
-                        fPos = r.fPhase;
-                    }
-                    float fMagLow, fMagHigh;
-                    int nPattern = r.nPattern;
-                    if (m_rumblePatternList.m_pArray[nPattern].GetMagnitudes(fPos, fMagLow, fMagHigh) != 0) {
-                        fLow = (fLow > fMagLow) ? fLow : fMagLow;
-                        fHigh = (fHigh > fMagHigh) ? fHigh : fMagHigh;
-                    } else {
-                        m_rumblePatterns.DelIndex(i);
-                    }
+            fLow = 0.0f;
+            for (int i = nCount - 1; i >= 0; --i) {
+                CSWRumbleInstance& r = m_rumblePatterns.m_pArray[i];
+                float fPos;
+                if (r.nState != 0) {
+                    r.nState = 0;
+                    fPos = r.fPhase;
+                } else {
+                    r.fPhase += fRumble;
+                    fPos = r.fPhase;
+                }
+                float fMagLow, fMagHigh;
+                int nPattern = r.nPattern;
+                if (m_rumblePatternList.m_pArray[nPattern].GetMagnitudes(fPos, fMagLow, fMagHigh) != 0) {
+                    fLow = (fLow > fMagLow) ? fLow : fMagLow;
+                    fHigh = (fHigh > fMagHigh) ? fHigh : fMagHigh;
+                } else {
+                    m_rumblePatterns.DelIndex(i);
                 }
             }
         } else {
@@ -5698,7 +5696,11 @@ CExoString CClientExoAppInternal::GetLoadMusicByModuleName(const CExoString& a)
 {
     CExoString sRet;
     C2DA* pLoadscreens;
-    if (a.GetLength())
+    if (a.GetLength() == 0)
+    {
+        sRet = "";
+    }
+    else
     {
         pLoadscreens = g_pRules->m_p2DArrays->m_pAreaTransition;
         if (pLoadscreens->GetCExoStringEntry(a, CExoString("MusicResRef"), &sRet) == 0)
@@ -5712,10 +5714,6 @@ CExoString CClientExoAppInternal::GetLoadMusicByModuleName(const CExoString& a)
                 pLoadscreens->GetCExoStringEntry(sRow, sColumn2, &sRet);
             }
         }
-    }
-    else
-    {
-        sRet = "";
     }
     return sRet;
 }
@@ -6654,16 +6652,15 @@ int CClientExoAppInternal::PlayRumblePattern(int nPattern)
     if (nPattern < 0 || nPattern >= m_rumblePatternList.m_count)
         return 0;
 
+    int nOldCount = m_rumblePatterns.m_count;
     CSWRumbleInstance* pScan = m_rumblePatterns.m_pArray;
-    if (m_rumblePatternList.m_pArray[nPattern].m_nLooping != 0 &&
-        m_rumblePatterns.m_count >= 1) {
-        for (int i = 0; i < m_rumblePatterns.m_count; ++i) {
+    if (m_rumblePatternList.m_pArray[nPattern].m_nLooping != 0) {
+        for (int i = 0; i < nOldCount; ++i) {
             if (pScan[i].nPattern == nPattern)
                 return 0;
         }
     }
 
-    int nOldCount = m_rumblePatterns.m_count;
     m_rumblePatterns.SetSize(nOldCount + 1);
     CSWRumbleInstance& rNew = m_rumblePatterns.m_pArray[nOldCount];
     rNew.nPattern = nPattern;
@@ -7660,15 +7657,13 @@ update_phase:
                         pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
                         pModel->GetAnimation(static_cast<char*>(sName.CStr()), &fB, &fA);
                     }
-                    if (m_queuedAnims.m_pInternal->m_pHead && fA == -1.0f) {
-                        do {
-                            pAnim = m_queuedAnims.RemoveHead();
-                            if (pAnim) {
-                                pPlayer = GetPlayerCreature();
-                                pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
-                                pModel->GetAnimation(static_cast<char*>(pAnim->m_sName.CStr()), &fB, &fA);
-                            }
-                        } while (m_queuedAnims.m_pInternal->m_pHead && fA == -1.0f);
+                    while (m_queuedAnims.m_pInternal->m_pHead && fA == -1.0f) {
+                        pAnim = m_queuedAnims.RemoveHead();
+                        if (pAnim) {
+                            pPlayer = GetPlayerCreature();
+                            pModel = pPlayer->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
+                            pModel->GetAnimation(static_cast<char*>(pAnim->m_sName.CStr()), &fB, &fA);
+                        }
                     }
                     if (pAnim) {
 #if KOTOR1  // the queue message is not posted (only its name argument is read)
@@ -9654,11 +9649,9 @@ hilited:;
                 pCreature->GetListenCheckDistance();
                 CSWSCreature* pBase0 = g_pAppManager->m_pClientExoApp->GetSWParty()
                                            ->GetCharacter(0)->GetServerCreature();
-                Vector vDist;
-                vDist.x = pCreature->m_position.x - pBase0->m_position.x;
-                vDist.y = pCreature->m_position.y - pBase0->m_position.y;
-                vDist.z = pCreature->m_position.z - pBase0->m_position.z;
-                magnitude(vDist);
+                magnitude(Vector(pCreature->m_position.x - pBase0->m_position.x,
+                                 pCreature->m_position.y - pBase0->m_position.y,
+                                 pCreature->m_position.z - pBase0->m_position.z));
                 pCreature->GetLockOrientationToObject();
                 pCreature->GetClientCreature()->GetCurrentAnimation();
                 if (pCreature->m_bInParty) {
@@ -10056,51 +10049,51 @@ loop2:
             int i = 0;
             CGameObject* pBest = 0;
             const unsigned long long nInvB = OBJECT_INVALID;
-            if (listNear.m_count < 1)
-                pBest = 0;
-            while (i < listNear.m_count) {
-                unsigned long long nId = listNear.m_pArray[i];
-                unsigned long long nMasked = (nId == nInvB) ? nId : (nId | CLIENT_OBJECT_ID_FLAG);
-                listNear.m_pArray[i] = nMasked;
-                pObj = GetGameObject(nMasked);
-                if (pObj && pObj->AsSWCObject() != 0) {
-                    if (pObj->AsSWCObject()->IsHostile() != 0) {
-                        int k = listAround.IndexOf(nMasked);
-                        unsigned char c = m_visibleTable.m_pArray[k].m_canSee;
-                        if (c == static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN))
-                            m_visibleTable.m_pArray[k].m_canSee =
-                                c = static_cast<unsigned char>(pPlayer->CanSee(pObj->AsSWCObject()));
-                        if (c != 0) {
-                            m_lastTarget = listNear.m_pArray[i];
-                            ShowObject(pObj->AsSWCObject(), 1, 0, 0);
-                            bShowCalled = 1;
-                            goto cleanup_return;
-                        }
-                    } else if (pBest == 0) {
-#ifdef K2_FIX_ENGINE_BUGS
-                        // Only a target the player can see, as every other pick here tests.
-                        int k = -1;
-                        for (int j = 0; j < listAround.m_count; j++) {
-                            if (listAround.m_pArray[j] == nMasked) {
-                                k = j;
-                                break;
+            if (listNear.m_count > 0) {
+                while (i < listNear.m_count) {
+                    unsigned long long nId = listNear.m_pArray[i];
+                    unsigned long long nMasked = (nId == nInvB) ? nId : (nId | CLIENT_OBJECT_ID_FLAG);
+                    listNear.m_pArray[i] = nMasked;
+                    pObj = GetGameObject(nMasked);
+                    if (pObj && pObj->AsSWCObject() != 0) {
+                        if (pObj->AsSWCObject()->IsHostile() != 0) {
+                            int k = listAround.IndexOf(nMasked);
+                            unsigned char c = m_visibleTable.m_pArray[k].m_canSee;
+                            if (c == static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN))
+                                m_visibleTable.m_pArray[k].m_canSee =
+                                    c = static_cast<unsigned char>(pPlayer->CanSee(pObj->AsSWCObject()));
+                            if (c != 0) {
+                                m_lastTarget = listNear.m_pArray[i];
+                                ShowObject(pObj->AsSWCObject(), 1, 0, 0);
+                                bShowCalled = 1;
+                                goto cleanup_return;
                             }
-                        }
-                        unsigned char c = k >= 0 ? m_visibleTable.m_pArray[k].m_canSee
-                                                 : static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN);
-                        if (c == static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN)) {
-                            c = static_cast<unsigned char>(pPlayer->CanSee(pObj->AsSWCObject()));
-                            if (k >= 0)
-                                m_visibleTable.m_pArray[k].m_canSee = c;
-                        }
-                        if (c != 0)
-                            pBest = pObj;
+                        } else if (pBest == 0) {
+#ifdef K2_FIX_ENGINE_BUGS
+                            // Only a target the player can see, as every other pick here tests.
+                            int k = -1;
+                            for (int j = 0; j < listAround.m_count; j++) {
+                                if (listAround.m_pArray[j] == nMasked) {
+                                    k = j;
+                                    break;
+                                }
+                            }
+                            unsigned char c = k >= 0 ? m_visibleTable.m_pArray[k].m_canSee
+                                                     : static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN);
+                            if (c == static_cast<unsigned char>(CNearestStruct::CANSEE_UNKNOWN)) {
+                                c = static_cast<unsigned char>(pPlayer->CanSee(pObj->AsSWCObject()));
+                                if (k >= 0)
+                                    m_visibleTable.m_pArray[k].m_canSee = c;
+                            }
+                            if (c != 0)
+                                pBest = pObj;
 #else
-                        pBest = pObj;
+                            pBest = pObj;
 #endif
+                        }
                     }
+                    i++;
                 }
-                i++;
             }
             {
                 int nIdxB = 0;

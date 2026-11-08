@@ -189,14 +189,8 @@ CGuiInGame::CGuiInGame()
     m_lastDialogAnimCount = 0;
 
     m_pInGameMenu = 0;
-    m_apScreenPanels[0] = 0;
-    m_apScreenPanels[1] = 0;
-    m_apScreenPanels[2] = 0;
-    m_apScreenPanels[3] = 0;
-    m_apScreenPanels[4] = 0;
-    m_apScreenPanels[5] = 0;
-    m_apScreenPanels[6] = 0;
-    m_apScreenPanels[7] = 0;
+    for (int i = 0; i < 8; i++)
+        m_apScreenPanels[i] = 0;
     m_lastGuiPanel = SCREEN_EQUIP;
     m_bInGameMenuShown = 0;
     m_swGuiToggleState = 0;
@@ -1988,23 +1982,17 @@ void CGuiInGame::SetGuiInGameInventoryDirty(int flag)
 
 Vector CGuiInGame::GetAreaTranstionPosition()
 {
-    Vector vPosition = { 0.0f, 0.0f, 0.0f };
     if (m_pAreaTransitionPanel != 0)
-        vPosition = static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->m_position;
-    return vPosition;
+        return static_cast<CSWGuiInGameAreaTransition*>(m_pAreaTransitionPanel)->m_position;
+    return Vector(0.0f, 0.0f, 0.0f);
 }
 
 Vector CGuiInGame::GetDialogCameraPosition(int bOffsetByOrientation)
 {
     CSWCCreature* pPlayerCreature = g_pAppManager->m_pClientExoApp->GetPlayerCreature();
     Vector vPos;
-    if (pPlayerCreature != 0) {
+    if (pPlayerCreature != 0)
         vPos = pPlayerCreature->m_desiredPosition;
-    } else {
-        vPos.x = 0;
-        vPos.y = 0;
-        vPos.z = 0;
-    }
 
     if (m_bDialogCameraSet == 0 && m_bAnimatedCameraActive == 0) {
         return vPos;
@@ -2021,13 +2009,12 @@ Vector CGuiInGame::GetDialogCameraPosition(int bOffsetByOrientation)
         return vPos;
     }
 
-    vPos = pCamera->GetPosition();
+    Vector vCamera = pCamera->GetPosition();
     if (bOffsetByOrientation != 0) {
-        Vector vDir = normalize(-pCamera->GetOrientation().zdir());
-        vPos.x += vDir.x * 5.0f;
-        vPos.y += vDir.y * 5.0f;
-        vPos.z += vDir.z * 5.0f;
+        Vector vDir = -pCamera->GetOrientation().zdir();
+        vCamera = vCamera + normalize(vDir) * 5.0f;
     }
+    vPos = vCamera;
     return vPos;
 }
 
@@ -2368,7 +2355,7 @@ int CGuiInGame::LoadStuntModelsForDialog()
         if (pObj != 0) {
             CSWCObject* pSWCObj = static_cast<CSWCObject*>(pObj->AsSWCObject());
             if (pSWCObj != 0) {
-                char buf[20];
+                char buf[17];
                 m_paStuntModelResRefs[i].CopyToString(buf);
                 if (buf[0] != '\0') {
                     Gob* pModel = pSWCObj->GetModel(ANIMBASE_MODEL_BODY, 0);
@@ -3239,7 +3226,7 @@ void CGuiInGame::StoreLastDialogAnimationData()
     unsigned int count = m_dialogAnimCount;
     m_lastDialogAnimCount = count;
     if (count != 0) {
-        m_paLastDialogAnimData = new unsigned long long[count];
+        m_paLastDialogAnimData = new uintptr_t[count];
         m_paLastDialogAnimFlags = new unsigned short[count];
     }
     for (int i = 0; i < static_cast<int>(m_dialogAnimCount); i++) {
@@ -3257,7 +3244,7 @@ bool CGuiInGame::InitializeDialogAnimationData(unsigned int count)
     }
     m_dialogAnimCount = count;
     size_t nBytes;
-    m_paDialogAnimData = static_cast<unsigned long long*>(operator new[](__builtin_mul_overflow(count, sizeof(unsigned long long), &nBytes) ? SIZE_MAX : nBytes));
+    m_paDialogAnimData = static_cast<uintptr_t*>(operator new[](__builtin_mul_overflow(count, sizeof(uintptr_t), &nBytes) ? SIZE_MAX : nBytes));
     m_paDialogAnimFlags = static_cast<unsigned short*>(operator new[](__builtin_mul_overflow(count, sizeof(unsigned short), &nBytes) ? SIZE_MAX : nBytes));
     return true;
 }
@@ -4589,10 +4576,10 @@ void CGuiInGame::UpdateShotCamera(unsigned int nShotType, int nCharId, float fC,
 #endif
                     float fAngle = acosf(fDotC) * 57.295776f;
                     float fHeadTurn = pObjB->AsSWCCreature()->GetHeadTurnHorizontal();
-                    float fMaxTurn = 0.0f;
 #if KOTOR1  // K1: an inline finiteness test
-                    if (__builtin_isfinite(fAngle)) fMaxTurn = fAngle;
+                    float fMaxTurn = __builtin_isfinite(fAngle) ? fAngle : 0.0f;
 #else
+                    float fMaxTurn = 0.0f;
                     if (_finite(static_cast<double>(fAngle)) != 0) fMaxTurn = fAngle;
 #endif
                     if (fMaxTurn > fHeadTurn) {
@@ -4659,10 +4646,10 @@ void CGuiInGame::UpdateShotCamera(unsigned int nShotType, int nCharId, float fC,
 #endif
                     float fAngle = acosf(fDotC) * 57.295776f;
                     float fHeadTurn = pObjA->AsSWCCreature()->GetHeadTurnHorizontal();
-                    float fMaxTurn = 0.0f;
 #if KOTOR1  // K1: an inline finiteness test
-                    if (__builtin_isfinite(fAngle)) fMaxTurn = fAngle;
+                    float fMaxTurn = __builtin_isfinite(fAngle) ? fAngle : 0.0f;
 #else
+                    float fMaxTurn = 0.0f;
                     if (_finite(static_cast<double>(fAngle)) != 0) fMaxTurn = fAngle;
 #endif
                     if (fMaxTurn > fHeadTurn) {

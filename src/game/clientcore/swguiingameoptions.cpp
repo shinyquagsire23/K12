@@ -213,13 +213,17 @@ void CSWGuiInGameOptions::OnQuit(CSWGuiControl* pControl)
     }
 }
 
+// EFFECTIVE: the image tests the index as `cmp #7; b.hi` where ours is `cmp #8; b.hs` (the same range); every
+// spelling that gives `ugt 7` (an early return) lays the return block out first.
 void CSWGuiInGameOptions::OnEnterSlot(CSWGuiControl* pControl)
 {
-    int i = 0;
-    while (i < 8 && pControl != &m_aButtons[i])
-        i++;
-    if (i < 8)
-        SetDescription(aButtonDescriptions[i]);
+    int nIndex = -1;
+    for (int i = 0; i < 8 && nIndex == -1; i++) {
+        if (pControl == &m_aButtons[i])
+            nIndex = i;
+    }
+    if (nIndex >= 0 && nIndex < 8)
+        SetDescription(aButtonDescriptions[nIndex]);
 }
 
 void CSWGuiInGameOptions::SetActiveButton(int nIndex)

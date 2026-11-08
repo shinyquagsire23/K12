@@ -154,38 +154,32 @@ int CSWSRoom::ClearLineOfSight(Vector from, Vector to, Vector* pHitPoint,
 // The point arrives by value and is spilled because FindTriangle takes it by const reference.
 Vector CSWSRoom::GetNormalOfPoint(Vector vPoint)
 {
-    Vector vNormal(0.0f, 0.0f, 1.0f);
     int nPoint = m_pSurfaceMesh->FindTriangle(vPoint, 1, Vector(1.0f, 1.0f, 0.0f));
     if (nPoint >= 0) {
-        Vector* paNormals = m_pSurfaceMesh->m_paTriNormals;
-        if (paNormals != 0) {
 #if KOTOR1
-            vNormal.x = paNormals[nPoint].x;
-            vNormal.z = paNormals[nPoint].z;
-            vNormal.y = paNormals[nPoint].y;
+        if (m_pSurfaceMesh->m_paTriNormals != 0)
+            return m_pSurfaceMesh->m_paTriNormals.Get(nPoint);
 #else
-            vNormal = paNormals[nPoint];
+        Vector* paNormals = m_pSurfaceMesh->m_paTriNormals;
+        if (paNormals != 0)
+            return paNormals[nPoint];
 #endif
-        }
     }
-    return vNormal;
+    return Vector(0.0f, 0.0f, 1.0f);
 }
 
 // The index-taking sibling.
 Vector CSWSRoom::GetNormalOfPoint(int nPoint)
 {
-    Vector vNormal(0.0f, 0.0f, 1.0f);
     if (nPoint >= 0) {
-        Vector* paNormals = m_pSurfaceMesh->m_paTriNormals;
-        if (paNormals != 0) {
 #if KOTOR1
-            vNormal.x = paNormals[nPoint].x;
-            vNormal.z = paNormals[nPoint].z;
-            vNormal.y = paNormals[nPoint].y;
+        if (m_pSurfaceMesh->m_paTriNormals != 0)
+            return m_pSurfaceMesh->m_paTriNormals.Get(nPoint);
 #else
-            vNormal = paNormals[nPoint];
+        Vector* paNormals = m_pSurfaceMesh->m_paTriNormals;
+        if (paNormals != 0)
+            return paNormals[nPoint];
 #endif
-        }
     }
-    return vNormal;
+    return Vector(0.0f, 0.0f, 1.0f);
 }

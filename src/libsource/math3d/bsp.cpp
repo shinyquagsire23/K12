@@ -190,7 +190,7 @@ void BSPTraverseVolumeApprox(BSPNode* pNode, const Vector& v, List<Plane>& plane
 
     // Descending so that an Add which has to grow a list cannot invalidate the index for the rest
     // of the scan.
-    for (int64_t i = planes.m_count - 1; i >= 0; i--)
+    for (int i = planes.m_count - 1; i >= 0; i--)
     {
         int nMask = RFaceSplitTest(pNode->m_lVerts, planes.m_pData[i]);
 

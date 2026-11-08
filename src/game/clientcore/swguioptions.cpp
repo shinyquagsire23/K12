@@ -996,8 +996,8 @@ void CSWGuiOptionsFeedback::PopulateOptionsListbox()
     m_listBox.AddControls(list, 1, 1, 0);
     m_listBox.bLooping = 0;
 #else
-    CExoArrayList<CSWGuiControl*> list;
     CSWGuiButtonToggle* pProto = static_cast<CSWGuiButtonToggle*>(m_listBox.m_pProtoItem);
+    CExoArrayList<CSWGuiControl*> list;
 
     CClientOptions* pOptions = g_pAppManager->m_pClientExoApp->GetClientOptions();
     if (pOptions == 0)
@@ -1007,7 +1007,7 @@ void CSWGuiOptionsFeedback::PopulateOptionsListbox()
         for (int i = 0; i < SWGUI_NUM_FEEDBACK_OPTIONS; i++)
         {
             CSWGuiOptionsCheckbox* pCheckbox = new CSWGuiOptionsCheckbox();
-            pCheckbox->CSWGuiButtonToggle::Initialize(pProto->m_extent, pProto);
+            pCheckbox->Initialize(pProto->m_extent, pProto);
 
             float fScale = GetResolutionTextScalar();
             CSWGuiExtent extent = pCheckbox->m_extent;
@@ -3553,7 +3553,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
                     pButton->m_tail.m_nUserData = nMode;
                     pButton->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsResolution::OnResolutionChosen));
 
-                    for (int64_t i = 0; i < buttons.m_count; i++) {
+                    for (int i = 0; i < buttons.m_count; i++) {
                         if (strcmp(static_cast<CSWGuiButton*>(buttons.m_pArray[i])->m_text.m_params.m_sText.CStr(), sCaption.CStr()) == 0) {
                             delete pButton;
                             goto nextMode;
@@ -3583,7 +3583,7 @@ CSWGuiOptionsResolution::CSWGuiOptionsResolution(CSWGuiManager* pGuiManager)
                         pButton->m_tail.m_nUserData = nMode;
                         pButton->AddEvent(INPUTEVENT_GUI_A, this, static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiOptionsResolution::OnResolutionChosen));
 
-                        for (int64_t i = 0; i < buttons.m_count; i++) {
+                        for (int i = 0; i < buttons.m_count; i++) {
                             if (strcmp(static_cast<CSWGuiButton*>(buttons.m_pArray[i])->m_text.m_params.m_sText.CStr(), sCaption.CStr()) == 0) {
                                 delete pButton;
                                 goto nextMode;

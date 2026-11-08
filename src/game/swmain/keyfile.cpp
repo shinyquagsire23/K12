@@ -37,13 +37,10 @@ int KeyFileRead(FILE* pFile, KeyFileData* pData)
     int nSize = nRead - 8;
 
     // Un-obfuscate every byte that was actually read, from a fixed seed.
-    if (nRead >= 1) {
-        unsigned int nCount = static_cast<unsigned int>(nRead);
-        unsigned long long nSeed = KEYFILE_READ_SEED;
-        for (uint64_t i = 0; i < nCount; i++) {
-            nSeed = nSeed * kLcgMul + kLcgAdd;
-            szBuf[i] -= static_cast<char>(nSeed >> 16);
-        }
+    unsigned long long nSeed = KEYFILE_READ_SEED;
+    for (int i = 0; i < nRead; i++) {
+        nSeed = nSeed * kLcgMul + kLcgAdd;
+        szBuf[i] -= static_cast<char>(nSeed >> 16);
     }
 
     if (nSize < 0) {

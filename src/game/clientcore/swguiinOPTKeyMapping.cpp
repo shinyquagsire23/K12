@@ -414,7 +414,7 @@ CSWGuiKeyMapButton* CSWGuiInGameOptKeyMappings::CreateOption(int nActionId, CSWG
     int nBorderDim;
     pButton->SetDescription(sActionName);
 
-    nIdealHeight = pButton->m_text.GetIdealHeight();
+    nIdealHeight = (&pButton->m_text)->GetIdealHeight();  // through the pointer: a virtual call, not devirtualised
     nHilightDim = pButton->m_borderHilight.m_params.GetBorderDim();
     nBorderDim = pButton->m_border.m_params.GetBorderDim();
     if (nHilightDim > nBorderDim)

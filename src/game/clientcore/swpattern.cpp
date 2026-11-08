@@ -105,18 +105,16 @@ CSWRumblePattern::CSWRumblePattern()
 void CSWRumblePattern::LoadPattern(int nRow, C2DA* p2DA)
 {
     if (nRow < p2DA->m_nRows) {
+        int nSamples;  // GetINTEntry writes it on every path
+        float fMagnitude;
+        float fTime;
         CExoString sColumn;
 
         p2DA->GetINTEntry(nRow, CExoString("Looping"), &m_nLooping);
 
-        int nSamples = 0;
-
         p2DA->GetINTEntry(nRow, CExoString("LSamples"), &nSamples);
         m_left.SetNumSamplePoints(nSamples);
         for (int i = 0; i < m_left.m_nNumSamplePoints; i++) {
-            float fMagnitude;
-            float fTime;
-
             sColumn.Format(const_cast<char*>("LMagnitude%d"), i + 1);
             p2DA->GetFLOATEntry(nRow, sColumn, &fMagnitude);
             sColumn.Format(const_cast<char*>("LTime%d"), i + 1);
@@ -128,9 +126,6 @@ void CSWRumblePattern::LoadPattern(int nRow, C2DA* p2DA)
         p2DA->GetINTEntry(nRow, CExoString("RSamples"), &nSamples);
         m_right.SetNumSamplePoints(nSamples);
         for (int i = 0; i < m_right.m_nNumSamplePoints; i++) {
-            float fMagnitude;
-            float fTime;
-
             sColumn.Format(const_cast<char*>("RMagnitude%d"), i + 1);
             p2DA->GetFLOATEntry(nRow, sColumn, &fMagnitude);
             sColumn.Format(const_cast<char*>("RTime%d"), i + 1);

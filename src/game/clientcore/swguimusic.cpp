@@ -115,16 +115,8 @@ CSWGuiTitleMusic::CSWGuiTitleMusic(CSWGuiManager* pGuiManager)
     ini.ReadIniEntry(sUnlockedSongs, CExoString(".\\swkotor2.ini"), CExoString("Game Options"),
                      CExoString("UnlockedPlanetSongs"));
     int nBits = sUnlockedSongs.AsINT();
-    m_aUnlockedPlanets[1] = nBits & (1 << 1);
-    m_aUnlockedPlanets[2] = nBits & (1 << 2);
-    m_aUnlockedPlanets[3] = nBits & (1 << 3);
-    m_aUnlockedPlanets[4] = nBits & (1 << 4);
-    m_aUnlockedPlanets[5] = nBits & (1 << 5);
-    m_aUnlockedPlanets[6] = nBits & (1 << 6);
-    m_aUnlockedPlanets[7] = nBits & (1 << 7);
-    m_aUnlockedPlanets[8] = nBits & (1 << 8);
-    m_aUnlockedPlanets[9] = nBits & (1 << 9);
-    m_aUnlockedPlanets[10] = nBits & (1 << 10);
+    for (int i = 0; i < 11; i++)
+        m_aUnlockedPlanets[i] = nBits & (1 << i);
     m_aUnlockedPlanets[0] = 1;
 
     PopulateSongList();

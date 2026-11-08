@@ -116,13 +116,10 @@ void CSWVarTable::LoadVarTable(CResGFF* pGFF, CResStruct* pStruct)
         else
             nCount = SWVAR_BOOLEAN_WORDS;
 
-        if (nCount >= 1)
+        for (int i = 0; i < nCount; i++)
         {
-            for (int i = 0; i < nCount; i++)
-            {
-                if (pGFF->GetListElement(&sElement, &list, i))
-                    m_localBooleans[i] = pGFF->ReadFieldDWORD(&sElement, const_cast<char*>("Variable"), bSuccess, 0);
-            }
+            if (pGFF->GetListElement(&sElement, &list, i))
+                m_localBooleans[i] = pGFF->ReadFieldDWORD(&sElement, const_cast<char*>("Variable"), bSuccess, 0);
         }
 #endif
     }
@@ -150,13 +147,10 @@ void CSWVarTable::LoadVarTable(CResGFF* pGFF, CResStruct* pStruct)
         else
             nCount = SWVAR_NUMBERS;
 
-        if (nCount >= 1)
+        for (int i = 0; i < nCount; i++)
         {
-            for (int i = 0; i < nCount; i++)
-            {
-                if (pGFF->GetListElement(&sElement, &list, i))
-                    m_localNumbers[i] = pGFF->ReadFieldBYTE(&sElement, const_cast<char*>("Variable"), bSuccess, 0);
-            }
+            if (pGFF->GetListElement(&sElement, &list, i))
+                m_localNumbers[i] = pGFF->ReadFieldBYTE(&sElement, const_cast<char*>("Variable"), bSuccess, 0);
         }
 #endif
     }

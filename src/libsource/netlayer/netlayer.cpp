@@ -375,10 +375,12 @@ int CNetLayer::SendMessageToPlayer(unsigned int playerId, unsigned char* data, u
     CNetLayer* peer = m_pDestNetLayer;
     if (!peer) return 0;
 
-    unsigned int writePos = (peer->m_nWritePos >> 16 == 0) ? peer->m_nWritePos : 0;
-    unsigned int nextPos = (len - (len & 3)) + writePos + 4 + 4;
+    unsigned int writePos = static_cast<unsigned int>(peer->m_nWritePos);
+    if (writePos >= FRAME_RING_SIZE) writePos = 0;
+    unsigned int payloadOff = writePos + 4;
+    unsigned int nextPos = ((len + payloadOff) - (len & 3)) + 4;
 
-    if (static_cast<unsigned int>(peer->m_nReadPos) + FRAME_RING_SIZE < nextPos)
+    if (nextPos > static_cast<unsigned int>(peer->m_nReadPos) + FRAME_RING_SIZE)
     {
         CExoString msg;
         unsigned int c0, c1, c2, c3, c4, c5, c6, c7;
@@ -472,7 +474,7 @@ int CNetLayer::SendMessageToPlayer(unsigned int playerId, unsigned char* data, u
     }
 
     *reinterpret_cast<unsigned int*>(m_pDestNetLayer->m_abFrameBuffer + writePos) = len;  // raw-offset: network frame buffer
-    memcpy(m_pDestNetLayer->m_abFrameBuffer + writePos + 4, data, len);  // idiom-exempt: runtime length (caller-supplied message size, no compile-time size)
+    memcpy(m_pDestNetLayer->m_abFrameBuffer + payloadOff, data, len);  // idiom-exempt: runtime length (caller-supplied message size, no compile-time size)
     m_pDestNetLayer->m_nWritePos = nextPos;
     return 1;
 }

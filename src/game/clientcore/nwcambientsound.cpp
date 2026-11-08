@@ -384,8 +384,10 @@ void CSWCAmbientSound::PlayMusic(int nState)
             }
             else
             {
+#ifndef K2_FIX_ENGINE_BUGS
                 if (m_musicNightTrack.m_sResource == "MUS_AREA_TOWNINT")
                     return;
+#endif
                 bPlayed = m_pMusicSource->Play(CResRef(m_musicNightTrack.m_sResource), 8, 0, 1, 0);
             }
             if (!bPlayed)

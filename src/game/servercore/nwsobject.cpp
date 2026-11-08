@@ -1605,9 +1605,11 @@ void CSWSObject::TimeStampCameraAnimation() {
 }
 
 void CSWSObject::RemoveEffectByCreator(unsigned long long oidCreator) {
-    for (int i = 0; i < m_effects.m_count; i++) {
-        if (m_effects.m_pArray[i]->m_creatorId == oidCreator)
-            RemoveEffect(m_effects.m_pArray[i]);
+    if (m_effects.m_count > 0) {
+        for (int i = 0; i < m_effects.m_count; i++) {
+            if (m_effects.m_pArray[i]->m_creatorId == oidCreator)
+                RemoveEffect(m_effects.m_pArray[i]);
+        }
     }
 }
 
@@ -3287,21 +3289,22 @@ void CSWSObject::CalculateLastSpellProjectileTime(unsigned char nProjectileType)
 Vector CSWSObject::CalculateSpellRangedMissTarget(unsigned long long casterId,
                                                   unsigned long long targetId)
 {
+    Vector vResult;
     float fMissDistance = 0.5f;
     Vector vMissTarget;
 
     CGameObject* pCasterObject = g_pAppManager->m_pServerExoApp->GetGameObject(casterId);
     if (pCasterObject == 0)
-        return Vector();
+        return vResult;
     if (pCasterObject->AsSWSObject() == 0)
-        return Vector();
+        return vResult;
     CSWSObject* pCaster = pCasterObject->AsSWSObject();
 
     CGameObject* pTargetObject = g_pAppManager->m_pServerExoApp->GetGameObject(targetId);
     if (pTargetObject == 0)
-        return Vector();
+        return vResult;
     if (pTargetObject->AsSWSObject() == 0)
-        return Vector();
+        return vResult;
     CSWSObject* pTarget = pTargetObject->AsSWSObject();
 
     if (pTarget->AsSWSCreature() != 0)
@@ -3320,12 +3323,8 @@ Vector CSWSObject::CalculateSpellRangedMissTarget(unsigned long long casterId,
 
     if (fDx * fDx + fDy * fDy + fDz * fDz > 100.0f)
     {
-        Vector vDelta;
-        vDelta.x = fDx;
-        vDelta.y = fDy;
-        vDelta.z = fDz;
 
-        Vector vDirection = normalize(vDelta);
+        Vector vDirection = normalize(Vector(fDx, fDy, fDz));
         float fBearing = atanf(vDirection.y / vDirection.x);
 
         int nJitterSign = rand_wincompatible();
@@ -3407,7 +3406,7 @@ Vector CSWSObject::CalculateSpellRangedMissTarget(unsigned long long casterId,
         vMissTarget.z += pTarget->m_position.z;
     }
 
-    return Vector();
+    return vResult;
 }
 
 void CSWSObject::UpdateEffectList(unsigned int nCalendarDay, unsigned int nTimeOfDay)

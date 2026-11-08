@@ -191,11 +191,8 @@ Vector WindManager::GetGlobalWindNoPoint(const Vector& v, float f)
 // two-angle rotation.
 Vector WindManager::GetGlobalWind(Vector v, float f)
 {
-    if (m_vWind.IsZero()) {
-        Vector vStill = pointSourceWindVector(v);
-        if (vStill.x == 0.0f && vStill.y == 0.0f && vStill.z == 0.0f)
-            return m_vWind;
-    }
+    if (m_vWind.IsZero() && pointSourceWindVector(v).IsZero())
+        return m_vWind;
 
     int nX = NoiseIndex(v.x);
     int nY = NoiseIndex(v.y);

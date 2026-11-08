@@ -87,10 +87,12 @@ void CSWSEncounter::SetActive(int bActive) {
 
 void CSWSEncounter::ClearSpawnList() {
     // Drained back to front, which avoids the list's own tail shift.
-    for (int i = m_spawnList.m_count - 1; i >= 0; i--) {
-        CEncounterListEntry* pEntry = m_spawnList.m_pArray[i];
-        m_spawnList.DelIndex(i);
-        delete pEntry;
+    if (m_spawnList.m_count > 0) {
+        for (int i = m_spawnList.m_count - 1; i >= 0; i--) {
+            CEncounterListEntry* pEntry = m_spawnList.m_pArray[i];
+            m_spawnList.DelIndex(i);
+            delete pEntry;
+        }
     }
 }
 
@@ -712,11 +714,7 @@ void CSWSEncounter::SpawnCreatureFromSpawnList() {
             CEncounterSpawnPointPos* pPoint = &m_paSpawnPointPositions[m_nCurrentSpawnPoint];
             vSpawnPosition = pPoint->m_vPos;
             float fAngle = 1.5707964f - pPoint->m_fOrientation;
-            Vector vFacing;
-            vFacing.x = cosf(fAngle);
-            vFacing.y = sinf(fAngle);
-            vFacing.z = 0.0f;
-            vOrientation = normalize(vFacing);
+            vOrientation = normalize(Vector(cosf(fAngle), sinf(fAngle), 0.0f));
         }
         m_nSpawnedAtPoint++;
 #endif

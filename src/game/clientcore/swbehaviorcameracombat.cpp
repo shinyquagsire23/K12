@@ -173,7 +173,7 @@ int CSWBehaviorCameraCombat::Control(float fParam)
 
     // The yaw helper is the one used here; the position query below is a leftover call whose result
     // is discarded.
-    float fUnused;
+    float fUnused = 0.0f;
     float fNextYaw = GetNextYaw(vDesired, fYaw, fParam, fUnused);
 
     // The shake pair offsets the composed yaw and pitch; the position is the safe one, unmodified.
@@ -201,19 +201,19 @@ float CSWBehaviorCameraCombat::GetNextYaw(const Vector& v, float fA, float fB, f
 // 0.001 and the squared gap above 0.01.
 Vector CSWBehaviorCameraCombat::GetNextPosition(const Vector& v, float fA, float fB)
 {
-    Vector vPos = m_pOwner->GetPosition();
-    Vector vDiff(v.x - vPos.x, v.y - vPos.y, v.z - vPos.z);
+    Vector vDiff = v - m_pOwner->GetPosition();
+    // The skip path returns v itself, not the difference vector.
+    Vector vResult = v;
     if (fA > 0.001f) {
         float fMagSq = vDiff.x * vDiff.x + vDiff.y * vDiff.y + vDiff.z * vDiff.z;
         if (fMagSq > 0.01f) {
             float fStep = sqrtf(fMagSq) / fA * fB;
             Vector vStep = normalize(vDiff) * fStep;
             Vector vOwner = m_pOwner->GetPosition();
-            return Vector(vOwner.x + vStep.x, vOwner.y + vStep.y, vOwner.z + vStep.z);
+            vResult = Vector(vOwner.x + vStep.x, vOwner.y + vStep.y, vOwner.z + vStep.z);
         }
     }
-    // The skip path returns v itself, not the difference vector.
-    return v;
+    return vResult;
 }
 
 // Aims at whatever the last target resolved to and parks the owner behind it, then runs the parked
@@ -356,7 +356,8 @@ Vector CSWBehaviorCameraCombat::DetermineSafePosition(CSWCCreature* pCreature,
     // Shorten toward the creature, then lift along its own local +Z.
     Vector vAway = vDesired - vCreaturePos;
     float fDist = magnitude(vAway);
-    Vector vNorm = normalize(vAway);
+    Vector vNorm;
+    vNorm = normalize(vAway);
 
     // The creature model's local +Z.
     Vector vAxis = normalize(pCreature->GetModel(CSWCObject::ANIM_MODEL_BODY, 1)->GetOrientation().zdir());

@@ -314,11 +314,14 @@ void CSWSPlayerLastUpdateObject::ClearKnownSpells()
 // Drains the owned visibility nodes from the back.
 void CSWSPlayerLastUpdateObject::ClearVisibilityList()
 {
-    for (int i = m_visibilityList.m_count - 1; i >= 0; i--)
+    if (m_visibilityList.m_count > 0)
     {
-        CSWVisibilityNode* pNode = m_visibilityList.m_pArray[i];
-        m_visibilityList.DelIndex(i);
-        delete pNode;
+        for (int i = m_visibilityList.m_count - 1; i >= 0; i--)
+        {
+            CSWVisibilityNode* pNode = m_visibilityList.m_pArray[i];
+            m_visibilityList.DelIndex(i);
+            delete pNode;
+        }
     }
 }
 

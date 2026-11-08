@@ -2216,8 +2216,7 @@ int CSWVirtualMachineCommands::ExecuteCommandDisplayMessageBox(int nCommand, int
     if (pBox != 0) {
         pBox->SetAllowCancel(0);
         pBox->SetCallback(0, 0, 0);
-        CResRef resIcon(sIcon);
-        pBox->SetIcon(resIcon);
+        pBox->SetIcon(CResRef(sIcon));
         pBox->SetMessage(nStrRef);
 #if !KOTOR1  // K1 has no DisplayMessageBox command
         pBox->m_bPausedCombat = 1;
@@ -9537,7 +9536,7 @@ int CSWVirtualMachineCommands::ExecuteCommandActionJumpToPoint(int nCommand, int
 {
     Vector vPosition(-1.0f, -1.0f, -1.0f);
     unsigned long long oidArea;
-    int bWalkStraightLine = 1;
+    int bWalkStraightLine;
     Vector vOrientation(0.0f, 0.0f, 0.0f);
     CScriptLocation* pLocation;
     CGameObject* pObject;
@@ -9548,16 +9547,16 @@ int CSWVirtualMachineCommands::ExecuteCommandActionJumpToPoint(int nCommand, int
     if (pLocation != 0)
         delete pLocation;
     pLocation = 0;
-    if (nArgCount > 1) {
-        if (!g_pVirtualMachine->StackPopInteger(&bWalkStraightLine))
-            return VM_ERROR_POP_FAILED;
-    }
+    if (nArgCount < 2)
+        bWalkStraightLine = 1;
+    else if (!g_pVirtualMachine->StackPopInteger(&bWalkStraightLine))
+        return VM_ERROR_POP_FAILED;
     if (m_nScriptRunArg == 1) {
         if (g_pAppManager->m_pServerExoApp->GetObjectArray()->GetGameObject(m_oidSelf, &pObject)
                     == CGameObjectArray::SUCCESS
                 && pObject->AsSWSCreature() != 0
                 && pObject->AsSWSCreature()->m_bCommandable != 0) {
-            CSWSArea* pArea = static_cast<CSWSArea*>(pObject->AsSWSCreature()->GetArea());
+            CGameObject* pArea = static_cast<CSWSArea*>(pObject->AsSWSCreature()->GetArea());
             oidArea = pArea->m_objectId;
             if (pArea != 0 && pArea->m_objectType == CGameObject::OBJECT_TYPE_AREA) {
                 // 20.0f, not 15.0: the value is handed to both arms' range parameter.
@@ -9730,7 +9729,6 @@ int CSWVirtualMachineCommands::ExecuteCommandDestroyObject(int nCommand, int nAr
     float fDelayUntilFade = 0.0f;
     if (!g_pVirtualMachine->StackPopObject(&oidObject))
         return VM_ERROR_POP_FAILED;
-    int nHideFeedback = 0;
     if (nArgCount >= 2) {
         if (!g_pVirtualMachine->StackPopFloat(&fDelay))
             return VM_ERROR_POP_FAILED;
@@ -9740,15 +9738,16 @@ int CSWVirtualMachineCommands::ExecuteCommandDestroyObject(int nCommand, int nAr
             if (nArgCount >= 4) {
                 if (!g_pVirtualMachine->StackPopFloat(&fDelayUntilFade))
                     return VM_ERROR_POP_FAILED;
-#if !KOTOR1
-                if (nArgCount >= 5) {
-                    if (!g_pVirtualMachine->StackPopInteger(&nHideFeedback))
-                        return VM_ERROR_POP_FAILED;
-                }
-#endif
             }
         }
     }
+    int nHideFeedback = 0;
+#if !KOTOR1
+    if (nArgCount >= 5) {
+        if (!g_pVirtualMachine->StackPopInteger(&nHideFeedback))
+            return VM_ERROR_POP_FAILED;
+    }
+#endif
     CSWCCreature* pPlayerCharacter =
         g_pAppManager->m_pClientExoApp->GetSWParty()->GetPlayerCharacter();
     if (pPlayerCharacter != 0
@@ -14054,8 +14053,7 @@ int CSWVirtualMachineCommands::ExecuteCommandGetFacing(int nCommand, int nArgCou
             == CGameObjectArray::SUCCESS
         && pObject != 0
         && pObject->m_objectType > CGameObject::OBJECT_TYPE_AREA) {
-        vOrientation.x = static_cast<CSWSObject*>(pObject)->m_orientation.x;
-        vOrientation.y = static_cast<CSWSObject*>(pObject)->m_orientation.y;
+        vOrientation = static_cast<CSWSObject*>(pObject)->m_orientation;
         vOrientation.z = 0.0f;
         Vector vNormal = normalize(vOrientation);
         fFacing = atan2f(vOrientation.y, vOrientation.x) * 57.295776f;
@@ -17865,10 +17863,12 @@ int CSWVirtualMachineCommands::ExecuteCommandRemoveEffect(int nCommand, int nArg
     if (pObject != 0 && pObject->AsSWSObject() != 0) {
         CSWSObject* pTarget = pObject->AsSWSObject();
         CGameEffect* pFound = 0;
-        for (int i = 0; i < pTarget->m_effects.m_count; i++) {
-            if (pTarget->m_effects.m_pArray[i]->m_effectId == pEffect->m_effectId) {
-                pTarget->m_effects.m_pArray[i]->m_bIsExposed = 0;
-                pFound = pTarget->m_effects.m_pArray[i];
+        if (pTarget->m_effects.m_count > 0) {
+            for (unsigned int i = 0; i < static_cast<unsigned int>(pTarget->m_effects.m_count); i++) {
+                if (pTarget->m_effects[i]->m_effectId == pEffect->m_effectId) {
+                    pTarget->m_effects[i]->m_bIsExposed = 0;
+                    pFound = pTarget->m_effects[i];
+                }
             }
         }
         if (pFound != 0)
@@ -17895,13 +17895,15 @@ int CSWVirtualMachineCommands::ExecuteCommandRemoveEffectByID(int nCommand, int 
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oidObject);
     if (pObject != 0 && pObject->AsSWSObject() != 0) {
         CSWSObject* pTarget = pObject->AsSWSObject();
-        for (int i = 0; i < pTarget->m_effects.m_count; i++) {
-            if (pTarget->m_effects.m_pArray[i]->GetInteger(0) == nEffectId) {
-                CGameEffect* pEffect = pTarget->m_effects.m_pArray[i];
-                pEffect->m_bIsExposed = 0;
-                if (pEffect != 0)
-                    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
-                        0, 0, m_oidSelf, oidObject, CServerAIMaster::EVENT_REMOVE_EFFECT, pEffect);
+        if (pTarget->m_effects.m_count > 0) {
+            for (unsigned int i = 0; i < static_cast<unsigned int>(pTarget->m_effects.m_count); i++) {
+                if (pTarget->m_effects[i]->GetInteger(0) == nEffectId) {
+                    CGameEffect* pEffect = pTarget->m_effects[i];
+                    pEffect->m_bIsExposed = 0;
+                    if (pEffect != 0)
+                        g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                            0, 0, m_oidSelf, oidObject, CServerAIMaster::EVENT_REMOVE_EFFECT, pEffect);
+                }
             }
         }
     }
@@ -17925,16 +17927,18 @@ int CSWVirtualMachineCommands::ExecuteCommandRemoveEffectByExactMatch(int nComma
     CGameObject* pObject = g_pAppManager->m_pServerExoApp->GetGameObject(oidObject);
     if (pObject != 0 && pObject->AsSWSObject() != 0) {
         CSWSObject* pTarget = pObject->AsSWSObject();
-        for (int i = 0; i < pTarget->m_effects.m_count; i++) {
-            if (pTarget->m_effects.m_pArray[i]->m_subType == pEffect->m_subType
-                    && pTarget->m_effects.m_pArray[i]->GetInteger(0) == pEffect->GetInteger(0)
-                    && pTarget->m_effects.m_pArray[i]->GetInteger(1) == pEffect->GetInteger(1)) {
-                CGameEffect* pFound = pTarget->m_effects.m_pArray[i];
-                pFound->m_bIsExposed = 0;
-                if (pFound != 0)
-                    g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
-                        0, 0, m_oidSelf, oidObject, CServerAIMaster::EVENT_REMOVE_EFFECT, pFound);
-                break;
+        if (pTarget->m_effects.m_count > 0) {
+            for (unsigned int i = 0; i < static_cast<unsigned int>(pTarget->m_effects.m_count); i++) {
+                if (pTarget->m_effects[i]->m_subType == pEffect->m_subType
+                        && pTarget->m_effects[i]->GetInteger(0) == pEffect->GetInteger(0)
+                        && pTarget->m_effects[i]->GetInteger(1) == pEffect->GetInteger(1)) {
+                    CGameEffect* pFound = pTarget->m_effects[i];
+                    pFound->m_bIsExposed = 0;
+                    if (pFound != 0)
+                        g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                            0, 0, m_oidSelf, oidObject, CServerAIMaster::EVENT_REMOVE_EFFECT, pFound);
+                    break;
+                }
             }
         }
     }

@@ -1659,8 +1659,6 @@ int CSWPartyTable::RemovePuppet(int pupIndex)
     }
 
     int numPuppets = m_nNumPuppets;
-    if (numPuppets < 1)
-        return 0;
 
     for (int i = 0; i < numPuppets; i++)
     {
@@ -1979,37 +1977,16 @@ int CSWPartyTable::AddPuppet(int index, unsigned long long id)
     if (g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(id) == 0)
         return 0;
 
-    long long numPuppets = m_nNumPuppets;
-    if (numPuppets >= 1)
-    {
-        for (int64_t i = 0; i < numPuppets; i++)
-        {
-            if (m_puppetIndex[i] == index)
-                return 0;
-        }
+    for (int i = 0; i < m_nNumPuppets; i++) {
+        if (m_puppetIndex[i] == index)
+            return 0;
+    }
+    for (int i = 0; i < 3; i++) {
+        if (i != index && m_puppetID[i] == id)
+            return 0;
     }
 
-    if (index == 0)
-    {
-    checkSlot1:
-        if (m_puppetID[1] == id)
-            return 0;
-        if (index == 2)
-            goto doWrite;
-    }
-    else
-    {
-        if (m_puppetID[0] == id)
-            return 0;
-        if (index != 1)
-            goto checkSlot1;
-    }
-    if (m_puppetID[2] == id)
-        return 0;
-
-doWrite:
-    K2_ASSUME(numPuppets >= 0 && numPuppets < 2);
-    m_puppetIndex[numPuppets] = index;
+    m_puppetIndex[m_nNumPuppets] = index;
     m_puppetID[index] = id;
 
     CSWCCreature* pClientCreature = g_pAppManager->m_pClientExoApp->GetCreatureByGameObjectID(

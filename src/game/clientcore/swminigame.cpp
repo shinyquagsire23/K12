@@ -175,7 +175,7 @@ CSWMiniPlayer* CSWMiniGame::SetPlayer(CExoArrayList<CResRef>& resModels,
     if (m_pPlayer != 0)
         delete m_pPlayer;
     m_pPlayer = static_cast<CSWTrackFollower*>(new CSWMiniPlayer(this));  // idiom-exempt: FLAT CSWMiniPlayer
-    char szName[20];
+    char szName[17];
     for (int i = 0; i < nModels; i++) {
         resModels.m_pArray[i].CopyToString(szName);
         CAurObject* pModel = NewCAurObject(szName, const_cast<char*>(""), 0, 0);
@@ -207,7 +207,7 @@ CSWMiniPlayer* CSWMiniGame::SetPlayer(CExoArrayList<CResRef>& resModels,
     if (m_pPlayer != 0)
         delete m_pPlayer;
     m_pPlayer = static_cast<CSWTrackFollower*>(new CSWMiniPlayer(this));  // idiom-exempt: FLAT CSWMiniPlayer
-    char szName[20];
+    char szName[17];
     for (int i = 0; i < nModels; i++) {
         resModels.m_pArray[i].CopyToString(szName);
         CAurObject* pModel = NewCAurObject(szName, const_cast<char*>(""), 0, 0);
@@ -664,11 +664,13 @@ void CSWMiniGame::AddBullet(CAurObject* pBullet)
 // Drops every list slot that still points at this bullet.
 void CSWMiniGame::RemoveBullet(CAurObject* pBullet)
 {
-    for (int i = m_bullets.m_count; i-- > 0; ) {
-        SafePointer<CAurObject>* pSafe = m_bullets.m_pArray[i];
-        if (pSafe->m_pObject == pBullet) {
-            delete pSafe;
-            m_bullets.DelIndex(i);
+    if (m_bullets.m_count > 0) {
+        for (int i = m_bullets.m_count; i-- > 0; ) {
+            SafePointer<CAurObject>* pSafe = m_bullets.m_pArray[i];
+            if (pSafe->m_pObject == pBullet) {
+                delete pSafe;
+                m_bullets.DelIndex(i);
+            }
         }
     }
 }
@@ -739,7 +741,7 @@ CAurCamera* CSWMiniGame::SetCamera(CAurCamera* pCamera)
 // registered, so the id list only ever names objects that are in the scene.
 CSWMGObstacle* CSWMiniGame::AddObstacle(const CResRef& resName, const Vector& vPosition)
 {
-    char szName[20];
+    char szName[17];
     resName.CopyToString(szName);
     CAurObject* pObject = NewCAurObject(szName, const_cast<char*>(""), 0, 0);
 #if KOTOR1  // K1 returns an uninitialised pointer when the model could not be created
@@ -783,7 +785,7 @@ CSWMiniEnemy* CSWMiniGame::AddEnemy(CExoArrayList<CResRef>& resModels,
 {
     int nModels = resModels.m_count;
     CSWMiniEnemy* pEnemy = new CSWMiniEnemy(this);
-    char szName[20];
+    char szName[17];
     for (int i = 0; i < nModels; i++) {
         resModels.m_pArray[i].CopyToString(szName);
         CAurObject* pModel = NewCAurObject(szName, const_cast<char*>(""), 0, 0);
@@ -1038,9 +1040,10 @@ __attribute__((visibility("hidden"))) float g_afIosBulletRadiusScale[3] = { 1.9f
 
 void CSWMiniGame::DoHitCheck()
 {
+    int i = m_bullets.m_count - 1;
     CSWMiniGameObjectArray* pArray = g_pAppManager->m_pClientExoApp->GetMGOArray();
 
-    for (int i = m_bullets.m_count - 1; i >= 0; i--)
+    for (; i >= 0; i--)
     {
         SafePointer<CAurObject>* pBulletRef = m_bullets.m_pArray[i];
         CAurObject* pBullet = *pBulletRef;
@@ -1130,10 +1133,11 @@ void CSWMiniGame::DoHitCheck()
 #else
 void CSWMiniGame::DoHitCheck()
 {
+    int i = m_bullets.m_count - 1;
     CSWMiniGameObjectArray* pArray = g_pAppManager->m_pClientExoApp->GetMGOArray();
     const unsigned int nEventSignal = CServerAIMaster::EVENT_SIGNAL_EVENT;
 
-    for (int i = m_bullets.m_count - 1; i >= 0; i--)
+    for (; i >= 0; i--)
     {
         SafePointer<CAurObject>* pBulletRef = m_bullets.m_pArray[i];
         CAurObject* pBullet = *pBulletRef;
@@ -1272,20 +1276,20 @@ void CSWMiniGame::DoHitCheck()
             CHitInfo aiHit(0, ~CHitInfo::kMaterialTrigger, 0);
             aiHit.m_bHitBoundingBoxes = 1;
             if (pModel->HitCheck(pBullet->GetPreviousPosition(), pBullet->GetPosition(),
-                                 0, &aiHit) == 0)
-                continue;
+                                 0, &aiHit) != 0)
+            {
+                CScriptEvent* pEvent = new CScriptEvent();
+                pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_USER_DEFINED_EVENT;
+                pEvent->SetInteger(0, pBehavior->m_bullet.m_nDamage);
+                g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
+                    0, 0, oid, oid, nEventSignal, pEvent);
 
-            CScriptEvent* pEvent = new CScriptEvent();
-            pEvent->m_eventType = CSWSSCRIPTEVENT_EVENTTYPE_ON_USER_DEFINED_EVENT;
-            pEvent->SetInteger(0, pBehavior->m_bullet.m_nDamage);
-            g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
-                0, 0, oid, oid, nEventSignal, pEvent);
-
-            delete pBullet;
-            delete m_bullets.m_pArray[i];
-            m_bullets.DelIndex(i);
-            bHit = 1;
-            break;
+                delete pBullet;
+                delete m_bullets.m_pArray[i];
+                m_bullets.DelIndex(i);
+                bHit = 1;
+                break;
+            }
         }
     }
 

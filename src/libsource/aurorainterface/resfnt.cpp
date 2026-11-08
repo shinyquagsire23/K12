@@ -82,8 +82,8 @@ int CResFNT::OnResourceServiced()
     switch (h->nImageType) {
     case 1:
         {
-            unsigned int nColorMapSize = (h->aColorMapSpec[4] >> 3) * nColorMapLength;
             m_tgaSize = h->nWidth * h->nHeight * (h->nBitsPerPixel >> 3);
+            unsigned int nColorMapSize = (h->aColorMapSpec[4] >> 3) * nColorMapLength;
             m_bColorMapped = 1;
             m_pTGAData = static_cast<unsigned char*>(m_pTGAColorMap) + nColorMapSize;
             m_pFNTHeader = static_cast<unsigned char*>(m_pTGAData) + m_tgaSize;
@@ -91,8 +91,8 @@ int CResFNT::OnResourceServiced()
         break;
     case 2:
         {
-            unsigned int nColorMapSize = (h->aColorMapSpec[4] >> 3) * nColorMapLength;
             m_tgaSize = h->nWidth * h->nHeight * (h->nBitsPerPixel >> 3);
+            unsigned int nColorMapSize = (h->aColorMapSpec[4] >> 3) * nColorMapLength;
             m_pTGAData = static_cast<unsigned char*>(m_pTGAColorMap) + nColorMapSize;
             m_pFNTHeader = static_cast<unsigned char*>(m_pTGAData) + m_tgaSize;
         }
@@ -158,25 +158,23 @@ int CResFNT::ReadColorMappedRLETGA()
     uint64_t size = m_fntSize;
 #endif
     m_pTGAData = new unsigned char[size];
-    if (m_tgaSize != 0) {
-        unsigned int dstPos = 0;
-        unsigned int srcPos = 0;
-        do {
-            unsigned char ctrl = src[srcPos++];
-            unsigned int newPos = dstPos + (ctrl & RLE_COUNT_MASK) + 1;
+    unsigned int dstPos = 0;
+    unsigned int srcPos = 0;
+    while (dstPos < m_tgaSize) {
+        unsigned char ctrl = src[srcPos++];
+        unsigned int newPos = dstPos + (ctrl & RLE_COUNT_MASK) + 1;
 #ifdef K2_FIX_ENGINE_BUGS
-            if (newPos > m_tgaSize)   // a final packet longer than the image
-                newPos = m_tgaSize;
+        if (newPos > m_tgaSize)   // a final packet longer than the image
+            newPos = m_tgaSize;
 #endif
-            if (ctrl & RLE_RUN_FLAG) {
-                unsigned char runByte = src[srcPos++];
-                while (dstPos < newPos)
-                    static_cast<unsigned char*>(m_pTGAData)[dstPos++] = runByte;
-            } else {
-                while (dstPos < newPos)
-                    static_cast<unsigned char*>(m_pTGAData)[dstPos++] = src[srcPos++];
-            }
-        } while (dstPos < m_tgaSize);
+        if (ctrl & RLE_RUN_FLAG) {
+            unsigned char runByte = src[srcPos++];
+            while (dstPos < newPos)
+                static_cast<unsigned char*>(m_pTGAData)[dstPos++] = runByte;
+        } else {
+            while (dstPos < newPos)
+                static_cast<unsigned char*>(m_pTGAData)[dstPos++] = src[srcPos++];
+        }
     }
     m_bTGADataOwned = 1;
     return 1;
@@ -192,83 +190,79 @@ int CResFNT::ReadUnmappedRLETGA()
     HeaderTGA* h = static_cast<HeaderTGA*>(m_pTGAHeader);
 
     if (h->nBitsPerPixel == 24) {
-        if (size != 0) {
-            unsigned int dstPos = 0;
-            unsigned int srcPos = 0;
-            do {
-                unsigned char ctrl = src[srcPos++];
-                unsigned int newPos = dstPos + 3 * ((ctrl & RLE_COUNT_MASK) + 1);
+        unsigned int dstPos = 0;
+        unsigned int srcPos = 0;
+        while (dstPos < m_tgaSize) {
+            unsigned char ctrl = src[srcPos++];
+            unsigned int newPos = dstPos + 3 * ((ctrl & RLE_COUNT_MASK) + 1);
 #ifdef K2_FIX_ENGINE_BUGS
-                if (newPos > m_tgaSize)   // a final packet longer than the image
-                    newPos = m_tgaSize;
+            if (newPos > m_tgaSize)   // a final packet longer than the image
+                newPos = m_tgaSize;
 #endif
-                if (ctrl & RLE_RUN_FLAG) {
-                    while (dstPos < newPos) {
+            if (ctrl & RLE_RUN_FLAG) {
+                while (dstPos < newPos) {
 #ifdef K2_FIX_ENGINE_BUGS
-                        K2_ASSUME(dstPos + 2 < size);   // dstPos and the clamped newPos are whole pixels
+                    K2_ASSUME(dstPos + 2 < size);   // dstPos and the clamped newPos are whole pixels
 #endif
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 1];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 2];
-                        dstPos += 3;
-                    }
-                    srcPos += 3;
-                } else {
-                    while (dstPos < newPos) {
-#ifdef K2_FIX_ENGINE_BUGS
-                        K2_ASSUME(dstPos + 2 < size);   // dstPos and the clamped newPos are whole pixels
-#endif
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 1];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 2];
-                        dstPos += 3;
-                        srcPos += 3;
-                    }
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 1];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 2];
+                    dstPos += 3;
                 }
-            } while (dstPos < m_tgaSize);
+                srcPos += 3;
+            } else {
+                while (dstPos < newPos) {
+#ifdef K2_FIX_ENGINE_BUGS
+                    K2_ASSUME(dstPos + 2 < size);   // dstPos and the clamped newPos are whole pixels
+#endif
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 1];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 2];
+                    dstPos += 3;
+                    srcPos += 3;
+                }
+            }
         }
     } else if (h->nBitsPerPixel == 32) {
-        if (size != 0) {
-            unsigned int dstPos = 0;
-            unsigned int srcPos = 0;
-            do {
-                // The control byte's own position is kept here, unlike the 24-bit arm which steps
-                // past it: the pixel bytes are at ctrl+1..+4, a run packet is 5 bytes and a
-                // literal is 1 + 4*count.
-                unsigned char ctrl = src[srcPos];
-                unsigned int newPos = dstPos + 4 * ((ctrl & RLE_COUNT_MASK) + 1);
+        unsigned int dstPos = 0;
+        unsigned int srcPos = 0;
+        while (dstPos < m_tgaSize) {
+            // The control byte's own position is kept here, unlike the 24-bit arm which steps
+            // past it: the pixel bytes are at ctrl+1..+4, a run packet is 5 bytes and a
+            // literal is 1 + 4*count.
+            unsigned char ctrl = src[srcPos];
+            unsigned int newPos = dstPos + 4 * ((ctrl & RLE_COUNT_MASK) + 1);
 #ifdef K2_FIX_ENGINE_BUGS
-                if (newPos > m_tgaSize)   // a final packet longer than the image
-                    newPos = m_tgaSize;
+            if (newPos > m_tgaSize)   // a final packet longer than the image
+                newPos = m_tgaSize;
 #endif
-                if (ctrl & RLE_RUN_FLAG) {
-                    while (dstPos < newPos) {
+            if (ctrl & RLE_RUN_FLAG) {
+                while (dstPos < newPos) {
 #ifdef K2_FIX_ENGINE_BUGS
-                        K2_ASSUME(dstPos + 3 < size);   // dstPos and the clamped newPos are whole pixels
+                    K2_ASSUME(dstPos + 3 < size);   // dstPos and the clamped newPos are whole pixels
 #endif
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos + 1];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 2];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 3];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 3] = src[srcPos + 4];
-                        dstPos += 4;
-                    }
-                    srcPos += 5;
-                } else {
-                    unsigned int nIdx = 0;
-                    while (dstPos + nIdx < newPos) {
-#ifdef K2_FIX_ENGINE_BUGS
-                        K2_ASSUME(dstPos + nIdx + 3 < size);   // dstPos, nIdx and the clamped newPos are whole pixels
-#endif
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx] = src[srcPos + nIdx + 1];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 1] = src[srcPos + nIdx + 2];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 2] = src[srcPos + nIdx + 3];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 3] = src[srcPos + nIdx + 4];
-                        nIdx += 4;
-                    }
-                    dstPos += nIdx;
-                    srcPos += nIdx + 1;
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos + 1];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 2];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 3];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 3] = src[srcPos + 4];
+                    dstPos += 4;
                 }
-            } while (dstPos < m_tgaSize);
+                srcPos += 5;
+            } else {
+                unsigned int nIdx = 0;
+                while (dstPos + nIdx < newPos) {
+#ifdef K2_FIX_ENGINE_BUGS
+                    K2_ASSUME(dstPos + nIdx + 3 < size);   // dstPos, nIdx and the clamped newPos are whole pixels
+#endif
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx] = src[srcPos + nIdx + 1];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 1] = src[srcPos + nIdx + 2];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 2] = src[srcPos + nIdx + 3];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 3] = src[srcPos + nIdx + 4];
+                    nIdx += 4;
+                }
+                dstPos += nIdx;
+                srcPos += nIdx + 1;
+            }
         }
     } else {
         return 0;

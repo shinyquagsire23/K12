@@ -1992,10 +1992,7 @@ void CServerExoAppInternal::InitiateModuleForPlayer(void* pPlayerVoid)
         CSWSMessage* pMsg = g_pAppManager->m_pServerExoApp->GetSWSMessage();
         if (pMsg != 0)
         {
-            {
-                CExoString empty("");
-                pPlayer->SetAreaTransitionBMP(pArea->m_nLoadScreenID, empty);
-            }
+            pPlayer->SetAreaTransitionBMP(pArea->m_nLoadScreenID, CExoString(""));
             pMsg->SendServerToPlayerArea_ClientArea(pPlayer, pArea, pCreature->m_vDesiredAreaLocation.x,
                 pCreature->m_vDesiredAreaLocation.y, pCreature->m_vDesiredAreaLocation.z, pCreature->m_orientation, isFirstEntry);
             pMsg->SendServerToPlayerSetCustomTokenList(pPlayer->m_nPlayerId);
@@ -3126,29 +3123,26 @@ void CServerExoAppInternal::DoModuleEnterSaveCleanup(const CExoString& moduleNam
     {
         CExoString gamePrefix("GAMEINPROGRESS:");
         CExoString moduleFile;
-        if (p2da->m_nRows > 0)
+        for (int i = 0; i < p2da->m_nRows; i++)
         {
-            for (int i = 0; i < p2da->m_nRows; i++)
+            int rowFound;
+            int rowSaveGroup;
             {
-                int rowFound;
-                int rowSaveGroup;
+                CExoString colName("SaveGroup");
+                rowFound = p2da->GetINTEntry(i, colName, &rowSaveGroup);
+            }
+            if (rowFound != 0 && rowSaveGroup == saveGroupId)
+            {
+                int nameFound;
                 {
-                    CExoString colName("SaveGroup");
-                    rowFound = p2da->GetINTEntry(i, colName, &rowSaveGroup);
+                    CExoString colName("ModuleName");
+                    nameFound = p2da->GetCExoStringEntry(i, colName, &moduleFile);
                 }
-                if (rowFound != 0 && rowSaveGroup == saveGroupId)
+                CExoResMan* resMan = g_pExoResMan;
+                if (nameFound != 0)
                 {
-                    int nameFound;
-                    {
-                        CExoString colName("ModuleName");
-                        nameFound = p2da->GetCExoStringEntry(i, colName, &moduleFile);
-                    }
-                    CExoResMan* resMan = g_pExoResMan;
-                    if (nameFound != 0)
-                    {
-                        CExoString fullPath = gamePrefix + moduleFile;
-                        resMan->RemoveFile(fullPath, RESTYPE_SAV);
-                    }
+                    CExoString fullPath = gamePrefix + moduleFile;
+                    resMan->RemoveFile(fullPath, RESTYPE_SAV);
                 }
             }
         }
@@ -4184,31 +4178,28 @@ void CServerExoAppInternal::StallEventSaveGame()
     }
     pGff->WriteFieldBYTE(&topStruct, static_cast<unsigned char>(liveFlags), const_cast<char*>("LIVECONTENT"));
 
-    if (pParty->m_nCharacterCount > 0)
+    for (int i = 0; i < pParty->m_nCharacterCount; i++)
     {
-        for (int i = 0; i < pParty->m_nCharacterCount; i++)
+        CSWCCreature* pClientCreature;
+        CSWSObject* pServerObj;
+        CSWSCreature* pServerCreature;
+        CSWCCreature* pClientCr;
+        pClientCreature = pParty->GetCharacter(i);
+        pServerObj = pClientCreature->GetServerCreature();
+        if (pServerObj != 0)
         {
-            CSWCCreature* pClientCreature;
-            CSWSObject* pServerObj;
-            CSWSCreature* pServerCreature;
-            CSWCCreature* pClientCr;
-            pClientCreature = pParty->GetCharacter(i);
-            pServerObj = pClientCreature->GetServerCreature();
-            if (pServerObj != 0)
+            pServerCreature = static_cast<CSWSCreature*>(pServerObj);
+            portraitLabel.Format(const_cast<char*>("%s%d"), "PORTRAIT", i);
+            pClientCr = pServerCreature->GetClientCreature();
+            if (pClientCr == 0)
             {
-                pServerCreature = static_cast<CSWSCreature*>(pServerObj);
-                portraitLabel.Format(const_cast<char*>("%s%d"), "PORTRAIT", i);
-                pClientCr = pServerCreature->GetClientCreature();
-                if (pClientCr == 0)
-                {
-                    CResRef portraitRef = pServerCreature->GetPortrait();
-                    pGff->WriteFieldCResRef(&topStruct, portraitRef, static_cast<char*>(portraitLabel.CStr()));
-                }
-                else
-                {
-                    CResRef portraitRef = pClientCr->GetPortrait(1);
-                    pGff->WriteFieldCResRef(&topStruct, portraitRef, static_cast<char*>(portraitLabel.CStr()));
-                }
+                CResRef portraitRef = pServerCreature->GetPortrait();
+                pGff->WriteFieldCResRef(&topStruct, portraitRef, static_cast<char*>(portraitLabel.CStr()));
+            }
+            else
+            {
+                CResRef portraitRef = pClientCr->GetPortrait(1);
+                pGff->WriteFieldCResRef(&topStruct, portraitRef, static_cast<char*>(portraitLabel.CStr()));
             }
         }
     }

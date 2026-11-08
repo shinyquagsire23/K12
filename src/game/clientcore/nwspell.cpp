@@ -357,8 +357,11 @@ void CSWSpellArray::Load()
         }
 
         m_paSpells[nRow].SetSubRadialSpellCount(static_cast<unsigned char>(nCount));
-        for (int i = 0; i < nCount; i++)
-            m_paSpells[nRow].SetSubRadialSpell(static_cast<unsigned char>(i), anTimes[i]);
+        if (nCount > 0)
+        {
+            for (int i = 0; i < nCount; i++)
+                m_paSpells[nRow].SetSubRadialSpell(static_cast<unsigned char>(i), anTimes[i]);
+        }
 
         if (pTable->GetINTEntry(nRow, CExoString("Counter2"), &nValue))
             m_paSpells[nRow].m_nCounter2 = nValue;

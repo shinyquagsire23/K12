@@ -462,58 +462,54 @@ int CAvoidCreature::FindEntryAndExit(CPathfindInformation* pPathInfo)
     if (pPathInfo == 0 || pPathInfo->m_paWayPoints == 0 || pPathInfo->m_nWayPointFloats == 0) return 0;
     vFrom = Vector(pPathInfo->m_paWayPoints[0], pPathInfo->m_paWayPoints[1], 0.0f);
     nTouching = 0;
-    if (pPathInfo->m_nWayPointFloats > 2) {
-        int i = 2;
-        do {
-            vTo = Vector(pPathInfo->m_paWayPoints[i], pPathInfo->m_paWayPoints[i + 1], 0.0f);
-            Vector vHit;
-            for (int k = 0; k < 6; k++) {
-                const Vector& vNext = m_vHexPoints[(k + 1) % 6];
-                const Vector& vCur = m_vHexPoints[k];
-                bool bFromNext = DistSq(vFrom, vNext) < 0.001f;
-                bool bFromCur = DistSq(vFrom, vCur) < 0.001f;
-                bool bToCur = DistSq(vTo, vCur) < 0.001f;
-                bool bToNext = DistSq(vTo, vNext) < 0.001f;
-                if (static_cast<int>(bFromNext) + static_cast<int>(bFromCur) + static_cast<int>(bToCur) +
-                        static_cast<int>(bToNext) > 1) {
-                    if (nTouching == 0) {
-                        if (bFromCur || bFromNext) {
-                            m_transitExit.m_nPathSegment = i / 2;
-                            m_transitExit.m_nHexPoint = k;
-                            nTouching = 1;
-                            m_transitExit.m_vPoint = vFrom;
-                        } else {
-                            nTouching = 0;
-                        }
-                    }
-                    if (bToCur || bToNext) {
+    for (int i = 2; i < pPathInfo->m_nWayPointFloats; i += 2) {
+        vTo = Vector(pPathInfo->m_paWayPoints[i], pPathInfo->m_paWayPoints[i + 1], 0.0f);
+        Vector vHit;
+        for (int k = 0; k < 6; k++) {
+            const Vector& vNext = m_vHexPoints[(k + 1) % 6];
+            const Vector& vCur = m_vHexPoints[k];
+            bool bFromNext = DistSq(vFrom, vNext) < 0.001f;
+            bool bFromCur = DistSq(vFrom, vCur) < 0.001f;
+            bool bToCur = DistSq(vTo, vCur) < 0.001f;
+            bool bToNext = DistSq(vTo, vNext) < 0.001f;
+            if (static_cast<int>(bFromNext) + static_cast<int>(bFromCur) + static_cast<int>(bToCur) +
+                    static_cast<int>(bToNext) > 1) {
+                if (nTouching == 0) {
+                    if (bFromCur || bFromNext) {
                         m_transitExit.m_nPathSegment = i / 2;
                         m_transitExit.m_nHexPoint = k;
-                        nTouching++;
-                        m_transitExit.m_vPoint = vTo;
+                        nTouching = 1;
+                        m_transitExit.m_vPoint = vFrom;
+                    } else {
+                        nTouching = 0;
                     }
                 }
-                if (IntersectLineSegments2d(vFrom, vTo, vCur, vNext, vHit) != 0) {
-                    if (nTouching == 0) {
-                        m_transitExit.m_nPathSegment = i / 2;
-                        m_transitExit.m_nHexPoint = k;
-                        m_transitExit.m_vPoint = vHit;
-                        nTouching = 1;
-                    } else if (nTouching >= 1) {
-                        m_transitEntry.m_nPathSegment = m_transitExit.m_nPathSegment;
-                        m_transitEntry.m_nHexPoint = m_transitExit.m_nHexPoint;
-                        m_transitEntry.m_vPoint = m_transitExit.m_vPoint;
-                        nTouching++;
-                        m_transitExit.m_nPathSegment = i / 2;
-                        m_transitExit.m_nHexPoint = k;
-                        m_transitExit.m_vPoint = vHit;
-                    }
-                    break;
+                if (bToCur || bToNext) {
+                    m_transitExit.m_nPathSegment = i / 2;
+                    m_transitExit.m_nHexPoint = k;
+                    nTouching++;
+                    m_transitExit.m_vPoint = vTo;
                 }
             }
-            vFrom = vTo;
-            i += 2;
-        } while (i < pPathInfo->m_nWayPointFloats);
+            if (IntersectLineSegments2d(vFrom, vTo, vCur, vNext, vHit) != 0) {
+                if (nTouching == 0) {
+                    m_transitExit.m_nPathSegment = i / 2;
+                    m_transitExit.m_nHexPoint = k;
+                    m_transitExit.m_vPoint = vHit;
+                    nTouching = 1;
+                } else if (nTouching >= 1) {
+                    m_transitEntry.m_nPathSegment = m_transitExit.m_nPathSegment;
+                    m_transitEntry.m_nHexPoint = m_transitExit.m_nHexPoint;
+                    m_transitEntry.m_vPoint = m_transitExit.m_vPoint;
+                    nTouching++;
+                    m_transitExit.m_nPathSegment = i / 2;
+                    m_transitExit.m_nHexPoint = k;
+                    m_transitExit.m_vPoint = vHit;
+                }
+                break;
+            }
+        }
+        vFrom = vTo;
     }
     if (m_transitEntry.m_nHexPoint == -1) {
         if (m_transitExit.m_nHexPoint == -1) return 0;

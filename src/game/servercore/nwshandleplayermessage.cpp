@@ -1603,7 +1603,7 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
 
                 int nMembers = g_pAppManager->m_pClientExoApp->GetSWParty()->m_nCharacterCount;
                 CSWPartyTable* pPartyTable = g_pAppManager->m_pServerExoApp->GetPartyTable();
-                if (bIsCreature != 0 && pPartyTable->m_soloMode == 0 && nMembers > 1)
+                if (bIsCreature != 0 && pPartyTable->m_soloMode == 0)
                 {
                     for (int i = 1; i < nMembers; ++i)
                     {
@@ -2330,8 +2330,6 @@ int CSWSMessage::HandlePlayerToServerInputMessage(CSWSPlayer* pPlayer, unsigned 
                 return nResult;
 
             int nCount = pTarget->m_effects.m_count;
-            if (nCount < 1)
-                return nResult;
 
             for (int i = 0; i < nCount; ++i)
             {

@@ -305,8 +305,7 @@ CExoString CSWNameGen::GetRandomName(unsigned short nSpecies, unsigned char nGen
 
 int CSWNameGen::LoadNameTable(const CExoString& sTableName)
 {
-    CResRef ref(sTableName);
-    SetResRef(ref, 0);
+    SetResRef(CResRef(sTableName), 0);
     if (m_pRes->Demand()) {
         m_bTableLoaded = 1;
         return 1;

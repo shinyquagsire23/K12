@@ -256,13 +256,9 @@ int CSWCCreatureStats::GetMenuInfoCount(unsigned int nType)
 unsigned char CSWCCreatureStats::GetLevel()
 {
     int nLevel = 0;
-#if KOTOR1
     for (unsigned char i = 0; i < m_nNumClasses; i++)
         nLevel = nLevel + GetClassLevel(i);
-#else
-    for (unsigned char i = 0; i < m_nNumClasses; i++)
-        nLevel += i < 2 ? m_classes[i].m_nLevel : 0;
-
+#if !KOTOR1
     if (m_pCreature) {
         CSWSCreature* pServerCreature = m_pCreature->GetServerCreature();
         if (pServerCreature && pServerCreature->m_pStats->m_bIsPC == 0 &&
@@ -296,11 +292,10 @@ int CSWCCreatureStats::GetExpNeededForLevelUp()
 
 int CSWCCreatureStats::GetCasterLevel(unsigned char nClassPos)
 {
-    if (nClassPos > 1)
-        return 0;
-    if (g_pRules->GetClass(GetClass(nClassPos))->m_bSpellCaster == 0)
-        return 0;
-    return GetClassLevel(nClassPos);
+    unsigned char nCasterLevel = 0;
+    if (g_pRules->GetClass(GetClass(nClassPos))->m_bSpellCaster != 0)
+        nCasterLevel = GetClassLevel(nClassPos);
+    return nCasterLevel;
 }
 
 int CSWCCreatureStats::CalculateUnarmedDamageDice()
@@ -440,8 +435,6 @@ int CSWCCreatureStats::GetCanUseSkill(unsigned short nSkill)
 #endif
     if ((paSkills[nSkill].m_flags & 2) == 0)
         return static_cast<signed char>(m_pSkillRanksBase[nSkill]) > 0;
-    if (m_nNumClasses == 0)
-        return 0;
     for (int64_t i = 0; i < m_nNumClasses; i++) {
         unsigned int nClass = i <= 1 ? m_classes[i].m_nClass : CLASS_TYPE_INVALID;
         if (g_pRules->m_paClasses[nClass].IsSkillUseable(nSkill))
@@ -1612,7 +1605,7 @@ void CSWCLevelUpStats::AddSkillPointsPerLevel()
             m_nSkillPointsRemaining = static_cast<unsigned short>(nPoints * 4);
         } else {
             int nPoints = (pClass->m_nSkillPointsBase + GetBaseINTMod()) / 2;
-            if (nPoints < 2)
+            if (nPoints < 1)
                 nPoints = 1;
             m_nSkillPointsRemaining = static_cast<unsigned short>(m_nSkillPointsRemaining + nPoints);
         }
@@ -2080,26 +2073,24 @@ void CSWCLevelUpStats::AddDefaultPackageSkills(int nClassId, int bSkipFlagCheck)
 unsigned char CSWCLevelUpStats::AddDefaultPackageFeats(int nClassId, CExoArrayList<unsigned short>* pFeats,
                                               int bAllowNormal, int bAllowBonus)
 {
-    unsigned char nNormalCount, nBonusCount;
+    unsigned char nNormalCount = 0;
+    unsigned char nBonusCount = 0;
     CalcNumberFeats(nNormalCount, nBonusCount);
+    if (!bAllowNormal)
+        nNormalCount = 0;
+    if (!bAllowBonus)
+        nBonusCount = 0;
+    unsigned char nTotal = nNormalCount + nBonusCount;
 
-    int nNormalLeft = bAllowNormal ? nNormalCount : 0;
-    int nBonusLeft = bAllowBonus ? nBonusCount : 0;
-    int nTotal = nNormalLeft + nBonusLeft;
-
-    unsigned short nNumFeats = g_pRules->m_nFeats;
-    if (nNumFeats == 0 || static_cast<unsigned char>(nTotal) == 0)
-        return nTotal;
     CSWClass* pClass = &g_pRules->m_paClasses[static_cast<unsigned char>(nClassId)];
-    int nOrder = 1;
-    do {
+    unsigned short nNumFeats = g_pRules->m_nFeats;
+    for (int nOrder = 1; nOrder <= nNumFeats && nTotal != 0; nOrder++) {
         unsigned short nFeat = static_cast<unsigned short>(pClass->GetRecommendedFeat(nOrder));
-        if (CanChooseFeat(nFeat, static_cast<unsigned char>(nNormalLeft), static_cast<unsigned char>(nBonusLeft), pFeats)) {
+        if (CanChooseFeat(nFeat, nNormalCount, nBonusCount, pFeats)) {
             pFeats->Add(nFeat);
             nTotal--;
         }
-        nOrder++;
-    } while (nOrder <= nNumFeats && static_cast<unsigned char>(nTotal) != 0);
+    }
     return nTotal;
 }
 
@@ -2311,27 +2302,16 @@ void CSWCLevelUpStats::AddGrantedFeats(CExoArrayList<uint32_l_t>* pFeats, bool b
 #if !KOTOR1
 void CSWCLevelUpStats::AddGrantedPowers(CExoArrayList<uint32_l_t>* pPowers)
 {
-    if (m_nNumClasses == 0)
-        return;
-
     unsigned char nClassPos = m_nNumClasses - 1;
-    unsigned char nHighestLevel = (nClassPos <= 1) ? m_classes[nClassPos].m_nLevel : 0;
+    unsigned char nHighestLevel = (nClassPos > 1) ? 0 : m_classes[nClassPos].m_nLevel;
 
     int nJediLevel = 0;
     for (unsigned char i = 0; i < m_nNumClasses; i++)
         if (CSWClass::IsJedi(GetClass(i)))
             nJediLevel += GetClassLevel(i);
 
-    if (m_nNumClasses == 0)
-        return;
-
-    static const unsigned int KOTOR2_JEDI_POWERS_3[4] = {258, 259, 260, 265};
-    static const unsigned int KOTOR2_JEDI_POWERS_4[4] = {258, 265, 259, 260};
-    static const unsigned int KOTOR2_JEDI_POWERS_5[4] = {258, 260, 265, 259};
 
     unsigned char nJediTier = static_cast<unsigned char>(nJediLevel - 11);
-    unsigned char nLevelRem = (nHighestLevel - 1) & 3;
-    unsigned char nLevelTier = (nHighestLevel - 1) >> 2;
 
     for (unsigned char nSlot = 0; nSlot < m_nNumClasses && nSlot < 2; nSlot++) {
         unsigned char nClassId = m_classes[nSlot].m_nClass;
@@ -2352,24 +2332,41 @@ void CSWCLevelUpStats::AddGrantedPowers(CExoArrayList<uint32_l_t>* pPowers)
                 continue;
             break;
         case CLASS_TYPE_JEDIGUARDIAN:
-            if (nJediTier >= 4)
-                continue;
-            nPowerId = KOTOR2_JEDI_POWERS_3[nJediTier];
+            switch (nJediTier) {
+            case 0: nPowerId = FORM_SABER_I_SHII_CHO; break;
+            case 1: nPowerId = FORM_SABER_II_MAKASHI; break;
+            case 2: nPowerId = FORM_SABER_III_SORESU; break;
+            case 3: nPowerId = FORM_FORCE_I_FOCUS; break;
+            default: continue;
+            }
             break;
         case CLASS_TYPE_JEDICONSULAR:
-            if (nJediTier >= 4)
-                continue;
-            nPowerId = KOTOR2_JEDI_POWERS_4[nJediTier];
+            switch (nJediTier) {
+            case 0: nPowerId = FORM_SABER_I_SHII_CHO; break;
+            case 1: nPowerId = FORM_FORCE_I_FOCUS; break;
+            case 2: nPowerId = FORM_SABER_II_MAKASHI; break;
+            case 3: nPowerId = FORM_SABER_III_SORESU; break;
+            default: continue;
+            }
             break;
         case CLASS_TYPE_JEDISENTINEL:
-            if (nJediTier >= 4)
-                continue;
-            nPowerId = KOTOR2_JEDI_POWERS_5[nJediTier];
+            switch (nJediTier) {
+            case 0: nPowerId = FORM_SABER_I_SHII_CHO; break;
+            case 1: nPowerId = FORM_SABER_III_SORESU; break;
+            case 2: nPowerId = FORM_FORCE_I_FOCUS; break;
+            case 3: nPowerId = FORM_SABER_II_MAKASHI; break;
+            default: continue;
+            }
             break;
         case CLASS_TYPE_JEDIMASTER:
-            if (nLevelRem != 0 || nLevelTier >= 5)
-                continue;
-            nPowerId = nLevelTier + FORCE_POWER_INSPIRE_FOLLOWERS_I;
+            switch (nHighestLevel) {
+            case 1: nPowerId = FORCE_POWER_INSPIRE_FOLLOWERS_I; break;
+            case 5: nPowerId = FORCE_POWER_INSPIRE_FOLLOWERS_II; break;
+            case 9: nPowerId = FORCE_POWER_INSPIRE_FOLLOWERS_III; break;
+            case 13: nPowerId = FORCE_POWER_INSPIRE_FOLLOWERS_IV; break;
+            case 17: nPowerId = FORCE_POWER_INSPIRE_FOLLOWERS_V; break;
+            default: continue;
+            }
             break;
         case CLASS_TYPE_SITHMARAUDER:
             if (nHighestLevel == 1)
@@ -2382,9 +2379,14 @@ void CSWCLevelUpStats::AddGrantedPowers(CExoArrayList<uint32_l_t>* pPowers)
                 continue;
             break;
         case CLASS_TYPE_SITHLORD:
-            if (nLevelRem != 0 || nLevelTier >= 5)
-                continue;
-            nPowerId = nLevelTier + FORCE_POWER_CRUSH_OPPOSITION_I;
+            switch (nHighestLevel) {
+            case 1: nPowerId = FORCE_POWER_CRUSH_OPPOSITION_I; break;
+            case 5: nPowerId = FORCE_POWER_CRUSH_OPPOSITION_II; break;
+            case 9: nPowerId = FORCE_POWER_CRUSH_OPPOSITION_III; break;
+            case 13: nPowerId = FORCE_POWER_CRUSH_OPPOSITION_IV; break;
+            case 17: nPowerId = FORCE_POWER_CRUSH_OPPOSITION_V; break;
+            default: continue;
+            }
             break;
         default:
             continue;
@@ -2458,7 +2460,9 @@ void CSWCCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct)
     if (pGFF->GetList(&classList, pStruct, const_cast<char*>("ClassList")) &&
         static_cast<unsigned char>(pGFF->GetListCount(&classList)) != 0) {
         nCount = static_cast<unsigned char>(pGFF->GetListCount(&classList));
-        m_nNumClasses = (nCount > 2) ? 2 : nCount;
+        m_nNumClasses = nCount;
+        if (nCount > 2)
+            m_nNumClasses = 2;
         for (unsigned char i = 0; i < m_nNumClasses; i++) {
             CResStruct classElem;
             if (pGFF->GetListElement(&classElem, &classList, i)) {
@@ -2617,7 +2621,7 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
                                      int nStanceOnly, int nStanceId, int bTargetIsDroid, char cCHAMod)
 {
     CSWSModule* pModule = g_pAppManager->m_pServerExoApp->GetModule();
-    if (pModule->GetArea()->m_nPlayerRestrictMode != 0 || m_nNumClasses == 0)
+    if (pModule->GetArea()->m_nPlayerRestrictMode != 0)
         return;
 
     // Phase 1: concatenate every class's known level-0 spell/power ids.
@@ -2703,7 +2707,7 @@ void CSWCCreatureStats::GetMenuInfo(CExoArrayList<CSWGuiInterfaceAction>& menuLi
                     short nRank;
                     short nSubgroup;
                     bool bDone;
-                    int64_t idx;
+                    int idx;
                     short nExisting;
                     nRank = static_cast<short>(pSpell->GetPriority(s));
                     nSubgroup = static_cast<short>(pSpell->GetSlot(s));
@@ -2868,7 +2872,7 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
             if (pSpell->GetMenu(s) == static_cast<int>(nMenuType)) {
 
                 bDone = false;
-                for (int64_t idx = 0; idx < candSpells.m_count; idx++) {
+                for (int idx = 0; idx < candSpells.m_count; idx++) {
                     short nExisting = candSubgroup.m_pArray[idx];
                     if (nExisting == nSubgroup) {
                         if (candRank.m_pArray[idx] < nRank) {
@@ -2971,9 +2975,6 @@ void CSWCCreatureStats_ClassInfo::GetMenuInfo(CExoArrayList<CSWGuiInterfaceActio
     // Phase 2: filter and decode into candidate (subgroup, rank, spell, id) records, deduped per
     // subgroup so only the highest-rank power in each menu slot survives.
     int nSpellCount = m_spellLevels[0].m_count;
-    if (nSpellCount < 1)
-        return;
-
     for (int i = 0; i < nSpellCount; i++) {
         int nSpellId = m_spellLevels[0].m_pArray[i];
         CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);

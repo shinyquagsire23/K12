@@ -289,15 +289,17 @@ void CSWGuiUpgrade::UpdateItems()
     CResRef rIcon;
     CExoString sUnused;
 
-    CSWGuiLabel* pLabels = NULL;
+    CSWGuiLabel* pLabels K2_UNSET;
     switch (m_nMenuType)
     {
+    case CSWSItem::UPGRADABLE_TYPE_RANGED:
+    case CSWSItem::UPGRADABLE_TYPE_ARMOR:
+        pLabels = m_aslotLbl;
+        break;
     case CSWSItem::UPGRADABLE_TYPE_LIGHTSABER:
         pLabels = m_apRows;
         break;
-    case CSWSItem::UPGRADABLE_TYPE_RANGED:
     case CSWSItem::UPGRADABLE_TYPE_MELEE:
-    case CSWSItem::UPGRADABLE_TYPE_ARMOR:
         pLabels = m_aslotLbl;
         break;
     default:
@@ -312,7 +314,7 @@ void CSWGuiUpgrade::UpdateItems()
         if (pItem)
         {
             g_pRules->GetBaseItem(pItem->m_baseItem);  // result unused
-            rIcon = pItem->GetIcon();
+            rIcon = m_apaItems[i]->GetIcon();
             pLabel->m_border.m_params.m_fAlpha = 1.0f;
         }
         else
@@ -1406,10 +1408,6 @@ void CSWGuiUpgrade::OnPanelRemoved()
     CSWGuiPanel::OnPanelRemoved();
 }
 
-#if !KOTOR1
-static const int s_anDimCounts[4] = { 6, 3, 3, 2 };  // border-dim run length per menu type
-#endif
-
 #if KOTOR1  // K1: no caption or TLK pass; a lightsaber needs its upcrystals hilt or the panel closes
 void CSWGuiUpgrade::OnPanelAdded()
 {
@@ -1603,16 +1601,16 @@ void CSWGuiUpgrade::OnPanelAdded()
     }
 
     ShowItems(0);
-    int nDim = (static_cast<unsigned>(m_nMenuType - 1) <= 3) ? s_anDimCounts[m_nMenuType - 1] : 0;
+    int nDim = GetNumUpgrades();
 
     CExoString sTag;
-    int anFound[6] = {};
+    int anFound[6];
+    for (int i = 0; i < 6; i++)
+        anFound[i] = 0;
     CSWGuiLabel* pLabel = pRow;
-    if (nDim != 0) {
-        for (int i = nDim; i != 0; --i) {
-            pLabel->m_border.m_params.m_fAlpha = 0.25f;
-            ++pLabel;
-        }
+    for (int i = nDim; i != 0; --i) {
+        pLabel->m_border.m_params.m_fAlpha = 0.25f;
+        ++pLabel;
     }
     for (int nRow = 0; nRow < m_pUpgradeC2DA->m_nRows; nRow++) {
         int nType;
@@ -2228,7 +2226,8 @@ CSWGuiUpgrade::CSWGuiUpgrade(CSWGuiManager* pGuiManager)
     m_pItem = 0;
     m_pItemSlot = 0;
     m_bItemsOpen &= 0xfe;
-    __builtin_memset(m_apaItems, 0, sizeof(m_apaItems));
+    for (int i = 0; i < 6; i++)
+        m_apaItems[i] = 0;
 
     if (g_bDo3DGUIs) {
         m_viewItem.m_scene.m_pScene->SpawnRoom(const_cast<char*>("gui3D_room"), Vector(0, 0, 0), Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
@@ -4292,16 +4291,16 @@ void CSWGuiCreateMedicalItem::ShowBuyGUI()
 
 void CSWGuiCreateMedicalItem::ShowSellGUI()
 {
-    m_lbShopItems.m_tail.bVisible = 0;
-    m_lbInvItems.m_tail.bVisible = 1;
     m_bCreateMode = 0;
+    m_lbInvItems.m_tail.bVisible = 1;
+    m_lbShopItems.m_tail.bVisible = 0;
 
     m_lblCost.m_text.m_params.SetStrRef(STRREF_CHEMICAL_VALUE);
     m_lblRelatedSkill.m_tail.bVisible = 0;
-    m_lblTitle.m_text.m_params.SetStrRef(STRREF_BREAKDOWN_INVENTORY_ITEMS);
 
     m_lbDescription.m_tail.bVisible = 0;
     m_lbDescriptionInv.m_tail.bVisible = 1;
+    m_lblTitle.m_text.m_params.SetStrRef(STRREF_BREAKDOWN_INVENTORY_ITEMS);
 
     m_btnAccept.m_text.m_params.SetStrRef(STRREF_BREAKDOWN_ITEM);
     m_btnExamine.m_text.m_params.SetStrRef(STRREF_VIEW_CREATEABLE_ITEMS);
@@ -5048,13 +5047,10 @@ CSWGuiSwoopUpgrade::CSWGuiSwoopUpgrade(CSWGuiManager* pGuiManager)
     m_bItemsOpen &= 0xfe;
     m_pItem = 0;
     m_pItemSlot = 0;
-    __builtin_memset(m_apaItems, 0, sizeof(m_apaItems));
-    m_aswoopRow[0] = 0;
-    m_aswoopRow[1] = 0;
-    m_aswoopRow[4] = 0;
-    m_aswoopRow[5] = 0;
-    m_aswoopRow[2] = 0;
-    m_aswoopRow[3] = 0;
+    for (int i = 0; i < 6; i++) {
+        m_apaItems[i] = 0;
+        m_aswoopRow[i] = 0;
+    }
 
     if (g_bDo3DGUIs) {
         m_viewItem.m_scene.m_pScene->SpawnRoom(const_cast<char*>("gui3D_room"), Vector(0, 0, 0), Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
@@ -5382,13 +5378,14 @@ void CSWGuiSwoopUpgrade::ShowItems(int n)
         m_lblRanalogLS.m_tail.bVisible = 0;
         m_btnAssemble.SetMoveToControl(0, &m_abtnSlot[1]);
         m_btnAssemble.SetMoveToControl(2, &m_abtnSlot[1]);
-        for (int i = 0; i < 3; i++) {
-            m_abtnSlot[i].m_tail.bVisible = 1;
-            m_apRows[i].m_tail.bVisible = 1;
-        }
-        for (int i = 3; i < 6; i++) {
-            m_abtnSlot[i].m_tail.bVisible = 0;
-            m_apRows[i].m_tail.bVisible = 0;
+        for (int i = 0; i < 6; i++) {
+            if (i < 3) {
+                m_abtnSlot[i].m_tail.bVisible = 1;
+                m_apRows[i].m_tail.bVisible = 1;
+            } else {
+                m_abtnSlot[i].m_tail.bVisible = 0;
+                m_apRows[i].m_tail.bVisible = 0;
+            }
         }
     }
 
@@ -5440,41 +5437,31 @@ void CSWGuiSwoopUpgrade::OnPanelAdded()
         m_pC2DA->GetINTEntry(r, CExoString("group"), &nGroup);
         m_pC2DA->GetCExoStringEntry(r, CExoString("template"), &sVal);
         m_pC2DA->GetINTEntry(r, CExoString("level"), &nLevel);
-        if (nLevel == 0)
-            continue;
-
-        int nSlot;
-        CSWSItem** ppSlot;
-        if (m_apaItems[0] == 0 && nGroup == 0) {
-            nSlot = 0;
-            ppSlot = &m_apaItems[0];
-        } else if (m_apaItems[1] == 0 && nGroup == 1) {
-            nSlot = 1;
-            ppSlot = &m_apaItems[1];
-        } else if (m_apaItems[2] == 0 && nGroup == 2) {
-            nSlot = 2;
-            ppSlot = &m_apaItems[2];
-        } else {
-            continue;
-        }
-
-        m_aslotTag[nSlot] = sVal.LowerCase();
-        m_apRows[nSlot].m_border.m_params.m_fAlpha = 1.0f;
-        m_anUpgradeRow[nSlot] = r;
-        if (g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[nSlot] == r)
+        for (int nSlot = 0; nSlot < 3; nSlot++)
         {
-            *ppSlot = new CSWSItem(OBJECT_INVALID);
-            (*ppSlot)->LoadFromTemplate(CResRef(sVal));
-            (*ppSlot)->m_anUpgVars[nSlot] = r;
-            m_aswoopRow[nSlot] = r;
-        }
-        else
-        {
-            unsigned long long oid =
-                g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems()->FindItemWithTag(
-                    m_aslotTag[nSlot]);
-            if (oid == OBJECT_INVALID)
-                m_apRows[nSlot].m_border.m_params.m_fAlpha = 0.25f;
+            if (nLevel != 0 && m_apaItems[nSlot] == 0
+                && nGroup == static_cast<int>(SWOOP_SLOT_INFO[nSlot].m_nIconId))
+            {
+                m_aslotTag[nSlot] = sVal.LowerCase();
+                m_apRows[nSlot].m_border.m_params.m_fAlpha = 1.0f;
+                m_anUpgradeRow[nSlot] = r;
+                if (g_pAppManager->m_pServerExoApp->GetPartyTable()->m_swoop[nSlot] == r)
+                {
+                    m_apaItems[nSlot] = new CSWSItem(OBJECT_INVALID);
+                    m_apaItems[nSlot]->LoadFromTemplate(CResRef(sVal));
+                    m_apaItems[nSlot]->m_anUpgVars[nSlot] = r;
+                    m_aswoopRow[nSlot] = r;
+                }
+                else
+                {
+                    unsigned long long oid =
+                        g_pAppManager->m_pServerExoApp->GetPartyTable()->GetPartyItems()->FindItemWithTag(
+                            m_aslotTag[nSlot]);
+                    if (oid == OBJECT_INVALID)
+                        m_apRows[nSlot].m_border.m_params.m_fAlpha = 0.25f;
+                }
+                break;
+            }
         }
     }
 

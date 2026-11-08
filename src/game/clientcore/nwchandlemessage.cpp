@@ -8046,13 +8046,14 @@ int CSWCMessage::HandleServerToPlayerCCMessage(unsigned char nType)
 #endif
 
             CExoString sTmpAttackMod;   // ctor + dtor only (same dead family as case 4's strTmp)
-            int nAttackMod = nDexAttackMod != 0 ? nDexAttackMod : nStrAttackMod;
+            int nAttackMod = nDexAttackMod == 0 ? nStrAttackMod : nDexAttackMod;
+            int nAttackModStrRef = nDexAttackMod == 0 ? STRREF_FMT_STRENGTH_MOD : STRREF_FMT_DEXTERITY_MOD;
 
             if (nAttackMod != 0)
             {
                 g_pTlkTable->SetCustomToken(0, CExoString(nAttackMod));
 
-                sOut = sOut + g_pSWTlkTable->Fetch(nDexAttackMod != 0 ? STRREF_FMT_DEXTERITY_MOD : STRREF_FMT_STRENGTH_MOD, 0, 0, 0);
+                sOut = sOut + g_pSWTlkTable->Fetch(nAttackModStrRef, 0, 0, 0);
             }
 
             if (nWeaponFocus != 0)
@@ -10013,11 +10014,9 @@ int CSWCMessage::HandleServerToPlayerSafeProjectileProjectile()
                 // A Vector operator- does not exist, so the flight direction is three explicit float
                 // subtractions. The inner block ends vDirection's lifetime here.
                 {
-                    Vector vDirection;
-                    vDirection.x = vTarget.x - vSource.x;
-                    vDirection.y = vTarget.y - vSource.y;
-                    vDirection.z = vTarget.z - vSource.z;
-                    pProjectile->SetOrientation(normalize(vDirection));
+                    pProjectile->SetOrientation(normalize(Vector(vTarget.x - vSource.x,
+                                                                 vTarget.y - vSource.y,
+                                                                 vTarget.z - vSource.z)));
                 }
 
                 pProjectile->m_nProjOrientation = 2;
@@ -10283,67 +10282,57 @@ int CSWCMessage::HandleServerToPlayerUpdate_CharacterSheet()
         }
 
         unsigned char nNumAttackMods = ReadBYTE(8);
-        if (nNumAttackMods != 0) {
-            int i = 0;
-            do {
-                char nValue = ReadCHAR(8);
-                unsigned char nType = ReadBYTE(3);
-                unsigned char nClassReq;
-                if (ReadBOOL() == 1)
-                    nClassReq = ReadBYTE(8);
-                else
-                    nClassReq = g_pRules->m_nNumRaces;
-                unsigned char nFlag;
-                if (ReadBOOL() == 1)
-                    nFlag = ReadBYTE(3);
-                else
-                    nFlag = 0;
-                if (MessageReadOverflow(1))
-                    return 0;
+        for (int i = 0; i != nNumAttackMods; i++) {
+            char nValue = ReadCHAR(8);
+            unsigned char nType = ReadBYTE(3);
+            unsigned char nClassReq;
+            if (ReadBOOL() == 1)
+                nClassReq = ReadBYTE(8);
+            else
+                nClassReq = g_pRules->m_nNumRaces;
+            unsigned char nFlag;
+            if (ReadBOOL() == 1)
+                nFlag = ReadBYTE(3);
+            else
+                nFlag = 0;
+            if (MessageReadOverflow(1))
+                return 0;
 
-                CCombatInformationNode* pNode = new CCombatInformationNode();
-                pNode->m_cValue = nValue;
-                pNode->m_nType = nType;
-                pNode->m_nClassReq = nClassReq;
-                pNode->m_nFlag = nFlag;
+            CCombatInformationNode* pNode = new CCombatInformationNode();
+            pNode->m_cValue = nValue;
+            pNode->m_nType = nType;
+            pNode->m_nClassReq = nClassReq;
+            pNode->m_nFlag = nFlag;
 
-                pCombatInfo->m_attackBonusMods.Add(pNode);
-
-                i++;
-            } while (i != nNumAttackMods);
+            pCombatInfo->m_attackBonusMods.Add(pNode);
         }
 
         unsigned char nNumDamageMods = ReadBYTE(8);
-        if (nNumDamageMods != 0) {
-            int i = 0;
-            do {
-                char nValue = ReadCHAR(8);
-                unsigned char nDamageSubType = ReadBYTE(4);
-                unsigned char nType = ReadBYTE(3);
-                unsigned char nClassReq;
-                if (ReadBOOL() == 1)
-                    nClassReq = ReadBYTE(8);
-                else
-                    nClassReq = g_pRules->m_nNumRaces;
-                unsigned char nFlag;
-                if (ReadBOOL() == 1)
-                    nFlag = ReadBYTE(3);
-                else
-                    nFlag = 0;
-                if (MessageReadOverflow(1))
-                    return 0;
+        for (int i = 0; i != nNumDamageMods; i++) {
+            char nValue = ReadCHAR(8);
+            unsigned char nDamageSubType = ReadBYTE(4);
+            unsigned char nType = ReadBYTE(3);
+            unsigned char nClassReq;
+            if (ReadBOOL() == 1)
+                nClassReq = ReadBYTE(8);
+            else
+                nClassReq = g_pRules->m_nNumRaces;
+            unsigned char nFlag;
+            if (ReadBOOL() == 1)
+                nFlag = ReadBYTE(3);
+            else
+                nFlag = 0;
+            if (MessageReadOverflow(1))
+                return 0;
 
-                CCombatInformationNode* pNode = new CCombatInformationNode();
-                pNode->m_cValue = nValue;
-                pNode->m_nModifierType = nDamageSubType;
-                pNode->m_nType = nType;
-                pNode->m_nClassReq = nClassReq;
-                pNode->m_nFlag = nFlag;
+            CCombatInformationNode* pNode = new CCombatInformationNode();
+            pNode->m_cValue = nValue;
+            pNode->m_nModifierType = nDamageSubType;
+            pNode->m_nType = nType;
+            pNode->m_nClassReq = nClassReq;
+            pNode->m_nFlag = nFlag;
 
-                pCombatInfo->m_damageBonusMods.Add(pNode);
-
-                i++;
-            } while (i != nNumDamageMods);
+            pCombatInfo->m_damageBonusMods.Add(pNode);
         }
 
         pStats->SetCombatInformation(pCombatInfo);

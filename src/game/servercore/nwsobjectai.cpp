@@ -2111,7 +2111,7 @@ int CSWSObject::AIActionPlayAnimation(CSWSObjectActionNode* pNode) {
     }
     if (fSpeed != 0.0f)
         fLength = fLength / fAbsSpeed;
-    if (fDuration > 0.0f && bClientPlayed == 0)
+    if (!(fDuration <= 0.0f || bClientPlayed != 0))
         fLength = fDuration * 1000.0f;
 
     if (bSoundPlayed == 0 && nSoundDelay <= nElapsedTod) {

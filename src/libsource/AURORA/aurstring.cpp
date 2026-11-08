@@ -892,7 +892,7 @@ int StringGob::ScrollToLine(int nLine) { K2_UNUSED(nLine); return 0; }
 Vector StringGob::SetPosition(Vector v)
 {
     m_vPosition = v;
-    return v;
+    return m_vPosition;
 }
 #else
 Vector StringGob::SetPosition(Vector v)

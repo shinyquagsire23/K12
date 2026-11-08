@@ -507,7 +507,7 @@ void* Scene::HitCheckGob(Vector vStart, Vector vEnd, Vector* pvHit, CHitInfo* pI
 {
     void* pHit = 0;
 
-    for (int64_t i = 0; i < Objects().m_count; i++)
+    for (int i = 0; i < Objects().m_count; i++)
     {
         Gob* pGob = Objects().m_pData[i];
 
@@ -1076,8 +1076,6 @@ void Scene::DoDynamicMeshProjections()
 
     List<PartLight*> shadowLights;
     shadowLights = m_pLightManager->GetShadowLights(0);
-    if (shadowLights.m_count < 1)
-        return;
 
     planeFar.d += 0.05f;
 
@@ -2178,45 +2176,48 @@ void Scene::RenderLensFlares()
 
         vDir = -planelineintersection(vPlaneNormal, 2.0f, vEye, vDir);
 
-        for (int j = 0; j < pNode->FlareCount(); j++)
+        if (pNode->FlareCount() != 0)
         {
-            pNode->FlareTextures()[j]->Bind();
-
-            float fRange = pNode->m_fFlareRange;
-            Vector vColour = (pLight->m_vLightColour + pNode->FlareColourShifts()[j])
-                             * pLight->m_fFlareFade * fFacing * (fRange - fDist);
-            if (fRange != 0.0f)
-                vColour = vColour * (1.0f / fRange);
-
-            float fSize = (fRange - fDist) * pNode->FlareSizes()[j] / fRange * lensflaresize;
-
-            ASLgl::glPushMatrix();
-            ASLgl::glTranslatef(pNode->FlarePositions()[j] * vDir.x,
-                                pNode->FlarePositions()[j] * vDir.y, 0.0f);
-
-            static uint32_l_t renderListToken = GLRender::RequestPool(
-                static_cast<Aurora::AuroraBufferRequestType>(0), 4 * sizeof(RenderVertexVTC), 0x42, 0x1011,
-                &renderListToken);
-
-            RenderVertexVTC* paVerts = static_cast<RenderVertexVTC*>(GLRender::LockPool(renderListToken, 0, 0, 1));
-
-            unsigned int nColour = kFlareAlphaOpaque | FlareColourByte(vColour.x)
-                                   | (FlareColourByte(vColour.y) << 8)
-                                   | (FlareColourByte(vColour.z) << 16);
-
-            for (int k = 0; k < 4; k++)
+            for (int j = 0; j < pNode->FlareCount(); j++)
             {
-                paVerts[k].color = nColour;
-                paVerts[k].u = (k == 0 || k == 3) ? 0.0f : 1.0f;
-                paVerts[k].v = (k < 2) ? 0.0f : 1.0f;
-                paVerts[k].pos[0] = (k == 0 || k == 3) ? -fSize : fSize;
-                paVerts[k].pos[1] = (k < 2) ? -fSize : fSize;
-                paVerts[k].pos[2] = 0.0f;
-            }
+                pNode->FlareTextures()[j]->Bind();
 
-            GLRender::UnlockPool(renderListToken);
-            GLRender::RenderObjectsVTCQuad(renderListToken, 4);
-            ASLgl::glPopMatrix();
+                float fRange = pNode->m_fFlareRange;
+                Vector vColour = (pLight->m_vLightColour + pNode->FlareColourShifts()[j])
+                                 * pLight->m_fFlareFade * fFacing * (fRange - fDist);
+                if (fRange != 0.0f)
+                    vColour = vColour * (1.0f / fRange);
+
+                float fSize = (fRange - fDist) * pNode->FlareSizes()[j] / fRange * lensflaresize;
+
+                ASLgl::glPushMatrix();
+                ASLgl::glTranslatef(pNode->FlarePositions()[j] * vDir.x,
+                                    pNode->FlarePositions()[j] * vDir.y, 0.0f);
+
+                static uint32_l_t renderListToken = GLRender::RequestPool(
+                    static_cast<Aurora::AuroraBufferRequestType>(0), 4 * sizeof(RenderVertexVTC), 0x42, 0x1011,
+                    &renderListToken);
+
+                RenderVertexVTC* paVerts = static_cast<RenderVertexVTC*>(GLRender::LockPool(renderListToken, 0, 0, 1));
+
+                unsigned int nColour = kFlareAlphaOpaque | FlareColourByte(vColour.x)
+                                       | (FlareColourByte(vColour.y) << 8)
+                                       | (FlareColourByte(vColour.z) << 16);
+
+                for (int k = 0; k < 4; k++)
+                {
+                    paVerts[k].color = nColour;
+                    paVerts[k].u = (k == 0 || k == 3) ? 0.0f : 1.0f;
+                    paVerts[k].v = (k < 2) ? 0.0f : 1.0f;
+                    paVerts[k].pos[0] = (k == 0 || k == 3) ? -fSize : fSize;
+                    paVerts[k].pos[1] = (k < 2) ? -fSize : fSize;
+                    paVerts[k].pos[2] = 0.0f;
+                }
+
+                GLRender::UnlockPool(renderListToken);
+                GLRender::RenderObjectsVTCQuad(renderListToken, 4);
+                ASLgl::glPopMatrix();
+            }
         }
     }
 
@@ -3431,11 +3432,8 @@ void SetShadowStencilBuffer()
 
 Vector CubePoint(Vector& vMin, Vector& vMax, int nCorner)
 {
-    Vector v;
-    v.x = (nCorner & 1) ? vMax.x : vMin.x;
-    v.y = ((nCorner / 2) & 1) ? vMax.y : vMin.y;
-    v.z = (nCorner / 4) ? vMax.z : vMin.z;
-    return v;
+    return Vector((nCorner & 1) ? vMax.x : vMin.x, ((nCorner / 2) & 1) ? vMax.y : vMin.y,
+                  (nCorner / 4) ? vMax.z : vMin.z);
 }
 
 Scene* FindScene(char* pszName)
@@ -4455,7 +4453,7 @@ Gob* Scene::SpawnRoom(char* pszName, const Vector& vPos, const Quaternion& qOrie
     pRoom->m_bboxMin = Vector(100000.0f, 100000.0f, 100000.0f);
     pRoom->m_bboxMax = Vector(-100000.0f, -100000.0f, -100000.0f);
 
-    for (int64_t i = 0; i < parts.m_count; i++)
+    for (int i = 0; i < parts.m_count; i++)
     {
         PartTriMesh* pMesh    = parts.m_pData[i]->AsPartTriMesh();
         PartLight*   pLight   = parts.m_pData[i]->AsPartLight();
@@ -4515,11 +4513,11 @@ Gob* Scene::SpawnRoom(char* pszName, const Vector& vPos, const Quaternion& qOrie
     {
         List<List<CAurTriangleBin*> > bins;
         InitGrassBins(vMin, vMax, bins);
-        for (int64_t i = 0; i < aabbs.m_count; i++)
+        for (int i = 0; i < aabbs.m_count; i++)
             AddFacesToBins(aabbs.m_pData[i], vMin, bins);
-        for (int64_t i = 0; i < bins.m_count; i++)
+        for (int i = 0; i < bins.m_count; i++)
         {
-            for (int64_t j = 0; j < bins.m_pData[i].m_count; j++)
+            for (int j = 0; j < bins.m_pData[i].m_count; j++)
             {
                 CAurTriangleBin* pBin = bins.m_pData[i].m_pData[j];
                 if (pBin == 0)
@@ -4604,7 +4602,7 @@ void CollapsePartTree(Gob* pGob, Part* pPart, List<Part*>& parts, Vector vPos, Q
     parts.Add(pPart);
 
     Part* pFound = 0;
-    for (int64_t i = 0; i < parts.m_count; i++)
+    for (int i = 0; i < parts.m_count; i++)
     {
         Part* pNode = parts.m_pData[i];
 
@@ -4624,7 +4622,7 @@ void CollapsePartTree(Gob* pGob, Part* pPart, List<Part*>& parts, Vector vPos, Q
             }
         }
 
-        for (int64_t j = 0; j < pNode->m_aChildren.m_count; j++)
+        for (int j = 0; j < pNode->m_aChildren.m_count; j++)
         {
             Part* pChild = pNode->m_aChildren.m_pData[j];
             if (pGob != 0 && _stricmp(pChild->m_pNode->TranslateNodeName(), szName) == 0)
@@ -4937,8 +4935,6 @@ bool ProcessTilePart(TileData* pTileData, Part* pPart, char* pszName)
 void ProcessStaticParts(List<Part*>& rParts, Scene* pScene, TileData* pTileData, char* pszName, int nFlag)
 {
     K2_UNUSED(pScene);
-    if (rParts.m_count <= 0)
-        return;
 
     List<Part*>& rTileParts = pTileData->m_aParts;
 

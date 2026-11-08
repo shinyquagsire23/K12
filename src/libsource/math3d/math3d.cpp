@@ -172,10 +172,8 @@ Vector VectorMax(List<Vector>& list)
 
 int VectorMaxDir(List<Vector>& list, Vector vDir)
 {
-    if (list.m_count < 1)
-        return 0;
     int nBest = 0;
-    for (int64_t i = 0; i < list.m_count; i++)
+    for (int i = 0; i < list.m_count; i++)
     {
         float fDot = vDir.x * list.m_pData[i].x + vDir.y * list.m_pData[i].y
                    + vDir.z * list.m_pData[i].z;
@@ -225,24 +223,20 @@ void Scale(List<Vector>& list, float fScale)
     }
 }
 
+// EFFECTIVE: arm64 22 lines are the two vertex loads' register order; a named `vB` gives 12 there but
+// swaps every armv7 cross-product operand.
 float ComputeArea(List<Vector>& list)
 {
-    if (list.m_count < 1)
-        return 0.0f;
-    Vector v0 = list.m_pData[0];
     float fArea = 0.0f;
-    int i = 1;
-    do
+    for (int i = 0; i < list.m_count; i++)
     {
         // Wraps around the polygon; the last edge closes back onto the first vertex.
-        int nCurr = (i + 1) % list.m_count;
-        int nPrev = i % list.m_count;
-        Vector vCurr = list.m_pData[nCurr];
+        int nPrev = (i + 1) % list.m_count;
+        int nCurr = (i + 2) % list.m_count;
         Vector vPrev = list.m_pData[nPrev];
-        Vector vA = vPrev - v0;
-        Vector vB = vCurr - vPrev;
-        fArea += magnitude(cross(vA, vB)) * 0.5f;
-    } while (i++ < list.m_count);
+        Vector vA = vPrev - list.m_pData[0];
+        fArea += magnitude(cross(vA, list.m_pData[nCurr] - vPrev)) * 0.5f;
+    }
     return fArea;
 }
 
@@ -321,7 +315,7 @@ Vector lineproject(const Vector& a, const Vector& b, const Vector& p)
     // Scratch vector, shared across calls.
     static Vector w;
     w = b - a;
-    float fLen2 = dot(w, w);
+    float fLen2 = w.x * w.x + w.y * w.y + w.z * w.z;
     float fT = fLen2;
     if (fLen2 != 0.0f)
     {
@@ -337,7 +331,7 @@ Vector segmentproject(const Vector& a, const Vector& b, const Vector& p)
 
     static Vector w;
     w = b - a;
-    float fLen2 = dot(w, w);
+    float fLen2 = w.x * w.x + w.y * w.y + w.z * w.z;
     float fT = fLen2;
     if (fLen2 != 0.0f)
     {
@@ -362,19 +356,22 @@ float Determinant(Matrix m)
          - m.m_f[0]*m.m_f[7]*m.m_f[5] - m.m_f[3]*m.m_f[1]*m.m_f[8] - m.m_f[6]*m.m_f[4]*m.m_f[2];
 }
 
+// EFFECTIVE: K2 armv7 87 lines: ours narrows the outer `(i + 1) % 3` to a byte (`uxtb`) and loads `pB[e]` before
+// `pA[c]`; the loop and its cofactor order are the image's.
 Matrix Inverse(Matrix m)
 {
     static Matrix r;
     float d = Determinant(m);
-    r.m_f[0] = (m.m_f[4]*m.m_f[8] - m.m_f[5]*m.m_f[7]) / d;
-    r.m_f[3] = (m.m_f[5]*m.m_f[6] - m.m_f[3]*m.m_f[8]) / d;
-    r.m_f[6] = (m.m_f[3]*m.m_f[7] - m.m_f[4]*m.m_f[6]) / d;
-    r.m_f[1] = (m.m_f[2]*m.m_f[7] - m.m_f[1]*m.m_f[8]) / d;
-    r.m_f[4] = (m.m_f[0]*m.m_f[8] - m.m_f[2]*m.m_f[6]) / d;
-    r.m_f[7] = (m.m_f[1]*m.m_f[6] - m.m_f[0]*m.m_f[7]) / d;
-    r.m_f[2] = (m.m_f[1]*m.m_f[5] - m.m_f[2]*m.m_f[4]) / d;
-    r.m_f[5] = (m.m_f[2]*m.m_f[3] - m.m_f[0]*m.m_f[5]) / d;
-    r.m_f[8] = (m.m_f[0]*m.m_f[4] - m.m_f[1]*m.m_f[3]) / d;
+    // The adjugate over the determinant: each element is the cofactor of the transposed position.
+    for (unsigned int i = 0; i < 3; i++) {
+        const float* pA = &m.m_f[(i + 1) % 3 * 3];
+        const float* pB = &m.m_f[(i + 2) % 3 * 3];
+        for (unsigned char j = 0; j < 3; j++) {
+            int c = (j + 1) % 3;
+            int e = (j + 2) % 3;
+            r.m_f[j * 3 + i] = (pA[c] * pB[e] - pA[e] * pB[c]) / d;
+        }
+    }
     return r;
 }
 
@@ -476,6 +473,7 @@ float* Augment(const Matrix& m)
 
 Quaternion Matrix::getquaternion() const
 {
+    Quaternion q;
     float m[3][3];
     for (int r = 0; r < 3; r++)
         for (int c = 0; c < 3; c++)
@@ -485,11 +483,12 @@ Quaternion Matrix::getquaternion() const
     if (fTrace > 0.0f)
     {
         float s = static_cast<float>(sqrt(1.0 + fTrace));
-        float w = s * 0.5f;
+        q.w = s * 0.5f;
         s = 0.5f / s;
-        return Quaternion(w, (m[1][2] - m[2][1]) * s,
-                             (m[2][0] - m[0][2]) * s,
-                             (m[0][1] - m[1][0]) * s);
+        q.x = (m[1][2] - m[2][1]) * s;
+        q.y = (m[2][0] - m[0][2]) * s;
+        q.z = (m[0][1] - m[1][0]) * s;
+        return q;
     }
 
     static const int aNext[3] = { 1, 2, 0 };
@@ -509,7 +508,8 @@ Quaternion Matrix::getquaternion() const
     af[3] = (m[k][j] - m[j][k]) * s;
     af[k] = (m[i][k] + m[k][i]) * s;
     af[j] = (m[i][j] + m[j][i]) * s;
-    return Quaternion(af[3], af[0], af[1], af[2]);
+    q = Quaternion(af[3], af[0], af[1], af[2]);
+    return q;
 }
 
 extern int quaternionidentityoptimization;
@@ -621,10 +621,10 @@ Quaternion slerp(Quaternion qFrom, const Quaternion& qTo, float t)
     float fDot = qFrom.w*qTo.w + qFrom.x*qTo.x + qFrom.y*qTo.y + qFrom.z*qTo.z;
     if (fDot < 0.0f)
     {
-        qFrom.w = -qFrom.w;
         qFrom.x = -qFrom.x;
         qFrom.y = -qFrom.y;
         qFrom.z = -qFrom.z;
+        qFrom.w = -qFrom.w;
     }
     float fAbs = fDot;
     if (fAbs < 0.0f)

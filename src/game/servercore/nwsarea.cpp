@@ -114,8 +114,8 @@ unsigned int BoxIntersect(const Vector& a, const Vector& b, const Vector& boxMin
 // 0.1-unit steps and charges nothing for open space, 0.4 per placeable and 0.55 per door.
 float GetObstructionFactor(Vector vFrom, Vector vTo)
 {
-    Vector vZero = Vector(0.0f, 0.0f, 0.0f);
     uint64_ll_t nStart = g_pExoBase->m_pTimers->GetHighResolutionTimer();
+    Vector vZero = Vector(0.0f, 0.0f, 0.0f);
     unsigned int nStartSec = static_cast<unsigned int>(nStart / 1000);
     float fFactor = 0.0f;
 
@@ -587,29 +587,31 @@ void CSWSArea::IncreaseAILevelPriority()
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CServerAIMaster* pAIMaster = g_pAppManager->m_pServerExoApp->GetServerAIMaster();
 
-    for (int n = 0; n < m_aObjectsByX.m_count; n++)
-    {
-        CGameObject* pGameObject;
-        if (pObjectArray->GetGameObject(m_aObjectsByX.m_pArray[n], &pGameObject) != CGameObjectArray::SUCCESS)
-            continue;
-        CSWSObject* pObject = static_cast<CSWSObject*>(pGameObject);
-        if (pObject->m_objectType <= CGameObject::OBJECT_TYPE_AREA || pObject->m_aiLevel != 0)
-            continue;
+    if (m_aObjectsByX.m_count != 0) {
+        for (int n = 0; n < m_aObjectsByX.m_count; n++)
+        {
+            CGameObject* pGameObject;
+            if (pObjectArray->GetGameObject(m_aObjectsByX.m_pArray[n], &pGameObject) != CGameObjectArray::SUCCESS)
+                continue;
+            CSWSObject* pObject = static_cast<CSWSObject*>(pGameObject);
+            if (pObject->m_objectType <= CGameObject::OBJECT_TYPE_AREA || pObject->m_aiLevel != 0)
+                continue;
 
-        if (pGameObject->AsSWSCreature() != 0 || pGameObject->AsSWSAreaOfEffectObject() != 0 ||
-            pGameObject->AsSWSTrigger() != 0)
-        {
-            pAIMaster->SetAILevel(pObject, 1);
-        }
-        else if (pGameObject->AsSWSDoor() != 0)
-        {
-            CSWSDoor* pDoor = pGameObject->AsSWSDoor();
-            if (pDoor->m_scriptSlots[5].GetLength() >= 1 && pDoor->m_bStatic == 0)
+            if (pGameObject->AsSWSCreature() != 0 || pGameObject->AsSWSAreaOfEffectObject() != 0 ||
+                pGameObject->AsSWSTrigger() != 0)
+            {
                 pAIMaster->SetAILevel(pObject, 1);
-        }
-        else if (pGameObject->AsSWSPlaceable() != 0 && pGameObject->AsSWSPlaceable()->m_bStatic == 0)
-        {
-            pAIMaster->SetAILevel(pObject, 1);
+            }
+            else if (pGameObject->AsSWSDoor() != 0)
+            {
+                CSWSDoor* pDoor = pGameObject->AsSWSDoor();
+                if (pDoor->m_scriptSlots[5].GetLength() >= 1 && pDoor->m_bStatic == 0)
+                    pAIMaster->SetAILevel(pObject, 1);
+            }
+            else if (pGameObject->AsSWSPlaceable() != 0 && pGameObject->AsSWSPlaceable()->m_bStatic == 0)
+            {
+                pAIMaster->SetAILevel(pObject, 1);
+            }
         }
     }
 }
@@ -619,14 +621,16 @@ void CSWSArea::DecreaseAILevelPriority()
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CServerAIMaster* pAIMaster = g_pAppManager->m_pServerExoApp->GetServerAIMaster();
 
-    for (int n = 0; n < m_aObjectsByX.m_count; n++)
-    {
-        CSWSObject* pObj;
-        if (pObjectArray->GetGameObject(m_aObjectsByX.m_pArray[n], reinterpret_cast<CGameObject**>(&pObj)) != CGameObjectArray::SUCCESS)
-            continue;
-        if (pObj->m_objectType > CGameObject::OBJECT_TYPE_AREA && pObj->AsSWSCreature() != 0
-            && pObj->m_aiLevel == 1)
-            pAIMaster->SetAILevel(pObj, 0);
+    if (m_aObjectsByX.m_count != 0) {
+        for (int n = 0; n < m_aObjectsByX.m_count; n++)
+        {
+            CSWSObject* pObj;
+            if (pObjectArray->GetGameObject(m_aObjectsByX.m_pArray[n], reinterpret_cast<CGameObject**>(&pObj)) != CGameObjectArray::SUCCESS)
+                continue;
+            if (pObj->m_objectType > CGameObject::OBJECT_TYPE_AREA && pObj->AsSWSCreature() != 0
+                && pObj->m_aiLevel == 1)
+                pAIMaster->SetAILevel(pObj, 0);
+        }
     }
 }
 
@@ -1093,18 +1097,15 @@ int CSWSArea::LoadPathPoints(CResStruct* pStruct)
     {
         m_nPathPointLinkCount = pGff->GetListCount(&list);
         m_paPathPointLinks = new unsigned int[m_nPathPointLinkCount];
-        if (m_nPathPointLinkCount)
+        for (unsigned int i = 0; i < m_nPathPointLinkCount; i++)
         {
-            for (unsigned int i = 0; i < m_nPathPointLinkCount; i++)
-            {
-                if (!pGff->GetListElement(&stElem, &list, i))
-                    continue;
-                if (pGff->GetElementType(&stElem) != 3)
-                    continue;
+            if (!pGff->GetListElement(&stElem, &list, i))
+                continue;
+            if (pGff->GetElementType(&stElem) != 3)
+                continue;
 
-                m_paPathPointLinks[i] = pGff->ReadFieldDWORD(&stElem, const_cast<char*>("Destination"), bSuccess, 0);
-                nSuccess &= bSuccess;
-            }
+            m_paPathPointLinks[i] = pGff->ReadFieldDWORD(&stElem, const_cast<char*>("Destination"), bSuccess, 0);
+            nSuccess &= bSuccess;
         }
     }
 
@@ -1909,35 +1910,32 @@ int CSWSArea::LoadAreaHeader(CResStruct* pStruct)
     m_pRes->GetList(&list, pStruct, const_cast<char*>("Rooms"));
     m_nRoomAudioCount = m_pRes->GetListCount(&list);
     InitializeRoomAudioParams(m_nRoomAudioCount);
-    if (m_nRoomAudioCount >= 1)
+    for (int i = 0; i < m_nRoomAudioCount; i++)
     {
-        for (int i = 0; i < m_nRoomAudioCount; i++)
-        {
-            m_pRes->GetListElement(&stElem, &list, i);
-            m_paRoomNames[i] = m_pRes->ReadFieldCExoString(&stElem, const_cast<char*>("RoomName"), bSuccess, CExoString(""));
-            m_paRoomEnvAudio[i] = m_pRes->ReadFieldINT(&stElem, const_cast<char*>("EnvAudio"), bSuccess, 0);
-            m_paRoomAmbientScale[i] = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("AmbientScale"), bSuccess, 0.0f);
+        m_pRes->GetListElement(&stElem, &list, i);
+        m_paRoomNames[i] = m_pRes->ReadFieldCExoString(&stElem, const_cast<char*>("RoomName"), bSuccess, CExoString(""));
+        m_paRoomEnvAudio[i] = m_pRes->ReadFieldINT(&stElem, const_cast<char*>("EnvAudio"), bSuccess, 0);
+        m_paRoomAmbientScale[i] = m_pRes->ReadFieldFLOAT(&stElem, const_cast<char*>("AmbientScale"), bSuccess, 0.0f);
 #if !KOTOR1
-            m_paForceRating[i] = m_pRes->ReadFieldINT(&stElem, const_cast<char*>("ForceRating"), bSuccess, 0);
-            m_paRoomDisableWeather[i] = m_pRes->ReadFieldBYTE(&stElem, const_cast<char*>("DisableWeather"), bSuccess, 0);
+        m_paForceRating[i] = m_pRes->ReadFieldINT(&stElem, const_cast<char*>("ForceRating"), bSuccess, 0);
+        m_paRoomDisableWeather[i] = m_pRes->ReadFieldBYTE(&stElem, const_cast<char*>("DisableWeather"), bSuccess, 0);
 #endif
-            CResList partsList;
-            if (m_pRes->GetList(&partsList, &stElem, const_cast<char*>("PartSounds")))
+        CResList partsList;
+        if (m_pRes->GetList(&partsList, &stElem, const_cast<char*>("PartSounds")))
+        {
+            int nParts = m_pRes->GetListCount(&partsList);
+            m_nPartSoundCount += nParts;
+            for (int j = 0; j < nParts; j++)
             {
-                int nParts = m_pRes->GetListCount(&partsList);
-                m_nPartSoundCount += nParts;
-                for (int j = 0; j < nParts; j++)
-                {
-                    CResStruct stPart;
-                    int nLoop;
-                    m_pRes->GetListElement(&stPart, &partsList, j);
-                    m_lstPartSoundRoomNames.Add(m_paRoomNames[i]);
-                    nLoop = m_pRes->ReadFieldBYTE(&stPart, const_cast<char*>("Looping"), bSuccess, 0);
-                    m_lstPartSoundLooping.Add(nLoop);
-                    m_lstPartSoundModelParts.Add(m_pRes->ReadFieldCExoString(&stPart, const_cast<char*>("ModelPart"), bSuccess, CExoString("")));
-                    m_lstPartSoundOmenEvents.Add(m_pRes->ReadFieldCExoString(&stPart, const_cast<char*>("OmenEvent"), bSuccess, CExoString("")));
-                    m_lstPartSoundResRefs.Add(m_pRes->ReadFieldCResRef(&stPart, const_cast<char*>("Sound"), bSuccess, CResRef("")));
-                }
+                CResStruct stPart;
+                int nLoop;
+                m_pRes->GetListElement(&stPart, &partsList, j);
+                m_lstPartSoundRoomNames.Add(m_paRoomNames[i]);
+                nLoop = m_pRes->ReadFieldBYTE(&stPart, const_cast<char*>("Looping"), bSuccess, 0);
+                m_lstPartSoundLooping.Add(nLoop);
+                m_lstPartSoundModelParts.Add(m_pRes->ReadFieldCExoString(&stPart, const_cast<char*>("ModelPart"), bSuccess, CExoString("")));
+                m_lstPartSoundOmenEvents.Add(m_pRes->ReadFieldCExoString(&stPart, const_cast<char*>("OmenEvent"), bSuccess, CExoString("")));
+                m_lstPartSoundResRefs.Add(m_pRes->ReadFieldCResRef(&stPart, const_cast<char*>("Sound"), bSuccess, CResRef("")));
             }
         }
     }
@@ -2093,25 +2091,22 @@ void CSWSArea::SaveCreatures(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<u
     g_pAppManager->m_pServerExoApp->GetPartyTable();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("Creature List"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSCreature* pCreature = pObj->AsSWSCreature();
+            CSWSCreature* pCreature = pObj->AsSWSCreature();
 #if KOTOR1  // K1: no puppets
-                if (pCreature->m_bInParty == 0)
+            if (pCreature->m_bInParty == 0)
 #else
-                if (pCreature->m_bInParty == 0 && pCreature->m_isPuppet == 0)
+            if (pCreature->m_bInParty == 0 && pCreature->m_isPuppet == 0)
 #endif
-                {
-                    pGff->AddListElement(&st, &list, 4);
-                    pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pCreature->m_objectId), const_cast<char*>("ObjectId"));
-                    pCreature->SaveCreature(pGff, &st);
-                }
+            {
+                pGff->AddListElement(&st, &list, 4);
+                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pCreature->m_objectId), const_cast<char*>("ObjectId"));
+                pCreature->SaveCreature(pGff, &st);
             }
         }
     }
@@ -2124,20 +2119,17 @@ void CSWSArea::SaveItems(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<unsig
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("List"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSItem* pItem = pObj->AsSWSItem();
-                pGff->AddListElement(&st, &list, 0);
-                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pItem->m_objectId), const_cast<char*>("ObjectId"));
-                pItem->SaveItem(pGff, &st);
-                pItem->SaveObjectState(pGff, &st);
-            }
+            CSWSItem* pItem = pObj->AsSWSItem();
+            pGff->AddListElement(&st, &list, 0);
+            pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pItem->m_objectId), const_cast<char*>("ObjectId"));
+            pItem->SaveItem(pGff, &st);
+            pItem->SaveObjectState(pGff, &st);
         }
     }
 }
@@ -2147,20 +2139,17 @@ void CSWSArea::SaveDoors(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<unsig
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("Door List"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSDoor* pDoor = pObj->AsSWSDoor();
-                pGff->AddListElement(&st, &list, 8);
-                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pDoor->m_objectId), const_cast<char*>("ObjectId"));
-                pDoor->SaveDoor(pGff, &st);
-                pDoor->SaveObjectState(pGff, &st);
-            }
+            CSWSDoor* pDoor = pObj->AsSWSDoor();
+            pGff->AddListElement(&st, &list, 8);
+            pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pDoor->m_objectId), const_cast<char*>("ObjectId"));
+            pDoor->SaveDoor(pGff, &st);
+            pDoor->SaveObjectState(pGff, &st);
         }
     }
 }
@@ -2170,20 +2159,17 @@ void CSWSArea::SaveTriggers(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<un
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("TriggerList"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSTrigger* pTrigger = pObj->AsSWSTrigger();
-                pGff->AddListElement(&st, &list, 1);
-                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pTrigger->m_objectId), const_cast<char*>("ObjectId"));
-                pTrigger->SaveTrigger(pGff, &st);
-                pTrigger->SaveObjectState(pGff, &st);
-            }
+            CSWSTrigger* pTrigger = pObj->AsSWSTrigger();
+            pGff->AddListElement(&st, &list, 1);
+            pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pTrigger->m_objectId), const_cast<char*>("ObjectId"));
+            pTrigger->SaveTrigger(pGff, &st);
+            pTrigger->SaveObjectState(pGff, &st);
         }
     }
 }
@@ -2193,20 +2179,17 @@ void CSWSArea::SaveEncounters(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("Encounter List"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSEncounter* pEncounter = pObj->AsSWSEncounter();
-                pGff->AddListElement(&st, &list, 7);
-                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pEncounter->m_objectId), const_cast<char*>("ObjectId"));
-                pEncounter->SaveEncounter(pGff, &st);
-                pEncounter->SaveObjectState(pGff, &st);
-            }
+            CSWSEncounter* pEncounter = pObj->AsSWSEncounter();
+            pGff->AddListElement(&st, &list, 7);
+            pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pEncounter->m_objectId), const_cast<char*>("ObjectId"));
+            pEncounter->SaveEncounter(pGff, &st);
+            pEncounter->SaveObjectState(pGff, &st);
         }
     }
 }
@@ -2216,20 +2199,17 @@ void CSWSArea::SaveWaypoints(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<u
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("WaypointList"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSWaypoint* pWaypoint = pObj->AsSWSWaypoint();
-                pGff->AddListElement(&st, &list, 5);
-                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pWaypoint->m_objectId), const_cast<char*>("ObjectId"));
-                pWaypoint->SaveWaypoint(pGff, &st);
-                pWaypoint->SaveObjectState(pGff, &st);
-            }
+            CSWSWaypoint* pWaypoint = pObj->AsSWSWaypoint();
+            pGff->AddListElement(&st, &list, 5);
+            pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pWaypoint->m_objectId), const_cast<char*>("ObjectId"));
+            pWaypoint->SaveWaypoint(pGff, &st);
+            pWaypoint->SaveObjectState(pGff, &st);
         }
     }
 }
@@ -2239,20 +2219,17 @@ void CSWSArea::SaveSounds(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<unsi
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("SoundList"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSSoundObject* pSound = pObj->AsSWSSoundObject();
-                pGff->AddListElement(&st, &list, 6);
-                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pSound->m_objectId), const_cast<char*>("ObjectId"));
-                pSound->Save(pGff, &st);
-                pSound->SaveObjectState(pGff, &st);
-            }
+            CSWSSoundObject* pSound = pObj->AsSWSSoundObject();
+            pGff->AddListElement(&st, &list, 6);
+            pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pSound->m_objectId), const_cast<char*>("ObjectId"));
+            pSound->Save(pGff, &st);
+            pSound->SaveObjectState(pGff, &st);
         }
     }
 }
@@ -2262,22 +2239,19 @@ void CSWSArea::SavePlaceables(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("Placeable List"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
+            CSWSPlaceable* pPlaceable = pObj->AsSWSPlaceable();
+            if (pPlaceable->m_corpse.m_bIsCorpse == 0)
             {
-                CSWSPlaceable* pPlaceable = pObj->AsSWSPlaceable();
-                if (pPlaceable->m_corpse.m_bIsCorpse == 0)
-                {
-                    pGff->AddListElement(&st, &list, 9);
-                    pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pPlaceable->m_objectId), const_cast<char*>("ObjectId"));
-                    pPlaceable->SavePlaceable(pGff, &st);
-                    pPlaceable->SaveObjectState(pGff, &st);
-                }
+                pGff->AddListElement(&st, &list, 9);
+                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pPlaceable->m_objectId), const_cast<char*>("ObjectId"));
+                pPlaceable->SavePlaceable(pGff, &st);
+                pPlaceable->SaveObjectState(pGff, &st);
             }
         }
     }
@@ -2288,20 +2262,17 @@ void CSWSArea::SaveStores(CResGFF* pGff, CResStruct* pStruct, CExoArrayList<unsi
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("StoreList"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSStore* pStore = pObj->AsSWSStore();
-                pGff->AddListElement(&st, &list, GIT_STRUCT_ID_STORE);
-                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pStore->m_objectId), const_cast<char*>("ObjectId"));
-                pStore->SaveStore(pGff, &st);
-                pStore->SaveObjectState(pGff, &st);
-            }
+            CSWSStore* pStore = pObj->AsSWSStore();
+            pGff->AddListElement(&st, &list, GIT_STRUCT_ID_STORE);
+            pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pStore->m_objectId), const_cast<char*>("ObjectId"));
+            pStore->SaveStore(pGff, &st);
+            pStore->SaveObjectState(pGff, &st);
         }
     }
 }
@@ -2311,20 +2282,17 @@ void CSWSArea::SaveAreaEffects(CResGFF* pGff, CResStruct* pStruct, CExoArrayList
     CGameObjectArray* pObjectArray = g_pAppManager->m_pServerExoApp->GetObjectArray();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("AreaEffectList"));
-    if (aList.m_count >= 1)
+    for (int n = 0; n < aList.m_count; n++)
     {
-        for (int n = 0; n < aList.m_count; n++)
+        CResStruct st;
+        CGameObject* pObj;
+        if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
         {
-            CResStruct st;
-            CGameObject* pObj;
-            if (pObjectArray->GetGameObject(aList.m_pArray[n], &pObj) == CGameObjectArray::SUCCESS)
-            {
-                CSWSAreaOfEffectObject* pAreaEffect = pObj->AsSWSAreaOfEffectObject();
-                pGff->AddListElement(&st, &list, GIT_STRUCT_ID_AREA_OF_EFFECT);
-                pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pAreaEffect->m_objectId), const_cast<char*>("ObjectId"));
-                pAreaEffect->SaveEffect(pGff, &st);
-                pAreaEffect->SaveObjectState(pGff, &st);
-            }
+            CSWSAreaOfEffectObject* pAreaEffect = pObj->AsSWSAreaOfEffectObject();
+            pGff->AddListElement(&st, &list, GIT_STRUCT_ID_AREA_OF_EFFECT);
+            pGff->WriteFieldDWORD(&st, static_cast<unsigned int>(pAreaEffect->m_objectId), const_cast<char*>("ObjectId"));
+            pAreaEffect->SaveEffect(pGff, &st);
+            pAreaEffect->SaveObjectState(pGff, &st);
         }
     }
 }
@@ -2377,23 +2345,20 @@ void CSWSArea::SavePlaceableCameras(CResGFF* pGff, CResStruct* pStruct)
     CGuiInGame* pInGame = g_pAppManager->m_pClientExoApp->GetInGameGui();
     CResList list;
     pGff->AddList(&list, pStruct, const_cast<char*>("CameraList"));
-    if (pInGame->m_placeableCameraCount >= 1)
+    for (int n = 0; n < pInGame->m_placeableCameraCount; n++)
     {
-        for (int n = 0; n < pInGame->m_placeableCameraCount; n++)
+        CGuiPlaceableCamera* pCamera = static_cast<CGuiPlaceableCamera*>(pInGame->GetPlaceableCamera(n));
+        if (pCamera != 0)
         {
-            CGuiPlaceableCamera* pCamera = static_cast<CGuiPlaceableCamera*>(pInGame->GetPlaceableCamera(n));
-            if (pCamera != 0)
-            {
-                CResStruct st;
-                pGff->AddListElement(&st, &list, GIT_STRUCT_ID_CAMERA);
-                pGff->WriteFieldINT(&st, pCamera->m_charId, const_cast<char*>("CameraID"));
-                pGff->WriteFieldVector(&st, pCamera->m_position, const_cast<char*>("Position"));
-                pGff->WriteFieldQuaternion(&st, pCamera->m_rotation, const_cast<char*>("Orientation"));
-                pGff->WriteFieldFLOAT(&st, pCamera->m_a, const_cast<char*>("Pitch"));
-                pGff->WriteFieldFLOAT(&st, pCamera->m_b, const_cast<char*>("Height"));
-                pGff->WriteFieldFLOAT(&st, pCamera->m_c, const_cast<char*>("FieldOfView"));
-                pGff->WriteFieldFLOAT(&st, pCamera->m_d, const_cast<char*>("MicRange"));
-            }
+            CResStruct st;
+            pGff->AddListElement(&st, &list, GIT_STRUCT_ID_CAMERA);
+            pGff->WriteFieldINT(&st, pCamera->m_charId, const_cast<char*>("CameraID"));
+            pGff->WriteFieldVector(&st, pCamera->m_position, const_cast<char*>("Position"));
+            pGff->WriteFieldQuaternion(&st, pCamera->m_rotation, const_cast<char*>("Orientation"));
+            pGff->WriteFieldFLOAT(&st, pCamera->m_a, const_cast<char*>("Pitch"));
+            pGff->WriteFieldFLOAT(&st, pCamera->m_b, const_cast<char*>("Height"));
+            pGff->WriteFieldFLOAT(&st, pCamera->m_c, const_cast<char*>("FieldOfView"));
+            pGff->WriteFieldFLOAT(&st, pCamera->m_d, const_cast<char*>("MicRange"));
         }
     }
 }
@@ -2493,10 +2458,13 @@ int CSWSArea::GetIsIDInExcludeList(unsigned long long nObjectId,
     {
         int nCount = pExcludeList->m_count;
 
-        for (int i = 0; i < nCount; i++)
+        if (nCount > 0)
         {
-            if (pExcludeList->m_pArray[i]->m_objectId == nObjectId)
-                return 1;
+            for (int i = 0; i < nCount; i++)
+            {
+                if (pExcludeList->m_pArray[i]->m_objectId == nObjectId)
+                    return 1;
+            }
         }
     }
 
@@ -3441,27 +3409,21 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
     pMsg->WriteFLOAT(m_alphaTest, 1.0f, 32);
 
     pMsg->WriteINT(m_nRoomAudioCount, 32);
-    if (m_nRoomAudioCount >= 1)
+    for (int i = 0; i < m_nRoomAudioCount; i++)
     {
-        for (int i = 0; i < m_nRoomAudioCount; i++)
-        {
-            pMsg->WriteCExoString(m_paRoomNames[i], 32);
-            pMsg->WriteINT(m_paRoomEnvAudio[i], 32);
-            pMsg->WriteFLOAT(m_paRoomAmbientScale[i], 1.0f, 32);
-        }
+        pMsg->WriteCExoString(m_paRoomNames[i], 32);
+        pMsg->WriteINT(m_paRoomEnvAudio[i], 32);
+        pMsg->WriteFLOAT(m_paRoomAmbientScale[i], 1.0f, 32);
     }
 
     pMsg->WriteINT(m_nPartSoundCount, 32);
-    if (m_nPartSoundCount >= 1)
+    for (int i = 0; i < m_nPartSoundCount; i++)
     {
-        for (int i = 0; i < m_nPartSoundCount; i++)
-        {
-            pMsg->WriteCExoString(m_lstPartSoundRoomNames.m_pArray[i], 32);
-            pMsg->WriteBOOL(m_lstPartSoundLooping.m_pArray[i]);
-            pMsg->WriteCExoString(m_lstPartSoundModelParts.m_pArray[i], 32);
-            pMsg->WriteCExoString(m_lstPartSoundOmenEvents.m_pArray[i], 32);
-            pMsg->WriteCResRef(m_lstPartSoundResRefs.m_pArray[i], 16);
-        }
+        pMsg->WriteCExoString(m_lstPartSoundRoomNames.m_pArray[i], 32);
+        pMsg->WriteBOOL(m_lstPartSoundLooping.m_pArray[i]);
+        pMsg->WriteCExoString(m_lstPartSoundModelParts.m_pArray[i], 32);
+        pMsg->WriteCExoString(m_lstPartSoundOmenEvents.m_pArray[i], 32);
+        pMsg->WriteCResRef(m_lstPartSoundResRefs.m_pArray[i], 16);
     }
 
     // Read after both room lists, because the client expects the north axis and the extents here.
@@ -3471,47 +3433,41 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
 
     // Filters the visible objects in one pass over the spatial index, collecting the objects that
     // need their own blob.
-    if (m_aObjectsByX.m_count >= 1)
+    for (int i = 0; i < m_aObjectsByX.m_count; i++)
     {
-        for (int i = 0; i < m_aObjectsByX.m_count; i++)
+        CGameObject* pObject;
+        CSWSWaypoint* pWaypoint;
+        if (pObjectArray->GetGameObject(m_aObjectsByX.m_pArray[i], &pObject) != CGameObjectArray::SUCCESS)
+            continue;
+        pWaypoint = pObject->AsSWSWaypoint();
+        if (pWaypoint == 0)
         {
-            CGameObject* pObject;
-            CSWSWaypoint* pWaypoint;
-            if (pObjectArray->GetGameObject(m_aObjectsByX.m_pArray[i], &pObject) != CGameObjectArray::SUCCESS)
-                continue;
-            pWaypoint = pObject->AsSWSWaypoint();
-            if (pWaypoint == 0)
-            {
-                if (pObject->AsSWSSoundObject() != 0)
-                    aSounds.Add(m_aObjectsByX.m_pArray[i]);
-            }
-            else if (pWaypoint->m_bHasMapNote != 0)
-            {
-                aWaypoints.Add(m_aObjectsByX.m_pArray[i]);
-                nCount++;
-            }
+            if (pObject->AsSWSSoundObject() != 0)
+                aSounds.Add(m_aObjectsByX.m_pArray[i]);
+        }
+        else if (pWaypoint->m_bHasMapNote != 0)
+        {
+            aWaypoints.Add(m_aObjectsByX.m_pArray[i]);
+            nCount++;
         }
     }
 
     pMsg->WriteINT(nCount, 32);
-    if (nCount > 0)
+    for (int i = 0; i < nCount; i++)
     {
-        for (int i = 0; i < nCount; i++)
-        {
-            CGameObject* pObject;
-            CSWSWaypoint* pWaypoint;
-            if (pObjectArray->GetGameObject(aWaypoints.m_pArray[i], &pObject) != CGameObjectArray::SUCCESS)
-                continue;
-            pWaypoint = pObject->AsSWSWaypoint();
-            if (pWaypoint == 0)
-                continue;
-            pMsg->WriteOBJECTIDServer(pWaypoint->m_objectId);
-            pMsg->WriteFLOAT(pWaypoint->m_position.x, 1.0f, 32);
-            pMsg->WriteFLOAT(pWaypoint->m_position.y, 1.0f, 32);
-            pMsg->WriteFLOAT(pWaypoint->m_position.z, 1.0f, 32);
-            pMsg->WriteBOOL(pWaypoint->m_bMapNoteEnabled);
-            pMsg->WriteCExoLocStringServer(pWaypoint->m_mapNote, 0);
-        }
+        CGameObject* pObject;
+        CSWSWaypoint* pWaypoint;
+        if (pObjectArray->GetGameObject(aWaypoints.m_pArray[i], &pObject) != CGameObjectArray::SUCCESS)
+            continue;
+        pWaypoint = pObject->AsSWSWaypoint();
+        if (pWaypoint == 0)
+            continue;
+        pMsg->WriteOBJECTIDServer(pWaypoint->m_objectId);
+        pMsg->WriteFLOAT(pWaypoint->m_position.x, 1.0f, 32);
+        pMsg->WriteFLOAT(pWaypoint->m_position.y, 1.0f, 32);
+        pMsg->WriteFLOAT(pWaypoint->m_position.z, 1.0f, 32);
+        pMsg->WriteBOOL(pWaypoint->m_bMapNoteEnabled);
+        pMsg->WriteCExoLocStringServer(pWaypoint->m_mapNote, 0);
     }
 
     // Map pins live as script variables on the player's own creature; only the pins that name
@@ -3542,19 +3498,22 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
     }
 
     pMsg->WriteINT(aPins.m_count, 32);
-    for (int i = 0; i < aPins.m_count; i++)
+    if (aPins.m_count > 0)
     {
-        K2_ASSUME(pCreature != 0);
-        pMsg->WriteINT(aPins.m_pArray[i], 32);
-        sName.Format(const_cast<char*>("NW_MAP_PIN_NTRY_%i"), aPins.m_pArray[i]);
-        sValue = pCreature->m_scriptVars.GetString(sName);
-        pMsg->WriteCExoString(sValue, 32);
-        sName.Format(const_cast<char*>("NW_MAP_PIN_XPOS_%i"), aPins.m_pArray[i]);
-        pMsg->WriteFLOAT(pCreature->m_scriptVars.GetFloat(sName), 1.0f, 32);
-        sName.Format(const_cast<char*>("NW_MAP_PIN_YPOS_%i"), aPins.m_pArray[i]);
-        pMsg->WriteFLOAT(pCreature->m_scriptVars.GetFloat(sName), 1.0f, 32);
-        sName.Format(const_cast<char*>("NW_MAP_PIN_ZPOS_%i"), aPins.m_pArray[i]);
-        pMsg->WriteFLOAT(pCreature->m_scriptVars.GetFloat(sName), 1.0f, 32);
+        for (int i = 0; i < aPins.m_count; i++)
+        {
+            K2_ASSUME(pCreature != 0);
+            pMsg->WriteINT(aPins.m_pArray[i], 32);
+            sName.Format(const_cast<char*>("NW_MAP_PIN_NTRY_%i"), aPins.m_pArray[i]);
+            sValue = pCreature->m_scriptVars.GetString(sName);
+            pMsg->WriteCExoString(sValue, 32);
+            sName.Format(const_cast<char*>("NW_MAP_PIN_XPOS_%i"), aPins.m_pArray[i]);
+            pMsg->WriteFLOAT(pCreature->m_scriptVars.GetFloat(sName), 1.0f, 32);
+            sName.Format(const_cast<char*>("NW_MAP_PIN_YPOS_%i"), aPins.m_pArray[i]);
+            pMsg->WriteFLOAT(pCreature->m_scriptVars.GetFloat(sName), 1.0f, 32);
+            sName.Format(const_cast<char*>("NW_MAP_PIN_ZPOS_%i"), aPins.m_pArray[i]);
+            pMsg->WriteFLOAT(pCreature->m_scriptVars.GetFloat(sName), 1.0f, 32);
+        }
     }
 
     nSoundCount = static_cast<unsigned short>(aSounds.m_count);
@@ -3573,85 +3532,76 @@ int CSWSArea::PackAreaIntoMessage(int nX, int nY, int nZ, CSWSPlayer* pPlayer)
     // -- placeables: two counts and two matching lists (lit, and "Static" == 1).
     int nLitCount = 0;
     int nStaticCount = 0;
-    if (m_aObjectsByX.m_count >= 1)
+    for (int i = 0; i < m_aObjectsByX.m_count; i++)
     {
-        for (int i = 0; i < m_aObjectsByX.m_count; i++)
-        {
-            int bLightIsOn;
-            int bStatic;
-            CSWSPlaceable* pPlaceable =
-                g_pAppManager->m_pServerExoApp->GetPlaceableByGameObjectID(m_aObjectsByX.m_pArray[i]);
-            if (pPlaceable == 0)
-                continue;
-            bLightIsOn = pPlaceable->GetLightIsOn();
-            bStatic = pPlaceable->m_bStatic;
-            nLitCount += (bLightIsOn != 0);
-            nStaticCount += (bStatic == 1);
-        }
+        int bLightIsOn;
+        int bStatic;
+        CSWSPlaceable* pPlaceable =
+            g_pAppManager->m_pServerExoApp->GetPlaceableByGameObjectID(m_aObjectsByX.m_pArray[i]);
+        if (pPlaceable == 0)
+            continue;
+        bLightIsOn = pPlaceable->GetLightIsOn();
+        bStatic = pPlaceable->m_bStatic;
+        nLitCount += (bLightIsOn != 0);
+        nStaticCount += (bStatic == 1);
     }
 
     pMsg->WriteWORD(static_cast<unsigned short>(nLitCount), 16);
-    if (m_aObjectsByX.m_count >= 1)
+    for (int i = 0; i < m_aObjectsByX.m_count; i++)
     {
-        for (int i = 0; i < m_aObjectsByX.m_count; i++)
-        {
-            CSWSPlaceable* pPlaceable =
-                g_pAppManager->m_pServerExoApp->GetPlaceableByGameObjectID(m_aObjectsByX.m_pArray[i]);
-            if (pPlaceable == 0)
-                continue;
-            if (pPlaceable->GetLightIsOn() == 0)
-                continue;
+        CSWSPlaceable* pPlaceable =
+            g_pAppManager->m_pServerExoApp->GetPlaceableByGameObjectID(m_aObjectsByX.m_pArray[i]);
+        if (pPlaceable == 0)
+            continue;
+        if (pPlaceable->GetLightIsOn() == 0)
+            continue;
 #if KOTOR1  // K1 copies the position out before the first write
-            Vector vPosition = pPlaceable->m_position;
-            pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
-            pMsg->WriteBYTE(pPlaceable->m_appearanceType, 8);
-            pMsg->WriteFLOAT(vPosition.x, 1.0f, 32);
-            pMsg->WriteFLOAT(vPosition.y, 1.0f, 32);
-            pMsg->WriteFLOAT(vPosition.z, 1.0f, 32);
+        Vector vPosition = pPlaceable->m_position;
+        pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
+        pMsg->WriteBYTE(pPlaceable->m_appearanceType, 8);
+        pMsg->WriteFLOAT(vPosition.x, 1.0f, 32);
+        pMsg->WriteFLOAT(vPosition.y, 1.0f, 32);
+        pMsg->WriteFLOAT(vPosition.z, 1.0f, 32);
 #else
-            pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
-            pMsg->WriteINT(pPlaceable->m_appearanceType, 32);
-            pMsg->WriteFLOAT(pPlaceable->m_position.x, 1.0f, 32);
-            pMsg->WriteFLOAT(pPlaceable->m_position.y, 1.0f, 32);
-            pMsg->WriteFLOAT(pPlaceable->m_position.z, 1.0f, 32);
+        pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
+        pMsg->WriteINT(pPlaceable->m_appearanceType, 32);
+        pMsg->WriteFLOAT(pPlaceable->m_position.x, 1.0f, 32);
+        pMsg->WriteFLOAT(pPlaceable->m_position.y, 1.0f, 32);
+        pMsg->WriteFLOAT(pPlaceable->m_position.z, 1.0f, 32);
 #endif
-        }
     }
 
     pMsg->WriteWORD(static_cast<unsigned short>(nStaticCount), 16);
-    if (m_aObjectsByX.m_count >= 1)
+    for (int i = 0; i < m_aObjectsByX.m_count; i++)
     {
-        for (int i = 0; i < m_aObjectsByX.m_count; i++)
-        {
-            CSWSPlaceable* pPlaceable =
-                g_pAppManager->m_pServerExoApp->GetPlaceableByGameObjectID(m_aObjectsByX.m_pArray[i]);
-            if (pPlaceable == 0)
-                continue;
-            if (pPlaceable->m_bStatic != 1)
-                continue;
+        CSWSPlaceable* pPlaceable =
+            g_pAppManager->m_pServerExoApp->GetPlaceableByGameObjectID(m_aObjectsByX.m_pArray[i]);
+        if (pPlaceable == 0)
+            continue;
+        if (pPlaceable->m_bStatic != 1)
+            continue;
 #if KOTOR1  // K1 copies position and orientation out before the first write
-            Vector vPosition = pPlaceable->m_position;
-            Vector vOrientation = pPlaceable->CSWSObject::m_orientation;
-            pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
-            pMsg->WriteBYTE(pPlaceable->m_appearanceType, 8);
-            pMsg->WriteFLOAT(vPosition.x, 1.0f, 32);
-            pMsg->WriteFLOAT(vPosition.y, 1.0f, 32);
-            pMsg->WriteFLOAT(vPosition.z, 1.0f, 32);
-            pMsg->WriteFLOAT(vOrientation.x, 1.0f, 32);
-            pMsg->WriteFLOAT(vOrientation.y, 1.0f, 32);
-            pMsg->WriteFLOAT(vOrientation.z, 1.0f, 32);
+        Vector vPosition = pPlaceable->m_position;
+        Vector vOrientation = pPlaceable->CSWSObject::m_orientation;
+        pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
+        pMsg->WriteBYTE(pPlaceable->m_appearanceType, 8);
+        pMsg->WriteFLOAT(vPosition.x, 1.0f, 32);
+        pMsg->WriteFLOAT(vPosition.y, 1.0f, 32);
+        pMsg->WriteFLOAT(vPosition.z, 1.0f, 32);
+        pMsg->WriteFLOAT(vOrientation.x, 1.0f, 32);
+        pMsg->WriteFLOAT(vOrientation.y, 1.0f, 32);
+        pMsg->WriteFLOAT(vOrientation.z, 1.0f, 32);
 #else
-            Vector vOrientation = pPlaceable->CSWSObject::m_orientation;
-            pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
-            pMsg->WriteINT(pPlaceable->m_appearanceType, 32);
-            pMsg->WriteFLOAT(pPlaceable->m_position.x, 1.0f, 32);
-            pMsg->WriteFLOAT(pPlaceable->m_position.y, 1.0f, 32);
-            pMsg->WriteFLOAT(pPlaceable->m_position.z, 1.0f, 32);
-            pMsg->WriteFLOAT(vOrientation.x, 1.0f, 32);
-            pMsg->WriteFLOAT(vOrientation.y, 1.0f, 32);
-            pMsg->WriteFLOAT(vOrientation.z, 1.0f, 32);
+        Vector vOrientation = pPlaceable->CSWSObject::m_orientation;
+        pMsg->WriteOBJECTIDServer(pPlaceable->m_objectId);
+        pMsg->WriteINT(pPlaceable->m_appearanceType, 32);
+        pMsg->WriteFLOAT(pPlaceable->m_position.x, 1.0f, 32);
+        pMsg->WriteFLOAT(pPlaceable->m_position.y, 1.0f, 32);
+        pMsg->WriteFLOAT(pPlaceable->m_position.z, 1.0f, 32);
+        pMsg->WriteFLOAT(vOrientation.x, 1.0f, 32);
+        pMsg->WriteFLOAT(vOrientation.y, 1.0f, 32);
+        pMsg->WriteFLOAT(vOrientation.z, 1.0f, 32);
 #endif
-        }
     }
 
     return 1;

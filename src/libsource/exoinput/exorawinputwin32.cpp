@@ -900,27 +900,28 @@ CExoString CExoRawInputInternal::GetDisplayCharacterDirectInputValue(unsigned in
     prop.dwHow = DIPH_BYOFFSET;
     int64_t result = m_pKeyboardDevice->GetProperty(DIPROP_KEYNAME, &prop);
 
+    // EFFECTIVE (K2): the three key tests fold into a switch whose compare order is the same for every
+    // arm order and a switch statement; the image tests 1, 0x3a, 0x39.
     const char* pResult;
-    char buf[kKeyNameChars];
     if (key == DIK_ESCAPE) {
         pResult = GetLocalizedCustomString(CUSTOMSTRING_ESCAPE);
-        if (pResult != 0) goto done;
+        if (pResult != 0)
+            return CExoString(pResult);
     } else if (key == DIK_CAPITAL) {
         pResult = GetLocalizedCustomString(CUSTOMSTRING_CAPS_LOCK);
-        if (pResult != 0) goto done;
+        if (pResult != 0)
+            return CExoString(pResult);
     } else if (key == DIK_SPACE) {
         pResult = GetLocalizedCustomString(CUSTOMSTRING_SPACEBAR);
-        if (pResult != 0) goto done;
+        if (pResult != 0)
+            return CExoString(pResult);
     }
-    if (result < 0) {
-        pResult = "N/A";
-    } else {
-        memset(buf, 0, sizeof(buf));
-        g_pExoBase->WcsToMbs(buf, reinterpret_cast<const K2WChar*>(prop.wsz), kKeyNameChars - 1);  // raw-offset: the DIPROPSTRING wide-string bytes
-        pResult = buf;
-    }
-done:
-    return CExoString(pResult);
+    if (result < 0)
+        return CExoString("N/A");
+    char buf[kKeyNameChars];
+    memset(buf, 0, sizeof(buf));
+    g_pExoBase->WcsToMbs(buf, reinterpret_cast<const K2WChar*>(prop.wsz), kKeyNameChars - 1);  // raw-offset: the DIPROPSTRING wide-string bytes
+    return CExoString(buf);
 #endif
 }
 
@@ -1240,18 +1241,14 @@ int CExoRawInputInternal::GetJoystickBuffer(int deviceIndex, CExoDeviceBuffer& b
                         continue;
                     }
                     if ((~newVal & 0xffffu) != 0) {
-                        unsigned int bNearUp   = (newVal - 4500u) > 99u;
-                        unsigned int bNearLeft = (newVal - 31500u) > 99u;
-                        unsigned int bUp = 1u << (axis & 31u);
-                        if (bNearLeft && newVal > 99u && bNearUp) bUp = 0;
-                        unsigned int bNearRight = (newVal - 13500u) > 99u;
-                        unsigned int bRight = 2u << (axis & 31u);
-                        if (bNearRight && bNearUp && (newVal - 9000u) > 99u) bRight = 0;
-                        bNearUp = (newVal - 22500u) > 99u;
-                        unsigned int bDown = 4u << (axis & 31u);
-                        if (bNearUp && bNearRight && (newVal - 18000u) > 99u) bDown = 0;
-                        unsigned int bLeft = 8u << (axis & 31u);
-                        if (bNearLeft && bNearUp && (newVal - 27000u) > 99u) bLeft = 0;
+                        unsigned int bUp = ((newVal - 31500u < 100u) || (newVal < 100u) || (newVal - 4500u < 100u))
+                                               ? 1u << (axis & 31u) : 0;
+                        unsigned int bRight = ((newVal - 13500u < 100u) || (newVal - 4500u < 100u) ||
+                                               (newVal - 9000u < 100u)) ? 2u << (axis & 31u) : 0;
+                        unsigned int bDown = ((newVal - 22500u < 100u) || (newVal - 13500u < 100u) ||
+                                              (newVal - 18000u < 100u)) ? 4u << (axis & 31u) : 0;
+                        unsigned int bLeft = ((newVal - 31500u < 100u) || (newVal - 22500u < 100u) ||
+                                              (newVal - 27000u < 100u)) ? 8u << (axis & 31u) : 0;
                         newDirBits = bUp | newDirBits | bRight | bDown | bLeft;
                     }
                     if ((~oldVal & 0xffffu) != 0) {

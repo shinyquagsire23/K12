@@ -301,9 +301,10 @@ void CSWCameraOnAStick::Control_CheckAndUpdateCameraStyle()
 // +Y.
 Vector CSWCameraOnAStick::Control_ComputeDesiredPosition(Vector vTarget)
 {
-    Vector vOffset = Vector(0.0f, 1.0f, 0.0f) * m_fDist;
-    Vector vRot = RotateVector(vOffset, m_qDesiredOrientation);
-    return Vector(vTarget.x - vRot.x, vTarget.y - vRot.y, vTarget.z - vRot.z);
+    Vector vPos = Vector(0.0f, 1.0f, 0.0f) * m_fDist;
+    vPos = RotateVector(vPos, m_qDesiredOrientation);
+    vPos = Vector(vTarget.x - vPos.x, vTarget.y - vPos.y, vTarget.z - vPos.z);
+    return vPos;
 }
 
 // Springs the interpolation amount, accelerating while the two positions are far apart and
@@ -332,9 +333,8 @@ float CSWCameraOnAStick::Control_AccelerateInterp(float fA, float fB, float fC, 
 // plus the look limits.
 Quaternion CSWCameraOnAStick::Control_SetCameraOrientation(float fDeltaTime)
 {
-    Vector vTarget = m_pTargetObject.m_pObject->GetPosition();
-    Vector vOwner = m_pOwner->GetPosition();
-    Vector vDir(vTarget.x - vOwner.x, vTarget.y - vOwner.y, 0.0f);
+    Vector vDir = m_pTargetObject.m_pObject->GetPosition() - m_pOwner->GetPosition();
+    vDir.z = 0.0f;
 
     float fPitch = Pitch(m_pOwner->GetOrientation());
 
@@ -362,9 +362,8 @@ Quaternion CSWCameraOnAStick::Control_SetCameraOrientation(float fDeltaTime)
 #else
 Quaternion CSWCameraOnAStick::Control_SetCameraOrientation(float fDeltaTime)
 {
-    Vector vTarget = m_pTargetObject.m_pObject->GetPosition();
-    Vector vOwner = m_pOwner->GetPosition();
-    Vector vDir(vTarget.x - vOwner.x, vTarget.y - vOwner.y, 0.0f);
+    Vector vDir = m_pTargetObject.m_pObject->GetPosition() - m_pOwner->GetPosition();
+    vDir.z = 0.0f;
 
     Pitch(m_pOwner->GetOrientation());
 
@@ -411,8 +410,8 @@ void CSWCameraOnAStick::Control_SetCameraInintalState()
 {
     Quaternion qTarget = m_pTargetObject.m_pObject->GetOrientation();
 
-    Vector vDir = normalize(qTarget.zdir());
-    m_qDesiredOrientation = YawPitchRoll(Yaw(vDir) + m_fShakeYaw, m_fShakeYaw + m_fPresetPitch, 0.0f);
+    m_qDesiredOrientation = YawPitchRoll(Yaw(normalize(qTarget.zdir())) + m_fShakeYaw,
+                                         m_fShakeYaw + m_fPresetPitch, 0.0f);
     m_pOwner->SetOrientation(m_qDesiredOrientation);
 
     Vector vPos = m_pTargetObject.m_pObject->GetPosition();
@@ -507,8 +506,8 @@ Quaternion CSWCameraOnAStick::Control_UpdateCameraDesiredOrientation(Quaternion 
         CSWPhysicsState state = m_splitAcceleration.Update(
             Vector(0.0f, m_fTurnAccel, 0.0f), fDeltaTime, 1, 0, 0, 0);
         fTurn = state.m_vDisplacement.y;
-        bNeg = fTurn < 0.0f;
         bPos = fTurn > 0.0f;
+        bNeg = fTurn < 0.0f;
     } else {
         m_splitAcceleration.Update(Vector(0.0f, fTurn / fMouseSen, 0.0f), fDeltaTime, 1, 0, 0, 0);
         m_fTurnAccel = 0.0f;
@@ -732,8 +731,7 @@ void CSWCameraOnAStick::SetLookAtTarget(CSWCObject* pTarget)
         return;
 
     m_lookAtTargetId = pTarget->m_objectId;
-    Vector vDelta = m_pTargetObject.m_pObject->GetPosition() - pTarget->m_position;
-    m_vLookAtPosition = normalize(vDelta) * m_fDist;
+    m_vLookAtPosition = normalize(m_pTargetObject.m_pObject->GetPosition() - pTarget->m_position) * m_fDist;
 
     Vector vPos = m_pTargetObject.m_pObject->GetPosition();
     m_vLookAtPosition = Vector(vPos.x + m_vLookAtPosition.x, vPos.y + m_vLookAtPosition.y,

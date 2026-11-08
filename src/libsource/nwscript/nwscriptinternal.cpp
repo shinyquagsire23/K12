@@ -135,8 +135,7 @@ CSourceScript::CSourceScript()
 
 int CSourceScript::LoadScript(const CExoString& sName, char** ppSourceText, unsigned int* pnSize)
 {
-    CResRef resRef(sName);
-    SetResRef(resRef, 0);
+    SetResRef(CResRef(sName), 0);
 
     if (m_pRes->Demand() == 0)
         return -SCRIPT_ERROR_FILE_NOT_FOUND;

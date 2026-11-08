@@ -375,8 +375,6 @@ void CSWGlobalVariableTable::ReadCatalogue(const CResRef& resRef)
     CExoString sType;
     if (!cat.Load2DArray())
         return;
-    if (cat.m_nRows < 1)
-        return;
 
     for (int i = 0; i < cat.m_nRows; i++)
     {
@@ -556,14 +554,11 @@ void CSWGlobalVariableTable::ReadTableWithCatalogue(CResGFF* pGFF, CResStruct& s
         }
 #else
         int nCount = pGFF->GetListCount(&list2) > 5 ? 5 : pGFF->GetListCount(&list2);
-        if (nCount >= 1)
+        for (int i = 0; i < nCount; i++)
         {
-            for (int i = 0; i < nCount; i++)
-            {
-                pGFF->GetListElement(&sStringStruct, &list2, i);
-                aStrings[i] = pGFF->ReadFieldCExoString(&sStringStruct, const_cast<char*>("String"),
-                                                        bSuccess, CExoString(""));
-            }
+            pGFF->GetListElement(&sStringStruct, &list2, i);
+            aStrings[i] = pGFF->ReadFieldCExoString(&sStringStruct, const_cast<char*>("String"),
+                                                    bSuccess, CExoString(""));
         }
 #endif
 
@@ -688,13 +683,10 @@ void CSWGlobalVariableTable::WriteTable(const CExoString& sFileName, int bBinary
     pGFF->WriteFieldVOID(&topStruct, aLocations, sizeof(aLocations), const_cast<char*>("ValLocation"));
 
     pGFF->AddList(&listStringOut, &topStruct, const_cast<char*>("ValString"));
-    if (nString >= 1)
+    for (int i = 0; i < nString; i++)
     {
-        for (int i = 0; i < nString; i++)
-        {
-            pGFF->AddListElement(&sElem, &listStringOut, 0);
-            pGFF->WriteFieldCExoString(&sElem, aStrings[i], const_cast<char*>("String"));
-        }
+        pGFF->AddListElement(&sElem, &listStringOut, 0);
+        pGFF->WriteFieldCExoString(&sElem, aStrings[i], const_cast<char*>("String"));
     }
 
     pGFF->WriteGFFFile(sFileName, 0);
@@ -747,14 +739,11 @@ void CSWGlobalVariableTable::ReadTableWithoutCatalogue(CResGFF* pGFF, CResStruct
 #else
         nString = pGFF->GetListCount(&list1) > 5 ? 5 : pGFF->GetListCount(&list1);
 #endif
-        if (nString >= 1)
+        for (int i = 0; i < nString; i++)
         {
-            for (int i = 0; i < nString; i++)
-            {
-                pGFF->GetListElement(&sStruct, &list1, i);
-                aStrings[i] = pGFF->ReadFieldCExoString(&sStruct, const_cast<char*>("String"), bSuccess,
-                                                        CExoString(""));
-            }
+            pGFF->GetListElement(&sStruct, &list1, i);
+            aStrings[i] = pGFF->ReadFieldCExoString(&sStruct, const_cast<char*>("String"), bSuccess,
+                                                    CExoString(""));
         }
     }
 

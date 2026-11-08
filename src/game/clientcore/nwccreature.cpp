@@ -805,48 +805,47 @@ void CSWCCreature::SetWayPoints(unsigned short nCount, Vector* pPoints) {
     }
 }
 
-static const int RANGED_ATTACK_TABLE_A[5] = {362, 363, 364, 0, 365};
-static const int RANGED_ATTACK_TABLE_C[5] = {218, 232, 240, 0, 353};
-static const int RANGED_ATTACK_TABLE_B[5] = {219, 233, 241, 0, 354};
-static const int RANGED_ATTACK_TABLE_D[5] = {217, 231, 239, 0, 352};
-
 int CSWCCreature::UpdateRangedAttackData(int a, int b) {
     int bCreature = IsCreature();
     switch (a) {
     case FEAT_IMPROVED_POWER_BLAST: case FEAT_POWER_BLAST: case FEAT_MASTER_POWER_BLAST:
         if (bCreature)
             return CSWCAnimBase::CLIENT_ANIMATION_DROID_POWER_BLAST;
-        {
-            unsigned int n = b - 5u;
-            if (n < 5)
-                return RANGED_ATTACK_TABLE_A[static_cast<int>(n)];
+        switch (b) {
+        case 5: return 362;
+        case 6: return 363;
+        case 7: return 364;
+        case 9: return 365;
         }
         return 0;
     case FEAT_IMPROVED_SNIPER_SHOT: case FEAT_SNIPER_SHOT: case FEAT_MASTER_SNIPER_SHOT:
         if (bCreature)
             return CSWCAnimBase::CLIENT_ANIMATION_DROID_SNIPER_SHOT;
-        {
-            unsigned int n = b - 5u;
-            if (n < 5)
-                return RANGED_ATTACK_TABLE_B[static_cast<int>(n)];
+        switch (b) {
+        case 5: return 219;
+        case 6: return 233;
+        case 7: return 241;
+        case 9: return 354;
         }
         return 0;
     case FEAT_MULTI_SHOT: case FEAT_RAPID_SHOT: case FEAT_IMPROVED_RAPID_SHOT:
         if (bCreature)
             return CSWCAnimBase::CLIENT_ANIMATION_DROID_BLASTER_ATTACK_2;
-        {
-            unsigned int n = b - 5u;
-            if (n < 5)
-                return RANGED_ATTACK_TABLE_C[static_cast<int>(n)];
+        switch (b) {
+        case 5: return 218;
+        case 6: return 232;
+        case 7: return 240;
+        case 9: return 353;
         }
         return 0;
     default:
         if (bCreature)
             return CSWCAnimBase::CLIENT_ANIMATION_DROID_BLASTER_ATTACK_1;
-        {
-            unsigned int n = b - 5u;
-            if (n < 5)
-                return RANGED_ATTACK_TABLE_D[static_cast<int>(n)];
+        switch (b) {
+        case 5: return 217;
+        case 6: return 231;
+        case 7: return 239;
+        case 9: return 352;
         }
         return 0;
     }
@@ -1359,15 +1358,20 @@ void CSWCCreature::UpdateAreaId() {
 }
 
 int CSWCCreature::TestAIStateActionGroup(int group) {
-    static const int s_group2Table[7] = { 1, 1, 1, 1, 0, 1, 1 };
     switch (group) {
     case 0:
         if ((m_nAIStateAction & 0xfe) == 2) return 1;
         break;
     case 2:
-        if (m_nAIStateAction >= CSWSCreature::AI_STATE_ACTION_PICKING_UP_ITEM &&
-            m_nAIStateAction <= CSWSCreature::AI_STATE_ACTION_CLOSING_DOOR)
-            return s_group2Table[static_cast<signed char>(m_nAIStateAction - CSWSCreature::AI_STATE_ACTION_PICKING_UP_ITEM)];
+        switch (m_nAIStateAction) {
+        case CSWSCreature::AI_STATE_ACTION_PICKING_UP_ITEM:
+        case CSWSCreature::AI_STATE_ACTION_DROPPING_ITEM:
+        case CSWSCreature::AI_STATE_ACTION_EQUIPPING:
+        case CSWSCreature::AI_STATE_ACTION_UNEQUIPPING:
+        case CSWSCreature::AI_STATE_ACTION_OPENING_DOOR:
+        case CSWSCreature::AI_STATE_ACTION_CLOSING_DOOR:
+            return 1;
+        }
         break;
     case 3:
         if (m_nAIStateAction == CSWSCreature::AI_STATE_ACTION_CASTING) return 1;
@@ -1603,27 +1607,26 @@ void CSWCCreature::SetDisableLookAt(int disable) {
 // Spawns a special attack's impact visual on the equipped weapons: the attack id picks the
 // visualeffects.2da row, the model node names the visual and c selects the attach hook.
 void CSWCCreature::ResolveSpecialAttackVisuals(int a, int b, int c) {
-    static const int rows11[3] = {4027, 4012, 4027};
-    static const int rows13[3] = {4025, 4014, 4025};
-    static const int rows35[3] = {4031, 4017, 4031};
-    static const int rows51[3] = {4026, 4018, 4026};
-    static const int rows53[3] = {4028, 4019, 4028};
-    static const int rows5b[3] = {4030, 4021, 4030};
     int nRow = VFX_COM_SNIPER_SHOT;
-    const int* pRows = 0;
     switch (a) {
     case FEAT_IMPROVED_POWER_ATTACK:
-        if (static_cast<unsigned>(b - CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER) >= 3)
-            return;
-        pRows = rows11;
+        switch (b) {
+        case CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER: nRow = 4027; break;
+        case CSWCAnimBase::WEAPON_CLASS_TWO_HANDED_SABER: nRow = 4012; break;
+        case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER: nRow = 4027; break;
+        default: return;
+        }
         break;
     case FEAT_IMPROVED_POWER_BLAST:
         nRow = VFX_COM_POWER_BLAST_IMPROVED;
         break;
     case FEAT_IMPROVED_CRITICAL_STRIKE:
-        if (static_cast<unsigned>(b - CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER) >= 3)
-            return;
-        pRows = rows13;
+        switch (b) {
+        case CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER: nRow = 4025; break;
+        case CSWCAnimBase::WEAPON_CLASS_TWO_HANDED_SABER: nRow = 4014; break;
+        case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER: nRow = 4025; break;
+        default: return;
+        }
         break;
     case FEAT_IMPROVED_SNIPER_SHOT:
         nRow = VFX_COM_SNIPER_SHOT_IMPROVED;
@@ -1634,30 +1637,42 @@ void CSWCCreature::ResolveSpecialAttackVisuals(int a, int b, int c) {
     case FEAT_SNIPER_SHOT:
         break;
     case FEAT_WHIRLWIND_ATTACK:
-        if (static_cast<unsigned>(b - CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER) >= 3)
-            return;
-        pRows = rows35;
+        switch (b) {
+        case CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER: nRow = 4031; break;
+        case CSWCAnimBase::WEAPON_CLASS_TWO_HANDED_SABER: nRow = 4017; break;
+        case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER: nRow = 4031; break;
+        default: return;
+        }
         break;
     case FEAT_MASTER_SNIPER_SHOT:
         nRow = VFX_COM_SNIPER_SHOT_MASTERY;
         break;
     case FEAT_MASTER_CRITICAL_STRIKE:
-        if (static_cast<unsigned>(b - CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER) >= 3)
-            return;
-        pRows = rows51;
+        switch (b) {
+        case CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER: nRow = 4026; break;
+        case CSWCAnimBase::WEAPON_CLASS_TWO_HANDED_SABER: nRow = 4018; break;
+        case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER: nRow = 4026; break;
+        default: return;
+        }
         break;
     case FEAT_MASTER_POWER_BLAST:
         nRow = VFX_COM_POWER_BLAST_MASTERY;
         break;
     case FEAT_MASTER_POWER_ATTACK:
-        if (static_cast<unsigned>(b - CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER) >= 3)
-            return;
-        pRows = rows53;
+        switch (b) {
+        case CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER: nRow = 4028; break;
+        case CSWCAnimBase::WEAPON_CLASS_TWO_HANDED_SABER: nRow = 4019; break;
+        case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER: nRow = 4028; break;
+        default: return;
+        }
         break;
     case FEAT_IMPROVED_FLURRY:
-        if (static_cast<unsigned>(b - CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER) >= 3)
-            return;
-        pRows = rows5b;
+        switch (b) {
+        case CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER: nRow = 4030; break;
+        case CSWCAnimBase::WEAPON_CLASS_TWO_HANDED_SABER: nRow = 4021; break;
+        case CSWCAnimBase::WEAPON_CLASS_DUAL_SABER: nRow = 4030; break;
+        default: return;
+        }
         break;
     case FEAT_IMPROVED_RAPID_SHOT:
         nRow = VFX_COM_RAPID_SHOT_IMPROVED;
@@ -1665,8 +1680,6 @@ void CSWCCreature::ResolveSpecialAttackVisuals(int a, int b, int c) {
     default:
         return;
     }
-    if (pRows != 0)
-        nRow = pRows[b - CSWCAnimBase::WEAPON_CLASS_SINGLE_SABER];
     CExoString sRow(nRow);
     CExoString sVisual;
     g_pRules->m_p2DArrays->m_pVisualEffect->GetCExoStringEntry(
@@ -2244,11 +2257,7 @@ int CSWCCreature::SetPrecalculatedPosition(const Vector& vPrecalc) {
     float flagValue = pServerCreature->m_pPathfindInfo->m_fPersonalSpace;
 #endif
     CSWCModule* pModule = g_pAppManager->m_pClientExoApp->GetModule();
-    Vector vDelta;
-    vDelta.x = vPrecalc.x - m_position.x;
-    vDelta.y = vPrecalc.y - m_position.y;
-    vDelta.z = vPrecalc.z - m_position.z;
-    Vector vDirTo = normalize(vDelta);
+    Vector vDirTo = normalize(Vector(vPrecalc.x - m_position.x, vPrecalc.y - m_position.y, vPrecalc.z - m_position.z));
     if (pModule == 0 || m_switchMode != 1)
         return 1;
     if (pModule->m_pArea == 0)
@@ -2264,11 +2273,9 @@ int CSWCCreature::SetPrecalculatedPosition(const Vector& vPrecalc) {
             }
         }
     }
-    Vector vDelta2;
-    vDelta2.x = m_position.x - vPrecalc.x;
-    vDelta2.y = m_position.y - vPrecalc.y;
-    vDelta2.z = m_position.z - vPrecalc.z;
-    Vector vDirFrom = normalize(vDelta2);
+    Vector vDirFrom = normalize(Vector(m_position.x - vPrecalc.x,
+                                       m_position.y - vPrecalc.y,
+                                       m_position.z - vPrecalc.z));
     CPathfindInformation* pPathInfo =
         g_pAppManager->m_pServerExoApp->GetCreaturePathfindInformation(m_objectId);
     if (pPathInfo != 0)
@@ -3132,11 +3139,10 @@ pain:
 tail:
     if (pAttackData->m_nAttackResult < 6 && ((1 << pAttackData->m_nAttackResult) & ATTACK_RESULTS_LANDED) != 0) {
         if (pTarget->AsSWCCreature() != 0) {
-            Vector vOffset;
-            vOffset.x = pAttacker->m_position.x - pTarget->m_position.x;
-            vOffset.y = pAttacker->m_position.y - pTarget->m_position.y;
-            vOffset.z = pAttacker->m_position.z - pTarget->m_position.z;
-            pTarget->AsSWCCreature()->SpawnHitVisuals(1, pAttackData, vOffset,
+            pTarget->AsSWCCreature()->SpawnHitVisuals(1, pAttackData,
+                                                      Vector(pAttacker->m_position.x - pTarget->m_position.x,
+                                                             pAttacker->m_position.y - pTarget->m_position.y,
+                                                             pAttacker->m_position.z - pTarget->m_position.z),
                                                       CExoString("impact"));
         } else if (pTarget->AsSWCDoor() != 0 && pTarget->m_pArea != 0) {
             Vector pos = {};
@@ -5009,8 +5015,7 @@ float CSWCCreature::ComputeSpeedFactor(float f) {
     do {
         Vector cur = {p->x, p->y, 0.0f};
         p++;
-        Vector d = {cur.x - prev.x, cur.y - prev.y, 0.0f};
-        fDist += magnitude(d);
+        fDist += magnitude(Vector(cur.x - prev.x, cur.y - prev.y, 0.0f));
         prev = cur;
     } while (p < m_pWayPoints + m_wayPointCount);
     float fThresh = (nClass == 1) ? 500.0f : 1000.0f;
@@ -5044,8 +5049,7 @@ int CSWCCreature::GetMenuPoint(Vector& vOut) {
     else
         vOut.z += 1.75f;
     float fPoint = dot(vOut, vDir);
-    Vector vCamPos = pCamera->GetPosition();
-    float fCam = dot(vCamPos, vDir);
+    float fCam = dot(pCamera->GetPosition(), vDir);
     vOut = pCamera->MapToScreen(vOut, true);
     CAppManager** ppMgr = &g_pAppManager;
     vOut.x *= (*ppMgr)->m_pClientExoApp->GetSWGuiManager()->m_nScreenWidth;
@@ -6434,9 +6438,9 @@ void CSWCCreature::GetStances(CExoArrayList<CSWGuiInterfaceAction>& list, int nT
     m_pStats->GetMenuInfo(list, 3, 0, 0, 0, 0.0001f, 0, -1, 0, 1, 0, 0, 0);
     for (int i = nOldCount; i < list.m_count; i++) {
         CSWGuiInterfaceAction& entry = list.m_pArray[i];
-        entry.m_nActionId &= CSWGuiInterfaceAction::ACTION_ID_SPELL_CLEAR;
         entry.m_pfnAction = &CSWCCreature::ActionMenuForm;
         entry.m_nObjectId = m_objectId;
+        entry.m_nActionId &= CSWGuiInterfaceAction::ACTION_ID_SPELL_CLEAR;
         entry.m_bChangesState = 1;
     }
 }
@@ -6473,12 +6477,10 @@ void CSWCCreature::GetSelfForcePowers(CExoArrayList<CSWGuiInterfaceAction>& list
 
     CSWSCreature* pServer;
     unsigned int nForceItemMask;
-    short nForcePoints;
-    int nHasServer;
+    int nForcePoints;
     pServer = GetServerCreature();
     if (pServer == 0) {
         nForceItemMask = 0;
-        nHasServer = 0;
         nForcePoints = 0;
     } else {
         nForceItemMask = pServer->GetForceItemMask();
@@ -6486,13 +6488,12 @@ void CSWCCreature::GetSelfForcePowers(CExoArrayList<CSWGuiInterfaceAction>& list
             nForcePoints = static_cast<short>(pServer->GetCurrentHitPoints(0));
         else
             nForcePoints = static_cast<short>(pServer->m_pStats->m_nCurrentForcePoints + pServer->m_pStats->m_nTemporaryForcePoints);
-        nHasServer = 1;
     }
 
     int nOldCount = list.m_count;
     int nRoomForceRating = 0;
 #ifdef K2_FIX_ENGINE_BUGS
-    CSWSArea* pArea = nHasServer != 0 ? static_cast<CSWSArea*>(pServer->GetArea()) : 0;
+    CSWSArea* pArea = pServer != 0 ? static_cast<CSWSArea*>(pServer->GetArea()) : 0;
 #else
     CSWSArea* pArea = static_cast<CSWSArea*>(GetServerCreature()->GetArea());
 #endif
@@ -6506,7 +6507,7 @@ void CSWCCreature::GetSelfForcePowers(CExoArrayList<CSWGuiInterfaceAction>& list
     short nCurrentHP = 0;
     int nStanceId = 0;
     char cCHAMod = 0;
-    if (nHasServer != 0) {
+    if (pServer != 0) {
         for (int64_t i = 0; i < pServer->m_effects.m_count; i++) {
             if (pServer->m_effects.m_pArray[i]->m_subType == CSWSEffectListHandler::EFFECT_FORCE_BODY) {
                 nForceBodyLevel = pServer->m_effects.m_pArray[i]->GetInteger(0);
@@ -7119,7 +7120,7 @@ void CSWCCreature::GetEquipmentForcePowers(CExoArrayList<CSWGuiInterfaceAction>&
         for (int j = 0; j < nSubCount; j++) {
             int nUses;
             int nKey;
-            int64_t pos;
+            int pos;
             short nSubId = static_cast<short>(pSpell->GetSubRadialSpell(static_cast<unsigned char>(j)));
             nUses = nSubId % 10;
             nKey = nSubId / 10 - (nSubId / 1000) * 100;
@@ -7606,14 +7607,12 @@ void CSWCCreature::SaveCharGenCreature()
 
     {
         pGFF->AddList(&featList, &topStruct, const_cast<char*>("FeatList"));
-        if (static_cast<unsigned short>(m_pStats->m_lstFeats.m_count) != 0) {
-            i = 0;
-            do {
-                unsigned short nFeat = m_pStats->GetFeat(i);
-                pGFF->AddListElement(&featElem, &featList, 0);
-                pGFF->WriteFieldWORD(&featElem, nFeat, const_cast<char*>("Feat"));
-                i++;
-            } while (i < static_cast<unsigned short>(m_pStats->m_lstFeats.m_count));
+        i = 0;
+        while (i < static_cast<unsigned short>(m_pStats->m_lstFeats.m_count)) {
+            unsigned short nFeat = m_pStats->GetFeat(i);
+            pGFF->AddListElement(&featElem, &featList, 0);
+            pGFF->WriteFieldWORD(&featElem, nFeat, const_cast<char*>("Feat"));
+            i++;
         }
     }
 
@@ -7671,14 +7670,12 @@ void CSWCCreature::SaveCharGenCreature()
 
     {
         pGFF->AddList(&featList, &lvlStatElem, const_cast<char*>("FeatList"));
-        if (static_cast<unsigned short>(m_pStats->m_lstFeats.m_count) != 0) {
-            i = 0;
-            do {
-                unsigned short nFeat = m_pStats->GetFeat(i);
-                pGFF->AddListElement(&featElem, &featList, 0);
-                pGFF->WriteFieldWORD(&featElem, nFeat, const_cast<char*>("Feat"));
-                i++;
-            } while (i < static_cast<unsigned short>(m_pStats->m_lstFeats.m_count));
+        i = 0;
+        while (i < static_cast<unsigned short>(m_pStats->m_lstFeats.m_count)) {
+            unsigned short nFeat = m_pStats->GetFeat(i);
+            pGFF->AddListElement(&featElem, &featList, 0);
+            pGFF->WriteFieldWORD(&featElem, nFeat, const_cast<char*>("Feat"));
+            i++;
         }
     }
 
@@ -7706,15 +7703,11 @@ void CSWCCreature::SaveCharGenCreature()
     pGFF->AddList(pItemList, &topStruct, const_cast<char*>("ItemList"));
     // A player-created creature's stats block is really a CSWCLevelUpStats.
     CSWCLevelUpStats* pLevelUpStats = static_cast<CSWCLevelUpStats*>(m_pStats);
-    if (static_cast<unsigned char>(pLevelUpStats->m_lstPackageResRefs.m_count) != 0) {
-        uint64_t i = 0;
-        do {
-            CResStruct itemElem;
-            pGFF->AddListElement(&itemElem, pItemList, 0);
-            pGFF->WriteFieldCResRef(&itemElem, CResRef(pLevelUpStats->m_lstPackageResRefs.m_pArray[i]),
-                                    const_cast<char*>("InventoryRes"));
-            i++;
-        } while (i < static_cast<unsigned char>(pLevelUpStats->m_lstPackageResRefs.m_count));
+    for (uint64_t i = 0; i < static_cast<unsigned char>(pLevelUpStats->m_lstPackageResRefs.m_count); i++) {
+        CResStruct itemElem;
+        pGFF->AddListElement(&itemElem, pItemList, 0);
+        pGFF->WriteFieldCResRef(&itemElem, CResRef(pLevelUpStats->m_lstPackageResRefs.m_pArray[i]),
+                                const_cast<char*>("InventoryRes"));
     }
     delete pItemList;
     CExoString sScript;
@@ -7846,7 +7839,7 @@ void CSWCCreature::UpdateLookAt() {
         } else if (CSWCArea* pArea = m_pArea) {
             CSWCObject* pNearest = 0;
             float fNearest = 8.0f;
-            for (int64_t i = 0; i < pArea->m_objectIdList.m_count; i++) {
+            for (int i = 0; i < pArea->m_objectIdList.m_count; i++) {
                 CSWCObject* pObj = static_cast<CSWCObject*>(g_pAppManager->m_pClientExoApp->GetGameObject(
                     pArea->m_objectIdList.m_pArray[i]));
                 if (pObj != 0)
@@ -7887,16 +7880,14 @@ void CSWCCreature::UpdateLookAt() {
                         CSWCCreature* pCreature = pObj->AsSWCCreature();
                         int visible = 1;
                         if (pCreature != 0) {
-                            if (m_visibilityList.m_count > 0) {
-                                int i = m_visibilityList.m_count;
-                                CSWVisibilityNode** ppNode = m_visibilityList.m_pArray;
-                                do {
-                                    CSWVisibilityNode* pVis = *ppNode;
+                            int nCount = m_visibilityList.m_count;
+                            if (nCount > 0) {
+                                for (int i = 0; i < nCount; i++) {
+                                    CSWVisibilityNode* pVis = m_visibilityList.m_pArray[i];
                                     if (pVis->m_objectId == pCreature->m_objectId &&
                                         (pVis->m_flags & 1) == 0)
-                                        visible &= static_cast<int>(pVis->m_flags << 30) >> 31;
-                                    ppNode++;
-                                } while (--i != 0);
+                                        visible = (pVis->m_flags & 2) ? visible : 0;
+                                }
                             } else {
                                 visible = 0;
                             }
@@ -8194,10 +8185,9 @@ updateDone:
     }
 #endif
 
-    unsigned int nDay2, nTimeOfDay2;
-    g_pAppManager->m_pClientExoApp->GetActiveTimer(m_objectId)->GetWorldTime(&nDay2, &nTimeOfDay2);
-    m_nLastAIUpdateDay = nDay2;
-    m_nLastAIUpdateTod = nTimeOfDay2;
+    g_pAppManager->m_pClientExoApp->GetActiveTimer(m_objectId)->GetWorldTime(&nDay, &nTimeOfDay);
+    m_nLastAIUpdateDay = nDay;
+    m_nLastAIUpdateTod = nTimeOfDay;
     if (m_pLoopingCreatureSound != 0 && m_bLoopingSoundStarted == 0) {
         m_pLoopingCreatureSound->SetPosition(m_position, 1.5f);
         m_pLoopingCreatureSound->Set3D(1);
@@ -8306,8 +8296,7 @@ faceCurrentTarget: {
                     } else if (fTurn > fMax) {
                         fTurn = fMax;
                     }
-                    Quaternion q = YawPitchRoll(fTurn, 0.0f, 0.0f);
-                    Vector vOut = RotateVector(vFrom, q);
+                    Vector vOut = RotateVector(vFrom, YawPitchRoll(fTurn, 0.0f, 0.0f));
                     pServer->SetOrientation(vOut);
                     SetOrientation(vOut);
                     return;

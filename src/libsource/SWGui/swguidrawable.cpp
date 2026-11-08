@@ -336,6 +336,7 @@ int CSWGuiText::GetFontHeight()
 
 CSWGuiExtent CSWGuiText::GetIdealWidthAndHeight()
 {
+    CSWGuiExtent extent;
 #if KOTOR1
     // K1: the wrap width is not resolution-scaled
     int nIdealHeight = m_pString->GetIdealPixelHeight(m_nWrapWidth);
@@ -365,13 +366,10 @@ CSWGuiExtent CSWGuiText::GetIdealWidthAndHeight()
         } while (nIdealHeight == m_pString->GetIdealPixelHeight(nWidth));
     }
 
-    CSWGuiExtent extent;
-    extent.x = 0;
-    extent.y = 0;
     extent.w = nWidth + 10;
-    extent.h = nIdealHeight;
     if (m_pString->GetFontPixelHeight() < 16)
-        extent.h++;
+        nIdealHeight++;
+    extent.h = nIdealHeight;
     return extent;
 }
 
@@ -496,19 +494,21 @@ CSWGuiBorderParams::CSWGuiBorderParams(const CResRef& resRefCorner, const CResRe
     m_fillImage = resRefFill;
 
     m_nBorderDim = nBorderDim;
-    m_nInnerOffset = nStack0;
-    m_fRotate = 0.0f;
-    m_fAlpha = fAlpha;
-
     m_flags.nFillStyle = nFillStyle;
+    m_fAlpha = fAlpha;
     m_flags.bPulseA = 0;
-    m_color.r = color.x;
-    m_color.g = color.y;
-    m_color.b = color.z;
+    float fR = color.x;
+    float fG = color.y;
+    float fB = color.z;
+    m_color.b = fB;
+    m_color.r = fR;
+    m_color.g = fG;
     m_flags.bPulseB = 0;
     m_flags.bPulseC = 0;
 
     m_pBorder = 0;
+    m_nInnerOffset = nStack0;
+    m_fRotate = 0.0f;
 }
 #else
 CSWGuiBorderParams::CSWGuiBorderParams(const CResRef& resRefCorner, const CResRef& resRefEdge,
@@ -521,21 +521,23 @@ CSWGuiBorderParams::CSWGuiBorderParams(const CResRef& resRefCorner, const CResRe
     m_fillImage = resRefFill;
 
     m_nBorderDim = nBorderDim;
-    m_nInnerOffset = nStack0;
-    m_nInnerOffsetY = nStack1;
-    m_fRotate = 0.0f;
-    m_fAlpha = fAlpha;
-
     m_flags.nFillStyle = nFillStyle;
     m_flags.nFlipStyle = nFlipStyle;
+    m_fAlpha = fAlpha;
     m_flags.bPulseA = 0;
-    m_color.r = color.x;
-    m_color.g = color.y;
-    m_color.b = color.z;
+    float fR = color.x;
+    float fG = color.y;
+    float fB = color.z;
+    m_color.b = fB;
+    m_color.r = fR;
+    m_color.g = fG;
     m_flags.bPulseB = 0;
     m_flags.bPulseC = 0;
 
     m_pBorder = 0;
+    m_nInnerOffset = nStack0;
+    m_nInnerOffsetY = nStack1;
+    m_fRotate = 0.0f;
 }
 #endif
 
@@ -699,9 +701,7 @@ CSWGuiExtent CSWGuiBorder::GetInnerExtent()
     int nInsetW;
     int nInsetH;
     int nTile;
-    if (m_params.m_nBorderDim != 0) {
-        nInsetW = nInsetH = nTile = m_params.m_nBorderDim;
-    } else if (m_params.GetBorderDim() != 0) {
+    if (m_params.GetBorderDim() != 0) {
         nInsetW = nInsetH = nTile = m_params.GetBorderDim();
     } else if (m_pCornerImage != 0 && m_pEdgeImage != 0 && m_extent.h != 0 && m_extent.w != 0) {
         nInsetH = m_pCornerImage->GetImageHeight();
@@ -713,56 +713,52 @@ CSWGuiExtent CSWGuiBorder::GetInnerExtent()
     }
 
     CSWGuiExtent inner;
-    int nX;
-    int nY;
     int nInnerW = m_extent.w - nInsetW * 2;
     int nTilesW = nTile ? nInnerW / nTile : 0;
     if (nInnerW < 1 || (nTilesW == 0 && nTile / 2 > nInnerW)) {
-        nX = m_extent.x + m_extent.w / 2;
+        inner.x = m_extent.x + m_extent.w / 2;
         inner.w = 0;
     } else {
-        nX = m_extent.x + nInsetW;
+        inner.x = m_extent.x + nInsetW;
         inner.w = nInnerW;
     }
 
     int nInnerH = m_extent.h - nInsetH * 2;
     int nTilesH = nTile ? nInnerH / nTile : 0;
     if (nInnerH < 1 || (nTile / 2 > nInnerH && nTilesH == 0)) {
-        nY = m_extent.y + m_extent.h / 2;
+        inner.y = m_extent.y + m_extent.h / 2;
     } else {
-        nY = m_extent.y + nInsetH;
+        inner.y = m_extent.y + nInsetH;
         inner.h = nInnerH;
     }
 
     int nPadX = m_params.m_nInnerOffset;
 #if KOTOR1
     // K1 uses one inner offset for both axes.
-    nY -= m_params.m_nInnerOffset;
+    inner.y -= m_params.m_nInnerOffset;
 #else
     int nPadY = m_params.m_nInnerOffsetY ? m_params.m_nInnerOffsetY : m_params.m_nInnerOffset;
 
-    nY -= nPadY;
+    inner.y -= nPadY;
 #endif
 
 #if KOTOR1
     // K1 asks for the border dimension once per clamp.
     int nDim = m_params.GetBorderDim();
-    nX -= nPadX < nDim ? nPadX : nDim;
+    inner.x -= nPadX < nDim ? nPadX : nDim;
     nPadX = m_params.m_nInnerOffset;
     nDim = m_params.GetBorderDim();
     nPadX = nPadX < nDim ? nPadX : nDim;
 #else
     if (nPadX < m_params.GetBorderDim())
-        nX -= nPadX;
+        inner.x -= nPadX;
     else
-        nX -= m_params.GetBorderDim();
+        inner.x -= m_params.GetBorderDim();
 
     if (nPadX >= m_params.GetBorderDim())
         nPadX = m_params.GetBorderDim();
 #endif
 
-    inner.x = nX;
-    inner.y = nY;
     inner.w += nPadX * 2;
 #if KOTOR1
     inner.h += m_params.m_nInnerOffset * 2;
@@ -1584,8 +1580,8 @@ void CSWGuiIndicator::DrawStraightHorzLine()
     int nStartAnchor = m_params.m_nStartAnchor;
     if (nStartAnchor & 2) {
         if (m_pTerminatorImage) {
-            bLeftTerminator  = m_params.bEndTerminator;
             bRightTerminator = m_params.bStartTerminator;
+            bLeftTerminator  = m_params.bEndTerminator;
         }
     } else {
         if (m_pTerminatorImage) {
@@ -1595,13 +1591,14 @@ void CSWGuiIndicator::DrawStraightHorzLine()
     }
 
     // Anchor bit 0 puts the run along the bottom edge instead of the top.
-    int nHeight = (nEdgeHeight > m_extent.h) ? m_extent.h : nEdgeHeight;
     int nY = m_extent.y;
+    int nExtentH = m_extent.h;
     if (nStartAnchor & 1) {
-        int nBottom = m_extent.y - nEdgeHeight + m_extent.h;
+        int nBottom = nY - nEdgeHeight + nExtentH;
         if (nBottom > nY)
             nY = nBottom;
     }
+    int nHeight = (nEdgeHeight > nExtentH) ? nExtentH : nEdgeHeight;
 
     // Whatever the terminators occupy is not available to the tiled run.
     int nLeftInset  = bLeftTerminator  ? nEdgeWidth : 0;
@@ -1654,7 +1651,7 @@ void CSWGuiIndicator::DrawStraightHorzLine()
         // splitting the extent down the middle.
         // The right-hand cap is drawn at nHalf without the extent offset and unrotated; two
         // quirks of the engine, kept.
-        int nHalf = nLength / 2;
+        int nHalf = m_extent.w / 2;
         if (bLeftTerminator)
             m_pTerminatorImage->Draw(m_extent.x, nY, nHalf, nHeight, 0, 270.0f,
                                      CSWGuiDrawable::NO_COLOURING, fAlpha);
@@ -1678,8 +1675,8 @@ void CSWGuiIndicator::DrawStraightVertLine()
     int nStartAnchor = m_params.m_nStartAnchor;
     if (nStartAnchor & 1) {
         if (m_pTerminatorImage) {
-            bTopTerminator    = m_params.bEndTerminator;
             bBottomTerminator = m_params.bStartTerminator;
+            bTopTerminator    = m_params.bEndTerminator;
         }
     } else {
         if (m_pTerminatorImage) {
@@ -1689,9 +1686,6 @@ void CSWGuiIndicator::DrawStraightVertLine()
     }
 
     // Anchor bit 1 puts the run along the right edge instead of the left.
-    //
-    // nX is computed before nWidth, the opposite of the horizontal renderer; the reverse order
-    // merges the two position blocks.
     int nX = m_extent.x;
     if (nStartAnchor & 2) {
         int nRight = m_extent.x - nEdgeWidth + m_extent.w;

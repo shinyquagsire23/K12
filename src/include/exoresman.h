@@ -307,9 +307,11 @@ inline void SetResHelperInfo(CResHelperInfo* pInfo, unsigned short nResType, voi
     // raw-offset: the packed block's first field
     CAlignedPtr<unsigned short>(reinterpret_cast<unsigned short*>(pBlock + __builtin_offsetof(CResHelperInfo, m_nResType)))
         .Set(nResType);
+    // The pointer's temporary is a copy made here, after the type store, not the parameter's entry spill.
+    void* pHelper = pResHelper;
     // raw-offset: the packed block's unaligned pointer field
     CAlignedPtr<void*>(reinterpret_cast<void**>(pBlock + __builtin_offsetof(CResHelperInfo, m_pResHelper)))
-        .Set(pResHelper);
+        .Set(pHelper);
 }
 #endif
 

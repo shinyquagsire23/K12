@@ -445,9 +445,8 @@ void CSWSDoor::EventHandler(unsigned int nEventType, unsigned long long nCallerI
                         pTransition->SetInteger(0, nPendingID);
                         g_pAppManager->m_pServerExoApp->GetServerAIMaster()->AddEventDeltaTime(
                             0, 500, m_objectId, m_objectId, nEventType, pTransition);
-                        Vector vFade;  // zeroed by Vector's default ctor
                         g_pAppManager->m_pClientExoApp->GetInGameGui()->StartGlobalFade(
-                            0, 0.0f, 0.5f, vFade);
+                            0, 0.0f, 0.5f, Vector());
                         pArea->SetTransitionPending(1, nPendingID);
                         g_pAppManager->m_pServerExoApp->SetPauseState(2, 0);
                         break;
@@ -847,6 +846,7 @@ int CSWSDoor::LoadFromTemplate(const CResRef& resRef) {
 }
 
 Vector CSWSDoor::GetNearestActionPoint(const Vector& pos, int stateOverride) {
+    Vector result;
     int curState = m_nAnimation;
     CSWSArea* pArea = static_cast<CSWSArea*>(GetArea());
     int state = (stateOverride == 0) ? curState : SERVER_ANIMATION_CLOSED;
@@ -858,31 +858,22 @@ Vector CSWSDoor::GetNearestActionPoint(const Vector& pos, int stateOverride) {
                    + (pos.y - candB.y) * (pos.y - candB.y)
                    + (pos.z - candB.z) * (pos.z - candB.z);
 
-    Vector chosen;
+    // Neither point walkable leaves the zero vector.
     float chosenDist;
     float distSqA = (pos.x - candA.x) * (pos.x - candA.x)
                    + (pos.y - candA.y) * (pos.y - candA.y)
                    + (pos.z - candA.z) * (pos.z - candA.z);
     if (pArea != 0 && distSqA < distSqB && pArea->PositionWalkable(candA)) {
-        chosen = candA;
+        result = candA;
         chosenDist = distSqA;
-    } else if (pArea != 0) {
-        if (pArea->PositionWalkable(candB)) {
-            chosen = candB;
-            chosenDist = distSqB;
-        } else {
-            chosen.x = chosen.y = chosen.z = 0.0f;
-            chosenDist = 1000.0f;
-        }
+    } else if (pArea != 0 && pArea->PositionWalkable(candB)) {
+        result = candB;
+        chosenDist = distSqB;
     } else {
-        chosen.x = chosen.y = chosen.z = 0.0f;
         chosenDist = 1000.0f;
     }
 
-    Vector result;
-    if (state == SERVER_ANIMATION_CLOSED) {
-        result = chosen;
-    } else {
+    if (state != SERVER_ANIMATION_CLOSED) {
         Vector candC = GetActionPoint(SERVER_ANIMATION_CLOSED, 0);
         Vector candD = GetActionPoint(SERVER_ANIMATION_CLOSED, 1);
 
@@ -893,11 +884,10 @@ Vector CSWSDoor::GetNearestActionPoint(const Vector& pos, int stateOverride) {
                        + (pos.y - candD.y) * (pos.y - candD.y)
                        + (pos.z - candD.z) * (pos.z - candD.z);
         if (pArea != 0 && distSqC < chosenDist && pArea->PositionWalkable(candC)) {
-            chosen = candC;
+            result = candC;
         } else if (pArea != 0 && distSqD < chosenDist && pArea->PositionWalkable(candD)) {
-            chosen = candD;
+            result = candD;
         }
-        result = chosen;
     }
     return result;
 }

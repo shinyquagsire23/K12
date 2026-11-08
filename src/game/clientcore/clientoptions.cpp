@@ -281,7 +281,9 @@ float CClientOptions::GetGammaSetting()
 #if KOTOR1  // K1: the raw index, no clamp and no +15
     return m_fGammaMax + (m_fGammaMax - m_fGammaMin) * (m_nGammaIndex / -100.0f);
 #else
-    int n = (m_nGammaIndex < 85) ? m_nGammaIndex : 85;
+    int n = m_nGammaIndex;
+    if (n > 85)
+        n = 85;
     n += 15;
     return m_fGammaMax + (m_fGammaMax - m_fGammaMin) * (n / -100.0f);
 #endif
@@ -562,9 +564,9 @@ void CClientOptions::SetDefaultGraphicsOptions()
 #endif
 #else
     m_bShadows = GraphicsSettings::GetQualityLevel() ? GAME_OPTION_DEFAULT_SHADOWS : 0;
+    m_bGrass = GAME_OPTION_DEFAULT_GRASS;
     m_nScreenRes = static_cast<unsigned char>(GAME_OPTION_DEFAULT_SCREENRES);
     g_allowForceSpeedEffect = 1;
-    m_bGrass = GAME_OPTION_DEFAULT_GRASS;
     SetGrass(m_bGrass);
     SetShadows(m_bShadows);
 #endif

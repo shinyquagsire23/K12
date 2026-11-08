@@ -4159,3 +4159,28 @@ code-identical) unless it says otherwise.
   type), but it is a 4-byte out-of-bounds stack read that ASan stops on in a host build. A union local does not
   express it: clang drops the undefined half and stores 4 bytes.
 - **Fixed under `K2_FIX_ENGINE_BUGS`:** the arm is cleared and the float stored through `m_fFloat`.
+
+## K1 `CSWCAmbientSound::PlayMusic` — Android K1 never starts `MUS_AREA_TOWNINT` at night
+
+- **Where:** `CSWCAmbientSound::PlayMusic` (K1 arm64 @0x24846c). On the night branch the Android build compares
+  the night track with the literal `"MUS_AREA_TOWNINT"` (`.rodata` 0x6c6960) and returns before `Play`. The
+  string is in both Android K1 images and in neither PC `swkotor.exe` nor the Mac `KOTOR_Exe`: a mobile-only cut.
+- **Impact:** `m_bIsDay` follows the module clock (`UpdateTimeOfDay`), not the area's `IsNight`. The modules
+  start at 13:00 with 2 minutes per hour and dusk at 18:00, so about ten minutes in (or from a night save) every
+  area whose music is `ambientmusic.2da` row 14 is silent: the Ebon Hawk (`m12aa`), Anchorhead (`m17aa`) and the
+  other `MusicDay = 14` areas. Dantooine's row 16 keeps playing. Reported on the Windows host build, 2026-11-07.
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** the early return is compiled out, so the night track plays as on PC.
+
+## `CAurTexture::GetClamp` (both games) — portraits wrap, so their top edge filters in their bottom row
+
+- **Where:** `CAurTexture::GetClamp` (K1). K1 clamps only the handheld UI textures it names (`boxline`, `lbl_cg_mcg`,
+  `ios_main_`, `ios_mm_`, `ios_tut_`, `ipho_`) and otherwise returns the TXI's `clamp` (0 for every `po_*` portrait:
+  their TXI is `mipmap 0`), so a 64×64 portrait uploads with `GL_REPEAT` and linear filtering.
+- **Impact:** drawn larger than 64 px, the outer half texel blends with the opposite edge: a thin band of the
+  portrait's bottom row (collar, shoulders) along its top edge, e.g. the char-gen portrait box. Reported on the Windows
+  host build, 2026-11-07; measured on the Mac with the Android data (a half-texel ramp from (179,162,148) at the top,
+  gone with the clamp).
+- **K2:** `GetClamp` clamps `uibit_brdr` and non-power-of-two textures only; its portraits are 128×128 (TXI `mipmap 0`,
+  `xbox_downsample 64`), so they wrap the same way. The band shows wherever one is drawn above 128 px (at 1024×768 the
+  char-gen picker draws it at ~112 px, where the edge sample stays inside the texture).
+- **Fixed under `K2_FIX_ENGINE_BUGS`:** `po_*` textures clamp on both axes, in both games.

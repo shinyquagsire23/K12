@@ -585,7 +585,8 @@ unsigned int CResGFF::GetFieldByLabel(CResStruct* pStruct, char* sLabel)
         if (pFieldRef.m_p == 0) {
             break;
         }
-        CResGFFField field = pFieldRef.Get();
+        CResGFFField field;
+        field = pFieldRef.Get();
         tmp = ByteSwap(field.nLabelIndex);
         unsigned int nLabelIdx = tmp;
         tmp = ByteSwap(m_pFileHeader->nLabelCount);
@@ -651,7 +652,8 @@ GFFLabel* CResGFF::GetLabel(CResStruct* pStruct, unsigned int nIndex)
 #if KOTOR1
     CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nIndex);
     if (pFieldRef.m_p != 0 && m_paLabels != 0) {
-        CResGFFField field = pFieldRef.Get();
+        CResGFFField field;
+        field = pFieldRef.Get();
         CResGFFField* pField = &field;
 #else
     CResGFFField* pField = GetField(pStruct, nIndex);
@@ -682,7 +684,8 @@ int CResGFF::GetStructFromStruct(CResStruct* pOut, CResStruct* pStruct, char* sL
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = GetField(pStruct, nField);
@@ -707,7 +710,8 @@ unsigned int CResGFF::GetListCount(CResList* pList)
         CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(&pList->m_struct, nField);
         if (pFieldRef.m_p != 0) {
             unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = GetField(&pList->m_struct, nField);
@@ -741,7 +745,8 @@ int CResGFF::GetListElement(CResStruct* pOut, CResList* pList, unsigned int nInd
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(&pList->m_struct, nField);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = GetField(&pList->m_struct, nField);
@@ -815,7 +820,8 @@ unsigned int CResGFF::GetFieldType(CResStruct* pStruct, char* sLabel, unsigned i
     if (pFieldRef.m_p == 0) {
         return INVALID_INDEX;
     }
-    CResGFFField field = pFieldRef.Get();
+    CResGFFField field;
+    field = pFieldRef.Get();
     CResGFFField* pField = &field;
 #else
     CResGFFField* pField = GetField(pStruct, nIndex);
@@ -838,7 +844,8 @@ unsigned int CResGFF::GetFieldSize(CResStruct* pStruct, char* sLabel, unsigned i
         return 0;
     }
     unsigned int nType;
-    CResGFFField field = pFieldRef.Get();
+    CResGFFField field;
+    field = pFieldRef.Get();
     CResGFFField* pField = &field;
 #else
     CResGFFField* pField = GetField(pStruct, nIndex);
@@ -1052,23 +1059,26 @@ int CResGFF::GetFileData(char* sPath)
 
 unsigned char CResGFF::ReadFieldBYTE(CResStruct* pStruct, char* sLabel, int& bSuccess, unsigned char defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
-            unsigned int tmp = ByteSwap(pField->nType);
-            if (tmp == 0) {
-                bSuccess = 1;
-                tmp = ByteSwap(pField->nDataOrDataOffset);
-                return static_cast<unsigned char>(tmp);
-            }
+        unsigned int tmp = ByteSwap(pField->nType);
+        if (tmp == 0) {
+            bSuccess = 1;
+            tmp = ByteSwap(pField->nDataOrDataOffset);
+            return static_cast<unsigned char>(tmp);
         }
     }
     bSuccess = 0;
@@ -1077,28 +1087,31 @@ unsigned char CResGFF::ReadFieldBYTE(CResStruct* pStruct, char* sLabel, int& bSu
 
 char CResGFF::ReadFieldCHAR(CResStruct* pStruct, char* sLabel, int& bSuccess, char defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        unsigned int tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if KOTOR1
-            tmp = ByteSwap(pField->nType);
+        tmp = ByteSwap(pField->nType);
 #else
-            unsigned int tmp = ByteSwap(pField->nType);
+        unsigned int tmp = ByteSwap(pField->nType);
 #endif
-            if (tmp == 1) {
-                bSuccess = 1;
-                tmp = ByteSwap(pField->nDataOrDataOffset);
-                return static_cast<char>(tmp);
-            }
+        if (tmp == 1) {
+            bSuccess = 1;
+            tmp = ByteSwap(pField->nDataOrDataOffset);
+            return static_cast<char>(tmp);
         }
     }
     bSuccess = 0;
@@ -1107,28 +1120,31 @@ char CResGFF::ReadFieldCHAR(CResStruct* pStruct, char* sLabel, int& bSuccess, ch
 
 unsigned short CResGFF::ReadFieldWORD(CResStruct* pStruct, char* sLabel, int& bSuccess, unsigned short defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        unsigned int tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if KOTOR1
-            tmp = ByteSwap(pField->nType);
+        tmp = ByteSwap(pField->nType);
 #else
-            unsigned int tmp = ByteSwap(pField->nType);
+        unsigned int tmp = ByteSwap(pField->nType);
 #endif
-            if (tmp == 2) {
-                bSuccess = 1;
-                tmp = ByteSwap(pField->nDataOrDataOffset);
-                return static_cast<unsigned short>(tmp);
-            }
+        if (tmp == 2) {
+            bSuccess = 1;
+            tmp = ByteSwap(pField->nDataOrDataOffset);
+            return static_cast<unsigned short>(tmp);
         }
     }
     bSuccess = 0;
@@ -1137,28 +1153,31 @@ unsigned short CResGFF::ReadFieldWORD(CResStruct* pStruct, char* sLabel, int& bS
 
 short CResGFF::ReadFieldSHORT(CResStruct* pStruct, char* sLabel, int& bSuccess, short defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        unsigned int tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if KOTOR1
-            tmp = ByteSwap(pField->nType);
+        tmp = ByteSwap(pField->nType);
 #else
-            unsigned int tmp = ByteSwap(pField->nType);
+        unsigned int tmp = ByteSwap(pField->nType);
 #endif
-            if (tmp == 3) {
-                bSuccess = 1;
-                tmp = ByteSwap(pField->nDataOrDataOffset);
-                return static_cast<short>(tmp);
-            }
+        if (tmp == 3) {
+            bSuccess = 1;
+            tmp = ByteSwap(pField->nDataOrDataOffset);
+            return static_cast<short>(tmp);
         }
     }
     bSuccess = 0;
@@ -1167,28 +1186,31 @@ short CResGFF::ReadFieldSHORT(CResStruct* pStruct, char* sLabel, int& bSuccess, 
 
 unsigned int CResGFF::ReadFieldDWORD(CResStruct* pStruct, char* sLabel, int& bSuccess, unsigned int defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        unsigned int tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if KOTOR1
-            tmp = ByteSwap(pField->nType);
+        tmp = ByteSwap(pField->nType);
 #else
-            unsigned int tmp = ByteSwap(pField->nType);
+        unsigned int tmp = ByteSwap(pField->nType);
 #endif
-            if (tmp == 4) {
-                bSuccess = 1;
-                tmp = ByteSwap(pField->nDataOrDataOffset);
-                return tmp;
-            }
+        if (tmp == 4) {
+            bSuccess = 1;
+            tmp = ByteSwap(pField->nDataOrDataOffset);
+            return tmp;
         }
     }
     bSuccess = 0;
@@ -1197,28 +1219,31 @@ unsigned int CResGFF::ReadFieldDWORD(CResStruct* pStruct, char* sLabel, int& bSu
 
 int CResGFF::ReadFieldINT(CResStruct* pStruct, char* sLabel, int& bSuccess, int defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return static_cast<unsigned int>(defValue);
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        unsigned int tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if KOTOR1
-            tmp = ByteSwap(pField->nType);
+        tmp = ByteSwap(pField->nType);
 #else
-            unsigned int tmp = ByteSwap(pField->nType);
+        unsigned int tmp = ByteSwap(pField->nType);
 #endif
-            if (tmp == 5) {
-                bSuccess = 1;
-                tmp = ByteSwap(pField->nDataOrDataOffset);
-                return tmp;
-            }
+        if (tmp == 5) {
+            bSuccess = 1;
+            tmp = ByteSwap(pField->nDataOrDataOffset);
+            return tmp;
         }
     }
     bSuccess = 0;
@@ -1227,34 +1252,37 @@ int CResGFF::ReadFieldINT(CResStruct* pStruct, char* sLabel, int& bSuccess, int 
 
 unsigned int CResGFF::SetFieldINT(CResStruct* pStruct, char* sLabel, int& bSuccess, int value)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return static_cast<unsigned int>(value);
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
-            int bIsINT;
+        int bIsINT;
+        {
+            unsigned int tmp = ByteSwap(pField->nType);
+            bIsINT = (tmp == 5);
+        }
+        if (bIsINT) {
+            bSuccess = 1;
             {
-                unsigned int tmp = ByteSwap(pField->nType);
-                bIsINT = (tmp == 5);
+                unsigned int tmp = ByteSwap(static_cast<unsigned int>(value));
+                pField->nDataOrDataOffset = tmp;
             }
-            if (bIsINT) {
-                bSuccess = 1;
-                {
-                    unsigned int tmp = ByteSwap(static_cast<unsigned int>(value));
-                    pField->nDataOrDataOffset = tmp;
-                }
 #if KOTOR1
-                pFieldRef.Set(field);
+            pFieldRef.Set(field);
 #endif
-                unsigned int nOld = ByteSwap(pField->nDataOrDataOffset);
-                return nOld;
-            }
+            unsigned int nOld = ByteSwap(pField->nDataOrDataOffset);
+            return nOld;
         }
     }
     bSuccess = 0;
@@ -1263,28 +1291,31 @@ unsigned int CResGFF::SetFieldINT(CResStruct* pStruct, char* sLabel, int& bSucce
 
 float CResGFF::ReadFieldFLOAT(CResStruct* pStruct, char* sLabel, int& bSuccess, float defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        unsigned int tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if KOTOR1
-            tmp = ByteSwap(pField->nType);
+        tmp = ByteSwap(pField->nType);
 #else
-            unsigned int tmp = ByteSwap(pField->nType);
+        unsigned int tmp = ByteSwap(pField->nType);
 #endif
-            if (tmp == 8) {
-                bSuccess = 1;
-                tmp = ByteSwap(pField->nDataOrDataOffset);
-                return *reinterpret_cast<float*>(&tmp);
-            }
+        if (tmp == 8) {
+            bSuccess = 1;
+            tmp = ByteSwap(pField->nDataOrDataOffset);
+            return *reinterpret_cast<float*>(&tmp);
         }
     }
     bSuccess = 0;
@@ -1293,31 +1324,37 @@ float CResGFF::ReadFieldFLOAT(CResStruct* pStruct, char* sLabel, int& bSuccess, 
 
 uint64_ll_t CResGFF::ReadFieldDWORD64(CResStruct* pStruct, char* sLabel, int& bSuccess, uint64_ll_t defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            union { unsigned int nType; uint64_ll_t v; } tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        union { unsigned int nType; uint64_ll_t v; } tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if !KOTOR1
-            union { unsigned int nType; uint64_ll_t v; } tmp;
+        union { unsigned int nType; uint64_ll_t v; } tmp;
 #endif
-            tmp.nType = ByteSwap(pField->nType);
-            if (tmp.nType == 6) {
-                unsigned int nSize;
-                uint64_ll_t* pData = static_cast<uint64_ll_t*>(GetDataField(pField, nSize));
-                if (pData != 0 && nSize > 7) {
-                    bSuccess = 1;
-                    tmp.v = ByteSwap64(*pData);
-                    return tmp.v;
-                }
+        tmp.nType = ByteSwap(pField->nType);
+        if (tmp.nType == 6) {
+            unsigned int nSize;
+            void* pData = GetDataField(pField, nSize);
+            if (pData == 0 || nSize <= 7) {
+                bSuccess = 0;
+                return defValue;
             }
+            bSuccess = 1;
+            memcpy(&tmp.v, pData, sizeof(tmp.v));
+            tmp.v = ByteSwap64(tmp.v);
+            return tmp.v;
         }
     }
     bSuccess = 0;
@@ -1330,31 +1367,37 @@ int64_ll_t CResGFF::ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSucc
 long long CResGFF::ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSuccess, long long defValue)
 #endif
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            union { unsigned int nType; uint64_ll_t v; } tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        union { unsigned int nType; uint64_ll_t v; } tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if !KOTOR1
-            union { unsigned int nType; uint64_ll_t v; } tmp;
+        union { unsigned int nType; uint64_ll_t v; } tmp;
 #endif
-            tmp.nType = ByteSwap(pField->nType);
-            if (tmp.nType == 7) {
-                unsigned int nSize;
-                uint64_ll_t* pData = static_cast<uint64_ll_t*>(GetDataField(pField, nSize));
-                if (pData != 0 && nSize > 7) {
-                    bSuccess = 1;
-                    tmp.v = ByteSwap64(*pData);
-                    return static_cast<long long>(tmp.v);
-                }
+        tmp.nType = ByteSwap(pField->nType);
+        if (tmp.nType == 7) {
+            unsigned int nSize;
+            void* pData = GetDataField(pField, nSize);
+            if (pData == 0 || nSize <= 7) {
+                bSuccess = 0;
+                return defValue;
             }
+            bSuccess = 1;
+            memcpy(&tmp.v, pData, sizeof(tmp.v));
+            tmp.v = ByteSwap64(tmp.v);
+            return static_cast<long long>(tmp.v);
         }
     }
     bSuccess = 0;
@@ -1363,31 +1406,37 @@ long long CResGFF::ReadFieldINT64(CResStruct* pStruct, char* sLabel, int& bSucce
 
 double CResGFF::ReadFieldDOUBLE(CResStruct* pStruct, char* sLabel, int& bSuccess, double defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            union { unsigned int nType; uint64_ll_t v; double d; } tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        union { unsigned int nType; uint64_ll_t v; double d; } tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if !KOTOR1
-            union { unsigned int nType; uint64_ll_t v; double d; } tmp;
+        union { unsigned int nType; uint64_ll_t v; double d; } tmp;
 #endif
-            tmp.nType = ByteSwap(pField->nType);
-            if (tmp.nType == 9) {
-                unsigned int nSize;
-                uint64_ll_t* pData = static_cast<uint64_ll_t*>(GetDataField(pField, nSize));
-                if (pData != 0 && nSize > 7) {
-                    bSuccess = 1;
-                    tmp.v = ByteSwap64(*pData);
-                    return tmp.d;
-                }
+        tmp.nType = ByteSwap(pField->nType);
+        if (tmp.nType == 9) {
+            unsigned int nSize;
+            void* pData = GetDataField(pField, nSize);
+            if (pData == 0 || nSize <= 7) {
+                bSuccess = 0;
+                return defValue;
             }
+            bSuccess = 1;
+            memcpy(&tmp.v, pData, sizeof(tmp.v));
+            tmp.v = ByteSwap64(tmp.v);
+            return tmp.d;
         }
     }
     bSuccess = 0;
@@ -1396,33 +1445,35 @@ double CResGFF::ReadFieldDOUBLE(CResStruct* pStruct, char* sLabel, int& bSuccess
 
 CResRef CResGFF::ReadFieldCResRef(CResStruct* pStruct, char* sLabel, int& bSuccess, const CResRef& defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
+        unsigned int tmp = pField->nType;
+        ::ByteSwap(&tmp);
+        if (tmp == FIELD_CRESREF) {
+#else
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
+        if (ByteSwap(pField->nType) == FIELD_CRESREF) {
             unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
-#else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
 #endif
-#if KOTOR1
-            tmp = ByteSwap(pField->nType);
-            if (tmp == FIELD_CRESREF) {
-#else
-            if (ByteSwap(pField->nType) == FIELD_CRESREF) {
-                unsigned int tmp;
-#endif
-                unsigned char* pData = static_cast<unsigned char*>(GetDataField(pField, tmp));
-                if (pData != 0 && tmp != 0) {
-                    uint64_t nLen = pData[0];
-                    if (nLen < tmp) {
-                        bSuccess = 1;
-                        return CResRef(pData + 1, static_cast<unsigned char>(nLen));
-                    }
-                }
+            unsigned char* pData = static_cast<unsigned char*>(GetDataField(pField, tmp));
+            if (pData == 0 || tmp == 0) {
+                bSuccess = 0;
+                return defValue;
+            }
+            uint64_t nLen = pData[0];
+            if (nLen < tmp) {
+                bSuccess = 1;
+                return CResRef(pData + 1, static_cast<unsigned char>(nLen));
             }
         }
     }
@@ -1432,36 +1483,39 @@ CResRef CResGFF::ReadFieldCResRef(CResStruct* pStruct, char* sLabel, int& bSucce
 
 CExoString CResGFF::ReadFieldCExoString(CResStruct* pStruct, char* sLabel, int& bSuccess, const CExoString& defValue)
 {
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        unsigned int tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if KOTOR1
-            tmp = ByteSwap(pField->nType);
+        tmp = ByteSwap(pField->nType);
 #else
-            unsigned int tmp = ByteSwap(pField->nType);
+        unsigned int tmp = ByteSwap(pField->nType);
 #endif
-            if (tmp == 10) {
-                unsigned int nSize;
-                unsigned int* pData = static_cast<unsigned int*>(GetDataField(pField, nSize));
-                if (pData == 0 || nSize <= 3) {
-                    bSuccess = 0;
-                    return defValue;
-                }
-                {
-                    tmp = ByteSwap(*pData);
-                    if (static_cast<uint64_t>(tmp) + 4 <= static_cast<uint64_t>(nSize)) {
-                        bSuccess = 1;
-                        return CExoString(reinterpret_cast<const char*>(pData + 1), tmp);
-                    }
+        if (tmp == 10) {
+            unsigned int nSize;
+            unsigned int* pData = static_cast<unsigned int*>(GetDataField(pField, nSize));
+            if (pData == 0 || nSize <= 3) {
+                bSuccess = 0;
+                return defValue;
+            }
+            {
+                tmp = ByteSwap(*pData);
+                if (static_cast<uint64_t>(nSize) >= static_cast<uint64_t>(tmp) + 4) {
+                    bSuccess = 1;
+                    return CExoString(reinterpret_cast<const char*>(pData + 1), tmp);
                 }
             }
         }
@@ -1472,42 +1526,44 @@ CExoString CResGFF::ReadFieldCExoString(CResStruct* pStruct, char* sLabel, int& 
 
 Quaternion CResGFF::ReadFieldQuaternion(CResStruct* pStruct, char* sLabel, int& bSuccess, const Quaternion& defValue)
 {
+#if !KOTOR1
     unsigned int tmp;
+#endif
     Quaternion out;  // identity by default constructor
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
+        unsigned int tmp = pField->nType;
+        ::ByteSwap(&tmp);
+        if (tmp == FIELD_QUATERNION) {
+            void* pData = GetDataField(pField, tmp);
+            if (pData != 0 && tmp > 15) {
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
+        if (ByteSwap(pField->nType) == FIELD_QUATERNION) {
+            void* pData = GetDataField(pField, tmp);
+            if (pData == 0 || tmp <= 15) {
+                bSuccess = 0;
+                return defValue;
+            }
+            {
 #endif
-#if KOTOR1
-            tmp = ByteSwap(pField->nType);
-            if (tmp == FIELD_QUATERNION) {
-#else
-            if (ByteSwap(pField->nType) == FIELD_QUATERNION) {
-#endif
-                float* pData = static_cast<float*>(GetDataField(pField, tmp));
-                if (pData == 0 || tmp <= 15) {
-                    bSuccess = 0;
-                    return defValue;
-                }
-                {
-                    bSuccess = 1;
-                    out.w = pData[0];
-                    out.x = pData[1];
-                    out.y = pData[2];
-                    out.z = pData[3];
-                    ::ByteSwap(&out.w);
-                    ::ByteSwap(&out.x);
-                    ::ByteSwap(&out.y);
-                    ::ByteSwap(&out.z);
-                    return out;
-                }
+                bSuccess = 1;
+                memcpy(&out, pData, sizeof(out));
+                ::ByteSwap(&out.w);
+                ::ByteSwap(&out.x);
+                ::ByteSwap(&out.y);
+                ::ByteSwap(&out.z);
+                return out;
             }
         }
     }
@@ -1517,44 +1573,43 @@ Quaternion CResGFF::ReadFieldQuaternion(CResStruct* pStruct, char* sLabel, int& 
 
 Vector CResGFF::ReadFieldVector(CResStruct* pStruct, char* sLabel, int& bSuccess, const Vector& defValue)
 {
+#if !KOTOR1
     unsigned int tmp;
+#endif
     Vector out;  // zeroed by Vector's default ctor
-    if (pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return defValue;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
+        unsigned int tmp = pField->nType;
+        ::ByteSwap(&tmp);
+        if (tmp == FIELD_VECTOR) {
+            void* pData = GetDataField(pField, tmp);
+            if (pData != 0 && tmp > 11) {
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
+        if (ByteSwap(pField->nType) == FIELD_VECTOR) {
+            void* pData = GetDataField(pField, tmp);
+            if (pData == 0 || tmp <= 11) {
+                bSuccess = 0;
+                return defValue;
+            }
+            {
 #endif
-#if KOTOR1
-            tmp = ByteSwap(pField->nType);
-            if (tmp == FIELD_VECTOR) {
-#else
-            if (ByteSwap(pField->nType) == FIELD_VECTOR) {
-#endif
-                float* pData = static_cast<float*>(GetDataField(pField, tmp));
-#if KOTOR1
-                if (pData != 0 && tmp > 11) {
-#else
-                if (pData == 0 || tmp <= 11) {
-                    bSuccess = 0;
-                    return defValue;
-                }
-                {
-#endif
-                    bSuccess = 1;
-                    out.x = pData[0];
-                    out.y = pData[1];
-                    out.z = pData[2];
-                    ::ByteSwap(&out.x);
-                    ::ByteSwap(&out.y);
-                    ::ByteSwap(&out.z);
-                    return out;
-                }
+                bSuccess = 1;
+                memcpy(&out, pData, sizeof(out));
+                ::ByteSwap(&out.x);
+                ::ByteSwap(&out.y);
+                ::ByteSwap(&out.z);
+                return out;
             }
         }
     }
@@ -1650,8 +1705,7 @@ CExoLocString CResGFF::ReadFieldCExoLocString(CResStruct* pStruct, char* sLabel,
         tmp = ByteSwap(pSub->nStringLength);
 #endif
         nStrLen = static_cast<int>(tmp);
-        CExoString str(reinterpret_cast<const char*>(p + 8), nStrLen);
-        tmpLoc.AddString(nLang / 2, str, nLang % 2);
+        tmpLoc.AddString(nLang / 2, CExoString(reinterpret_cast<const char*>(p + 8), nStrLen), nLang % 2);
         p = p + 8 + nStrLen;
         nRemaining = nRemaining - 8 - nStrLen;
     }
@@ -1665,42 +1719,45 @@ CExoLocString CResGFF::ReadFieldCExoLocString(CResStruct* pStruct, char* sLabel,
 
 void* CResGFF::ReadFieldVOID(CResStruct* pStruct, void* pBuffer, unsigned int nBufSize, char* sLabel, int& bSuccess, void* pDefault)
 {
-    if (pBuffer != 0 && pStruct != 0 && sLabel != 0) {
-        unsigned int nField = GetFieldByLabel(pStruct, sLabel);
+    if (pBuffer == 0) {
+        bSuccess = 0;
+        return pDefault;
+    }
+    if (pStruct == 0 || sLabel == 0) {
+        bSuccess = 0;
+        return pDefault;
+    }
+    unsigned int nField = GetFieldByLabel(pStruct, sLabel);
 #if KOTOR1
-        CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
-        if (pFieldRef.m_p != 0) {
-            unsigned int tmp;
-            CResGFFField field = pFieldRef.Get();
-            CResGFFField* pField = &field;
+    CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(pStruct, nField);
+    if (pFieldRef.m_p != 0) {
+        unsigned int tmp;
+        CResGFFField field;
+        field = pFieldRef.Get();
+        CResGFFField* pField = &field;
 #else
-        CResGFFField* pField = GetField(pStruct, nField);
-        if (pField != 0) {
+    CResGFFField* pField = GetField(pStruct, nField);
+    if (pField != 0) {
 #endif
 #if KOTOR1
-            tmp = ByteSwap(pField->nType);
+        tmp = ByteSwap(pField->nType);
 #else
-            unsigned int tmp = ByteSwap(pField->nType);
+        unsigned int tmp = ByteSwap(pField->nType);
 #endif
-            if (tmp == FIELD_VOID) {
-                unsigned int nSize;
-                unsigned int* pData = static_cast<unsigned int*>(GetDataField(pField, nSize));
-#if KOTOR1
-                if (pData == 0 || nSize <= 3) {
-                    bSuccess = 0;
-                    return pDefault;
-                }
-                {
-#else
-                if (pData != 0 && nSize > 3) {
-#endif
-                    tmp = ByteSwap(*pData);
-                    if (static_cast<uint64_t>(tmp) + 4 <= static_cast<uint64_t>(nSize)) {
-                        unsigned int nCopy = tmp < nBufSize ? tmp : nBufSize;
-                        bSuccess = 1;
-                        memcpy(pBuffer, pData + 1, nCopy);  // idiom-exempt: runtime length (file/buffer-derived, no compile-time size)
-                        return pBuffer;
-                    }
+        if (tmp == FIELD_VOID) {
+            unsigned int nSize;
+            unsigned int* pData = static_cast<unsigned int*>(GetDataField(pField, nSize));
+            if (pData == 0 || nSize <= 3) {
+                bSuccess = 0;
+                return pDefault;
+            }
+            {
+                tmp = ByteSwap(*pData);
+                if (static_cast<uint64_t>(nSize) >= static_cast<uint64_t>(tmp) + 4) {
+                    unsigned int nCopy = tmp < nBufSize ? tmp : nBufSize;
+                    bSuccess = 1;
+                    memcpy(pBuffer, pData + 1, nCopy);  // idiom-exempt: runtime length (file/buffer-derived, no compile-time size)
+                    return pBuffer;
                 }
             }
         }
@@ -2095,7 +2152,8 @@ CResGFFAlignedPtr<CResGFFField> CResGFF::AddField(CResStruct* pStruct, char* sLa
     if (pRec.m_p == 0) {
         return CResGFFAlignedPtr<CResGFFField>();
     }
-    CResGFFStruct rec = pRec.Get();
+    CResGFFStruct rec;
+    rec = pRec.Get();
     unsigned int nFieldIndex = ByteSwap(m_pFileHeader->nFieldCount);
     if (nFieldIndex >= m_nFieldCapacity) {
         m_nFieldCapacity = m_nFieldGrow + nFieldIndex;
@@ -2216,7 +2274,8 @@ int CResGFF::AddListElement(CResStruct* pOut, CResList* pList, unsigned int nTyp
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = GetField(&pList->m_struct, nField);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = GetField(&pList->m_struct, nField);
@@ -2265,7 +2324,8 @@ int CResGFF::AddList(CResList* pList, CResStruct* pStruct, char* sLabel)
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, FIELD_LIST);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, FIELD_LIST));
@@ -2278,8 +2338,7 @@ int CResGFF::AddList(CResList* pList, CResStruct* pStruct, char* sLabel)
                 pField->nDataOrDataOffset = tmp;
 #if KOTOR1
                 pFieldRef.Set(field);
-                tmp = 0;
-                CResGFFAlignedPtr<unsigned int>(pNew).Set(tmp);
+                CResGFFAlignedPtr<unsigned int>(pNew).Set(0);
 #else
                 pNew[0] = 0;
 #endif
@@ -2301,7 +2360,8 @@ int CResGFF::AddStructToStruct(CResStruct* pOut, CResStruct* pStruct, char* sLab
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, FIELD_STRUCT);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, FIELD_STRUCT));
@@ -2331,7 +2391,8 @@ int CResGFF::WriteFieldBYTE(CResStruct* pStruct, unsigned char value, char* sLab
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 0);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 0));
@@ -2357,7 +2418,8 @@ int CResGFF::WriteFieldCHAR(CResStruct* pStruct, char value, char* sLabel)
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 1);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 1));
@@ -2383,7 +2445,8 @@ int CResGFF::WriteFieldWORD(CResStruct* pStruct, unsigned short value, char* sLa
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 2);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 2));
@@ -2409,7 +2472,8 @@ int CResGFF::WriteFieldSHORT(CResStruct* pStruct, short value, char* sLabel)
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 3);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 3));
@@ -2435,7 +2499,8 @@ int CResGFF::WriteFieldDWORD(CResStruct* pStruct, unsigned int value, char* sLab
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 4);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 4));
@@ -2461,7 +2526,8 @@ int CResGFF::WriteFieldINT(CResStruct* pStruct, int value, char* sLabel)
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 5);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 5));
@@ -2487,7 +2553,8 @@ int CResGFF::WriteFieldFLOAT(CResStruct* pStruct, float value, char* sLabel)
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 8);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 8));
@@ -2513,7 +2580,8 @@ int CResGFF::WriteFieldDWORD64(CResStruct* pStruct, uint64_ll_t value, char* sLa
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 6);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 6));
@@ -2556,7 +2624,8 @@ int CResGFF::WriteFieldINT64(CResStruct* pStruct, long long value, char* sLabel)
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 7);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 7));
@@ -2588,7 +2657,8 @@ int CResGFF::WriteFieldDOUBLE(CResStruct* pStruct, double value, char* sLabel)
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 9);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 9));
@@ -2626,7 +2696,8 @@ int CResGFF::WriteFieldCResRef(CResStruct* pStruct, const CResRef& value, char* 
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, FIELD_CRESREF);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, FIELD_CRESREF));
@@ -2666,7 +2737,8 @@ int CResGFF::WriteFieldCExoString(CResStruct* pStruct, const CExoString& value, 
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, 10);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, 10));
@@ -2726,7 +2798,8 @@ int CResGFF::WriteFieldCExoLocString(CResStruct* pStruct, const CExoLocString& v
         }
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, FIELD_CEXOLOCSTRING);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             nTotal = 8;
             for (unsigned int i = 0; i < static_cast<unsigned int>(value.GetStringCount()); i++) {
                 nTotal = nTotal + static_cast<unsigned int>(value.GetStringLength(i)) + 8;
@@ -2829,7 +2902,8 @@ int CResGFF::WriteFieldVOID(CResStruct* pStruct, const void* pData, unsigned int
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, FIELD_VOID);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, FIELD_VOID));
@@ -2868,7 +2942,8 @@ int CResGFF::WriteFieldQuaternion(CResStruct* pStruct, const Quaternion& value, 
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, FIELD_QUATERNION);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, FIELD_QUATERNION));
@@ -2904,7 +2979,8 @@ int CResGFF::WriteFieldVector(CResStruct* pStruct, const Vector& value, char* sL
 #if KOTOR1
         CResGFFAlignedPtr<CResGFFField> pFieldRef = AddField(pStruct, sLabel, FIELD_VECTOR);
         if (pFieldRef.m_p != 0) {
-            CResGFFField field = pFieldRef.Get();
+            CResGFFField field;
+            field = pFieldRef.Get();
             CResGFFField* pField = &field;
 #else
         CResGFFField* pField = static_cast<CResGFFField*>(AddField(pStruct, sLabel, FIELD_VECTOR));

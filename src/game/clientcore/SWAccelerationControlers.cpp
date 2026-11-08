@@ -92,12 +92,10 @@ CSWRK4SplitAcceleration::CSWRK4SplitAcceleration(float a, float b, float c)
 }
 
 // Applies the base formula with the damping term switched: a velocity of exactly (0, 0, 0) uses the
-// subclass's m_fDeceleration, anything else the base's m_fAcceleration.
+// subclass's m_fDeceleration, anything else is the base's formula with m_fAcceleration.
 Vector CSWRK4SplitAcceleration::GetAccelerationVector(CSWPhysicsState& state, Vector const& vVelocity)
 {
-    float fDamping = m_fAcceleration;
-    if (vVelocity.IsZero()) {
-        fDamping = m_fDeceleration;
-    }
-    return vVelocity * fDamping - state.m_vValue * (fDamping / m_fMaxSpeed);
+    if (vVelocity.IsZero())
+        return vVelocity * m_fDeceleration - state.m_vValue * (m_fDeceleration / m_fMaxSpeed);
+    return CSWRK4Acceleration::GetAccelerationVector(state, vVelocity);
 }

@@ -238,9 +238,6 @@ int CSWArea::AddStaticBoundingBox(unsigned long long objectId, const Vector& vMi
 // Removes the box with this id; returns 1 when it was found, 0 otherwise.
 int CSWArea::RemoveStaticBoundingBox(unsigned long long objectId)
 {
-    if (m_nStaticBBoxCount < 1)
-        return 0;
-
     int i = 0;
     while (i < m_nStaticBBoxCount && m_pStaticBBoxIds[i] != objectId)
         i++;

@@ -1633,8 +1633,7 @@ int CSWSModule::LoadLimboCreatures(CResGFF* pGFF, CResStruct* pStruct, int bFrom
         float fXOrientation = pGFF->ReadFieldFLOAT(&sElement, const_cast<char*>("XOrientation"), bSuccess, 0.0f);
         float fYOrientation = pGFF->ReadFieldFLOAT(&sElement, const_cast<char*>("YOrientation"), bSuccess, 0.0f);
         float fZOrientation = pGFF->ReadFieldFLOAT(&sElement, const_cast<char*>("ZOrientation"), bSuccess, 0.0f);
-        Vector vOrientation(fXOrientation, fYOrientation, fZOrientation);
-        pCreature->SetOrientation(vOrientation);
+        pCreature->SetOrientation(Vector(fXOrientation, fYOrientation, fZOrientation));
 
         AddObjectToLimbo(pCreature->m_objectId);
     }

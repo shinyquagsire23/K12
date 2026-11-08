@@ -137,6 +137,7 @@ float CSWCCreatureAppearance::GetHeadHeightOffset()
             pModel->GetPartLocalPosition(const_cast<char*>("CAMERAHOOK"), &vPos, &qOrient);
             return vPos.z;
         }
+#if KOTOR1
         Vector vPos = {0.0f, 0.0f, 0.0f};
         Quaternion qOrient(1.0f, 0.0f, 0.0f, 0.0f);
         pModel = m_pCreature->GetModel(CSWCAnimBase::ANIM_MODEL_BODY, 1);
@@ -148,6 +149,9 @@ float CSWCCreatureAppearance::GetHeadHeightOffset()
                 fHeadHeight = m_fHeight;
             return fHeadHeight;
         }
+#else
+        return GetHeight();
+#endif
     }
     return 0.0f;
 }

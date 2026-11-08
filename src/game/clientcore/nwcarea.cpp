@@ -223,80 +223,81 @@ int CSWCArea::AddPlaceableObjectLight(unsigned long long objectId, int nPlaceabl
     int bGot;
     bGot = g_pRules->m_p2DArrays->m_pPlaceables->GetINTEntry(nPlaceableId, CExoString("LightColor"),
                                                              &nColorRow);
-    if (bGot != 0) {
-        CSWCPlaceableObjectLight* pEntry = nullptr;
-        bool bFound = false;
-        for (int i = 0; i < m_placeableObjectLights.m_count; i++) {
-            pEntry = m_placeableObjectLights.m_pArray[i];
-            if (pEntry != 0 && pEntry->m_objectId == objectId) {
-                bFound = true;
-                break;
-            }
-        }
-        if (!bFound)
-            pEntry = new CSWCPlaceableObjectLight;
-
-        pEntry->m_pLight = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_placeable01"), const_cast<char*>("placeablelight"),
-                                               0, 0));
-        if (pEntry->m_pLight == 0) {
-            delete pEntry;
-            return 0;
-        }
-        pEntry->m_objectId = objectId;
-
-        {
-            C2DA* p2DA = g_pRules->m_p2DArrays->m_pLightColor;
-            int nRow = nColorRow;
-            CExoString sCol("RED");
-            p2DA->GetFLOATEntry(nRow, sCol, &vColor.x);
-        }
-        {
-            C2DA* p2DA = g_pRules->m_p2DArrays->m_pLightColor;
-            int nRow = nColorRow;
-            CExoString sCol("GREEN");
-            p2DA->GetFLOATEntry(nRow, sCol, &vColor.y);
-        }
-        {
-            C2DA* p2DA = g_pRules->m_p2DArrays->m_pLightColor;
-            int nRow = nColorRow;
-            CExoString sCol("BLUE");
-            p2DA->GetFLOATEntry(nRow, sCol, &vColor.z);
-        }
-        int bGotX;
-        {
-            C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
-            CExoString sCol("LightOffsetX");
-            bGotX = p2DA->GetFLOATEntry(nPlaceableId, sCol, &vOffset.x);
-        }
-        if (bGotX == 0)
-            vOffset.x = 0.0f;
-        {
-            C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
-            CExoString sCol("LightOffsetY");
-            bGotX = p2DA->GetFLOATEntry(nPlaceableId, sCol, &vOffset.y);
-        }
-        if (bGotX == 0)
-            vOffset.y = 0.0f;
-        {
-            C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
-            CExoString sCol("LightOffsetZ");
-            bGotX = p2DA->GetFLOATEntry(nPlaceableId, sCol, &vOffset.z);
-        }
-        if (bGotX == 0)
-            vOffset.z = 3.0f;
-
-        pEntry->m_pLight->GetPartLocalPosition(const_cast<char*>("root"), &vRootPos, &qRoot);
-        Vector vNewPos;
-        vNewPos.x = vRootPos.x + vOffset.x;
-        vNewPos.y = vRootPos.y + vOffset.y;
-        vNewPos.z = vRootPos.z + vOffset.z;
-        pEntry->m_pLight->SetPartLocalPosition(const_cast<char*>("root"), vNewPos, qRoot);
-        pEntry->m_pLight->SetPosition(pos);
-        pEntry->m_pLight->AttachToScene(m_pScene);
-
-            if (bFound == false)
-                m_placeableObjectLights.Add(pEntry);
+    if (bGot == 0) {
+        return 1;
     }
+    CSWCPlaceableObjectLight* pEntry = nullptr;
+    bool bFound = false;
+    for (int i = 0; i < m_placeableObjectLights.m_count; i++) {
+        pEntry = m_placeableObjectLights.m_pArray[i];
+        if (pEntry != 0 && pEntry->m_objectId == objectId) {
+            bFound = true;
+            break;
+        }
+    }
+    if (!bFound)
+        pEntry = new CSWCPlaceableObjectLight;
+
+    pEntry->m_pLight = static_cast<Gob*>(NewCAurObject(const_cast<char*>("fx_placeable01"), const_cast<char*>("placeablelight"),
+                                           0, 0));
+    if (pEntry->m_pLight == 0) {
+        delete pEntry;
+        return 0;
+    }
+    pEntry->m_objectId = objectId;
+
+    {
+        C2DA* p2DA = g_pRules->m_p2DArrays->m_pLightColor;
+        int nRow = nColorRow;
+        CExoString sCol("RED");
+        p2DA->GetFLOATEntry(nRow, sCol, &vColor.x);
+    }
+    {
+        C2DA* p2DA = g_pRules->m_p2DArrays->m_pLightColor;
+        int nRow = nColorRow;
+        CExoString sCol("GREEN");
+        p2DA->GetFLOATEntry(nRow, sCol, &vColor.y);
+    }
+    {
+        C2DA* p2DA = g_pRules->m_p2DArrays->m_pLightColor;
+        int nRow = nColorRow;
+        CExoString sCol("BLUE");
+        p2DA->GetFLOATEntry(nRow, sCol, &vColor.z);
+    }
+    int bGotX;
+    {
+        C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
+        CExoString sCol("LightOffsetX");
+        bGotX = p2DA->GetFLOATEntry(nPlaceableId, sCol, &vOffset.x);
+    }
+    if (bGotX == 0)
+        vOffset.x = 0.0f;
+    {
+        C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
+        CExoString sCol("LightOffsetY");
+        bGotX = p2DA->GetFLOATEntry(nPlaceableId, sCol, &vOffset.y);
+    }
+    if (bGotX == 0)
+        vOffset.y = 0.0f;
+    {
+        C2DA* p2DA = g_pRules->m_p2DArrays->m_pPlaceables;
+        CExoString sCol("LightOffsetZ");
+        bGotX = p2DA->GetFLOATEntry(nPlaceableId, sCol, &vOffset.z);
+    }
+    if (bGotX == 0)
+        vOffset.z = 3.0f;
+
+    pEntry->m_pLight->GetPartLocalPosition(const_cast<char*>("root"), &vRootPos, &qRoot);
+    Vector vNewPos;
+    vNewPos.x = vRootPos.x + vOffset.x;
+    vNewPos.y = vRootPos.y + vOffset.y;
+    vNewPos.z = vRootPos.z + vOffset.z;
+    pEntry->m_pLight->SetPartLocalPosition(const_cast<char*>("root"), vNewPos, qRoot);
+    pEntry->m_pLight->SetPosition(pos);
+    pEntry->m_pLight->AttachToScene(m_pScene);
+
+    if (bFound == false)
+        m_placeableObjectLights.Add(pEntry);
     return 1;
 }
 
@@ -1459,8 +1460,6 @@ void CSWCArea::AddMapPin(CSWCMapPin* pPin)
 void CSWCArea::RemoveMapPin(unsigned int nId)
 {
     int nCount = m_mapPins.m_count;
-    if (nCount < 1)
-        return;
     for (int i = 0; i < nCount; i++) {
         CSWCMapPin* pPin = m_mapPins.m_pArray[i];
         if (pPin->m_nPinId != nId)

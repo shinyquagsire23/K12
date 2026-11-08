@@ -212,36 +212,28 @@ void CSWGuiInGamePause::SetPauseReason(unsigned char reason)
 #else
 
     CSWGuiExtent extent;
+    CSWGuiExtent extentButton;
     int nIdealReason = pText->GetIdealHeight();
-    extent.x = m_label1.m_extent.x;
-    extent.y = m_label1.m_extent.y;
-    extent.w = m_label1.m_extent.w;
+    extent = m_label1.m_extent;
     extent.h = nIdealReason;
     m_label1.SetExtent(extent);
 
-    CSWGuiExtent extentButton;
     extentButton = extent;
+    int nPrevY = extent.y;
 
     if (nLabelFlags != 0)
     {
         m_label2.m_tail.bVisible = 1;
 
-        CSWGuiText* pText2;
-        int nPrevY;
-        int nPrevH;
-        int nIdealPress;
         CExoString sPressText(g_pAppManager->m_pClientExoApp->GetGUIString(STRREF_PRESS_PAUSE_TO_CONTINUE));
         g_pTlkTable->ParseStr(sPressText);
         m_label2.m_text.m_params.SetText(sPressText);
 
-        pText2 = &m_label2.m_text;
-        nPrevY = extent.y;
-        nPrevH = extent.h;
-        nIdealPress = pText2->GetIdealHeight();
-        extent.x = m_label2.m_extent.x;
-        extent.w = m_label2.m_extent.w;
+        CSWGuiText* pText2 = &m_label2.m_text;
+        int nIdealPress = pText2->GetIdealHeight();
+        extent = m_label2.m_extent;
         extent.h = nIdealPress;
-        extent.y = nPrevY + nPrevH + 2;
+        extent.y = nPrevY + nIdealReason + 2;
         m_label2.SetExtent(extent);
     }
     else
@@ -250,9 +242,7 @@ void CSWGuiInGamePause::SetPauseReason(unsigned char reason)
     }
 
     CSWGuiExtent extentPanel;
-    extentPanel.x = m_extent.x;
-    extentPanel.y = m_extent.y;
-    extentPanel.w = m_extent.w;
+    extentPanel = m_extent;
     extentPanel.h = extent.y + extent.h + 5;
     SetExtent(extentPanel);
 

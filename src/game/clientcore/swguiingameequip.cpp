@@ -2530,8 +2530,6 @@ int CSWGuiInGameEquip::EquipItem(CSWSItem* pItem, int nSlot, int nFlag) {
 #endif
 
     CItemRepository* pRepository = pServerCreature->GetItemRepository(1);
-    if (pRepository->ItemListGetCount() == 0)
-        return 0;
 
     for (unsigned int i = 0; i < pRepository->ItemListGetCount(); i++) {
         CSWSItem* pFound = pRepository->ItemListGetItem(i);
@@ -3018,11 +3016,11 @@ void CSWGuiInGameItemEntry::SetExtent(const CSWGuiExtent& extent)
     if (m_textCount.m_pString != 0)
         m_textCount.m_pString->SetFontScale(s_fScale);
 #else
-    CSWGuiExtent ideal = m_textCount.m_params.m_pTextObject->GetIdealWidthAndHeight();
     CSWGuiExtent extentText;
-    extentText.x = static_cast<int>(fPad + (s_fScale * 56.0f - static_cast<float>(ideal.w)) + static_cast<float>(nX));
+    int nIdealW = m_textCount.m_params.m_pTextObject->GetIdealWidthAndHeight().w;
+    extentText.x = static_cast<int>(fPad + (s_fScale * 56.0f - static_cast<float>(nIdealW)) + static_cast<float>(nX));
     extentText.y = static_cast<int>(s_fScale * 32.0f + static_cast<float>(nY));
-    extentText.w = ideal.w;
+    extentText.w = nIdealW;
     extentText.h = static_cast<int>(s_fScale * 24.0f);
     m_textCount.SetExtent(extentText);
 #endif
@@ -3512,11 +3510,11 @@ void CSWGuiStoreItemEntry::SetExtent(const CSWGuiExtent& extent)
     if (m_textCount.m_pString != 0)
         m_textCount.m_pString->SetFontScale(fScale);
 #else
-    CSWGuiExtent ideal = m_textCount.m_params.m_pTextObject->GetIdealWidthAndHeight();
     CSWGuiExtent extentText;
-    extentText.x = static_cast<int>(fPad + (fIcon - static_cast<float>(ideal.w)) + static_cast<float>(nX));
+    int nIdealW = m_textCount.m_params.m_pTextObject->GetIdealWidthAndHeight().w;
+    extentText.x = static_cast<int>(fPad + (fIcon - static_cast<float>(nIdealW)) + static_cast<float>(nX));
     extentText.y = static_cast<int>(fScale * 32.0f + static_cast<float>(nY));
-    extentText.w = ideal.w;
+    extentText.w = nIdealW;
     extentText.h = static_cast<int>(fScale * 24.0f);
     m_textCount.SetExtent(extentText);
 #endif

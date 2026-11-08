@@ -1245,15 +1245,13 @@ void PartShadow::Draw(bool)
     if (CurrentCamera != 0)
     {
         const Plane& plane = CurrentCamera->m_viewState.m_aViewVolumes[1];
-        if (ShadowPlaneCornerDist(m_vBBoxMax.x, m_vBBoxMax.y, m_vBBoxMax.z, plane) > 0.0f ||
-            ShadowPlaneCornerDist(m_vBBoxMin.x, m_vBBoxMax.y, m_vBBoxMax.z, plane) > 0.0f ||
-            ShadowPlaneCornerDist(m_vBBoxMax.x, m_vBBoxMin.y, m_vBBoxMax.z, plane) > 0.0f ||
-            ShadowPlaneCornerDist(m_vBBoxMin.x, m_vBBoxMin.y, m_vBBoxMax.z, plane) > 0.0f ||
-            ShadowPlaneCornerDist(m_vBBoxMax.x, m_vBBoxMax.y, m_vBBoxMin.z, plane) > 0.0f ||
-            ShadowPlaneCornerDist(m_vBBoxMin.x, m_vBBoxMax.y, m_vBBoxMin.z, plane) > 0.0f ||
-            ShadowPlaneCornerDist(m_vBBoxMax.x, m_vBBoxMin.y, m_vBBoxMin.z, plane) > 0.0f ||
-            ShadowPlaneCornerDist(m_vBBoxMin.x, m_vBBoxMin.y, m_vBBoxMin.z, plane) > 0.0f)
-            bVisible = true;
+        for (int i = 0; i < 8; i++) {
+            if (ShadowPlaneCornerDist((i & 1) ? m_vBBoxMin.x : m_vBBoxMax.x, (i & 2) ? m_vBBoxMin.y : m_vBBoxMax.y,
+                                      (i & 4) ? m_vBBoxMin.z : m_vBBoxMax.z, plane) > 0.0f) {
+                bVisible = true;
+                break;
+            }
+        }
     }
 
     SetupVertexArrays();
@@ -2351,47 +2349,18 @@ void PartTriMesh::Project(const Vector& light, float fDist, const Plane& plane, 
                 float fFaceDist = rec.m_fDist;
                 if (fFaceDist < 0.0f)
                     continue;
-                if (rec.m_anNeighbors[0] != -1 &&
-                    fFaceDist * g_aShadowFaces[rec.m_anNeighbors[0]].m_fDist > 0.0f)
+                for (unsigned char k = 0; k < 3; k++)
                 {
-                }
-                else
-                {
-                    short v0 = rec.m_anVertIndices[0];
-                    short v1 = rec.m_anVertIndices[1];
+                    short nNeighbor = rec.m_anNeighbors[k];
+                    if (nNeighbor != -1 && fFaceDist * g_aShadowFaces[nNeighbor].m_fDist > 0.0f)
+                        continue;
+                    short v0 = rec.m_anVertIndices[k];
+                    short v1 = rec.m_anVertIndices[(k + 1) % 3];
                     pOut[0] = v0;
                     pOut[1] = v1;
                     pOut += 2;
                     GLRender::m_UsedVertices[v0] = 1;
                     GLRender::m_UsedVertices[v1] = 1;
-                }
-                if (rec.m_anNeighbors[1] != -1 &&
-                    fFaceDist * g_aShadowFaces[rec.m_anNeighbors[1]].m_fDist > 0.0f)
-                {
-                }
-                else
-                {
-                    short v1 = rec.m_anVertIndices[1];
-                    short v2 = rec.m_anVertIndices[2];
-                    pOut[0] = v1;
-                    pOut[1] = v2;
-                    pOut += 2;
-                    GLRender::m_UsedVertices[v1] = 1;
-                    GLRender::m_UsedVertices[v2] = 1;
-                }
-                if (rec.m_anNeighbors[2] != -1 &&
-                    fFaceDist * g_aShadowFaces[rec.m_anNeighbors[2]].m_fDist > 0.0f)
-                {
-                }
-                else
-                {
-                    short v2 = rec.m_anVertIndices[2];
-                    short v0 = rec.m_anVertIndices[0];
-                    GLRender::m_UsedVertices[v2] = 1;
-                    pOut[0] = v2;
-                    pOut[1] = v0;
-                    pOut += 2;
-                    GLRender::m_UsedVertices[v0] = 1;
                 }
             }
 
@@ -2587,48 +2556,46 @@ void PartSkin::Project(const Vector& light, float fDist, const Plane& plane, CAu
                 Quaternion(f21, f19, f22, f23));
 #endif
 
-    if (0 < pNode->m_nBoneCount) {
-        int i = 0;
-        do {
-            int bone = static_cast<int>(pNode->m_paBoneMap[i]);
-            if (bone != -1) {
-                const Quaternion& qa = qbones.m_pData[i];
-                float aw = qa.w;
-                float rx, ry, rz;
-                if (quaternionidentityoptimization == 0 || (aw != 1.0f && aw != -1.0f)) {
-                    float ax = qa.x, ay = qa.y, az = qa.z;
-                    const Vector& vb = pNode->m_lTBoneRefInv.m_pData[i];
-                    float bx = vb.x, by = vb.y, bz = vb.z;
-                    float t1 = ay * ay + az * az;
-                    float t2 = ax * ax + az * az;
-                    float t3 = ax * ay - aw * az;
-                    float t4 = ax * ay + aw * az;
-                    float t5 = aw * ay + ax * az;
-                    float t6 = ax * az - aw * ay;
-                    float t7 = ay * az - aw * ax;
-                    float t8 = aw * ax + ay * az;
-                    float t9 = ax * ax + ay * ay;
-                    rx = (1.0f - (t1 + t1)) * bx + (t3 + t3) * by + (t5 + t5) * bz;
-                    ry = (t4 + t4) * bx + (1.0f - (t2 + t2)) * by + (t7 + t7) * bz;
-                    rz = (t6 + t6) * bx + (t8 + t8) * by + (1.0f - (t9 + t9)) * bz;
-                } else {
-                    const Vector& vb = pNode->m_lTBoneRefInv.m_pData[i];
-                    rx = vb.x; ry = vb.y; rz = vb.z;
-                }
-                Vector& tv = tbones.m_pData[i];
-                tv.x = rx + tv.x;
-                tv.y = ry + tv.y;
-                tv.z = rz + tv.z;
-                Quaternion* pAccQuat = &qbones.m_pData[i];
-                *pAccQuat = *pAccQuat * pNode->m_lQBoneRefInv.m_pData[i];
-                Matrix m = pAccQuat->getmatrix();
-                int ib = bone * 3;
-                GLRender::SetVertexShaderConstant(ib + 18, m.m_f[0], m.m_f[3], m.m_f[6], tbones.m_pData[i].x);
-                GLRender::SetVertexShaderConstant(ib + 19, m.m_f[1], m.m_f[4], m.m_f[7], tbones.m_pData[i].y);
-                GLRender::SetVertexShaderConstant(ib + 20, m.m_f[2], m.m_f[5], m.m_f[8], tbones.m_pData[i].z);
+    int i = 0;
+    while (i < pNode->m_nBoneCount) {
+        int bone = static_cast<int>(pNode->m_paBoneMap[i]);
+        if (bone != -1) {
+            const Quaternion& qa = qbones.m_pData[i];
+            float aw = qa.w;
+            float rx, ry, rz;
+            if (quaternionidentityoptimization == 0 || (aw != 1.0f && aw != -1.0f)) {
+                float ax = qa.x, ay = qa.y, az = qa.z;
+                const Vector& vb = pNode->m_lTBoneRefInv.m_pData[i];
+                float bx = vb.x, by = vb.y, bz = vb.z;
+                float t1 = ay * ay + az * az;
+                float t2 = ax * ax + az * az;
+                float t3 = ax * ay - aw * az;
+                float t4 = ax * ay + aw * az;
+                float t5 = aw * ay + ax * az;
+                float t6 = ax * az - aw * ay;
+                float t7 = ay * az - aw * ax;
+                float t8 = aw * ax + ay * az;
+                float t9 = ax * ax + ay * ay;
+                rx = (1.0f - (t1 + t1)) * bx + (t3 + t3) * by + (t5 + t5) * bz;
+                ry = (t4 + t4) * bx + (1.0f - (t2 + t2)) * by + (t7 + t7) * bz;
+                rz = (t6 + t6) * bx + (t8 + t8) * by + (1.0f - (t9 + t9)) * bz;
+            } else {
+                const Vector& vb = pNode->m_lTBoneRefInv.m_pData[i];
+                rx = vb.x; ry = vb.y; rz = vb.z;
             }
-            i++;
-        } while (i < pNode->m_nBoneCount);
+            Vector& tv = tbones.m_pData[i];
+            tv.x = rx + tv.x;
+            tv.y = ry + tv.y;
+            tv.z = rz + tv.z;
+            Quaternion* pAccQuat = &qbones.m_pData[i];
+            *pAccQuat = *pAccQuat * pNode->m_lQBoneRefInv.m_pData[i];
+            Matrix m = pAccQuat->getmatrix();
+            int ib = bone * 3;
+            GLRender::SetVertexShaderConstant(ib + 18, m.m_f[0], m.m_f[3], m.m_f[6], tbones.m_pData[i].x);
+            GLRender::SetVertexShaderConstant(ib + 19, m.m_f[1], m.m_f[4], m.m_f[7], tbones.m_pData[i].y);
+            GLRender::SetVertexShaderConstant(ib + 20, m.m_f[2], m.m_f[5], m.m_f[8], tbones.m_pData[i].z);
+        }
+        i++;
     }
 
     GLRender::SetFrontFace(Aurora::kCullCW);

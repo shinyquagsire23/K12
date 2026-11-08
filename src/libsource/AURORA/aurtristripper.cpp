@@ -15,11 +15,11 @@
 
 class NvStripInfo;
 
-// NvTriStrip's MyFace holds three vertex indices and a face normal. AurStripify fills only the
-// indices.
+// NvTriStrip's MyFace holds three vertex indices and a face normal, all scalars (no array member:
+// the stack protector groups AurStripify's face with the vectors). AurStripify fills only the indices.
 struct MyFace {
-    int m_nIndex[3];
-    float m_fNormal[3];
+    int m_v1, m_v2, m_v3;
+    float m_nx, m_ny, m_nz;
 };
 
 // NvTriStrip's MyVertex holds a position and a normal.
@@ -1327,6 +1327,7 @@ void NvStripInfo::Combine(const NvFaceInfoVec& forward, const NvFaceInfoVec& bac
 void AurStripify(List<int>& faceIndices, List<List<int> >& stripList)
 {
     std::vector<MyFace> faces;
+    MyFace face;
     std::vector<NvStripInfo*> stripInfos;
     std::vector<unsigned short> strips;
     std::vector<unsigned short> stripLengths;
@@ -1335,10 +1336,9 @@ void AurStripify(List<int>& faceIndices, List<List<int> >& stripList)
     NvStripifier* pStripifier = new NvStripifier();
 
     for (int i = 0; i < faceIndices.m_count; i += 3) {
-        MyFace face;
-        face.m_nIndex[0] = faceIndices.m_pData[i];
-        face.m_nIndex[1] = faceIndices.m_pData[i + 1];
-        face.m_nIndex[2] = faceIndices.m_pData[i + 2];
+        face.m_v1 = faceIndices.m_pData[i];
+        face.m_v2 = faceIndices.m_pData[i + 1];
+        face.m_v3 = faceIndices.m_pData[i + 2];
         faces.push_back(face);
     }
 
@@ -1347,9 +1347,9 @@ void AurStripify(List<int>& faceIndices, List<List<int> >& stripList)
     int n;
     indices.reserve(faces.size() * 3);
     for (unsigned int i = 0; i < faces.size(); i++) {
-        indices.push_back(static_cast<unsigned short>(faces[i].m_nIndex[0]));
-        indices.push_back(static_cast<unsigned short>(faces[i].m_nIndex[1]));
-        indices.push_back(static_cast<unsigned short>(faces[i].m_nIndex[2]));
+        indices.push_back(static_cast<unsigned short>(faces[i].m_v1));
+        indices.push_back(static_cast<unsigned short>(faces[i].m_v2));
+        indices.push_back(static_cast<unsigned short>(faces[i].m_v3));
     }
 
     pStripifier->Stripify(indices, 16, 2, faces, stripInfos, faceInfos);
@@ -1360,15 +1360,18 @@ void AurStripify(List<int>& faceIndices, List<List<int> >& stripList)
     nStrips = static_cast<int>(stripLengths.size()) + 1;
     stripList.SetSize(nStrips);
 
+    // EFFECTIVE (K2 armv7): `i` and `n` take each other's register; the spellings of `n` tried tie.
     n = 0;
     for (unsigned int i = 0; i < stripLengths.size(); i++)
         for (int j = 0; j < static_cast<int>(stripLengths[i]); j++)
             stripList[i].Add(strips[n++]);
 
+    // The loose faces go in the last list.
+    unsigned int nLast = static_cast<unsigned int>(stripLengths.size());
     for (unsigned int i = 0; i < faceInfos.size(); i++) {
-        stripList[nStrips - 1].Add(faceInfos[i]->m_v0);
-        stripList[nStrips - 1].Add(faceInfos[i]->m_v1);
-        stripList[nStrips - 1].Add(faceInfos[i]->m_v2);
+        stripList[nLast].Add(faceInfos[i]->m_v0);
+        stripList[nLast].Add(faceInfos[i]->m_v1);
+        stripList[nLast].Add(faceInfos[i]->m_v2);
     }
 
     for (int64_t i = static_cast<int64_t>(facestodelete.m_count) - 1; i != -1; i--)

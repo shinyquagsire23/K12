@@ -1435,10 +1435,7 @@ bool CSWCModule::SetFreeLookCamera(unsigned long long oid) {
         CSWCameraOnAStick* pOnAStick = static_cast<CSWCameraOnAStick*>(m_pCamera->GetBehavior(BEHAVIOR_CAMERA_ON_A_STICK));
         if (pOnAStick != 0) {
             pOnAStick->SaveCameraSettings(m_cSavedCameraSettings);
-            Vector vCameraPos = pOnAStick->GetPosition();
-            Vector vFacing;
-            vFacing.x = pCreature->m_position.x - vCameraPos.x;
-            vFacing.y = pCreature->m_position.y - vCameraPos.y;
+            Vector vFacing = pCreature->m_position - pOnAStick->GetPosition();
             vFacing.z = 0.0f;
             pCreature->SetOrientation(normalize(vFacing));
         }
@@ -1728,20 +1725,11 @@ void CSWCModule::UpdateCameraModeSW(float fDeltaTime) {
         m_bAutoTurnSuppressed = (m_bCameraMoved != 0);
         if (m_bCameraMoved == 0) {
             // The camera is asked for its position twice, over two vectors that are zeroed first.
-            Vector vDiff1;
             Vector vDiff2;
-            __builtin_memset(&vDiff1, 0, sizeof(Vector));
-            __builtin_memset(&vDiff2, 0, sizeof(Vector));
+            Vector vDiff1;
 
-            Vector vPos1 = m_pCamera->GetPosition();
-            vDiff1.x = m_vSavedPlayerPos.x - vPos1.x;
-            vDiff1.y = m_vSavedPlayerPos.y - vPos1.y;
-            vDiff1.z = m_vSavedPlayerPos.z - vPos1.z;
-
-            Vector vPos2 = m_pCamera->GetPosition();
-            vDiff2.x = pPlayer->m_position.x - vPos2.x;
-            vDiff2.y = pPlayer->m_position.y - vPos2.y;
-            vDiff2.z = pPlayer->m_position.z - vPos2.z;
+            vDiff1 = m_vSavedPlayerPos - m_pCamera->GetPosition();
+            vDiff2 = pPlayer->m_position - m_pCamera->GetPosition();
 
             float fLenSq1 = vDiff1.x * vDiff1.x + vDiff1.y * vDiff1.y + vDiff1.z * vDiff1.z;
             if (fLenSq1 > 1e-05f) {

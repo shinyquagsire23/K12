@@ -156,12 +156,12 @@ void FireGunCallback(CAurObject* pObject, char* pszEvent, void* pData)
                 pTrack->m_vTargetOffset);
 #else
         Quaternion qTarget = pTrack->m_pTarget.m_pObject->GetOrientation();
-        Vector     vTarget = pTrack->m_pTarget.m_pObject->GetPosition();
 
         // The local offset is carried into world space by the target's orientation, then the sum is
         // rotated back by the inverse of that orientation.
         Vector vTargetPos = RotateByQuaternionInverse(
-            RotateByQuaternion(vTarget, qTarget) + pTrack->m_vTargetOffset, qTarget);
+            RotateByQuaternion(pTrack->m_pTarget.m_pObject->GetPosition(), qTarget) + pTrack->m_vTargetOffset,
+            qTarget);
 #endif
         Vector vAim = vTargetPos;
 

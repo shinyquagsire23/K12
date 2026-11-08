@@ -1298,13 +1298,13 @@ int Gob::SetTextureAttributes(char* a, char* b)
 {
     List<CAurTexture*> textures;
     GetAllNamedTextures(m_pPart, textures, a);
-    CAurTexture** pData = textures.m_pData;
-    int n = textures.m_count;
-    if (n < 1)
-        return 0;
-    for (int i = 0; i < n; i++)
-        AurTextureSetAttributes(pData[i], b);
-    return 1;
+    if (textures.m_count >= 1)
+    {
+        for (int i = 0; i < textures.m_count; i++)
+            AurTextureSetAttributes(textures.m_pData[i], b);
+        return 1;
+    }
+    return 0;
 }
 
 const char* spewpltnames(char* pszArgs)
@@ -4093,7 +4093,7 @@ unsigned int AnimMeshHitCheck(PartAnimMesh* part, MdlNodeAnimMesh* node, Vector 
     Vector* pool = static_cast<Vector*>(GLRender::LockPool(poolId, 0, 0, 8));
 
     if (scale == 1.0f) {
-        for (int64_t i = 0; i < node->m_faces.m_count; i++) {
+        for (int i = 0; i < node->m_faces.m_count; i++) {
             MdlNodeAnimMesh::Face* face = &node->Faces()[i];
             Vector verts[3];
             verts[0] = pool[static_cast<int64_t>(face->m_Index0)];
@@ -4102,7 +4102,7 @@ unsigned int AnimMeshHitCheck(PartAnimMesh* part, MdlNodeAnimMesh* node, Vector 
             result |= polyhit(verts, 3, a, b, &b, 0);
         }
     } else {
-        for (int64_t i = 0; i < node->m_faces.m_count; i++) {
+        for (int i = 0; i < node->m_faces.m_count; i++) {
             MdlNodeAnimMesh::Face* face = &node->Faces()[i];
             Vector verts[3];
             verts[0] = pool[static_cast<int64_t>(face->m_Index0)] * scale;
@@ -4724,10 +4724,10 @@ int PartTriMesh::HitCheckGeom(Vector const& a, Vector& b, Vector* c, CHitInfo* h
 
     int result = 0;
     if (f == 1.0f) {
-        if (!BoxIntersect(a, b, node->m_vMin, node->m_vMax) || node->m_faces.m_count < 1)
+        if (!BoxIntersect(a, b, node->m_vMin, node->m_vMax))
             return 0;
         float* pVertices = node->m_paVertices;
-        for (int64_t i = 0; i < node->m_faces.m_count; i++) {
+        for (int i = 0; i < node->m_faces.m_count; i++) {
             TriFace& face = reinterpret_cast<TriFace*>(node->m_faces.m_pData)[i];
             Vector verts[3];
             for (int k = 0; k < 3; k++) {
@@ -4739,10 +4739,10 @@ int PartTriMesh::HitCheckGeom(Vector const& a, Vector& b, Vector* c, CHitInfo* h
             result |= polyhit(verts, 3, face.vNode, face.fScale, a, b, &b);
         }
     } else {
-        if (!BoxIntersect(a, b, node->m_vMin * f, node->m_vMax * f) || node->m_faces.m_count < 1)
+        if (!BoxIntersect(a, b, node->m_vMin * f, node->m_vMax * f))
             return 0;
         float* pVertices = node->m_paVertices;
-        for (int64_t i = 0; i < node->m_faces.m_count; i++) {
+        for (int i = 0; i < node->m_faces.m_count; i++) {
             TriFace& face = reinterpret_cast<TriFace*>(node->m_faces.m_pData)[i];
             Vector verts[3];
             for (int k = 0; k < 3; k++) {

@@ -369,7 +369,7 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
 
     BuildSortedFeatList(feats);
 
-    for (int64_t nIdx = 0; nIdx < feats.m_count; nIdx++) {
+    for (int nIdx = 0; nIdx < feats.m_count; nIdx++) {
         pFeat = g_pRules->GetFeat(feats.m_pArray[nIdx]);
         if (!pFeat)
             continue;
@@ -417,7 +417,7 @@ void CSWGuiSkillFlowChart::CreateFeatChart(CSWCCreatureStats* pStats, int nBonus
     int bGrant = 0;
     BuildSortedFeatList(feats);
 
-    for (int64_t nIdx = 0, nNext = 1; nIdx < feats.m_count; nIdx++, nNext++) {
+    for (int nIdx = 0, nNext = 1; nIdx < feats.m_count; nIdx++, nNext++) {
         pFeat = g_pRules->GetFeat(feats.m_pArray[nIdx]);
         if (feats.m_pArray[nIdx] == CSWSCreatureStats::FEAT_COMPLEX_UNARMED_ANIMS)
             continue;

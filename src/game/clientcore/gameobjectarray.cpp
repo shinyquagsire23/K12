@@ -242,67 +242,51 @@ INSERT:
 
 unsigned char CGameObjectArray::AddCharacterObjectAtPos(unsigned long long id, CGameObject* pObject)
 {
-    unsigned char status = 1;
-    unsigned int nId;
-    unsigned long long list;
-    unsigned long long idx;
-    unsigned int* pCounter;
-    CGameObjectArrayNode* pNode;
-    CGameObjectArrayNode** ppBucket;
-    CGameObjectArrayNode* pHead;
-    CGameObjectArrayNode* pCur;
-    CGameObjectArrayNode* pPrev;
-
     if (__builtin_expect(pObject == 0, 0))
-        goto RETURN_NULL;
+        return 4;
     if (__builtin_expect((static_cast<unsigned int>(id) & OBJECT_INVALID) != 0, 0))
-        goto END;
-    nId = static_cast<unsigned int>(id) & ID_VALUE_MASK;
-    if (__builtin_expect(nId <= OBJECT_INVALID, 0))
-        goto END;
+        return 1;
+    unsigned int nId = static_cast<unsigned int>(id) & ID_VALUE_MASK;
+    if (__builtin_expect(nId < OBJECT_INVALID + 1, 0))
+        return 1;
+    unsigned int list = static_cast<unsigned int>(id >> 31) & 1;
+    unsigned long long idx = (list << 12) + (id & BUCKET_MASK);
+    if (m_nNextCharacterObjectId[list] >= nId)
+        m_nNextCharacterObjectId[list] = nId - 1;
 
-    list = (id >> 31) & 1;
-    idx = (list << 12) | (id & BUCKET_MASK);
-    pCounter = &m_nNextCharacterObjectId[list];
-    if (nId <= *pCounter)
-        *pCounter = nId - 1;
-
-    pNode = static_cast<CGameObjectArrayNode*>(::operator new(sizeof(CGameObjectArrayNode)));
+    CGameObjectArrayNode* pNode = static_cast<CGameObjectArrayNode*>(::operator new(sizeof(CGameObjectArrayNode)));
     pNode->m_id = nId;
     pNode->m_pObject = pObject;
     pNode->m_pNext = 0;
 
-    ppBucket = &m_paBuckets[idx];
-    pHead = *ppBucket;
-    status = 0;
-    if (pHead != 0)
+    CGameObjectArrayNode* pCur = m_paBuckets[idx];
+    if (pCur == 0)
     {
-        if (pHead->m_id > nId)
-        {
-            pCur = pHead;
-            do
-            {
-                pPrev = pCur;
-                pCur = pPrev->m_pNext;
-                if (pCur == 0)
-                    goto INSERT_AFTER_PREV;
-            } while (pCur->m_id > nId);
-            if (pPrev != 0)
-            {
-INSERT_AFTER_PREV:
-                pNode->m_pNext = pPrev->m_pNext;
-                pPrev->m_pNext = pNode;
-                goto END;
-            }
-        }
-        pNode->m_pNext = pHead;
+        m_paBuckets[idx] = pNode;
+        return 0;
     }
-    *ppBucket = pNode;
-    goto END;
-RETURN_NULL:
-    status = 4;
-END:
-    return status;
+    CGameObjectArrayNode* pPrev = 0;
+    while (pCur != 0)
+    {
+        if (pCur->m_id <= nId)
+            break;
+        pPrev = pCur;
+        pCur = pCur->m_pNext;
+    }
+    if (pCur == 0)
+    {
+        pPrev->m_pNext = pNode;
+        return 0;
+    }
+    if (pPrev == 0)
+    {
+        pNode->m_pNext = m_paBuckets[idx];
+        m_paBuckets[idx] = pNode;
+        return 0;
+    }
+    pNode->m_pNext = pPrev->m_pNext;
+    pPrev->m_pNext = pNode;
+    return 0;
 }
 
 unsigned char CGameObjectArray::AddExternalObject(unsigned long long& id, CGameObject* pObject, int bChar)

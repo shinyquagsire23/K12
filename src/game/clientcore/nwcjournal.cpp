@@ -231,7 +231,7 @@ void CSWCJournal::Remove(const CExoString& sPlotId)
         if (m_active.m_entries.m_pArray[i].m_sPlotId == sPlotId) {
             m_active.m_entries.DelIndex(i);
             int* pSort = m_active.m_sortOrder.m_pArray;
-            for (int64_t k = 0; k < n; k++) {
+            for (int k = 0; k < n; k++) {
                 if (pSort[k] == i) {
                     m_active.m_sortOrder.DelIndex(static_cast<int>(k));
                     n = m_active.m_sortOrder.m_count;
@@ -248,7 +248,7 @@ void CSWCJournal::Remove(const CExoString& sPlotId)
         if (m_done.m_entries.m_pArray[i].m_sPlotId == sPlotId) {
             m_done.m_entries.DelIndex(i);
             int* pSort = m_done.m_sortOrder.m_pArray;
-            for (int64_t k = 0; k < n; k++) {
+            for (int k = 0; k < n; k++) {
                 if (pSort[k] == i) {
                     m_done.m_sortOrder.DelIndex(static_cast<int>(k));
                     n = m_done.m_sortOrder.m_count;

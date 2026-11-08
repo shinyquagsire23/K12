@@ -200,13 +200,13 @@ int CSWCMessage::SendPlayerToServer_LevelUp(CSWCLevelUpStats* pCopy, CSWCLevelUp
     }
 
     unsigned int nMask = 0;
-    for (uint64_t i = 0; i < g_pRules->m_nNumSkills; i++)
+    for (unsigned int i = 0; i < g_pRules->m_nNumSkills; i++)
         if (pReal->m_pSkillRanksBase[i] != pCopy->m_pSkillRanksBase[i])
             nMask |= 1 << i;
 
     WriteDWORD(nMask, 32);
 
-    for (uint64_t i = 0; i < g_pRules->m_nNumSkills; i++)
+    for (unsigned int i = 0; i < g_pRules->m_nNumSkills; i++)
         if (nMask & (1 << i))
             WriteCHAR(pReal->m_pSkillRanksBase[i] - pCopy->m_pSkillRanksBase[i], 8);
 
@@ -1939,8 +1939,7 @@ int CSWCMessage::SendPlayerToServerInput_UseItem(unsigned long long itemId, unsi
         WriteOBJECTIDClient(objId);
     }
 
-    Vector vZero = { 0.0f, 0.0f, 0.0f };
-    if (pos != vZero)
+    if (pos != Vector(0.0f, 0.0f, 0.0f))
     {
         WriteBOOL(1);
         WriteFLOAT(pos.x, 1.0f, 32);
@@ -2345,9 +2344,6 @@ char* verifyallcreatures(char* sArgs) {
     }
 
     int nRows = g_pRules->m_p2DArrays->m_pAppearance->m_nRows;
-    if (nRows < 1) {
-        return const_cast<char*>("Done!");
-    }
 
     for (int i = 0; i < nRows; i++) {
         int nFound = g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(

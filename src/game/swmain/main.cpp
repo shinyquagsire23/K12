@@ -1048,7 +1048,6 @@ void DoConsole(char c)
 // the line end), up and down walk the typed history.
 void DoConsoleHist(unsigned short nKey)
 {
-#if KOTOR1
     bool bConsumed;
     if (nKey == VK_LEFT && g_console.m_nActive != 0) {   // cursor back
         bConsumed = false;
@@ -1059,35 +1058,19 @@ void DoConsoleHist(unsigned short nKey)
         if (bConsumed && g_console.m_nActive != 0) {   // forward, clamped at the line end
             int nCursor = g_console.m_nCursor + 1;
             g_console.m_nCursor = nCursor;
+#if KOTOR1
             g_console.m_nCursor = static_cast<int>(K1Min(static_cast<size_t>(static_cast<unsigned int>(nCursor)),
                                              __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine))));
-            bConsumed = true;
-        }
-    }
-
 #else
-    bool bActive = g_console.m_nActive != 0;
-    bool bConsumed = false;
-
-    if (nKey == VK_LEFT) {          // cursor back
-        if (bActive) {
-            int nPos = g_console.m_nCursor > 1 ? g_console.m_nCursor : 1;
-            g_console.m_nCursor = nPos - 1;
-            bConsumed = false;
-        }
-    } else if (nKey == VK_RIGHT) {   // cursor forward, clamped at the line end
-        if (bActive) {
-            int nCursor = g_console.m_nCursor + 1;
-            g_console.m_nCursor = nCursor;
             g_console.m_nCursor = __strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine))
                                       <= static_cast<uint64_t>(static_cast<unsigned int>(nCursor))
                                       ? static_cast<int>(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)))
                                       : g_console.m_nCursor;
+#endif
+            bConsumed = true;
         }
-        bConsumed = true;
     }
 
-#endif
     if (g_listHistory.m_count == 0)
         return;
 
@@ -1132,8 +1115,8 @@ void DoConsoleHist(unsigned short nKey)
             g_console.m_nCursor = static_cast<int>(__strlen_chk(g_console.m_szLine, sizeof(g_console.m_szLine)));
 #endif
         } else {
-            g_console.m_szLine[0] = 0;
             g_console.m_nCursor = 0;
+            g_console.m_szLine[0] = 0;
         }
     }
 }
@@ -1530,10 +1513,10 @@ int64_t WinMessageHandler(HWND__* hWnd, unsigned int msg, unsigned long long wPa
     switch (msg) {
     case WM_SIZE: {
         if (g_hRenderWnd == hWnd) {
-            if (wParam == SIZE_MAXIMIZED) {
-                g_nReInitializing = 2;
-                return 0;
-            }
+            if (wParam != SIZE_MAXIMIZED)
+                return DefWindowProcA(hWnd, msg, wParam, lParam);
+            g_nReInitializing = 2;
+            return 0;
         }
         break;
     }
@@ -2084,12 +2067,12 @@ void GameEnteredBackground()
             }
             SDL_Event* pEvent = pEvents + nEvents;
             if (nEvents > 0 && pEvent[-1].type != SDL_APP_WILLENTERBACKGROUND) {
-                for (int64_t i = nEvents; i > 0; i--, pEvent--) {
+                for (int i = nEvents; i > 0; i--, pEvent--) {
                     if (pEvent[-1].type == SDL_APP_DIDENTERBACKGROUND) {
                         SDL_PushEvent(pEvent - 1);
-                        if (static_cast<int>(i) < nEvents)
+                        if (i < nEvents)
                             SDL_PushEvent(pEvent);
-                        if (static_cast<int>(i) + 1 < nEvents)
+                        if (i + 1 < nEvents)
                             SDL_PushEvent(pEvent + 1);
                         break;
                     }

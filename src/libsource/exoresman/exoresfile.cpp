@@ -1124,7 +1124,7 @@ bool CExoKeyTable::GetTableEntry(unsigned int index, CResRef& outResRef, unsigne
 
 bool CExoKeyTable::GetTableIndex(unsigned int& outIndex, const CResRef& resRef, unsigned short resType)
 {
-    if (m_paEntries == NULL || m_nTableSize == 0)
+    if (m_paEntries == NULL)
         return false;
     for (unsigned int i = 0; i < m_nTableSize; i++) {
         CKeyTableEntry* pEntry = &m_paEntries[i];
@@ -1140,8 +1140,6 @@ bool CExoKeyTable::GetTableIndex(unsigned int& outIndex, const CResRef& resRef, 
 
 int CExoKeyTable::GetEntryCount(int bIncludeStatic)
 {
-    if (m_nTableSize == 0)
-        return 0;
     int count = 0;
     for (unsigned int i = 0; i < m_nTableSize; i++) {
         CKeyTableEntry* pEntry = &m_paEntries[i];
@@ -1308,7 +1306,7 @@ recompute:
 insert_or_dup:
     if (m_paEntries[index].m_dwResID != RESID_INVALID && m_paEntries[index].m_resRef != const_cast<char*>("")) {
         char msg[100] = "CExoKeyTable::AddKey: Duplicate Resource ";
-        char resRefStr[20];
+        char resRefStr[17];
         m_paEntries[index].m_resRef.CopyToString(resRefStr);
         __builtin___strcat_chk(msg, resRefStr, sizeof(msg));
         __builtin___strcat_chk(msg, " - Ignoring Duplicate", sizeof(msg));
@@ -1627,7 +1625,9 @@ int CExoKeyTable::AddKeyTableContents(int)
                     "C:/Users/Vu/Documents/AndroidStudioProjects/KOTOR1-2/KOTOR2_Android/app/"
                     "src/main/cpp/kotor2/CODE/libsource/exoresman/exoresfile.cpp", 1081);
 #endif
-                goto fail;
+                pFile->~CExoFile();
+                operator delete(pFile);
+                return 0;
             }
 
             static_cast<CExoResFile*>(m_paDependentFiles[i])->m_nDrives = pBifEntry->m_nDrives;
@@ -1651,7 +1651,9 @@ int CExoKeyTable::AddKeyTableContents(int)
                     "C:/Users/Vu/Documents/AndroidStudioProjects/KOTOR1-2/KOTOR2_Android/app/"
                     "src/main/cpp/kotor2/CODE/libsource/exoresman/exoresfile.cpp", 1119);
 #endif
-                goto fail;
+                pFile->~CExoFile();
+                operator delete(pFile);
+                return 0;
             }
 
             static_cast<CExoResFile*>(m_paDependentFiles[i])->m_sFileName =
@@ -1782,6 +1784,7 @@ void CExoKeyTable::RebuildTable()
 {
     CKeyTableEntry* pFoundEntry = NULL;
     CExoKeyTable* pFoundTable = NULL;
+    unsigned int nIndex = 0;
 
     CKeyTableEntry* oldEntries = m_paEntries;
     if (oldEntries == NULL) {
@@ -1819,7 +1822,6 @@ void CExoKeyTable::RebuildTable()
             continue;
         }
 
-        unsigned int nIndex;
         if (GetTableIndex(nIndex, pOld->m_resRef, pOld->m_resType)) {
             CKeyTableEntry* pNew = &m_paEntries[nIndex];
             pNew->m_pRes = pOld->m_pRes;

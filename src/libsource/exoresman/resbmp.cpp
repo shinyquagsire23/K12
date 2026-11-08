@@ -105,28 +105,32 @@ unsigned char CResBmp::GetPixelValue(int x, int y)
     int nValue = 0;
     if (m_bLoaded)
     {
-        if (x >= 0 && x < static_cast<BitmapInfoHeader*>(m_pInfoHeader)->m_biWidth &&
-            y >= 0 && y < static_cast<BitmapInfoHeader*>(m_pInfoHeader)->m_biHeight)
+        BitmapInfoHeader* pHeader = static_cast<BitmapInfoHeader*>(m_pInfoHeader);
+        if (x >= 0 && x < pHeader->m_biWidth)
         {
-            switch (static_cast<BitmapInfoHeader*>(m_pInfoHeader)->m_biBitCount)
+            int nHeight = pHeader->m_biHeight;
+            if (y >= 0 && y < nHeight)
             {
-            case 8:
-            {
-                unsigned char* pPixels = static_cast<unsigned char*>(m_pImageData);
-                int nRow = static_cast<BitmapInfoHeader*>(m_pInfoHeader)->m_biHeight - 1 - y;
-                return pPixels[nRow * m_nStride * 4 + x];
-            }
-            case 4:
-            {
-                unsigned char* pPixels = static_cast<unsigned char*>(m_pImageData);
-                int nRow = static_cast<BitmapInfoHeader*>(m_pInfoHeader)->m_biHeight - 1 - y;
-                unsigned char nByte = pPixels[nRow * m_nStride * 4 + (x >> 1)];
-                if (x & 1)
-                    return nByte & LOW_NIBBLE;
-                return nByte >> 4;
-            }
-            default:
-                return 0;
+                switch (pHeader->m_biBitCount)
+                {
+                case 8:
+                {
+                    unsigned char* pPixels = static_cast<unsigned char*>(m_pImageData);
+                    int nRow = nHeight - 1 - y;
+                    return pPixels[nRow * m_nStride * 4 + x];
+                }
+                case 4:
+                {
+                    unsigned char* pPixels = static_cast<unsigned char*>(m_pImageData);
+                    int nRow = nHeight - 1 - y;
+                    unsigned char nByte = pPixels[nRow * m_nStride * 4 + (x >> 1)];
+                    if (x & 1)
+                        return nByte & LOW_NIBBLE;
+                    return nByte >> 4;
+                }
+                default:
+                    return 0;
+                }
             }
         }
     }

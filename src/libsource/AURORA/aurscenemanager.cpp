@@ -567,7 +567,7 @@ int HitPartOnBSPNode(BSPNode* pNode, Vector vStart, Vector vEnd, Vector* pvHit)
 
     int bHit = 0;
 
-    for (int64_t i = 0; i < pNodeData->m_parts.m_count; i++) {
+    for (int i = 0; i < pNodeData->m_parts.m_count; i++) {
         PartTrigger* pTrigger = pNodeData->m_parts.m_pData[i];
         if (BoxIntersect(vStart, vEnd, pTrigger->m_vBBoxMin, pTrigger->m_vBBoxMax)
             && pTrigger->HitCheck(vStart, vEnd, &vEnd, CurrentHitInfo, 1.0f) != 0) {
@@ -578,7 +578,7 @@ int HitPartOnBSPNode(BSPNode* pNode, Vector vStart, Vector vEnd, Vector* pvHit)
     }
 
     if (hitcheck_static_trimesh_parts != 0) {
-        for (int64_t i = 0; i < pNodeData->m_meshes.m_count; i++) {
+        for (int i = 0; i < pNodeData->m_meshes.m_count; i++) {
             if (BoxIntersect(vStart, vEnd, pNodeData->m_meshes.m_pData[i]->m_vBBoxMin,
                              pNodeData->m_meshes.m_pData[i]->m_vBBoxMax)
                 && pNodeData->m_meshes.m_pData[i]->HitCheck(vStart, vEnd, &vEnd, CurrentHitInfo, 1.0f) != 0) {
@@ -597,8 +597,7 @@ int HitPartOnBSPNode(BSPNode* pNode, Vector vStart, Vector vEnd, Vector* pvHit)
         else if (enablenonbspgroundhit != 0 && pNode->m_pFront == 0 && pNode->m_pBack == 0
                  && vEnd.z < 0.0f && vStart.z > 0.0f) {
             if (pvHit != 0) {
-                Vector vNormal(0.0f, 0.0f, 1.0f);
-                *pvHit = planelineintersection(vNormal, 0.0f, vStart, vEnd);
+                *pvHit = planelineintersection(Vector(0.0f, 0.0f, 1.0f), 0.0f, vStart, vEnd);
             }
             bHit = 1;
             hack_nobsp_hit_ground_zero = 1;
@@ -981,6 +980,7 @@ void LightNodeMeshes(BSPNode* pNode, void* pData)
 {
     nodedata* pNodeData = pNode->m_pNodeData;
 
+    List<PartLight*> bucket;
     List<PartLight*> lights;
     lights = static_cast<Scene*>(pData)->m_pLightManager->m_staticLights;
 
@@ -988,15 +988,14 @@ void LightNodeMeshes(BSPNode* pNode, void* pData)
     if (pNodeData->m_pPartAABB != 0)
         meshes.Add(pNodeData->m_pPartAABB);
 
-    List<PartLight*> bucket;
-    for (int64_t m = 0; m < meshes.m_count; m++) {
+    for (int m = 0; m < meshes.m_count; m++) {
+        bucket.m_count = 0;
         PartTriMesh* pMesh = meshes.m_pData[m];
         MdlNodeTriMesh* pTriMesh = pMesh->m_pNode->AsMdlNodeTriMesh();
         Vector v = RotateVector(pTriMesh->m_vCentroid, pMesh->m_qLocalOrientation)
                    + pMesh->m_vLocalPosition;
 
-        bucket.m_count = 0;
-        for (int64_t j = 0; j < lights.m_count; j++) {
+        for (int j = 0; j < lights.m_count; j++) {
             PartLight* pLight = lights.m_pData[j];
             if (pLight->m_nIsDynamic != 0)
                 continue;
@@ -1018,22 +1017,22 @@ void LightNodeTile(BSPNode* pNode, void* pData)
     if (pNodeData->m_pTileData == 0)
         return;
 
+    List<PartLight*> bucket;
     List<PartLight*> lights;
     lights = static_cast<Scene*>(pData)->m_pLightManager->m_staticLights;
 
-    List<PartLight*> bucket;
-    for (int64_t i = 0; i < pNodeData->m_pTileData->m_aParts.m_count; i++) {
+    for (int i = 0; i < pNodeData->m_pTileData->m_aParts.m_count; i++) {
         MdlNodeTriMesh* pTriMesh;
         PartTriMesh* pMesh = pNodeData->m_pTileData->m_aParts.m_pData[i]->AsPartTriMesh();
         if (pMesh == 0)
             continue;
 
+        bucket.m_count = 0;
         pTriMesh = pMesh->m_pNode->AsMdlNodeTriMesh();
         Vector v = RotateVector(pTriMesh->m_vCentroid, pMesh->m_qLocalOrientation)
                    + pMesh->m_vLocalPosition;
 
-        bucket.m_count = 0;
-        for (int64_t j = 0; j < lights.m_count; j++) {
+        for (int j = 0; j < lights.m_count; j++) {
             PartLight* pLight = lights.m_pData[j];
             if (pLight->m_nIsDynamic != 0)
                 continue;
@@ -1301,7 +1300,7 @@ void AddLightToRooms(Scene* pScene, PartLight* pLight)
 {
     int nAdded = 0;
 
-    for (int64_t i = 0; i < pScene->m_rooms.m_count; i++) {
+    for (int i = 0; i < pScene->m_rooms.m_count; i++) {
         CAurRoom* pRoom = pScene->m_rooms.m_pData[i];
         if (pLight->m_vWorldPosition.x >= pRoom->m_bboxMin.x
             && pLight->m_vWorldPosition.y >= pRoom->m_bboxMin.y
@@ -1313,7 +1312,7 @@ void AddLightToRooms(Scene* pScene, PartLight* pLight)
     }
 
     if (nAdded == 0) {
-        for (int64_t i = 0; i < pScene->m_rooms.m_count; i++)
+        for (int i = 0; i < pScene->m_rooms.m_count; i++)
             pScene->m_rooms.m_pData[i]->m_pNodeData->m_movingLights.Add(pLight);
     }
 }
@@ -1355,13 +1354,13 @@ void AddObjectToRooms(Scene* pScene, Gob* pGob)
     if (pGob->m_pModel != 0 && (pGob->m_pModel->m_nFlags & 4) != 0) {
         vWorldPos = pGob->m_vPosition;
     } else {
-        Vector vCenter = (pGob->m_vBoundingBoxMin + pGob->m_vBoundingBoxMax) * 0.5f;
-        vWorldPos = pGob->m_vPosition + RotateVector(vCenter, pGob->m_qOrientation);
+        vWorldPos = pGob->m_vPosition
+                    + RotateVector((pGob->m_vBoundingBoxMin + pGob->m_vBoundingBoxMax) * 0.5f, pGob->m_qOrientation);
     }
 
     int nAdded = 0;
     if (pGob->m_pModel == 0 || (pGob->m_pModel->m_nFlags & Model::kModelRoom) == 0) {
-        for (int64_t i = 0; i < pScene->m_rooms.m_count; i++) {
+        for (int i = 0; i < pScene->m_rooms.m_count; i++) {
             CAurRoom* pRoom = pScene->m_rooms.m_pData[i];
             if (vWorldPos.x >= pRoom->m_bboxMin.x
                 && vWorldPos.y >= pRoom->m_bboxMin.y
@@ -1375,7 +1374,7 @@ void AddObjectToRooms(Scene* pScene, Gob* pGob)
     }
 
     if (nAdded == 0) {
-        for (int64_t i = 0; i < pScene->m_rooms.m_count; i++)
+        for (int i = 0; i < pScene->m_rooms.m_count; i++)
             pScene->m_rooms.m_pData[i]->m_pNodeData->m_movingObjects.Add(pGob);
         crap = 999;
     }
@@ -1441,8 +1440,7 @@ void LightPartTriMesh(PartTriMesh* pPart, List<PartLight*> lights, Scene* pScene
         return;
 
     if (lights.m_count == 0) {
-        Vector vZero;
-        if (equal(pPart->m_vSelfIllumColor, vZero)) {
+        if (equal(pPart->m_vSelfIllumColor, Vector())) {
             if (pPart->m_bHasColorPool) {
                 GLRender::DeletePool(pPart->m_nColorPool);
                 pPart->m_nColorPool = -1;
@@ -1803,9 +1801,11 @@ void ManageSceneBSP(Scene* pScene)
 
     if (pScene->m_rooms.m_count != 0) {
         if (pScene->m_bHasBins) {
-            for (int64_t i = 0; i < rooms.m_count; i++)
-                BSPTraverse(rooms.m_pData[i], CurrentCamera->m_vPosition,
-                            CAurTriangleBin::m_fFarRadiusSquared, CollectBins);
+            if (rooms.m_count > 0) {
+                for (int64_t i = 0; i < rooms.m_count; i++)
+                    BSPTraverse(rooms.m_pData[i], CurrentCamera->m_vPosition,
+                                CAurTriangleBin::m_fFarRadiusSquared, CollectBins);
+            }
 
             AurProcessActiveBins();
         }
@@ -2027,7 +2027,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
         return;
 
     // The leaf's own gobs.
-    for (int64_t i = 0; i < pNodeData->m_gobs.m_count; i++) {
+    for (int i = 0; i < pNodeData->m_gobs.m_count; i++) {
         Gob* pGob = pNodeData->m_gobs.m_pData[i];
         if (GobOutside(pGob, planes)) {
             countculledgobs++;
@@ -2040,7 +2040,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
 
     // The gobs a room registered here this frame, copied before the walk.
     List<Gob*> gobList = pNodeData->m_movingObjects;
-    for (int64_t i = 0; i < gobList.m_count; i++) {
+    for (int i = 0; i < gobList.m_count; i++) {
         Gob* pGob = gobList.m_pData[i];
 
         if (pGob->IsInViewVolume())
@@ -2056,7 +2056,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
     }
 
     // The leaf's own emitters.
-    for (int64_t i = 0; i < pNodeData->m_emitters.m_count; i++) {
+    for (int i = 0; i < pNodeData->m_emitters.m_count; i++) {
         PartEmitter* pEmitter = pNodeData->m_emitters.m_pData[i];
         if (!PartOutside(pEmitter, planes))
             emitterbucket.Add(pEmitter);
@@ -2065,7 +2065,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
     // The emitters a room registered here this frame. One that is outside the volume is
     // still drawn when its model name matches the one hard-coded exception.
     List<PartEmitter*> emitterList = pNodeData->m_movingEmitters;
-    for (int64_t i = 0; i < emitterList.m_count; i++) {
+    for (int i = 0; i < emitterList.m_count; i++) {
         PartEmitter* pEmitter = emitterList.m_pData[i];
         if (!PartOutside(pEmitter, planes)
             || strstr(_strupr(pEmitter->m_pNode->m_pTree->m_szName), "BAODUR") != 0)
@@ -2082,7 +2082,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
 
     // Meshes get the distance and ratio cull, then the plane sweep.
     if (renderaabb == 0) {
-        for (int64_t i = 0; i < pNodeData->m_meshes.m_count; i++) {
+        for (int i = 0; i < pNodeData->m_meshes.m_count; i++) {
             PartTriMesh* pMesh = pNodeData->m_meshes.m_pData[i];
 #ifdef K2_MOBILE_OPT   // the mobile port's size-over-distance cull; the PC lineage has only the planes
             MdlNodeTriMesh* pMdlNode = static_cast<MdlNodeTriMesh*>(pMesh->m_pNode);
@@ -2105,7 +2105,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
     }
 
     // Shadows, triggers and beams.
-    for (int64_t i = 0; i < pNodeData->m_shadows.m_count; i++) {
+    for (int i = 0; i < pNodeData->m_shadows.m_count; i++) {
         PartShadow* pShadow = pNodeData->m_shadows.m_pData[i];
         if (PartOutside(pShadow, planes)) {
             countculledshadows++;
@@ -2115,7 +2115,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
         staticshadowbucket.Add(pShadow);
     }
 
-    for (int64_t i = 0; i < pNodeData->m_parts.m_count; i++) {
+    for (int i = 0; i < pNodeData->m_parts.m_count; i++) {
         PartTrigger* pTrigger = pNodeData->m_parts.m_pData[i];
         if (PartOutside(pTrigger, planes))
             continue;
@@ -2123,7 +2123,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
         triggerbucket.AddUnique(pTrigger);
     }
 
-    for (int64_t i = 0; i < pNodeData->m_beams.m_count; i++) {
+    for (int i = 0; i < pNodeData->m_beams.m_count; i++) {
         PartBeam* pBeam = pNodeData->m_beams.m_pData[i];
         if (PartOutside(pBeam, planes)) {
             countculledbeams++;
@@ -2134,7 +2134,7 @@ static void ProcessParts(BSPNode* pNode, void* pData, List<Plane>& planes)
     }
 
     // Bins.
-    for (int64_t i = 0; i < pNodeData->m_bins.m_count; i++) {
+    for (int i = 0; i < pNodeData->m_bins.m_count; i++) {
         CAurTriangleBin* pBin = pNodeData->m_bins.m_pData[i];
         if (BinOutside(pBin, planes))
             continue;

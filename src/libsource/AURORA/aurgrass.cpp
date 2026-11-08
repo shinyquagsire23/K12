@@ -411,7 +411,7 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
             m_pTexture.m_pObject->Bind();
             ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
-            int64_t i = 0;
+            int i = 0;
             int nStart = 0;
             while (i < m_texCounts.m_count)
             {
@@ -533,7 +533,7 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
             GLRender::ActivateTextureStage(0);
 
             bool bNoForceSight = (g_ForceSight == 0);
-            int64_t i = 0;
+            int i = 0;
             int nStart = 0;
             while (i < m_texCounts.m_count)
             {
@@ -570,7 +570,7 @@ void CAurTriangleBin::RenderGrassPolys(int nMaterial, const Vector& vCamera, Win
             m_pTexture.m_pObject->Bind();
             ASLgl::glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
-            int64_t i = 0;
+            int i = 0;
             int nStart = 0;
             while (i < m_texCounts.m_count)
             {
@@ -940,27 +940,14 @@ void CAurTriangleBin::CreateArrays()
 
             // Four cumulative style thresholds pick one 0.5-step uv octant.
             float fStyle = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
-            const CAurGrassInfo& gi = g_GrassInfo.m_pData[m_nMaterial];
             int nStyle;
-            if (fStyle < gi.m_fProb[0]) {
-                nStyle = 0;
-            } else {
-                fStyle -= gi.m_fProb[0];
-                if (fStyle < gi.m_fProb[1]) {
-                    nStyle = 1;
-                } else {
-                    fStyle -= gi.m_fProb[1];
-                    if (fStyle < gi.m_fProb[2]) {
-                        nStyle = 2;
-                    } else {
-                        fStyle -= gi.m_fProb[2];
-                        if (fStyle < gi.m_fProb[3])
-                            nStyle = 3;
-                        else
-                            nStyle = 0;
-                    }
-                }
+            for (nStyle = 0; nStyle < 4; nStyle++) {
+                if (fStyle < g_GrassInfo.m_pData[m_nMaterial].m_fProb[nStyle])
+                    break;
+                fStyle -= g_GrassInfo.m_pData[m_nMaterial].m_fProb[nStyle];
             }
+            if (nStyle == 4)
+                nStyle = 0;
             fR0 = (nStyle & 1) ? 0.5f : 0.0f;
             fR1 = (nStyle & 2) ? 0.5f : 0.0f;
             float fScale = (static_cast<float>(rand_wincompatible() % 10000) / 10000.0f - 0.5f) * 0.4f + 1.0f;
@@ -1125,9 +1112,6 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
     }
     float fColor = static_cast<float>(static_cast<unsigned int>(nC0 | (nC1 << 8) | (nC2 << 16) | (nC3 << 24)));
 
-    if (nCount <= 0)
-        return;
-
     float fHalf = fWidth * 0.5f;
     float fNegHalf = fWidth * -0.5f;
     int iAttr = 0;   // float index of the current vertex record
@@ -1150,27 +1134,14 @@ void CAurTriangleBin::CreateTriangleGrass(const Vector& v0, const Vector& v1, co
                      static_cast<float>(rand_wincompatible() % 10000) / 10000.0f * 2.0f * 3.1415927f);
 
         float fStyle = static_cast<float>(rand_wincompatible() % 10000) / 10000.0f;
-        const CAurGrassInfo& gi = g_GrassInfo.m_pData[m_nMaterial];
         int nStyle;
-        if (fStyle < gi.m_fProb[0]) {
-            nStyle = 0;
-        } else {
-            fStyle -= gi.m_fProb[0];
-            if (fStyle < gi.m_fProb[1]) {
-                nStyle = 1;
-            } else {
-                fStyle -= gi.m_fProb[1];
-                if (fStyle < gi.m_fProb[2]) {
-                    nStyle = 2;
-                } else {
-                    fStyle -= gi.m_fProb[2];
-                    if (fStyle < gi.m_fProb[3])
-                        nStyle = 3;
-                    else
-                        nStyle = 0;
-                }
-            }
+        for (nStyle = 0; nStyle < 4; nStyle++) {
+            if (fStyle < g_GrassInfo.m_pData[m_nMaterial].m_fProb[nStyle])
+                break;
+            fStyle -= g_GrassInfo.m_pData[m_nMaterial].m_fProb[nStyle];
         }
+        if (nStyle == 4)
+            nStyle = 0;
         fR0 = (nStyle & 1) ? 0.5f : 0.0f;
         fR1 = (nStyle & 2) ? 0.5f : 0.0f;
         float fScale = (static_cast<float>(rand_wincompatible() % 10000) / 10000.0f - 0.5f) * 0.4f + 1.0f;

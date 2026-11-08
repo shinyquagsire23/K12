@@ -407,11 +407,8 @@ int CSWRoomSurfaceMesh::CheckAABBNode(int nodeIndex, const Vector& boxMin, Vecto
         triVerts[1] = m_paVertices.Get(pIndices[1]);
         triVerts[2] = m_paVertices.Get(pIndices[2]);
 #else
-        int64_t triIndex64 = leafTriangleIndex;
-        int* pIndices = &m_paTriVertIndices[triIndex64 * 3];
-        triVerts[0] = m_paVertices[pIndices[0]];
-        triVerts[1] = m_paVertices[pIndices[1]];
-        triVerts[2] = m_paVertices[pIndices[2]];
+        for (int i = 0; i < 3; i++)
+            triVerts[i] = m_paVertices[m_paTriVertIndices[leafTriangleIndex * 3 + i]];
 #endif
         if (!polyhit(triVerts, 3, boxMin, boxMax, &boxMax, &outNormal))
             return 0;
@@ -465,11 +462,7 @@ int CSWRoomSurfaceMesh::CheckAABBAll(Vector boxMin, Vector boxMax, CSWRoomSurfac
     hitInfo.m_materialMask = m_allMaterialsMask;
     int count = CheckAABBNode(m_rootAABBIndex, boxMin, boxMax, hitInfo);
     if (hitInfo.m_triangleIndex == -1) {
-        Vector dir;
-        dir.x = 1.0f;
-        dir.y = 1.0f;
-        dir.z = 0.0f;
-        Vector normDir = normalize(dir);
+        Vector normDir = normalize(Vector(1.0f, 1.0f, 0.0f));
         boxMin.x = normDir.x * 0.001f + boxMin.x;
         boxMin.y = normDir.y * 0.001f + boxMin.y;
         boxMin.z = normDir.z * 0.001f + boxMin.z;
@@ -498,11 +491,7 @@ int CSWRoomSurfaceMesh::CheckAABBWalkable(Vector boxMin, Vector boxMax, CSWRoomS
     hitInfo.m_materialMask = m_walkCheckMaterialMask;
     int count = CheckAABBNode(m_rootAABBIndex, boxMin, boxMax, hitInfo);
     if (hitInfo.m_triangleIndex == -1) {
-        Vector dir;
-        dir.x = 1.0f;
-        dir.y = 1.0f;
-        dir.z = 0.0f;
-        Vector normDir = normalize(dir);
+        Vector normDir = normalize(Vector(1.0f, 1.0f, 0.0f));
         boxMin.x = normDir.x * 0.001f + boxMin.x;
         boxMin.y = normDir.y * 0.001f + boxMin.y;
         boxMin.z = normDir.z * 0.001f + boxMin.z;
@@ -548,8 +537,7 @@ int CSWRoomSurfaceMesh::ClippedLineSegmentWalkable(const Vector& segStart, const
         GetVertex(v[i], &triVerts[i]);
 
     Vector segA = {segStartLocal.x, segStartLocal.y, 1000.0f};
-    Vector segB = {segStartLocal.x, segStartLocal.y, -1000.0f};
-    if (polyhit(triVerts, 3, segA, segB, &hitPoint, &normal)) {
+    if (polyhit(triVerts, 3, segA, Vector(segStartLocal.x, segStartLocal.y, -1000.0f), &hitPoint, &normal)) {
         segStartLocal.z = hitPoint.z;
         clipStart.z = hitPoint.z;
     }
@@ -576,15 +564,16 @@ int CSWRoomSurfaceMesh::ClippedLineSegmentWalkable(const Vector& segStart, const
 
         int side[3];
         int count = 0;
-        side[0] = ((vx[1] - vx[0]) * (segEnd.y - vy[0]) +
-                   (vy[0] - vy[1]) * (segEnd.x - vx[0])) >= 0.0f;
-        count += side[0];
-        side[1] = ((vx[2] - vx[1]) * (segEnd.y - vy[1]) +
-                   (vy[1] - vy[2]) * (segEnd.x - vx[1])) >= 0.0f;
-        count += side[1];
-        side[2] = ((vx[0] - vx[2]) * (segEnd.y - vy[2]) +
-                   (vy[2] - vy[0]) * (segEnd.x - vx[2])) >= 0.0f;
-        count += side[2];
+        for (unsigned char i = 0; i < 3; i++) {
+            int n = (i + 1) % 3;
+            if (((vx[n] - vx[i]) * (segEnd.y - vy[i]) +
+                 (vy[i] - vy[n]) * (segEnd.x - vx[i])) >= 0.0f) {
+                side[i] = 1;
+                count++;
+            } else {
+                side[i] = 0;
+            }
+        }
 
         switch (count) {
         case 0:
@@ -592,10 +581,10 @@ int CSWRoomSurfaceMesh::ClippedLineSegmentWalkable(const Vector& segStart, const
         case 1: {
             Vector isect = {};
             int found = 0;
-            for (int i = 2; i >= 0 && !found; i--) {
+            for (int i = 2; !found && i >= 0; i--) {
                 if (side[i] == 0) {
                     if (IntersectLineSegments2d(segStartLocal, segEndLocal, triVerts[i],
-                                                triVerts[(i + 1) % 3], isect) == 1) {
+                                                triVerts[(i == 2) ? 0 : i + 1], isect) == 1) {
                         tri = adj[i];
                         segStartLocal = isect;
                         found = 1;
@@ -608,33 +597,20 @@ int CSWRoomSurfaceMesh::ClippedLineSegmentWalkable(const Vector& segStart, const
         }
         case 2: {
             Vector isect = {};
-            if (side[2] == 0) {
-                if (!IntersectLineSegments2d(segStartLocal, segEndLocal, triVerts[2],
-                                             triVerts[0], isect))
-                    return 0;
-                tri = adj[2];
-                segStartLocal = isect;
-            }
-            if (side[1] == 0) {
-                if (!IntersectLineSegments2d(segStartLocal, segEndLocal, triVerts[1],
-                                             triVerts[2], isect))
-                    return 0;
-                tri = adj[1];
-                segStartLocal = isect;
-            }
-            if (side[0] == 0) {
-                if (!IntersectLineSegments2d(segStartLocal, segEndLocal, triVerts[0],
-                                             triVerts[1], isect))
-                    return 0;
-                tri = adj[0];
-                segStartLocal = isect;
+            for (int i = 2; i >= 0; i--) {
+                if (side[i] == 0) {
+                    if (!IntersectLineSegments2d(segStartLocal, segEndLocal, triVerts[i],
+                                                 triVerts[(i == 2) ? 0 : i + 1], isect))
+                        return 0;
+                    tri = adj[i];
+                    segStartLocal = isect;
+                }
             }
             break;
         }
         case 3: {
             Vector segA2 = {segEndLocal.x, segEndLocal.y, 1000.0f};
-            Vector segB2 = {segEndLocal.x, segEndLocal.y, -1000.0f};
-            if (polyhit(triVerts, 3, segA2, segB2, &hitPoint, &normal)) {
+            if (polyhit(triVerts, 3, segA2, Vector(segEndLocal.x, segEndLocal.y, -1000.0f), &hitPoint, &normal)) {
                 segEndLocal.z = hitPoint.z;
                 clipEnd.z = hitPoint.z;
             }
@@ -984,7 +960,8 @@ int CSWRoomSurfaceMesh::LoadMeshText(unsigned char* pData, unsigned int size)
                         return 1;
                     }
 #if KOTOR1  // K1: the vertex is read, parsed and snapped in a local, then written back
-                    Vector v = m_paVertices.Get(i);
+                    Vector v;
+                    v = m_paVertices.Get(i);
                     static_cast<void>(sscanf(reinterpret_cast<char*>(lineBuf), "%f %f %f", &v.x, &v.y, &v.z));
                     int qx = static_cast<int>(v.x * 512.0f + 0.5f);
                     if ((qx & VERTEX_SNAP_MASK) == 0)
@@ -1303,7 +1280,7 @@ void CSWRoomSurfaceMesh::ComputeRoomBorder()
                     CSWRoomSurfaceExternalEdge* pOld = edges.m_pArray;
                     edges.m_capacity = (eidx != 0) ? eidx * 2 : 16;
                     edges.m_pArray = new CSWRoomSurfaceExternalEdge[edges.m_capacity];
-                    for (int64_t ei = 0; ei < eidx; ei++) {
+                    for (int ei = 0; ei < eidx; ei++) {
                         K2_ASSUME(ei < edges.m_capacity);   // the new capacity is twice the old count
                         edges.m_pArray[ei] = pOld[ei];
                     }
@@ -1412,19 +1389,15 @@ int CSWRoomSurfaceMesh::WeldEdgeVertices(CSWRoomSurfaceMesh* pOther, float toler
     K2_UNUSED(min); K2_UNUSED(max);
     if (m_bBinaryBacked)
         return 0;
-    if (m_aEdgeAdjacency.m_count < 1)
-        return 0;
 
     int weldCount = 0;
+    Vector v1;
+    Vector v2;
     for (int i = 0; i < m_aEdgeAdjacency.m_count; i++)
     {
-        Vector v1;
         GetEdgeVertex(i, v1);
-        if (pOther->m_aEdgeAdjacency.m_count < 1)
-            continue;
         for (int j = 0; j < pOther->m_aEdgeAdjacency.m_count; j++)
         {
-            Vector v2;
             pOther->GetEdgeVertex(j, v2);
             float dx = v1.x - v2.x;
             float dy = v1.y - v2.y;
@@ -1448,8 +1421,6 @@ int CSWRoomSurfaceMesh::SetRoomAdjacency(CSWRoomSurfaceMesh* pOther, int myRoomI
 {
     K2_UNUSED(min); K2_UNUSED(max);
     if (m_bBinaryBacked)
-        return 0;
-    if (m_aEdgeAdjacency.m_count < 1)
         return 0;
 
     int linkCount = 0;
@@ -1613,14 +1584,12 @@ void CSWRoomSurfaceMesh::AddCrossing(const Vector& segStart, const Vector& dir,
 {
     K2_UNUSED(segStart);
     CExoArrayList<Vector>& points = m_aCrossingPoints;
+    int nCount = m_aCrossingPoints.m_count;
     int i = 0;
-    if (m_aCrossingPoints.m_count > 0)
+    for (; i < nCount; i++)
     {
-        for (; i < m_aCrossingPoints.m_count; i++)
-        {
-            if (dot(point, dir) < dot(points.m_pArray[i], dir))
-                break;
-        }
+        if (dot(point, dir) < dot(points.m_pArray[i], dir))
+            break;
     }
 
     points.Insert(point, i);

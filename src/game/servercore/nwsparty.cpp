@@ -126,8 +126,6 @@ int CSWSFaction::InviteMember(unsigned long long partyId, unsigned long long cre
 
 int CSWSFaction::GetAverageLevel()
 {
-    if (m_members.m_count < 1)
-        return 0;
     int nTotal = 0;
     for (int64_t i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
@@ -166,8 +164,6 @@ int CSWSFaction::GetAverageReputation(unsigned long long oidTarget)
 // the rounding; an empty roster answers 1.
 int CSWSFaction::GetAverageGoodEvilAlignment()
 {
-    if (m_members.m_count < 1)
-        return 1;
     int64_t i;
     int nTotal = 0;
     for (i = 0; i < m_members.m_count; i++) {
@@ -194,8 +190,6 @@ int CSWSFaction::GetAverageGoodEvilAlignment()
 
 int CSWSFaction::GetAverageXP()
 {
-    if (m_members.m_count < 1)
-        return 0;
     int nTotal = 0;
     for (int64_t i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
@@ -592,24 +586,22 @@ unsigned long long CSWSFaction::GetMostDamagedMember(unsigned long long oidCreat
 // many members carry it.
 int CSWSFaction::GetMostFrequentClass()
 {
-    if (m_members.m_count < 1)
-        return 0;
     int nBestClass = 0;
     int nBestCount = 0;
-    for (int64_t i = 0; i < m_members.m_count; i++) {
+    for (int i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =
             g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[i]);
         if (pCreature == 0)
             continue;
-        for (int64_t j = 0; j < pCreature->m_pStats->m_numClasses; j++) {
+        for (int j = 0; j < pCreature->m_pStats->m_numClasses; j++) {
             int nClass = pCreature->m_pStats->GetClass(static_cast<unsigned char>(j));
             int nCount = 0;
-            for (int64_t k = 0; k < m_members.m_count; k++) {
+            for (int k = 0; k < m_members.m_count; k++) {
                 CSWSCreature* pOther =
                     g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(m_members.m_pArray[k]);
                 if (pOther == 0)
                     continue;
-                for (int64_t l = 0; l < pOther->m_pStats->m_numClasses; l++) {
+                for (int l = 0; l < pOther->m_pStats->m_numClasses; l++) {
                     if (pOther->m_pStats->GetClass(static_cast<unsigned char>(l)) == nClass)
                         nCount++;
                 }
@@ -644,8 +636,6 @@ unsigned long long CSWSFaction::GetLeader()
     if (pFactionManager == 0)
         return OBJECT_INVALID;
     if (pFactionManager->GetIsNPCFaction(m_nFactionId) != 0) {
-        if (m_members.m_count < 1)
-            return OBJECT_INVALID;
         float fBest = 0.0f;
         unsigned long long oidResult = OBJECT_INVALID;
         for (int64_t i = 0; i < m_members.m_count; i++) {
@@ -661,8 +651,6 @@ unsigned long long CSWSFaction::GetLeader()
         }
         return oidResult;
     }
-    if (m_members.m_count < 1)
-        return OBJECT_INVALID;
     unsigned long long oidResult = OBJECT_INVALID;
     for (int64_t i = 0; i < m_members.m_count; i++) {
         CSWSCreature* pCreature =

@@ -127,8 +127,6 @@ unsigned char CSWClass::GetSpellGain(unsigned char nLevel, unsigned char nMinLev
 // Nth recommended chargen skill; a generic entry (order 0) is the fallback answer.
 unsigned int CSWClass::GetRecommendedSkill(int nOrder)
 {
-    if (m_nNumClassSkills == 0)
-        return RECOMMENDED_NONE;
     CSWClassSkill* pEntry = m_paClassSkills;
     unsigned short i = 0;
     unsigned int nResult = RECOMMENDED_NONE;
@@ -150,8 +148,6 @@ unsigned int CSWClass::GetRecommendedSkill(int nOrder)
 // generic entry (order 0) is the fallback answer.
 unsigned int CSWClass::GetRecommendedSpell(int bGoodAligned, int nOrder)
 {
-    if (m_nNumRecommendedSpells == 0)
-        return RECOMMENDED_NONE;
     CSWClassSpell* pEntry = m_paRecommendedSpells;
     unsigned short i = 0;
     unsigned int nResult = RECOMMENDED_NONE;
@@ -183,8 +179,6 @@ unsigned int CSWClass::GetRecommendedSpell(int bGoodAligned, int nOrder)
 // Nth recommended chargen feat, taken from the granted-feat table's own order column.
 unsigned int CSWClass::GetRecommendedFeat(int nOrder)
 {
-    if (m_nNumGrantedFeats == 0)
-        return RECOMMENDED_NONE;
     CSWClassGrantedFeat* pEntry = m_paGrantedFeats;
     unsigned short i = 0;
     unsigned int nResult = RECOMMENDED_NONE;
@@ -236,7 +230,7 @@ unsigned char CSWClass::GetSpellsKnownPerLevel(unsigned char nLevel, unsigned ch
 
 int CSWClass::IsSkillClassSkill(unsigned short nSkill)
 {
-    if (nSkill >= g_pRules->m_nNumSkills || m_nNumClassSkills == 0)
+    if (nSkill >= g_pRules->m_nNumSkills)
         return 0;
     for (unsigned short i = 0; i < m_nNumClassSkills; i++)
         if (m_paClassSkills[i].m_nSkill == nSkill)

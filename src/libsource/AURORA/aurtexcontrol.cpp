@@ -335,8 +335,6 @@ unsigned char* TextureController::Height2Channel(unsigned char* pSrc, unsigned c
     int nBPP = m_pTexture->GetBPP();
     if (pDst == 0)
         pDst = new unsigned char[nWidth * nHeight * nBPP];
-    if (nHeight < 1)
-        return pDst;
 
     for (int y = 0; y < nHeight; y++) {
         for (int x = 0; x < nWidth; x++) {
@@ -504,27 +502,25 @@ void WaveTextureController::Control()
     int nWidth = m_pTexture->GetWidth();
     int nHeight = m_pTexture->GetHeight();
 
-    if (nHeight >= 1) {
-        float fDelta = (DeltaT < 0.04f) ? DeltaT : 0.04f;
-        float fDeltaSq = fDelta * fDelta;
-        float afKernel[9] = {
-            0.0f, fDeltaSq, 0.0f,
-            fDeltaSq, 2.0f - 4.0f * fDeltaSq, fDeltaSq,
-            0.0f, fDeltaSq, 0.0f,
-        };
-        for (int y = 0; y < nHeight; y++) {
-            for (int x = 0; x < nWidth; x++) {
-                int nIndex = nWidth * y + x;
-                float fSum = 0.0f;
-                for (int nY = 0; nY < 3; nY++) {
-                    for (int nX = 0; nX < 3; nX++) {
-                        int nNeighbor = ((y + nY + nWidth - 1) % nHeight) * nWidth
-                                      + ((x + nX + nHeight - 1) % nWidth);
-                        fSum = fSum + m_pfHeights[nNeighbor] * afKernel[nY * 3 + nX];
-                    }
+    float fDelta = (DeltaT < 0.04f) ? DeltaT : 0.04f;
+    float fDeltaSq = fDelta * fDelta;
+    float afKernel[9] = {
+        0.0f, fDeltaSq, 0.0f,
+        fDeltaSq, 2.0f - 4.0f * fDeltaSq, fDeltaSq,
+        0.0f, fDeltaSq, 0.0f,
+    };
+    for (int y = 0; y < nHeight; y++) {
+        for (int x = 0; x < nWidth; x++) {
+            int nIndex = nWidth * y + x;
+            float fSum = 0.0f;
+            for (int nY = 0; nY < 3; nY++) {
+                for (int nX = 0; nX < 3; nX++) {
+                    int nNeighbor = ((y + nY + nWidth - 1) % nHeight) * nWidth
+                                  + ((x + nX + nHeight - 1) % nWidth);
+                    fSum = fSum + m_pfHeights[nNeighbor] * afKernel[nY * 3 + nX];
                 }
-                m_pfPrevHeights[nIndex] = fSum - m_pfPrevHeights[nIndex];
             }
+            m_pfPrevHeights[nIndex] = fSum - m_pfPrevHeights[nIndex];
         }
     }
 
@@ -645,7 +641,7 @@ void RandomTextureController::Control()
         if (m_pImage != 0) {
             int nWidth = m_pTexture->GetWidth();
             int nHeight = m_pTexture->GetHeight();
-            for (int64_t y = 0; y < nHeight; y++) {
+            for (int y = 0; y < nHeight; y++) {
                 for (int x = 0; x < nWidth; x++) {
                     m_pNoise[nWidth * y + x] = static_cast<unsigned char>(rand_wincompatible());
                 }
@@ -704,13 +700,13 @@ void PerlinTextureController::BuildPerlinImage(unsigned char* pDst, int nDim)
     }
 
     for (int64_t nY = 0; nY < nDim; nY++) {
-        for (int64_t nX = 0; nX < nDim; nX++)
+        for (int nX = 0; nX < nDim; nX++)
             pDst[nX] = static_cast<unsigned char>(ImageGetPerlinPixel(ppImages, static_cast<int>(nY), static_cast<int>(nX), 4, static_cast<int>(nCount), nDim));
         pDst += nDim;
     }
 
     unsigned char** pp = ppImages;
-    for (int i = static_cast<int>(nCount); i != 0; i--) {
+    for (int64_t i = nCount; i != 0; i--) {
         if (*pp != 0)
             delete[] *pp;
         pp++;
@@ -763,9 +759,9 @@ void DirtyTextureController::Init(int nColor, int nTextureSize, int nFormula, in
     int nAlpha = nColor >> 24;
     int nDest = 0;
     unsigned char* pLayer1Row = pLayer1;
-    for (int64_t nA = 0; nA < nHeight; nA++) {
+    for (int nA = 0; nA < nHeight; nA++) {
         unsigned char* pLayer2Row = pLayer2;
-        for (int64_t nB = 0; nB < nWidth; nB++) {
+        for (int nB = 0; nB < nWidth; nB++) {
             int64_t nLayer0Index = nA * nHeight + nB;
             unsigned char* p1 = pLayer1Row;
             unsigned char* p2 = pLayer2Row;
@@ -826,13 +822,13 @@ void DirtyTextureController::MakePerlinTexture(unsigned char* pImage, int nMaxCh
     }
 
     for (int64_t nY = 0; nY < nHeight; nY++) {
-        for (int64_t nX = 0; nX < nHeight; nX++)
+        for (int nX = 0; nX < nHeight; nX++)
             pImage[nX] = static_cast<unsigned char>(ImageGetPerlinPixel(ppImages, static_cast<int>(nY), static_cast<int>(nX), 4, static_cast<int>(nCount), nHeight));
         pImage += nHeight;
     }
 
     unsigned char** pp = ppImages;
-    for (int i = static_cast<int>(nCount); i != 0; i--) {
+    for (int64_t i = nCount; i != 0; i--) {
         if (*pp != 0)
             delete[] *pp;
         pp++;
@@ -929,30 +925,28 @@ void ArturoTextureController::BuildArturoImage()
     int nSize = nHeight * nWidth;
     int nRand0 = rand_wincompatible();
     int nRand1 = rand_wincompatible();
-    if (nHeight >= 1) {
-        int nXStart = nRand0 % nWidth;
-        int nYStart = nRand1 % nHeight;
-        for (int y = 0; y < nHeight; y++) {
-            for (int x = 0; x < nWidth; x++) {
-                float fSum = m_pfHeights[y * nWidth + (x - 1 + nWidth) % nWidth] + 0.0f
-                           + m_pfHeights[y * nWidth + (x + 1) % nWidth]
-                           + m_pfHeights[((y + nHeight - 1) % nHeight) * nWidth + x]
-                           + m_pfHeights[((y + 1) % nHeight) * nWidth + x];
-                float fValue = fSum * 0.5f - m_pfPrevHeights[y * nWidth + x]
-                             + m_pfHeights[y * nWidth + x] * 0.0f;
-                if (x == nXStart && y == nYStart && enablerandomimpulses)
-                    fValue += static_cast<float>(rand_wincompatible() % 256 - 128);
-                float fV = fValue + 127.0f;
+    int nXStart = nRand0 % nWidth;
+    int nYStart = nRand1 % nHeight;
+    for (int y = 0; y < nHeight; y++) {
+        for (int x = 0; x < nWidth; x++) {
+            float fSum = m_pfHeights[y * nWidth + (x - 1 + nWidth) % nWidth] + 0.0f
+                       + m_pfHeights[y * nWidth + (x + 1) % nWidth]
+                       + m_pfHeights[((y + nHeight - 1) % nHeight) * nWidth + x]
+                       + m_pfHeights[((y + 1) % nHeight) * nWidth + x];
+            float fValue = fSum * 0.5f - m_pfPrevHeights[y * nWidth + x]
+                         + m_pfHeights[y * nWidth + x] * 0.0f;
+            if (x == nXStart && y == nYStart && enablerandomimpulses)
+                fValue += static_cast<float>(rand_wincompatible() % 256 - 128);
+            float fV = fValue + 127.0f;
 #if KOTOR1  // K1 clamps with the libm pair, so a NaN takes the bound
-                fV = fmaxf(fminf(fV, 255.0f), 0.0f);
+            fV = fmaxf(fminf(fV, 255.0f), 0.0f);
 #else
-                if (fV > 255.0f)
-                    fV = 255.0f;
-                if (fV < 0.0f)
-                    fV = 0.0f;
+            if (fV > 255.0f)
+                fV = 255.0f;
+            if (fV < 0.0f)
+                fV = 0.0f;
 #endif
-                m_pfNextHeights[y * nWidth + x] = fV - 127.0f;
-            }
+            m_pfNextHeights[y * nWidth + x] = fV - 127.0f;
         }
     }
     memcpy(m_pfPrevHeights, m_pfHeights, nSize * sizeof(float));

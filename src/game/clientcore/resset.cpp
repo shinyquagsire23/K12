@@ -131,7 +131,7 @@ int CResSET::CreateSectionTable()
 #ifdef K2_FIX_ENGINE_BUGS
                     bool bNL = (pNL != 0 && (pCR == 0 || pCR >= pNL));   // the nearer terminator
 #else
-                    bool bNL = (pNL != 0 && pCR >= pNL);
+                    bool bNL = (pCR >= pNL && pNL != 0);
 #endif
                     char* pEol = bNL ? pNL : pCR;
                     if (pEol != 0) {

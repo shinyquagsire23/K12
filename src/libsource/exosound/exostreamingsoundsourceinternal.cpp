@@ -303,16 +303,17 @@ void CExoStreamingSoundSourceInternal::SetVolume(unsigned char nVolume, int a, f
 {
     int nSliderType = m_pSound->GetSliderType(this);
     float fScale = 1.0f;
-    if (m_nPriorityGroup == PRIORITY_GROUP_SINGLE_SHOT_GLOBAL || m_nPriorityGroup == PRIORITY_GROUP_LOOPING_AREA_WIDE_AMBIENTS)
+    if (m_nPriorityGroup == PRIORITY_GROUP_SINGLE_SHOT_GLOBAL)
         fScale = f;
+    if (m_nPriorityGroup == PRIORITY_GROUP_LOOPING_AREA_WIDE_AMBIENTS)
+        fScale = f;
+    int nVolumeScaled = static_cast<int>(fScale * static_cast<float>(nVolume));
 
     if (!a)
         m_nVolume = nVolume;
 
     if (!m_pSound->m_bInitialized || m_nChannel == static_cast<decltype(m_nChannel)>(-1))
         return;
-
-    int nVolumeScaled = static_cast<int>(fScale * static_cast<float>(nVolume));
 
     if (!(m_pSound->GetMutable(this) | a))
         a = (m_pSound->GetSliderVolume(nSliderType, 1)
@@ -322,9 +323,12 @@ void CExoStreamingSoundSourceInternal::SetVolume(unsigned char nVolume, int a, f
     fSlider *= static_cast<float>(m_nGroupVolume) / 127.0f;
 
 #if !KOTOR1  // K1 has no ducking and no 0.6 cut for groups 4/5
-    if (nSliderType == 3 || (m_nPriorityGroup & 0xfe) == 4)
+    unsigned char nGroup = m_nPriorityGroup;
+    if (nSliderType == 3)
         fSlider *= m_pSound->m_fDuckVolume;
-    if ((m_nPriorityGroup & 0xfe) == 4)
+    else if ((nGroup & 0xfe) == 4)
+        fSlider *= m_pSound->m_fDuckVolume;
+    if ((nGroup & 0xfe) == 4)
         fSlider *= 0.6f;
 #endif
 
@@ -819,10 +823,11 @@ void CExoStreamingSoundSourceInternal::Update3DStream()
         return;
     }
 
-    Vector vDirection;
-    Vector vOrientation = m_pSound->m_vListenerOrientation;
-    Vector vListenerPosition = m_pSound->m_vListenerPosition;
     float fVolume = m_fVolume;
+    Vector vOrientation;
+    Vector vDirection;
+    vOrientation = m_pSound->m_vListenerOrientation;
+    Vector vListenerPosition = m_pSound->m_vListenerPosition;
     float fDistance = magnitude(m_vPosition - vListenerPosition);
 
     if (fDistance > m_fMinDistance && m_fMinDistance != m_fMaxDistance) {

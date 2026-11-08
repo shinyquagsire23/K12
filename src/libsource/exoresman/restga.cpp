@@ -5,9 +5,9 @@
 
 #include "port/libcstring.h"
 
-// The slack the RLE decoders allocate past the decoded image.
+// The slack the RLE decoders allocate past the decoded image: 14 bytes on arm64, 10 on armv7.
 enum {
-    RLE_DECODE_SLACK = 14,
+    RLE_DECODE_SLACK = 6 + sizeof(void*),
 };
 #if KOTOR1
 void ByteSwap(unsigned short* p);
@@ -211,21 +211,19 @@ int CResTGA::ReadColorMappedRLETGA()
     uint64_t size = m_nTGASize;
     unsigned char* src = static_cast<unsigned char*>(m_pTGAData);
     m_pTGAData = new unsigned char[size + RLE_DECODE_SLACK];
-    if (size != 0) {
-        unsigned int dstPos = 0;
-        unsigned int srcPos = 0;
-        do {
-            unsigned char ctrl = src[srcPos++];
-            unsigned int newPos = dstPos + (ctrl & RLE_COUNT_MASK) + 1;
-            if (ctrl & RLE_RUN_FLAG) {
-                unsigned char runByte = src[srcPos++];
-                while (dstPos < newPos)
-                    static_cast<unsigned char*>(m_pTGAData)[dstPos++] = runByte;
-            } else {
-                while (dstPos < newPos)
-                    static_cast<unsigned char*>(m_pTGAData)[dstPos++] = src[srcPos++];
-            }
-        } while (dstPos < m_nTGASize);
+    unsigned int dstPos = 0;
+    unsigned int srcPos = 0;
+    while (dstPos < m_nTGASize) {
+        unsigned char ctrl = src[srcPos++];
+        unsigned int newPos = dstPos + (ctrl & RLE_COUNT_MASK) + 1;
+        if (ctrl & RLE_RUN_FLAG) {
+            unsigned char runByte = src[srcPos++];
+            while (dstPos < newPos)
+                static_cast<unsigned char*>(m_pTGAData)[dstPos++] = runByte;
+        } else {
+            while (dstPos < newPos)
+                static_cast<unsigned char*>(m_pTGAData)[dstPos++] = src[srcPos++];
+        }
     }
     m_bDataAllocated = 1;
     return 1;
@@ -242,61 +240,57 @@ int CResTGA::ReadUnmappedRLETGA()
     TGAHeader* h = static_cast<TGAHeader*>(m_pTGAHeader);
 
     if (h->m_bitsPerPixel == 24) {
-        if (size != 0) {
-            unsigned int dstPos = 0;
-            unsigned int srcPos = 0;
-            do {
-                unsigned char ctrl = src[srcPos++];
-                unsigned int newPos = dstPos + 3 * ((ctrl & RLE_COUNT_MASK) + 1);
-                if (ctrl & RLE_RUN_FLAG) {
-                    while (dstPos < newPos) {
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 1];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 2];
-                        dstPos += 3;
-                    }
-                    srcPos += 3;
-                } else {
-                    while (dstPos < newPos) {
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 1];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 2];
-                        dstPos += 3;
-                        srcPos += 3;
-                    }
+        unsigned int dstPos = 0;
+        unsigned int srcPos = 0;
+        while (dstPos < m_nTGASize) {
+            unsigned char ctrl = src[srcPos++];
+            unsigned int newPos = dstPos + 3 * ((ctrl & RLE_COUNT_MASK) + 1);
+            if (ctrl & RLE_RUN_FLAG) {
+                while (dstPos < newPos) {
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 1];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 2];
+                    dstPos += 3;
                 }
-            } while (dstPos < m_nTGASize);
+                srcPos += 3;
+            } else {
+                while (dstPos < newPos) {
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 1];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 2];
+                    dstPos += 3;
+                    srcPos += 3;
+                }
+            }
         }
     } else if (h->m_bitsPerPixel == 32) {
-        if (size != 0) {
-            unsigned int dstPos = 0;
-            unsigned int srcPos = 0;
-            do {
-                // srcPos stays on the control byte here; the pixel bytes are srcPos+1..+4.
-                unsigned char ctrl = src[srcPos];
-                unsigned int newPos = dstPos + 4 * ((ctrl & RLE_COUNT_MASK) + 1);
-                if (ctrl & RLE_RUN_FLAG) {
-                    while (dstPos < newPos) {
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos + 1];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 2];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 3];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + 3] = src[srcPos + 4];
-                        dstPos += 4;
-                    }
-                    srcPos += 5;
-                } else {
-                    unsigned int nIdx = 0;
-                    while (dstPos + nIdx < newPos) {
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx] = src[srcPos + nIdx + 1];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 1] = src[srcPos + nIdx + 2];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 2] = src[srcPos + nIdx + 3];
-                        static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 3] = src[srcPos + nIdx + 4];
-                        nIdx += 4;
-                    }
-                    dstPos += nIdx;
-                    srcPos += nIdx + 1;
+        unsigned int dstPos = 0;
+        unsigned int srcPos = 0;
+        while (dstPos < m_nTGASize) {
+            // srcPos stays on the control byte here; the pixel bytes are srcPos+1..+4.
+            unsigned char ctrl = src[srcPos];
+            unsigned int newPos = dstPos + 4 * ((ctrl & RLE_COUNT_MASK) + 1);
+            if (ctrl & RLE_RUN_FLAG) {
+                while (dstPos < newPos) {
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos] = src[srcPos + 1];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 1] = src[srcPos + 2];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 2] = src[srcPos + 3];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + 3] = src[srcPos + 4];
+                    dstPos += 4;
                 }
-            } while (dstPos < m_nTGASize);
+                srcPos += 5;
+            } else {
+                unsigned int nIdx = 0;
+                while (dstPos + nIdx < newPos) {
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx] = src[srcPos + nIdx + 1];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 1] = src[srcPos + nIdx + 2];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 2] = src[srcPos + nIdx + 3];
+                    static_cast<unsigned char*>(m_pTGAData)[dstPos + nIdx + 3] = src[srcPos + nIdx + 4];
+                    nIdx += 4;
+                }
+                dstPos += nIdx;
+                srcPos += nIdx + 1;
+            }
         }
     } else {
         return 0;

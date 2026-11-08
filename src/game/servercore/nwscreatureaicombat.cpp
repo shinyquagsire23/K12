@@ -906,19 +906,17 @@ unsigned long long CSWSCreature::GetFirstAttacker()
         if (m_pAttackerList != 0)
             delete m_pAttackerList;
         m_pAttackerList = new CExoArrayList<unsigned long long>();
-        if (pArea->m_aObjectsByX.m_count >= 1) {
-            for (int i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
-                unsigned long long oid = pArea->m_aObjectsByX.m_pArray[i];
-                CSWSCreature* pCreature =
-                    g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oid);
-                if (pCreature != 0 && pCreature->m_oidAttackTarget == m_objectId)
-                    m_pAttackerList->Add(oid);
-            }
+        for (int i = 0; i < pArea->m_aObjectsByX.m_count; i++) {
+            unsigned long long oid = pArea->m_aObjectsByX.m_pArray[i];
+            CSWSCreature* pCreature =
+                g_pAppManager->m_pServerExoApp->GetCreatureByGameObjectID(oid);
+            if (pCreature != 0 && pCreature->m_oidAttackTarget == m_objectId)
+                m_pAttackerList->Add(oid);
         }
-        if (m_pAttackerList->m_count >= 1) {
-            m_nNextAttackerIdx = 1;
-            return m_pAttackerList->m_pArray[0];
-        }
+        if (m_pAttackerList->m_count < 1)
+            return OBJECT_INVALID;
+        m_nNextAttackerIdx = 1;
+        return m_pAttackerList->m_pArray[0];
     }
     return OBJECT_INVALID;
 }
@@ -1281,9 +1279,8 @@ int CSWSCreature::AIActionPhysicalAttacks(CSWSObjectActionNode* pNode)
             if (pObject != 0)
                 bJump = pObject->AsSWSDoor() != 0 && fDoorDistSq > 3.0f;
 #endif
-            Vector vZero = {};
             AddMoveToPointActionToFront(pNode->m_nGroupId, vApproach, oidArea, OBJECT_INVALID,
-                                        bJump, 0.0f, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                        bJump, 0.0f, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
             if (m_bInParty != 0 && fDistSq > 0.25f) {
                 CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
                 int nIndex = pClient->GetSWParty()->GetIndex(
@@ -1325,9 +1322,8 @@ int CSWSCreature::AIActionPhysicalAttacks(CSWSObjectActionNode* pNode)
         if (static_cast<unsigned int>(nAiState - NPC_AISTYLE_PARTY_RANGED) > 1 || oidLeader == m_objectId)
 #endif
         {
-            Vector vZero = {};
             AddMoveToPointActionToFront(pNode->m_nGroupId, vDest, oidArea, oidTarget, 1,
-                                        fMoveRange, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0,
+                                        fMoveRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0,
                                         bRangeWeapon);
             if (m_bInParty != 0 && fDistSq > 0.25f) {
                 CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
@@ -3006,8 +3002,7 @@ void CSWSCreature::ResolveSneakAttack(CSWSCreature* pTarget)
         }
         else if (bSneak == 0)
         {
-            Vector vDelta = m_position - pTarget->m_position;
-            Vector vApproach = normalize(vDelta);
+            Vector vApproach = normalize(m_position - pTarget->m_position);
             Vector vFacing = normalize(pTarget->m_orientation);
             float fDot = vApproach.x * vFacing.x + vApproach.y * vFacing.y +
                          vApproach.z * vFacing.z;
@@ -3495,11 +3490,11 @@ void CSWSCreature::ResolveRangedAttack(CSWSObject* pTarget, int a, int nTime, in
     int nHitsLeft = GetWeaponHitShots(nAnimation);
     nHitsLeft = static_cast<unsigned char>(m_pCombatRound->GetTotalAttacks());
 
+    int nSubAttack = 0;
+    int bSpecialAnimation = 0;
 #if !KOTOR1
     int nTotalDamage = 0;
 #endif
-    int nSubAttack = 0;
-    int bSpecialAnimation = 0;
     // The hit/miss draw selects nHitsLeft of the nShots discharges without replacement, so their
     // positions are spread uniformly.
     int nRemainingShots = nShots;
@@ -3522,9 +3517,11 @@ void CSWSCreature::ResolveRangedAttack(CSWSObject* pTarget, int a, int nTime, in
 #else
             ResolveRangedSpecialAttack(pTarget, nSubAttack);
 #endif
-            bResolved = IsAttackSuccessful(pAttack->m_nAttackResult) || IsAttackParried(pAttack->m_nAttackResult);
-            if (bResolved)
+            bResolved = 0;
+            if (IsAttackSuccessful(pAttack->m_nAttackResult) || IsAttackParried(pAttack->m_nAttackResult)) {
+                bResolved = 1;
                 bSpecialAnimation = 1;
+            }
             nSubAttack++;
         } else {
             bResolved = 0;
@@ -4019,10 +4016,9 @@ int CSWSCreature::AIActionCombat(CSWSObjectActionNode* pNode)
                                  ACTION_PARAM_FLOAT, &fSpeed, ACTION_PARAM_FLOAT, &fSpeed,
                                  ACTION_PARAM_INT, &nOne, ACTION_PARAM_INT, &nZeroA,
                                  ACTION_PARAM_INT, &nZeroB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                Vector vZero;
                 AddMoveToPointActionToFront(pNode->m_nGroupId, pTarget->AsSWSObject()->m_position,
                                             oidArea, pAction->m_oidTarget, pAction->m_nActionParam,
-                                            0.2f, 0.1f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                            0.2f, 0.1f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
             } else {
                 // No target object (or the id is the invalid sentinel): chase the stored point.
                 unsigned long long oidInvalid = OBJECT_INVALID;
@@ -4036,10 +4032,9 @@ int CSWSCreature::AIActionCombat(CSWSObjectActionNode* pNode)
                                  ACTION_PARAM_INT, &pAction->m_nActionParam,
                                  ACTION_PARAM_FLOAT, &fSpeed, ACTION_PARAM_INT, &nZero, 0, 0, 0, 0,
                                  0, 0, 0, 0, 0, 0);
-                Vector vZero;
                 AddMoveToPointActionToFront(pNode->m_nGroupId, pAction->m_vTargetPosition,
                                             oidArea, OBJECT_INVALID, pAction->m_nActionParam,
-                                            0.2f, 0.1f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                            0.2f, 0.1f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
             }
             break;
         }

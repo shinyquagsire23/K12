@@ -111,6 +111,21 @@ static __forceinline long long __builtin_expect(long long x, long long expected)
 #define __builtin_pow pow
 #define __builtin_isfinite(x) _finite(x)
 
+#ifdef __cplusplus
+// Unsigned operands that fit the result type (the callers multiply an element count by a sizeof):
+// stores the wrapped product and returns true when the exact one does not fit.
+template <class A, class B, class R>
+static __forceinline bool __builtin_mul_overflow(A a, B b, R* pResult)
+{
+    static_assert(static_cast<A>(-1) > 0 && static_cast<B>(-1) > 0 && static_cast<R>(-1) > 0,
+                  "unsigned operands only");
+    const R nA = static_cast<R>(a);
+    const R nB = static_cast<R>(b);
+    *pResult = static_cast<R>(nA * nB);
+    return nB != 0 && nA > static_cast<R>(-1) / nB;
+}
+#endif
+
 // The fortified builtins become the plain call (cl checks no object size).
 #define __builtin___strcpy_chk(d, s, size) strcpy(d, s)
 #define __builtin___strcat_chk(d, s, size) strcat(d, s)

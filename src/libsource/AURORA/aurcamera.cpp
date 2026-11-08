@@ -299,7 +299,8 @@ done:
 Vector Camera::MouseDir(int nMouseX, int nMouseY)
 {
     int nView[4];
-    __builtin_memcpy(nView, &m_nViewX, sizeof(nView));
+    for (int i = 0; i < 4; i++)
+        nView[i] = (&m_nViewX)[i];
     if (nView[2] == 0 || nView[3] == 0)
         GLRender::GetViewPort(nView);
 
@@ -328,7 +329,8 @@ Vector Camera::MouseDir(int nMouseX, int nMouseY)
 Vector Camera::MapToScreen(Vector v, bool b)
 {
     int nView[4];
-    __builtin_memcpy(nView, &m_nViewX, sizeof(nView));
+    for (int i = 0; i < 4; i++)
+        nView[i] = (&m_nViewX)[i];
     if (nView[2] == 0 || nView[3] == 0)
         GLRender::GetViewPort(nView);
 
@@ -344,13 +346,11 @@ Vector Camera::MapToScreen(Vector v, bool b)
 #endif
 
         Vector ray = planelineintersection(Vector(0.0f, 0.0f, 1.0f), 1.0f, Vector(0.0f, 0.0f, 0.0f), v);
-        float fRx = ray.x;
-        float fRy = ray.y;
         float fTan = tanf(m_fViewAngle * 0.5f * 0.017453292f);
         float fH2 = static_cast<float>(nView[3]) * 0.5f;
         float fW2 = static_cast<float>(nView[2]) * 0.5f;
-        float fXterm = fRx * fH2 / fTan;
-        float fZterm = fRy * fH2 / fTan;
+        float fXterm = ray.x * fH2 / fTan;
+        float fZterm = ray.y * fH2 / fTan;
         float fX = static_cast<float>(nView[0]) + (fW2 + fXterm);
         float fY = static_cast<float>(nView[1]) + (fH2 + fZterm);
         if (b) {
@@ -409,7 +409,8 @@ int Camera::HitCheck(int nX, int nY, Vector* pResult, CHitInfo* pInfo)
                                   m_vPosition + vDir * m_fClipFar, pResult, pInfo);
     }
     int nView[4];
-    __builtin_memcpy(nView, &m_nViewX, sizeof(nView));
+    for (int i = 0; i < 4; i++)
+        nView[i] = (&m_nViewX)[i];
     if (nView[2] == 0 || nView[3] == 0)
         GLRender::GetViewPort(nView);
     int nXRel = nX - nView[0];

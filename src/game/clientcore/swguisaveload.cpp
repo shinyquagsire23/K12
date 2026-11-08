@@ -324,7 +324,7 @@ void CSWGuiSaveLoad::PopulateGameList()
     if (g_pExoResMan->CreateDirectory2(CExoString("TEMP:")) == 0)
         g_pExoResMan->CleanDirectory(CExoString("TEMP:"), 0, 0);
 
-    for (int64_t i = 0; i < fileList.m_count; i++)
+    for (int i = 0; i < fileList.m_count; i++)
     {
         CSWGuiSaveLoadEntry* pEntry = new CSWGuiSaveLoadEntry();
         pEntry->Initialize(extent, pTemplate);
@@ -393,7 +393,7 @@ void CSWGuiSaveLoad::PopulateGameList()
     {
         unsigned int nMaxSlot = 0;
         nNextSlot = 2;
-        for (int64_t i = 0; i < aEntries.m_count; i++)
+        for (int i = 0; i < aEntries.m_count; i++)
         {
             unsigned int nSlot = static_cast<CSWGuiSaveLoadEntry*>(aEntries.m_pArray[i])->m_nSaveSlot;
             if (nSlot == nNextSlot)
@@ -459,7 +459,7 @@ void CSWGuiSaveLoad::PopulateGameList()
 
     if (pCloud != 0)
     {
-        for (int64_t i = 0; i < aEntries.m_count; i++)
+        for (int i = 0; i < aEntries.m_count; i++)
         {
             CSWGuiSaveLoadEntry* pRow = static_cast<CSWGuiSaveLoadEntry*>(aEntries.m_pArray[i]);
             if (pRow->m_nTimePlayed == pCloud->m_nTimePlayed &&
@@ -523,55 +523,52 @@ void CSWGuiSaveLoad::PopulateGameList()
     unsigned int nMaxSlot = 0;
     unsigned int nNextSlot = 2;
 
-    if (fileList.m_count > 0)
+    for (int i = 0; i < fileList.m_count; i++)
     {
-        for (int64_t i = 0; i < fileList.m_count; i++)
+        CSWGuiSaveLoadEntry* pEntry = new CSWGuiSaveLoadEntry();
+        pEntry->Initialize(extent, pTemplate);
+        pEntry->LoadData(fileList.m_pArray[i]);
+        pEntry->SetXboxTitle(fileList.m_pArray[i]);
+
+        // A cloud-backed row (slot bit 31) is remembered globally.
+        if ((pEntry->m_nSaveSlot & CSWGuiSaveLoadEntry::SAVESLOT_CLOUD) != 0)
         {
-            CSWGuiSaveLoadEntry* pEntry = new CSWGuiSaveLoadEntry();
-            pEntry->Initialize(extent, pTemplate);
-            pEntry->LoadData(fileList.m_pArray[i]);
-            pEntry->SetXboxTitle(fileList.m_pArray[i]);
-
-            // A cloud-backed row (slot bit 31) is remembered globally.
-            if ((pEntry->m_nSaveSlot & CSWGuiSaveLoadEntry::SAVESLOT_CLOUD) != 0)
-            {
-                pCloudSave = pEntry;
-                if ((m_nModeFlags & SAVELOAD_MODE_SAVE) != 0)
-                    continue;
-            }
-
-            if ((m_nModeFlags & SAVELOAD_MODE_SAVE) == 0)
-            {
-                pEntry->AddEvent(INPUTEVENT_GUI_A, this,
-                    static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::VerifyLoadGame));
-            }
-            else if (pEntry->m_nSaveSlot < 2)
-            {
-                delete pEntry;
+            pCloudSave = pEntry;
+            if ((m_nModeFlags & SAVELOAD_MODE_SAVE) != 0)
                 continue;
-            }
-            else
-            {
-                pEntry->AddEvent(INPUTEVENT_GUI_A, this,
-                    static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::HandleSaveButton));
-            }
-
-            pEntry->AddEvent(INPUTEVENT_GUI_X, this,
-                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::DeleteGame));
-            pEntry->AddEvent(SWGUIEVENT_FOCUS, this,
-                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::ShowGame));
-
-            if (IosCloudIsAvailable())
-                pEntry->AddEvent(INPUTEVENT_GUI_Y, this,
-                    static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::HandleCloudButton));
-
-            // Rows are not collected while a sync is in flight.
-            if (m_nCloudSyncState != CLOUD_SYNC_STARTED)
-                aEntries.Add(pEntry);
-
-            if (i == 0)
-                ShowGame(pEntry);
         }
+
+        if ((m_nModeFlags & SAVELOAD_MODE_SAVE) == 0)
+        {
+            pEntry->AddEvent(INPUTEVENT_GUI_A, this,
+                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::VerifyLoadGame));
+        }
+        else if (pEntry->m_nSaveSlot < 2)
+        {
+            delete pEntry;
+            continue;
+        }
+        else
+        {
+            pEntry->AddEvent(INPUTEVENT_GUI_A, this,
+                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::HandleSaveButton));
+        }
+
+        pEntry->AddEvent(INPUTEVENT_GUI_X, this,
+            static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::DeleteGame));
+        pEntry->AddEvent(SWGUIEVENT_FOCUS, this,
+            static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::ShowGame));
+
+        if (IosCloudIsAvailable())
+            pEntry->AddEvent(INPUTEVENT_GUI_Y, this,
+                static_cast<void (CSWGuiObject::*)(CSWGuiControl*)>(&CSWGuiSaveLoad::HandleCloudButton));
+
+        // Rows are not collected while a sync is in flight.
+        if (m_nCloudSyncState != CLOUD_SYNC_STARTED)
+            aEntries.Add(pEntry);
+
+        if (i == 0)
+            ShowGame(pEntry);
     }
 
     if ((m_nModeFlags & SAVELOAD_MODE_SAVE) != 0)
@@ -579,7 +576,7 @@ void CSWGuiSaveLoad::PopulateGameList()
         // The save screen always offers one extra empty slot.
         nMaxSlot = 0;
         nNextSlot = 2;
-        for (int64_t i = 0; i < aEntries.m_count; i++)
+        for (int i = 0; i < aEntries.m_count; i++)
         {
             unsigned int nSlot = static_cast<CSWGuiSaveLoadEntry*>(aEntries.m_pArray[i])->m_nSaveSlot;
             if (nSlot == nNextSlot)
@@ -630,7 +627,7 @@ void CSWGuiSaveLoad::PopulateGameList()
     if ((m_nModeFlags & SAVELOAD_MODE_FILTERS_BUILT) == 0)
     {
         CExoString sFilter;
-        for (int64_t i = 0; i < aEntries.m_count; i++)
+        for (int i = 0; i < aEntries.m_count; i++)
         {
             sFilter = CExoString(static_cast<CSWGuiSaveLoadEntry*>(aEntries.m_pArray[i])->m_pcName);
             if (sFilter.m_sString != 0 && *sFilter.m_sString != 0)
@@ -650,7 +647,7 @@ void CSWGuiSaveLoad::PopulateGameList()
                     g_pAppManager->m_pServerExoApp->GetPartyTable()->m_saveTableName);
                 if (m_filterNames.Contains(sPcName) != 0)
                 {
-                    for (int64_t i = 0; i < m_filterNames.m_count; i++)
+                    for (int i = 0; i < m_filterNames.m_count; i++)
                     {
                         if (m_filterNames.m_pArray[i] == sPcName)
                         {
@@ -669,7 +666,7 @@ void CSWGuiSaveLoad::PopulateGameList()
     }
 
     m_entries.m_count = 0;
-    for (int64_t i = 0; i < aEntries.m_count; i++)
+    for (int i = 0; i < aEntries.m_count; i++)
         m_entries.Add(aEntries.m_pArray[i]);
 
     PopulateGameLB();

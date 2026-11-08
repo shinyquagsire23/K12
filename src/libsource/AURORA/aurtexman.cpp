@@ -257,6 +257,10 @@ int CAurTexture::GetClamp()
         return 3;
     if (strstr(pTexture->m_szName, "ipho_"))
         return 3;
+#ifdef K2_FIX_ENGINE_BUGS
+    if (_strnicmp(pTexture->m_szName, "po_", 3) == 0)
+        return 3;
+#endif
     return pTexture->m_nClamp;
 }
 #else
@@ -265,6 +269,10 @@ int CAurTexture::GetClamp()
     CAurTextureBasic* pTexture = static_cast<CAurTextureBasic*>(GetReferencedTexture()->AsCAurTextureBasic());
     if (!pTexture)
         return 0;
+#ifdef K2_FIX_ENGINE_BUGS
+    if (_strnicmp(pTexture->m_szName, "po_", 3) == 0)
+        return 3;
+#endif
     if (!strstr(pTexture->m_szName, "uibit_brdr")) {
         if (ones32popcount(pTexture->m_nWidth) + ones32popcount(pTexture->m_nHeight) <= 2)
             return 0;
@@ -2410,7 +2418,7 @@ void AurTextureMemCheck(List<CAurTextureBasic*>& listTexture, int nMaxSize,
                 int nBestTotal = 0;
                 int nBestGain = 0;
 
-                for (int64_t i = 0; i < listTexture.m_count; i++) {
+                for (int i = 0; i < listTexture.m_count; i++) {
                     CAurTextureBasic* pTexture = listTexture.m_pData[i];
                     if (!pTexture->CanDownSampleFurther())
                         continue;

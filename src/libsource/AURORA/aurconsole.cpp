@@ -631,9 +631,9 @@ char* AurResGetNextLine(void* pResource) {
 // Opens a resource for `dofile` by two paths. It asks the host for a packaged resource first and
 // falls back to a real file when the host has none, or is not installed.
 OpenResource* AurResGet(char* pszName, char* pszExt, int* pnSize, bool bNoFile) {
-    int nSize;
     if (!pszExt) pszExt = const_cast<char*>("");
     if (AurGetResource) {
+        int nSize;
         unsigned char* pHandle = AurGetResource(pszName, pszExt, &nSize);
         if (pHandle) {
             OpenResource* pRes = new OpenResource(8192);

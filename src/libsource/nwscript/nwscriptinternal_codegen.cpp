@@ -318,9 +318,6 @@ int CScriptCompilerInternal::ResolveLabels()
 {
     CExoString sLabel;
 
-    if (m_nSymbolQueryListCount < 1)
-        return 0;
-
     for (int nQuery = 0; nQuery < m_nSymbolQueryListCount; nQuery++)
     {
         int nOffset = m_pSymbolQueryList[nQuery].m_nCodeLocation;
@@ -330,7 +327,7 @@ int CScriptCompilerInternal::ResolveLabels()
 
         int bFound = 0;
         int nIndex K2_UNSET;
-        for (int64_t nId = m_nIdentifierBase; nId <= m_nIdentifierCount; nId++)
+        for (int nId = m_nIdentifierBase; nId <= m_nIdentifierCount; nId++)
         {
             if (nOffset < m_pIdentifierList[nId].m_nCodeOffset)
                 continue;
@@ -806,13 +803,12 @@ int CScriptCompilerInternal::TraverseTreeForSwitchLabels(CScriptParseTreeNode* p
         m_nSwitchLabelCount = m_nSwitchLabelCount + 1;
 
         {
-            int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
                 PrintBinaryAddress();
                 sprintf(m_pCompiledCode + m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH,
                         "CPTOPSP %08x,%04x\n", -4, 4);
-                nLen = 35;
+                m_nCompiledCodeLocation += 35;
             }
             else
             {
@@ -824,20 +820,18 @@ int CScriptCompilerInternal::TraverseTreeForSwitchLabels(CScriptParseTreeNode* p
                 m_pCompiledCode[m_nCompiledCodeLocation + 5] = static_cast<char>(-4);
                 m_pCompiledCode[m_nCompiledCodeLocation + 6] = 0;
                 m_pCompiledCode[m_nCompiledCodeLocation + 7] = 4;
-                nLen = 8;
+                m_nCompiledCodeLocation += 8;
             }
-            m_nCompiledCodeLocation += nLen;
             m_nBinaryCodeOffset += 8;
         }
 
         {
-            int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
                 PrintBinaryAddress();
                 sprintf(m_pCompiledCode + m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH,
                         "CONSTI %08x\n", nLabel);
-                nLen = 29;
+                m_nCompiledCodeLocation += 29;
             }
             else
             {
@@ -847,27 +841,24 @@ int CScriptCompilerInternal::TraverseTreeForSwitchLabels(CScriptParseTreeNode* p
                 m_pCompiledCode[m_nCompiledCodeLocation + 3] = static_cast<char>(nLabel >> 16);
                 m_pCompiledCode[m_nCompiledCodeLocation + 4] = static_cast<char>(nLabel >> 8);
                 m_pCompiledCode[m_nCompiledCodeLocation + 5] = static_cast<char>(nLabel);
-                nLen = 6;
+                m_nCompiledCodeLocation += 6;
             }
-            m_nCompiledCodeLocation += nLen;
             m_nBinaryCodeOffset += 6;
         }
 
         {
-            int nLen;
             if (m_bCompileSymbolicOutput != 0)
             {
                 PrintBinaryAddress();
                 sprintf(m_pCompiledCode + m_nCompiledCodeLocation + SYMBOLIC_ADDRESS_WIDTH, "EQUALII\n");
-                nLen = 21;
+                m_nCompiledCodeLocation += 21;
             }
             else
             {
                 m_pCompiledCode[m_nCompiledCodeLocation] = NCS_OP_EQUAL;
                 m_pCompiledCode[m_nCompiledCodeLocation + 1] = NCS_TYPE_INTEGER_INTEGER;
-                nLen = 2;
+                m_nCompiledCodeLocation += 2;
             }
-            m_nCompiledCodeLocation += nLen;
             m_nBinaryCodeOffset += 2;
         }
 
@@ -2582,7 +2573,7 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
                     static_cast<char>(nStrLen);
                 if (nStrLen > 0)
                 {
-                    for (uint64_t k = 0; k < static_cast<uint64_t>(nStrLen); k++)
+                    for (unsigned int k = 0; k < static_cast<unsigned int>(nStrLen); k++)
                         m_pCompiledCode[m_nCompiledCodeLocation + 4 + k] =
                             pNode->m_sName.CStr()[k];
                 }
@@ -4760,9 +4751,6 @@ int CScriptCompilerInternal::PostVisitGenerateCode(CScriptParseTreeNode* pNode)
 int CScriptCompilerInternal::GetStructureField(const CExoString& sStructureName,
                                                const CExoString& sFieldName)
 {
-    if (m_nStructureCount < 1)
-        return -SCRIPT_ERROR_UNDEFINED_STRUCTURE;
-
     for (int64_t i = 0; i < m_nStructureCount; i++) {
         if (sStructureName == m_pStructureList[i].m_sName) {
             int nFirstField = m_pStructureList[i].m_nFirstField;

@@ -343,9 +343,9 @@ void CGameEffect::UpdateLinked()
         m_pLinkedEffect1->SetCreator(m_creatorId);
         // Operand order is load-bearing: swapping the operands gives the same instructions with the two
         // registers exchanged.
+        m_pLinkedEffect1->m_fDuration = m_fDuration;
         m_pLinkedEffect1->m_durationTypeBits =
             (m_durationTypeBits & DURATION_TYPE_MASK) | (m_pLinkedEffect1->m_durationTypeBits & ~DURATION_TYPE_MASK);
-        m_pLinkedEffect1->m_fDuration = m_fDuration;
         m_pLinkedEffect1->m_expireDay = m_expireDay;
         m_pLinkedEffect1->m_expireTime = m_expireTime;
         m_pLinkedEffect1->m_spellId = m_spellId;
@@ -365,9 +365,9 @@ void CGameEffect::UpdateLinked()
         m_pLinkedEffect2->SetCreator(m_creatorId);
         // Operand order is load-bearing: swapping the two operands gives the same instructions
         // with the two registers exchanged.
+        m_pLinkedEffect2->m_fDuration = m_fDuration;
         m_pLinkedEffect2->m_durationTypeBits =
             (m_durationTypeBits & DURATION_TYPE_MASK) | (m_pLinkedEffect2->m_durationTypeBits & ~DURATION_TYPE_MASK);
-        m_pLinkedEffect2->m_fDuration = m_fDuration;
         m_pLinkedEffect2->m_expireDay = m_expireDay;
         m_pLinkedEffect2->m_expireTime = m_expireTime;
         m_pLinkedEffect2->m_spellId = m_spellId;

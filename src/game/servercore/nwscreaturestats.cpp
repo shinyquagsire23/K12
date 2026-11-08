@@ -1987,7 +1987,7 @@ short CSWSCreatureStats::GetArmorClassVersus(CSWSCreature* pCreature, int bVersu
     int nClassAC = 0;
     if (m_numClasses != 0)
     {
-        for (int64_t i = 0; i < m_numClasses; i++)
+        for (int i = 0; i < m_numClasses; i++)
         {
             nClassAC += static_cast<signed char>(g_pRules->GetClass(GetClass(static_cast<unsigned char>(i)))
                             ->GetArmorBonus(GetClassLevel(static_cast<unsigned char>(i), 0)));
@@ -2369,76 +2369,82 @@ void CSWSCreatureStats::UpdateCombatInformation()
     K2_ASSUME(m_pCombatInformation != 0);
 
     effects = m_pOwner->GetFilteredEffectList(1);
-    for (int64_t i = 0; i < effects.m_count; i++)
+    if (effects.m_count > 0)
     {
-        CGameEffect* pEffect = effects.m_pArray[i];
-        CCombatInformationNode* pNode;
-        if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_ONHAND ||
-            pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_OFFHAND ||
-            pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_UNARMED ||
-            pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_MISC)
+        for (int i = 0; i < effects.m_count; i++)
         {
-            pNode = new CCombatInformationNode();
-            if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_ATTACK_INCREASE)
-                pNode->m_cValue = static_cast<signed char>(pEffect->GetInteger(0));
-            else
-                pNode->m_cValue = static_cast<signed char>(-pEffect->GetInteger(0));
-            if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_ONHAND)
-                pNode->m_nType = 1;
-            else if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_OFFHAND)
-                pNode->m_nType = 2;
-            else if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_MISC)
-                pNode->m_nType = 6;
-            else if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_UNARMED)
-                pNode->m_nType = 7;
-            if (pEffect->GetInteger(2) != g_pRules->m_nNumRaces)
-                pNode->m_nClassReq = static_cast<unsigned char>(pEffect->GetInteger(2));
-            if (pEffect->GetInteger(4) != 0)
-                pNode->m_nFlag = static_cast<unsigned char>(pEffect->GetInteger(4));
-            m_pCombatInformation->m_attackBonusMods.Add(pNode);
+            CGameEffect* pEffect = effects.m_pArray[i];
+            CCombatInformationNode* pNode;
+            if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_ONHAND ||
+                pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_OFFHAND ||
+                pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_UNARMED ||
+                pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_MISC)
+            {
+                pNode = new CCombatInformationNode();
+                if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_ATTACK_INCREASE)
+                    pNode->m_cValue = static_cast<signed char>(pEffect->GetInteger(0));
+                else
+                    pNode->m_cValue = static_cast<signed char>(-pEffect->GetInteger(0));
+                if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_ONHAND)
+                    pNode->m_nType = 1;
+                else if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_OFFHAND)
+                    pNode->m_nType = 2;
+                else if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_MISC)
+                    pNode->m_nType = 6;
+                else if (pEffect->GetInteger(1) == CSWSEffectListHandler::ATTACK_BONUS_UNARMED)
+                    pNode->m_nType = 7;
+                if (pEffect->GetInteger(2) != g_pRules->m_nNumRaces)
+                    pNode->m_nClassReq = static_cast<unsigned char>(pEffect->GetInteger(2));
+                if (pEffect->GetInteger(4) != 0)
+                    pNode->m_nFlag = static_cast<unsigned char>(pEffect->GetInteger(4));
+                m_pCombatInformation->m_attackBonusMods.Add(pNode);
+            }
         }
     }
     effects = m_pOwner->GetFilteredEffectList(2);
-    for (int64_t i = 0; i < effects.m_count; i++)
+    if (effects.m_count > 0)
     {
-        CGameEffect* pEffect = effects.m_pArray[i];
-        CCombatInformationNode* pNode;
-        unsigned short nDamageFlags;
-        if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_ONHAND ||
-            pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_OFFHAND ||
-            pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_MISC ||
-            pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_UNARMED)
+        for (int i = 0; i < effects.m_count; i++)
         {
-            pNode = new CCombatInformationNode();
-            if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_DAMAGE_INCREASE)
-                pNode->m_cValue = static_cast<signed char>(pEffect->GetInteger(0));
-            else
-                pNode->m_cValue = static_cast<signed char>(-pEffect->GetInteger(0));
-            nDamageFlags = static_cast<unsigned short>(pEffect->GetInteger(1));
-            if (nDamageFlags > (CSWSEffectListHandler::DAMAGE_FLAG_PHYSICAL &
-                                ~CSWSEffectListHandler::DAMAGE_FLAG_BASE_DAMAGE))
-                pNode->m_nModifierType = static_cast<unsigned char>(Log_Base2(nDamageFlags));
-            else if (nDamageFlags == CSWSEffectListHandler::DAMAGE_FLAG_PIERCING)
-                pNode->m_nModifierType = 1;
-            else if (nDamageFlags == CSWSEffectListHandler::DAMAGE_FLAG_SLASHING)
-                pNode->m_nModifierType = 2;
-            else if (nDamageFlags == CSWSEffectListHandler::DAMAGE_FLAG_BLUDGEONING)
-                pNode->m_nModifierType = 0;
-            else
-                pNode->m_nModifierType = 14;
-            if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_ONHAND)
-                pNode->m_nType = 1;
-            else if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_OFFHAND)
-                pNode->m_nType = 2;
-            else if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_MISC)
-                pNode->m_nType = 6;
-            else if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_UNARMED)
-                pNode->m_nType = 7;
-            if (pEffect->GetInteger(2) != g_pRules->m_nNumRaces)
-                pNode->m_nClassReq = static_cast<unsigned char>(pEffect->GetInteger(2));
-            if (pEffect->GetInteger(4) != 0)
-                pNode->m_nFlag = static_cast<unsigned char>(pEffect->GetInteger(4));
-            m_pCombatInformation->m_damageBonusMods.Add(pNode);
+            CGameEffect* pEffect = effects.m_pArray[i];
+            CCombatInformationNode* pNode;
+            unsigned short nDamageFlags;
+            if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_ONHAND ||
+                pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_OFFHAND ||
+                pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_MISC ||
+                pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_UNARMED)
+            {
+                pNode = new CCombatInformationNode();
+                if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_DAMAGE_INCREASE)
+                    pNode->m_cValue = static_cast<signed char>(pEffect->GetInteger(0));
+                else
+                    pNode->m_cValue = static_cast<signed char>(-pEffect->GetInteger(0));
+                nDamageFlags = static_cast<unsigned short>(pEffect->GetInteger(1));
+                if (nDamageFlags > (CSWSEffectListHandler::DAMAGE_FLAG_PHYSICAL &
+                                    ~CSWSEffectListHandler::DAMAGE_FLAG_BASE_DAMAGE))
+                    pNode->m_nModifierType = static_cast<unsigned char>(Log_Base2(nDamageFlags));
+                else if (nDamageFlags == CSWSEffectListHandler::DAMAGE_FLAG_PIERCING)
+                    pNode->m_nModifierType = 1;
+                else if (nDamageFlags == CSWSEffectListHandler::DAMAGE_FLAG_SLASHING)
+                    pNode->m_nModifierType = 2;
+                else if (nDamageFlags == CSWSEffectListHandler::DAMAGE_FLAG_BLUDGEONING)
+                    pNode->m_nModifierType = 0;
+                else
+                    pNode->m_nModifierType = 14;
+                if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_ONHAND)
+                    pNode->m_nType = 1;
+                else if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_OFFHAND)
+                    pNode->m_nType = 2;
+                else if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_MISC)
+                    pNode->m_nType = 6;
+                else if (pEffect->GetInteger(5) == CSWSEffectListHandler::DAMAGE_BONUS_UNARMED)
+                    pNode->m_nType = 7;
+                if (pEffect->GetInteger(2) != g_pRules->m_nNumRaces)
+                    pNode->m_nClassReq = static_cast<unsigned char>(pEffect->GetInteger(2));
+                if (pEffect->GetInteger(4) != 0)
+                    pNode->m_nFlag = static_cast<unsigned char>(pEffect->GetInteger(4));
+                m_pCombatInformation->m_damageBonusMods.Add(pNode);
+            }
         }
     }
 
@@ -4347,8 +4353,6 @@ int CSWSCreatureStats::GetCanUseSkill(unsigned char nSkill)
 #endif
         if (g_pRules->m_paSkills[nSkillIdx].m_flags & CSWSkill::FLAG_UNTRAINED)
         {
-            if (m_numClasses == 0)
-                return 0;
             for (int i = 0; i < m_numClasses; i++)
             {
 #if KOTOR1
@@ -5239,7 +5243,7 @@ void CSWSCreatureStats::LevelUp(CSWLevelStats* pLevelStats, int bAllowRecalc)
 #if KOTOR1
     for (unsigned char i = 0; i < m_numClasses; i++)
 #else
-    for (int64_t i = 0; i < m_numClasses; i++)
+    for (int i = 0; i < m_numClasses; i++)
 #endif
     {
         if (m_classInfo[i].m_class == pLevelStats->m_nClass)
@@ -5287,7 +5291,7 @@ void CSWSCreatureStats::LevelUp(CSWLevelStats* pLevelStats, int bAllowRecalc)
 
     if (g_pRules->m_nNumSkills != 0)
     {
-        for (int64_t i = 0; i < g_pRules->m_nNumSkills; i++)
+        for (int i = 0; i < g_pRules->m_nNumSkills; i++)
         {
             if (pLevelStats->GetSkillRankChange(static_cast<unsigned short>(i)) != 0)
             {
@@ -5302,10 +5306,10 @@ void CSWSCreatureStats::LevelUp(CSWLevelStats* pLevelStats, int bAllowRecalc)
     for (unsigned char i = 0; i < static_cast<unsigned short>(pLevelStats->m_featsGained.m_count); i++)
         AddFeat(pLevelStats->m_featsGained.m_pArray[i]);
 
-    for (int64_t i = 0; i < static_cast<unsigned char>(pLevelStats->m_spellsLost.m_count); i++)
+    for (int i = 0; i < static_cast<unsigned char>(pLevelStats->m_spellsLost.m_count); i++)
         RemoveKnownSpell(nClassPos, pLevelStats->m_spellsLost.m_pArray[i]);
 
-    for (int64_t i = 0; i < static_cast<unsigned char>(pLevelStats->m_spellsGained.m_count); i++)
+    for (int i = 0; i < static_cast<unsigned char>(pLevelStats->m_spellsGained.m_count); i++)
         AddKnownSpell(nClassPos, pLevelStats->m_spellsGained.m_pArray[i]);
 
     m_pOwner->SetCurrentHitPoints(m_pOwner->GetMaxHitPoints(1));
@@ -5589,8 +5593,6 @@ int CSWSCreatureStats::GetCreatureHasTalent(int nType, int nId)
         CSWSpell* pSpell = g_pRules->GetSpell(nId);
         if (pSpell == 0)
             return 0;
-        if (m_numClasses == 0)
-            return 0;
 
         int bHas = 0;
 #if KOTOR1
@@ -5721,35 +5723,37 @@ int CSWSCreatureStats::GetCreatureTalentRandomSpecialAbility(int a1, int a2, int
     CExoArrayList<int>* pSpells = new CExoArrayList<int>;
     CExoArrayList<int>* pLevels = new CExoArrayList<int>;
     int nBestCR = -100;
-    for (int64_t i = 0; i < m_pSpellLikeAbilityList->m_count; i++) {
-        if (m_pSpellLikeAbilityList->m_pArray[i].m_nReady == 0)
-            continue;
-        int nSpellId = m_pSpellLikeAbilityList->m_pArray[i].m_nSpellId;
-        unsigned char nCasterLevel = m_pSpellLikeAbilityList->m_pArray[i].m_nCasterLevel;
-        CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
-        if (pSpell == 0)
-            continue;
-        if (CheckPowerSuitability(nSpellId, pSpell, a1, 0, 0, 0, 0, -1) != 1)
-            continue;
-        if (CheckInclusionMatch(0, nSpellId, a7) != 1)
-            continue;
-        if (a2 == -1) {
-            pSpells->Add(nSpellId);
-            pLevels->Add(nCasterLevel);
-            pSpell->m_sName.CStr();
-        } else if (pSpell->m_nMaxCR > nBestCR) {
-            delete pSpells;
-            pSpells = new CExoArrayList<int>;
-            pSpells->Add(nSpellId);
-            delete pLevels;
-            pLevels = new CExoArrayList<int>;
-            pLevels->Add(nCasterLevel);
-            pSpell->m_sName.CStr();
-            nBestCR = pSpell->m_nMaxCR;
-        } else if (pSpell->m_nMaxCR == nBestCR) {
-            pSpells->Add(nSpellId);
-            pLevels->Add(nCasterLevel);
-            pSpell->m_sName.CStr();
+    if (m_pSpellLikeAbilityList->m_count > 0) {
+        for (int64_t i = 0; i < m_pSpellLikeAbilityList->m_count; i++) {
+            if (m_pSpellLikeAbilityList->m_pArray[i].m_nReady == 0)
+                continue;
+            int nSpellId = m_pSpellLikeAbilityList->m_pArray[i].m_nSpellId;
+            unsigned char nCasterLevel = m_pSpellLikeAbilityList->m_pArray[i].m_nCasterLevel;
+            CSWSpell* pSpell = g_pRules->GetSpell(nSpellId);
+            if (pSpell == 0)
+                continue;
+            if (CheckPowerSuitability(nSpellId, pSpell, a1, 0, 0, 0, 0, -1) != 1)
+                continue;
+            if (CheckInclusionMatch(0, nSpellId, a7) != 1)
+                continue;
+            if (a2 == -1) {
+                pSpells->Add(nSpellId);
+                pLevels->Add(nCasterLevel);
+                pSpell->m_sName.CStr();
+            } else if (pSpell->m_nMaxCR > nBestCR) {
+                delete pSpells;
+                pSpells = new CExoArrayList<int>;
+                pSpells->Add(nSpellId);
+                delete pLevels;
+                pLevels = new CExoArrayList<int>;
+                pLevels->Add(nCasterLevel);
+                pSpell->m_sName.CStr();
+                nBestCR = pSpell->m_nMaxCR;
+            } else if (pSpell->m_nMaxCR == nBestCR) {
+                pSpells->Add(nSpellId);
+                pLevels->Add(nCasterLevel);
+                pSpell->m_sName.CStr();
+            }
         }
     }
     int nFound;
@@ -6341,18 +6345,16 @@ int CSWSCreatureStats::CanChooseFeat(unsigned short nFeat, unsigned char nNormal
         aChosen.m_pArray[i] = 0;
     for (unsigned short i = 0; i < pChosenFeats->m_count; i++)
     {
-        int bChosenNormal;
-        int bChosenBonus;
-        SetNormalBonusFlags(pChosenFeats->m_pArray[i], bChosenNormal, bChosenBonus);
-        if (bChosenBonus != 0)
+        SetNormalBonusFlags(pChosenFeats->m_pArray[i], bNormal, bBonus);
+        if (bBonus != 0)
         {
-            if (nBonusLeft != 0 && bChosenNormal == 0)
+            if (nBonusLeft != 0 && bNormal == 0)
             {
                 nBonusLeft--;
                 aChosen.m_pArray[i] = 1;
             }
         }
-        else if (bChosenNormal != 0)
+        else if (bNormal != 0)
         {
             if (nNormalLeft == 0)
                 return 0;
@@ -6878,34 +6880,46 @@ void CSWSCreatureStats::AutoLevelup(int a)
             lstSpells.m_count = 0;
             unsigned char nSpellsKnown = static_cast<unsigned char>(nSpellsLeft);
 
-            static const unsigned int KOTOR2_JEDI_POWERS_3[4] = {258, 259, 260, 265};
-            static const unsigned int KOTOR2_JEDI_POWERS_4[4] = {258, 265, 259, 260};
-            static const unsigned int KOTOR2_JEDI_POWERS_5[4] = {258, 260, 265, 259};
             int nJediTier = nTotalJediLevel - 11;
-            unsigned char nLevelRem = (static_cast<unsigned char>(nNewClassLevel) - 1) & 3;
-            unsigned char nLevelTier = (static_cast<unsigned char>(nNewClassLevel) - 1) >> 2;
             for (int64_t i = 0; i < m_numClasses; i++) {
                 unsigned int nPower;
                 switch (m_classInfo[i].m_class) {
                 case CLASS_TYPE_JEDIGUARDIAN:
-                    if (static_cast<unsigned>(nJediTier) >= 4)
-                        continue;
-                    nPower = KOTOR2_JEDI_POWERS_3[nJediTier];
+                    switch (nJediTier) {
+                    case 0: nPower = FORM_SABER_I_SHII_CHO; break;
+                    case 1: nPower = FORM_SABER_II_MAKASHI; break;
+                    case 2: nPower = FORM_SABER_III_SORESU; break;
+                    case 3: nPower = FORM_FORCE_I_FOCUS; break;
+                    default: continue;
+                    }
                     break;
                 case CLASS_TYPE_JEDICONSULAR:
-                    if (static_cast<unsigned>(nJediTier) >= 4)
-                        continue;
-                    nPower = KOTOR2_JEDI_POWERS_4[nJediTier];
+                    switch (nJediTier) {
+                    case 0: nPower = FORM_SABER_I_SHII_CHO; break;
+                    case 1: nPower = FORM_FORCE_I_FOCUS; break;
+                    case 2: nPower = FORM_SABER_II_MAKASHI; break;
+                    case 3: nPower = FORM_SABER_III_SORESU; break;
+                    default: continue;
+                    }
                     break;
                 case CLASS_TYPE_JEDISENTINEL:
-                    if (static_cast<unsigned>(nJediTier) >= 4)
-                        continue;
-                    nPower = KOTOR2_JEDI_POWERS_5[nJediTier];
+                    switch (nJediTier) {
+                    case 0: nPower = FORM_SABER_I_SHII_CHO; break;
+                    case 1: nPower = FORM_SABER_III_SORESU; break;
+                    case 2: nPower = FORM_FORCE_I_FOCUS; break;
+                    case 3: nPower = FORM_SABER_II_MAKASHI; break;
+                    default: continue;
+                    }
                     break;
                 case CLASS_TYPE_JEDIMASTER:
-                    if (nLevelRem != 0 || nLevelTier >= 5)
-                        continue;
-                    nPower = nLevelTier + FORCE_POWER_INSPIRE_FOLLOWERS_I;
+                    switch (static_cast<unsigned char>(nNewClassLevel)) {
+                    case 1: nPower = FORCE_POWER_INSPIRE_FOLLOWERS_I; break;
+                    case 5: nPower = FORCE_POWER_INSPIRE_FOLLOWERS_II; break;
+                    case 9: nPower = FORCE_POWER_INSPIRE_FOLLOWERS_III; break;
+                    case 13: nPower = FORCE_POWER_INSPIRE_FOLLOWERS_IV; break;
+                    case 17: nPower = FORCE_POWER_INSPIRE_FOLLOWERS_V; break;
+                    default: continue;
+                    }
                     break;
                 case CLASS_TYPE_JEDIWATCHMAN:
                 case CLASS_TYPE_SITHASSASSIN:
@@ -6929,9 +6943,14 @@ void CSWSCreatureStats::AutoLevelup(int a)
                         continue;
                     break;
                 case CLASS_TYPE_SITHLORD:
-                    if (nLevelRem != 0 || nLevelTier >= 5)
-                        continue;
-                    nPower = nLevelTier + FORCE_POWER_CRUSH_OPPOSITION_I;
+                    switch (static_cast<unsigned char>(nNewClassLevel)) {
+                    case 1: nPower = FORCE_POWER_CRUSH_OPPOSITION_I; break;
+                    case 5: nPower = FORCE_POWER_CRUSH_OPPOSITION_II; break;
+                    case 9: nPower = FORCE_POWER_CRUSH_OPPOSITION_III; break;
+                    case 13: nPower = FORCE_POWER_CRUSH_OPPOSITION_IV; break;
+                    case 17: nPower = FORCE_POWER_CRUSH_OPPOSITION_V; break;
+                    default: continue;
+                    }
                     break;
                 default:
                     continue;
@@ -7211,7 +7230,9 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
         if (pGFF->GetListCount(&classList) == 0)
             return STRREF_INVALID_MULTICLASS_COUNT;
         nCount = static_cast<unsigned char>(pGFF->GetListCount(&classList));
-        m_numClasses = (nCount > 2) ? 2 : nCount;
+        m_numClasses = nCount;
+        if (m_numClasses > 2)
+            m_numClasses = 2;
         for (int64_t i = 0; i < m_numClasses; i++) {
             CResStruct classElem;
             if (pGFF->GetListElement(&classElem, &classList, static_cast<unsigned int>(i))) {
@@ -7366,45 +7387,12 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
                     m_pSkillRanks[7] = 0;
                     CResStruct skillElem;
                     char nRank;
-                    if (pGFF->GetListElement(&skillElem, &skillList, 0)) {
-                        nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                    pLvlStats->GetSkillRankChange(SKILL_COMPUTER_USE));
-                        pLvlStats->SetSkillRankChange(SKILL_COMPUTER_USE, nRank);
-                    }
-                    if (pGFF->GetListElement(&skillElem, &skillList, 1)) {
-                        nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                    pLvlStats->GetSkillRankChange(SKILL_DEMOLITIONS));
-                        pLvlStats->SetSkillRankChange(SKILL_DEMOLITIONS, nRank);
-                    }
-                    if (pGFF->GetListElement(&skillElem, &skillList, 2)) {
-                        nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                    pLvlStats->GetSkillRankChange(SKILL_STEALTH));
-                        pLvlStats->SetSkillRankChange(SKILL_STEALTH, nRank);
-                    }
-                    if (pGFF->GetListElement(&skillElem, &skillList, 3)) {
-                        nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                    pLvlStats->GetSkillRankChange(SKILL_AWARENESS));
-                        pLvlStats->SetSkillRankChange(SKILL_AWARENESS, nRank);
-                    }
-                    if (pGFF->GetListElement(&skillElem, &skillList, 4)) {
-                        nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                    pLvlStats->GetSkillRankChange(SKILL_PERSUADE));
-                        pLvlStats->SetSkillRankChange(SKILL_PERSUADE, nRank);
-                    }
-                    if (pGFF->GetListElement(&skillElem, &skillList, 5)) {
-                        nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                    pLvlStats->GetSkillRankChange(SKILL_REPAIR));
-                        pLvlStats->SetSkillRankChange(SKILL_REPAIR, nRank);
-                    }
-                    if (pGFF->GetListElement(&skillElem, &skillList, 6)) {
-                        nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                    pLvlStats->GetSkillRankChange(SKILL_SECURITY));
-                        pLvlStats->SetSkillRankChange(SKILL_SECURITY, nRank);
-                    }
-                    if (pGFF->GetListElement(&skillElem, &skillList, 7)) {
-                        nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                    pLvlStats->GetSkillRankChange(SKILL_TREAT_INJURY));
-                        pLvlStats->SetSkillRankChange(SKILL_TREAT_INJURY, nRank);
+                    for (int i = 0; i < 8; i++) {
+                        if (pGFF->GetListElement(&skillElem, &skillList, i)) {
+                            nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
+                                                        pLvlStats->GetSkillRankChange(static_cast<unsigned short>(i)));
+                            pLvlStats->SetSkillRankChange(static_cast<unsigned short>(i), nRank);
+                        }
                     }
                 }
 
@@ -7559,17 +7547,15 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
         m_pSkillRanks[5] = 0;
         m_pSkillRanks[6] = 0;
         m_pSkillRanks[7] = 0;
-        int i = 0;
-        do {
+        for (int i = 0; i < 8; i++) {
             CResStruct skillElem;
             char nRank;
             if (pGFF->GetListElement(&skillElem, &skillList, i)) {
                 nRank = pGFF->ReadFieldBYTE(&skillElem, const_cast<char*>("Rank"), success,
-                                                 GetSkillRank(static_cast<unsigned char>(i), 0, 0));
+                                            GetSkillRank(static_cast<unsigned char>(i), 0, 0));
                 SetSkillRank(static_cast<unsigned char>(i), nRank);
             }
-            i++;
-        } while (i != 8);
+        }
     }
 
     SetMovementRate(pGFF->ReadFieldBYTE(pStruct, const_cast<char*>("MovementRate"), success, static_cast<unsigned char>(m_nMovementRate)));
@@ -7581,24 +7567,22 @@ int64_t CSWSCreatureStats::ReadStatsFromGff(CResGFF* pGFF, CResStruct* pStruct,
     if (pGFF->GetList(&specAbilityList, pStruct, const_cast<char*>("SpecAbilityList"))) {
         if (static_cast<char>(pGFF->GetListCount(&specAbilityList)) != 0) {
             nSpecCount = static_cast<unsigned char>(pGFF->GetListCount(&specAbilityList));
-            if (nSpecCount != 0) {
-                unsigned int i = 0;
-                do {
-                    CResStruct specElem;
-                    unsigned short nSpell;
-                    unsigned char nFlags;
-                    unsigned char nCasterLevel;
-                    if (pGFF->GetListElement(&specElem, &specAbilityList, i)) {
-                        nSpell =
-                            pGFF->ReadFieldWORD(&specElem, const_cast<char*>("Spell"), success, 0);
-                        nFlags =
-                            pGFF->ReadFieldBYTE(&specElem, const_cast<char*>("SpellFlags"), success, 0);
-                        nCasterLevel =
-                            pGFF->ReadFieldBYTE(&specElem, const_cast<char*>("SpellCasterLevel"), success, 0);
-                        AddSpellLikeAbilityToList(nSpell, nFlags, nCasterLevel);
-                    }
-                    i++;
-                } while (nSpecCount != i);
+            unsigned int i = 0;
+            while (nSpecCount != i) {
+                CResStruct specElem;
+                unsigned short nSpell;
+                unsigned char nFlags;
+                unsigned char nCasterLevel;
+                if (pGFF->GetListElement(&specElem, &specAbilityList, i)) {
+                    nSpell =
+                        pGFF->ReadFieldWORD(&specElem, const_cast<char*>("Spell"), success, 0);
+                    nFlags =
+                        pGFF->ReadFieldBYTE(&specElem, const_cast<char*>("SpellFlags"), success, 0);
+                    nCasterLevel =
+                        pGFF->ReadFieldBYTE(&specElem, const_cast<char*>("SpellCasterLevel"), success, 0);
+                    AddSpellLikeAbilityToList(nSpell, nFlags, nCasterLevel);
+                }
+                i++;
             }
         }
     }
@@ -7852,14 +7836,12 @@ void CSWSCreatureStats::SaveClassInfo(CResGFF* pGFF, CResStruct* pStruct)
             }
             pGFF->WriteFieldWORD(&lvlElem, pLvl->m_nSkillPoints, const_cast<char*>("SkillPoints"));
             pGFF->AddList(&lvlSkillList, &lvlElem, const_cast<char*>("SkillList"));
-            if (g_pRules->m_nNumSkills != 0) {
-                unsigned char k = 0;
-                do {
-                    CResStruct skillElem;
-                    pGFF->AddListElement(&skillElem, &lvlSkillList, 0);
-                    pGFF->WriteFieldBYTE(&skillElem, pLvl->GetSkillRankChange(k), const_cast<char*>("Rank"));
-                    k++;
-                } while (k < g_pRules->m_nNumSkills);
+            unsigned char k = 0;
+            while (k < g_pRules->m_nNumSkills) {
+                CResStruct skillElem;
+                pGFF->AddListElement(&skillElem, &lvlSkillList, 0);
+                pGFF->WriteFieldBYTE(&skillElem, pLvl->GetSkillRankChange(k), const_cast<char*>("Rank"));
+                k++;
             }
             pGFF->AddList(&lvlFeatList, &lvlElem, const_cast<char*>("FeatList"));
             for (int64_t j = 0; j < static_cast<unsigned short>(pLvl->m_featsGained.m_count); j++) {

@@ -775,25 +775,25 @@ int CSWSPlaceable::LoadFromTemplate(const CResRef& resRef, int flag) {
 }
 
 Vector CSWSPlaceable::GetNearestActionPoint(const Vector& target) {
-    Vector zeroCheck1 = m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[0]);
-    if (zeroCheck1.x == 0.0f && zeroCheck1.y == 0.0f && zeroCheck1.z == 0.0f) {
-        return m_position;
+    Vector result;
+    if (m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[0]).IsZero()) {
+        result = m_position;
+        return result;
     }
 
-    Vector point0 = m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[0]);
-    Vector vDiff0 = target - point0;
-    Vector point1 = m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[1]);
-    Vector vDiff1 = target - point1;
-    Vector zeroCheck2 = m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[1]);
-
-    if (zeroCheck2.x != 0.0f || zeroCheck2.y != 0.0f || zeroCheck2.z != 0.0f) {
+    Vector vDiff0 = target - m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[0]);
+    Vector vDiff1 = target - m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[1]);
+    if (!m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[1]).IsZero()) {
         float dist0 = vDiff0.x * vDiff0.x + vDiff0.y * vDiff0.y + vDiff0.z * vDiff0.z;
         float dist1 = vDiff1.x * vDiff1.x + vDiff1.y * vDiff1.y + vDiff1.z * vDiff1.z;
         // A tie, and a NaN, picks B rather than A.
-        if (!(dist0 < dist1))
-            return m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[1]);
+        if (!(dist0 < dist1)) {
+            result = m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[1]);
+            return result;
+        }
     }
-    return m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[0]);
+    result = m_walkMesh.LocalToWorld(m_walkMesh.m_headerVec[0]);
+    return result;
 }
 
 void CSWSPlaceable::SetOrientation(const Quaternion& q) {

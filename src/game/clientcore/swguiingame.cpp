@@ -986,10 +986,10 @@ CSWGuiMessageBox::CSWGuiMessageBox(CSWGuiManager* pGuiManager)
     m_pCallbackObject = 0;
     m_pCallbackControl = 0;
     m_nSavedInputClass = 0;
-    m_nOpenSoundIndex = GUISOUND_PROMPT;
     m_bAccepted = 0;
     m_bFocusOkButton = 0;
     m_bPausedCombat = 0;
+    m_nOpenSoundIndex = GUISOUND_PROMPT;
 #endif
 }
 
@@ -1066,9 +1066,9 @@ CSWGuiMessageBox::CSWGuiMessageBox(CSWGuiManager* pGuiManager, int bDatapadStyle
     m_pCallbackObject = 0;
     m_pCallbackControl = 0;
     m_nSavedInputClass = 0;
-    m_nOpenSoundIndex = GUISOUND_PROMPT;
     m_bAccepted = 0;
     m_bFocusOkButton = 0;
+    m_nOpenSoundIndex = GUISOUND_PROMPT;
 }
 #endif // !KOTOR1
 

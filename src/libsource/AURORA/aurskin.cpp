@@ -869,7 +869,7 @@ void RenderSkinnedVP(VertexPrimitiveSkinned* vertices)
         GLRender::Enable(Aurora::kCapVertexProgram);
         GLRender::SetBlendFunc(Aurora::kBlendOne, Aurora::kBlendZero);
         currentscene->m_pLightManager->DisableBumpMapLights();
-        for (int64_t k = 0; k < bumpLights.m_count; k++) {
+        for (int k = 0; k < bumpLights.m_count; k++) {
             wsNewSkinBumpyVP->Enable(part, false);
             PartLight* pLight = bumpLights.m_pData[k];
             Vector vLight = RotateVector(pLight->m_vWorldPosition - vWS, -lq);

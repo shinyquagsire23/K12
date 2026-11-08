@@ -673,97 +673,97 @@ triple:
 
 void CSWCProjectile::SetBehaviorListParried()
 {
-    Vector vAim;
+    Vector vAim(0.0f, 0.0f, 0.0f);
     if (m_oidTarget == CGameObjectArray::INVALIDOBJID ||
         g_pAppManager->m_pClientExoApp->GetGameObject(m_oidTarget) == 0)
         vAim = m_desiredPosition;
 
     CProjectileBehavior* pBehavior = new CProjectileBehavior();
+    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
+    pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_vStart = vAim;
     pBehavior->m_vEnd = vAim;
     pBehavior->m_nSpawnCount = 0;
-    pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 1;
     pBehavior->m_nTimer = m_desiredPosTimer2;
     pBehavior->m_nHandoffTimer = 0;
     pBehavior->m_fRate = 0.0f;
-    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
     m_behaviorList.AddTail(pBehavior);
 
     pBehavior = new CProjectileBehavior();
+    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
+    pBehavior->m_oidTarget = OBJECT_INVALID;
     pBehavior->m_vStart = m_vImpactPosition;
     pBehavior->m_vEnd = m_vImpactPosition;
     pBehavior->m_nSpawnCount = 0;
-    pBehavior->m_oidTarget = OBJECT_INVALID;
     pBehavior->m_nSubProjectileType = 1;
     pBehavior->m_nTimer = m_nDeflectFlightTime;
     pBehavior->m_nHandoffTimer = 0;
     pBehavior->m_fRate = 0.0f;
-    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
     m_behaviorList.AddTail(pBehavior);
 }
 
 void CSWCProjectile::SetBehaviorListDeflected()
 {
-    Vector vAim;
+    Vector vAim(0.0f, 0.0f, 0.0f);
     if (m_oidTarget == CGameObjectArray::INVALIDOBJID ||
         g_pAppManager->m_pClientExoApp->GetGameObject(m_oidTarget) == 0)
         vAim = m_desiredPosition;
 
     CProjectileBehavior* pBehavior = new CProjectileBehavior();
+    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
+    pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_vStart = vAim;
     pBehavior->m_vEnd = vAim;
     pBehavior->m_nSpawnCount = 0;
-    pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 1;
     pBehavior->m_nTimer = m_desiredPosTimer2;
     pBehavior->m_nHandoffTimer = 0;
     pBehavior->m_fRate = 0.0f;
-    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
     m_behaviorList.AddTail(pBehavior);
 
     pBehavior = new CProjectileBehavior();
+    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
+    pBehavior->m_oidTarget = m_sourceObjectId;
     pBehavior->m_vStart = vAim;
     pBehavior->m_vEnd = vAim;
     pBehavior->m_nSpawnCount = 0;
-    pBehavior->m_oidTarget = m_sourceObjectId;
     pBehavior->m_nSubProjectileType = 1;
     pBehavior->m_nTimer = m_desiredPosTimer2;
     pBehavior->m_nHandoffTimer = 0;
     pBehavior->m_fRate = 0.0f;
-    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
     m_behaviorList.AddTail(pBehavior);
 }
 
 void CSWCProjectile::SetBehaviorListReflected()
 {
-    Vector vAim;
+    Vector vAim(0.0f, 0.0f, 0.0f);
     if (m_oidTarget == CGameObjectArray::INVALIDOBJID ||
         g_pAppManager->m_pClientExoApp->GetGameObject(m_oidTarget) == 0)
         vAim = m_desiredPosition;
 
     CProjectileBehavior* pBehavior = new CProjectileBehavior();
+    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
+    pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_vStart = vAim;
     pBehavior->m_vEnd = vAim;
     pBehavior->m_nSpawnCount = 0;
-    pBehavior->m_oidTarget = m_oidTarget;
     pBehavior->m_nSubProjectileType = 1;
     pBehavior->m_nTimer = m_desiredPosTimer2;
     pBehavior->m_nHandoffTimer = 0;
     pBehavior->m_fRate = m_fShieldRadius;
-    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
     m_behaviorList.AddTail(pBehavior);
 
     pBehavior = new CProjectileBehavior();
+    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
+    pBehavior->m_oidTarget = OBJECT_INVALID;
     pBehavior->m_vStart = m_vImpactPosition;
     pBehavior->m_vEnd = m_vImpactPosition;
     pBehavior->m_nSpawnCount = 0;
-    pBehavior->m_oidTarget = OBJECT_INVALID;
     pBehavior->m_nSubProjectileType = 1;
     pBehavior->m_nTimer = m_nDeflectFlightTime;
     pBehavior->m_nHandoffTimer = 0;
     pBehavior->m_fRate = 0.0f;
-    pBehavior->m_nKind = CProjectileBehavior::KIND_HOMING;
     m_behaviorList.AddTail(pBehavior);
 }
 
@@ -965,7 +965,6 @@ void CSWCProjectile::SetDesiredTargetObject(unsigned long long targetId, const C
         } else if (pDoor != 0) {
             m_sTargetPart = pDoor->m_sModelName + CExoString("impc");
         } else {
-            m_oidTarget = CGameObjectArray::INVALIDOBJID;
             if (sPart == "")
                 m_sTargetPart = const_cast<char*>("impact");
             else

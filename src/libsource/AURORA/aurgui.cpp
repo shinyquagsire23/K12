@@ -415,7 +415,7 @@ float GetViewportAlpha() {
         return 1.0f;
     }
     float fAlpha = 1.0f;
-    for (int64_t i = 0; i <= nViewport; i++) {
+    for (int i = 0; i <= nViewport; i++) {
         fAlpha *= CAurGUIDraw::cm_fViewportAlpha[i];
     }
     return fAlpha;
@@ -1004,31 +1004,27 @@ void CAurGUIStringInternal::Draw(float fAlpha)
             static_cast<float>(CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport].nHeight);
         float fOffset =
             (static_cast<float>(m_sizeY) - fCellHeight * static_cast<float>(m_lines.m_count)) / (fHeight + fHeight);
-        if (fOffset < 0.0f) {
-            float fStep = fCellHeight / fHeight;
-            do {
-                int nChars = m_lines.m_pData[nLine];
-                fOffset += fStep;
-                pszText += nChars < 0 ? -nChars : nChars;
-                if (*pszText == ' ' || *pszText == '\n')
-                    pszText++;
-                nLine++;
-            } while (fOffset < 0.0f);
+        float fStep = fCellHeight / fHeight;
+        while (fOffset < 0.0f) {
+            int nChars = m_lines.m_pData[nLine];
+            fOffset += fStep;
+            pszText += nChars < 0 ? -nChars : nChars;
+            if (*pszText == ' ' || *pszText == '\n')
+                pszText++;
+            nLine++;
         }
         fPenY += fOffset;
     } else if ((m_alignment & kAlignVerticalMask) == kAlignBottom) {
         float fCellHeight = m_fFontScale * pFontInfo->m_fBottom * 100.0f;
         float fBlockHeight = fCellHeight * static_cast<float>(m_lines.m_count);
         float fSizeY = static_cast<float>(m_sizeY);
-        if (fBlockHeight > fSizeY) {
-            do {
-                fBlockHeight -= fCellHeight;
-                int nChars = m_lines.m_pData[nLine];
-                pszText += nChars < 0 ? -nChars : nChars;
-                if (*pszText == ' ' || *pszText == '\n')
-                    pszText++;
-                nLine++;
-            } while (fBlockHeight > fSizeY);
+        while (fBlockHeight > fSizeY) {
+            fBlockHeight -= fCellHeight;
+            int nChars = m_lines.m_pData[nLine];
+            pszText += nChars < 0 ? -nChars : nChars;
+            if (*pszText == ' ' || *pszText == '\n')
+                pszText++;
+            nLine++;
         }
         fPenY += (fSizeY - fBlockHeight) /
                  static_cast<float>(CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport].nHeight);
@@ -1326,31 +1322,27 @@ void CAurGUIStringInternal::Draw(float fAlpha)
             static_cast<float>(CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport].nHeight);
         float fOffset =
             (static_cast<float>(m_sizeY) - fCellHeight * static_cast<float>(m_lines.m_count)) / (fHeight + fHeight);
-        if (fOffset < 0.0f) {
-            float fStep = fCellHeight / fHeight;
-            do {
-                int nChars = m_lines.m_pData[nLine];
-                fOffset += fStep;
-                pszText += nChars < 0 ? -nChars : nChars;
-                if (*pszText == ' ' || *pszText == '\n')
-                    pszText++;
-                nLine++;
-            } while (fOffset < 0.0f);
+        float fStep = fCellHeight / fHeight;
+        while (fOffset < 0.0f) {
+            int nChars = m_lines.m_pData[nLine];
+            fOffset += fStep;
+            pszText += nChars < 0 ? -nChars : nChars;
+            if (*pszText == ' ' || *pszText == '\n')
+                pszText++;
+            nLine++;
         }
         fPenY += fOffset;
     } else if ((m_alignment & kAlignVerticalMask) == kAlignBottom) {
         float fCellHeight = m_fFontScale * pFontInfo->m_fBottom * 100.0f;
         float fBlockHeight = fCellHeight * static_cast<float>(m_lines.m_count);
         float fSizeY = static_cast<float>(m_sizeY);
-        if (fBlockHeight > fSizeY) {
-            do {
-                fBlockHeight -= fCellHeight;
-                int nChars = m_lines.m_pData[nLine];
-                pszText += nChars < 0 ? -nChars : nChars;
-                if (*pszText == ' ' || *pszText == '\n')
-                    pszText++;
-                nLine++;
-            } while (fBlockHeight > fSizeY);
+        while (fBlockHeight > fSizeY) {
+            fBlockHeight -= fCellHeight;
+            int nChars = m_lines.m_pData[nLine];
+            pszText += nChars < 0 ? -nChars : nChars;
+            if (*pszText == ' ' || *pszText == '\n')
+                pszText++;
+            nLine++;
         }
         fPenY += (fSizeY - fBlockHeight) /
                  static_cast<float>(CAurGUIDraw::cm_nViewportStack[CAurGUIDraw::cm_nCurrentViewport].nHeight);
@@ -1773,12 +1765,13 @@ void CAurGUIImageInternal::Draw(int nX, int nY, int nWidth, int nHeight, unsigne
 {
     if (noguirender)
         return;
-    GLRender::cm_bEnablePausePlane = 0;
     short nViewport = CAurGUIDraw::cm_nCurrentViewport;
     const CAurGUIDraw::Viewport& viewport = CAurGUIDraw::cm_nViewportStack[nViewport];
-    Draw(static_cast<float>(nX) / static_cast<float>(viewport.nWidth), static_cast<float>(nY) / static_cast<float>(viewport.nHeight),
-         static_cast<float>(nWidth) / static_cast<float>(viewport.nWidth), static_cast<float>(nHeight) / static_cast<float>(viewport.nHeight),
-         a, f1, v, f2);
+    float fViewWidth = static_cast<float>(viewport.nWidth);
+    float fViewHeight = static_cast<float>(viewport.nHeight);
+    GLRender::cm_bEnablePausePlane = 0;
+    Draw(static_cast<float>(nX) / fViewWidth, static_cast<float>(nY) / fViewHeight,
+         static_cast<float>(nWidth) / fViewWidth, static_cast<float>(nHeight) / fViewHeight, a, f1, v, f2);
 }
 
 void CAurGUIImageInternal::DrawBuffered(int nX, int nY, int nWidth, int nHeight, unsigned char a,
@@ -1825,7 +1818,7 @@ void CAurGUIImageInternal::Draw(float x, float y, float w, float h, unsigned cha
     AurTextureMakeCurrent();
     m_pMaterial->BindTexture0();
 
-    uint64_t nCorner0, nCorner1, nCorner2, nCorner3;
+    uint64_t nCorner3, nCorner2, nCorner1, nCorner0;
     if ((a & kImageFlipMask) == kImageFlipV) {
         nCorner0 = 1;
         nCorner1 = 0;

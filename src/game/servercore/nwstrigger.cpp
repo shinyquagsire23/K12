@@ -746,56 +746,58 @@ int CSWSTrigger::LoadTrigger(CResGFF* pGFF, CResStruct* pStruct)
     if (bOriLoaded == 1) {
         Quaternion qOld = YawPitchRoll(Yaw(m_orientation), 0.0f, 0.0f);
         Quaternion qNew = YawPitchRoll(Yaw(vOri), 0.0f, 0.0f);
-        for (int64_t i = 0; i < m_nGeomVertCount; i++) {
-            Vector v;
-            v.x = m_pGeomVerts[i].x - m_position.x;
-            v.y = m_pGeomVerts[i].y - m_position.y;
-            v.z = m_pGeomVerts[i].z - m_position.z;
-            // Un-rotate by the old facing; the conjugate negates w.
-#if KOTOR1  // K1 negates the quaternion out of line
-            Quaternion qInv = -qOld;
-            if (quaternionidentityoptimization == 0 || (qInv.w != 1.0f && qInv.w != -1.0f)) {
-                float w = qInv.w, x = qInv.x, y = qInv.y, z = qInv.z;
-                float xx = x * x, yy = y * y, zz = z * z;
-                float xy = x * y, xz = x * z, yz = y * z;
-                float wx = x * w, wy = y * w, wz = z * w;
-                Vector r;
-                r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
-                r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
-                r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
-                v = r;
+        if (m_nGeomVertCount > 0) {
+            for (int64_t i = 0; i < m_nGeomVertCount; i++) {
+                Vector v;
+                v.x = m_pGeomVerts[i].x - m_position.x;
+                v.y = m_pGeomVerts[i].y - m_position.y;
+                v.z = m_pGeomVerts[i].z - m_position.z;
+                // Un-rotate by the old facing; the conjugate negates w.
+    #if KOTOR1  // K1 negates the quaternion out of line
+                Quaternion qInv = -qOld;
+                if (quaternionidentityoptimization == 0 || (qInv.w != 1.0f && qInv.w != -1.0f)) {
+                    float w = qInv.w, x = qInv.x, y = qInv.y, z = qInv.z;
+                    float xx = x * x, yy = y * y, zz = z * z;
+                    float xy = x * y, xz = x * z, yz = y * z;
+                    float wx = x * w, wy = y * w, wz = z * w;
+                    Vector r;
+                    r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
+                    r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
+                    r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
+                    v = r;
+                }
+    #else
+                if (quaternionidentityoptimization == 0 || (qOld.w != -1.0f && qOld.w != 1.0f)) {
+                    float x = qOld.x, y = qOld.y, z = qOld.z;
+                    float nw = -qOld.w;
+                    float xx = x * x, yy = y * y, zz = z * z;
+                    float xy = x * y, xz = x * z, yz = y * z;
+                    float wx = x * nw, wy = y * nw, wz = z * nw;
+                    Vector r;
+                    r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
+                    r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
+                    r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
+                    v = r;
+                }
+    #endif
+                // Re-rotate by the new facing.
+                if (quaternionidentityoptimization == 0 || !(qNew.w == 1.0f || qNew.w == -1.0f)) {
+                    float w = qNew.w, x = qNew.x, y = qNew.y, z = qNew.z;
+                    float xx = x * x, yy = y * y, zz = z * z;
+                    float xy = x * y, xz = x * z, yz = y * z;
+                    float wx = x * w, wy = y * w, wz = z * w;
+                    Vector r;
+                    r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
+                    r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
+                    r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
+                    v = r;
+                }
+                Vector vOut;
+                vOut.x = v.x + vPos.x;
+                vOut.y = v.y + vPos.y;
+                vOut.z = v.z + vPos.z;
+                m_pGeomVerts[i] = vOut;
             }
-#else
-            if (quaternionidentityoptimization == 0 || (qOld.w != -1.0f && qOld.w != 1.0f)) {
-                float x = qOld.x, y = qOld.y, z = qOld.z;
-                float nw = -qOld.w;
-                float xx = x * x, yy = y * y, zz = z * z;
-                float xy = x * y, xz = x * z, yz = y * z;
-                float wx = x * nw, wy = y * nw, wz = z * nw;
-                Vector r;
-                r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
-                r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
-                r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
-                v = r;
-            }
-#endif
-            // Re-rotate by the new facing.
-            if (quaternionidentityoptimization == 0 || !(qNew.w == 1.0f || qNew.w == -1.0f)) {
-                float w = qNew.w, x = qNew.x, y = qNew.y, z = qNew.z;
-                float xx = x * x, yy = y * y, zz = z * z;
-                float xy = x * y, xz = x * z, yz = y * z;
-                float wx = x * w, wy = y * w, wz = z * w;
-                Vector r;
-                r.x = v.x * (1.0f - ((yy + zz) + (yy + zz))) + v.y * ((xy - wz) + (xy - wz)) + v.z * ((xz + wy) + (xz + wy));
-                r.y = v.x * ((xy + wz) + (xy + wz)) + v.y * (1.0f - ((xx + zz) + (xx + zz))) + v.z * ((yz - wx) + (yz - wx));
-                r.z = v.x * ((xz - wy) + (xz - wy)) + v.y * ((yz + wx) + (yz + wx)) + v.z * (1.0f - ((xx + yy) + (xx + yy)));
-                v = r;
-            }
-            Vector vOut;
-            vOut.x = v.x + vPos.x;
-            vOut.y = v.y + vPos.y;
-            vOut.z = v.z + vPos.z;
-            m_pGeomVerts[i] = vOut;
         }
     }
     if (bPosLoaded != 0)

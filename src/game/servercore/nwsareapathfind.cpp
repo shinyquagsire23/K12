@@ -1128,86 +1128,83 @@ void CSWSArea::SmoothCornerOptimize(int nCount, float* pFloats, int* pOutCount, 
     *pOutCount = 2;
 
     int i = 2;
-    if (nCount - 2 >= 3)
+    float* pNext = pFloats + 5;
+    for (i = 2; i < nCount - 2; i += 2)
     {
-        float* pNext = pFloats + 5;
-        for (i = 2; i < nCount - 2; i += 2)
+        float c1x, c1y, c2x, c2y;
+        int r1 = ComputeBestCorner((*ppOutFloats)[*pOutCount - 2], (*ppOutFloats)[*pOutCount - 1],
+                                   pNext[-3], pNext[-2], pNext[-1], pNext[0],
+                                   fPersonalSpace, fHeight, &c1x, &c1y, &c2x, &c2y);
+        if (r1 == 1)
         {
-            float c1x, c1y, c2x, c2y;
-            int r1 = ComputeBestCorner((*ppOutFloats)[*pOutCount - 2], (*ppOutFloats)[*pOutCount - 1],
-                                       pNext[-3], pNext[-2], pNext[-1], pNext[0],
-                                       fPersonalSpace, fHeight, &c1x, &c1y, &c2x, &c2y);
-            if (r1 == 1)
+            float d1x, d1y, d2x, d2y;
+            int r2 = ComputeBestCorner((*ppOutFloats)[*pOutCount - 2], (*ppOutFloats)[*pOutCount - 1],
+                                       c1x, c1y, c2x, c2y,
+                                       fPersonalSpace, fHeight, &d1x, &d1y, &d2x, &d2y);
+            if (r2 == 1)
             {
-                float d1x, d1y, d2x, d2y;
-                int r2 = ComputeBestCorner((*ppOutFloats)[*pOutCount - 2], (*ppOutFloats)[*pOutCount - 1],
-                                           c1x, c1y, c2x, c2y,
-                                           fPersonalSpace, fHeight, &d1x, &d1y, &d2x, &d2y);
-                if (r2 == 1)
+                float e1x, e1y, e2x, e2y;
+                int r3 = ComputeBestCorner(d2x, d2y, c2x, c2y, pNext[-1], pNext[0],
+                                           fPersonalSpace, fHeight, &e1x, &e1y, &e2x, &e2y);
+                int n = *pOutCount;
+                (*ppOutFloats)[n] = d1x;
+                (*ppOutFloats)[n + 1] = d1y;
+                (*ppOutFloats)[n + 2] = d2x;
+                (*ppOutFloats)[n + 3] = d2y;
+                nOut = n + 4;
+                *pOutCount = nOut;
+                if (r3 == 1)
                 {
-                    float e1x, e1y, e2x, e2y;
-                    int r3 = ComputeBestCorner(d2x, d2y, c2x, c2y, pNext[-1], pNext[0],
-                                               fPersonalSpace, fHeight, &e1x, &e1y, &e2x, &e2y);
-                    int n = *pOutCount;
-                    (*ppOutFloats)[n] = d1x;
-                    (*ppOutFloats)[n + 1] = d1y;
-                    (*ppOutFloats)[n + 2] = d2x;
-                    (*ppOutFloats)[n + 3] = d2y;
-                    nOut = n + 4;
+                    (*ppOutFloats)[*pOutCount] = e1x;
+                    (*ppOutFloats)[*pOutCount + 1] = e1y;
+                    nOut = *pOutCount + 2;
                     *pOutCount = nOut;
-                    if (r3 == 1)
-                    {
-                        (*ppOutFloats)[*pOutCount] = e1x;
-                        (*ppOutFloats)[*pOutCount + 1] = e1y;
-                        nOut = *pOutCount + 2;
-                        *pOutCount = nOut;
-                        (*ppOutFloats)[*pOutCount] = e2x;
-                        nOut += 2;
-                        (*ppOutFloats)[*pOutCount + 1] = e2y;
-                    }
-                    else
-                    {
-                        (*ppOutFloats)[n + 4] = c2x;
-                        (*ppOutFloats)[n + 5] = c2y;
-                        nOut = n + 6;
-                    }
-                    *pOutCount = nOut;
+                    (*ppOutFloats)[*pOutCount] = e2x;
+                    nOut += 2;
+                    (*ppOutFloats)[*pOutCount + 1] = e2y;
                 }
                 else
                 {
-                    int r3 = ComputeBestCorner(c1x, c1y, c2x, c2y, pNext[-1], pNext[0],
-                                               fPersonalSpace, fHeight, &d1x, &d1y, &d2x, &d2y);
-                    int n = *pOutCount;
-                    (*ppOutFloats)[n] = c1x;
-                    (*ppOutFloats)[n + 1] = c1y;
-                    nOut = n + 2;
-                    *pOutCount = nOut;
-                    if (r3 == 1)
-                    {
-                        (*ppOutFloats)[n + 2] = d1x;
-                        (*ppOutFloats)[n + 3] = d1y;
-                        (*ppOutFloats)[n + 4] = d2x;
-                        nOut = n + 6;
-                        (*ppOutFloats)[n + 5] = d2y;
-                    }
-                    else
-                    {
-                        (*ppOutFloats)[n + 2] = c2x;
-                        (*ppOutFloats)[n + 3] = c2y;
-                        nOut = n + 4;
-                    }
-                    *pOutCount = nOut;
+                    (*ppOutFloats)[n + 4] = c2x;
+                    (*ppOutFloats)[n + 5] = c2y;
+                    nOut = n + 6;
                 }
+                *pOutCount = nOut;
             }
             else
             {
-                (*ppOutFloats)[*pOutCount] = pNext[-3];
-                (*ppOutFloats)[*pOutCount + 1] = pNext[-2];
-                nOut = *pOutCount + 2;
+                int r3 = ComputeBestCorner(c1x, c1y, c2x, c2y, pNext[-1], pNext[0],
+                                           fPersonalSpace, fHeight, &d1x, &d1y, &d2x, &d2y);
+                int n = *pOutCount;
+                (*ppOutFloats)[n] = c1x;
+                (*ppOutFloats)[n + 1] = c1y;
+                nOut = n + 2;
+                *pOutCount = nOut;
+                if (r3 == 1)
+                {
+                    (*ppOutFloats)[n + 2] = d1x;
+                    (*ppOutFloats)[n + 3] = d1y;
+                    (*ppOutFloats)[n + 4] = d2x;
+                    nOut = n + 6;
+                    (*ppOutFloats)[n + 5] = d2y;
+                }
+                else
+                {
+                    (*ppOutFloats)[n + 2] = c2x;
+                    (*ppOutFloats)[n + 3] = c2y;
+                    nOut = n + 4;
+                }
                 *pOutCount = nOut;
             }
-            pNext += 2;
         }
+        else
+        {
+            (*ppOutFloats)[*pOutCount] = pNext[-3];
+            (*ppOutFloats)[*pOutCount + 1] = pNext[-2];
+            nOut = *pOutCount + 2;
+            *pOutCount = nOut;
+        }
+        pNext += 2;
     }
     if (nCount > 2)
     {
@@ -2904,8 +2901,6 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
                                       CExoArrayList<unsigned long long>* pOut)
 {
     int nFound = 0;
-    if (m_subAreas.m_count < 1)
-        return 0;
 
     for (int i = 0; i < m_subAreas.m_count; i++)
     {
@@ -2954,8 +2949,6 @@ int CSWSArea::IntersectingLineSegment(const Vector& from, const Vector& to,
 int CSWSArea::InSubAreas(const Vector& pos, CExoArrayList<unsigned long long>* pOut)
 {
     int nFound = 0;
-    if (m_subAreas.m_count < 1)
-        return 0;
 
     unsigned long long nStrayId = OBJECT_INVALID;
     for (int i = 0; i < m_subAreas.m_count; i++)
@@ -3023,9 +3016,9 @@ int CSWSArea::ShrinkLineByCreatures(const Vector& from, const Vector& to, Vector
     CExoArrayList<CSWSCreature*> creatures;
     int nIndex;
     float fMinX = std::min(to.x, from.x) - 3.0f;
-    float fMaxX = std::max(to.x, from.x) + 3.0f;
+    float fMaxX = (from.x > to.x ? from.x : to.x) + 3.0f;
     float fMinY = std::min(to.y, from.y) - 3.0f;
-    float fMaxY = std::max(to.y, from.y) + 3.0f;
+    float fMaxY = (from.y > to.y ? from.y : to.y) + 3.0f;
     int nFirst = 0;
     int nLast = m_aObjectsByX.m_count - 1;
     if (GetFirstObjectIndiceByX(&nIndex, fMaxX) != 0)
@@ -3103,7 +3096,7 @@ int CSWSArea::ShrinkLineByCreatures(const Vector& from, const Vector& to, Vector
                         float fNz = vFrom.z - out.z;
                         float fT = (fNx * fNx + fNy * fNy + fNz * fNz) / fLen;
                         float fLoZ = std::min(to.z, from.z);
-                        float fHiZ = std::max(to.z, from.z);
+                        float fHiZ = from.z > to.z ? from.z : to.z;
                         out.z = fLoZ + (fT * (fHiZ - fLoZ) + kStep);
                     }
                 }
@@ -3140,7 +3133,7 @@ int CSWSArea::ShrinkLineByCreatures(const Vector& from, const Vector& to, Vector
                     float fNz = vFrom.z - out.z;
                     float fT = (fNx * fNx + fNy * fNy + fNz * fNz) / fLen;
                     float fLoZ = std::min(to.z, from.z);
-                    float fHiZ = std::max(to.z, from.z);
+                    float fHiZ = from.z > to.z ? from.z : to.z;
                     out.z = fLoZ + (fT * (fHiZ - fLoZ) + kStep);
                 }
             }

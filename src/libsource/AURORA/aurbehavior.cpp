@@ -628,8 +628,7 @@ int CAurBehaviorCameraOnAStick::Control(float fParam) {
     if (m_bOrientWithTarget != 0 && magnitude(m_vDir) > 0.0f) {
         // The look direction is recomputed from the updated position, and the camera is then pulled
         // back along m_vDir by the distance to the target it would have had.
-        Vector vLook(vTarget.x - vNew.x, vTarget.y - vNew.y, 0.0f);
-        float fMag = magnitude(vLook);
+        float fMag = magnitude(Vector(vTarget.x - vNew.x, vTarget.y - vNew.y, 0.0f));
         vNew = Vector(vTarget.x - fMag * m_vDir.x, vTarget.y - fMag * m_vDir.y, m_fHeight);
         m_pOwner->SetOrientation(YawPitchRoll(Yaw(normalize(m_vDir)), m_fPitch, 0.0f));
     } else {

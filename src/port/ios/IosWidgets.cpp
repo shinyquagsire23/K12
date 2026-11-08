@@ -313,11 +313,11 @@ CSWGuiExtent IosDialogReplies::GetContentFrame(int bAbsolute)
         nBottom = s_nReplyBottomNoBg;
         nSide = s_nReplySideNoBg;
     }
+    CSWGuiExtent frame;
     float fOffX = 0.0f;
     if (bAbsolute)
         fOffX = static_cast<float>(m_extent.x);
     const float fScale = GetHeightScale();
-    CSWGuiExtent frame;
     frame.x = static_cast<int>(fOffX + fScale * nSide);
     const float fTopScaled = fScale * nTop;
     float fOffY = 0.0f;
@@ -573,7 +573,7 @@ void IosDialogReplies::Draw(float fAlpha)
     ASLgl::glScissor(0, CAurGUIDraw::cm_nViewportStack[0].nHeight - (frame.y + frame.h),
                      CAurGUIDraw::cm_nViewportStack[0].nWidth, frame.h);
 
-    for (int64_t i = 0; i < m_aReplies.m_count; i++)
+    for (int i = 0; i < m_aReplies.m_count; i++)
     {
         const CSWGuiExtent reply = GetReplyExtent(1, static_cast<int>(i));
         CAurGUIImageInternal* pArrow = (i == m_nSelectedReply) ? m_pReplyDownImage : m_pReplyUpImage;
@@ -662,7 +662,7 @@ void IosDialogReplies::Draw(float fAlpha)
     {
         const int nCellW = frame.w / m_nColumns;
 
-        for (int64_t i = 0; i < m_aReplies.m_count; i++)
+        for (int i = 0; i < m_aReplies.m_count; i++)
         {
             const int nIdx = static_cast<int>(i);
             const int nX = nIdx % m_nColumns * nCellW + frame.x;

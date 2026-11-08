@@ -541,10 +541,12 @@ int CSWTrackFollower::DoBulletHitCheck(CAurObject* pBullet) {
     CSWMGBehaviorBullet* pBehavior = static_cast<CSWMGBehaviorBullet*>(pBullet->GetBehavior(BEHAVIOR_TYPE_MGBULLET));
     if (pBehavior == 0 || pBehavior->m_pTrackFollower != this) {
         int nModels = m_models.m_count;
-        for (int i = 0; i < nModels; i++) {
-            if (m_pMiniGame->HitCheckBullet(pBullet, m_models.m_pArray[i].pModel,
-                                            static_cast<CSWMiniGameObject*>(this)))  // idiom-exempt: unmodelled base
-                return 1;
+        if (nModels > 0) {
+            for (int i = 0; i < nModels; i++) {
+                if (m_pMiniGame->HitCheckBullet(pBullet, m_models.m_pArray[i].pModel,
+                                                static_cast<CSWMiniGameObject*>(this)))  // idiom-exempt: unmodelled base
+                    return 1;
+            }
         }
     }
     return 0;
@@ -1485,9 +1487,9 @@ Vector CSWMiniPlayer::DoInertia(const Vector& vFrom, const Vector& vTo, const Qu
     vDiff.x = m_vLastVelocity.x - vVel.x;
     vDiff.y = m_vLastVelocity.y - vVel.y;
     vDiff.z = m_vLastVelocity.z - vVel.z;
+    float fDot = vNormal.x * vDiff.x + vNormal.y * vDiff.y + vNormal.z * vDiff.z;
     m_vLastVelocity = vVel;
 
-    float fDot = vNormal.x * vDiff.x + vNormal.y * vDiff.y + vNormal.z * vDiff.z;
     vDiff.x -= vNormal.x * fDot;
     vDiff.y -= vNormal.y * fDot;
     vDiff.z -= vNormal.z * fDot;

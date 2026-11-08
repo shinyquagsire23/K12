@@ -316,10 +316,10 @@ int CSWSAreaMap::IsWorldPointExplored(Vector vPos)
 
     int nMapX;
     int nMapY;
-    if (!GetMapPixelFromWorldCoord(vPos, nMapX, nMapY))
-        return false;
     int nGridX;
     int nGridY = 0;
+    if (!GetMapPixelFromWorldCoord(vPos, nMapX, nMapY))
+        return false;
     if (!GetGridPixelFromMapPixel(nMapX, nMapY, nGridX, nGridY))
         return false;
     int nIndex = (m_nResX + 1) * nGridY + nGridX;

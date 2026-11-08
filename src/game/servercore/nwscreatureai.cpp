@@ -571,15 +571,17 @@ void CSWSCreature::UpdateVisibleList(unsigned char nMode)
             }
         } else {
             // Pass 1 prunes, backward, and m_count is read once since the body may remove entries.
-            for (int i = m_visibilityList.m_count - 1; i >= 0; i--) {
-                unsigned long long id = m_visibilityList.m_pArray[i]->m_objectId;
-                if (id != m_objectId) {
-                    CSWSCreature* pCreature = pApp->GetCreatureByGameObjectID(id);
-                    if (pCreature == 0) {
-                        RemoveFromVisibleList(id);
-                    } else if (nMode == 0
-                            || (nMode == 2 && pCreature->m_bInParty == 0)) {
-                        DoPerceptionUpdateOnCreature(pCreature);
+            if (m_visibilityList.m_count > 0) {
+                for (int i = m_visibilityList.m_count - 1; i >= 0; i--) {
+                    unsigned long long id = m_visibilityList.m_pArray[i]->m_objectId;
+                    if (id != m_objectId) {
+                        CSWSCreature* pCreature = pApp->GetCreatureByGameObjectID(id);
+                        if (pCreature == 0) {
+                            RemoveFromVisibleList(id);
+                        } else if (nMode == 0
+                                || (nMode == 2 && pCreature->m_bInParty == 0)) {
+                            DoPerceptionUpdateOnCreature(pCreature);
+                        }
                     }
                 }
             }
@@ -887,9 +889,8 @@ int CSWSCreature::AIActionHeal(CSWSObjectActionNode* pNode)
                          ACTION_PARAM_OBJECT, &oidTarget, ACTION_PARAM_INT, &nOneA,
                          ACTION_PARAM_FLOAT, &fRange, ACTION_PARAM_FLOAT, &fRange,
                          ACTION_PARAM_INT, &nOneB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        Vector vZero;
         AddMoveToPointActionToFront(pNode->m_nGroupId, vDest, m_cachedAreaId, oidTarget, nOneA,
-                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         return ACTION_COMPLETE;
     }
 
@@ -1630,9 +1631,8 @@ int CSWSCreature::AIActionDropItem(CSWSObjectActionNode* pNode)
                                  0, 0, 0, 0, 0, 0, 0, 0);
                 Vector vDir = normalize(m_position - vDrop);
                 vDrop = vDrop + vDir;
-                Vector vZero;
                 AddMoveToPointActionToFront(pNode->m_nGroupId, vDrop, m_cachedAreaId, OBJECT_INVALID, 1,
-                                            0.0f, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                            0.0f, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
                 return ACTION_COMPLETE;
             }
 
@@ -1731,9 +1731,8 @@ int CSWSCreature::AIActionExamineMine(CSWSObjectActionNode* pNode)
         AddActionToFront(AIACTION_CHANGE_FACING_OBJECT, pNode->m_nGroupId,
                          ACTION_PARAM_OBJECT, &oidMine, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                          0, 0, 0, 0, 0, 0, 0, 0, 0);
-        Vector vZero;
         AddMoveToPointActionToFront(pNode->m_nGroupId, vTarget, m_cachedAreaId, OBJECT_INVALID, 1,
-                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         return ACTION_COMPLETE;
     }
 
@@ -1898,9 +1897,8 @@ int CSWSCreature::AIActionFlagMine(CSWSObjectActionNode* pNode)
         AddActionToFront(AIACTION_CHANGE_FACING_OBJECT, pNode->m_nGroupId,
                          ACTION_PARAM_OBJECT, &oidMine, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                          0, 0, 0, 0, 0, 0, 0, 0, 0);
-        Vector vZero;
         AddMoveToPointActionToFront(pNode->m_nGroupId, vTarget, m_cachedAreaId, OBJECT_INVALID, 1,
-                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         return ACTION_COMPLETE;
     }
 
@@ -2091,9 +2089,8 @@ int CSWSCreature::AIActionRecoverMine(CSWSObjectActionNode* pNode)
         AddActionToFront(AIACTION_CHANGE_FACING_OBJECT, pNode->m_nGroupId,
                          ACTION_PARAM_OBJECT, &oidMine, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                          0, 0, 0, 0, 0, 0, 0, 0, 0);
-        Vector vZero;
         AddMoveToPointActionToFront(pNode->m_nGroupId, vTarget, m_cachedAreaId, OBJECT_INVALID, 1,
-                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         return ACTION_COMPLETE;
     }
 
@@ -2358,9 +2355,8 @@ int CSWSCreature::AIActionDisarmMine(CSWSObjectActionNode* pNode)
         AddActionToFront(AIACTION_CHANGE_FACING_OBJECT, pNode->m_nGroupId,
                          ACTION_PARAM_OBJECT, &oidMine, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                          0, 0, 0, 0, 0, 0, 0, 0, 0);
-        Vector vZero;
         AddMoveToPointActionToFront(pNode->m_nGroupId, vTarget, m_cachedAreaId, OBJECT_INVALID, 1,
-                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                    fRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         return ACTION_COMPLETE;
     }
 
@@ -2635,8 +2631,7 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
     }
     else
     {
-        Vector vZero;
-        if (equal(vTarget, vZero) != 0)
+        if (equal(vTarget, Vector()) != 0)
         {
             m_bMineActionStarted = 0;
             return ACTION_FAILED;
@@ -2674,9 +2669,8 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
             AddActionToFront(AIACTION_CHANGE_FACING_OBJECT, pNode->m_nGroupId,
                              ACTION_PARAM_OBJECT, &oidTarget, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            Vector vZero;
             AddMoveToPointActionToFront(pNode->m_nGroupId, vDest, m_cachedAreaId, oidTarget, 1,
-                                        fRange, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                        fRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         }
         else
         {
@@ -2684,9 +2678,8 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
                              ACTION_PARAM_FLOAT, &fX, ACTION_PARAM_FLOAT, &fY,
                              ACTION_PARAM_FLOAT, &fZ, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                              0, 0, 0, 0, 0);
-            Vector vZero;
             AddMoveToPointActionToFront(pNode->m_nGroupId, vDest, m_cachedAreaId, OBJECT_INVALID, 1,
-                                        1.0f, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                        1.0f, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         }
         return ACTION_COMPLETE;
     }
@@ -2908,8 +2901,7 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
     else
     {
         // Planting on bare ground, an all-zero point means "nowhere", and the action just fails.
-        Vector vZero;
-        if (equal(vTarget, vZero) != 0)
+        if (equal(vTarget, Vector()) != 0)
         {
             m_bMineActionStarted = 0;
             return ACTION_FAILED;
@@ -2949,9 +2941,8 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
             AddActionToFront(AIACTION_CHANGE_FACING_OBJECT, pNode->m_nGroupId,
                              ACTION_PARAM_OBJECT, &oidTarget, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            Vector vZero;
             AddMoveToPointActionToFront(pNode->m_nGroupId, vDest, m_cachedAreaId, oidTarget, 1,
-                                        fRange, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                        fRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         }
         else
         {
@@ -2959,9 +2950,8 @@ int CSWSCreature::AIActionSetMine(CSWSObjectActionNode* pNode)
                              ACTION_PARAM_FLOAT, &fX, ACTION_PARAM_FLOAT, &fY,
                              ACTION_PARAM_FLOAT, &fZ, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                              0, 0, 0, 0, 0);
-            Vector vZero;
             AddMoveToPointActionToFront(pNode->m_nGroupId, vDest, m_cachedAreaId, OBJECT_INVALID, 1,
-                                        1.0f, 0.0f, 0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                        1.0f, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         }
         m_bActionApproachDone = 1;
         return ACTION_COMPLETE;
@@ -3688,16 +3678,8 @@ int CSWSCreature::AIActionDrive(CSWSObjectActionNode* pNode)
         if (bClear == 0) {
             // Probe 2 is the angular bisection. vBaseL/vBaseR are the blocked bounds and
             // vDirL/vDirR the clear ones; each side halves its own angle until neither moves.
-            Vector vPerp;
-            vPerp.x = vMove.y;
-            vPerp.y = -vMove.x;
-            vPerp.z = 0.0f;
-            Vector vDirR = normalize(vPerp);
-            Vector vNegPerp;
-            vNegPerp.x = -vDirR.x;
-            vNegPerp.y = -vDirR.y;
-            vNegPerp.z = -vDirR.z;
-            Vector vDirL = normalize(vNegPerp);
+            Vector vDirR = normalize(Vector(vMove.y, -vMove.x, 0.0f));
+            Vector vDirL = normalize(Vector(-vDirR.x, -vDirR.y, -vDirR.z));
             Vector vBaseR = vMove;
             Vector vBaseL = vMove;
             int bAliveL = 1;
@@ -4660,11 +4642,13 @@ void CSWSCreature::ClearVisibleList()
 
 void CSWSCreature::RemoveFromVisibleList(unsigned long long id)
 {
-    for (int i = m_visibilityList.m_count - 1; i >= 0; i--) {
-        CSWVisibilityNode* pNode = m_visibilityList.m_pArray[i];
-        if (pNode->m_objectId == id) {
-            m_visibilityList.DelIndex(i);
-            delete pNode;
+    if (m_visibilityList.m_count > 0) {
+        for (int i = m_visibilityList.m_count - 1; i >= 0; i--) {
+            CSWVisibilityNode* pNode = m_visibilityList.m_pArray[i];
+            if (pNode->m_objectId == id) {
+                m_visibilityList.DelIndex(i);
+                delete pNode;
+            }
         }
     }
 }
@@ -4900,7 +4884,9 @@ int CSWSCreature::AIActionStanceMeditative(CSWSObjectActionNode* pNode)
     int nDeadTemp = GetDeadTemp();
     int nDead = GetDead();
     int nResult = ACTION_FAILED;
-    if (nDeadTemp == 0 && nDead == 0) {
+    if (nDeadTemp == 0) {
+        if (nDead != 0)
+            return nResult;
         ActivityManager(2);
         if (m_nStancePosture == STANCE_POSTURE_MEDITATIVE) {
             if (m_actionList.m_pInternal->m_nCount >= 2) {
@@ -5797,7 +5783,9 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk_FollowLeader()
             fSpeed = (pMember->m_followDistance > fWalk) ? pMember->m_followDistance : fWalk;
         } else {
             float fRun = GetRunRate();
-            fSpeed = !(fToPointSq <= 4.0f) ? fRun : fRun * DriveWalkThreshold;
+            fSpeed = fRun;
+            if (fToPointSq <= 4.0f)
+                fSpeed = fRun * DriveWalkThreshold;
         }
     }
     if (FollowLeaderFullLogging) {
@@ -5830,7 +5818,9 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk_FollowLeader()
                 fSpeed = GetWalkRate() * 0.9f;
         } else {
             float fRun = GetRunRate();
-            fSpeed = !(fToPointSq <= 4.0f) ? fRun : fRun * DriveWalkThreshold;
+            fSpeed = fRun;
+            if (fToPointSq <= 4.0f)
+                fSpeed = fRun * DriveWalkThreshold;
         }
         if (FollowLeaderFullLogging) {
             g_pAppManager->m_pClientExoApp->GetSWParty()->GetCharacter(0);
@@ -6062,10 +6052,9 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk_FollowLeader_FindPath(
                          ACTION_PARAM_FLOAT, &vTarget.z, ACTION_PARAM_OBJECT, &oidArea,
                          ACTION_PARAM_OBJECT, &oidInvalid, ACTION_PARAM_INT, &nOne,
                          ACTION_PARAM_FLOAT, &fHalf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        Vector vZero;
         AddMoveToPointActionToFront(ACTION_GROUP_PREVIOUS, vTarget, m_cachedAreaId, OBJECT_INVALID, 1, 0.0f,
                                     30.0f,
-                                    0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                    0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         pMemberData->m_nFollowState = CSWPartyMemberData::FOLLOW_STATE_OFFSET_WAIT_DEST;
     } else {
         static_cast<CSWSArea*>(GetArea())->ComputeSafeLocation(vFollow, 3.0f, m_pPathfindInfo, 0, &vFollow);
@@ -6074,10 +6063,9 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk_FollowLeader_FindPath(
                          ACTION_PARAM_FLOAT, &vFollow.z, ACTION_PARAM_OBJECT, &oidArea,
                          ACTION_PARAM_OBJECT, &oidInvalid, ACTION_PARAM_INT, &nOne,
                          ACTION_PARAM_FLOAT, &fHalf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        Vector vZero;
         AddMoveToPointActionToFront(ACTION_GROUP_PREVIOUS, vFollow, m_cachedAreaId, OBJECT_INVALID, 1, 0.0f,
                                     30.0f,
-                                    0, 0, 0, 0, 0, 0, vZero, 0, 0, 0);
+                                    0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
         pMemberData->m_nFollowState = CSWPartyMemberData::FOLLOW_STATE_PATH_WAIT_DEST;
     }
 
@@ -6181,7 +6169,8 @@ int CSWSCreature::WalkUpdateLocation_QuickWalk_FollowLeader_Offset(
     vTargetPrev = vRotPrev + vPosPrev;
     }
 
-    float fAlong = magnitude(vCurrent - vPosPrev) / magnitude(vPosCur - vPosPrev);
+    float fAlong = magnitude(vCurrent - vPosPrev);
+    fAlong /= magnitude(vPosCur - vPosPrev);
     vGoal = vTargetPrev + (vTargetCur - vTargetPrev) * fAlong;
 
     if (GetArea() != 0)
@@ -7733,11 +7722,7 @@ int CSWSCreature::AIActionJumpToPoint(CSWSObjectActionNode* pNode)
 
     Vector vSafe;
     m_pPathfindInfo->m_oidCreature = m_objectId;
-    Vector vDest;
-    vDest.x = fDestX;
-    vDest.y = fDestY;
-    vDest.z = fDestZ;
-    if (pArea->ComputeSafeLocation(vDest, fSearchRadius, m_pPathfindInfo,
+    if (pArea->ComputeSafeLocation(Vector(fDestX, fDestY, fDestZ), fSearchRadius, m_pPathfindInfo,
                                    nSafeLocation != 0, &vSafe) != 1) {
         m_pPathfindInfo->ResetInterAreaSearchData();
         return ACTION_FAILED;
@@ -7751,11 +7736,7 @@ int CSWSCreature::AIActionJumpToPoint(CSWSObjectActionNode* pNode)
         g_pAppManager->m_pClientExoApp->GetSWParty()->m_members[0].id;
     if (m_objectId == g_pAppManager->m_pServerExoApp->ClientToServerObjectId(oidLeader)) {
         CSWParty* pParty = g_pAppManager->m_pClientExoApp->GetSWParty();
-        Vector vFacing;
-        vFacing.x = fFacingX;
-        vFacing.y = fFacingY;
-        vFacing.z = 0.0f;
-        pParty->ResetAllFollowData(vSafe, Yaw(normalize(vFacing)), 1);
+        pParty->ResetAllFollowData(vSafe, Yaw(normalize(Vector(fFacingX, fFacingY, 0.0f))), 1);
     }
 
     CSWSPlayer* pPlayer =
@@ -7773,11 +7754,7 @@ int CSWSCreature::AIActionJumpToPoint(CSWSObjectActionNode* pNode)
                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
-    Vector vNewFacing;
-    vNewFacing.x = fFacingX;
-    vNewFacing.y = fFacingY;
-    vNewFacing.z = 0.0f;
-    SetOrientation(normalize(vNewFacing));
+    SetOrientation(normalize(Vector(fFacingX, fFacingY, 0.0f)));
     AddActionToFront(AIACTION_CHECK_INTER_AREA_PATHFINDING, pNode->m_nGroupId, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                      0, 0, 0,
                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -7848,9 +7825,8 @@ int CSWSCreature::AIActionRandomWalk(CSWSObjectActionNode* pNode)
                 return ACTION_COMPLETE;
         }
 
-        Vector vZero;
         AddMoveToPointActionToFront(pNode->m_nGroupId, vDest, oidArea, OBJECT_INVALID, 0, 0.0f, 0.0f,
-                                    0, 0, 0, 0, 1, 0, vZero, 0, 0, 0);
+                                    0, 0, 0, 0, 1, 0, Vector(), 0, 0, 0);
     } else {
         fWait = 15.0f;
         AddActionToFront(AIACTION_RANDOM_WALK, pNode->m_nGroupId, ACTION_PARAM_FLOAT, &fAnchorX,
@@ -8007,7 +7983,9 @@ int CSWSCreature::AIActionItemCastSpell(CSWSObjectActionNode* pAction)
         CExoString sModelType;
         g_pRules->m_p2DArrays->m_pAppearance->GetCExoStringEntry(
             m_appearance.m_headId, CExoString("MODELTYPE"), &sModelType);
-        int bHumanoidModel = sModelType.CompareNoCase("B") || sModelType.CompareNoCase("F");
+        int bHumanoidModel = 1;
+        if (sModelType.CompareNoCase("B") == 0)
+            bHumanoidModel = sModelType.CompareNoCase("F") != 0;
 
         pAction->m_bInterruptable = 0;
 
@@ -8393,8 +8371,7 @@ castBlocked:
         m_pCombatRound->GetAttack(m_pCombatRound->m_currentAttack)->m_nFeatId = FEAT_POWER_ATTACK;
         ResolveAttack(oidTarget, 1, 1500, 0, 0, 4, 0);
         m_bCastBroadcastProjectile = 0;
-        Vector vZero = {};
-        SpellCastAndImpact(nSpellId, vZero, oidTarget, static_cast<unsigned char>(nClass),
+        SpellCastAndImpact(nSpellId, Vector(), oidTarget, static_cast<unsigned char>(nClass),
                            OBJECT_INVALID, 0, 0, 0, 0);
         m_bCastBroadcastProjectile = 0;
         return CSWSObject::ACTION_COMPLETE;

@@ -769,12 +769,8 @@ void CSWGuiAbilitiesCharGen::OnRecommendButton()
 {
     if (m_nMode == 0)
     {
-#if KOTOR1
         CSWCCreatureStats* pStats = m_pCreature->m_pStats;
         CSWClass* pClass = g_pRules->GetClass(pStats->GetClass(pStats->m_nNumClasses - 1));
-#else  // K2 reads the stats inline here, so the two arms' lookups stay apart (both images call GetClass twice)
-        CSWClass* pClass = g_pRules->GetClass(m_pCreature->m_pStats->GetClass(m_pCreature->m_pStats->m_nNumClasses - 1));
-#endif
         m_anStatValues[0] = pClass->m_abRecommendedScores[0];
         m_anStatValues[1] = pClass->m_abRecommendedScores[1];
         m_anStatValues[2] = pClass->m_abRecommendedScores[2];
@@ -784,8 +780,13 @@ void CSWGuiAbilitiesCharGen::OnRecommendButton()
     }
     else
     {
+#if KOTOR1
         CSWCCreatureStats* pStats = m_pCreature->m_pStats;
         CSWClass* pClass = g_pRules->GetClass(pStats->GetClass(pStats->m_nNumClasses - 1));
+#else  // K2 reads g_pRules before the stats in this arm: the arms share only the creature load (both images call GetClass twice)
+        CSWCCreature* pCreature = m_pCreature;
+        CSWClass* pClass = g_pRules->GetClass(pCreature->m_pStats->GetClass(pCreature->m_pStats->m_nNumClasses - 1));
+#endif
         switch (pClass->m_nPrimaryAbility)
         {
         case ABILITY_STRENGTH: m_anStatValues[0] += 1; break;

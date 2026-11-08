@@ -384,7 +384,7 @@ void CSWGuiInGameAbilities::CreateSkillList()
     unsigned char nNumSkills = g_pRules->m_nNumSkills;
     CSWSCreature* pServer = m_pCreature->GetServerCreature();
     int nRow = 0;
-    for (uint64_t i = 0; i < nNumSkills; i++) {
+    for (unsigned int i = 0; i < nNumSkills; i++) {
         CSWSkill* pSkill = &g_pRules->m_paSkills[i];
         if (pSkill != 0) {
             char nRank = pServer->m_pStats->GetSkillRank(static_cast<unsigned char>(i), 0, 1);

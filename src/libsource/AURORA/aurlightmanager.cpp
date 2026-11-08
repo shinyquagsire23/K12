@@ -503,10 +503,10 @@ void LightManager::EnableHighestPriorityLightsFade(int nMaxLights, CAurObjectLig
 
     listHighestPriorityLights.m_count = 0;
 
-    for (int64_t i = 0; i < nMaxLights && i < m_renderLights.m_count; i++)
+    for (int i = 0; i < nMaxLights && i < m_renderLights.m_count; i++)
         listHighestPriorityLights.Add(m_renderLights.m_pData[i]);
 
-    int64_t nIdx = lights.m_count;
+    int nIdx = lights.m_count;
     while (nIdx)
     {
         nIdx--;
@@ -549,7 +549,7 @@ void LightManager::EnableHighestPriorityLightsFade(int nMaxLights, CAurObjectLig
     }
 
     PartLight* pShadowLight = 0;
-    for (int64_t i = 0; i < m_renderLights.m_count; i++)
+    for (int i = 0; i < m_renderLights.m_count; i++)
     {
         if (m_renderLights.m_pData[i]->m_nCastsShadows)
         {
@@ -597,7 +597,7 @@ void LightManager::EnableHighestPriorityLightsFade(int nMaxLights, CAurObjectLig
     if (lights.m_count == m_lastUploadedLights.m_count)
     {
         bChanged = 0;
-        for (int64_t i = 0; i < lights.m_count; i++)
+        for (int i = 0; i < lights.m_count; i++)
         {
             if (lights.m_pData[i] != m_lastUploadedLights.m_pData[i]
                 || weights.m_pData[i] != m_lastUploadedWeights.m_pData[i])
@@ -614,7 +614,7 @@ void LightManager::EnableHighestPriorityLightsFade(int nMaxLights, CAurObjectLig
         m_lastUploadedWeights = weights;
         cm_bLightManagerUpdated = 1;
 
-        for (int64_t i = 0; i < lights.m_count; i++)
+        for (int i = 0; i < lights.m_count; i++)
         {
             PartLight* pLight = lights.m_pData[i];
             pLight->m_fEmitterScale = weights.m_pData[i];
@@ -898,7 +898,7 @@ List<PartLight*>& LightManager::GetShadowLights(int nMode)
         int nBestPriority = 6;
         PartLight* pBest = 0;
 
-        for (int64_t i = 0; i < m_lights.m_count; i++)
+        for (int i = 0; i < m_lights.m_count; i++)
         {
             PartLight* pLight = m_lights.m_pData[i];
 
@@ -955,14 +955,14 @@ List<PartLight*>& LightManager::GetShadowLights(int nMode)
         nRemember = 0;
     }
 
-    for (int64_t i = 0; i < m_activeShadowLights.m_count; i++)
+    for (int i = 0; i < m_activeShadowLights.m_count; i++)
     {
         PartLight* pLight = m_activeShadowLights.m_pData[i];
         if (!lastShadowLights.Contains(pLight))
             pLight->m_fShadowFade = 0.0f;
     }
 
-    for (int64_t i = 0; i < m_nMaxShadowLights && i < lastShadowLights.m_count; i++)
+    for (int i = 0; i < m_nMaxShadowLights && i < lastShadowLights.m_count; i++)
     {
         PartLight* pLight = lastShadowLights.m_pData[i];
 
@@ -978,7 +978,7 @@ List<PartLight*>& LightManager::GetShadowLights(int nMode)
     if (m_activeShadowLights.m_count > m_nMaxShadowLights)
         m_activeShadowLights.m_count = m_nMaxShadowLights;
 
-    for (int64_t i = 0; i < m_activeShadowLights.m_count; i++)
+    for (int i = 0; i < m_activeShadowLights.m_count; i++)
     {
         PartLight* pLight = m_activeShadowLights.m_pData[i];
         pLight->m_fShadowFade = min(1.0f, pLight->m_fShadowFade + DeltaT / shadowfadespeed);
@@ -1159,7 +1159,7 @@ void LightManager::ControlLightsFade(List<PartLight*>& fading, List<PartLight*>&
 
     // Pass 2: count the wanted lights that are not fading yet.
     int nNew = 0;
-    for (int64_t k = 0; k < nMax && k < wanted.m_count; k++) {
+    for (int k = 0; k < nMax && k < wanted.m_count; k++) {
         PartLight* pLight = wanted.m_pData[k];
         if (static_cast<MdlNodeLight*>(pLight->m_pNode)->m_nFadingEnabled != 0)
             continue;
@@ -1187,7 +1187,7 @@ void LightManager::ControlLightsFade(List<PartLight*>& fading, List<PartLight*>&
     }
 
     // Pass 4: admit the newcomers, seeding their weight from the model node's fade flag.
-    for (int64_t k = 0; k < nMax && k < wanted.m_count && fading.m_count < nMax; k++) {
+    for (int k = 0; k < nMax && k < wanted.m_count && fading.m_count < nMax; k++) {
         PartLight* pLight = wanted.m_pData[k];
         float* pfWeight = bAlternateSet != 0 ? &pLight->m_fFadeWeightAlt : &pLight->m_fEmitterScale;
 
@@ -1214,7 +1214,7 @@ void LightManager::ControlLightsFade(List<PartLight*>& fading, List<PartLight*>&
     countenabledlights = fading.m_count < nMax ? fading.m_count : nMax;
     containsnegative = 0;
 
-    int64_t nSlot;
+    int nSlot;
     for (nSlot = 0; nSlot < fading.m_count; nSlot++) {
         PartLight* pLight = fading.m_pData[nSlot];
         float fWeight = bAlternateSet != 0 ? pLight->m_fFadeWeightAlt : pLight->m_fEmitterScale;
@@ -1281,10 +1281,11 @@ void LightManager::SetUpVertexProgramLightShaderConstants(int nLights, int bFade
         nEnv -= 5;
     }
 
-    List<PartLight*>& lights = bFadeList == 0 ? m_renderLights : m_fadingDynamicLights;
+    bool bFade = bFadeList != 0;
+    List<PartLight*>& lights = bFade ? m_fadingDynamicLights : m_renderLights;
 
     int nUploaded = 0;
-    for (int64_t i = 0; i < lights.m_count; i++) {
+    for (int i = 0; i < lights.m_count; i++) {
         if (nUploaded >= nLights - (m_phongLights.m_count > 0 ? 1 : 0))
             break;
 
@@ -1297,7 +1298,7 @@ void LightManager::SetUpVertexProgramLightShaderConstants(int nLights, int bFade
         nUploaded++;
 
         float fScale = 1.0f;
-        if (bFadeList == 0)
+        if (!bFade)
             fScale = pLight->m_fEmitterScale;
 
         float fRed = fScale * pLight->m_vLightColour.x;

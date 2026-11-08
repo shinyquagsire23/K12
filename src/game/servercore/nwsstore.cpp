@@ -225,7 +225,7 @@ int CSWSStore::LoadStore(CResGFF* pGFF, CResStruct* pStruct, int flag) {
             newCost = pItem->GetCost();
             insertIndex = -1;
             for (int j = 0; j < items.m_count && insertIndex == -1; j++) {
-                if (newCost > items.m_pArray[j]->GetCost())
+                if (items.m_pArray[j]->GetCost() < newCost)
                     insertIndex = j;
             }
             if (insertIndex != -1)
@@ -239,16 +239,14 @@ int CSWSStore::LoadStore(CResGFF* pGFF, CResStruct* pStruct, int flag) {
             pLastItem = 0;
             continue;
         }
-        if (items.m_count > 0) {
-            for (int idx = items.m_count - 1; idx >= 0; idx--) {
+        for (int idx = items.m_count - 1; idx >= 0; idx--) {
 #if KOTOR1
-                int added = AddItemToInventory(&items.m_pArray[idx]);
+            int added = AddItemToInventory(&items.m_pArray[idx]);
 #else
-                int added = AddItemToInventory(&items.m_pArray[idx], 0);
+            int added = AddItemToInventory(&items.m_pArray[idx], 0);
 #endif
-                if (pLastItem != 0 && added != 0) {
-                    items.m_pArray[idx]->SetPossessor(m_objectId, 1, 1, OBJECT_INVALID);
-                }
+            if (pLastItem != 0 && added != 0) {
+                items.m_pArray[idx]->SetPossessor(m_objectId, 1, 1, OBJECT_INVALID);
             }
         }
     }

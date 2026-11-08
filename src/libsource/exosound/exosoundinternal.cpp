@@ -335,7 +335,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
         if (m_pa3DVoices)
         {
-            for (uint64_t i = 0; i < m_nNumber3DVoices; i++)
+            for (unsigned int i = 0; i < m_nNumber3DVoices; i++)
             {
                 if (m_pa3DVoices[i].m_nChannel != static_cast<uint64_t>(-1))
                 {
@@ -349,7 +349,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
         if (m_pa2DVoices)
         {
-            for (uint64_t i = 0; i < m_nNumber2DVoices; i++)
+            for (unsigned int i = 0; i < m_nNumber2DVoices; i++)
             {
                 if (m_pa2DVoices[i].m_nChannel != static_cast<uint64_t>(-1))
                 {
@@ -410,7 +410,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
     unsigned char nMax = m_nNumber3DVoices > m_nNumber2DVoices ? m_nNumber3DVoices
                                                               : m_nNumber2DVoices;
-    for (uint64_t i = 0; i < nMax; i++)
+    for (unsigned int i = 0; i < nMax; i++)
     {
         if (i < m_nNumber3DVoices)
         {
@@ -525,7 +525,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
         if (m_pa3DVoices && m_nNumber3DVoices)
         {
-            for (uint64_t i = 0; i < m_nNumber3DVoices; i++)
+            for (unsigned int i = 0; i < m_nNumber3DVoices; i++)
             {
                 if (m_pa3DVoices[i].m_nChannel != EXOSOUND_NO_CHANNEL)
                 {
@@ -538,7 +538,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
 
         if (m_pa2DVoices && m_nNumber2DVoices)
         {
-            for (uint64_t i = 0; i < m_nNumber2DVoices; i++)
+            for (unsigned int i = 0; i < m_nNumber2DVoices; i++)
             {
                 if (m_pa2DVoices[i].m_nChannel != EXOSOUND_NO_CHANNEL)
                 {
@@ -606,7 +606,7 @@ bool CExoSoundInternal::Initialize(unsigned char n2DVoices, unsigned char n3DVoi
     // One walk over the longer of the two counts resets both tables' live prefix.
     unsigned char nMax = m_nNumber3DVoices > m_nNumber2DVoices ? m_nNumber3DVoices
                                                               : m_nNumber2DVoices;
-    for (uint64_t i = 0; i < nMax; i++)
+    for (unsigned int i = 0; i < nMax; i++)
     {
         if (i < m_nNumber3DVoices)
         {
@@ -2328,47 +2328,35 @@ void CExoSoundInternal::SetSoundMode(int mode, int flag)
     if (mode == CExoSound::CEXOSOUND_MODE_LOSTFOCUS ||
         mode == CExoSound::CEXOSOUND_MODE_GAINFOCUS)
     {
-        while (true)
+        if (mode == CExoSound::CEXOSOUND_MODE_LOSTFOCUS)
         {
-            if (mode == CExoSound::CEXOSOUND_MODE_LOSTFOCUS)
-            {
 #if KOTOR1
-                PauseAllSounds(1);
+            PauseAllSounds(1);
 #else
-                if (flag)
-                    PauseAllButStreamingMusicForMovie();
-                else
-                    PauseAllSounds(1);
+            if (flag)
+                PauseAllButStreamingMusicForMovie();
+            else
+                PauseAllSounds(1);
 #endif
-                m_bLostFocusPaused = 1;
-                return;
-            }
-
+            m_bLostFocusPaused = 1;
+        }
+        else
+        {
+            // Regaining focus resumes everything and re-applies the mode pushed before the focus change.
             m_bLostFocusPaused = 0;
             ResumeAllSounds();
-
-            if (m_nSoundModeIndex == 0)
-                return;
-
-            mode = m_aSoundModes[m_nSoundModeIndex];
-            m_nSoundModeIndex--;
-
-            if (mode == CExoSound::CEXOSOUND_MODE_LOSTFOCUS)
+            if (m_nSoundModeIndex != 0)
             {
-#if !KOTOR1
-                flag = 0;
+                int nPrevMode = m_aSoundModes[m_nSoundModeIndex];
+                m_nSoundModeIndex--;
+#if KOTOR1
+                SetSoundMode(nPrevMode);
+#else
+                SetSoundMode(nPrevMode, 0);
 #endif
-                continue;
             }
-
-            if (mode == CExoSound::CEXOSOUND_MODE_GAINFOCUS)
-                continue;
-
-#if !KOTOR1
-            flag = 0;
-#endif
-            break;
         }
+        return;
     }
 
     nCurrent = m_aSoundModes[m_nSoundModeIndex];

@@ -446,7 +446,8 @@ CExoString CExoString::Left(int nCount) const
                 result.DeallocString();
             result.m_nBufferLength = nCount + 1;
             result.AllocString();
-            strncpy(result.m_sString, m_sString, nCount)[nCount] = '\0';
+            strncpy(result.m_sString, m_sString, nCount);
+            result.m_sString[nCount] = '\0';
         }
     }
     return result;
@@ -464,7 +465,8 @@ CExoString CExoString::Right(int nCount) const
                 result.DeallocString();
             result.m_nBufferLength = nCount + 1;
             result.AllocString();
-            strncpy(result.m_sString, m_sString + static_cast<unsigned>(length - nCount), nCount)[nCount] = '\0';
+            strncpy(result.m_sString, m_sString + static_cast<unsigned>(length - nCount), nCount);
+            result.m_sString[nCount] = '\0';
         }
     }
     return result;
@@ -482,7 +484,8 @@ CExoString CExoString::SubString(int nStart, int nCount) const
                 result.DeallocString();
             result.m_nBufferLength = nCount + 1;
             result.AllocString();
-            strncpy(result.m_sString, m_sString + nStart, nCount)[nCount] = '\0';
+            strncpy(result.m_sString, m_sString + nStart, nCount);
+            result.m_sString[nCount] = '\0';
         }
     }
     return result;
@@ -555,7 +558,9 @@ void CExoString::Insert(const CExoString& other, int nPos)
         return;
     int lenOther = static_cast<int>(strlen(other.m_sString));
     int lenThis  = (m_sString != NULL) ? static_cast<int>(strlen(m_sString)) : 0;
-    if (lenOther != 0 && nPos >= 0 && static_cast<unsigned>(nPos) < static_cast<unsigned>(lenThis)) {
+    if (lenOther == 0)
+        return;
+    if (nPos >= 0 && static_cast<unsigned>(nPos) < static_cast<unsigned>(lenThis)) {
         char* pNew = new char[static_cast<unsigned>(lenOther + lenThis + 1)];
         pNew[0] = '\0';
         char* pOld = m_sString;
@@ -685,8 +690,7 @@ int CExoString::StripNonAlphaNumeric(int bLower, int bAllowAt, int bAllowPunct)
             "\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd"
             "\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd"
             "\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd"
-            "_-", 96);
-        szAllowed[96] = '\0';
+            "_-", 97);
     } else {
         __builtin_memcpy(szAllowed,
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 63);

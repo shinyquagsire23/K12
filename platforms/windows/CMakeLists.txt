@@ -74,9 +74,10 @@ if(MSVC)
   # The exception model of the whole target (the root CMakeLists' K2_NO_EXCEPTIONS): cl takes one /EH
   # per command line, and nothing in the platform layer throws or catches.
   set_target_properties(k2_platform PROPERTIES K2_NO_EXCEPTIONS ON)
-  # shim_crt.cpp / k1shimc.cpp define the CRT names the engine declares itself (src/port/crtapi.h).
-  set_property(SOURCE ${K2P_DIR}/shim/shim_crt.cpp ${K2P_DIR}/k1/k1shimc.cpp APPEND PROPERTY
-               COMPILE_DEFINITIONS K2_ENGINE_CRT=1)
+  # shim_crt.cpp / k1shimc.cpp define the CRT names the engine declares itself (src/port/crtapi.h);
+  # shim_kotorgl.cpp includes engine headers (aurglcore.h), so it takes the engine's declarations too.
+  set_property(SOURCE ${K2P_DIR}/shim/shim_crt.cpp ${K2P_DIR}/k1/k1shimc.cpp ${K2P_DIR}/shim/shim_kotorgl.cpp
+               APPEND PROPERTY COMPILE_DEFINITIONS K2_ENGINE_CRT=1)
 else()
   set_source_files_properties(${_k2_shim_sources} ${K2P_QOL_SOURCE} PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-fsigned-char")
 endif()

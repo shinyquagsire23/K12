@@ -995,12 +995,12 @@ int CSWPartyFollowDataArray::GetPointBackFromStart(float fDistance, Vector& vOut
     float fZ = pEntry->m_pos.z;
     int nRemaining = m_nSampleCount;
 
-    nOutIndex = nIndex;
-
     int nStopIndex = -1;
     if (nMember != 0) {
         nStopIndex = m_pParty->m_members[nMember].m_nPathIndex;
     }
+
+    nOutIndex = nIndex;
 
     while (fDistance > 0.0f && nRemaining >= 0) {
         nOutIndex = nIndex;
@@ -1054,43 +1054,41 @@ float CSWPartyFollowDataArray::AdvancePointOnPath(float fDistance, int nDirectio
     Vector vFrom = vPos;
     vOut = vPos;
 
-    if (fDistance > 0.0f) {
-        float fDistanceSq = fDistance * fDistance;
-        int bAtNewest = 0;
-        do {
-            CSWPartyFollowData* pEntry = GetPathData(nIndex);
-            Vector vStep = pEntry->m_pos - vFrom;
-            float fStepLen = magnitude(vStep);
-            vStep = normalize(vStep);
-            float fMove = (fStepLen < fDistance) ? fStepLen : fDistance;
-            vOut = vOut + vStep * fMove;
+    float fDistanceSq = fDistance * fDistance;
+    int bAtNewest = 0;
+    while (fDistance > 0.0f && !bAtNewest) {
+        CSWPartyFollowData* pEntry = GetPathData(nIndex);
+        Vector vStep = pEntry->m_pos - vFrom;
+        float fStepLen = magnitude(vStep);
+        vStep = normalize(vStep);
+        float fMove = (fStepLen < fDistance) ? fStepLen : fDistance;
+        vOut = vOut + vStep * fMove;
 
-            float fDx = vFollowPos.x - vPos.x;
-            float fDy = vFollowPos.y - vPos.y;
-            float fDz = vFollowPos.z - vPos.z;
-            if (fDx * fDx + fDy * fDy + fDz * fDz <= fDistanceSq) {
-                vOut = vFollowPos;
-                nOutIndex = nFollowIndex;
-                nIndex = nFollowIndex;
-                // Result unused.
-                magnitude(vFollowPos - vPos);
-                break;
-            }
+        float fDx = vFollowPos.x - vPos.x;
+        float fDy = vFollowPos.y - vPos.y;
+        float fDz = vFollowPos.z - vPos.z;
+        if (fDx * fDx + fDy * fDy + fDz * fDz <= fDistanceSq) {
+            vOut = vFollowPos;
+            nOutIndex = nFollowIndex;
+            nIndex = nFollowIndex;
+            // Result unused.
+            magnitude(vFollowPos - vPos);
+            break;
+        }
 
-            bAtNewest = 0;
-            if (fDistance >= fStepLen) {
-                CSWPartyFollowData* pNext = GetPathData(nIndex);
-                vFrom = pNext->m_pos;
-                nIndex = (nIndex > 98) ? 0 : nIndex + 1;
-                if (nIndex == m_nWriteIndex - 1) {
-                    bAtNewest = 1;
-                }
-                if (nIndex == 99 && m_nWriteIndex == 0) {
-                    bAtNewest = 1;
-                }
+        bAtNewest = 0;
+        if (fDistance >= fStepLen) {
+            CSWPartyFollowData* pNext = GetPathData(nIndex);
+            vFrom = pNext->m_pos;
+            nIndex = (nIndex > 98) ? 0 : nIndex + 1;
+            if (nIndex == m_nWriteIndex - 1) {
+                bAtNewest = 1;
             }
-            fDistance -= fMove;
-        } while (fDistance > 0.0f && !bAtNewest);
+            if (nIndex == 99 && m_nWriteIndex == 0) {
+                bAtNewest = 1;
+            }
+        }
+        fDistance -= fMove;
     }
 
     nOutIndex = nIndex;
@@ -1108,10 +1106,11 @@ void CSWParty::Update(float fDelta)
     CSWCCreature* pLeader = GetCharacter(0);
 
 #if !KOTOR1  // K1's party tick picks no video effect
+    bool bHaveLeader = pLeader != 0;
     int nGuiSuppressed = g_pAppManager->m_pClientExoApp->GetInGameGui()->m_nGlobalDialogState;
     CServerExoApp* pServer = g_pAppManager->m_pServerExoApp;
 
-    if (nGuiSuppressed == 0 && pLeader != 0 && pServer != 0) {
+    if (nGuiSuppressed == 0 && bHaveLeader && pServer != 0) {
         CSWSCreature* pServerLeader =
             pServer->GetCreatureByGameObjectID(pServer->ClientToServerObjectId(pLeader->m_objectId));
 
@@ -1581,8 +1580,7 @@ void CSWPartyFollowDataArray::SmoothFollowPath()
         if (vDelta.x == 0.0f && vDelta.y == 0.0f && vDelta.z == 0.0f) {
             fYaw = m_entries[m_nWriteIndex].m_fLeaderYaw;
         } else {
-            Vector vStep = {fNewX - fPrevX, fNewY - fPrevY, fNewZ - fPrevZ};
-            fYaw = Yaw(normalize(vStep));
+            fYaw = Yaw(normalize(Vector(fNewX - fPrevX, fNewY - fPrevY, fNewZ - fPrevZ)));
         }
         m_entries[m_nWriteIndex].m_fLeaderYaw = fYaw;
 

@@ -229,10 +229,9 @@ int CSWMGBehaviorTrack::Control(float fParam)
     Vector vLocal = RotateByQuaternionK1(-q, m_pTarget.m_pObject->GetPosition() - vAim);
 #else
     Quaternion q = m_pOwner->GetOrientation();
-    Vector vPos = m_pOwner->GetPosition();
 
     // Rotate the owner position into world space, add the muzzle offset, then rotate back.
-    Vector vAim = RotateByQuaternionInverse(RotateByQuaternion(vPos, q) + m_vTargetOffset, q);
+    Vector vAim = RotateByQuaternionInverse(RotateByQuaternion(m_pOwner->GetPosition(), q) + m_vTargetOffset, q);
 
     // The target's direction from the muzzle, in the owner's local frame.
     Vector vLocal = RotateByQuaternionInverse(m_pTarget.m_pObject->GetPosition() - vAim, q);

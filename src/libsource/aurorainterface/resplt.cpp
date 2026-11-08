@@ -127,25 +127,23 @@ int CResPLT::ReadRLEPLT()
     unsigned char* src = static_cast<unsigned char*>(m_pPLTData);
     unsigned int size = m_nPLTSize;
     m_pPLTData = new unsigned char[size];
-    if (size != 0) {
-        unsigned int dstPos = 0;
-        unsigned int srcPos = 0;
-        do {
-            unsigned char ctrl = src[srcPos++];
-            unsigned int newPos = dstPos + (ctrl & RLE_COUNT_MASK) + 1;
+    unsigned int dstPos = 0;
+    unsigned int srcPos = 0;
+    while (dstPos < m_nPLTSize) {
+        unsigned char ctrl = src[srcPos++];
+        unsigned int newPos = dstPos + (ctrl & RLE_COUNT_MASK) + 1;
 #ifdef K2_FIX_ENGINE_BUGS
-            if (newPos > size)
-                newPos = size;
+        if (newPos > size)
+            newPos = size;
 #endif
-            if (ctrl & RLE_RUN_FLAG) {
-                unsigned char runByte = src[srcPos++];
-                while (dstPos < newPos)
-                    static_cast<unsigned char*>(m_pPLTData)[dstPos++] = runByte;
-            } else {
-                while (dstPos < newPos)
-                    static_cast<unsigned char*>(m_pPLTData)[dstPos++] = src[srcPos++];
-            }
-        } while (dstPos < m_nPLTSize);
+        if (ctrl & RLE_RUN_FLAG) {
+            unsigned char runByte = src[srcPos++];
+            while (dstPos < newPos)
+                static_cast<unsigned char*>(m_pPLTData)[dstPos++] = runByte;
+        } else {
+            while (dstPos < newPos)
+                static_cast<unsigned char*>(m_pPLTData)[dstPos++] = src[srcPos++];
+        }
     }
     m_bOwnsData = 1;
     return 1;

@@ -140,12 +140,9 @@ float ImageGetAlphaMean(unsigned char* pData, int nWidth, int nHeight, int nBpp)
 
     int nCount = nWidth * nHeight;
     float fSum = 0.0f;
-    if (nCount > 0)
+    for (int i = 0; i < nCount; i++)
     {
-        for (int i = 0; i < nCount; i++)
-        {
-            fSum += pData[i * nBpp + 3] / 255.0f;
-        }
+        fSum += pData[i * nBpp + 3] / 255.0f;
     }
     return fSum / static_cast<float>(nCount);
 }
@@ -165,8 +162,6 @@ unsigned char* ImageBuildParameterPerlin(int nSize, float fScale, int nMod, int 
 {
     int nCount = nSize * nSize;
     unsigned char* pBuf = new unsigned char[nCount];
-    if (nCount == 0)
-        return pBuf;
 
     for (int i = 0; i < nCount; i++)
         pBuf[i] = nMod ? static_cast<unsigned char>(static_cast<float>(rand_wincompatible() % nMod) * fScale + static_cast<float>(nBase))
@@ -228,11 +223,11 @@ unsigned char* ImageDownSampleToRequiredSize(int nWidth, int nHeight, unsigned c
                     nSum3 += pPixel[3];
                 }
             }
-            unsigned char* pOut = pNew + (y * nOutWidth + x) * 4;
-            pOut[0] = static_cast<unsigned char>(nSum0 / (nBox * nBox));
-            pOut[1] = static_cast<unsigned char>(nSum1 / (nBox * nBox));
-            pOut[2] = static_cast<unsigned char>(nSum2 / (nBox * nBox));
-            pOut[3] = static_cast<unsigned char>(nSum3 / (nBox * nBox));
+            int nOut = (y * nOutWidth + x) * 4;
+            pNew[nOut] = static_cast<unsigned char>(nSum0 / (nBox * nBox));
+            pNew[nOut + 1] = static_cast<unsigned char>(nSum1 / (nBox * nBox));
+            pNew[nOut + 2] = static_cast<unsigned char>(nSum2 / (nBox * nBox));
+            pNew[nOut + 3] = static_cast<unsigned char>(nSum3 / (nBox * nBox));
         }
     }
     return pNew;
@@ -387,6 +382,7 @@ unsigned char* ImageDecode(unsigned char* pSrc, int nWidth, int nHeight, unsigne
 
 void ImageLowpassLowQualityBlur2(unsigned char* pData, int nWidth, int nHeight)
 {
+    static const unsigned char anShift[3][3] = { { 0, 3, 0 }, { 3, 1, 3 }, { 0, 3, 0 } };
     static unsigned char* newimage = new unsigned char[nWidth * nHeight];
     static int oldheight = nHeight;
     static int oldwidth = nWidth;
@@ -405,16 +401,16 @@ void ImageLowpassLowQualityBlur2(unsigned char* pData, int nWidth, int nHeight)
     {
         for (int x = 0; x < nWidth; x++)
         {
-            newimage[y * nWidth + x] +=
-                pData[((nHeight - 1 + y) % nHeight) * nWidth + (nWidth + x) % nWidth] >> 3;
-            newimage[y * nWidth + x] +=
-                pData[((y + nHeight) % nHeight) * nWidth + (nWidth - 1 + x) % nWidth] >> 3;
-            newimage[y * nWidth + x] +=
-                pData[((y + nHeight) % nHeight) * nWidth + (nWidth + x) % nWidth] >> 1;
-            newimage[y * nWidth + x] +=
-                pData[((y + nHeight) % nHeight) * nWidth + (nWidth + x + 1) % nWidth] >> 3;
-            newimage[y * nWidth + x] +=
-                pData[((nHeight - 1 + y + 2) % nHeight) * nWidth + (nWidth + x) % nWidth] >> 3;
+            for (int i = 0; i < 3; i++)
+            {
+                int nRow = ((nHeight - 1 + y + i) % nHeight) * nWidth;
+                for (int j = 0; j < 3; j++)
+                {
+                    if (!((i == 0 || i == 2) && (j == 0 || j == 2)))
+                        newimage[y * nWidth + x] +=
+                            pData[nRow + (nWidth + x + j - 1) % nWidth] >> anShift[i][j];
+                }
+            }
         }
     }
 
@@ -424,25 +420,23 @@ void ImageLowpassLowQualityBlur2(unsigned char* pData, int nWidth, int nHeight)
 void ImageLowpassLowQualityBlur(unsigned char* pDst, unsigned char* pSrc, int nWidth, int nHeight,
                                 int nPart)
 {
+    static const float afKernel[3][3] = {
+        { 0.0f, 0.1f, 0.0f }, { 0.1f, 0.5f, 0.1f }, { 0.0f, 0.1f, 0.0f }
+    };
     for (int y = (nPart * nHeight) / 3; y < ((nPart + 1) * nHeight) / 3; y++)
     {
         for (int x = 0; x < nWidth; x++)
         {
-            pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<float>(pSrc[((nHeight - 1 + y) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
-                      0.1f);
-            pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth - 1 + x) % nWidth]) *
-                      0.1f);
-            pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
-                      0.5f);
-            pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<float>(pSrc[((y + nHeight) % nHeight) * nWidth + (nWidth + x + 1) % nWidth]) *
-                      0.1f);
-            pDst[y * nWidth + x] +=
-                static_cast<unsigned char>(static_cast<float>(pSrc[((nHeight - 1 + y + 2) % nHeight) * nWidth + (nWidth + x) % nWidth]) *
-                      0.1f);
+            for (int i = 0; i < 3; i++)
+            {
+                int nRow = ((nHeight - 1 + y + i) % nHeight) * nWidth;
+                for (int j = 0; j < 3; j++)
+                {
+                    if (!((i == 0 || i == 2) && (j == 0 || j == 2)))
+                        pDst[y * nWidth + x] += static_cast<unsigned char>(
+                            afKernel[i][j] * static_cast<float>(pSrc[nRow + (nWidth + x + j - 1) % nWidth]));
+                }
+            }
         }
     }
 }
@@ -451,8 +445,10 @@ void ImageMandel(int nWidth, int nHeight, int nBpp, unsigned char* pData, float 
                  float fYCenter, float fScale)
 {
     unsigned char chPixel[4] = {0, 0, 0, 0xFF};
+#if KOTOR1  // K1 tests the height up front; K2 leaves it to the row loop
     if (nHeight < 1)
         return;
+#endif
 
     float fReStart = fXCenter - fScale;
     float fImStart = fYCenter - fScale;
@@ -468,8 +464,8 @@ void ImageMandel(int nWidth, int nHeight, int nBpp, unsigned char* pData, float 
             float fRe = fReStart + fStep * (static_cast<float>(x) / fWidth);
             int nIter = Mandelval(Complex{fRe, fIm});
             chPixel[0] = static_cast<unsigned char>(nIter << 5);
-            chPixel[1] = (nIter << 2) & 0xE0;
-            chPixel[2] = (nIter >> 1) & 0xE0;
+            chPixel[1] = static_cast<unsigned char>((nIter / 8) << 5);
+            chPixel[2] = static_cast<unsigned char>((nIter / 64) << 5);
             memcpy(pData + (y * nWidth + x) * nBpp, chPixel, nBpp);  // idiom-exempt: runtime length
         }
     }
@@ -478,8 +474,10 @@ void ImageMandel(int nWidth, int nHeight, int nBpp, unsigned char* pData, float 
 void ImageJulia(int nWidth, int nHeight, int nBpp, unsigned char* pData, float fRe, float fIm)
 {
     unsigned char chPixel[4] = {0, 0, 0, 0xFF};
+#if KOTOR1  // K1 tests the height up front; K2 leaves it to the row loop
     if (nHeight < 1)
         return;
+#endif
 
     float fWidth = static_cast<float>(nWidth);
     float fHeight = static_cast<float>(nHeight);
@@ -492,8 +490,8 @@ void ImageJulia(int nWidth, int nHeight, int nBpp, unsigned char* pData, float f
             float fZre = 4.0f * (static_cast<float>(x) / fWidth) - 2.0f;
             int nIter = Juliaval(Complex{fRe, fIm}, Complex{fZre, fZim});
             chPixel[0] = static_cast<unsigned char>(nIter << 5);
-            chPixel[1] = (nIter << 2) & 0xE0;
-            chPixel[2] = (nIter >> 1) & 0xE0;
+            chPixel[1] = static_cast<unsigned char>((nIter / 8) << 5);
+            chPixel[2] = static_cast<unsigned char>((nIter / 64) << 5);
             memcpy(pData + (y * nWidth + x) * nBpp, chPixel, nBpp);  // idiom-exempt: runtime length
         }
     }
@@ -593,8 +591,6 @@ unsigned char* ImageGetSubImage(unsigned char* pData, int nWidth, int nHeight, i
 void ImageFillAlpha(unsigned char* pData, int nWidth, int nHeight, int nBpp, const Vector& vColor)
 {
     if (nBpp != 4)
-        return;
-    if (nHeight < 1)
         return;
 
     for (int y = 0; y < nHeight; y++)
@@ -698,6 +694,7 @@ unsigned char* ImageScale(unsigned char* pData, int nSrcWidth, int nSrcHeight, i
         }
 
         int nRemain = nRowWeight - nSrcWeight;
+#if !KOTOR1
         if (nRowWeight < nSrcWeight)
         {
             nSrcWeight -= nRowWeight;
@@ -705,32 +702,45 @@ unsigned char* ImageScale(unsigned char* pData, int nSrcWidth, int nSrcHeight, i
             nSrcRow++;
             continue;
         }
-
-        int nDenom = nSrcWidth * nSrcHeight;
-        int nRound = nDenom / 2;
-        unsigned char* pOutRow = pOut + static_cast<int64_t>(y * nDestWidth) * nBpp;
-        for (int x = 0; x < nDestWidth; x++)
+#else
+        // K1 tests the finished row first and carries the source row in the else.
+        if (nRowWeight >= nSrcWeight)
+#endif
         {
-            for (int c = 0; c < nBpp; c++)
+            int nDenom = nSrcWidth * nSrcHeight;
+            int nRound = nDenom / 2;
+            unsigned char* pOutRow = pOut + static_cast<int64_t>(y * nDestWidth) * nBpp;
+            for (int x = 0; x < nDestWidth; x++)
             {
-                K2_ASSUME((y * nDestWidth + x) * nBpp + c < nDestRowBytes * nDestHeight);   // y < nDestHeight
-                pOutRow[x * nBpp + c] = static_cast<unsigned char>((pAccum[x * nBpp + c] + nRound) / nDenom);
+                for (int c = 0; c < nBpp; c++)
+                {
+                    K2_ASSUME((y * nDestWidth + x) * nBpp + c < nDestRowBytes * nDestHeight);   // y < nDestHeight
+                    pOutRow[x * nBpp + c] = static_cast<unsigned char>((pAccum[x * nBpp + c] + nRound) / nDenom);
+                }
             }
+            if (nRemain == 0)
+            {
+                nRowWeight = nDestHeight;
+                nSrcRow++;
+            }
+            else
+            {
+                nRowWeight = nRemain;
+            }
+            y++;
+            memset(pAccum, 0, nDestRowBytes * sizeof(unsigned int));
+            // The destination budget carries its remainder into the next row; the source budget
+            // restarts every row.
+            nSrcWeight = nSrcHeight;
         }
-        if (nRemain == 0)
+#if KOTOR1
+        else
         {
+            nSrcWeight -= nRowWeight;
             nRowWeight = nDestHeight;
             nSrcRow++;
         }
-        else
-        {
-            nRowWeight = nRemain;
-        }
-        y++;
-        memset(pAccum, 0, nDestRowBytes * sizeof(unsigned int));
-        // The destination budget carries its remainder into the next row; the source budget
-        // restarts every row.
-        nSrcWeight = nSrcHeight;
+#endif
     }
 
     delete[] pAccum;

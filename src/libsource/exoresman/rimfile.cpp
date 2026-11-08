@@ -330,12 +330,12 @@ int CRIMFile::WriteResource(char* pszName, unsigned short nType, CRes* pRes, int
     else
     {
         // The GFF arm writes the entry out of locals rather than through CRIMRes::Write.
+        unsigned int nGFFSize;
         int nDataOffset = m_pFile->GetOffset();
-        unsigned char cZero = 0;
         unsigned short nZero = 0;
+        unsigned char cZero = 0;
         int nAlign;
         unsigned int nRemainder;
-        unsigned int nGFFSize;
 
         CResGFF* pGFF = static_cast<CResGFF*>(pRes);
         pGFF->Pack(0, 0);
@@ -347,17 +347,20 @@ int CRIMFile::WriteResource(char* pszName, unsigned short nType, CRes* pRes, int
         nRemainder = m_pFile->GetOffset();
         nAlign = (m_header.m_bBlockAlign != 0) ? RIM_BLOCK_ALIGN : 4;
         nRemainder &= static_cast<unsigned int>(nAlign - 1);
-        nAlign -= static_cast<int>(nRemainder);
-        if (nRemainder != 0 && nAlign != 0)
+        if (nRemainder != 0)
         {
-            do
+            nAlign -= static_cast<int>(nRemainder);
+            while (nAlign != 0)
             {
                 m_pFile->Write(&cZero, 1, 1);
-            } while (--nAlign != 0);
+                nAlign--;
+            }
         }
 
         nDataOffset = m_pFile->GetOffset();
+#ifdef K2_FIX_ENGINE_BUGS
         nGFFSize = 0;
+#endif
         pGFF->WriteGFFData(*m_pFile, nGFFSize);
 
         for (int i = 0; i < 10; i++)

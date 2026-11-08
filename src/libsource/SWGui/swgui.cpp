@@ -310,14 +310,14 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef, int bScaleOrigin, i
     if (pResGFF->Demand())
     {
         CResStruct resStruct;
+        CResStruct borderStruct;
         int bSuccess;
         pResGFF->GetTopLevelStruct(&resStruct);
         m_extent.Load(pResGFF, resStruct);
-        Vector vColor(-1.0f, -1.0f, -1.0f);
-        m_vColor = pResGFF->ReadFieldVector(&resStruct, const_cast<char*>("COLOR"), bSuccess, vColor);
+        m_vColor = pResGFF->ReadFieldVector(&resStruct, const_cast<char*>("COLOR"), bSuccess,
+                                            Vector(-1.0f, -1.0f, -1.0f));
 
         // Existence test only: the border sub-struct is looked up in the parent struct itself.
-        CResStruct borderStruct;
         if (pResGFF->GetStructFromStruct(&borderStruct, &resStruct, const_cast<char*>("BORDER")))
         {
             m_pBackground->Load(pResGFF, resStruct, CExoString("BORDER"));
@@ -344,8 +344,8 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef, int bScaleOrigin, i
     // int, so the casts stay at the use sites.
     float fXMult = 1.0f;
     float fYMult = 1.0f;
-    int nXOffset;
-    int nYOffset;
+    int nXOffset = 0;
+    int nYOffset = 0;
     if (g_pAppManager->m_pClientExoApp->GetSWGuiManager())
     {
         g_pAppManager->m_pClientExoApp->GetSWGuiManager()->GenerateAspectMultipliers(
@@ -360,13 +360,13 @@ void CSWGuiPanel::StartLoadFromLayout(const CResRef& resRef, int bScaleOrigin, i
 
     if (bScaleSize)
     {
-        extent.w = static_cast<int>(extent.w * fXMult);
         extent.h = static_cast<int>(extent.h * fYMult);
+        extent.w = static_cast<int>(extent.w * fXMult);
     }
     if (bScaleOrigin)
     {
-        extent.x = static_cast<int>(extent.x * fXMult);
         extent.y = static_cast<int>(extent.y * fYMult);
+        extent.x = static_cast<int>(extent.x * fXMult);
     }
 
     m_pBackground->SetExtent(extent);
@@ -435,8 +435,8 @@ void CSWGuiPanel::InitControl(CSWGuiControl& control, const CExoString& sControl
 
     float fXMult = 1.0f;
     float fYMult = 1.0f;
-    int nXOffset;
-    int nYOffset;
+    int nXOffset = 0;
+    int nYOffset = 0;
     if (bScale)
     {
         if (g_pAppManager->m_pClientExoApp->GetSWGuiManager())
@@ -582,8 +582,8 @@ void CSWGuiPanel::InitControl(CSWGuiControl& control, int bAddToTable, int bScal
 
     float fXMult = 1.0f;
     float fYMult = 1.0f;
-    int nXOffset;
-    int nYOffset;
+    int nXOffset = 0;
+    int nYOffset = 0;
     if (bScale)
     {
         if (g_pAppManager->m_pClientExoApp->GetSWGuiManager())
@@ -801,13 +801,7 @@ void CSWGuiPanel::SetExtent(const CSWGuiExtent& extent)
 {
     m_extent = extent;
 
-    CSWGuiExtent bgExtent;
-    bgExtent.w = extent.w;
-    bgExtent.h = extent.h;
-    CSWGuiBorder* pBackground = m_pBackground;
-    bgExtent.x = 0;
-    bgExtent.y = 0;
-    pBackground->SetExtent(bgExtent);
+    m_pBackground->SetExtent(CSWGuiExtent(0, 0, extent.w, extent.h));
 }
 
 // Centres the panel and resizes its background border to match.
@@ -837,17 +831,10 @@ void CSWGuiPanel::CenterPanel()
         y = (m_pGuiManager->m_nScreenHeight - m_extent.h) / 2;
     }
 
-    CSWGuiBorder* pBackground = m_pBackground;
-
     m_extent.x = x;
     m_extent.y = y;
 
-    CSWGuiExtent bgExtent;
-    bgExtent.x = 0;
-    bgExtent.y = 0;
-    bgExtent.w = m_extent.w;
-    bgExtent.h = m_extent.h;
-    pBackground->SetExtent(bgExtent);
+    m_pBackground->SetExtent(CSWGuiExtent(0, 0, m_extent.w, m_extent.h));
 
     m_stateFlags |= 1;
 }

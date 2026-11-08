@@ -1456,10 +1456,7 @@ void CSWGuiDialogLetterbox::SetMiddle()
     m_nFadeType = 0;
     m_state = 3;
 
-    m_extent.w = m_pGuiManager->m_nScreenWidth;
-    m_extent.h = m_pGuiManager->m_nScreenHeight;
-    m_extent.x = 0;
-    m_extent.y = 0;
+    m_extent = CSWGuiExtent(0, 0, m_pGuiManager->m_nScreenWidth, m_pGuiManager->m_nScreenHeight);
 }
 #endif
 

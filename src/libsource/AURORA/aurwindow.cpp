@@ -82,9 +82,10 @@ void CalcFPSDeltaT()
     if (dElapsed < 0.0 || (dElapsed > 2.0 && nFrames >= 11)) {
         nLastFPS = nT2;
         nFrames = nFrames2;
-        nT2 = timeGetTime();
-        now = nCur;
+        int t = timeGetTime();
         nFrames2 = 0;
+        nT2 = t;
+        now = nCur;
     }
     int nOldFrame = nPrevFrame;
     nPrevFrame = now;

@@ -82,6 +82,7 @@ CSWCSoundObject::~CSWCSoundObject()
 // Reads the sound's description off the wire, field for field with CSWSSoundObject::PackIntoMessage.
 void CSWCSoundObject::LoadFromMessage(CSWCMessage* pMsg)
 {
+    Vector vPosition;
     SetId(pMsg->ReadOBJECTIDClient());
 
     int bActive = pMsg->ReadBOOL();
@@ -108,8 +109,10 @@ void CSWCSoundObject::LoadFromMessage(CSWCMessage* pMsg)
             m_pStreamingSoundSource->Set3D(0);
             m_pStreamingSoundSource->SetPriorityGroup(PRIORITY_GROUP_LOOPING_AREA_WIDE_AMBIENTS);
         }
+    } else if (bPositional) {
+        m_pSoundSource->SetPriorityGroup(PRIORITY_GROUP_SINGLE_SHOT_POSITIONAL);
     } else {
-        m_pSoundSource->SetPriorityGroup(bPositional ? PRIORITY_GROUP_SINGLE_SHOT_POSITIONAL : PRIORITY_GROUP_SINGLE_SHOT_GLOBAL);
+        m_pSoundSource->SetPriorityGroup(PRIORITY_GROUP_SINGLE_SHOT_GLOBAL);
     }
 
     m_nVolume = pMsg->ReadBYTE(8);
@@ -130,7 +133,6 @@ void CSWCSoundObject::LoadFromMessage(CSWCMessage* pMsg)
     m_fRandomRangeX = pMsg->ReadFLOAT(1.0f, 32);
     m_fRandomRangeY = pMsg->ReadFLOAT(1.0f, 32);
 
-    Vector vPosition;
     vPosition.x = pMsg->ReadFLOAT(1.0f, 32);
     vPosition.y = pMsg->ReadFLOAT(1.0f, 32);
     vPosition.z = pMsg->ReadFLOAT(1.0f, 32);

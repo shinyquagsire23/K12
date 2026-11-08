@@ -493,7 +493,7 @@ CResRef CSWMessage::ReadCResRef(int nSize)
     }
 
     unsigned char sResRef[16];
-    __memcpy_chk(sResRef, &m_pReadMessage[m_nReadMessagePos], nSize, sizeof(sResRef));
+    memcpy(sResRef, &m_pReadMessage[m_nReadMessagePos], nSize);  // idiom-exempt: raw byte-count copy of a network buffer, there is no element type to take sizeof of
     m_nReadMessagePos += nSize;
     return CResRef(sResRef);
 }

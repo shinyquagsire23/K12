@@ -1672,22 +1672,19 @@ void PartLightsaber::Animate(float fDelta)
         short i = 0;
         short nExpired = 0;
 
-        if (nCount > 0)
+        for (; i < nCount; i++)
         {
-            for (; i < nCount; i++)
+            m_afSegmentLife[nLifeIndex] += fStep;
+            if (m_afSegmentLife[nLifeIndex] > lightsabersegmentlife && nCount - nExpired >= 2)
             {
-                m_afSegmentLife[nLifeIndex] += fStep;
-                if (m_afSegmentLife[nLifeIndex] > lightsabersegmentlife && nCount - nExpired >= 2)
-                {
-                    m_nLifeIndex++;
-                    if (m_nLifeIndex == MdlNodeLightsaber::NUM_BACK_SEGMENTS)
-                        m_nLifeIndex = 0;
-                    nExpired++;
-                }
-                nLifeIndex++;
-                if (nLifeIndex == MdlNodeLightsaber::NUM_BACK_SEGMENTS)
-                    nLifeIndex = 0;
+                m_nLifeIndex++;
+                if (m_nLifeIndex == MdlNodeLightsaber::NUM_BACK_SEGMENTS)
+                    m_nLifeIndex = 0;
+                nExpired++;
             }
+            nLifeIndex++;
+            if (nLifeIndex == MdlNodeLightsaber::NUM_BACK_SEGMENTS)
+                nLifeIndex = 0;
         }
         m_nSegmentCount = nCount - nExpired;
     }
@@ -2028,7 +2025,7 @@ void MdlNodeAnimMesh::InternalControl(Part* pPart, float fA, float fB, float fC)
             float* pFrames = reinterpret_cast<float*>(m_paVertexFrames);
             int nCount = m_nVertexFrameCount;
             int64_t nVerts = static_cast<short>(m_nVertexCount);
-            for (int64_t j = 0; j < nVerts; j++) {
+            for (int j = 0; j < nVerts; j++) {
                 float* pF = pFrames;
                 int i = static_cast<int>((nFrame + j * nCount) * 3);
                 Vector3 vA = { pF[i], pF[i + 1], pF[i + 2] };  // raw-offset: float-granular frame index, as the original computes it
@@ -2095,7 +2092,7 @@ void MdlNodeAnimMesh::InternalControl(Part* pPart, float fA, float fB, float fC)
                 float* pFrames = reinterpret_cast<float*>(m_paTexCoordFrames);
                 int nCount = m_nTexCoordFrameCount;
                 int64_t nVerts = static_cast<short>(m_nVertexCount);
-                for (int64_t j = 0; j < nVerts; j++) {
+                for (int j = 0; j < nVerts; j++) {
                     float* pF = pFrames;
                     int i = static_cast<int>((nFrame + j * nCount) * 2);
                     Vector2 vA = { pF[i], pF[i + 1] };  // raw-offset: float-granular frame index, as the original computes it
@@ -2210,7 +2207,7 @@ void ProceduralAnimateHierarchy(Part* pPart)
 
 #if KOTOR1
             char* pDst = static_cast<char*>(GLRender::LockPool(pNode->m_pTree->AsModel()->m_nPool, 0, 0, 1));
-            for (int64_t i = 0; i < static_cast<short>(pNode->m_nVertexCount); i++)
+            for (int i = 0; i < static_cast<short>(pNode->m_nVertexCount); i++)
                 *reinterpret_cast<uint64_ll_t*>(pDst + pNode->m_nGeomBase + pNode->m_nVertexStride * static_cast<int>(i) +
                                        pNode->m_nTex0Ofs)
                     = reinterpret_cast<uint64_ll_t*>(pfPool)[i];
@@ -2557,22 +2554,48 @@ int NewController::GetVectorValue(float fTime, MdlNode* pNode, Vector& vValue)
 // absent the quaternion falls back to the part's own local orientation.
 void NewController::ReportKey(Part* pPart, MdlNode* pNode, int nKey, float fAlpha)
 {
-    float fTime = pNode->m_listFloats.m_pData[m_keys.m_nTimeIndex + nKey];
-    Gob* pGob = pPart->m_pGob;
-
-    Quaternion qValue = Quaternion(1.0f, 0.0f, 0.0f, 0.0f);
-    Vector vValue = Vector(0.0f, 0.0f, 0.0f);
     NewControllerKeyReport report;
     report.m_pVector = 0;
     report.m_pQuaternion = 0;
     report.m_bQuaternion = true;
     report.m_fAlpha = fAlpha;
 
-    int nKind = m_keys.m_nKind & kKeyLayoutMask;
-    if (nKind == kKeyPackedQuaternion || nKind == kKeyQuaternion) {
+    float fTime = pNode->m_listFloats.m_pData[m_keys.m_nTimeIndex + nKey];
+    Gob* pGob = pPart->m_pGob;
+
+    // Each arm's sampled values are its own locals, so the report goes out from inside the arm.
+    // Any other kind reports nothing.
+    switch (m_keys.m_nKind & kKeyLayoutMask) {
+    case kKeyVector: {
+        Vector vValue = Vector(0.0f, 0.0f, 0.0f);
+        GetVectorValue(fTime, pNode, vValue);
+        report.m_bQuaternion = true;
+        report.m_pVector = &vValue;
+        Quaternion qValue = Quaternion(1.0f, 0.0f, 0.0f, 0.0f);
+        for (int i = 0; i < pNode->m_listControllers.m_count; i++) {
+            if (&pNode->m_listControllers.m_pData[i] == this)
+                continue;
+            if (pNode->m_listControllers.m_pData[i].m_target.m_nOffset != kTargetOrientation)
+                continue;
+            if (pNode->m_listControllers.m_pData[i].GetQuaternionValue(fTime, pNode, qValue)) {
+                report.m_pQuaternion = &qValue;
+                goto report_key;
+            }
+        }
+        // No sibling orientation: the part's own.
+        qValue = pPart->m_qLocalOrientation;
+        report.m_pQuaternion = &qValue;
+    report_key:
+        pGob->DoEvent(const_cast<char*>("ReportKey"), &report);
+        break;
+    }
+    case kKeyPackedQuaternion:
+    case kKeyQuaternion: {
+        Quaternion qValue = Quaternion(1.0f, 0.0f, 0.0f, 0.0f);
         GetQuaternionValue(fTime, pNode, qValue);
         report.m_pQuaternion = &qValue;
         report.m_bQuaternion = false;
+        Vector vValue = Vector(0.0f, 0.0f, 0.0f);
         for (int i = 0; i < pNode->m_listControllers.m_count; i++) {
             if (&pNode->m_listControllers.m_pData[i] == this)
                 continue;
@@ -2584,29 +2607,10 @@ void NewController::ReportKey(Part* pPart, MdlNode* pNode, int nKey, float fAlph
                 break;
             }
         }
-    } else if (nKind == kKeyVector) {
-        GetVectorValue(fTime, pNode, vValue);
-        report.m_pVector = &vValue;
-        for (int i = 0; i < pNode->m_listControllers.m_count; i++) {
-            if (&pNode->m_listControllers.m_pData[i] == this)
-                continue;
-            if (pNode->m_listControllers.m_pData[i].m_target.m_nOffset != kTargetOrientation)
-                continue;
-            if (pNode->m_listControllers.m_pData[i].GetQuaternionValue(fTime, pNode, qValue)) {
-                report.m_pQuaternion = &qValue;
-                break;
-            }
-        }
-        if (report.m_pQuaternion == 0) {
-            qValue = pPart->m_qLocalOrientation;
-            report.m_pQuaternion = &qValue;
-        }
-    } else {
-        // Any other kind reports nothing.
-        return;
+        pGob->DoEvent(const_cast<char*>("ReportKey"), &report);
+        break;
     }
-
-    pGob->DoEvent(const_cast<char*>("ReportKey"), &report);
+    }
 }
 
 // Runs one control tick, dispatched on the record's low-nibble kind. 2 and 4 carry an orientation,
@@ -2767,14 +2771,14 @@ void NewController::ReportKeys(Part* pPart, MdlNode* pNode, float fTimeA, float 
     if (nKeyCount != 0) {
         float* pafTimes = &pNode->m_listFloats.m_pData[nTimeIndex];
         uint64_t i = 0;
-        while (i < nKeyCount && pafTimes[i] < fStart)
+        while (i < nKeyCount && fStart > pafTimes[i])
             i++;
         nIndexA = static_cast<int>(i);
     }
     if (nKeyCount != 0) {
         float* pafTimes = &pNode->m_listFloats.m_pData[nTimeIndex];
         uint64_t i = 0;
-        while (i < nKeyCount && pafTimes[i] < fEnd)
+        while (i < nKeyCount && fEnd > pafTimes[i])
             i++;
         nIndexB = static_cast<int>(i);
     }

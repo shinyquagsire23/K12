@@ -575,8 +575,8 @@ void PartEmitter::moveParticleStandard(float fDeltaT)
                     float fZ = pParticle->m_vPosition.z - vCamPos.z;
                     // The re-centre is -5 for a non-negative operand and +5 otherwise, which
                     // lands the wrap in [-5, 5) around the camera.
-                    fX = fmodf(fX, width) + (fX >= 0.0f ? -5.0f : 5.0f);
-                    fY = fmodf(fY, height) + (fY >= 0.0f ? -5.0f : 5.0f);
+                    fX = fmodf(fX, width) + (fX < 0.0f ? 5.0f : -5.0f);
+                    fY = fmodf(fY, height) + (fY < 0.0f ? 5.0f : -5.0f);
                     pParticle->m_vPosition =
                         Vector(vCamPos.x + fX, vCamPos.y + fY, vCamPos.z + fZ);
                 }
@@ -1184,8 +1184,6 @@ void LightningEmitter::UpdateBranches()
         return;
 
     m_nActiveBranches = rand_wincompatible() % (pNode->m_nNumBranches + 1);
-    if (m_nActiveBranches < 1)
-        return;
 
     for (int i = 0; i < m_nActiveBranches; i++)
     {
@@ -1413,46 +1411,43 @@ void LightningEmitter::UpdateControlPoints()
     }
 
     // Place every particle along the polyline.
-    if (m_lParticles.m_count > 1)
+    int j = 1;
+    float fLo = 0.0f;
+    float fHi = 1.0f / static_cast<float>(m_lPrevPoints.m_count - 1);
+
+    for (int i = 1; i < m_lParticles.m_count; i++)
     {
-        int j = 1;
-        float fLo = 0.0f;
-        float fHi = 1.0f / static_cast<float>(m_lPrevPoints.m_count - 1);
+        float fT = static_cast<float>(i) / static_cast<float>(m_lParticles.m_count - 1);
 
-        for (int i = 1; i < m_lParticles.m_count; i++)
+        while (fT > fHi)
         {
-            float fT = static_cast<float>(i) / static_cast<float>(m_lParticles.m_count - 1);
-
-            while (fT > fHi)
+            float fStep = 1.0f / static_cast<float>(m_lPrevPoints.m_count - 1);
+            fLo = fHi;
+            fHi += fStep;
+            if (j + 1 >= m_lPrevPoints.m_count)
             {
-                float fStep = 1.0f / static_cast<float>(m_lPrevPoints.m_count - 1);
-                fLo = fHi;
-                fHi += fStep;
-                if (j + 1 >= m_lPrevPoints.m_count)
-                {
-                    fLo -= fStep;
-                    fHi -= fStep;
-                    break;
-                }
-                j++;
+                fLo -= fStep;
+                fHi -= fStep;
+                break;
             }
-
-            float fLocal = (fT - fLo) / (fHi - fLo);
-            if (fLocal > 1.0f)
-                fLocal = 1.0f;
-            float fInv = 1.0f - fLocal;
-
-            Vector vA = m_lPrevPoints.m_pData[j - 1];
-            Vector vB = m_lPrevTangents.m_pData[j - 1];
-            Vector vC = m_lPrevPoints.m_pData[j];
-            Vector vD = m_lPrevTangents.m_pData[j];
-
-            m_lParticles.m_pData[i]->m_vPosition =
-                vA * (fInv * fInv * fInv)
-              + (vA + vB) * (3.0f * fLocal * fInv * fInv)
-              + (vC - vD) * (3.0f * fLocal * fLocal * fInv)
-              + vC * (fLocal * fLocal * fLocal);
+            j++;
         }
+
+        float fLocal = (fT - fLo) / (fHi - fLo);
+        if (fLocal > 1.0f)
+            fLocal = 1.0f;
+        float fInv = 1.0f - fLocal;
+
+        Vector vA = m_lPrevPoints.m_pData[j - 1];
+        Vector vB = m_lPrevTangents.m_pData[j - 1];
+        Vector vC = m_lPrevPoints.m_pData[j];
+        Vector vD = m_lPrevTangents.m_pData[j];
+
+        m_lParticles.m_pData[i]->m_vPosition =
+            vA * (fInv * fInv * fInv)
+          + (vA + vB) * (3.0f * fLocal * fInv * fInv)
+          + (vC - vD) * (3.0f * fLocal * fLocal * fInv)
+          + vC * (fLocal * fLocal * fLocal);
     }
 }
 
@@ -2874,8 +2869,11 @@ void PartEmitter::RenderFunc()
 
             if (auremitterrenderlightning)
             {
-                for (int i = 0; i < pLightning->m_nActiveBranches; i++)
-                    pLightning->m_lBranches.m_pData[i]->RenderLinked();
+                if (pLightning->m_nActiveBranches > 0)
+                {
+                    for (int i = 0; i < pLightning->m_nActiveBranches; i++)
+                        pLightning->m_lBranches.m_pData[i]->RenderLinked();
+                }
             }
             if (auremitterrenderlightning)
                 RenderLinked();
@@ -3961,36 +3959,32 @@ void PartEmitter::RenderBoundingSphere()
     Vector vCenter;
     Quaternion qOrientation;
     GetWorld(vCenter, qOrientation);
-    Vector vColor = { 1.0f, 0.5f, 1.0f };
-    GLRender::DrawSphereBound(m_fRadius, vCenter, vColor, 1.0f, true);
+    GLRender::DrawSphereBound(m_fRadius, vCenter, Vector(1.0f, 0.5f, 1.0f), 1.0f, true);
 }
 
 void PartEmitter::RecursiveFractal(int nIndex, int nCount, int nDepth, Vector vA, Vector vB,
                                    float fScale)
 {
-    for (;;)
-    {
-        // The scale quantises to hundredths; the halving below is a double.
-        int nMax = static_cast<int>(fScale * 100.0f);
-        int nRand = rand_wincompatible() % nMax;
-        vB.x += m_fLightningRadius * (static_cast<float>(nRand) * 0.01f);
+    // The scale quantises to hundredths; the halving below is a double.
+    int nMax = static_cast<int>(fScale * 100.0f);
+    int nRand = rand_wincompatible() % nMax;
+    vB.x += m_fLightningRadius * (static_cast<float>(nRand) * 0.01f);
 
-        // The bolt path is taken only by a LightningEmitter; every other emitter kind answers 0.
-        LightningEmitter* pLightning = AsLightningEmitter();
-        Vector v = vA * vB.x;
-        if (pLightning)
-            pLightning->m_lParticleOffsets.m_pData[nIndex] = v;
-        else
-            m_lParticles.m_pData[nIndex]->m_vPosition
-                = m_lParticles.m_pData[nIndex]->m_vPosition + v;
+    // The bolt path is taken only by a LightningEmitter; every other emitter kind answers 0.
+    LightningEmitter* pLightning = AsLightningEmitter();
+    Vector v = vA * vB.x;
+    if (pLightning)
+        pLightning->m_lParticleOffsets.m_pData[nIndex] = v;
+    else
+        m_lParticles.m_pData[nIndex]->m_vPosition
+            = m_lParticles.m_pData[nIndex]->m_vPosition + v;
 
-        if (nCount == 0)
-            return;
-        nCount = static_cast<int>(nCount * 0.5);
-        fScale *= 0.5f;
-        RecursiveFractal(nIndex - nCount, nCount, nDepth, vA, vB, fScale);
-        nIndex += nCount;
-    }
+    if (nCount == 0)
+        return;
+    nCount = static_cast<int>(nCount * 0.5);
+    fScale *= 0.5f;
+    RecursiveFractal(nIndex - nCount, nCount, nDepth, vA, vB, fScale);
+    RecursiveFractal(nIndex + nCount, nCount, nDepth, vA, vB, fScale);
 }
 
 float PartEmitter::GetGobAlpha()

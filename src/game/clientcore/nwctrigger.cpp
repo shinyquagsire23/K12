@@ -661,14 +661,17 @@ int CSWCTrigger::LineSegmentIntersectTrigger(const Vector& vStart, const Vector&
 // inside. Both probes must land inside.
 bool CSWCTrigger::CheckWindingOrder()
 {
-    if (!InTrigger((m_pVertices[0] + m_pVertices[1]) * 0.5f +
-                   normalize(Vector(-(m_pVertices[1].y - m_pVertices[0].y),
-                                    m_pVertices[1].x - m_pVertices[0].x, 0.0f)) * 0.01f))
+    Vector vEdge;
+    vEdge.x = -(m_pVertices[1].y - m_pVertices[0].y);
+    vEdge.y = m_pVertices[1].x - m_pVertices[0].x;
+    vEdge.z = 0.0f;
+    if (!InTrigger((m_pVertices[0] + m_pVertices[1]) * 0.5f + normalize(vEdge) * 0.01f))
         return false;
 
-    return InTrigger((m_pVertices[1] + m_pVertices[2]) * 0.5f +
-                     normalize(Vector(-(m_pVertices[2].y - m_pVertices[1].y),
-                                      m_pVertices[2].x - m_pVertices[1].x, 0.0f)) * 0.01f);
+    vEdge.x = -(m_pVertices[2].y - m_pVertices[1].y);
+    vEdge.y = m_pVertices[2].x - m_pVertices[1].x;
+    vEdge.z = 0.0f;
+    return InTrigger((m_pVertices[1] + m_pVertices[2]) * 0.5f + normalize(vEdge) * 0.01f);
 }
 
 // Centres the trigger on the bounding box of its ground polygon.

@@ -173,9 +173,9 @@ public:
     CResRef*                m_paStuntModelResRefs;
     unsigned int            m_dialogAnimCount;
     unsigned int            m_lastDialogAnimCount;
-    unsigned long long*     m_paDialogAnimData;
+    uintptr_t*              m_paDialogAnimData;
     unsigned short*         m_paDialogAnimFlags;
-    unsigned long long*     m_paLastDialogAnimData;
+    uintptr_t*              m_paLastDialogAnimData;
     unsigned short*         m_paLastDialogAnimFlags;
     int                     m_placeableCameraCount;
 #if KOTOR1  // K1 keeps 50 placeable cameras, K2 70

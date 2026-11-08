@@ -705,8 +705,6 @@ void AurStripify(List<int>& faceIndices, List<List<int> >& stripList);
 // face sharing that edge. K2 also counts the faces whose three edges are all unshared.
 void MdlNodeTriMesh::BuildNeighborLists()
 {
-    if (m_faces.m_count < 1)
-        return;
     for (int64_t i = 0; i < m_faces.m_count; i++) {
         Vector* pVerts = PostProcess()->m_verts.m_pData;
         MaxFace_PostProcess& pFace = PostProcess()->m_faces.m_pData[i];
@@ -745,12 +743,10 @@ void MdlNodeTriMesh::BuildNeighborLists()
 #if !KOTOR1  // K1 has no "P_HK47" unshared-edge counters
         if (_stricmp(m_pTree->m_szName, "P_HK47") == 0) {
             int nUnshared = 0;
-            if (face.m_anNeighbors[0] == -1)
-                nUnshared++;
-            if (face.m_anNeighbors[1] == -1)
-                nUnshared++;
-            if (face.m_anNeighbors[2] == -1)
-                nUnshared++;
+            for (int k = 0; k < 3; k++) {
+                if (face.m_anNeighbors[k] == -1)
+                    nUnshared++;
+            }
             if (nUnshared == 3)
                 countcrappyfaces3++;
             else if (nUnshared == 2)
@@ -777,8 +773,8 @@ void MdlNodeTriMesh::InternalGenVertices()
             Vector* pNormal = &PostProcess()->m_normals.m_pData[PostProcess()->m_faces.m_pData[i].m_paNormalIndices[j]];
             Vector* pColor = PostProcess()->m_colors.m_count >= 1 ? &PostProcess()->m_colors.m_pData[nVert] : 0;
             NodeVertex* pVertex = new NodeVertex(pPos, pv0, pv1, pv2, pv3, pNormal, pColor);
-            int64_t index;
-            for (index = 0; index < static_cast<int64_t>(PostProcess()->m_vertices.m_count); index++) {
+            int index;
+            for (index = 0; index < static_cast<int>(PostProcess()->m_vertices.m_count); index++) {
                 if (*PostProcess()->m_vertices.m_pData[index] == *pVertex) {
                     delete pVertex;
                     break;
@@ -791,7 +787,7 @@ void MdlNodeTriMesh::InternalGenVertices()
     }
     if (AsMdlNodeAABB() != 0)
         return;
-    int64_t i = static_cast<int64_t>(m_faces.m_count);
+    int i = static_cast<int>(m_faces.m_count);
     while (i != 0) {
         i--;
         MaxFace& face = m_faces.m_pData[i];
@@ -809,16 +805,16 @@ void MdlNodeTriMesh::InternalGenVertices()
 void MdlNodeTriMesh::ProcessVerts()
 {
     if (MaxFace_PostProcess::texindices1.m_count == 0 && m_bHasLightmap) {
-        for (int64_t i = 0; i < PostProcess()->m_faces.m_count; i++) {
+        for (int i = 0; i < PostProcess()->m_faces.m_count; i++) {
             int* pnTvert = PostProcess()->m_faces.m_pData[i].m_paTVertIndices;
             MaxFace_PostProcess::texindices1.Add(
                 Vector(static_cast<float>(pnTvert[0]), static_cast<float>(pnTvert[1]), static_cast<float>(pnTvert[2])));
         }
     }
-    for (int64_t i = 0; i < PostProcess()->m_faces.m_count; i++) {
+    for (int i = 0; i < PostProcess()->m_faces.m_count; i++) {
         MaxFace_PostProcess& pFace = PostProcess()->m_faces.m_pData[i];
         int nMask = pFace.m_nSmoothGroup;
-        for (int64_t j = 0; j < 3; j++) {
+        for (int j = 0; j < 3; j++) {
             // Each enabled UV set writes its own three indices into the face record.
             if (MaxFace_PostProcess::texindices1.m_count != 0) {
                 Vector& vT1 = MaxFace_PostProcess::texindices1.m_pData[i];
@@ -844,7 +840,7 @@ void MdlNodeTriMesh::ProcessVerts()
             pFace.m_paNormalIndices[j] = -1;
             int nVert = pFace.m_paVertIndices[j];
             Vector vAcc;
-            for (int64_t k = 0; k < PostProcess()->m_faces.m_count; k++) {
+            for (int k = 0; k < PostProcess()->m_faces.m_count; k++) {
                 MaxFace_PostProcess& pOther = PostProcess()->m_faces.m_pData[k];
                 int m = 2;
                 while (m != -1) {
@@ -879,7 +875,7 @@ void MdlNodeTriMesh::ProcessVerts()
         }
     }
     Vector vSum;
-    for (int64_t i = 0; i < PostProcess()->m_verts.m_count; i++) {
+    for (int i = 0; i < PostProcess()->m_verts.m_count; i++) {
         Vector& v = PostProcess()->m_verts.m_pData[i];
         float* pfV = reinterpret_cast<float*>(&v);
         float* pfMin = reinterpret_cast<float*>(&m_vMin);
@@ -900,7 +896,7 @@ void MdlNodeTriMesh::ProcessVerts()
         vSum.z *= fInv;
     }
     m_vCentroid = vSum;
-    for (int64_t i = 0; i < PostProcess()->m_verts.m_count; i++) {
+    for (int i = 0; i < PostProcess()->m_verts.m_count; i++) {
         Vector vDelta = PostProcess()->m_verts.m_pData[i] - m_vCentroid;
         float fDist = magnitude(vDelta);
         if (fDist > m_fRadius)
@@ -934,13 +930,11 @@ void MdlNodeTriMesh::BuildVertexIndices()
                     m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[j]);
                 for (int j = 3; j < stripList.m_pData[i].m_count; j++) {
                     if (j & 1) {
-                        m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[j]);
-                        m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[j - 1]);
-                        m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[j - 2]);
+                        for (int k = j; k >= j - 2; k--)
+                            m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[k]);
                     } else {
-                        m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[j - 2]);
-                        m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[j - 1]);
-                        m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[j]);
+                        for (int k = j - 2; k <= j; k++)
+                            m_lLeftOverFaces.Add(stripList.m_pData[i].m_pData[k]);
                     }
                 }
             }
@@ -949,13 +943,14 @@ void MdlNodeTriMesh::BuildVertexIndices()
             m_lLeftOverFaces.Add(stripList.m_pData[stripList.m_count - 1].m_pData[j]);
         m_nPrimitiveType = 4;
     } else {
-        unsigned int* paStrip = new unsigned int[m_faces.m_count * 3];
+        int nIndices = m_faces.m_count * 3;
+        unsigned int* paStrip = new unsigned int[nIndices];
         for (int i = 0; i < m_faces.m_count; i++) {
             for (int j = 0; j < 3; j++)
                 paStrip[i * 3 + j] = static_cast<short>(m_faces.m_pData[i].m_anVertIndices[j]);
         }
         m_lVertexIndices.Add(paStrip);
-        m_lVertexIndicesCount.Add(m_faces.m_count * 3);
+        m_lVertexIndicesCount.Add(nIndices);
         m_nPrimitiveType = 3;
     }
     if (enabletristrips) {
@@ -1343,35 +1338,37 @@ void MdlNodeDanglyMesh::InternalPostProcess()
 
         int nStride = m_nVertexStride;
         unsigned int nGeom = m_nGeomBase;
-        for (int64_t i = 0; i < static_cast<short>(m_nVertexCount); i++) {
-            NodeVertex* pVertex = PostProcess()->m_vertices.m_pData[i];
-            if (pFirst->m_nTexCoordFlags & kNodeVertexTex0) {
-                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex0Ofs]) = pVertex->m_vTex0.x;
-                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex0Ofs + 4]) = pVertex->m_vTex0.y;
+        if (static_cast<short>(m_nVertexCount) > 0) {
+            for (int i = 0; i < static_cast<short>(m_nVertexCount); i++) {
+                NodeVertex* pVertex = PostProcess()->m_vertices.m_pData[i];
+                if (pFirst->m_nTexCoordFlags & kNodeVertexTex0) {
+                    *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex0Ofs]) = pVertex->m_vTex0.x;
+                    *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex0Ofs + 4]) = pVertex->m_vTex0.y;
+                }
+                if (pFirst->m_nTexCoordFlags & kNodeVertexTex1) {
+                    *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex1Ofs]) = pVertex->m_vTex1.x;
+                    *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex1Ofs + 4]) = pVertex->m_vTex1.y;
+                }
+                if (pFirst->m_nTexCoordFlags & kNodeVertexTex2) {
+                    *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex2Ofs]) = pVertex->m_vTex2.x;
+                    *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex2Ofs + 4]) = pVertex->m_vTex2.y;
+                }
+                if (pFirst->m_nTexCoordFlags & kNodeVertexTex3) {
+                    *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex3Ofs]) = pVertex->m_vTex3.x;
+                    *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex3Ofs + 4]) = pVertex->m_vTex3.y;
+                }
+                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nNormalOfs]) = pVertex->m_vNormal.x;
+                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nNormalOfs + 4]) = pVertex->m_vNormal.y;
+                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nNormalOfs + 8]) = pVertex->m_vNormal.z;
+                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nVertexOfs]) = pVertex->m_vPos.x;
+                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nVertexOfs + 4]) = pVertex->m_vPos.y;
+                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nVertexOfs + 8]) = pVertex->m_vPos.z;
+                reinterpret_cast<Vector*>(m_paVertices)[i] = pVertex->m_vPos;
+                Vector3* pSrc = &m_pVertexSource[i];
+                pSrc->x = pVertex->m_vPos.x;
+                pSrc->y = pVertex->m_vPos.y;
+                pSrc->z = pVertex->m_vPos.z;
             }
-            if (pFirst->m_nTexCoordFlags & kNodeVertexTex1) {
-                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex1Ofs]) = pVertex->m_vTex1.x;
-                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex1Ofs + 4]) = pVertex->m_vTex1.y;
-            }
-            if (pFirst->m_nTexCoordFlags & kNodeVertexTex2) {
-                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex2Ofs]) = pVertex->m_vTex2.x;
-                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex2Ofs + 4]) = pVertex->m_vTex2.y;
-            }
-            if (pFirst->m_nTexCoordFlags & kNodeVertexTex3) {
-                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex3Ofs]) = pVertex->m_vTex3.x;
-                *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nTex3Ofs + 4]) = pVertex->m_vTex3.y;
-            }
-            *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nNormalOfs]) = pVertex->m_vNormal.x;
-            *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nNormalOfs + 4]) = pVertex->m_vNormal.y;
-            *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nNormalOfs + 8]) = pVertex->m_vNormal.z;
-            *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nVertexOfs]) = pVertex->m_vPos.x;
-            *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nVertexOfs + 4]) = pVertex->m_vPos.y;
-            *reinterpret_cast<float*>(&pPool[nGeom + i * nStride + m_nVertexOfs + 8]) = pVertex->m_vPos.z;
-            reinterpret_cast<Vector*>(m_paVertices)[i] = pVertex->m_vPos;
-            Vector3* pSrc = &m_pVertexSource[i];
-            pSrc->x = pVertex->m_vPos.x;
-            pSrc->y = pVertex->m_vPos.y;
-            pSrc->z = pVertex->m_vPos.z;
         }
 
         memset(pPool + nGeom + static_cast<short>(m_nVertexCount) * nStride + m_nVertexOfs, 0, nStride);

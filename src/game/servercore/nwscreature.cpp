@@ -448,7 +448,7 @@ short CSWSCreature::GetArmorClass()
     return nAC;
 #else
     int nAC = 0;
-    for (int64_t i = 0; i < m_pStats->m_numClasses; i++) {
+    for (int i = 0; i < m_pStats->m_numClasses; i++) {
         nAC += static_cast<signed char>(g_pRules->GetClass(m_pStats->GetClass(static_cast<unsigned char>(i)))
                    ->GetArmorBonus(m_pStats->GetClassLevel(static_cast<unsigned char>(i), 0)));
     }
@@ -484,28 +484,26 @@ short CSWSCreature::GetMaxHitPoints(int a)
 {
     if (m_pStats->m_bIsPC == 1
         && g_pAppManager->m_pServerExoApp->GetPartyTable()->m_nControlledNPC == -1) {
-        int nTotal = 0;
 #if KOTOR1  // K1: the level is re-read per pass
-        {
-            for (int i = 0; i < m_pStats->GetLevel(0); i++) {
+        int nTotal = 0;
+        for (int i = 0; i < m_pStats->GetLevel(0); i++) {
 #else
         unsigned char nLevels = m_pStats->GetLevel(0);
-        if (nLevels != 0) {
-            for (int i = 0; i < nLevels; i++) {
+        int nTotal = 0;
+        for (int i = 0; i < nLevels; i++) {
 #endif
-                int nHp = m_pStats->GetLevelStats(static_cast<unsigned char>(i))->m_nHitPointGain
-                          + m_pStats->m_nCONMod;
-                if (nHp < 1)
-                    nHp = 1;
-                if (a != 0) {
-                    if (m_pStats->HasFeat(CSWSCreatureStats::FEAT_MASTER_TOUGHNESS)) {
-                        nHp += 2;
-                    } else if (m_pStats->HasFeat(FEAT_TOUGHNESS)) {
-                        nHp += 1;
-                    }
+            int nHp = m_pStats->GetLevelStats(static_cast<unsigned char>(i))->m_nHitPointGain
+                      + m_pStats->m_nCONMod;
+            if (nHp < 1)
+                nHp = 1;
+            if (a != 0) {
+                if (m_pStats->HasFeat(CSWSCreatureStats::FEAT_MASTER_TOUGHNESS)) {
+                    nHp += 2;
+                } else if (m_pStats->HasFeat(FEAT_TOUGHNESS)) {
+                    nHp += 1;
                 }
-                nTotal += nHp;
             }
+            nTotal += nHp;
         }
 #if !KOTOR1  // K1: no +25 feat bonus
         if (m_pStats->HasFeat(FEAT_WAR_VETERAN))
@@ -823,11 +821,7 @@ void CSWSCreature::HandleFPRegeneration()
     }
     p2DA->GetFLOATEntry(CExoString("WisModBonus"), sValue, &fWisModBonus);
 
-    unsigned char nAlignment;
-    if (m_pStats->m_nAlignment < 41)
-        nAlignment = 3;
-    else
-        nAlignment = m_pStats->m_nAlignment > 59 ? 2 : 1;
+    short nAlignValue = m_pStats->m_nAlignment;
 
     fBase = fBase + fWisModBonus * static_cast<float>(m_pStats->m_nWISMod);
 
@@ -843,11 +837,17 @@ void CSWSCreature::HandleFPRegeneration()
     if (m_stanceId == FORM_FORCE_I_FOCUS)
         fBase = fBase + 0.5f;
 
+    unsigned char nAlignment;
+    if (nAlignValue < 41)
+        nAlignment = 3;
+    else
+        nAlignment = nAlignValue > 59 ? 2 : 1;
+
     float fRoomDelta = fBase * static_cast<float>(nRoomRating) / 100.0f;
-    if (nAlignment == 3)
-        fBase = fBase - fRoomDelta;
-    else if (nAlignment == 2)
+    if (nAlignment == 2)
         fBase = fBase + fRoomDelta;
+    else if (nAlignment == 3)
+        fBase = fBase - fRoomDelta;
 
     fFPRegenTime = fFPRegenTime <= 0.0001f ? 0.0001f : fFPRegenTime;
     float fSeconds = static_cast<float>(m_nAIUpdateDeltaMs) * 0.001f;
@@ -858,7 +858,7 @@ void CSWSCreature::HandleFPRegeneration()
         int nNew = nCurrent + m_pStats->AdjustFPAccumulatorBy(fGain);
         if (nNew < 0)
             nNew = 0;
-        if (nNew > nTotalFP)
+        if (nTotalFP < nNew)
             nNew = nTotalFP;
         m_pStats->m_nCurrentForcePoints = static_cast<short>(nNew);
     }
@@ -2990,8 +2990,7 @@ void CSWSCreature::ForceEquipClothing()
     CSWSItem* pItem = g_pAppManager->m_pServerExoApp->GetItemByGameObjectID(oidItem);
     if (pItem == 0) {
         pItem = new CSWSItem(OBJECT_INVALID);
-        CResRef resRef("g_a_clothes01");
-        if (pItem->LoadFromTemplate(resRef) == 0) {
+        if (pItem->LoadFromTemplate(CResRef("g_a_clothes01")) == 0) {
             delete pItem;
             m_bForceEquipClothing = 0;
             return;
@@ -3275,30 +3274,32 @@ int CSWSCreature::EvaluateLock(CSWSObject* pObject, int bNewLockState)
 
 void CSWSCreature::SetAnimation(int nAnimation)
 {
-#if KOTOR1  // K1: 13 ambient states
-    static const int s_ambientAnimationMap[13] = {
-        10058, 10008, 10006, 10150, 10117, 10124, 10118, 10400,
-        10401, 10137, 10138, 10402, 10156
-    };
-#else
-    static const int s_ambientAnimationMap[16] = {
-        10058, 10008, 10006, 10150, 10117, 10124, 10118, 10400,
-        10401, 10137, 10138, 10402, 10156, 10139, 10416, 10418
-    };
-#endif
     int nNewAnimation;
     if ((nAnimation | 1) == SERVER_ANIMATION_READY) {
-        unsigned char nIndex = static_cast<unsigned char>(m_ambientAnimationState) - 2;
-#if KOTOR1
-        if (nIndex < 13) {
-#else
-        if (nIndex < 16) {
+        switch (m_ambientAnimationState) {
+        case EFFECT_STATE_FRIGHTENED:     nNewAnimation = 10058; break;
+        case EFFECT_STATE_DROID_STUN:     nNewAnimation = 10008; break;
+        case EFFECT_STATE_STUNNED:        nNewAnimation = 10006; break;
+        case EFFECT_STATE_PARALYZED:      nNewAnimation = 10150; break;
+        case EFFECT_STATE_SLEEP:          nNewAnimation = 10117; break;
+        case EFFECT_STATE_CHOKE:          nNewAnimation = 10124; break;
+        case EFFECT_STATE_HORRIFIED:      nNewAnimation = 10118; break;
+        case 9:                           nNewAnimation = 10400; break;
+        case EFFECT_STATE_WHIRLWIND:      nNewAnimation = 10401; break;
+        case EFFECT_STATE_PSYCHIC_STATIC: nNewAnimation = 10137; break;
+        case 12:                          nNewAnimation = 10138; break;
+        case EFFECT_STATE_KNOCKBACK:      nNewAnimation = 10402; break;
+        case EFFECT_STATE_KNOCKDOWN:      nNewAnimation = 10156; break;
+#if !KOTOR1  // K2 adds three states
+        case EFFECT_STATE_FORCE_CRUSH:    nNewAnimation = 10139; break;
+        case EFFECT_STATE_DROID_CONFUSED: nNewAnimation = 10416; break;
+        case 17:                          nNewAnimation = 10418; break;
 #endif
-            nNewAnimation = s_ambientAnimationMap[static_cast<signed char>(nIndex)];
-        } else {
+        default:
             nNewAnimation = SERVER_ANIMATION_PAUSE;
             if (m_bCombatState != 0)
                 nNewAnimation = SERVER_ANIMATION_READY;
+            break;
         }
     } else {
         nNewAnimation = SERVER_ANIMATION_PAUSE;
@@ -6134,12 +6135,14 @@ void CSWSCreature::DumpToLog()
 int CSWSCreature::GetTotalACEffectBonus()
 {
     int nTotal = 0;
-    for (int64_t i = 0; i < m_effects.m_count; i++) {
-        CGameEffect* pEffect = m_effects.m_pArray[i];
-        if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_AC_INCREASE)
-            nTotal += pEffect->GetInteger(1);
-        else if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_AC_DECREASE)
-            nTotal -= pEffect->GetInteger(1);
+    if (m_effects.m_count > 0) {
+        for (int i = 0; i < m_effects.m_count; i++) {
+            CGameEffect* pEffect = m_effects.m_pArray[i];
+            if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_AC_INCREASE)
+                nTotal += pEffect->GetInteger(1);
+            else if (pEffect->m_subType == CSWSEffectListHandler::EFFECT_AC_DECREASE)
+                nTotal -= pEffect->GetInteger(1);
+        }
     }
     return nTotal;
 }
@@ -6185,13 +6188,11 @@ void CSWSCreature::AddSpellWithPrerequisites(unsigned int nSpell)
     CSWSpell* pSpell = g_pRules->GetSpell(nSpell);
     if (pSpell != 0) {
         int nPrereq = pSpell->m_anPrereq1[0];
-        if (nPrereq != -1) {
-            int* pPrereq = &pSpell->m_anPrereq1[1];
-            do {
-                if (m_pStats->HasSpell(0, nPrereq, 1) == 0)
-                    AddSpellWithPrerequisites(nPrereq);
-                nPrereq = *pPrereq++;
-            } while (nPrereq != -1);
+        int* pPrereq = &pSpell->m_anPrereq1[1];
+        while (nPrereq != -1) {
+            if (m_pStats->HasSpell(0, nPrereq, 1) == 0)
+                AddSpellWithPrerequisites(nPrereq);
+            nPrereq = *pPrereq++;
         }
         m_pStats->AddKnownSpell(m_pStats->m_numClasses - 1, nSpell);
     }
@@ -9246,9 +9247,8 @@ int CSWSCreature::AddCounterSpellActions(unsigned long long oidTarget)
                                  ACTION_PARAM_FLOAT, &fRange, ACTION_PARAM_FLOAT, &fRange,
                                  ACTION_PARAM_INT, &nOneAlso, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                  0, 0, 0);
-                Vector vUp = {};
                 AddMoveToPointActionToFront(ACTION_GROUP_PREVIOUS, vCaster, oidArea, OBJECT_INVALID, nOne,
-                                            fRange, 0.0f, 0, 0, 0, 0, 0, 0, vUp, 0, 0, 0);
+                                            fRange, 0.0f, 0, 0, 0, 0, 0, 0, Vector(), 0, 0, 0);
                 m_counterSpellTargetId = oidCaster;
             }
         }
@@ -9442,10 +9442,9 @@ int CSWSCreature::AddItemCastSpellActions(unsigned long long oidItem, int nPrope
         Vector vDelta = vTarget - m_position;
         float fDist = vDelta.x * vDelta.x + vDelta.y * vDelta.y + vDelta.z * vDelta.z;
         if (fDist > fRange * fRange) {
-            Vector vZero = {};
             AddMoveToPointActionToFront(ACTION_GROUP_PREVIOUS, vTarget, oidArea, oidTarget, nFlagA, fRange,
                                         0.0f,
-                                        0, 0, 0, 0, 0, 0, vZero, 0, 0, nOne);
+                                        0, 0, 0, 0, 0, 0, Vector(), 0, 0, nOne);
             if (fDist > 0.25f && m_bInParty != 0) {
                 CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
                 int nIndex = pClient->GetSWParty()->GetIndex(
@@ -9460,9 +9459,8 @@ int CSWSCreature::AddItemCastSpellActions(unsigned long long oidItem, int nPrope
         Vector vDelta = vTarget - m_position;
         float fDist = vDelta.x * vDelta.x + vDelta.y * vDelta.y + vDelta.z * vDelta.z;
         if (fDist > fRange * fRange) {
-            Vector vZero = {};
             AddMoveToPointAction(ACTION_GROUP_NEW, vTarget, oidArea, oidTarget, nFlagA, fRange, 0.0f,
-                                 0, 0, 0, 0, 0, 0, vZero, 0, 0, nOne);
+                                 0, 0, 0, 0, 0, 0, Vector(), 0, 0, nOne);
             bMoved = 1;
             nGroup = ACTION_GROUP_PREVIOUS;
         } else {
@@ -9651,10 +9649,9 @@ int CSWSCreature::AddCastSpellActions(unsigned int nSpellId, int nClassIndex, in
         Vector vDelta = vTarget - m_position;
         float fDist = vDelta.x * vDelta.x + vDelta.y * vDelta.y + vDelta.z * vDelta.z;
         if (fDist > fRange * fRange) {
-            Vector vZero = {};
             AddMoveToPointActionToFront(ACTION_GROUP_PREVIOUS, vTarget, oidArea, oidTarget, nFlagA, fRange,
                                         0.0f,
-                                        0, 0, 0, 0, 0, 0, vZero, 0, 0, nOne);
+                                        0, 0, 0, 0, 0, 0, Vector(), 0, 0, nOne);
             if (fDist > 0.25f && m_bInParty != 0) {
                 CClientExoApp* pClient = g_pAppManager->m_pClientExoApp;
                 int nIndex = pClient->GetSWParty()->GetIndex(
@@ -9669,9 +9666,8 @@ int CSWSCreature::AddCastSpellActions(unsigned int nSpellId, int nClassIndex, in
         Vector vDelta = vTarget - m_position;
         float fDist = vDelta.x * vDelta.x + vDelta.y * vDelta.y + vDelta.z * vDelta.z;
         if (fDist > fRange * fRange) {
-            Vector vZero = {};
             AddMoveToPointAction(ACTION_GROUP_NEW, vTarget, oidArea, oidTarget, nFlagA, fRange, 0.0f,
-                                 0, 0, 0, 0, 0, 0, vZero, 0, 0, nOne);
+                                 0, 0, 0, 0, 0, 0, Vector(), 0, 0, nOne);
             // 1 here where the to-front arm's matching slot is 0.
             int nOne2 = 1;
             if (oidTarget == OBJECT_INVALID) {
